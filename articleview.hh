@@ -61,8 +61,8 @@ class ArticleView: public QFrame
   int ftsPosition;
 
   void highlightFTSResults();
+  void highlightAllFtsOccurences( QWebPage::FindFlags flags );
   void performFtsFindOperation( bool backwards );
-  void showFindButtons();
 
 public:
   /// The popupView flag influences contents of the context menus to be
@@ -319,7 +319,8 @@ private:
 
   /// Sets the current article by executing a javascript code.
   /// If moveToIt is true, it moves the focus to it as well.
-  void setCurrentArticle( QString const &, bool moveToIt = false );
+  /// Returns true in case of success, false otherwise.
+  bool setCurrentArticle( QString const &, bool moveToIt = false );
 
   /// Checks if the given article in form of "gdfrom-xxx" is inside a "website"
   /// frame.
