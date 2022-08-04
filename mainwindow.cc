@@ -726,6 +726,11 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
 
   ui.historyList->installEventFilter( this );
 
+  ui.favoritesTree->installEventFilter( this );
+
+  groupListInDock->installEventFilter( this );
+  groupListInToolbar->installEventFilter( this );
+
   connect( &ftsIndexing, SIGNAL( newIndexingName( QString ) ), this, SLOT( showFTSIndexingName( QString ) ) );
 
 #ifdef Q_OS_WIN
@@ -1560,7 +1565,7 @@ void MainWindow::createTabList()
   tabListButton->setToolTip( tr( "Open Tabs List" ) );
   tabListButton->setPopupMode(QToolButton::InstantPopup);
   ui.tabWidget->setCornerWidget(tabListButton);
-  tabListButton->setFocusPolicy(Qt::ClickFocus);
+  tabListButton->setFocusPolicy(Qt::NoFocus);
 }
 
 void MainWindow::fillWindowsMenu()
@@ -1816,21 +1821,25 @@ void MainWindow::titleChanged( ArticleView * view, QString const & title )
     escaped.append( (ushort)0x202C ); // PDF, POP DIRECTIONAL FORMATTING
   }
 
-  ui.tabWidget->setTabText( ui.tabWidget->indexOf( view ), escaped );
+  int index = ui.tabWidget->indexOf( view );
+  ui.tabWidget->setTabText( index, escaped );
 
-  // Set icon for "Add to Favorites" action
-  if( isWordPresentedInFavorites( title, cfg.lastMainGroupId ) )
+  if( index == ui.tabWidget->currentIndex() )
   {
-    addToFavorites->setIcon( blueStarIcon );
-    addToFavorites->setToolTip( tr( "Remove current tab from Favorites" ) );
-  }
-  else
-  {
-    addToFavorites->setIcon( starIcon );
-    addToFavorites->setToolTip( tr( "Add current tab to Favorites" ) );
-  }
+    // Set icon for "Add to Favorites" action
+    if( isWordPresentedInFavorites( title, cfg.lastMainGroupId ) )
+    {
+      addToFavorites->setIcon( blueStarIcon );
+      addToFavorites->setToolTip( tr( "Remove current tab from Favorites" ) );
+    }
+    else
+    {
+      addToFavorites->setIcon( starIcon );
+      addToFavorites->setToolTip( tr( "Add current tab to Favorites" ) );
+    }
 
-  updateWindowTitle();
+    updateWindowTitle();
+  }
 }
 
 void MainWindow::iconChanged( ArticleView * view, QIcon const & icon )
@@ -2534,6 +2543,14 @@ bool MainWindow::eventFilter( QObject * obj, QEvent * ev )
   if (ev->type() == QEvent::KeyPress)
   {
     QKeyEvent *keyevent = static_cast<QKeyEvent*>(ev);
+
+    bool handleCtrlTab = ( obj == translateLine
+                           || obj == wordList
+                           || obj == ui.historyList
+                           || obj == ui.favoritesTree
+                           || obj == ui.dictsList
+                           || obj == groupList );
+
     if (keyevent->modifiers() == Qt::ControlModifier && keyevent->key() == Qt::Key_Tab)
     {
       if (cfg.preferences.mruTabOrder)
@@ -2541,7 +2558,17 @@ bool MainWindow::eventFilter( QObject * obj, QEvent * ev )
         ctrlTabPressed();
         return true;
       }
+      else if( handleCtrlTab )
+      {
+        QApplication::sendEvent( ui.tabWidget, ev );
+        return true;
+      }
       return false;
+    }
+    if( handleCtrlTab && keyevent->matches( QKeySequence::PreviousChild ) ) // Handle only Ctrl+Shist+Tab here because Ctrl+Tab was already handled before
+    {
+      QApplication::sendEvent( ui.tabWidget, ev );
+      return true;
     }
   }
 
@@ -2560,6 +2587,7 @@ bool MainWindow::eventFilter( QObject * obj, QEvent * ev )
           return true;
         }
       }
+
     }
 
     if ( ev->type() == QEvent::FocusIn ) {

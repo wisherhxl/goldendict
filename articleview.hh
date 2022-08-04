@@ -15,6 +15,7 @@
 #include "groupcombobox.hh"
 #include "ui_articleview.h"
 
+class ArticleViewJsProxy;
 class ResourceToSaveHandler;
 
 /// A widget with the web view tailored to view and handle articles -- it
@@ -32,13 +33,14 @@ class ArticleView: public QFrame
 
   Ui::ArticleView ui;
 
+  ArticleViewJsProxy * const jsProxy;
+
   QAction pasteAction, articleUpAction, articleDownAction,
           goBackAction, goForwardAction, selectCurrentArticleAction,
           copyAsTextAction, inspectAction;
   QAction & openSearchAction;
   bool searchIsOpened;
   bool expandOptionalParts;
-  QString articleToJump;
   QString rangeVarName;
 
   /// Any resource we've decided to download off the dictionary gets stored here.
@@ -150,8 +152,7 @@ public slots:
 public:
 
   /// Reloads the view
-  void reload()
-  { ui.definition->reload(); }
+  void reload();
 
   /// Returns true if there's an audio reference on the page, false otherwise.
   bool hasSound();
@@ -342,6 +343,9 @@ private:
   /// Saves current article and scroll position for the current history item.
   /// Should be used when leaving the page.
   void saveHistoryUserData();
+
+  /// Loads a page at @p url into view.
+  void load( QUrl const & url );
 
   /// Attempts removing last temporary file created.
   void cleanupTemp();
