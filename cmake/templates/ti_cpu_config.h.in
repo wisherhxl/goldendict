@@ -1,0 +1,5 @@
+// Tiger CPU baseline features
+@TIGER_CPU_BASELINE_DEFINITIONS_CONFIGMAKE@
+
+// Tiger supported CPU dispatched features
+@TIGER_CPU_DISPATCH_DEFINITIONS_CONFIGMAKE@

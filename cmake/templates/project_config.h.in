@@ -1,0 +1,16 @@
+// ------------------------------------------------------
+//  Copyright (C) 2020 SHANGHAI INSTITUTE OF LASER TECHNOLOGY.
+//                  - All Rights Reserved -
+//           
+//  Unauthorized copying of this file, via any medium is strictly prohibited
+//  Proprietary and confidential
+//  
+//  Written by Xiling Huang <huangxiling@silt.top>
+//  Created:     2021-03-18    10:20
+// ------------------------------------------------------
+
+#pragma once
+
+// Src Dir
+#define PROJECT_SRC_DIR "@CMAKE_CURRENT_SOURCE_DIR@"
+#define PROJECT_SAMPLES_DIR "@CMAKE_SAMPLES_DIR@"

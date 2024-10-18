@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package ti;
+
+/**
+ * BaseTest is used to test the interface for reading 
+ * and writing protobuf messages in the base module.
+ */
+message BaseTest{
+    int32 int_var_ = 1;
+    double double_var_ = 2;
+    float float_var_ = 3;
+    string str_var_ = 4;
+    bool bool_var_ = 5;
+    repeated int32 int_array_ = 6;
+    map<int32, string> int_str_map_ = 7;
+}

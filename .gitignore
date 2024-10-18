@@ -1,0 +1,89 @@
+# C++ objects and libs
+*.slo
+*.lo
+*.o
+*.a
+*.la
+*.lai
+*.so
+#*.dll
+*.dylib
+
+# Resharper
+_ReSharper*
+
+# HTML docs by doxygen
+docs/html
+
+# local specified cmake files
+local.cmake
+# local tmp files
+.cache/
+tags
+# vim tmp file
+*.swp
+# protobuf autogen
+*.pb.h
+
+# Build results
+[Bb]uild/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+#[Bb]in/
+[Oo]bj/
+[Ll]og/
+deploy/
+opencv/
+.idea/
+modules/base/include/tiger/base/project_config.h
+samples/lidar_calibration/
+
+# Visual Studio 2015/2017 cache/options directory
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+.vscode/
+# Visual Studio 2017 auto generated files
+Generated\ Files/
+
+# Qt-es
+object_script.*.Release
+object_script.*.Debug
+*_plugin_import.cpp
+/.qmake.cache
+/.qmake.stash
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.moc
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qmlc
+*.jsc
+Makefile*
+*build-*
+
+# Qt unit tests
+target_wrapper.*
+
+# QtCreator
+*.autosave
+
+# QtCreator Qml
+*.qmlproject.user
+*.qmlproject.user.*
+
+# QtCreator CMake
+CMakeLists.txt.user*
