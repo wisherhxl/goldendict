@@ -18,8 +18,6 @@ class Message;
 }
 }  // namespace google
 
-class QString;
-
 namespace ti {
 /**
  * @brief This ProtobufUtil class provides an interface for safely writing Protobuf message to files.
@@ -34,14 +32,14 @@ class TI_EXPORTS ProtobufUtil {
      * @param url file location
      * @return true if success, false otherwise.
     */
-    static bool writeMessageToJson(const google::protobuf::Message& msg, const QString& url);
+    static bool writeMessageToJson(const google::protobuf::Message& msg, const std::string& url);
     /**
      * @brief read protobuf message from json file.
      * @param msg protobuf message pointer to overwrite.
      * @param url file location
      * @return true if success, false otherwise.
     */
-    static bool readMessageFromJson(google::protobuf::Message* msg, const QString& url);
+    static bool readMessageFromJson(google::protobuf::Message* msg, const std::string& url);
     /**
      * @brief write protobuf message to binary file. The target file will not be modified when fail.
      * @note binary file needs less storage, and is faster when writing and reading, but less readable than json.
@@ -49,13 +47,13 @@ class TI_EXPORTS ProtobufUtil {
      * @param url file location
      * @return true if success, false otherwise.
     */
-    static bool writeMessageToBin(const google::protobuf::Message& msg, const QString& url);
+    static bool writeMessageToBin(const google::protobuf::Message& msg, const std::string& url);
     /**
      * @brief read protobuf message from binary file.
      * @param msg protobuf message pointer to overwrite.
      * @param url file location.
      * @return true if success, false otherwise.
     */
-    static bool readMessageFromBin(google::protobuf::Message* msg, const QString& url);
+    static bool readMessageFromBin(google::protobuf::Message* msg, const std::string& url);
 };
 }  // namespace ti

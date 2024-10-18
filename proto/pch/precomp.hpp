@@ -9,11 +9,16 @@
 //  Created:     2021-04-09    21:46
 // ------------------------------------------------------
 
-#ifdef LIBRARY_PROTO
-#    define PROTO_EXPORTS __declspec(dllexport)
+#ifdef _WIN32
+  #ifdef LIBRARY_PROTO
+    #define PROTO_EXPORTS __declspec(dllexport)
+  #else
+    #define PROTO_EXPORTS __declspec(dllimport)
+  #endif
 #else
-#    define PROTO_EXPORTS __declspec(dllimport)
+  #define PROTO_EXPORTS
 #endif
+
 
 #ifndef PROTOBUF_USE_DLLS
 #define PROTOBUF_USE_DLLS

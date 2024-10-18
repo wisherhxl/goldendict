@@ -10,108 +10,112 @@
 
 #include "tiger/base/protobuf_utils.h"
 
-#include <QDebug>
-#include <QDir>
-#include <QSaveFile>
-#include <QTextStream>
 #include <fstream>
+#include <string>
+#include <iostream>
+#include <filesystem>
 #include "google/protobuf/util/json_util.h"
 
 namespace ti {
 
-bool ProtobufUtil::writeMessageToJson(const google::protobuf::Message& msg, const QString& url) {
-    QSaveFile target(url);
-    const QFileInfo target_info(url);
-    const auto target_dir = target_info.absoluteDir();
-    if (!target_dir.mkpath(target_dir.absolutePath())) {
-        qCritical() << QObject::tr("Cannot create dir at: %1").arg(target_dir.absolutePath());
-        return false;
+bool ProtobufUtil::writeMessageToJson(const google::protobuf::Message& msg, const std::string& url) {
+    // Create the directory if it doesn't exist
+    std::filesystem::path target_path(url);
+    std::filesystem::path target_dir = target_path.parent_path();
+    
+    if (!std::filesystem::exists(target_dir)) {
+        if (!std::filesystem::create_directories(target_dir)) {
+            return false;
+        }
     }
 
+    // Convert Protobuf message to JSON string
     google::protobuf::util::JsonOptions options;
     options.add_whitespace = true;
     std::string msg_json;
-    MessageToJsonString(msg, &msg_json, options);
+    google::protobuf::util::MessageToJsonString(msg, &msg_json, options);
 
-    if (!target.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qCritical() << QObject::tr("Cannot open file for writing at: %1.").arg(target_info.absoluteFilePath());
+    // Open file for writing
+    std::ofstream target_file(url);
+    if (!target_file.is_open()) {
         return false;
     }
 
-    const auto msg_length = qstrlen(msg_json.c_str());
-    const auto msg_written = target.write(msg_json.c_str());
-
-    if (msg_length != msg_written) {
-        qCritical() << QObject::tr("Writing pipe broken.");
+    // Write JSON string to the file
+    target_file << msg_json;
+    if (!target_file) {
         return false;
     }
 
-    if (!target.commit()) {
-        qCritical() << QObject::tr("File writing error at: %1.").arg(target_info.absoluteFilePath());
-        return false;
-    }
-
-    qInfo() << QObject::tr("File wrote to: %1").arg(target_info.absoluteFilePath());
     return true;
 }
 
-bool ProtobufUtil::readMessageFromJson(google::protobuf::Message* msg, const QString& url) {
-    QFile target(url);
-    if (!target.exists()) {
-        qCritical() << QObject::tr("File doesn't exist: %1.").arg(url);
+bool ProtobufUtil::readMessageFromJson(google::protobuf::Message* msg, const std::string& url) {
+   // Check if the file exists
+    std::ifstream target(url);
+    if (!target.good()) {
         return false;
     }
 
-    if (!target.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qCritical() << QObject::tr("Cannot open file at: %1.").arg(url);
+    // Open the file for reading
+    if (!target.is_open()) {
         return false;
     }
 
-    QTextStream in(&target);
-    const auto in_str = in.readAll().toStdString();
+    // Read the entire file into a string
+    std::string in_str((std::istreambuf_iterator<char>(target)), std::istreambuf_iterator<char>());
 
+    // Close the file
+    target.close();
+
+    // Parse the JSON into the Protobuf message
     google::protobuf::util::JsonParseOptions options;
     options.ignore_unknown_fields = true;
-    JsonStringToMessage(in_str, msg, options);
 
-    target.close();
-    qInfo() << QObject::tr("File loaded at: %1").arg(url);
-    return true;
-}
-
-bool ProtobufUtil::writeMessageToBin(const google::protobuf::Message& msg, const QString& url) {
-    const QFileInfo target_info(url);
-    const auto target_dir = target_info.absoluteDir();
-    if (!target_dir.mkpath(target_dir.absolutePath())) {
-        qCritical() << QObject::tr("Cannot create dir at: %1").arg(target_dir.absolutePath());
+    auto status = google::protobuf::util::JsonStringToMessage(in_str, msg, options);
+    if (!status.ok()) {
         return false;
     }
 
-    std::fstream output(url.toStdString(), std::ios::out | std::ios::trunc | std::ios::binary);
+    return true;
+}
 
+bool ProtobufUtil::writeMessageToBin(const google::protobuf::Message& msg, const std::string& url) {
+// Use std::filesystem to manage file paths and directories
+    std::filesystem::path target_path(url);
+    std::filesystem::path target_dir = target_path.parent_path();
+
+    // Create directories if they don't exist
+    std::error_code ec;
+    if (!std::filesystem::create_directories(target_dir, ec) && ec) {
+        return false;
+    }
+
+    // Open file for binary output
+    std::fstream output(url, std::ios::out | std::ios::trunc | std::ios::binary);
+    if (!output.is_open()) {
+        return false;
+    }
+
+    // Serialize the protobuf message to the file
     if (!msg.SerializeToOstream(&output)) {
-        qCritical() << QObject::tr("Failed to write file: %1.").arg(url);
         return false;
     }
 
-    qInfo() << QObject::tr("File wrote to: %1").arg(url);
     return true;
 }
 
-bool ProtobufUtil::readMessageFromBin(google::protobuf::Message* msg, const QString& url) {
-    std::fstream input(url.toStdString(), std::ios::in | std::ios::binary);
+bool ProtobufUtil::readMessageFromBin(google::protobuf::Message* msg, const std::string& url) {
+    std::fstream input(url, std::ios::in | std::ios::binary);
 
     if (!input) {
-        qCritical() << QObject::tr("File doesn't exist: %1.").arg(url);
         return false;
     }
 
     if (!msg->ParseFromIstream(&input)) {
-        qCritical() << QObject::tr("Failed to parse file: %1.").arg(url);
         return false;
     }
 
-    qInfo() << QObject::tr("File loaded at: %1").arg(url);
     return true;
 }
 
