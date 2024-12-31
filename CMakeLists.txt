@@ -106,7 +106,6 @@ ti_cmake_hook(PRE_CMAKE_BOOTSTRAP)
 if(TIGER_WORKAROUND_CMAKE_20989)
   set(CMAKE_SYSTEM_PROCESSOR_BACKUP ${CMAKE_SYSTEM_PROCESSOR})
 endif()
-enable_language(CXX C)
 if(TIGER_WORKAROUND_CMAKE_20989)
   set(CMAKE_SYSTEM_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR_BACKUP})
 endif()
@@ -120,22 +119,23 @@ endif()
 enable_testing(true)
 
 project(Tiger CXX C)
+enable_language(CXX C)
 
 # ----------------------------------------------------------------------------
 # Check platform and compiler
 # Currently, only MSVC on Windows is supported.
 # ----------------------------------------------------------------------------
-# if(NOT WIN32)
-#     message(FATAL_ERROR "
-# FATAL: Tiger is only supported on windows.
-# ")
-# endif()
+if(NOT WIN32)
+    message(FATAL_ERROR "
+FATAL: Tiger is only supported on windows.
+")
+endif()
 
-# if(NOT MSVC)
-#     message(FATAL_ERROR "
-# FATAL: Tiger is only supported for Microsoft VisualStudio.
-# ")
-# endif()
+if(NOT MSVC)
+    message(FATAL_ERROR "
+FATAL: Tiger is only supported for Microsoft VisualStudio.
+")
+endif()
 
 set(CMAKE_USE_RELATIVE_PATHS ON CACHE INTERNAL "" FORCE)
 
@@ -289,17 +289,15 @@ test_big_endian(WORDS_BIGENDIAN)
 # ----------------------------------------------------------------------------
 #  Detect 3rd-party libraries
 # ----------------------------------------------------------------------------
-# include(cmake/TigerFindDevTools.cmake)
-# include(cmake/TigerFindCameraDrivers.cmake)
-# include(cmake/TigerFindAxisDrivers.cmake)
+include(cmake/TigerFindDevTools.cmake)
+include(cmake/TigerFindCameraDrivers.cmake)
+include(cmake/TigerFindAxisDrivers.cmake)
 include(cmake/TigerFindProtobuf.cmake)
 include(cmake/TigerFindQt.cmake)
-# include(cmake/TigerFindOpenCV.cmake)
-# include(cmake/TigerFindBoost.cmake)
-# include(cmake/TigerFindVTK.cmake)
-# include(cmake/TigerFindlog4cplus.cmake)
-# include(cmake/TigerFindPCL.cmake)
-# find_package(PCL REQUIRED)
+include(cmake/TigerFindOpenCV.cmake)
+include(cmake/TigerFindBoost.cmake)
+include(cmake/TigerFindVTK.cmake)
+include(cmake/TigerFindlog4cplus.cmake)
 
 
 # ----------------------------------------------------------------------------

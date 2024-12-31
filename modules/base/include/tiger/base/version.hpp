@@ -15,10 +15,11 @@
 #define TI_ORG_NAME "SILT"
 #define TI_PROJECT_NAME "Tiger - A SILT PLATFORM"
 
-#define TI_VERSION_MAJOR    0
+#define TI_VERSION_MAJOR    3
 #define TI_VERSION_MINOR    0
-#define TI_VERSION_REVISION 2
-#define TI_VERSION_STATUS   "-pre"
+#define TI_VERSION_REVISION 8
+#define TI_UPDATE_YEAR 2024
+#define TI_UPDATE_MONTH 12
 
 #define TIAUX_STR_EXP(__A)  #__A
 #define TIAUX_STR(__A)      TIAUX_STR_EXP(__A)
@@ -26,6 +27,8 @@
 #define TIAUX_STRW_EXP(__A)  L ## #__A
 #define TIAUX_STRW(__A)      TIAUX_STRW_EXP(__A)
 
+#define TI_UPDATE_TIME TIAUX_STR(TI_UPDATE_YEAR) "-" TIAUX_STR(TI_UPDATE_MONTH)
+#define TI_VERSION_STATUS "-(" TI_UPDATE_TIME ")"
 #define TI_VERSION          TIAUX_STR(TI_VERSION_MAJOR) "." TIAUX_STR(TI_VERSION_MINOR) "." TIAUX_STR(TI_VERSION_REVISION) TI_VERSION_STATUS
 
 /* old  style version constants*/

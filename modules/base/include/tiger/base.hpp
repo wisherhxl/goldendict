@@ -11,11 +11,10 @@
 #ifndef TIGER_BASE_HPP
 #define TIGER_BASE_HPP
 
-#include <string>
-
 #include "tiger/base/tidef.h"
 #include "tiger/base/project_config.h"
 #include "tiger/base/protobuf_utils.h"
+#include "tiger/base/file_utils.h"
 #include "tiger/base/random_utils.h"
 #include "tiger/base/ti_cpu_dispatch.h"
 #include "tiger/base/ti_cpu_helper.h"

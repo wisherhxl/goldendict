@@ -5,4 +5,4 @@ string(REPLACE "," ";" OPENCV_INSTALL_APPS_LIST "${OPENCV_INSTALL_APPS_LIST}")  
 
 # link_libraries(${OPENCV_LINKER_LIBS})
 
-# ti_glob_applications(${CMAKE_CURRENT_SOURCE_DIR})
+ti_glob_applications(${CMAKE_CURRENT_SOURCE_DIR})

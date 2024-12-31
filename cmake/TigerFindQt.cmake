@@ -5,20 +5,20 @@ set(Qt6_LIBRARIES )
 
 set(qt_modules
         Core
-        # Gui
-        # Widgets
+        Gui
+        Widgets
         # Network
-        # OpenGL
-        # OpenGLWidgets
+        OpenGL
+        OpenGLWidgets
         # Sql
-        # Xml
+        Xml
         # SerialPort
         # SerialBus
         Test
 )
 
-find_package(Qt6 COMPONENTS ${qt_modules} REQUIRED)
-# find_package(Qt6 COMPONENTS LinguistTools REQUIRED)
+find_package(Qt6 COMPONENTS ${qt_modules} REQUIRED PATHS ${TI_DEV_PATH} NO_DEFAULT_PATH)
+find_package(Qt6 COMPONENTS LinguistTools REQUIRED PATHS ${TI_DEV_PATH} NO_DEFAULT_PATH)
 
 if(NOT Qt6_FOUND OR NOT Qt6_DIR)
     message(FATAL_ERROR "Qt6 NOT FOUND")
@@ -34,8 +34,8 @@ endforeach()
 ti_list_components(Qt6)
 
 set(CMAKE_AUTOMOC ON)
-# set(CMAKE_AUTOUIC ON)
-# set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
 
 set(Qt6_BIN ${Qt6_DIR}/../../../bin)
-# set(QT_UIC_EXECUTABLE ${Qt6_BIN}/uic.exe)
+set(QT_UIC_EXECUTABLE ${Qt6_BIN}/uic.exe)

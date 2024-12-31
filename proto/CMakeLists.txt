@@ -1,3 +1,14 @@
+# ------------------------------------------------------------------------------
+# Copyright (c) 2021
+# SPDX-License-Identifier: MIT
+#
+# This file is part of the Tiger Template.
+# Distributed under the MIT License. See LICENSE file for details.
+#
+# Created Date: 2021-4-12
+# ------------------------------------------------------------------------------
+
+
 file(GLOB proto_files "${CMAKE_CURRENT_LIST_DIR}/*.proto")
 
 list(LENGTH proto_files proto_num)
