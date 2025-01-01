@@ -72,7 +72,7 @@ set(TIGER_MODULES_DISABLED_USER  "" CACHE INTERNAL "List of Tiger modules explic
 set(TIGER_MODULES_DISABLED_AUTO  "" CACHE INTERNAL "List of Tiger modules implicitly disabled due to dependencies")
 set(TIGER_MODULES_DISABLED_FORCE "" CACHE INTERNAL "List of Tiger modules which can not be build in current configuration")
 unset(TIGER_WORLD_MODULES CACHE)
-set(TIGER_SKIP_DLLMAIN_GENERATION 1)
+
 # adds dependencies to Tiger module
 # Usage:
 #   add_dependencies(tiger_<name> [REQUIRED] [<list of dependencies>] [OPTIONAL <list of modules>] [WRAP <list of wrappers>])
@@ -83,28 +83,19 @@ macro(ti_add_dependencies full_modname)
   #we don't clean the dependencies here to allow this macro several times for every module
   foreach(d "REQUIRED" ${ARGN})
     if(d STREQUAL "REQUIRED")
-      set(__dephead "")
-      set(__depsvar TIGER_MODULE_${full_modname}_REQ_DEPS)
-    elseif(d STREQUAL "MODULES")
-      set(__dephead "tiger_")
       set(__depsvar TIGER_MODULE_${full_modname}_REQ_DEPS)
     elseif(d STREQUAL "OPTIONAL")
-      set(__dephead "")
       set(__depsvar TIGER_MODULE_${full_modname}_OPT_DEPS)
     elseif(d STREQUAL "PRIVATE_REQUIRED")
-      set(__dephead "")
       set(__depsvar TIGER_MODULE_${full_modname}_PRIVATE_REQ_DEPS)
     elseif(d STREQUAL "PRIVATE_OPTIONAL")
-      set(__dephead "")
       set(__depsvar TIGER_MODULE_${full_modname}_PRIVATE_OPT_DEPS)
     elseif(d STREQUAL "WRAP")
-      set(__dephead "")
       set(__depsvar TIGER_MODULE_${full_modname}_WRAPPERS)
     else()
-      list(APPEND ${__depsvar} "${__dephead}${d}")
+      list(APPEND ${__depsvar} "${d}")
     endif()
   endforeach()
-  unset(__dephead)
   unset(__depsvar)
 
   ti_list_unique(TIGER_MODULE_${full_modname}_REQ_DEPS)
@@ -263,7 +254,7 @@ function(_glob_locations out_paths out_names)
     list(LENGTH paths before)
     get_filename_component(path "${path}" ABSOLUTE)
     # Either module itself
-    if(NOT path STREQUAL CMAKE_CURRENT_SOURCE_DIR AND EXISTS "${path}/CMakeLists.txt")
+    if(NOT path STREQUAL "${Tiger_SOURCE_DIR}/modules" AND NOT path STREQUAL CMAKE_CURRENT_SOURCE_DIR AND EXISTS "${path}/CMakeLists.txt")
       get_filename_component(name "${path}" NAME)
       list(APPEND paths "${path}")
       list(APPEND names "${name}")
@@ -305,7 +296,7 @@ macro(_add_modules_1 paths names)
       list(GET ${names} ${i} __name)
       #message(STATUS "First pass: ${__name} => ${__path}")
       include("${__path}/cmake/init.cmake" OPTIONAL)
-      add_subdirectory("${__path}" "${CMAKE_CURRENT_BINARY_DIR}/.firstpass/${__name}")
+      add_subdirectory("${__path}" "${Tiger_BINARY_DIR}/modules/.firstpass/${__name}")
     endforeach()
   endif()
 endmacro()
@@ -325,7 +316,7 @@ macro(_add_modules_2)
       endif()
       string(REGEX REPLACE "^tiger_" "" name "${m}")
       #message(STATUS "Second pass: ${name} => ${TIGER_MODULE_${m}_LOCATION}")
-      add_subdirectory("${TIGER_MODULE_${m}_LOCATION}" "${CMAKE_CURRENT_BINARY_DIR}/${name}")
+      add_subdirectory("${TIGER_MODULE_${m}_LOCATION}" "${Tiger_BINARY_DIR}/modules/${name}")
     endif()
     ti_cmake_hook(POST_MODULES_CREATE_${the_module})
   endforeach()
@@ -377,12 +368,65 @@ macro(ti_glob_modules main_root)
   # resolve dependencies
   __ti_resolve_dependencies()
 
+  # optionally configure delay load
+  if(MSVC AND BUILD_SHARED_LIBS AND ENABLE_DELAYLOAD AND NOT BUILD_tiger_world)
+    if(${CMAKE_SHARED_LINKER_FLAGS} MATCHES "delayimp.lib")
+      set(DELAYFLAGS "")
+    else()
+      set(DELAYFLAGS "delayimp.lib")
+    endif()
+
+    foreach(mod ${TIGER_MODULES_BUILD})
+      if(NOT ${mod} STREQUAL "tiger_core" AND NOT ${mod} MATCHES "bindings_generator|python")
+        set(DELAYFLAGS "${DELAYFLAGS} /DELAYLOAD:${mod}${TIGER_VERSION_MAJOR}${TIGER_VERSION_MINOR}${TIGER_VERSION_PATCH}.dll")
+      endif()
+    endforeach()
+
+    if(NOT ${CMAKE_SHARED_LINKER_FLAGS} MATCHES "/IGNORE:4199")
+      set(DELAYFLAGS "${DELAYFLAGS} /IGNORE:4199")
+    endif()
+
+    set(CMAKE_EXE_LINKER_FLAGS       "${CMAKE_EXE_LINKER_FLAGS} ${DELAYFLAGS}")
+    set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${DELAYFLAGS}")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${DELAYFLAGS}")
+  endif()
+
   # create modules
-  set(TIGER_INITIAL_PASS OFF PARENT_SCOPE)
   set(TIGER_INITIAL_PASS OFF)
   ti_cmake_hook(PRE_MODULES_CREATE)
   _add_modules_2(${TIGER_MODULES_BUILD})
   ti_cmake_hook(POST_MODULES_CREATE)
+endmacro()
+
+
+# called by root CMakeLists.txt
+macro(ti_register_modules)
+  if(NOT TIGER_MODULES_PATH)
+    set(TIGER_MODULES_PATH "${Tiger_SOURCE_DIR}/modules")
+  endif()
+
+  ti_glob_modules(${TIGER_MODULES_PATH} ${TIGER_EXTRA_MODULES_PATH})
+
+  # build lists of modules to be documented
+  set(TIGER_MODULES_MAIN "")
+  set(TIGER_MODULES_EXTRA "")
+
+  foreach(mod ${TIGER_MODULES_BUILD} ${TIGER_MODULES_DISABLED_USER} ${TIGER_MODULES_DISABLED_AUTO} ${TIGER_MODULES_DISABLED_FORCE})
+    string(REGEX REPLACE "^tiger_" "" mod "${mod}")
+    if("${TIGER_MODULE_tiger_${mod}_LOCATION}" STREQUAL "${Tiger_SOURCE_DIR}/modules/${mod}")
+      list(APPEND TIGER_MODULES_MAIN ${mod})
+    else()
+      list(APPEND TIGER_MODULES_EXTRA ${mod})
+    endif()
+  endforeach()
+  ti_list_sort(TIGER_MODULES_MAIN)
+  ti_list_sort(TIGER_MODULES_EXTRA)
+  set(FIXED_ORDER_MODULES core imgproc imgcodecs videoio highgui video 3d stereo features calib objdetect dnn ml flann photo stitching)
+  list(REMOVE_ITEM TIGER_MODULES_MAIN ${FIXED_ORDER_MODULES})
+  set(TIGER_MODULES_MAIN ${FIXED_ORDER_MODULES} ${TIGER_MODULES_MAIN})
+
+  set(TIGER_MODULES_MAIN ${TIGER_MODULES_MAIN} CACHE INTERNAL "List of main modules" FORCE)
+  set(TIGER_MODULES_EXTRA ${TIGER_MODULES_EXTRA} CACHE INTERNAL "List of extra modules" FORCE)
 endmacro()
 
 
@@ -500,7 +544,6 @@ function(__ti_resolve_dependencies)
   foreach(the_module ${TIGER_MODULES_BUILD})
     foreach (wrapper ${TIGER_MODULE_${the_module}_WRAPPERS})
       if(wrapper STREQUAL "python")  # hack for python (BINDINDS)
-        ti_add_dependencies(tiger_python2 OPTIONAL ${the_module})
         ti_add_dependencies(tiger_python3 OPTIONAL ${the_module})
       else()
         ti_add_dependencies(tiger_${wrapper} OPTIONAL ${the_module})
@@ -795,12 +838,47 @@ macro(ti_glob_module_sources)
        "${CMAKE_CURRENT_LIST_DIR}/include/tiger/${name}/detail/*.hpp"
        "${CMAKE_CURRENT_LIST_DIR}/include/tiger/${name}/detail/*.h"
   )
+  if (APPLE)
+    file(GLOB_RECURSE lib_srcs_apple
+         "${CMAKE_CURRENT_LIST_DIR}/src/*.mm"
+         "${CMAKE_CURRENT_LIST_DIR}/src/*.swift"
+    )
+    list(APPEND lib_srcs ${lib_srcs_apple})
+  endif()
 
   ti_source_group("Src" DIRBASE "${CMAKE_CURRENT_LIST_DIR}/src" FILES ${lib_srcs} ${lib_int_hdrs})
   ti_source_group("Include" DIRBASE "${CMAKE_CURRENT_LIST_DIR}/include" FILES ${lib_hdrs} ${lib_hdrs_detail})
 
   set(lib_cuda_srcs "")
   set(lib_cuda_hdrs "")
+  if(HAVE_CUDA AND exclude_cuda EQUAL -1)
+    file(GLOB lib_cuda_srcs
+         "${CMAKE_CURRENT_LIST_DIR}/src/cuda/*.cu"
+    )
+    file(GLOB lib_cuda_hdrs
+         "${CMAKE_CURRENT_LIST_DIR}/src/cuda/*.hpp"
+    )
+    source_group("Src\\Cuda"      FILES ${lib_cuda_srcs} ${lib_cuda_hdrs})
+  endif()
+
+  file(GLOB cl_kernels
+       "${CMAKE_CURRENT_LIST_DIR}/src/opencl/*.cl"
+  )
+  if(cl_kernels AND exclude_opencl EQUAL -1)
+    set(OCL_NAME opencl_kernels_${name})
+    add_custom_command(
+      OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${OCL_NAME}.cpp"  # don't add .hpp file here to optimize build process
+      COMMAND ${CMAKE_COMMAND} "-DMODULE_NAME=${name}" "-DCL_DIR=${CMAKE_CURRENT_LIST_DIR}/src/opencl" "-DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/${OCL_NAME}.cpp" -P "${Tiger_SOURCE_DIR}/cmake/cl2cpp.cmake"
+      DEPENDS ${cl_kernels} "${Tiger_SOURCE_DIR}/cmake/cl2cpp.cmake"
+      COMMENT "Processing OpenCL kernels (${name})"
+    )
+    ti_source_group("Src\\opencl\\kernels" FILES ${cl_kernels})
+    ti_source_group("Src\\opencl\\kernels\\autogenerated" FILES "${CMAKE_CURRENT_BINARY_DIR}/${OCL_NAME}.cpp" "${CMAKE_CURRENT_BINARY_DIR}/${OCL_NAME}.hpp")
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/${OCL_NAME}.cpp" "${CMAKE_CURRENT_BINARY_DIR}/${OCL_NAME}.hpp"
+        PROPERTIES GENERATED TRUE
+    )
+    list(APPEND lib_srcs ${cl_kernels} "${CMAKE_CURRENT_BINARY_DIR}/${OCL_NAME}.cpp" "${CMAKE_CURRENT_BINARY_DIR}/${OCL_NAME}.hpp")
+  endif()
 
   ti_set_module_sources(${_argn} HEADERS ${lib_hdrs} ${lib_hdrs_detail}
                          SOURCES ${lib_srcs} ${lib_int_hdrs} ${lib_cuda_srcs} ${lib_cuda_hdrs})
@@ -837,23 +915,18 @@ macro(ti_create_module)
                          POST_BUILD
                          COMMAND link.exe /edit /APPCONTAINER:NO $(TargetPath))
     endif()
-
-    if("${the_module}" STREQUAL "tiger_ts")
-      # copy required dll files; WinRT apps need these dlls that are usually substituted by Visual Studio
-      # however they are not on path and need to be placed with executables to run from console w/o APPCONTAINER
-      add_custom_command(TARGET ${the_module}
-        POST_BUILD
-        COMMAND copy /y "\"$(VCInstallDir)redist\\$(PlatformTarget)\\Microsoft.VC$(PlatformToolsetVersion).CRT\\msvcp$(PlatformToolsetVersion).dll\"" "\"${CMAKE_BINARY_DIR}\\bin\\$(Configuration)\\msvcp$(PlatformToolsetVersion)_app.dll\""
-        COMMAND copy /y "\"$(VCInstallDir)redist\\$(PlatformTarget)\\Microsoft.VC$(PlatformToolsetVersion).CRT\\msvcr$(PlatformToolsetVersion).dll\"" "\"${CMAKE_BINARY_DIR}\\bin\\$(Configuration)\\msvcr$(PlatformToolsetVersion)_app.dll\""
-        COMMAND copy /y "\"$(VCInstallDir)redist\\$(PlatformTarget)\\Microsoft.VC$(PlatformToolsetVersion).CRT\\vccorlib$(PlatformToolsetVersion).dll\"" "\"${CMAKE_BINARY_DIR}\\bin\\$(Configuration)\\vccorlib$(PlatformToolsetVersion)_app.dll\"")
-    endif()
   endif()
 endmacro()
 
 macro(_ti_create_module)
+  add_definitions(-D__TIGER_BUILD=1)
 
   ti_compiler_optimization_process_sources(TIGER_MODULE_${the_module}_SOURCES TIGER_MODULE_${the_module}_DEPS_EXT ${the_module})
-  set(TIGER_MODULE_${the_module}_HEADERS ${TIGER_MODULE_${the_module}_HEADERS} CACHE INTERNAL "List of header files for ${the_module}")
+  set(__module_headers ${TIGER_MODULE_${the_module}_HEADERS})
+  if(__module_headers)
+    list(SORT __module_headers)  # fix headers order, useful for bindings
+  endif()
+  set(TIGER_MODULE_${the_module}_HEADERS ${__module_headers} CACHE INTERNAL "List of header files for ${the_module}")
   set(TIGER_MODULE_${the_module}_SOURCES ${TIGER_MODULE_${the_module}_SOURCES} CACHE INTERNAL "List of source files for ${the_module}")
 
   # The condition we ought to be testing here is whether ti_add_precompiled_headers will
@@ -919,7 +992,7 @@ macro(_ti_create_module)
                                           INTERFACE ${TIGER_MODULE_${the_module}_DEPS_EXT}
   )
   ti_target_link_libraries(${the_module} PRIVATE ${TIGER_LINKER_LIBS} ${TIGER_HAL_LINKER_LIBS} ${IPP_LIBS} ${ARGN})
-  if (HAVE_CUDA)
+  if (NOT ENABLE_CUDA_FIRST_CLASS_LANGUAGE AND HAVE_CUDA)
     ti_target_link_libraries(${the_module} PRIVATE ${CUDA_LIBRARIES} ${CUDA_npp_LIBRARY})
   endif()
 
@@ -1057,18 +1130,12 @@ endmacro()
 macro(ti_check_dependencies)
   set(TI_DEPENDENCIES_FOUND TRUE)
   foreach(d ${ARGN})
-    if(d MATCHES "^tiger_[^ ]+$")
-      if(NOT HAVE_${d})
-        message(FATAL_ERROR "Cannot find Tiger module: ${d}")
-        set(TI_DEPENDENCIES_FOUND FALSE)
-        break()
-      endif()
-    else()
-      message(FATAL_ERROR "Tiger module should be called with prefix tiger_, e.g. tiger_base for module base.")
+    if(d MATCHES "^tiger_[^ ]+$" AND NOT HAVE_${d})
+      set(TI_DEPENDENCIES_FOUND FALSE)
+      break()
     endif()
   endforeach()
 endmacro()
-
 
 ################################################################################
 # Tiger tests
@@ -1159,6 +1226,9 @@ function(ti_add_perf_tests)
 
       if(TARGET tiger_videoio_plugins)
         add_dependencies(${the_target} tiger_videoio_plugins)
+      endif()
+      if(TARGET tiger_highgui_plugins)
+        add_dependencies(${the_target} tiger_highgui_plugins)
       endif()
 
       if(HAVE_HPX)
@@ -1285,6 +1355,9 @@ function(ti_add_accuracy_tests)
       if(TARGET tiger_videoio_plugins)
         add_dependencies(${the_target} tiger_videoio_plugins)
       endif()
+      if(TARGET tiger_highgui_plugins)
+        add_dependencies(${the_target} tiger_highgui_plugins)
+      endif()
 
       if(HAVE_HPX)
         message("Linking HPX to Perf test of module ${name}")
@@ -1374,6 +1447,9 @@ function(ti_add_samples)
 
         if(TARGET tiger_videoio_plugins)
           add_dependencies(${the_target} tiger_videoio_plugins)
+        endif()
+        if(TARGET tiger_highgui_plugins)
+          add_dependencies(${the_target} tiger_highgui_plugins)
         endif()
 
         if(INSTALL_BIN_EXAMPLES)

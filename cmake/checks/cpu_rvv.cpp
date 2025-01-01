@@ -2,10 +2,10 @@
 
 #if defined(__risti)
 #  include <risti_vector.h>
-#  define CV_RVV 1
+#  define TI_RVV 1
 #endif
 
-#if defined CV_RVV
+#if defined TI_RVV
 int test()
 {
     const float src[] = { 0.0f, 0.0f, 0.0f, 0.0f };

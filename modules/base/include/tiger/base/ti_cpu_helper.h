@@ -420,6 +420,69 @@
 #endif
 #define __TI_CPU_DISPATCH_CHAIN_NEON(fn, args, mode, ...)  TI_CPU_CALL_NEON(fn, args); __TI_EXPAND(__TI_CPU_DISPATCH_CHAIN_ ## mode(fn, args, __VA_ARGS__))
 
+#if !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_COMPILE_NEON_DOTPROD
+#  define TI_TRY_NEON_DOTPROD 1
+#  define TI_CPU_FORCE_NEON_DOTPROD 1
+#  define TI_CPU_HAS_SUPPORT_NEON_DOTPROD 1
+#  define TI_CPU_CALL_NEON_DOTPROD(fn, args) return (cpu_baseline::fn args)
+#  define TI_CPU_CALL_NEON_DOTPROD_(fn, args) return (opt_NEON_DOTPROD::fn args)
+#elif !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_DISPATCH_COMPILE_NEON_DOTPROD
+#  define TI_TRY_NEON_DOTPROD 1
+#  define TI_CPU_FORCE_NEON_DOTPROD 0
+#  define TI_CPU_HAS_SUPPORT_NEON_DOTPROD (ti::checkHardwareSupport(TI_CPU_NEON_DOTPROD))
+#  define TI_CPU_CALL_NEON_DOTPROD(fn, args) if (TI_CPU_HAS_SUPPORT_NEON_DOTPROD) return (opt_NEON_DOTPROD::fn args)
+#  define TI_CPU_CALL_NEON_DOTPROD_(fn, args) if (TI_CPU_HAS_SUPPORT_NEON_DOTPROD) return (opt_NEON_DOTPROD::fn args)
+#else
+#  define TI_TRY_NEON_DOTPROD 0
+#  define TI_CPU_FORCE_NEON_DOTPROD 0
+#  define TI_CPU_HAS_SUPPORT_NEON_DOTPROD 0
+#  define TI_CPU_CALL_NEON_DOTPROD(fn, args)
+#  define TI_CPU_CALL_NEON_DOTPROD_(fn, args)
+#endif
+#define __TI_CPU_DISPATCH_CHAIN_NEON_DOTPROD(fn, args, mode, ...)  TI_CPU_CALL_NEON_DOTPROD(fn, args); __TI_EXPAND(__TI_CPU_DISPATCH_CHAIN_ ## mode(fn, args, __VA_ARGS__))
+
+#if !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_COMPILE_NEON_FP16
+#  define TI_TRY_NEON_FP16 1
+#  define TI_CPU_FORCE_NEON_FP16 1
+#  define TI_CPU_HAS_SUPPORT_NEON_FP16 1
+#  define TI_CPU_CALL_NEON_FP16(fn, args) return (cpu_baseline::fn args)
+#  define TI_CPU_CALL_NEON_FP16_(fn, args) return (opt_NEON_FP16::fn args)
+#elif !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_DISPATCH_COMPILE_NEON_FP16
+#  define TI_TRY_NEON_FP16 1
+#  define TI_CPU_FORCE_NEON_FP16 0
+#  define TI_CPU_HAS_SUPPORT_NEON_FP16 (ti::checkHardwareSupport(TI_CPU_NEON_FP16))
+#  define TI_CPU_CALL_NEON_FP16(fn, args) if (TI_CPU_HAS_SUPPORT_NEON_FP16) return (opt_NEON_FP16::fn args)
+#  define TI_CPU_CALL_NEON_FP16_(fn, args) if (TI_CPU_HAS_SUPPORT_NEON_FP16) return (opt_NEON_FP16::fn args)
+#else
+#  define TI_TRY_NEON_FP16 0
+#  define TI_CPU_FORCE_NEON_FP16 0
+#  define TI_CPU_HAS_SUPPORT_NEON_FP16 0
+#  define TI_CPU_CALL_NEON_FP16(fn, args)
+#  define TI_CPU_CALL_NEON_FP16_(fn, args)
+#endif
+#define __TI_CPU_DISPATCH_CHAIN_NEON_FP16(fn, args, mode, ...)  TI_CPU_CALL_NEON_FP16(fn, args); __TI_EXPAND(__TI_CPU_DISPATCH_CHAIN_ ## mode(fn, args, __VA_ARGS__))
+
+#if !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_COMPILE_NEON_BF16
+#  define TI_TRY_NEON_BF16 1
+#  define TI_CPU_FORCE_NEON_BF16 1
+#  define TI_CPU_HAS_SUPPORT_NEON_BF16 1
+#  define TI_CPU_CALL_NEON_BF16(fn, args) return (cpu_baseline::fn args)
+#  define TI_CPU_CALL_NEON_BF16_(fn, args) return (opt_NEON_BF16::fn args)
+#elif !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_DISPATCH_COMPILE_NEON_BF16
+#  define TI_TRY_NEON_BF16 1
+#  define TI_CPU_FORCE_NEON_BF16 0
+#  define TI_CPU_HAS_SUPPORT_NEON_BF16 (ti::checkHardwareSupport(TI_CPU_NEON_BF16))
+#  define TI_CPU_CALL_NEON_BF16(fn, args) if (TI_CPU_HAS_SUPPORT_NEON_BF16) return (opt_NEON_BF16::fn args)
+#  define TI_CPU_CALL_NEON_BF16_(fn, args) if (TI_CPU_HAS_SUPPORT_NEON_BF16) return (opt_NEON_BF16::fn args)
+#else
+#  define TI_TRY_NEON_BF16 0
+#  define TI_CPU_FORCE_NEON_BF16 0
+#  define TI_CPU_HAS_SUPPORT_NEON_BF16 0
+#  define TI_CPU_CALL_NEON_BF16(fn, args)
+#  define TI_CPU_CALL_NEON_BF16_(fn, args)
+#endif
+#define __TI_CPU_DISPATCH_CHAIN_NEON_BF16(fn, args, mode, ...)  TI_CPU_CALL_NEON_BF16(fn, args); __TI_EXPAND(__TI_CPU_DISPATCH_CHAIN_ ## mode(fn, args, __VA_ARGS__))
+
 #if !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_COMPILE_MSA
 #  define TI_TRY_MSA 1
 #  define TI_CPU_FORCE_MSA 1
@@ -503,6 +566,69 @@
 #  define TI_CPU_CALL_RVV_(fn, args)
 #endif
 #define __TI_CPU_DISPATCH_CHAIN_RVV(fn, args, mode, ...)  TI_CPU_CALL_RVV(fn, args); __TI_EXPAND(__TI_CPU_DISPATCH_CHAIN_ ## mode(fn, args, __VA_ARGS__))
+
+#if !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_COMPILE_RVV_ZVFH
+#  define TI_TRY_RVV_ZVFH 1
+#  define TI_CPU_FORCE_RVV_ZVFH 1
+#  define TI_CPU_HAS_SUPPORT_RVV_ZVFH 1
+#  define TI_CPU_CALL_RVV_ZVFH(fn, args) return (cpu_baseline::fn args)
+#  define TI_CPU_CALL_RVV_ZVFH_(fn, args) return (opt_RVV_ZVFH::fn args)
+#elif !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_DISPATCH_COMPILE_RVV_ZVFH
+#  define TI_TRY_RVV_ZVFH 1
+#  define TI_CPU_FORCE_RVV_ZVFH 0
+#  define TI_CPU_HAS_SUPPORT_RVV_ZVFH (ti::checkHardwareSupport(TI_CPU_RVV_ZVFH))
+#  define TI_CPU_CALL_RVV_ZVFH(fn, args) if (TI_CPU_HAS_SUPPORT_RVV_ZVFH) return (opt_RVV_ZVFH::fn args)
+#  define TI_CPU_CALL_RVV_ZVFH_(fn, args) if (TI_CPU_HAS_SUPPORT_RVV_ZVFH) return (opt_RVV_ZVFH::fn args)
+#else
+#  define TI_TRY_RVV_ZVFH 0
+#  define TI_CPU_FORCE_RVV_ZVFH 0
+#  define TI_CPU_HAS_SUPPORT_RVV_ZVFH 0
+#  define TI_CPU_CALL_RVV_ZVFH(fn, args)
+#  define TI_CPU_CALL_RVV_ZVFH_(fn, args)
+#endif
+#define __TI_CPU_DISPATCH_CHAIN_RVV_ZVFH(fn, args, mode, ...)  TI_CPU_CALL_RVV_ZVFH(fn, args); __TI_EXPAND(__TI_CPU_DISPATCH_CHAIN_ ## mode(fn, args, __VA_ARGS__))
+
+#if !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_COMPILE_LSX
+#  define TI_TRY_LSX 1
+#  define TI_CPU_FORCE_LSX 1
+#  define TI_CPU_HAS_SUPPORT_LSX 1
+#  define TI_CPU_CALL_LSX(fn, args) return (cpu_baseline::fn args)
+#  define TI_CPU_CALL_LSX_(fn, args) return (opt_LSX::fn args)
+#elif !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_DISPATCH_COMPILE_LSX
+#  define TI_TRY_LSX 1
+#  define TI_CPU_FORCE_LSX 0
+#  define TI_CPU_HAS_SUPPORT_LSX (ti::checkHardwareSupport(TI_CPU_LSX))
+#  define TI_CPU_CALL_LSX(fn, args) if (TI_CPU_HAS_SUPPORT_LSX) return (opt_LSX::fn args)
+#  define TI_CPU_CALL_LSX_(fn, args) if (TI_CPU_HAS_SUPPORT_LSX) return (opt_LSX::fn args)
+#else
+#  define TI_TRY_LSX 0
+#  define TI_CPU_FORCE_LSX 0
+#  define TI_CPU_HAS_SUPPORT_LSX 0
+#  define TI_CPU_CALL_LSX(fn, args)
+#  define TI_CPU_CALL_LSX_(fn, args)
+#endif
+#define __TI_CPU_DISPATCH_CHAIN_LSX(fn, args, mode, ...)  TI_CPU_CALL_LSX(fn, args); __TI_EXPAND(__TI_CPU_DISPATCH_CHAIN_ ## mode(fn, args, __VA_ARGS__))
+
+#if !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_COMPILE_LASX
+#  define TI_TRY_LASX 1
+#  define TI_CPU_FORCE_LASX 1
+#  define TI_CPU_HAS_SUPPORT_LASX 1
+#  define TI_CPU_CALL_LASX(fn, args) return (cpu_baseline::fn args)
+#  define TI_CPU_CALL_LASX_(fn, args) return (opt_LASX::fn args)
+#elif !defined TI_DISABLE_OPTIMIZATION && defined TI_ENABLE_INTRINSICS && defined TI_CPU_DISPATCH_COMPILE_LASX
+#  define TI_TRY_LASX 1
+#  define TI_CPU_FORCE_LASX 0
+#  define TI_CPU_HAS_SUPPORT_LASX (ti::checkHardwareSupport(TI_CPU_LASX))
+#  define TI_CPU_CALL_LASX(fn, args) if (TI_CPU_HAS_SUPPORT_LASX) return (opt_LASX::fn args)
+#  define TI_CPU_CALL_LASX_(fn, args) if (TI_CPU_HAS_SUPPORT_LASX) return (opt_LASX::fn args)
+#else
+#  define TI_TRY_LASX 0
+#  define TI_CPU_FORCE_LASX 0
+#  define TI_CPU_HAS_SUPPORT_LASX 0
+#  define TI_CPU_CALL_LASX(fn, args)
+#  define TI_CPU_CALL_LASX_(fn, args)
+#endif
+#define __TI_CPU_DISPATCH_CHAIN_LASX(fn, args, mode, ...)  TI_CPU_CALL_LASX(fn, args); __TI_EXPAND(__TI_CPU_DISPATCH_CHAIN_ ## mode(fn, args, __VA_ARGS__))
 
 #define TI_CPU_CALL_BASELINE(fn, args) return (cpu_baseline::fn args)
 #define __TI_CPU_DISPATCH_CHAIN_BASELINE(fn, args, mode, ...)  TI_CPU_CALL_BASELINE(fn, args) /* last in sequence */

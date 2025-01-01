@@ -3,5 +3,5 @@ ti_add_app(z_example
       base
     EXTRAS
       ${proto_link}
-      log4cplus::log4cplusU
+      ${log4cplus_link}
     )

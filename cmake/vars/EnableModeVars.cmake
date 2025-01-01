@@ -1,0 +1,21 @@
+set(__TI_MODE_VARS_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
+macro(ti_change_mode_var)
+  set(__var "${ARGV0}")
+  set(__mode "${ARGV1}")
+  set(__value "${ARGV2}")
+  if(__mode STREQUAL "MODIFIED_ACCESS" AND __value)
+    if(NOT __applied_mode_${__var})
+      include("${__TI_MODE_VARS_DIR}/${__var}.cmake")
+      set(__applied_mode_${__var} 1)
+    else()
+      #message("Mode is already applied: ${__var}")
+    endif()
+  endif()
+endmacro()
+
+variable_watch(TIGER_DISABLE_THREAD_SUPPORT ti_change_mode_var)
+set(TIGER_DISABLE_THREAD_SUPPORT "${TIGER_DISABLE_THREAD_SUPPORT}")
+
+variable_watch(TIGER_SEMIHOSTING ti_change_mode_var)
+set(TIGER_SEMIHOSTING "${TIGER_SEMIHOSTING}")

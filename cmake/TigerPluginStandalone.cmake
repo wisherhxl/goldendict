@@ -78,16 +78,23 @@ function(ti_create_plugin module default_name dependency_target dependency_targe
     set_target_properties(${TIGER_PLUGIN_NAME} PROPERTIES PREFIX "${TIGER_PLUGIN_MODULE_PREFIX}")
   endif()
 
-  if(APPLE)
-    set_target_properties(${TIGER_PLUGIN_NAME} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
-  elseif(WIN32)
-    # Hack for Windows only, Linux/MacOS uses global symbol table (without exact .so binding)
+  if(WIN32 OR NOT APPLE)
+    set(TIGER_PLUGIN_NO_LINK FALSE CACHE BOOL "")
+  else()
+    set(TIGER_PLUGIN_NO_LINK TRUE CACHE BOOL "")
+  endif()
+
+  if(TIGER_PLUGIN_NO_LINK)
+    if(APPLE)
+      set_target_properties(${TIGER_PLUGIN_NAME} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+    endif()
+  else()
     find_package(Tiger REQUIRED ${module} ${TIGER_PLUGIN_DEPS})
     target_link_libraries(${TIGER_PLUGIN_NAME} PRIVATE ${Tiger_LIBRARIES})
   endif()
 
   if(NOT Tiger_FOUND)  # build against sources (Linux)
-    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/tiger/tiger_modules.hpp" "#pragma once")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/opencv2/opencv_modules.hpp" "#pragma once")
   endif()
 
   if(WIN32)

@@ -2,10 +2,10 @@
 
 #if defined(__mips_msa)
 #  include <msa.h>
-#  define CV_MSA 1
+#  define TI_MSA 1
 #endif
 
-#if defined CV_MSA
+#if defined TI_MSA
 int test()
 {
     const float src[] = { 0.0f, 0.0f, 0.0f, 0.0f };

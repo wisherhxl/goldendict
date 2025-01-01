@@ -52,8 +52,8 @@ else()
   set(TIGER_PACKAGE_ARCH_SUFFIX ${CMAKE_SYSTEM_PROCESSOR})
 endif()
 
-set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${TIGER_VCSVERSION}-${TIGER_PACKAGE_ARCH_SUFFIX}")
-set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${TIGER_VCSVERSION}-${TIGER_PACKAGE_ARCH_SUFFIX}")
+set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION}-${TIGER_PACKAGE_ARCH_SUFFIX}")
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION}-${TIGER_PACKAGE_ARCH_SUFFIX}")
 
 #rpm options
 set(CPACK_RPM_COMPONENT_INSTALL TRUE)
@@ -123,9 +123,9 @@ endif()
 set(STD_TIGER_LIBS tiger-data)
 set(STD_TIGER_DEV libtiger-dev)
 
-foreach(module calib3d core dnn features2d flann gapi highgui
+foreach(module 3d calib core dnn features flann highgui
                imgcodecs imgproc ml objdetect
-               photo stitching ts video videoio)
+               photo stereo stitching ts video videoio)
   if(HAVE_tiger_${module})
     list(APPEND STD_TIGER_LIBS "libtiger-${module}4.0")
     list(APPEND STD_TIGER_DEV "libtiger-${module}-dev")
@@ -144,9 +144,9 @@ set(CPACK_COMPONENT_PYTHON_CONFLICTS python-tiger)
 set(CPACK_COMPONENT_PYTHON_PROVIDES python-tiger)
 set(CPACK_COMPONENT_PYTHON_REPLACES python-tiger)
 
-set(CPACK_COMPONENT_JAVA_CONFLICTS "libtiger4.0-java, libtiger4.0-jni")
-set(CPACK_COMPONENT_JAVA_PROVIDES "libtiger4.0-java, libtiger4.0-jni")
-set(CPACK_COMPONENT_JAVA_REPLACES "libtiger4.0-java, libtiger4.0-jni")
+set(CPACK_COMPONENT_JAVA_CONFLICTS "libtiger5.0-java, libtiger5.0-jni")
+set(CPACK_COMPONENT_JAVA_PROVIDES "libtiger5.0-java, libtiger5.0-jni")
+set(CPACK_COMPONENT_JAVA_REPLACES "libtiger5.0-java, libtiger5.0-jni")
 
 set(CPACK_COMPONENT_DOCS_CONFLICTS tiger-doc)
 set(CPACK_COMPONENT_SAMPLES_CONFLICTS tiger-doc)

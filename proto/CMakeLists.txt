@@ -20,19 +20,20 @@ endif()
 set(proto_link proto)
 set(proto_link proto PARENT_SCOPE)
 
-add_library(${proto_link} SHARED)
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${proto_files})
 
-protobuf_generate(
-    LANGUAGE cpp
-    TARGET ${proto_link}
-    EXPORT_MACRO PROTO_EXPORTS
-    PROTOS ${proto_files})
+add_library(${proto_link} STATIC ${PROTO_SRCS} ${PROTO_HDRS})
 
-target_precompile_headers(${proto_link} 
-    PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/pch/precomp_private.hpp
+# target_precompile_headers(${proto_link} 
+#     PRIVATE
+#         ${CMAKE_CURRENT_LIST_DIR}/pch/precomp_private.hpp
+#     PUBLIC
+#         ${CMAKE_CURRENT_LIST_DIR}/pch/precomp.hpp
+# )
+
+target_include_directories(${proto_link}
     PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR}/pch/precomp.hpp
+        ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 target_link_libraries(${proto_link}

@@ -12,7 +12,7 @@
 #             but will fail in case when other operations (copy, remove, etc.) failed
 #    UNPACK - downloaded file will be unpacked to DESTINATION_DIR
 #    RELATIVE_URL - if set, then URL is treated as a base, and FILENAME will be appended to it
-#  Note: uses TIGER_DOWNLOAD_PATH folder as cache, default is <tiger>/.cache
+#  Note: uses TIGER_DOWNLOAD_PATH folder as cache, default is <opencv>/.cache
 
 set(HELP_TIGER_DOWNLOAD_PATH "Cache directory for downloaded files")
 if(DEFINED ENV{TIGER_DOWNLOAD_PATH})
@@ -23,7 +23,7 @@ set(TIGER_DOWNLOAD_LOG "${Tiger_BINARY_DIR}/CMakeDownloadLog.txt")
 set(TIGER_DOWNLOAD_WITH_CURL "${Tiger_BINARY_DIR}/download_with_curl.sh")
 set(TIGER_DOWNLOAD_WITH_WGET "${Tiger_BINARY_DIR}/download_with_wget.sh")
 set(TIGER_DOWNLOAD_TRIES_LIST 1 CACHE STRING "List of download tries") # a list
-set(TIGER_DOWNLOAD_PARAMS INACTIVITY_TIMEOUT 60 TIMEOUT 600 CACHE STRING "Download parameters to be passed to file(DOWNLAOD ...)")
+set(TIGER_DOWNLOAD_PARAMS INACTIVITY_TIMEOUT 60 TIMEOUT 600 CACHE STRING "Download parameters to be passed to file(DOWNLOAD ...)")
 mark_as_advanced(TIGER_DOWNLOAD_TRIES_LIST TIGER_DOWNLOAD_PARAMS)
 
 # Init download cache directory and log file and helper scripts
@@ -36,6 +36,53 @@ endif()
 file(WRITE "${TIGER_DOWNLOAD_LOG}" "#use_cache \"${TIGER_DOWNLOAD_PATH}\"\n")
 file(REMOVE "${TIGER_DOWNLOAD_WITH_CURL}")
 file(REMOVE "${TIGER_DOWNLOAD_WITH_WGET}")
+
+ti_check_environment_variables(TIGER_DOWNLOAD_MIRROR_ID)
+
+function(ti_init_download_mirror)
+  if(NOT GIT_FOUND)
+    return()
+  endif()
+  if(NOT DEFINED TIGER_DOWNLOAD_MIRROR_ID)
+    # Run `git remote get-url origin` to get remote source
+    execute_process(
+      COMMAND
+        ${GIT_EXECUTABLE} remote get-url origin
+      WORKING_DIRECTORY
+        ${CMAKE_SOURCE_DIR}
+      RESULT_VARIABLE
+        RESULT_STATUS
+      OUTPUT_VARIABLE
+        TI_GIT_ORIGIN_URL_OUTPUT
+      ERROR_QUIET
+    )
+    # if non-git, TI_GIT_ORIGIN_URL_OUTPUT is empty
+    if(NOT TI_GIT_ORIGIN_URL_OUTPUT)
+      message(STATUS "ti_init_download: Tiger source tree is not fetched as git repository. 3rdparty resources will be downloaded from github.com by default.")
+      return()
+    else()
+      # Check if git origin is github.com
+      string(FIND "${TI_GIT_ORIGIN_URL_OUTPUT}" "github.com" _found_github)
+      if(NOT ${_found_github} EQUAL -1)
+        set(TIGER_DOWNLOAD_MIRROR_ID "github" CACHE STRING "")
+      endif()
+      # Check if git origin is gitcode.net
+      string(FIND "${TI_GIT_ORIGIN_URL_OUTPUT}" "gitcode.net" _found_gitcode)
+      if(NOT ${_found_gitcode} EQUAL -1)
+        set(TIGER_DOWNLOAD_MIRROR_ID "gitcode" CACHE STRING "")
+      endif()
+    endif()
+  endif()
+
+  if(TIGER_DOWNLOAD_MIRROR_ID STREQUAL "gitcode" OR TIGER_DOWNLOAD_MIRROR_ID STREQUAL "custom")
+    message(STATUS "ti_init_download: Using ${TIGER_DOWNLOAD_MIRROR_ID}-hosted mirror to download 3rdparty components.")
+    ti_cmake_hook_append(TIGER_DOWNLOAD_PRE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/mirrors/${TIGER_DOWNLOAD_MIRROR_ID}.cmake")
+  elseif(TIGER_DOWNLOAD_MIRROR_ID STREQUAL "github")
+    return()
+  else()
+    message(STATUS "ti_init_download: Unable to recognize git server of Tiger source code. Using github.com to download 3rdparty components.")
+  endif()
+endfunction()
 
 function(ti_download)
   cmake_parse_arguments(DL "UNPACK;RELATIVE_URL" "FILENAME;HASH;DESTINATION_DIR;ID;STATUS" "URL" ${ARGN})
@@ -66,6 +113,8 @@ function(ti_download)
   if(DEFINED DL_STATUS)
     set(${DL_STATUS} TRUE PARENT_SCOPE)
   endif()
+
+  ti_cmake_hook(TIGER_DOWNLOAD_PRE)
 
   # Check CMake cache for already processed tasks
   string(FIND "${DL_DESTINATION_DIR}" "${CMAKE_BINARY_DIR}" DL_BINARY_PATH_POS)
@@ -115,7 +164,7 @@ function(ti_download)
   if(DL_ID)
     set(__msg_prefix "${DL_ID}: ")
   endif()
-  message(STATUS "${__msg_prefix}Download: ${DL_FILENAME}")
+  message(STATUS "${__msg_prefix}Downloading ${DL_FILENAME} from ${DL_URL}")
 
   # Copy mode: check if copy destination exists and is correct
   if(NOT DL_UNPACK)
@@ -252,3 +301,8 @@ ${TIGER_DOWNLOAD_LOG}
     set(${TI_DOWNLOAD_HASH_NAME} "${DL_HASH}" CACHE INTERNAL "")
   endif()
 endfunction()
+
+# ----------------------------------------------------------------------------
+#  Initialize download in case mirror is used
+# ----------------------------------------------------------------------------
+ti_init_download_mirror()

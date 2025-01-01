@@ -1,8 +1,14 @@
 # ----------------------------------------------------------------------------
-#  Root CMake file for Tiger
+# Copyright (c) 2021
+# SPDX-License-Identifier: MIT
+#
+#  This file is the Root CMake file for Tiger Template.
+# Distributed under the MIT License. See LICENSE file for details.
 #
 #    From the off-tree build directory, invoke:
 #      $ cmake <PATH_TO_TIGER_ROOT>
+#
+# Created Date: 2021-4-12
 #
 # ----------------------------------------------------------------------------
 
@@ -120,22 +126,6 @@ enable_testing(true)
 
 project(Tiger CXX C)
 enable_language(CXX C)
-
-# ----------------------------------------------------------------------------
-# Check platform and compiler
-# Currently, only MSVC on Windows is supported.
-# ----------------------------------------------------------------------------
-if(NOT WIN32)
-    message(FATAL_ERROR "
-FATAL: Tiger is only supported on windows.
-")
-endif()
-
-if(NOT MSVC)
-    message(FATAL_ERROR "
-FATAL: Tiger is only supported for Microsoft VisualStudio.
-")
-endif()
 
 set(CMAKE_USE_RELATIVE_PATHS ON CACHE INTERNAL "" FORCE)
 
@@ -289,14 +279,19 @@ test_big_endian(WORDS_BIGENDIAN)
 # ----------------------------------------------------------------------------
 #  Detect 3rd-party libraries
 # ----------------------------------------------------------------------------
-include(cmake/TigerFindDevTools.cmake)
-include(cmake/TigerFindCameraDrivers.cmake)
-include(cmake/TigerFindAxisDrivers.cmake)
+# Set vcpkg as the toolchain
+# set(vcpkg_SOURCE_DIR "/home/get/tools/vcpkg")
+# set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
+# set(VCPKG_ROOT "${vcpkg_SOURCE_DIR}")
+
+# include(cmake/TigerFindDevTools.cmake)
+# include(cmake/TigerFindCameraDrivers.cmake)
+# include(cmake/TigerFindAxisDrivers.cmake)
 include(cmake/TigerFindProtobuf.cmake)
 include(cmake/TigerFindQt.cmake)
-include(cmake/TigerFindOpenCV.cmake)
-include(cmake/TigerFindBoost.cmake)
-include(cmake/TigerFindVTK.cmake)
+# include(cmake/TigerFindOpenCV.cmake)
+# include(cmake/TigerFindBoost.cmake)
+# include(cmake/TigerFindVTK.cmake)
 include(cmake/TigerFindlog4cplus.cmake)
 
 

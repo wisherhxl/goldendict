@@ -3,17 +3,17 @@
 #if defined _WIN32 && (defined(_M_ARM) || defined(_M_ARM64))
 # include <Intrin.h>
 # include <arm_neon.h>
-# define CV_NEON 1
+# define TI_NEON 1
 #elif defined(__ARM_NEON__) || (defined (__ARM_NEON) && defined(__aarch64__))
 #  include <arm_neon.h>
-#  define CV_NEON 1
+#  define TI_NEON 1
 #endif
 
 // MSVC 2019 bug. Details: https://github.com/tiger/tiger/pull/16027
 void test_aliased_type(const uint8x16_t& a) { }
 void test_aliased_type(const int8x16_t& a) { }
 
-#if defined CV_NEON
+#if defined TI_NEON
 int test()
 {
     const float src[] = { 0.0f, 0.0f, 0.0f, 0.0f };

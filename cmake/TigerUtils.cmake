@@ -305,11 +305,15 @@ function(ti_include_directories)
     ti_is_tiger_directory(__is_tiger_dir "${dir}")
     if(__is_tiger_dir)
       list(APPEND __add_before "${dir}")
-    elseif(((CV_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0") OR CV_CLANG) AND
+    elseif(((TI_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0") OR TI_CLANG) AND
            dir MATCHES "/usr/include$")
       # workaround for GCC 6.x bug
     else()
-      include_directories(AFTER SYSTEM "${dir}")
+      if(${CMAKE_SYSTEM_NAME} MATCHES QNX)
+        include_directories(AFTER "${dir}")
+      else()
+        include_directories(AFTER SYSTEM "${dir}")
+      endif()
     endif()
   endforeach()
   include_directories(BEFORE ${__add_before})
@@ -349,27 +353,27 @@ function(ti_target_include_directories target)
   #ti_debug_message("ti_target_include_directories(${target} ${ARGN})")
   _ti_fix_target(target)
   set(__params "")
-  if(CV_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0" AND
-      ";${ARGN};" MATCHES "/usr/include;")
-    return() # workaround for GCC 6.x bug
-  endif()
-  set(__params "")
   set(__system_params "")
   set(__var_name __params)
   foreach(dir ${ARGN})
     if("${dir}" STREQUAL "SYSTEM")
       set(__var_name __system_params)
     else()
-      get_filename_component(__abs_dir "${dir}" ABSOLUTE)
-      ti_is_tiger_directory(__is_tiger_dir "${dir}")
-      if(__is_tiger_dir)
-        list(APPEND ${__var_name} "${__abs_dir}")
+      if(TI_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0" AND
+          dir MATCHES "/usr/include$")
+         # workaround for GCC 6.x bug
       else()
-        list(APPEND ${__var_name} "${dir}")
+        get_filename_component(__abs_dir "${dir}" ABSOLUTE)
+        ti_is_tiger_directory(__is_tiger_dir "${dir}")
+        if(__is_tiger_dir)
+          list(APPEND ${__var_name} "${__abs_dir}")
+        else()
+          list(APPEND ${__var_name} "${dir}")
+        endif()
       endif()
     endif()
   endforeach()
-  if(HAVE_CUDA OR CMAKE_VERSION VERSION_LESS 2.8.11)
+  if(HAVE_CUDA)
     include_directories(${__params})
     include_directories(SYSTEM ${__system_params})
   else()
@@ -644,7 +648,7 @@ macro(ti_warnings_disable)
           set(${var} "${${var}} ${warning}")
         endforeach()
       endforeach()
-    elseif(((CV_GCC OR CV_CLANG) OR (UNIX AND CV_ICC)) AND _gxx_warnings AND _flag_vars)
+    elseif(((TI_GCC OR TI_CLANG) OR (UNIX AND TI_ICC)) AND _gxx_warnings AND _flag_vars)
       foreach(var ${_flag_vars})
         foreach(warning ${_gxx_warnings})
           if(NOT warning MATCHES "^-Wno-")
@@ -658,7 +662,7 @@ macro(ti_warnings_disable)
         endforeach()
       endforeach()
     endif()
-    if(CV_ICC AND _icc_warnings AND _flag_vars)
+    if(TI_ICC AND _icc_warnings AND _flag_vars)
       foreach(var ${_flag_vars})
         foreach(warning ${_icc_warnings})
           if(UNIX)
@@ -866,7 +870,10 @@ macro(ti_check_modules define)
       foreach(flag ${${define}_LDFLAGS})
         if(flag MATCHES "^-L(.*)")
           list(APPEND _libs_paths ${CMAKE_MATCH_1})
-        elseif(IS_ABSOLUTE "${flag}")
+        elseif(IS_ABSOLUTE "${flag}"
+            OR flag STREQUAL "-lstdc++"
+            OR flag STREQUAL "-latomic"
+        )
           list(APPEND _libs "${flag}")
         elseif(flag MATCHES "^-l(.*)")
           set(_lib "${CMAKE_MATCH_1}")
@@ -908,15 +915,9 @@ if(DEFINED ENV{BUILD_USE_SYMLINKS})
 endif()
 TI_OPTION(BUILD_USE_SYMLINKS "Use symlinks instead of files copying during build (and !!INSTALL!!)" (${__symlink_default}) IF (UNIX OR DEFINED __symlink_default))
 
-if(CMAKE_VERSION VERSION_LESS "3.2")
-  macro(ti_cmake_byproducts var_name)
-    set(${var_name}) # nothing
-  endmacro()
-else()
-  macro(ti_cmake_byproducts var_name)
-    set(${var_name} BYPRODUCTS ${ARGN})
-  endmacro()
-endif()
+macro(ti_cmake_byproducts var_name)
+  set(${var_name} BYPRODUCTS ${ARGN})
+endmacro()
 
 set(TIGER_DEPHELPER "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/dephelper" CACHE INTERNAL "")
 file(MAKE_DIRECTORY ${TIGER_DEPHELPER})
@@ -1092,6 +1093,18 @@ macro(ti_list_filterout lst regex)
   endforeach()
 endmacro()
 
+# Usage: ti_list_filterout_ex(list_name regex1 regex2 ...)
+macro(ti_list_filterout_ex lst)
+  foreach(regex ${ARGN})
+    foreach(item ${${lst}})
+      if(item MATCHES "${regex}")
+        list(REMOVE_ITEM ${lst} "${item}")
+      endif()
+    endforeach()
+  endforeach()
+endmacro()
+
+
 # filter matching elements from the list
 macro(ti_list_filter lst regex)
   set(dst ${ARGN})
@@ -1248,13 +1261,8 @@ function(ti_install_target)
 
     # don't move this into global scope of this file: compiler settings (like MSVC variable) are not available during processing
     if(BUILD_SHARED_LIBS)  # no defaults for static libs (modern CMake is required)
-      if(NOT CMAKE_VERSION VERSION_LESS 3.6.0)
-        option(INSTALL_PDB_COMPONENT_EXCLUDE_FROM_ALL "Don't install PDB files by default" ON)
-        option(INSTALL_PDB "Add install PDB rules" ON)
-      elseif(NOT CMAKE_VERSION VERSION_LESS 3.1.0)
-        option(INSTALL_PDB_COMPONENT_EXCLUDE_FROM_ALL "Don't install PDB files by default (not supported)" OFF)
-        option(INSTALL_PDB "Add install PDB rules" OFF)
-      endif()
+      option(INSTALL_PDB_COMPONENT_EXCLUDE_FROM_ALL "Don't install PDB files by default" ON)
+      option(INSTALL_PDB "Add install PDB rules" ON)
     endif()
 
     if(INSTALL_PDB AND NOT INSTALL_IGNORE_PDB
@@ -1286,36 +1294,28 @@ function(ti_install_target)
 
 #      message(STATUS "Process ${__target} dst=${__dst}...")
       if(DEFINED __dst)
-        if(NOT CMAKE_VERSION VERSION_LESS 3.1.0)
-          set(__pdb_install_component "pdb")
-          if(DEFINED INSTALL_PDB_COMPONENT AND INSTALL_PDB_COMPONENT)
-            set(__pdb_install_component "${INSTALL_PDB_COMPONENT}")
-          endif()
-          set(__pdb_exclude_from_all "")
-          if(INSTALL_PDB_COMPONENT_EXCLUDE_FROM_ALL)
-            if(NOT CMAKE_VERSION VERSION_LESS 3.6.0)
-              set(__pdb_exclude_from_all EXCLUDE_FROM_ALL)
-            else()
-              message(WARNING "INSTALL_PDB_COMPONENT_EXCLUDE_FROM_ALL requires CMake 3.6+")
-            endif()
-          endif()
+        set(__pdb_install_component "pdb")
+        if(DEFINED INSTALL_PDB_COMPONENT AND INSTALL_PDB_COMPONENT)
+          set(__pdb_install_component "${INSTALL_PDB_COMPONENT}")
+        endif()
+        set(__pdb_exclude_from_all "")
+        if(INSTALL_PDB_COMPONENT_EXCLUDE_FROM_ALL)
+          set(__pdb_exclude_from_all EXCLUDE_FROM_ALL)
+        endif()
 
 #          message(STATUS "Adding PDB file installation rule: target=${__target} dst=${__dst} component=${__pdb_install_component}")
-          if("${__target_type}" STREQUAL "SHARED_LIBRARY" OR "${__target_type}" STREQUAL "MODULE_LIBRARY")
-            install(FILES "$<TARGET_PDB_FILE:${__target}>" DESTINATION "${__dst}"
-                COMPONENT ${__pdb_install_component} OPTIONAL ${__pdb_exclude_from_all})
-          else()
-            # There is no generator expression similar to TARGET_PDB_FILE and TARGET_PDB_FILE can't be used: https://gitlab.kitware.com/cmake/cmake/issues/16932
-            # However we still want .pdb files like: 'lib/Debug/tiger_core341d.pdb' or '3rdparty/lib/zlibd.pdb'
-            install(FILES "$<TARGET_PROPERTY:${__target},ARCHIVE_OUTPUT_DIRECTORY>/$<CONFIG>/$<IF:$<BOOL:$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME_DEBUG>>,$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME_DEBUG>,$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME>>.pdb"
-                DESTINATION "${__dst}" CONFIGURATIONS Debug
-                COMPONENT ${__pdb_install_component} OPTIONAL ${__pdb_exclude_from_all})
-            install(FILES "$<TARGET_PROPERTY:${__target},ARCHIVE_OUTPUT_DIRECTORY>/$<CONFIG>/$<IF:$<BOOL:$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME_RELEASE>>,$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME_RELEASE>,$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME>>.pdb"
-                DESTINATION "${__dst}" CONFIGURATIONS Release
-                COMPONENT ${__pdb_install_component} OPTIONAL ${__pdb_exclude_from_all})
-          endif()
+        if("${__target_type}" STREQUAL "SHARED_LIBRARY" OR "${__target_type}" STREQUAL "MODULE_LIBRARY")
+          install(FILES "$<TARGET_PDB_FILE:${__target}>" DESTINATION "${__dst}"
+              COMPONENT ${__pdb_install_component} OPTIONAL ${__pdb_exclude_from_all})
         else()
-          message(WARNING "PDB files installation is not supported (need CMake >= 3.1.0)")
+          # There is no generator expression similar to TARGET_PDB_FILE and TARGET_PDB_FILE can't be used: https://gitlab.kitware.com/cmake/cmake/issues/16932
+            # However we still want .pdb files like: 'lib/Debug/tiger_core341d.pdb' or '3rdparty/lib/zlibd.pdb'
+          install(FILES "$<TARGET_PROPERTY:${__target},ARCHIVE_OUTPUT_DIRECTORY>/$<CONFIG>/$<IF:$<BOOL:$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME_DEBUG>>,$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME_DEBUG>,$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME>>.pdb"
+              DESTINATION "${__dst}" CONFIGURATIONS Debug
+              COMPONENT ${__pdb_install_component} OPTIONAL ${__pdb_exclude_from_all})
+          install(FILES "$<TARGET_PROPERTY:${__target},ARCHIVE_OUTPUT_DIRECTORY>/$<CONFIG>/$<IF:$<BOOL:$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME_RELEASE>>,$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME_RELEASE>,$<TARGET_PROPERTY:${__target},COMPILE_PDB_NAME>>.pdb"
+              DESTINATION "${__dst}" CONFIGURATIONS Release
+              COMPONENT ${__pdb_install_component} OPTIONAL ${__pdb_exclude_from_all})
         endif()
       endif()
     endif()
@@ -1415,6 +1415,18 @@ macro(ti_parse_header2 LIBNAME HDR_PATH VARNAME)
   endif()
 endmacro()
 
+# set ${LIBNAME}_VERSION_STRING to ${LIBVER} without quotes
+macro(ti_parse_header_version LIBNAME HDR_PATH LIBVER)
+  ti_clear_vars(${LIBNAME}_VERSION_STRING)
+  set(${LIBNAME}_H "")
+  if(EXISTS "${HDR_PATH}")
+    file(STRINGS "${HDR_PATH}" ${LIBNAME}_H REGEX "^#define[ \t]+${LIBVER}[ \t]+\"[^\"]*\".*$" LIMIT_COUNT 1)
+  endif()
+  if(${LIBNAME}_H)
+    string(REGEX REPLACE "^.*[ \t]${LIBVER}[ \t]+\"(.+)\"$" "\\1" ${LIBNAME}_VERSION_STRING "${${LIBNAME}_H}")
+  endif()
+endmacro()
+
 ################################################################################################
 # short command to setup source group
 function(ti_source_group group)
@@ -1479,8 +1491,8 @@ function(ti_target_link_libraries target)
       if(NOT LINK_PENDING STREQUAL "")
         __ti_push_target_link_libraries(${LINK_MODE} ${LINK_PENDING})
         set(LINK_PENDING "")
-        set(LINK_MODE "${dep}")
       endif()
+      set(LINK_MODE "${dep}")
     else()
       if(BUILD_tiger_world)
         if(TIGER_MODULE_${dep}_IS_PART_OF_WORLD)
@@ -1530,38 +1542,109 @@ function(_ti_append_target_includes target)
   endif()
 endfunction()
 
+macro(ti_add_cuda_compile_flags)
+  ti_cuda_compile_flags()
+  target_compile_options(${target} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: ${CUDA_NVCC_FLAGS}
+  "-Xcompiler=${CMAKE_CXX_FLAGS_CUDA} $<$<CONFIG:Debug>:${CMAKE_CXX_FLAGS_DEBUG_CUDA}> \
+  $<$<CONFIG:Release>:${CMAKE_CXX_FLAGS_RELEASE_CUDA}>" >)
+endmacro()
+
 function(ti_add_executable target)
   add_executable(${target} ${ARGN})
+  if(ENABLE_CUDA_FIRST_CLASS_LANGUAGE AND HAVE_CUDA)
+    ti_add_cuda_compile_flags()
+  endif()
   _ti_append_target_includes(${target})
 endfunction()
 
 function(ti_add_library target)
-  add_library(${target} ${ARGN})
+  if(NOT ENABLE_CUDA_FIRST_CLASS_LANGUAGE AND HAVE_CUDA AND ARGN MATCHES "\\.cu")
+    ti_include_directories(${CUDA_INCLUDE_DIRS})
+    ti_cuda_compile(cuda_objs ${ARGN})
+    set(TIGER_MODULE_${target}_CUDA_OBJECTS ${cuda_objs} CACHE INTERNAL "Compiled CUDA object files")
+  endif()
+
+  add_library(${target} ${ARGN} ${cuda_objs})
+
+  if(ENABLE_CUDA_FIRST_CLASS_LANGUAGE AND HAVE_CUDA)
+    ti_add_cuda_compile_flags()
+  endif()
+
+  if(APPLE_FRAMEWORK AND BUILD_SHARED_LIBS)
+    message(STATUS "Setting Apple target properties for ${target}")
+
+    set(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG 1)
+
+    if((IOS OR XROS) AND NOT MAC_CATALYST)
+      set(TIGER_APPLE_INFO_PLIST "${CMAKE_BINARY_DIR}/ios/Info.plist")
+    else()
+      set(TIGER_APPLE_INFO_PLIST "${CMAKE_BINARY_DIR}/osx/Info.plist")
+    endif()
+
+    set_target_properties(${target} PROPERTIES
+      FRAMEWORK TRUE
+      MACOSX_FRAMEWORK_IDENTIFIER org.Tiger
+      MACOSX_FRAMEWORK_INFO_PLIST ${TIGER_APPLE_INFO_PLIST}
+      # "current version" in semantic format in Mach-O binary file
+      VERSION ${TIGER_LIBVERSION}
+      # "compatibility version" in semantic format in Mach-O binary file
+      SOVERSION ${TIGER_LIBVERSION}
+      INSTALL_RPATH ""
+      INSTALL_NAME_DIR "@rpath"
+      BUILD_WITH_INSTALL_RPATH 1
+      LIBRARY_OUTPUT_NAME "Tiger2"
+      XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+      #PUBLIC_HEADER "${TIGER_CONFIG_FILE_INCLUDE_DIR}/cvconfig.h"
+      #XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "iPhone Developer"
+    )
+  endif()
+
   _ti_append_target_includes(${target})
 endfunction()
 
 
 function(ti_add_external_target name inc link def)
-  if(BUILD_SHARED_LIBS)
+  if(BUILD_SHARED_LIBS AND link)
     set(imp IMPORTED)
   endif()
   add_library(ti.3rdparty.${name} INTERFACE ${imp})
-  set_target_properties(ti.3rdparty.${name} PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${inc}"
-    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${inc}"
-    INTERFACE_COMPILE_DEFINITIONS "${def}")
-  # When cmake version is greater than or equal to 3.11, INTERFACE_LINK_LIBRARIES no longer applies to interface library
-  # See https://github.com/tiger/tiger/pull/18658
-  if (CMAKE_VERSION VERSION_LESS 3.11)
-    set_target_properties(ti.3rdparty.${name} PROPERTIES
-      INTERFACE_LINK_LIBRARIES "${link}")
-  else()
+  if(def)
+    target_compile_definitions(ti.3rdparty.${name} INTERFACE "${def}")
+  endif()
+  if(inc)
+    target_include_directories(ti.3rdparty.${name} SYSTEM INTERFACE "$<BUILD_INTERFACE:${inc}>")
+  endif()
+  if(link)
     target_link_libraries(ti.3rdparty.${name} INTERFACE ${link})
   endif()
-  #
+endfunction()
+
+set(__TIGER_EXPORTED_EXTERNAL_TARGETS "" CACHE INTERNAL "")
+function(ti_install_used_external_targets)
   if(NOT BUILD_SHARED_LIBS)
-    install(TARGETS ti.3rdparty.${name} EXPORT TigerModules)
+    foreach(tgt in ${ARGN})
+      if(tgt MATCHES "^ti\.3rdparty\.")
+        list(FIND __TIGER_EXPORTED_EXTERNAL_TARGETS "${tgt}" _found)
+        if(_found EQUAL -1)  # don't export target twice
+          install(TARGETS ${tgt} EXPORT TigerModules)
+          list(APPEND __TIGER_EXPORTED_EXTERNAL_TARGETS "${tgt}")
+          set(__TIGER_EXPORTED_EXTERNAL_TARGETS "${__TIGER_EXPORTED_EXTERNAL_TARGETS}" CACHE INTERNAL "")
+        endif()
+      endif()
+    endforeach()
   endif()
+endfunction()
+
+# Returns the first non-interface target
+function(ti_get_imported_target imported interface)
+  set(__result "${interface}")
+  get_target_property(__type "${__result}" TYPE)
+  if(__type STREQUAL "INTERFACE_LIBRARY")
+    get_target_property(__libs "${__result}" INTERFACE_LINK_LIBRARIES)
+    list(GET __libs 0 __interface)
+    ti_get_imported_target(__result "${__interface}")
+  endif()
+  set(${imported} "${__result}" PARENT_SCOPE)
 endfunction()
 
 
@@ -1574,7 +1657,7 @@ macro(ti_get_libname var_name)
   set(${var_name} "${__libname}")
 endmacro()
 
-# build the list of tiger libs and dependencies for all modules
+# build the list of Tiger libs and dependencies for all modules
 #  _modules - variable to hold list of all modules
 #  _extra - variable to hold list of extra dependencies
 #  _3rdparty - variable to hold list of prebuilt 3rdparty libraries
@@ -1656,7 +1739,7 @@ endmacro()
 
 
 function(ti_add_test_from_target test_name test_kind the_target)
-  if(CMAKE_VERSION VERSION_GREATER "2.8" AND NOT CMAKE_CROSSCOMPILING)
+  if(NOT CMAKE_CROSSCOMPILING)
     if(NOT "${test_kind}" MATCHES "^(Accuracy|Performance|Sanity)$")
       message(FATAL_ERROR "Unknown test kind : ${test_kind}")
     endif()
@@ -1851,12 +1934,7 @@ macro(ti_get_smart_file_name output_var fpath)
 endmacro()
 
 # Needed by install(DIRECTORY ...)
-if(NOT CMAKE_VERSION VERSION_LESS 3.1)
-  set(compatible_MESSAGE_NEVER MESSAGE_NEVER)
-else()
-  set(compatible_MESSAGE_NEVER "")
-endif()
-
+set(compatible_MESSAGE_NEVER MESSAGE_NEVER)
 
 macro(ti_git_describe var_name path)
   if(GIT_FOUND)
@@ -1868,7 +1946,7 @@ macro(ti_git_describe var_name path)
       OUTPUT_STRIP_TRAILING_WHITESPACE
     )
     if(NOT GIT_RESULT EQUAL 0)
-      execute_process(COMMAND "${GIT_EXECUTABLE}" describe --tags --always --dirty --match "[0-9].[0-9].[0-9]*" --exclude "[^-]*-tisdk"
+      execute_process(COMMAND "${GIT_EXECUTABLE}" describe --tags --always --dirty --match "[0-9].[0-9]*.[0-9]*" --exclude "[^-]*-tisdk"
         WORKING_DIRECTORY "${path}"
         OUTPUT_VARIABLE ${var_name}
         RESULT_VARIABLE GIT_RESULT
@@ -1913,22 +1991,37 @@ function(ti_update_file filepath content)
   endif()
 endfunction()
 
-# ti_list_subdirectories(retval curdir)
-# - list all subdirectories of the given directory
-macro(ti_list_subdirectories retval curdir)
-  message(WARN " ${curdir}")
-  file(GLOB sub_dir RELATIVE ${curdir} *)
-  message(WARN " ${sub_dir}")
+if(NOT BUILD_SHARED_LIBS AND (CMAKE_VERSION VERSION_LESS "3.14.0"))
+  ti_update(TIGER_3RDPARTY_EXCLUDE_FROM_ALL "")  # avoid CMake warnings: https://gitlab.kitware.com/cmake/cmake/-/issues/18938
+else()
+  ti_update(TIGER_3RDPARTY_EXCLUDE_FROM_ALL "EXCLUDE_FROM_ALL")
+endif()
 
-  set(list_of_dirs "")
-  foreach(dir ${sub_dir})
-    string(SUBSTRING ${dir} 0 1 dir1st)
-    if(IS_DIRECTORY ${curdir}/${dir} AND NOT ${dir1st} STREQUAL "." AND NOT ${dir} STREQUAL "CMakeFiles")
-        set(list_of_dirs ${list_of_dirs} ${dir})
-    endif(IS_DIRECTORY ${curdir}/${dir} AND NOT ${dir1st} STREQUAL "." AND NOT ${dir} STREQUAL "CMakeFiles")
-  endforeach(dir)
-  set(${retval} ${list_of_dirs})
-endmacro()
+
+# adopted from https://gist.github.com/amir-saniyan/de99cee82fa9d8d615bb69f3f53b6004
+function(ti_blob2hdr blob_filename hdr_filename cpp_variable)
+    if(EXISTS "${hdr_filename}")
+        if("${hdr_filename}" IS_NEWER_THAN "${blob_filename}")
+            return()
+        endif()
+    endif()
+
+    file(READ "${blob_filename}" hex_content HEX)
+
+    # repeat [0-9a-f] 32 times
+    set(pattern "[0-9a-f][0-9a-f][0-9a-f][0-9a-f]")
+    set(pattern "${pattern}${pattern}")
+    set(pattern "${pattern}${pattern}")
+    set(pattern "${pattern}${pattern}")
+    string(REGEX REPLACE "(${pattern})" "\\1\n" content "${hex_content}")
+    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1, " content "${content}")
+    string(REGEX REPLACE ", $" "" content "${content}")
+
+    set(array_definition "static const unsigned char ${cpp_variable}[] =\n{\n${content}\n};")
+    set(source "// Auto generated file.\n${array_definition}\n")
+
+    file(WRITE "${hdr_filename}" "${source}")
+endfunction()
 
 # ti_list_components(pkg)
 # - list all components of the given package
@@ -1949,17 +2042,7 @@ endforeach()
 message(STATUS "--------------------------------------")
 endmacro()
 
-# ti_find_package(pkg)
-# - find package in TI_DEV_PATH
-macro(ti_find_package pkg)
-    find_package(${pkg} REQUIRED QUIET PATHS ${TI_DEV_PATH} NO_DEFAULT_PATH)
-    ti_list_components(${pkg})
-endmacro()
-
-
-if(NOT BUILD_SHARED_LIBS AND (CMAKE_VERSION VERSION_LESS "3.14.0"))
-  ti_update(TIGER_3RDPARTY_EXCLUDE_FROM_ALL "")  # avoid CMake warnings: https://gitlab.kitware.com/cmake/cmake/-/issues/18938
-else()
-  ti_update(TIGER_3RDPARTY_EXCLUDE_FROM_ALL "EXCLUDE_FROM_ALL")
-endif()
-
+#
+# Include configuration override settings
+#
+include("${CMAKE_CURRENT_LIST_DIR}/vars/EnableModeVars.cmake")

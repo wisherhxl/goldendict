@@ -20,6 +20,9 @@
 # VSX  (always available on Power8)
 # VSX3 (always available on Power9)
 
+# RISC-V arch:
+# RVV
+
 # CPU_{opt}_SUPPORTED=ON/OFF - compiler support (possibly with additional flag)
 # CPU_{opt}_IMPLIES=<list>
 # CPU_{opt}_FORCE=<list> - subset of "implies" list
@@ -46,10 +49,12 @@
 
 set(CPU_ALL_OPTIMIZATIONS "SSE;SSE2;SSE3;SSSE3;SSE4_1;SSE4_2;POPCNT;AVX;FP16;AVX2;FMA3;AVX_512F")
 list(APPEND CPU_ALL_OPTIMIZATIONS "AVX512_COMMON;AVX512_KNL;AVX512_KNM;AVX512_SKX;AVX512_CNL;AVX512_CLX;AVX512_ICL")
-list(APPEND CPU_ALL_OPTIMIZATIONS NEON VFPV3 FP16)
+list(APPEND CPU_ALL_OPTIMIZATIONS NEON VFPV3 FP16 NEON_DOTPROD NEON_FP16 NEON_BF16)
 list(APPEND CPU_ALL_OPTIMIZATIONS MSA)
 list(APPEND CPU_ALL_OPTIMIZATIONS VSX VSX3)
-list(APPEND CPU_ALL_OPTIMIZATIONS RVV)
+list(APPEND CPU_ALL_OPTIMIZATIONS RVV FP16 RVV_ZVFH)
+list(APPEND CPU_ALL_OPTIMIZATIONS LSX)
+list(APPEND CPU_ALL_OPTIMIZATIONS LASX)
 list(REMOVE_DUPLICATES CPU_ALL_OPTIMIZATIONS)
 
 ti_update(CPU_VFPV3_FEATURE_ALIAS "")
@@ -99,11 +104,9 @@ ti_optimization_process_obsolete_option(ENABLE_AVX2 AVX2 ON)
 ti_optimization_process_obsolete_option(ENABLE_FMA3 FMA3 ON)
 
 ti_optimization_process_obsolete_option(ENABLE_VFPV3 VFPV3 OFF)
-ti_optimization_process_obsolete_option(ENABLE_NEON NEON OFF)
+ti_optimization_process_obsolete_option(ENABLE_NEON NEON ON)
 
 ti_optimization_process_obsolete_option(ENABLE_VSX VSX ON)
-
-ti_optimization_process_obsolete_option(ENABLE_RVV RVV OFF)
 
 macro(ti_is_optimization_in_list resultvar check_opt)
   set(__checked "")
@@ -167,8 +170,30 @@ elseif(" ${CMAKE_CXX_FLAGS} " MATCHES " -march=native | -xHost | /QxHost ")
   set(CPU_BASELINE_DETECT ON)
 endif()
 
+# For platforms which don't allow enabling of extra instruction sets with separate compiler options.
+# E.g. GCC/Clang for RISC-V/AArch64 use suffixes for -march option. So we should avoid using existing
+# CPU features mechanisms and rely on cmake-toolchain files or flags provided via command-line.
+macro(ti_default_baseline_detect_and_check_dispatch)
+  set(CPU_BASELINE "DETECT" CACHE STRING "${HELP_CPU_BASELINE}")
+  if(NOT CPU_BASELINE MATCHES "^(DETECT|NATIVE|)$")
+    message(WARNING "CPU_BASELINE is set to '${CPU_BASELINE}', but '${CMAKE_SYSTEM_PROCESSOR}' "
+                    "platform is designed to work with DETECT|NATIVE|<empty>, "
+                    "otherwise target CPU architecture may be changed unexpectedly. "
+                    "Please check your resulting compiler flags in the CMake output.")
+  endif()
+  foreach(opt ${CPU_DISPATCH})
+    if(NOT DEFINED CPU_${opt}_FLAGS_ON)
+      message(WARNING "${opt} is in the CPU_DISPATCH list, but 'CPU_${opt}_FLAGS_ON' is not set. "
+                      "Please provide feature-specific compiler options explicitly.")
+    endif()
+  endforeach()
+endmacro()
+
+#===================================================================================================
+
 if(X86 OR X86_64)
-  ti_update(CPU_KNOWN_OPTIMIZATIONS "SSE;SSE2;SSE3;SSSE3;SSE4_1;POPCNT;SSE4_2;FP16;FMA3;AVX;AVX2;AVX_512F;AVX512_COMMON;AVX512_KNL;AVX512_KNM;AVX512_SKX;AVX512_CNL;AVX512_CLX;AVX512_ICL")
+
+  ti_update(CPU_KNOWN_OPTIMIZATIONS "SSE;SSE2;SSE3;SSSE3;SSE4_1;POPCNT;SSE4_2;AVX;FP16;AVX2;FMA3;AVX_512F;AVX512_COMMON;AVX512_KNL;AVX512_KNM;AVX512_SKX;AVX512_CNL;AVX512_CLX;AVX512_ICL")
 
   ti_update(CPU_AVX512_COMMON_GROUP "AVX_512F;AVX_512CD")
   ti_update(CPU_AVX512_KNL_GROUP "AVX512_COMMON;AVX512_KNL_EXTRA")
@@ -222,7 +247,7 @@ if(X86 OR X86_64)
     ti_update(CPU_SSE2_IMPLIES "SSE")
   endif()
 
-  if(TI_ICC)
+  if(TI_ICC OR TI_ICX)
     macro(ti_intel_compiler_optimization_option name unix_flags msvc_flags)
       ti_update(CPU_${name}_FLAGS_NAME "${name}")
       if(MSVC)
@@ -241,7 +266,7 @@ if(X86 OR X86_64)
     ti_intel_compiler_optimization_option(FP16 "-mavx" "/arch:AVX")
     ti_intel_compiler_optimization_option(AVX "-mavx" "/arch:AVX")
     ti_intel_compiler_optimization_option(FMA3 "" "")
-    ti_intel_compiler_optimization_option(POPCNT "" "")
+    ti_intel_compiler_optimization_option(POPCNT "-mpopcnt" "")  # -mpopcnt is available since ICC 19.0.0
     ti_intel_compiler_optimization_option(SSE4_2 "-msse4.2" "/arch:SSE4.2")
     ti_intel_compiler_optimization_option(SSE4_1 "-msse4.1" "/arch:SSE4.1")
     ti_intel_compiler_optimization_option(SSE3 "-msse3" "/arch:SSE3")
@@ -258,7 +283,7 @@ if(X86 OR X86_64)
     ti_intel_compiler_optimization_option(AVX512_CNL "-xCANNONLAKE" "/Qx:CANNONLAKE")
     ti_intel_compiler_optimization_option(AVX512_CLX "-xCASCADELAKE" "/Qx:CASCADELAKE")
     ti_intel_compiler_optimization_option(AVX512_ICL "-xICELAKE-CLIENT" "/Qx:ICELAKE-CLIENT")
-  elseif(TI_GCC OR TI_CLANG)
+  elseif(TI_GCC OR TI_CLANG OR TI_ICX)
     ti_update(CPU_AVX2_FLAGS_ON "-mavx2")
     ti_update(CPU_FP16_FLAGS_ON "-mf16c")
     ti_update(CPU_AVX_FLAGS_ON "-mavx")
@@ -329,6 +354,9 @@ if(X86 OR X86_64)
 elseif(ARM OR AARCH64)
   ti_update(CPU_NEON_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_neon.cpp")
   ti_update(CPU_FP16_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_fp16.cpp")
+  ti_update(CPU_NEON_FP16_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_neon_fp16.cpp")
+  ti_update(CPU_NEON_BF16_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_neon_bf16.cpp")
+  ti_update(CPU_NEON_DOTPROD_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_neon_dotprod.cpp")
   if(NOT AARCH64)
     ti_update(CPU_KNOWN_OPTIMIZATIONS "VFPV3;NEON;FP16")
     if(NOT MSVC)
@@ -340,17 +368,33 @@ elseif(ARM OR AARCH64)
     endif()
     ti_update(CPU_FP16_IMPLIES "NEON")
   else()
-    ti_update(CPU_KNOWN_OPTIMIZATIONS "NEON;FP16")
-    ti_update(CPU_NEON_FLAGS_ON "")
+    ti_update(CPU_KNOWN_OPTIMIZATIONS "NEON;FP16;NEON_DOTPROD;NEON_FP16;NEON_BF16")
     ti_update(CPU_FP16_IMPLIES "NEON")
-    set(CPU_BASELINE "NEON;FP16" CACHE STRING "${HELP_CPU_BASELINE}")
+    ti_update(CPU_NEON_DOTPROD_IMPLIES "NEON")
+    ti_update(CPU_NEON_FP16_IMPLIES "NEON")
+    ti_update(CPU_NEON_BF16_IMPLIES "NEON")
+    if(MSVC)
+      ti_update(CPU_NEON_DOTPROD_FLAGS_ON "")
+      ti_update(CPU_NEON_FP16_FLAGS_ON "")
+      ti_update(CPU_NEON_BF16_FLAGS_ON "")
+    else()
+      ti_update(CPU_NEON_DOTPROD_FLAGS_ON "-march=armv8.2-a+dotprod")
+      ti_update(CPU_NEON_FP16_FLAGS_ON "-march=armv8.2-a+fp16")
+      ti_update(CPU_NEON_BF16_FLAGS_ON "-march=armv8.2-a+bf16")
+    endif()
+    set(CPU_DISPATCH "NEON_FP16;NEON_BF16;NEON_DOTPROD" CACHE STRING "${HELP_CPU_DISPATCH}")
+    ti_default_baseline_detect_and_check_dispatch()
   endif()
+
 elseif(MIPS)
+
   ti_update(CPU_MSA_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_msa.cpp")
   ti_update(CPU_KNOWN_OPTIMIZATIONS "MSA")
   ti_update(CPU_MSA_FLAGS_ON "-mmsa")
   set(CPU_BASELINE "DETECT" CACHE STRING "${HELP_CPU_BASELINE}")
+
 elseif(PPC64LE)
+
   ti_update(CPU_KNOWN_OPTIMIZATIONS "VSX;VSX3")
   ti_update(CPU_VSX_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_vsx.cpp")
   ti_update(CPU_VSX3_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_vsx3.cpp")
@@ -370,12 +414,29 @@ elseif(PPC64LE)
   set(CPU_DISPATCH "VSX3" CACHE STRING "${HELP_CPU_DISPATCH}")
   set(CPU_BASELINE "VSX" CACHE STRING "${HELP_CPU_BASELINE}")
 
-elseif(RISCV)
+elseif(RISTI)
+
+  ti_update(CPU_KNOWN_OPTIMIZATIONS "RVV;FP16;RVV_ZVFH")
   ti_update(CPU_RVV_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_rvv.cpp")
-  ti_update(CPU_KNOWN_OPTIMIZATIONS "RVV")
-  ti_update(CPU_RVV_FLAGS_ON "")
-  set(CPU_DISPATCH "RVV" CACHE STRING "${HELP_CPU_DISPATCH}")
-  set(CPU_BASELINE "RVV" CACHE STRING "${HELP_CPU_BASELINE}")
+  ti_update(CPU_FP16_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_fp16.cpp")
+  ti_update(CPU_RVV_ZVFH_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_rvv_fp16.cpp")
+  ti_update(CPU_RVV_ZVFH_IMPLIES "RVV;FP16")
+  ti_update(CPU_FP16_IMPLIES "RVV")
+  ti_update(CPU_RVV_FLAGS_ON "-march=rv64gc_v")
+  ti_update(CPU_FP16_FLAGS_ON "-march=rv64gc_v_zvfhmin")
+  ti_update(CPU_RVV_ZVFH_FLAGS_ON "-march=rv64gc_v_zvfhmin_zvfh")
+  ti_update(CPU_RVV_FLAGS_CONFLICT "-march=[^ ]*")
+  ti_default_baseline_detect_and_check_dispatch()
+
+elseif(LOONGARCH64)
+
+  ti_update(CPU_LSX_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_lsx.cpp")
+  ti_update(CPU_LASX_TEST_FILE "${Tiger_SOURCE_DIR}/cmake/checks/cpu_lasx.cpp")
+  ti_update(CPU_KNOWN_OPTIMIZATIONS "LSX;LASX")
+  ti_update(CPU_LSX_FLAGS_ON "-mlsx")
+  ti_update(CPU_LASX_FLAGS_ON "-mlasx")
+  set(CPU_BASELINE "LSX" CACHE STRING "${HELP_CPU_BASELINE}")
+  set(CPU_DISPATCH "LASX" CACHE STRING "${HELP_CPU_DISPATCH}")
 
 endif()
 
@@ -410,7 +471,7 @@ macro(ti_check_compiler_optimization OPT)
       set(_varname "")
       if(CPU_${OPT}_TEST_FILE)
         set(__available 0)
-        if(CPU_BASELINE_DETECT)
+        if(NOT __is_disabled AND (__is_from_baseline OR CPU_BASELINE_DETECT))
           set(_varname "HAVE_CPU_${OPT}_SUPPORT")
           ti_check_compiler_flag(CXX "${CPU_BASELINE_FLAGS}" "${_varname}" "${CPU_${OPT}_TEST_FILE}")
           if(${_varname})
@@ -530,7 +591,7 @@ foreach(OPT ${CPU_KNOWN_OPTIMIZATIONS})
   if(CPU_${OPT}_SUPPORTED)
     if(";${CPU_DISPATCH};" MATCHES ";${OPT};" AND NOT __is_from_baseline)
       list(APPEND CPU_DISPATCH_FINAL ${OPT})
-    elseif(__is_from_baseline)
+    elseif(__is_from_baseline AND NOT __is_disabled)
       if(NOT ";${CPU_BASELINE_FINAL};" MATCHES ";${OPT};")
         list(APPEND CPU_BASELINE_FINAL ${OPT})
       endif()
@@ -639,7 +700,7 @@ macro(ti_compiler_optimization_options)
 endmacro()
 
 macro(ti_compiler_optimization_options_finalize)
-  if((TI_GCC OR TI_CLANG) AND (X86 OR X86_64))
+  if((TI_GCC OR TI_CLANG OR TI_ICX) AND (X86 OR X86_64))
     if(NOT APPLE AND CMAKE_SIZEOF_VOID_P EQUAL 4)
       if(TIGER_EXTRA_CXX_FLAGS MATCHES "-m(sse2|avx)")
         add_extra_compiler_option(-mfpmath=sse) # !! important - be on the same wave with x64 compilers
@@ -688,7 +749,7 @@ macro(ti_compiler_optimization_process_sources SOURCES_VAR_NAME LIBS_VAR_NAME TA
           if(fname_LOWER MATCHES "\\.${OPT_LOWER}\\.cpp$")
 #message("${fname} BASELINE-${OPT}")
             set(__opt_found 1)
-            list(APPEND __result "${fname}")
+            list(APPEND __result_${OPT} "${fname}")
             break()
           endif()
         endforeach()
@@ -722,7 +783,7 @@ macro(ti_compiler_optimization_process_sources SOURCES_VAR_NAME LIBS_VAR_NAME TA
     endif()
   endforeach()
 
-  foreach(OPT ${CPU_DISPATCH_FINAL})
+  foreach(OPT ${CPU_BASELINE_FINAL} ${CPU_DISPATCH_FINAL})
     if(__result_${OPT})
 #message("${OPT}: ${__result_${OPT}}")
       if(CMAKE_GENERATOR MATCHES "^Visual"
@@ -926,7 +987,7 @@ macro(ti_add_dispatched_file_force_all)
 endmacro()
 
 
-if(TI_DISABLE_OPTIMIZATION OR TI_ICC)
+if(TI_DISABLE_OPTIMIZATION OR TI_ICC OR CX_ICX)
   ti_update(TI_ENABLE_UNROLLED 0)
 else()
   ti_update(TI_ENABLE_UNROLLED 1)

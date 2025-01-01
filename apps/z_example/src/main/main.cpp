@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
             && log4c_properties.exists(LOG4CPLUS_TEXT("logger.error")))
         {
             log4c_configurator.configure();
-            qInstallMessageHandler(laserLogOutput);
+            qInstallMessageHandler(TigerLogOutput);
         }
         else
         {

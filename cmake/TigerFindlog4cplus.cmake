@@ -1,7 +1,7 @@
 # ----------------------
 # Find log4cplus
 
-find_package(log4cplus REQUIRED PATHS ${TI_DEV_PATH} NO_DEFAULT_PATH)
+find_package(log4cplus CONFIG REQUIRED)
 
-set(log4cplus_LIBRARIES "log4cplus::log4cplusU")
+set(log4cplus_LIBRARIES "log4cplus::log4cplus")
 ti_list_components(log4cplus)

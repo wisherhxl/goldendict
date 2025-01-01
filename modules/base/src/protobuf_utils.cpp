@@ -1,11 +1,11 @@
 ﻿/*
- * Copyright (c) 2020-2022, Shanghai Institute of Laser Development Team
+ * Copyright (c) 2023 Huang Xiling
+ * SPDX-License-Identifier: MIT
  *
- * SPDX-License-Identifier: MIT License
+ * This file is part of the Tiger Template.
+ * Distributed under the MIT License. See LICENSE file for details.
  *
- * Change Logs:
- * Date           Author           Notes
- * 2023-08-21     Huang Xiling     first version
+ * Created Date: 2023-08-21
  */
 
 #include "tiger/base/protobuf_utils.h"
@@ -19,12 +19,14 @@
 
 namespace ti {
 
-bool ProtobufUtil::writeMessageToJson(const google::protobuf::Message& msg, const QString& url) {
+bool ProtobufUtil::writeMessageToJson(const google::protobuf::Message& msg,
+                                      const QString& url) {
     QSaveFile target(url);
     const QFileInfo target_info(url);
     const auto target_dir = target_info.absoluteDir();
     if (!target_dir.mkpath(target_dir.absolutePath())) {
-        qCritical() << QObject::tr("Cannot create dir at: %1").arg(target_dir.absolutePath());
+        qCritical() << QObject::tr("Cannot create dir at: %1")
+                           .arg(target_dir.absolutePath());
         return false;
     }
 
@@ -34,7 +36,8 @@ bool ProtobufUtil::writeMessageToJson(const google::protobuf::Message& msg, cons
     (void)MessageToJsonString(msg, &msg_json, options);
 
     if (!target.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qCritical() << QObject::tr("Cannot open file for writing at: %1.").arg(target_info.absoluteFilePath());
+        qCritical() << QObject::tr("Cannot open file for writing at: %1.")
+                           .arg(target_info.absoluteFilePath());
         return false;
     }
 
@@ -47,15 +50,18 @@ bool ProtobufUtil::writeMessageToJson(const google::protobuf::Message& msg, cons
     }
 
     if (!target.commit()) {
-        qCritical() << QObject::tr("File writing error at: %1.").arg(target_info.absoluteFilePath());
+        qCritical() << QObject::tr("File writing error at: %1.")
+                           .arg(target_info.absoluteFilePath());
         return false;
     }
 
-    qInfo() << QObject::tr("File wrote to: %1").arg(target_info.absoluteFilePath());
+    qInfo()
+        << QObject::tr("File wrote to: %1").arg(target_info.absoluteFilePath());
     return true;
 }
 
-bool ProtobufUtil::readMessageFromJson(google::protobuf::Message* msg, const QString& url) {
+bool ProtobufUtil::readMessageFromJson(google::protobuf::Message* msg,
+                                       const QString& url) {
     QFile target(url);
     if (!target.exists()) {
         qCritical() << QObject::tr("File doesn't exist: %1.").arg(url);
@@ -79,15 +85,18 @@ bool ProtobufUtil::readMessageFromJson(google::protobuf::Message* msg, const QSt
     return true;
 }
 
-bool ProtobufUtil::writeMessageToBin(const google::protobuf::Message& msg, const QString& url) {
+bool ProtobufUtil::writeMessageToBin(const google::protobuf::Message& msg,
+                                     const QString& url) {
     const QFileInfo target_info(url);
     const auto target_dir = target_info.absoluteDir();
     if (!target_dir.mkpath(target_dir.absolutePath())) {
-        qCritical() << QObject::tr("Cannot create dir at: %1").arg(target_dir.absolutePath());
+        qCritical() << QObject::tr("Cannot create dir at: %1")
+                           .arg(target_dir.absolutePath());
         return false;
     }
 
-    std::fstream output(url.toStdString(), std::ios::out | std::ios::trunc | std::ios::binary);
+    std::fstream output(url.toStdString(),
+                        std::ios::out | std::ios::trunc | std::ios::binary);
 
     if (!msg.SerializeToOstream(&output)) {
         qCritical() << QObject::tr("Failed to write file: %1.").arg(url);
@@ -98,7 +107,8 @@ bool ProtobufUtil::writeMessageToBin(const google::protobuf::Message& msg, const
     return true;
 }
 
-bool ProtobufUtil::readMessageFromBin(google::protobuf::Message* msg, const QString& url) {
+bool ProtobufUtil::readMessageFromBin(google::protobuf::Message* msg,
+                                      const QString& url) {
     std::fstream input(url.toStdString(), std::ios::in | std::ios::binary);
 
     if (!input) {

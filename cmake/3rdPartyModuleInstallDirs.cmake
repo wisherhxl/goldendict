@@ -1,13 +1,13 @@
 # --------------------
-#  Optional: Set OpenCV and Qt install dir
+#  Optional: Set Tiger and Qt install dir
 #  to find them automatically
 # set(QT_INSTALL_DIR
     # "$ENV{QT_DIR}"
     # "${QT_SEARCH_DIR}"
 # )
-# set(OPENCV_INSTALL_DIR
-    # "$ENV{OPENCV_DIR}"
-    # "${OPENCV_SEARCH_DIR}"
+# set(TIGER_INSTALL_DIR
+    # "$ENV{TIGER_DIR}"
+    # "${TIGER_SEARCH_DIR}"
 # )
 # set(PROTOBUF_INSTALL_DIR
     # "$ENV{PROTOBUF_DIR}"

@@ -12,7 +12,7 @@
 #   ADD_NATIVE_PRECOMPILED_HEADER _targetName _input _dowarn
 #   GET_NATIVE_PRECOMPILED_HEADER _targetName _input
 
-IF(CV_GCC)
+IF(TI_GCC)
 
     IF(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.2.0")
         SET(PCHSupport_FOUND TRUE)
@@ -36,7 +36,7 @@ MACRO(_PCH_GET_COMPILE_FLAGS _out_compile_flags)
     STRING(TOUPPER "CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}" _flags_var_name)
     SET(${_out_compile_flags} ${${_flags_var_name}} )
 
-    IF(CV_GCC)
+    IF(TI_GCC)
 
         GET_TARGET_PROPERTY(_targetType ${_PCH_current_target} TYPE)
         IF(${_targetType} STREQUAL SHARED_LIBRARY AND NOT WIN32)
@@ -62,10 +62,10 @@ MACRO(_PCH_GET_COMPILE_FLAGS _out_compile_flags)
 
     GET_DIRECTORY_PROPERTY(DIRINC INCLUDE_DIRECTORIES )
     FOREACH(item ${DIRINC})
-        ti_is_tiger_directory(__result ${item})
+        ti_is_opencv_directory(__result ${item})
         if(__result)
           LIST(APPEND ${_out_compile_flags} "${_PCH_include_prefix}\"${item}\"")
-        elseif(CV_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0" AND
+        elseif(TI_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0" AND
                item MATCHES "/usr/include$")
           # workaround for GCC 6.x bug
         else()
@@ -75,10 +75,10 @@ MACRO(_PCH_GET_COMPILE_FLAGS _out_compile_flags)
 
     get_target_property(DIRINC ${_PCH_current_target} INCLUDE_DIRECTORIES )
     FOREACH(item ${DIRINC})
-        ti_is_tiger_directory(__result ${item})
+        ti_is_opencv_directory(__result ${item})
         if(__result)
           LIST(APPEND ${_out_compile_flags} "${_PCH_include_prefix}\"${item}\"")
-        elseif(CV_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0" AND
+        elseif(TI_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0" AND
                item MATCHES "/usr/include$")
           # workaround for GCC 6.x bug
         else()
@@ -119,7 +119,7 @@ MACRO(_PCH_GET_COMPILE_COMMAND out_command _input _output)
     FILE(TO_NATIVE_PATH ${_input} _native_input)
     FILE(TO_NATIVE_PATH ${_output} _native_output)
 
-    if(CV_GCC)
+    if(TI_GCC)
         IF(CMAKE_CXX_COMPILER_ARG1)
             # remove leading space in compiler argument
             STRING(REGEX REPLACE "^ +" "" pchsupport_compiler_cxx_arg1 ${CMAKE_CXX_COMPILER_ARG1})
@@ -151,7 +151,7 @@ MACRO(_PCH_GET_TARGET_COMPILE_FLAGS _cflags  _header_name _pch_path _dowarn )
 
     FILE(TO_NATIVE_PATH ${_pch_path} _native_pch_path)
 
-    IF(CV_GCC)
+    IF(TI_GCC)
         # for use with distcc and gcc >4.0.1 if preprocessed files are accessible
         # on all remote machines set
         # PCH_ADDITIONAL_COMPILER_FLAGS to -fpch-preprocess
@@ -196,7 +196,7 @@ MACRO(ADD_PRECOMPILED_HEADER_TO_TARGET _targetName _input _pch_output_to_use )
 
     _PCH_GET_TARGET_COMPILE_FLAGS(_target_cflags ${_name} ${_pch_output_to_use} ${_dowarn})
     #MESSAGE("Add flags ${_target_cflags} to ${_targetName} " )
-    if(CV_GCC)
+    if(TI_GCC)
       set(_target_cflags "${_target_cflags} -include \"${CMAKE_CURRENT_BINARY_DIR}/${_name}\"")
     endif()
 
@@ -331,7 +331,8 @@ ENDMACRO(ADD_PRECOMPILED_HEADER)
 MACRO(GET_NATIVE_PRECOMPILED_HEADER _targetName _input)
 
   if(ENABLE_PRECOMPILED_HEADERS)
-    if(CMAKE_GENERATOR MATCHES "^Visual.*$")
+    if(CMAKE_GENERATOR MATCHES "^Visual.*$"
+       AND (CMAKE_VERSION VERSION_LESS "3.16" OR TIGER_SKIP_CMAKE_BUILTIN_PCH)) # with 3.16+ we use target_precompile_headers
         set(${_targetName}_pch ${CMAKE_CURRENT_BINARY_DIR}/${_targetName}_pch.cpp)
     endif()
   endif()
@@ -406,9 +407,11 @@ ENDMACRO(ADD_NATIVE_PRECOMPILED_HEADER)
 
 macro(ti_add_precompiled_header_to_target the_target pch_header)
   if(PCHSupport_FOUND AND ENABLE_PRECOMPILED_HEADERS AND EXISTS "${pch_header}")
-    if(CMAKE_GENERATOR MATCHES "^Visual" OR CMAKE_GENERATOR MATCHES Xcode)
+    if(NOT CMAKE_VERSION VERSION_LESS "3.16" AND NOT TIGER_SKIP_CMAKE_BUILTIN_PCH)
+      target_precompile_headers(${the_target} PRIVATE ${pch_header})
+    elseif(CMAKE_GENERATOR MATCHES "^Visual" OR CMAKE_GENERATOR MATCHES Xcode)
       add_native_precompiled_header(${the_target} ${pch_header})
-    elseif(CV_GCC AND CMAKE_GENERATOR MATCHES "Makefiles|Ninja")
+    elseif(TI_GCC AND CMAKE_GENERATOR MATCHES "Makefiles|Ninja")
       add_precompiled_header(${the_target} ${pch_header})
     endif()
   endif()

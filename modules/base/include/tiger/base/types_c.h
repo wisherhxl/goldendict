@@ -41,8 +41,8 @@
 //
 //M*/
 
-#ifndef TIGER_CORE_TYPES_H
-#define TIGER_CORE_TYPES_H
+#ifndef TIGER_CORE_TYPES_H_
+#define TIGER_CORE_TYPES_H_
 
 #ifdef __cplusplus
 
@@ -139,6 +139,6 @@
 
 /** @} */
 
-#endif /*TIGER_CORE_TYPES_H*/
+#endif /*TIGER_CORE_TYPES_H_*/
 
 /* End of file. */

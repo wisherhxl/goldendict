@@ -4,4 +4,4 @@
 /* Intel Threading Building Blocks */
 #cmakedefine HAVE_TBB
 
-#endif // TIGER_CVCONFIG_H_INCLUDED
+#endif // TIGER_TICONFIG_H_INCLUDED

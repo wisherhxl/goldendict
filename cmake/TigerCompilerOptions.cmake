@@ -1,13 +1,6 @@
 if("${CMAKE_CXX_COMPILER};${CMAKE_C_COMPILER};${CMAKE_CXX_COMPILER_LAUNCHER}" MATCHES "ccache")
-  set(CMAKE_COMPILER_IS_CCACHE 1)  # TODO: FIXIT Avoid setting of CMAKE_ variables
   set(TIGER_COMPILER_IS_CCACHE 1)
 endif()
-function(access_CMAKE_COMPILER_IS_CCACHE)
-  if(NOT TIGER_SUPPRESS_DEPRECATIONS)
-    message(WARNING "DEPRECATED: CMAKE_COMPILER_IS_CCACHE is replaced to TIGER_COMPILER_IS_CCACHE.")
-  endif()
-endfunction()
-variable_watch(CMAKE_COMPILER_IS_CCACHE access_CMAKE_COMPILER_IS_CCACHE)
 if(ENABLE_CCACHE AND NOT TIGER_COMPILER_IS_CCACHE)
   # This works fine with Unix Makefiles and Ninja generators
   find_host_program(CCACHE_PROGRAM ccache)
@@ -48,7 +41,7 @@ if(ENABLE_CCACHE AND NOT TIGER_COMPILER_IS_CCACHE)
   endif()
 endif()
 
-if((CV_CLANG AND NOT CMAKE_GENERATOR MATCHES "Xcode")  # PCH has no support for Clang
+if((TI_CLANG AND NOT CMAKE_GENERATOR MATCHES "Xcode")  # PCH has no support for Clang
     OR TIGER_COMPILER_IS_CCACHE
 )
   set(ENABLE_PRECOMPILED_HEADERS OFF CACHE BOOL "" FORCE)
@@ -84,6 +77,17 @@ macro(add_env_definitions option)
   add_definitions("-D${option}=\"${value}\"")
 endmacro()
 
+# Use same flags for native AArch64 and RISC-V compilation as for cross-compile (Linux)
+if(NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_TOOLCHAIN_FILE AND COMMAND ti_set_platform_flags)
+  unset(platform_flags)
+  ti_set_platform_flags(platform_flags)
+  # externally-provided flags should have higher priority - prepend our flags
+  if(platform_flags)
+    set(CMAKE_CXX_FLAGS "${platform_flags} ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "${platform_flags} ${CMAKE_C_FLAGS}")
+  endif()
+endif()
+
 if(NOT MSVC)
   # Tiger fails some tests when 'char' is 'unsigned' by default
   add_extra_compiler_option(-fsigned-char)
@@ -97,7 +101,7 @@ if(MSVC)
       add_extra_compiler_option("/fp:precise")
     endif()
   endif()
-elseif(CV_ICC)
+elseif(TI_ICC)
   if(NOT " ${CMAKE_CXX_FLAGS} ${TIGER_EXTRA_FLAGS} ${TIGER_EXTRA_CXX_FLAGS}" MATCHES " /fp:"
       AND NOT " ${CMAKE_CXX_FLAGS} ${TIGER_EXTRA_FLAGS} ${TIGER_EXTRA_CXX_FLAGS}" MATCHES " -fp-model"
   )
@@ -105,13 +109,27 @@ elseif(CV_ICC)
       add_extra_compiler_option("-fp-model precise")
     endif()
   endif()
-elseif(CV_GCC OR CV_CLANG)
+elseif(TI_ICX)
+  # ICX uses -ffast-math by default.
+  # use own flags, if no one of the flags provided by user: -fp-model, -ffast-math -fno-fast-math
+  if(NOT " ${CMAKE_CXX_FLAGS} ${TIGER_EXTRA_FLAGS} ${TIGER_EXTRA_CXX_FLAGS}" MATCHES " /fp:"
+      AND NOT " ${CMAKE_CXX_FLAGS} ${TIGER_EXTRA_FLAGS} ${TIGER_EXTRA_CXX_FLAGS}" MATCHES " -fp-model"
+      AND NOT " ${CMAKE_CXX_FLAGS} ${TIGER_EXTRA_FLAGS} ${TIGER_EXTRA_CXX_FLAGS}" MATCHES " -ffast-math"
+      AND NOT " ${CMAKE_CXX_FLAGS} ${TIGER_EXTRA_FLAGS} ${TIGER_EXTRA_CXX_FLAGS}" MATCHES " -fno-fast-math"
+  )
+    if(NOT ENABLE_FAST_MATH)
+      add_extra_compiler_option(-fno-fast-math)
+      add_extra_compiler_option(-fp-model=precise)
+    endif()
+  endif()
+elseif(TI_GCC OR TI_CLANG)
   if(ENABLE_FAST_MATH)
     add_extra_compiler_option(-ffast-math)
+    add_extra_compiler_option(-fno-finite-math-only)
   endif()
 endif()
 
-if(CV_GCC OR CV_CLANG)
+if(TI_GCC OR TI_CLANG OR TI_ICX)
   # High level of warnings.
   add_extra_compiler_option(-W)
   if (NOT MSVC)
@@ -119,24 +137,24 @@ if(CV_GCC OR CV_CLANG)
     # we want.
     add_extra_compiler_option(-Wall)
   endif()
-  add_extra_compiler_option(-Werror=return-type)
-  add_extra_compiler_option(-Werror=non-virtual-dtor)
-  add_extra_compiler_option(-Werror=address)
-  add_extra_compiler_option(-Werror=sequence-point)
+  add_extra_compiler_option(-Wreturn-type)
+  add_extra_compiler_option(-Wnon-virtual-dtor)
+  add_extra_compiler_option(-Waddress)
+  add_extra_compiler_option(-Wsequence-point)
   add_extra_compiler_option(-Wformat)
-  add_extra_compiler_option(-Werror=format-security -Wformat)
+  add_extra_compiler_option(-Wformat-security -Wformat)
   add_extra_compiler_option(-Wmissing-declarations)
   add_extra_compiler_option(-Wmissing-prototypes)
   add_extra_compiler_option(-Wstrict-prototypes)
   add_extra_compiler_option(-Wundef)
   add_extra_compiler_option(-Winit-self)
   add_extra_compiler_option(-Wpointer-arith)
-  if(NOT (CV_GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.0"))
+  if(NOT (TI_GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.0"))
     add_extra_compiler_option(-Wshadow)  # old GCC emits warnings for variables + methods combination
   endif()
   add_extra_compiler_option(-Wsign-promo)
   add_extra_compiler_option(-Wuninitialized)
-  if(CV_GCC AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 6.0) AND (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0))
+  if(TI_GCC AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 6.0) AND (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0 OR ARM))
     add_extra_compiler_option(-Wno-psabi)
   endif()
   if(HAVE_CXX11)
@@ -156,17 +174,17 @@ if(CV_GCC OR CV_CLANG)
     add_extra_compiler_option(-Wno-comment)
     if(NOT TIGER_SKIP_IMPLICIT_FALLTHROUGH
         AND NOT " ${CMAKE_CXX_FLAGS} ${TIGER_EXTRA_FLAGS} ${TIGER_EXTRA_CXX_FLAGS}" MATCHES "implicit-fallthrough"
-        AND (CV_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0.0)
+        AND (TI_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0.0)
     )
       add_extra_compiler_option(-Wimplicit-fallthrough=3)
     endif()
-    if(CV_GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+    if(TI_GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       add_extra_compiler_option(-Wno-strict-overflow) # Issue appears when compiling surf.cpp from tiger_contrib/modules/xfeatures2d
     endif()
-    if(CV_GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
+    if(TI_GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
       add_extra_compiler_option(-Wno-missing-field-initializers)  # GCC 4.x emits warnings about {}, fixed in GCC 5+
     endif()
-    if(CV_CLANG AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.0)
+    if(TI_CLANG AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.0)
       add_extra_compiler_option(-Wno-deprecated-enum-enum-conversion)
       add_extra_compiler_option(-Wno-deprecated-anon-enum-enum-conversion)
     endif()
@@ -178,12 +196,21 @@ if(CV_GCC OR CV_CLANG)
     add_extra_compiler_option(-Wno-long-long)
   endif()
 
-  # We need pthread's
-  if(UNIX AND NOT ANDROID AND NOT (APPLE AND CV_CLANG)) # TODO
+  # We need pthread's, unless we have explicitly disabled multi-thread execution.
+  if(NOT TIGER_DISABLE_THREAD_SUPPORT
+      AND (
+        (UNIX
+          AND NOT ANDROID
+          AND NOT (APPLE AND TI_CLANG)
+          AND NOT EMSCRIPTEN
+        )
+        OR (EMSCRIPTEN AND WITH_PTHREADS_PF)  # https://github.com/tiger/tiger/issues/20285
+      )
+  ) # TODO
     add_extra_compiler_option(-pthread)
   endif()
 
-  if(CV_CLANG)
+  if(TI_CLANG)
     add_extra_compiler_option(-Qunused-arguments)
   endif()
 
@@ -227,9 +254,11 @@ if(CV_GCC OR CV_CLANG)
         if(APPLE)
           set(TIGER_EXTRA_EXE_LINKER_FLAGS "${TIGER_EXTRA_EXE_LINKER_FLAGS} -Wl,-dead_strip")
           set(TIGER_EXTRA_SHARED_LINKER_FLAGS "${TIGER_EXTRA_SHARED_LINKER_FLAGS} -Wl,-dead_strip")
+          set(TIGER_EXTRA_MODULE_LINKER_FLAGS "${TIGER_EXTRA_MODULE_LINKER_FLAGS} -Wl,-dead_strip")
         else()
           set(TIGER_EXTRA_EXE_LINKER_FLAGS "${TIGER_EXTRA_EXE_LINKER_FLAGS} -Wl,--gc-sections")
           set(TIGER_EXTRA_SHARED_LINKER_FLAGS "${TIGER_EXTRA_SHARED_LINKER_FLAGS} -Wl,--gc-sections")
+          set(TIGER_EXTRA_MODULE_LINKER_FLAGS "${TIGER_EXTRA_MODULE_LINKER_FLAGS} -Wl,--gc-sections")
         endif()
       endif()
     endif()
@@ -249,7 +278,11 @@ if(CV_GCC OR CV_CLANG)
   endif()
 
   if(ENABLE_LTO)
-    add_extra_compiler_option(-flto)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 12)
+      add_extra_compiler_option(-flto=auto)
+    else()
+      add_extra_compiler_option(-flto)
+    endif()
   endif()
   if(ENABLE_THIN_LTO)
     add_extra_compiler_option(-flto=thin)
@@ -281,6 +314,7 @@ if(MSVC)
     set(TIGER_EXTRA_FLAGS_RELEASE "${TIGER_EXTRA_FLAGS_RELEASE} /Zi")
     set(TIGER_EXTRA_EXE_LINKER_FLAGS_RELEASE "${TIGER_EXTRA_EXE_LINKER_FLAGS_RELEASE} /debug")
     set(TIGER_EXTRA_SHARED_LINKER_FLAGS_RELEASE "${TIGER_EXTRA_SHARED_LINKER_FLAGS_RELEASE} /debug")
+    set(TIGER_EXTRA_MODULE_LINKER_FLAGS_RELEASE "${TIGER_EXTRA_MODULE_LINKER_FLAGS_RELEASE} /debug")
   endif()
 
   # Remove unreferenced functions: function level linking
@@ -302,6 +336,10 @@ if(MSVC)
     set(TIGER_EXTRA_C_FLAGS "${TIGER_EXTRA_C_FLAGS} /FS")
     set(TIGER_EXTRA_CXX_FLAGS "${TIGER_EXTRA_CXX_FLAGS} /FS")
   endif()
+
+  if(AARCH64 AND NOT MSVC_VERSION LESS 1930)
+    set(TIGER_EXTRA_FLAGS "${TIGER_EXTRA_FLAGS} /D _ARM64_DISTINCT_NEON_TYPES")
+  endif()
 endif()
 
 if(PROJECT_NAME STREQUAL "Tiger")
@@ -315,7 +353,7 @@ if(COMMAND ti_compiler_optimization_options_finalize)
 endif()
 
 # set default visibility to hidden
-if((CV_GCC OR CV_CLANG)
+if((TI_GCC OR TI_CLANG OR TI_ICX)
     AND NOT MSVC
     AND NOT TIGER_SKIP_VISIBILITY_HIDDEN
     AND NOT " ${CMAKE_CXX_FLAGS} ${TIGER_EXTRA_FLAGS} ${TIGER_EXTRA_CXX_FLAGS}" MATCHES " -fvisibility")
@@ -328,20 +366,20 @@ endif()
 if((PPC64LE AND NOT CMAKE_CROSSCOMPILING) OR TIGER_FORCE_COMPILER_CHECK_VSX_ALIGNED)
   ti_check_runtime_flag("${CPU_BASELINE_FLAGS}" TIGER_CHECK_VSX_ALIGNED "${Tiger_SOURCE_DIR}/cmake/checks/runtime/cpu_vsx_aligned.cpp")
   if(NOT TIGER_CHECK_VSX_ALIGNED)
-    add_extra_compiler_option_force(-DCV_COMPILER_VSX_BROKEN_ALIGNED)
+    add_extra_compiler_option_force(-DTI_COMPILER_VSX_BROKEN_ALIGNED)
   endif()
 endif()
 # validate inline asm with fixes register number and constraints wa, wd, wf
 if(PPC64LE)
   ti_check_compiler_flag(CXX "${CPU_BASELINE_FLAGS}" TIGER_CHECK_VSX_ASM "${Tiger_SOURCE_DIR}/cmake/checks/cpu_vsx_asm.cpp")
   if(NOT TIGER_CHECK_VSX_ASM)
-    add_extra_compiler_option_force(-DCV_COMPILER_VSX_BROKEN_ASM)
+    add_extra_compiler_option_force(-DTI_COMPILER_VSX_BROKEN_ASM)
   endif()
 endif()
 
 # Apply "-Wl,--as-needed" linker flags: https://github.com/tiger/tiger/issues/7001
 if(NOT TIGER_SKIP_LINK_AS_NEEDED)
-  if(UNIX AND (NOT APPLE OR NOT CMAKE_VERSION VERSION_LESS "3.2"))
+  if(UNIX)
     set(_option "-Wl,--as-needed")
     set(_saved_CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${_option}")  # requires CMake 3.2+ and CMP0056
@@ -350,6 +388,23 @@ if(NOT TIGER_SKIP_LINK_AS_NEEDED)
     if(HAVE_LINK_AS_NEEDED)
       set(TIGER_EXTRA_EXE_LINKER_FLAGS "${TIGER_EXTRA_EXE_LINKER_FLAGS} ${_option}")
       set(TIGER_EXTRA_SHARED_LINKER_FLAGS "${TIGER_EXTRA_SHARED_LINKER_FLAGS} ${_option}")
+      set(TIGER_EXTRA_MODULE_LINKER_FLAGS "${TIGER_EXTRA_MODULE_LINKER_FLAGS} ${_option}")
+    endif()
+  endif()
+endif()
+
+# Apply "-Wl,--no-undefined" linker flags: https://github.com/tiger/tiger/pull/21347
+if(NOT TIGER_SKIP_LINK_NO_UNDEFINED)
+  if(UNIX AND (NOT CMAKE_SYSTEM_NAME MATCHES "OpenBSD"))
+    set(_option "-Wl,--no-undefined")
+    set(_saved_CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${_option}")  # requires CMake 3.2+ and CMP0056
+    ti_check_compiler_flag(CXX "" HAVE_LINK_NO_UNDEFINED)
+    set(CMAKE_EXE_LINKER_FLAGS "${_saved_CMAKE_EXE_LINKER_FLAGS}")
+    if(HAVE_LINK_NO_UNDEFINED)
+      set(TIGER_EXTRA_EXE_LINKER_FLAGS "${TIGER_EXTRA_EXE_LINKER_FLAGS} ${_option}")
+      set(TIGER_EXTRA_SHARED_LINKER_FLAGS "${TIGER_EXTRA_SHARED_LINKER_FLAGS} ${_option}")
+      set(TIGER_EXTRA_MODULE_LINKER_FLAGS "${TIGER_EXTRA_MODULE_LINKER_FLAGS} ${_option}")
     endif()
   endif()
 endif()
@@ -368,6 +423,9 @@ if(NOT TIGER_SKIP_EXTRA_COMPILER_FLAGS)
   set(CMAKE_SHARED_LINKER_FLAGS         "${CMAKE_SHARED_LINKER_FLAGS} ${TIGER_EXTRA_SHARED_LINKER_FLAGS}")
   set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} ${TIGER_EXTRA_SHARED_LINKER_FLAGS_RELEASE}")
   set(CMAKE_SHARED_LINKER_FLAGS_DEBUG   "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} ${TIGER_EXTRA_SHARED_LINKER_FLAGS_DEBUG}")
+  set(CMAKE_MODULE_LINKER_FLAGS         "${CMAKE_MODULE_LINKER_FLAGS} ${TIGER_EXTRA_MODULE_LINKER_FLAGS}")
+  set(CMAKE_MODULE_LINKER_FLAGS_RELEASE "${CMAKE_MODULE_LINKER_FLAGS_RELEASE} ${TIGER_EXTRA_MODULE_LINKER_FLAGS_RELEASE}")
+  set(CMAKE_MODULE_LINKER_FLAGS_DEBUG   "${CMAKE_MODULE_LINKER_FLAGS_DEBUG} ${TIGER_EXTRA_MODULE_LINKER_FLAGS_DEBUG}")
 endif()
 
 if(MSVC)
@@ -391,22 +449,20 @@ if(MSVC)
     endif()
   endif()
 
+  # Enable [[attribute]] syntax checking to prevent silent failure: "attribute is ignored in this syntactic position"
+  add_extra_compiler_option("/w15240")
+
   if(NOT ENABLE_NOISY_WARNINGS)
     ti_warnings_disable(CMAKE_CXX_FLAGS /wd4127) # conditional expression is constant
     ti_warnings_disable(CMAKE_CXX_FLAGS /wd4251) # class 'std::XXX' needs to have dll-interface to be used by clients of YYY
     ti_warnings_disable(CMAKE_CXX_FLAGS /wd4324) # 'struct_name' : structure was padded due to __declspec(align())
-    ti_warnings_disable(CMAKE_CXX_FLAGS /wd4275) # non dll-interface class 'std::exception' used as base for dll-interface class 'ti::Exception'
+    ti_warnings_disable(CMAKE_CXX_FLAGS /wd4275) # non dll-interface class 'std::exception' used as base for dll-interface class 'cv::Exception'
     ti_warnings_disable(CMAKE_CXX_FLAGS /wd4512) # Assignment operator could not be generated
-    ti_warnings_disable(CMAKE_CXX_FLAGS /wd4589) # Constructor of abstract class 'ti::ORB' ignores initializer for virtual 
-	ti_warnings_disable(CMAKE_CXX_FLAGS /wd26495) # Protobuf currently do not init all variable
-	ti_warnings_disable(CMAKE_CXX_FLAGS /wd26812) # we do not care about enum or enum class
-	ti_warnings_disable(CMAKE_CXX_FLAGS /wd26451) # Another protobuf warning
-	ti_warnings_disable(CMAKE_CXX_FLAGS /wd6385) # Another protobuf warning
-	ti_warnings_disable(CMAKE_CXX_FLAGS /wd6387) # Another protobuf warning
-	ti_warnings_disable(CMAKE_CXX_FLAGS /wd26498) # Qt warning
+    ti_warnings_disable(CMAKE_CXX_FLAGS /wd4589) # Constructor of abstract class 'cv::ORB' ignores initializer for virtual base class 'cv::Algorithm'
+    ti_warnings_disable(CMAKE_CXX_FLAGS /wd4819) # Symbols like delta or epsilon cannot be represented
   endif()
 
-  if(CV_ICC AND NOT ENABLE_NOISY_WARNINGS)
+  if(TI_ICC AND NOT ENABLE_NOISY_WARNINGS)
     foreach(flags CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_DEBUG CMAKE_C_FLAGS CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_DEBUG)
       string(REGEX REPLACE "( |^)/W[0-9]+( |$)" "\\1\\2" ${flags} "${${flags}}")
     endforeach()

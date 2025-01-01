@@ -7,18 +7,29 @@ set(qt_modules
         Core
         Gui
         Widgets
-        # Network
+        Network
         OpenGL
         OpenGLWidgets
-        # Sql
+        Sql
         Xml
-        # SerialPort
-        # SerialBus
+        SerialPort
+        SerialBus
         Test
 )
 
-find_package(Qt6 COMPONENTS ${qt_modules} REQUIRED PATHS ${TI_DEV_PATH} NO_DEFAULT_PATH)
-find_package(Qt6 COMPONENTS LinguistTools REQUIRED PATHS ${TI_DEV_PATH} NO_DEFAULT_PATH)
+message(STATUS "Searching for Qt6")
+
+message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
+
+message(STATUS "CMAKE_FIND_ROOT_PATH: ${CMAKE_FIND_ROOT_PATH}")
+message(STATUS "CMAKE_FIND_ROOT_PATH_MODE_PROGRAM: ${CMAKE_FIND_ROOT_PATH_MODE_PROGRAM}")
+message(STATUS "CMAKE_FIND_ROOT_PATH_MODE_LIBRARY: ${CMAKE_FIND_ROOT_PATH_MODE_LIBRARY}")
+message(STATUS "CMAKE_FIND_ROOT_PATH_MODE_INCLUDE: ${CMAKE_FIND_ROOT_PATH_MODE_INCLUDE}")
+
+set(CMAKE_FIND_DEBUG_MODE ON)
+find_package(Qt6 COMPONENTS ${qt_modules} REQUIRED QUIET)
+find_package(Qt6 COMPONENTS LinguistTools REQUIRED QUIET)
+set(CMAKE_FIND_DEBUG_MODE OFF)
 
 if(NOT Qt6_FOUND OR NOT Qt6_DIR)
     message(FATAL_ERROR "Qt6 NOT FOUND")

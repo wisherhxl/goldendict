@@ -15,7 +15,7 @@ endif()
 if(INSTALL_TO_MANGLED_PATHS)
   ti_update(TIGER_SETUPVARS_FILENAME "setup_vars_tiger-${TIGER_VERSION}${TIGER_SCRIPT_EXTENSION}")
 else()
-  ti_update(TIGER_SETUPVARS_FILENAME setup_vars_tiger4${TIGER_SCRIPT_EXTENSION})
+  ti_update(TIGER_SETUPVARS_FILENAME setup_vars_tiger5${TIGER_SCRIPT_EXTENSION})
 endif()
 
 ##### build directory

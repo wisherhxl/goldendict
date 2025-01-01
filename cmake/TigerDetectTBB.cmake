@@ -77,7 +77,7 @@ function(ti_tbb_env_guess _found)
       )
     endif()
     # workaround: system TBB library is used for linking instead of provided
-    if(CV_GCC)
+    if(TI_GCC)
       get_filename_component(_dir "${TBB_ENV_LIB}" DIRECTORY)
       set_target_properties(tbb PROPERTIES INTERFACE_LINK_LIBRARIES "-L${_dir}")
     endif()

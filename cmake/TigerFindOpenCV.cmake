@@ -1,4 +1,4 @@
 # ----------------------
-# Find OpenCV
+# Find OpenTI
 
-ti_find_package(OpenCV)
+ti_find_package(OpenTI)

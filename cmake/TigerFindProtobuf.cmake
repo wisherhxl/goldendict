@@ -17,7 +17,7 @@ function(get_protobuf_version version include)
 endfunction()
 
 unset(Protobuf_VERSION CACHE)
-find_package(Protobuf REQUIRED PATHS ${TI_DEV_PATH} NO_DEFAULT_PATH)
+find_package(Protobuf CONFIG REQUIRED)
 
 # Backwards compatibility
 # Define camel case versions of input variables

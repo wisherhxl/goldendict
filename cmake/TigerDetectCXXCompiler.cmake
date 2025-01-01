@@ -1,7 +1,7 @@
 # Compilers:
-# - CV_GCC - GNU compiler (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-# - CV_CLANG - Clang-compatible compiler (CMAKE_CXX_COMPILER_ID MATCHES "Clang" - Clang or AppleClang, see CMP0025)
-# - CV_ICC - Intel compiler
+# - TI_GCC - GNU compiler (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+# - TI_CLANG - Clang-compatible compiler (CMAKE_CXX_COMPILER_ID MATCHES "Clang" - Clang or AppleClang, see CMP0025)
+# - TI_ICC - Intel compiler
 # - MSVC - Microsoft Visual Compiler (CMake variable)
 # - MINGW / CYGWIN / CMAKE_COMPILER_IS_MINGW / CMAKE_COMPILER_IS_CYGWIN (CMake original variables)
 #
@@ -23,26 +23,12 @@
 ti_declare_removed_variables(MINGW64 MSVC64)
 # do not use (CMake variables): CMAKE_CL_64
 
-if(NOT DEFINED CV_GCC AND CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-  set(CV_GCC 1)
+if(NOT DEFINED TI_GCC AND CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  set(TI_GCC 1)
 endif()
-if(NOT DEFINED CV_CLANG AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")  # Clang or AppleClang (see CMP0025)
-  set(CV_CLANG 1)
-  set(CMAKE_COMPILER_IS_CLANGCXX 1)  # TODO next release: remove this
-  set(CMAKE_COMPILER_IS_CLANGCC 1)   # TODO next release: remove this
+if(NOT DEFINED TI_CLANG AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")  # Clang or AppleClang (see CMP0025)
+  set(TI_CLANG 1)
 endif()
-
-function(access_CMAKE_COMPILER_IS_CLANGCXX)
-  if(NOT TIGER_SUPPRESS_DEPRECATIONS)
-    message(WARNING "DEPRECATED: CMAKE_COMPILER_IS_CLANGCXX support is deprecated in OpenCV.
-    Consider using:
-    - CV_GCC    # GCC
-    - CV_CLANG  # Clang or AppleClang (see CMP0025)
-")
-  endif()
-endfunction()
-variable_watch(CMAKE_COMPILER_IS_CLANGCXX access_CMAKE_COMPILER_IS_CLANGCXX)
-variable_watch(CMAKE_COMPILER_IS_CLANGCC access_CMAKE_COMPILER_IS_CLANGCXX)
 
 
 # ----------------------------------------------------------------------------
@@ -50,35 +36,56 @@ variable_watch(CMAKE_COMPILER_IS_CLANGCC access_CMAKE_COMPILER_IS_CLANGCXX)
 # ----------------------------------------------------------------------------
 if(UNIX)
   if(__ICL)
-    set(CV_ICC   __ICL)
+    set(TI_ICC   __ICL)
   elseif(__ICC)
-    set(CV_ICC   __ICC)
+    set(TI_ICC   __ICC)
   elseif(__ECL)
-    set(CV_ICC   __ECL)
+    set(TI_ICC   __ECL)
   elseif(__ECC)
-    set(CV_ICC   __ECC)
+    set(TI_ICC   __ECC)
   elseif(__INTEL_COMPILER)
-    set(CV_ICC   __INTEL_COMPILER)
+    set(TI_ICC   __INTEL_COMPILER)
   elseif(CMAKE_C_COMPILER MATCHES "icc")
-    set(CV_ICC   icc_matches_c_compiler)
+    set(TI_ICC   icc_matches_c_compiler)
   endif()
 endif()
 
 if(MSVC AND CMAKE_C_COMPILER MATCHES "icc|icl")
-  set(CV_ICC   __INTEL_COMPILER_FOR_WINDOWS)
+  set(TI_ICC   __INTEL_COMPILER_FOR_WINDOWS)
+endif()
+
+# ----------------------------------------------------------------------------
+# Detect Intel ICXC compiler
+# ----------------------------------------------------------------------------
+if(UNIX)
+  if(__INTEL_COMPILER)
+    set(TI_ICX   __INTEL_LLVM_COMPILER)
+  elseif(CMAKE_C_COMPILER MATCHES "icx")
+    set(TI_ICX   icx_matches_c_compiler)
+  elseif(CMAKE_CXX_COMPILER MATCHES "icpx")
+    set(TI_ICX   icpx_matches_cxx_compiler)
+  endif()
+endif()
+
+if(MSVC AND CMAKE_CXX_COMPILER MATCHES ".*(dpcpp-cl|dpcpp|icx-cl|icpx|icx)(.exe)?$")
+  set(TI_ICX   __INTEL_LLVM_COMPILER_WINDOWS)
 endif()
 
 if(NOT DEFINED CMAKE_CXX_COMPILER_VERSION
     AND NOT TIGER_SUPPRESS_MESSAGE_MISSING_COMPILER_VERSION)
-  message(WARNING "OpenCV: Compiler version is not available: CMAKE_CXX_COMPILER_VERSION is not set")
+  message(WARNING "Tiger: Compiler version is not available: CMAKE_CXX_COMPILER_VERSION is not set")
 endif()
 if((NOT DEFINED CMAKE_SYSTEM_PROCESSOR OR CMAKE_SYSTEM_PROCESSOR STREQUAL "")
     AND NOT TIGER_SUPPRESS_MESSAGE_MISSING_CMAKE_SYSTEM_PROCESSOR)
-  message(WARNING "OpenCV: CMAKE_SYSTEM_PROCESSOR is not defined. Perhaps CMake toolchain is broken")
+  message(WARNING "Tiger: CMAKE_SYSTEM_PROCESSOR is not defined. Perhaps CMake toolchain is broken")
 endif()
 if(NOT DEFINED CMAKE_SIZEOF_VOID_P
     AND NOT TIGER_SUPPRESS_MESSAGE_MISSING_CMAKE_SIZEOF_VOID_P)
-  message(WARNING "OpenCV: CMAKE_SIZEOF_VOID_P is not defined. Perhaps CMake toolchain is broken")
+  message(WARNING "Tiger: CMAKE_SIZEOF_VOID_P is not defined. Perhaps CMake toolchain is broken")
+endif()
+if(NOT CMAKE_SIZEOF_VOID_P GREATER 0)
+  message(FATAL_ERROR "CMake fails to determine the bitness of the target platform.
+  Please check your CMake and compiler installation. If you are cross-compiling then ensure that your CMake toolchain file correctly sets the compiler details.")
 endif()
 
 message(STATUS "Detected processor: ${CMAKE_SYSTEM_PROCESSOR}")
@@ -98,13 +105,13 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)64")
   set(PPC64 1)
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(mips.*|MIPS.*)")
   set(MIPS 1)
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(riscv.*|RISCV.*)")
-  set(RISCV 1)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(riscv.*|RISTI.*)")
+  set(RISTI 1)
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(loongarch64.*|LOONGARCH64.*)")
   set(LOONGARCH64 1)
 else()
   if(NOT TIGER_SUPPRESS_MESSAGE_UNRECOGNIZED_SYSTEM_PROCESSOR)
-    message(WARNING "OpenCV: unrecognized target processor configuration")
+    message(WARNING "Tiger: unrecognized target processor configuration")
   endif()
 endif()
 
@@ -131,7 +138,7 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND AARCH64
 endif()
 
 
-# Similar code exists in OpenCVConfig.cmake
+# Similar code exists in TigerConfig.cmake
 if(NOT DEFINED TIGER_STATIC)
   # look for global setting
   if(NOT DEFINED BUILD_SHARED_LIBS OR BUILD_SHARED_LIBS)
@@ -153,8 +160,10 @@ elseif(MSVC)
     set(TIGER_ARCH "ARM")
   elseif("${CMAKE_SIZEOF_VOID_P}" STREQUAL "8")
     set(TIGER_ARCH "x64")
+  elseif("${CMAKE_SIZEOF_VOID_P}" STREQUAL "4")
+    set(TIGER_ARCH "x86")
   else()
-    set(TIGER_ARCH x86)
+    message(FATAL_ERROR "Failed to determine system architecture")
   endif()
 
   if(MSVC_VERSION EQUAL 1400)
@@ -176,7 +185,7 @@ elseif(MSVC)
   elseif(MSVC_VERSION MATCHES "^19[34][0-9]$")
     set(TIGER_RUNTIME vc17)
   else()
-    message(WARNING "OpenCV does not recognize MSVC_VERSION \"${MSVC_VERSION}\". Cannot set TIGER_RUNTIME")
+    message(WARNING "Tiger does not recognize MSVC_VERSION \"${MSVC_VERSION}\". Cannot set TIGER_RUNTIME")
   endif()
 elseif(MINGW)
   set(TIGER_RUNTIME mingw)
@@ -188,38 +197,41 @@ elseif(MINGW)
   endif()
 endif()
 
-# Fix handling of duplicated files in the same static library:
-# https://public.kitware.com/Bug/view.php?id=14874
-if(CMAKE_VERSION VERSION_LESS "3.1")
-  foreach(var CMAKE_C_ARCHIVE_APPEND CMAKE_CXX_ARCHIVE_APPEND)
-    if(${var} MATCHES "^<CMAKE_AR> r")
-      string(REPLACE "<CMAKE_AR> r" "<CMAKE_AR> q" ${var} "${${var}}")
-    endif()
-  endforeach()
-endif()
-
 if(NOT TIGER_SKIP_CMAKE_CXX_STANDARD)
-  ti_update(CMAKE_CXX_STANDARD 20)
+  ti_update(CMAKE_CXX_STANDARD 17)
   ti_update(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-  ti_update(CMAKE_CXX_EXTENSIONS OFF) # use -std=c++11 instead of -std=gnu++11
-  if(CMAKE_CXX20_COMPILE_FEATURES)
-    set(HAVE_CXX20 ON)
+  ti_update(CMAKE_CXX_EXTENSIONS OFF) # use -std=c++17 instead of -std=gnu++17
+  if("cxx_std_11" IN_LIST CMAKE_CXX_COMPILE_FEATURES)
+    set(HAVE_CXX11 ON)
   endif()
-endif()
-if(NOT HAVE_CXX20)
-  ti_check_compiler_flag(CXX "" HAVE_CXX17 "${TIGER_SOURCE_DIR}/cmake/checks/cxx20.cpp")
-  if(NOT HAVE_CXX20)
-    ti_check_compiler_flag(CXX "-std=c++20" HAVE_STD_CXX20 "${TIGER_SOURCE_DIR}/cmake/checks/cxx20.cpp")
-    if(HAVE_STD_CXX20)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
-      set(HAVE_CXX20 ON)
-    endif()
+  if("cxx_std_17" IN_LIST CMAKE_CXX_COMPILE_FEATURES)
+    set(HAVE_CXX17 ON)
   endif()
 endif()
 
-if(NOT HAVE_CXX20)
-  message(FATAL_ERROR "Tiger Platform requires C++20")
+if(NOT HAVE_CXX11)
+  message(WARNING "Tiger Platform requires C++11 support, but it was not detected. Your compilation may fail.")
 endif()
+if(NOT HAVE_CXX17)
+  message(WARNING "Tiger Platform requires C++17 support, but it was not detected. Your compilation may fail.")
+endif()
+
+# Debian 10 - GCC 8.3.0
+if(TI_GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8)
+  message(WARNING "Tiger requires GCC >= 8.x (detected ${CMAKE_CXX_COMPILER_VERSION}). Your compilation may fail.")
+endif()
+
+# Debian 10 - Clang 7.0
+if(TI_CLANG AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7)
+  message(WARNING "Tiger requires LLVM/Clang >= 7.x (detected ${CMAKE_CXX_COMPILER_VERSION}). Your compilation may fail.")
+endif()
+
+# Visual Studio 2017 15.7
+if(MSVC AND MSVC_VERSION LESS 1914)
+  message(WARNING "Tiger requires MSVC >= 2017 15.7 / 1914 (detected ${CMAKE_CXX_COMPILER_VERSION} / ${MSVC_VERSION}). Your compilation may fail.")
+endif()
+
+# TODO: check other known compilers versions
 
 set(__TIGER_ENABLE_ATOMIC_LONG_LONG OFF)
 if(HAVE_CXX11 AND (X86 OR X86_64))

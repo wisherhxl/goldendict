@@ -1,11 +1,11 @@
 ﻿/*
- * Copyright (c) 2020-2022, Shanghai Institute of Laser Development Team
+ * Copyright (c) 2023 Huang Xiling
+ * SPDX-License-Identifier: MIT
  *
- * SPDX-License-Identifier: MIT License
+ * This file is part of the Tiger Template.
+ * Distributed under the MIT License. See LICENSE file for details.
  *
- * Change Logs:
- * Date           Author           Notes
- * 2023-08-21     Huang Xiling     first version
+ * Created Date: 2023-08-21
  */
 
 #include "tiger/base/random_utils.h"
@@ -16,7 +16,8 @@
 namespace ti {
 
 std::string RandomUtil::getRandomString(int length) {
-    static const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+    static const char charset[] =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
     std::string res;
     res.reserve(length);
