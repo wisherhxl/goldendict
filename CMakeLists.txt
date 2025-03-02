@@ -281,27 +281,6 @@ test_big_endian(WORDS_BIGENDIAN)
 # ----------------------------------------------------------------------------
 find_package(OpenGL REQUIRED)
 
-# Set vcpkg as the toolchain
-set(VCPKG_ROOT "/home/get/tools/vcpkg")
-set(VCPKG_ROOT CACHE PATH "Vcpkg Root Directory")
-
-set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
-if(EXISTS ${CMAKE_TOOLCHAIN_FILE})
-include(${CMAKE_TOOLCHAIN_FILE})
-else()
-    message(FATAL_ERROR "vcpkg toolchain file not found: ${CMAKE_TOOLCHAIN_FILE}")
-endif()
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM "NEVER") # Find programs (compiler) in system paths ONLY
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY "ONLY") # Find libraries ONLY in vcpkg
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE "ONLY")# Find includes ONLY in vcpkg
-
-# These are still important to prevent Windows path issues in WSL:
-set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH "OFF")
-set(CMAKE_FIND_USE_CMAKE_SYSTEM_PATH "OFF")
-
-# set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
-# set(VCPKG_ROOT "${vcpkg_SOURCE_DIR}")
-
 # include(cmake/TigerFindDevTools.cmake)
 # include(cmake/TigerFindCameraDrivers.cmake)
 # include(cmake/TigerFindAxisDrivers.cmake)
