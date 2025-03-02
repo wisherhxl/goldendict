@@ -87,3 +87,6 @@ target_wrapper.*
 
 # QtCreator CMake
 CMakeLists.txt.user*
+
+# Auto generated presets by Conan
+CMakeUserPresets.json
