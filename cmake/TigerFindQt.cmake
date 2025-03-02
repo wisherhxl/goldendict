@@ -1,34 +1,36 @@
 # ----------------------
 # Find Qt
 
-set(Qt6_LIBRARIES )
+set(Qt6_LIBRARIES)
 
 set(qt_modules
-        Core
-        Gui
-        Widgets
-        Network
-        OpenGL
-        OpenGLWidgets
-        Sql
-        Xml
-        SerialPort
-        SerialBus
-        Test
-)
+    Core
+    Gui
+    Widgets
+    Network
+    OpenGL
+    OpenGLWidgets
+    Sql
+    Xml
+    SerialPort
+    # SerialBus
+    Test
+    LinguistTools)
 
-find_package(Qt6 COMPONENTS ${qt_modules} REQUIRED QUIET)
-find_package(Qt6 COMPONENTS LinguistTools REQUIRED QUIET)
+find_package(
+  Qt6
+  COMPONENTS ${qt_modules}
+  REQUIRED QUIET)
 
 if(NOT Qt6_FOUND OR NOT Qt6_DIR)
-    message(FATAL_ERROR "Qt6 NOT FOUND")
+  message(FATAL_ERROR "Qt6 NOT FOUND")
 endif()
 
 foreach(module ${qt_modules})
-    if(NOT Qt6${module}_FOUND)
-        message(FATAL_ERROR "Qt6${module} NOT FOUND")
-    endif()
-    list(APPEND Qt6_LIBRARIES "Qt6::${module}")
+  if(NOT TARGET Qt6::${module})
+    message(FATAL_ERROR "Qt6::${module} NOT FOUND")
+  endif()
+  list(APPEND Qt6_LIBRARIES "Qt6::${module}")
 endforeach()
 
 ti_list_components(Qt6)
