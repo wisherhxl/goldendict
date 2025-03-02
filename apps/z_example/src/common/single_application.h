@@ -14,7 +14,11 @@
 #include <memory>
 
 #ifdef _WIN32
-class HANDLE;
+#include <windows.h>
+#else
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
 #endif
 
 namespace ti {
@@ -57,7 +61,7 @@ class SingleApplication {
 
    private:
 #ifdef _WIN32
-    std::unique_ptr<HANDLE> global_mutex_;
+    HANDLE global_mutex_;
 #else
     int lock_file_fd_;
 #endif

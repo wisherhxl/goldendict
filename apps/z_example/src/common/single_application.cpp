@@ -2,21 +2,11 @@
 
 #include <string>
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <fcntl.h>
-#include <sys/file.h>
-#include <unistd.h>
-#endif
-
 namespace ti {
 
 SingleApplication::SingleApplication()
 #ifdef _WIN32
-    : global_mutex_(
-          std::make_unique<HANDLE>(CreateMutexA(nullptr, true, "SILT_TIGER"))),
-      valid_(false) {
+    : global_mutex_(CreateMutexA(nullptr, true, "SILT_TIGER")), valid_(false) {
     if (global_mutex_ != nullptr && GetLastError() != ERROR_ALREADY_EXISTS) {
         valid_ = true;
     }
@@ -34,8 +24,8 @@ SingleApplication::SingleApplication()
 ti::SingleApplication::~SingleApplication() {
 #ifdef _WIN32
     if (valid_) {
-        ReleaseMutex(*global_mutex_);
-        CloseHandle(*global_mutex_);
+        ReleaseMutex(global_mutex_);
+        CloseHandle(global_mutex_);
     }
 #else
     if (lock_file_fd_ != -1) {
