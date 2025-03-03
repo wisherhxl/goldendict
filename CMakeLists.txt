@@ -182,6 +182,8 @@ TI_OPTION(TIGER_WARNINGS_ARE_ERRORS "Treat warnings as errors"                  
 TI_OPTION(TIGER_ENABLE_MEMALIGN     "Enable posix_memalign or memalign usage" ON )
 TI_OPTION(ENABLE_CONFIG_VERIFICATION "Fail build if actual configuration doesn't match requested (WITH_XXX != HAVE_XXX)" OFF )
 TI_OPTION(ENABLE_SOLUTION_FOLDERS    "Solution folder in Visual Studio"        ON )
+TI_OPTION(TIGER_CMAKE_DEBUG_MESSAGES "Enable debug messages for Tiger CMake scripts" OFF)
+
 
 # ----------------------------------------------------------------------------
 #  Get actual Tiger version number from sources

@@ -959,17 +959,6 @@ macro(_ti_create_module)
       source_group("Src" FILES "${_VS_VERSION_FILE}")
     endif()
   endif()
-  if(WIN32 AND NOT (
-          "${the_module}" STREQUAL "tiger_core" OR
-          "${the_module}" STREQUAL "tiger_world" OR
-          "${the_module}" STREQUAL "tiger_cudev"
-      )
-      AND (BUILD_SHARED_LIBS AND NOT "x${TIGER_MODULE_TYPE}" STREQUAL "xSTATIC")
-      AND NOT TIGER_SKIP_DLLMAIN_GENERATION
-  )
-      set(_DLLMAIN_FILE "${CMAKE_CURRENT_BINARY_DIR}/${the_module}_main.cpp")
-      configure_file("${Tiger_SOURCE_DIR}/cmake/templates/dllmain.cpp.in" "${_DLLMAIN_FILE}" @ONLY)
-  endif()
 
   source_group("Include" FILES "${TIGER_CONFIG_FILE_INCLUDE_DIR}/ticonfig.h" "${TIGER_CONFIG_FILE_INCLUDE_DIR}/tiger/tiger_modules.hpp")
   source_group("Src" FILES "${${the_module}_pch}")
