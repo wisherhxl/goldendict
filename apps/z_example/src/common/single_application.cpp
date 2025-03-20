@@ -6,14 +6,14 @@ namespace ti {
 
 SingleApplication::SingleApplication()
 #ifdef _WIN32
-    : global_mutex_(CreateMutexA(nullptr, true, "SILT_TIGER")), valid_(false) {
+    : global_mutex_(CreateMutexA(nullptr, true, "TI_TIGER")), valid_(false) {
     if (global_mutex_ != nullptr && GetLastError() != ERROR_ALREADY_EXISTS) {
         valid_ = true;
     }
 }
 #else
     : lock_file_fd_(-1), valid_(false) {
-    const std::string lock_file_path = "/tmp/SILT_TIGER.lock";
+    const std::string lock_file_path = "/tmp/TI_TIGER.lock";
     lock_file_fd_ = open(lock_file_path.c_str(), O_CREAT | O_RDWR, 0666);
     if (lock_file_fd_ != -1 && flock(lock_file_fd_, LOCK_EX | LOCK_NB) == 0) {
         valid_ = true;
