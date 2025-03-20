@@ -345,6 +345,7 @@ endif()
 if(PROJECT_NAME STREQUAL "Tiger")
   include("${Tiger_SOURCE_DIR}/cmake/TigerCompilerOptimizations.cmake")
 endif()
+
 if(COMMAND ti_compiler_optimization_options)
   ti_compiler_optimization_options()
 endif()
