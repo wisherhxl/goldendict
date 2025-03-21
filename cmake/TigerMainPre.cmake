@@ -120,7 +120,6 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
       CACHE PATH "Installation Directory" FORCE)
 endif()
 
-include(cmake/TigerDetectPython.cmake)
 ti_get_date_components(TI_UPDATE_YEAR TI_UPDATE_MONTH)
 
 enable_testing(true)

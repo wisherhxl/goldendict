@@ -11,18 +11,16 @@ endfunction()
 
 # Get the current year and month.
 function(ti_get_date_components year month)
-  execute_process(
-    COMMAND
-    ${PYTHON_EXECUTABLE} -c
-      "import datetime; now = datetime.datetime.now(); print(now.year); print(now.month)"
-    OUTPUT_VARIABLE DATE_OUTPUT
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-
+  string(TIMESTAMP DATE_TIMESTAMP "%Y;%m" UTC)
   string(REGEX REPLACE "([0-9]+)\n([0-9]+)" "\\1;\\2" DATE_OUTPUT
-                       "${DATE_OUTPUT}")
+                       "${DATE_TIMESTAMP}")
 
   list(GET DATE_OUTPUT 0 DATE_YEAR)
   list(GET DATE_OUTPUT 1 DATE_MONTH)
-  set(${year} ${DATE_YEAR} PARENT_SCOPE)
-  set(${month} ${DATE_MONTH} PARENT_SCOPE)
+  set(${year}
+      ${DATE_YEAR}
+      PARENT_SCOPE)
+  set(${month}
+      ${DATE_MONTH}
+      PARENT_SCOPE)
 endfunction()
