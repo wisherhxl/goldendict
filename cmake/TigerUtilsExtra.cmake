@@ -13,7 +13,7 @@ endfunction()
 function(ti_get_date_components year month)
   execute_process(
     COMMAND
-      python -c
+    ${PYTHON_EXECUTABLE} -c
       "import datetime; now = datetime.datetime.now(); print(now.year); print(now.month)"
     OUTPUT_VARIABLE DATE_OUTPUT
     OUTPUT_STRIP_TRAILING_WHITESPACE)

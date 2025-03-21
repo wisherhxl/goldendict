@@ -1,5 +1,6 @@
 string(TOLOWER "${TI_PROJECT_NAME}" TI_INTERNAL_NAME)
 
+include(cmake/TigerUtilsExtend.cmake)
 include(cmake/TigerMainAutoConfig.cmake)
 
 set(CMAKE_USE_RELATIVE_PATHS ON CACHE INTERNAL "" FORCE)
@@ -78,8 +79,8 @@ endif()
 # Save libs and executables in the same place
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin" CACHE PATH "Output directory for applications")
 
-set(LIBRARY_OUTPUT_PATH                "${Tiger_BINARY_DIR}/lib")
-ti_update(3P_LIBRARY_OUTPUT_PATH      "${Tiger_BINARY_DIR}/3rdparty/lib")
+set(LIBRARY_OUTPUT_PATH                "${${PROJECT_NAME}_BINARY_DIR}/lib")
+ti_update(3P_LIBRARY_OUTPUT_PATH      "${${PROJECT_NAME}_BINARY_DIR}/3rdparty/lib")
 
 # Postfix of DLLs:
 ti_update(TIGER_DLLVERSION "${TIGER_VERSION_MAJOR}${TIGER_VERSION_MINOR}${TIGER_VERSION_PATCH}")
@@ -108,7 +109,7 @@ set(TIGER_EXTRA_MODULES_PATH "" CACHE PATH "Where to look for additional Tiger m
 find_host_package(Git QUIET)
 
 if(NOT DEFINED TIGER_VCSVERSION AND GIT_FOUND)
-  ti_git_describe(TIGER_VCSVERSION "${Tiger_SOURCE_DIR}")
+  ti_git_describe(TIGER_VCSVERSION "${${PROJECT_NAME}_SOURCE_DIR}")
 elseif(NOT DEFINED TIGER_VCSVERSION)
   # We don't have git:
   set(TIGER_VCSVERSION "unknown")

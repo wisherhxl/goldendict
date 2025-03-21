@@ -105,7 +105,7 @@ endfunction()
 #=====================================================================
 
 if(BUILD_TBB)
-  add_subdirectory("${Tiger_SOURCE_DIR}/3rdparty/tbb")
+  add_subdirectory("${${PROJECT_NAME}_SOURCE_DIR}/3rdparty/tbb")
   if(NOT TARGET tbb)
     return()
   endif()

@@ -13,8 +13,8 @@
 #
 #=============================================
 
-if(NOT Tiger_SOURCE_DIR)
-  message(FATAL_ERROR "Tiger_SOURCE_DIR must be set to build the plugin!")
+if(NOT ${PROJECT_NAME}_SOURCE_DIR)
+  message(FATAL_ERROR "${PROJECT_NAME}_SOURCE_DIR must be set to build the plugin!")
 endif()
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
@@ -28,9 +28,9 @@ if(NOT BUILD_SHARED_LIBS)
 endif()
 
 # re-use Tiger build scripts
-include("${Tiger_SOURCE_DIR}/cmake/TigerUtils.cmake")
-include("${Tiger_SOURCE_DIR}/cmake/TigerDetectCXXCompiler.cmake")
-include("${Tiger_SOURCE_DIR}/cmake/TigerCompilerOptions.cmake")
+include("${${PROJECT_NAME}_SOURCE_DIR}/cmake/TigerUtils.cmake")
+include("${${PROJECT_NAME}_SOURCE_DIR}/cmake/TigerDetectCXXCompiler.cmake")
+include("${${PROJECT_NAME}_SOURCE_DIR}/cmake/TigerCompilerOptions.cmake")
 
 function(ti_create_plugin module default_name dependency_target dependency_target_desc)
 
@@ -42,7 +42,7 @@ function(ti_create_plugin module default_name dependency_target dependency_targe
     message(FATAL_ERROR "${dependency_target_desc} was not found! (missing target ${dependency_target})")
   endif()
 
-  set(modules_ROOT "${Tiger_SOURCE_DIR}/modules")
+  set(modules_ROOT "${${PROJECT_NAME}_SOURCE_DIR}/modules")
   set(module_ROOT "${modules_ROOT}/${module}")
 
   foreach(src ${ARGN})
@@ -90,10 +90,10 @@ function(ti_create_plugin module default_name dependency_target dependency_targe
     endif()
   else()
     find_package(Tiger REQUIRED ${module} ${TIGER_PLUGIN_DEPS})
-    target_link_libraries(${TIGER_PLUGIN_NAME} PRIVATE ${Tiger_LIBRARIES})
+    target_link_libraries(${TIGER_PLUGIN_NAME} PRIVATE ${${PROJECT_NAME}_LIBRARIES})
   endif()
 
-  if(NOT Tiger_FOUND)  # build against sources (Linux)
+  if(NOT ${PROJECT_NAME}_FOUND)  # build against sources (Linux)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/opencv2/opencv_modules.hpp" "#pragma once")
   endif()
 
@@ -106,7 +106,7 @@ function(ti_create_plugin module default_name dependency_target dependency_targe
     # custom value
   else()
     if(WIN32)
-      ti_update(TIGER_PLUGIN_VERSION "${Tiger_VERSION_MAJOR}${Tiger_VERSION_MINOR}${Tiger_VERSION_PATCH}")
+      ti_update(TIGER_PLUGIN_VERSION "${${PROJECT_NAME}_VERSION_MAJOR}${${PROJECT_NAME}_VERSION_MINOR}${${PROJECT_NAME}_VERSION_PATCH}")
       if(CMAKE_CXX_SIZEOF_DATA_PTR EQUAL 8)
         ti_update(TIGER_PLUGIN_ARCH "_64")
       else()

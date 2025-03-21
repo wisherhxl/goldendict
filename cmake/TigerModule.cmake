@@ -1,7 +1,7 @@
 # Local variables (set for each module):
 #
 # name       - short name in lower case i.e. core
-# the_module - full name in lower case i.e. tiger_core
+# the_module - full name in lower case i.e. ${TI_INTERNAL_NAME}_core
 
 # Global variables:
 #
@@ -27,7 +27,7 @@
 # the_description - text to be used as current module description
 # the_label - label for current module
 # TIGER_MODULE_TYPE - STATIC|SHARED - set to force override global settings for current module
-# TIGER_MODULE_IS_PART_OF_WORLD - ON|OFF (default ON) - should the module be added to the tiger_world?
+# TIGER_MODULE_IS_PART_OF_WORLD - ON|OFF (default ON) - should the module be added to the ${TI_INTERNAL_NAME}_world?
 # BUILD_${the_module}_INIT - ON|OFF (default ON) - initial value for BUILD_${the_module}
 
 # The verbose template for Tiger module:
@@ -75,7 +75,7 @@ unset(TIGER_WORLD_MODULES CACHE)
 
 # adds dependencies to Tiger module
 # Usage:
-#   add_dependencies(tiger_<name> [REQUIRED] [<list of dependencies>] [OPTIONAL <list of modules>] [WRAP <list of wrappers>])
+#   add_dependencies(${TI_INTERNAL_NAME}_<name> [REQUIRED] [<list of dependencies>] [OPTIONAL <list of modules>] [WRAP <list of wrappers>])
 # Notes:
 # * <list of dependencies> - can include full names of modules or full paths to shared/static libraries or cmake targets
 macro(ti_add_dependencies full_modname)
@@ -120,11 +120,11 @@ endmacro()
 # Usage:
 #   ti_add_module(<name> [INTERNAL|BINDINGS] [REQUIRED] [<list of dependencies>] [OPTIONAL <list of optional dependencies>] [WRAP <list of wrappers>])
 # Example:
-#   ti_add_module(yaom INTERNAL tiger_core tiger_highgui tiger_flann OPTIONAL tiger_cudev)
+#   ti_add_module(yaom INTERNAL ${TI_INTERNAL_NAME}_core ${TI_INTERNAL_NAME}_highgui ${TI_INTERNAL_NAME}_flann OPTIONAL ${TI_INTERNAL_NAME}_cudev)
 macro(ti_add_module _name)
   ti_debug_message("ti_add_module(" ${_name} ${ARGN} ")")
   string(TOLOWER "${_name}" name)
-  set(the_module tiger_${name})
+  set(the_module ${TI_INTERNAL_NAME}_${name})
 
   # the first pass - collect modules info, the second pass - create targets
   if(TIGER_INITIAL_PASS)
@@ -181,7 +181,7 @@ macro(ti_add_module _name)
         OR TIGER_MODULE_IS_PART_OF_WORLD
         )
       set(TIGER_MODULE_${the_module}_IS_PART_OF_WORLD ON CACHE INTERNAL "")
-      ti_add_dependencies(tiger_world OPTIONAL ${the_module})
+      ti_add_dependencies(${TI_INTERNAL_NAME}_world OPTIONAL ${the_module})
     else()
       set(TIGER_MODULE_${the_module}_IS_PART_OF_WORLD OFF CACHE INTERNAL "")
     endif()
@@ -210,8 +210,8 @@ macro(ti_add_module _name)
     if(NOT BUILD_${the_module})
       return() # extra protection from redefinition
     endif()
-    if(NOT TIGER_MODULE_${the_module}_IS_PART_OF_WORLD OR NOT ${BUILD_tiger_world})
-      if (NOT ${the_module} STREQUAL tiger_world)
+    if(NOT TIGER_MODULE_${the_module}_IS_PART_OF_WORLD OR NOT ${BUILD_${TI_INTERNAL_NAME}_world})
+      if (NOT ${the_module} STREQUAL ${TI_INTERNAL_NAME}_world)
         project(${the_module})
       endif()
       add_definitions(
@@ -225,8 +225,8 @@ endmacro()
 # excludes module from current configuration
 macro(ti_module_disable_ module)
   set(__modname ${module})
-  if(NOT __modname MATCHES "^tiger_")
-    set(__modname tiger_${module})
+  if(NOT __modname MATCHES "^${TI_INTERNAL_NAME}_")
+    set(__modname ${TI_INTERNAL_NAME}_${module})
   endif()
   list(APPEND TIGER_MODULES_DISABLED_FORCE "${__modname}")
   set(HAVE_${__modname} OFF CACHE INTERNAL "Module ${__modname} can not be built in current configuration")
@@ -254,7 +254,7 @@ function(_glob_locations out_paths out_names)
     list(LENGTH paths before)
     get_filename_component(path "${path}" ABSOLUTE)
     # Either module itself
-    if(NOT path STREQUAL "${Tiger_SOURCE_DIR}/modules" AND NOT path STREQUAL CMAKE_CURRENT_SOURCE_DIR AND EXISTS "${path}/CMakeLists.txt")
+    if(NOT path STREQUAL "${${PROJECT_NAME}_SOURCE_DIR}/modules" AND NOT path STREQUAL CMAKE_CURRENT_SOURCE_DIR AND EXISTS "${path}/CMakeLists.txt")
       get_filename_component(name "${path}" NAME)
       list(APPEND paths "${path}")
       list(APPEND names "${name}")
@@ -271,7 +271,7 @@ function(_glob_locations out_paths out_names)
     endif()
     list(LENGTH paths after)
     if(before EQUAL after)
-      message(SEND_ERROR "No modules has been found: ${path}")
+      message(STATUS "No modules has been found: ${path}")
     endif()
   endforeach()
   # Return
@@ -296,7 +296,7 @@ macro(_add_modules_1 paths names)
       list(GET ${names} ${i} __name)
       #message(STATUS "First pass: ${__name} => ${__path}")
       include("${__path}/cmake/init.cmake" OPTIONAL)
-      add_subdirectory("${__path}" "${Tiger_BINARY_DIR}/modules/.firstpass/${__name}")
+      add_subdirectory("${__path}" "${${PROJECT_NAME}_BINARY_DIR}/modules/.firstpass/${__name}")
     endforeach()
   endif()
 endmacro()
@@ -308,15 +308,15 @@ macro(_add_modules_2)
   foreach(m ${ARGN})
     set(the_module "${m}")
     ti_cmake_hook(PRE_MODULES_CREATE_${the_module})
-    if(BUILD_tiger_world AND m STREQUAL "tiger_world"
-        OR NOT BUILD_tiger_world
+    if(BUILD_${TI_INTERNAL_NAME}_world AND m STREQUAL "${TI_INTERNAL_NAME}_world"
+        OR NOT BUILD_${TI_INTERNAL_NAME}_world
         OR NOT TIGER_MODULE_${m}_IS_PART_OF_WORLD)
-      if(NOT m MATCHES "^tiger_")
+      if(NOT m MATCHES "^${TI_INTERNAL_NAME}_")
         message(WARNING "Incorrect module name: ${m}")
       endif()
-      string(REGEX REPLACE "^tiger_" "" name "${m}")
+      string(REGEX REPLACE "^${TI_INTERNAL_NAME}_" "" name "${m}")
       #message(STATUS "Second pass: ${name} => ${TIGER_MODULE_${m}_LOCATION}")
-      add_subdirectory("${TIGER_MODULE_${m}_LOCATION}" "${Tiger_BINARY_DIR}/modules/${name}")
+      add_subdirectory("${TIGER_MODULE_${m}_LOCATION}" "${${PROJECT_NAME}_BINARY_DIR}/modules/${name}")
     endif()
     ti_cmake_hook(POST_MODULES_CREATE_${the_module})
   endforeach()
@@ -369,7 +369,7 @@ macro(ti_glob_modules main_root)
   __ti_resolve_dependencies()
 
   # optionally configure delay load
-  if(MSVC AND BUILD_SHARED_LIBS AND ENABLE_DELAYLOAD AND NOT BUILD_tiger_world)
+  if(MSVC AND BUILD_SHARED_LIBS AND ENABLE_DELAYLOAD AND NOT BUILD_${TI_INTERNAL_NAME}_world)
     if(${CMAKE_SHARED_LINKER_FLAGS} MATCHES "delayimp.lib")
       set(DELAYFLAGS "")
     else()
@@ -377,7 +377,7 @@ macro(ti_glob_modules main_root)
     endif()
 
     foreach(mod ${TIGER_MODULES_BUILD})
-      if(NOT ${mod} STREQUAL "tiger_core" AND NOT ${mod} MATCHES "bindings_generator|python")
+      if(NOT ${mod} STREQUAL "${TI_INTERNAL_NAME}_core" AND NOT ${mod} MATCHES "bindings_generator|python")
         set(DELAYFLAGS "${DELAYFLAGS} /DELAYLOAD:${mod}${TIGER_VERSION_MAJOR}${TIGER_VERSION_MINOR}${TIGER_VERSION_PATCH}.dll")
       endif()
     endforeach()
@@ -402,7 +402,7 @@ endmacro()
 # called by root CMakeLists.txt
 macro(ti_register_modules)
   if(NOT TIGER_MODULES_PATH)
-    set(TIGER_MODULES_PATH "${Tiger_SOURCE_DIR}/modules")
+    set(TIGER_MODULES_PATH "${${PROJECT_NAME}_SOURCE_DIR}/modules")
   endif()
 
   ti_glob_modules(${TIGER_MODULES_PATH} ${TIGER_EXTRA_MODULES_PATH})
@@ -412,8 +412,8 @@ macro(ti_register_modules)
   set(TIGER_MODULES_EXTRA "")
 
   foreach(mod ${TIGER_MODULES_BUILD} ${TIGER_MODULES_DISABLED_USER} ${TIGER_MODULES_DISABLED_AUTO} ${TIGER_MODULES_DISABLED_FORCE})
-    string(REGEX REPLACE "^tiger_" "" mod "${mod}")
-    if("${TIGER_MODULE_tiger_${mod}_LOCATION}" STREQUAL "${Tiger_SOURCE_DIR}/modules/${mod}")
+    string(REGEX REPLACE "^${TI_INTERNAL_NAME}_" "" mod "${mod}")
+    if("${TIGER_MODULE_${TI_INTERNAL_NAME}_${mod}_LOCATION}" STREQUAL "${${PROJECT_NAME}_SOURCE_DIR}/modules/${mod}")
       list(APPEND TIGER_MODULES_MAIN ${mod})
     else()
       list(APPEND TIGER_MODULES_EXTRA ${mod})
@@ -474,9 +474,9 @@ function(__ti_sort_modules_by_deps __lst)
     # check for infinite loop or unresolved dependencies
     if (NOT length_after LESS length_before)
       if(NOT BUILD_SHARED_LIBS)
-        if (";${input};" MATCHES ";tiger_world;")
-          list(REMOVE_ITEM input "tiger_world")
-          list(APPEND result_extra "tiger_world")
+        if (";${input};" MATCHES ";${TI_INTERNAL_NAME}_world;")
+          list(REMOVE_ITEM input "${TI_INTERNAL_NAME}_world")
+          list(APPEND result_extra "${TI_INTERNAL_NAME}_world")
         else()
           # We can't do here something
           list(APPEND result ${input})
@@ -509,10 +509,10 @@ function(__ti_resolve_dependencies)
   if(BUILD_LIST)
     # Prepare the list
     string(REGEX REPLACE "[ ,:]+" ";" whitelist "${BUILD_LIST}" )
-    if(BUILD_tiger_world)
+    if(BUILD_${TI_INTERNAL_NAME}_world)
       list(APPEND whitelist world)
     endif()
-    ti_list_add_prefix(whitelist "tiger_")
+    ti_list_add_prefix(whitelist "${TI_INTERNAL_NAME}_")
     ti_list_sort(whitelist)
     ti_list_unique(whitelist)
     message(STATUS "Using whitelist: ${whitelist}")
@@ -544,12 +544,12 @@ function(__ti_resolve_dependencies)
   foreach(the_module ${TIGER_MODULES_BUILD})
     foreach (wrapper ${TIGER_MODULE_${the_module}_WRAPPERS})
       if(wrapper STREQUAL "python")  # hack for python (BINDINDS)
-        ti_add_dependencies(tiger_python3 OPTIONAL ${the_module})
+        ti_add_dependencies(${TI_INTERNAL_NAME}_python3 OPTIONAL ${the_module})
       else()
-        ti_add_dependencies(tiger_${wrapper} OPTIONAL ${the_module})
+        ti_add_dependencies(${TI_INTERNAL_NAME}_${wrapper} OPTIONAL ${the_module})
       endif()
-      if(DEFINED TIGER_MODULE_tiger_${wrapper}_bindings_generator_CLASS)
-        ti_add_dependencies(tiger_${wrapper}_bindings_generator OPTIONAL ${the_module})
+      if(DEFINED TIGER_MODULE_${TI_INTERNAL_NAME}_${wrapper}_bindings_generator_CLASS)
+        ti_add_dependencies(${TI_INTERNAL_NAME}_${wrapper}_bindings_generator OPTIONAL ${the_module})
       endif()
     endforeach()
   endforeach()
@@ -564,7 +564,7 @@ function(__ti_resolve_dependencies)
         ti_list_pop_front(__deps d)
         string(TOLOWER "${d}" upper_d)
         if(NOT (HAVE_${d} OR HAVE_${upper_d} OR TARGET ${d} OR EXISTS ${d}))
-          if(d MATCHES "^tiger_") # TODO Remove this condition in the future and use HAVE_ variables only
+          if(d MATCHES "^${TI_INTERNAL_NAME}_") # TODO Remove this condition in the future and use HAVE_ variables only
             message(STATUS "Module ${m} disabled because ${d} dependency can't be resolved!")
             __ti_module_turn_off(${m})
             set(has_changes ON)
@@ -604,14 +604,14 @@ function(__ti_resolve_dependencies)
               list(APPEND deps_${m} ${d})
               set(has_changes ON)
             endif()
-            if(BUILD_tiger_world
-                AND NOT "${m}" STREQUAL "tiger_world"
-                AND NOT "${m2}" STREQUAL "tiger_world"
+            if(BUILD_${TI_INTERNAL_NAME}_world
+                AND NOT "${m}" STREQUAL "${TI_INTERNAL_NAME}_world"
+                AND NOT "${m2}" STREQUAL "${TI_INTERNAL_NAME}_world"
                 AND TIGER_MODULE_${m2}_IS_PART_OF_WORLD
                 AND NOT TIGER_MODULE_${m}_IS_PART_OF_WORLD)
-              if(NOT (";${deps_${m}};" MATCHES ";tiger_world;"))
-#                message(STATUS "  Transfer dependency tiger_world alias ${m2} to ${m}")
-                list(APPEND deps_${m} tiger_world)
+              if(NOT (";${deps_${m}};" MATCHES ";${TI_INTERNAL_NAME}_world;"))
+#                message(STATUS "  Transfer dependency ${TI_INTERNAL_NAME}_world alias ${m2} to ${m}")
+                list(APPEND deps_${m} ${TI_INTERNAL_NAME}_world)
                 set(has_changes ON)
               endif()
             endif()
@@ -643,7 +643,7 @@ function(__ti_resolve_dependencies)
 #    message(STATUS "FULL deps of ${m}: ${deps_${m}}")
     set(TIGER_MODULE_${m}_DEPS ${deps_${m}})
     set(TIGER_MODULE_${m}_DEPS_EXT ${deps_${m}})
-    ti_list_filterout(TIGER_MODULE_${m}_DEPS_EXT "^tiger_[^ ]+$")
+    ti_list_filterout(TIGER_MODULE_${m}_DEPS_EXT "^${TI_INTERNAL_NAME}_[^ ]+$")
     if(TIGER_MODULE_${m}_DEPS_EXT AND TIGER_MODULE_${m}_DEPS)
       list(REMOVE_ITEM TIGER_MODULE_${m}_DEPS ${TIGER_MODULE_${m}_DEPS_EXT})
     endif()
@@ -656,7 +656,7 @@ function(__ti_resolve_dependencies)
     set(LINK_DEPS ${TIGER_MODULE_${m}_DEPS})
 
     # process world
-    if(BUILD_tiger_world)
+    if(BUILD_${TI_INTERNAL_NAME}_world)
       if(TIGER_MODULE_${m}_IS_PART_OF_WORLD)
         list(APPEND TIGER_WORLD_MODULES ${m})
       endif()
@@ -664,12 +664,12 @@ function(__ti_resolve_dependencies)
         if(TIGER_MODULE_${m2}_IS_PART_OF_WORLD)
           if(";${LINK_DEPS};" MATCHES ";${m2};")
             list(REMOVE_ITEM LINK_DEPS ${m2})
-            if(NOT (";${LINK_DEPS};" MATCHES ";tiger_world;") AND NOT (${m} STREQUAL tiger_world))
-              list(APPEND LINK_DEPS tiger_world)
+            if(NOT (";${LINK_DEPS};" MATCHES ";${TI_INTERNAL_NAME}_world;") AND NOT (${m} STREQUAL ${TI_INTERNAL_NAME}_world))
+              list(APPEND LINK_DEPS ${TI_INTERNAL_NAME}_world)
             endif()
           endif()
-          if("${m}" STREQUAL tiger_world)
-            list(APPEND TIGER_MODULE_tiger_world_DEPS_EXT ${TIGER_MODULE_${m2}_DEPS_EXT})
+          if("${m}" STREQUAL ${TI_INTERNAL_NAME}_world)
+            list(APPEND TIGER_MODULE_${TI_INTERNAL_NAME}_world_DEPS_EXT ${TIGER_MODULE_${m2}_DEPS_EXT})
           endif()
         endif()
       endforeach()
@@ -697,7 +697,7 @@ endfunction()
 # setup include paths for the list of passed modules
 macro(ti_include_modules)
   foreach(d ${ARGN})
-    if(d MATCHES "^tiger_" AND HAVE_${d})
+    if(d MATCHES "^${TI_INTERNAL_NAME}_" AND HAVE_${d})
       if (EXISTS "${TIGER_MODULE_${d}_LOCATION}/include")
         ti_include_directories("${TIGER_MODULE_${d}_LOCATION}/include")
       endif()
@@ -711,7 +711,7 @@ endmacro()
 macro(ti_include_modules_recurse)
   ti_include_modules(${ARGN})
   foreach(d ${ARGN})
-    if(d MATCHES "^tiger_" AND HAVE_${d} AND DEFINED TIGER_MODULE_${d}_DEPS)
+    if(d MATCHES "^${TI_INTERNAL_NAME}_" AND HAVE_${d} AND DEFINED TIGER_MODULE_${d}_DEPS)
       foreach (sub ${TIGER_MODULE_${d}_DEPS})
         ti_include_modules(${sub})
       endforeach()
@@ -722,7 +722,7 @@ endmacro()
 # setup include paths for the list of passed modules
 macro(ti_target_include_modules target)
   foreach(d ${ARGN})
-    if(d MATCHES "^tiger_")
+    if(d MATCHES "^${TI_INTERNAL_NAME}_")
       if(HAVE_${d} AND EXISTS "${TIGER_MODULE_${d}_LOCATION}/include")
         ti_target_include_directories(${target} "${TIGER_MODULE_${d}_LOCATION}/include")
       endif()
@@ -737,7 +737,7 @@ endmacro()
 # setup include paths for the list of passed modules and recursively add dependent modules
 macro(ti_target_include_modules_recurse target)
   foreach(d ${ARGN})
-    if(d MATCHES "^tiger_" AND HAVE_${d})
+    if(d MATCHES "^${TI_INTERNAL_NAME}_" AND HAVE_${d})
       if (EXISTS "${TIGER_MODULE_${d}_LOCATION}/include")
         ti_target_include_directories(${target} "${TIGER_MODULE_${d}_LOCATION}/include")
       endif()
@@ -868,8 +868,8 @@ macro(ti_glob_module_sources)
     set(OCL_NAME opencl_kernels_${name})
     add_custom_command(
       OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${OCL_NAME}.cpp"  # don't add .hpp file here to optimize build process
-      COMMAND ${CMAKE_COMMAND} "-DMODULE_NAME=${name}" "-DCL_DIR=${CMAKE_CURRENT_LIST_DIR}/src/opencl" "-DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/${OCL_NAME}.cpp" -P "${Tiger_SOURCE_DIR}/cmake/cl2cpp.cmake"
-      DEPENDS ${cl_kernels} "${Tiger_SOURCE_DIR}/cmake/cl2cpp.cmake"
+      COMMAND ${CMAKE_COMMAND} "-DMODULE_NAME=${name}" "-DCL_DIR=${CMAKE_CURRENT_LIST_DIR}/src/opencl" "-DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/${OCL_NAME}.cpp" -P "${${PROJECT_NAME}_SOURCE_DIR}/cmake/cl2cpp.cmake"
+      DEPENDS ${cl_kernels} "${${PROJECT_NAME}_SOURCE_DIR}/cmake/cl2cpp.cmake"
       COMMENT "Processing OpenCL kernels (${name})"
     )
     ti_source_group("Src\\opencl\\kernels" FILES ${cl_kernels})
@@ -897,9 +897,9 @@ macro(ti_create_module)
   if(NOT " ${ARGN}" STREQUAL " ")
     set(TIGER_MODULE_${the_module}_LINK_DEPS "${TIGER_MODULE_${the_module}_LINK_DEPS};${ARGN}" CACHE INTERNAL "")
   endif()
-  if(BUILD_tiger_world AND TIGER_MODULE_${the_module}_IS_PART_OF_WORLD)
+  if(BUILD_${TI_INTERNAL_NAME}_world AND TIGER_MODULE_${the_module}_IS_PART_OF_WORLD)
     # nothing
-    set(the_module_target tiger_world)
+    set(the_module_target ${TI_INTERNAL_NAME}_world)
   else()
     _ti_create_module(${ARGN})
     set(the_module_target ${the_module})
@@ -909,8 +909,8 @@ macro(ti_create_module)
     # removing APPCONTAINER from modules to run from console
     # in case of usual starting of WinRT test apps output is missing
     # so starting of console version w/o APPCONTAINER is required to get test results
-    # also this allows to use tiger_extra test data for these tests
-    if(NOT "${the_module}" STREQUAL "tiger_ts" AND NOT "${the_module}" STREQUAL "tiger_hal")
+    # also this allows to use ${TI_INTERNAL_NAME}_extra test data for these tests
+    if(NOT "${the_module}" STREQUAL "${TI_INTERNAL_NAME}_ts" AND NOT "${the_module}" STREQUAL "${TI_INTERNAL_NAME}_hal")
       add_custom_command(TARGET ${the_module}
                          POST_BUILD
                          COMMAND link.exe /edit /APPCONTAINER:NO $(TargetPath))
@@ -932,7 +932,7 @@ macro(_ti_create_module)
   # The condition we ought to be testing here is whether ti_add_precompiled_headers will
   # be called at some point in the future. We can't look into the future, though,
   # so this will have to do.
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/precomp.hpp" AND NOT ${the_module} STREQUAL tiger_world)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/precomp.hpp" AND NOT ${the_module} STREQUAL ${TI_INTERNAL_NAME}_world)
     get_native_precompiled_header(${the_module} precomp.hpp)
   endif()
 
@@ -990,7 +990,7 @@ macro(_ti_create_module)
     unset(TIGER_MODULE_${the_module}_COMPILE_DEFINITIONS CACHE)
   endif()
 
-  add_dependencies(tiger_modules ${the_module})
+  add_dependencies(${TI_INTERNAL_NAME}_modules ${the_module})
 
   if(ENABLE_SOLUTION_FOLDERS)
     set_target_properties(${the_module} PROPERTIES FOLDER "modules")
@@ -1077,9 +1077,9 @@ endmacro()
 macro(_ti_add_precompiled_headers the_target)
   ti_debug_message("ti_add_precompiled_headers(" ${the_target} ${ARGN} ")")
 
-  if("${the_target}" MATCHES "^tiger_test_.*$")
+  if("${the_target}" MATCHES "^${TI_INTERNAL_NAME}_test_.*$")
     SET(pch_path "test/test_")
-  elseif("${the_target}" MATCHES "^tiger_perf_.*$")
+  elseif("${the_target}" MATCHES "^${TI_INTERNAL_NAME}_perf_.*$")
     SET(pch_path "perf/perf_")
   else()
     SET(pch_path "src/")
@@ -1119,7 +1119,7 @@ endmacro()
 macro(ti_check_dependencies)
   set(TI_DEPENDENCIES_FOUND TRUE)
   foreach(d ${ARGN})
-    if(d MATCHES "^tiger_[^ ]+$" AND NOT HAVE_${d})
+    if(d MATCHES "^${TI_INTERNAL_NAME}_[^ ]+$" AND NOT HAVE_${d})
       set(TI_DEPENDENCIES_FOUND FALSE)
       break()
     endif()
@@ -1185,12 +1185,12 @@ function(ti_add_perf_tests)
   )
     __ti_parse_test_sources(PERF ${ARGN})
 
-    # tiger_imgcodecs is required for imread/imwrite
-    set(perf_deps tiger_ts ${the_module} tiger_imgcodecs ${TIGER_MODULE_${the_module}_DEPS} ${TIGER_MODULE_tiger_ts_DEPS})
+    # ${TI_INTERNAL_NAME}_imgcodecs is required for imread/imwrite
+    set(perf_deps ${TI_INTERNAL_NAME}_ts ${the_module} ${TI_INTERNAL_NAME}_imgcodecs ${TIGER_MODULE_${the_module}_DEPS} ${TIGER_MODULE_${TI_INTERNAL_NAME}_ts_DEPS})
     ti_check_dependencies(${perf_deps})
 
     if(TI_DEPENDENCIES_FOUND)
-      set(the_target "tiger_perf_${name}")
+      set(the_target "${TI_INTERNAL_NAME}_perf_${name}")
       # project(${the_target})
 
       if(NOT TIGER_PERF_${the_module}_SOURCES)
@@ -1203,7 +1203,7 @@ function(ti_add_perf_tests)
 
       ti_compiler_optimization_process_sources(TIGER_PERF_${the_module}_SOURCES TIGER_PERF_${the_module}_DEPS ${the_target})
 
-      if(NOT BUILD_tiger_world)
+      if(NOT BUILD_${TI_INTERNAL_NAME}_world)
         get_native_precompiled_header(${the_target} perf_precomp.hpp)
       endif()
 
@@ -1211,13 +1211,13 @@ function(ti_add_perf_tests)
       ti_add_executable(${the_target} ${TIGER_PERF_${the_module}_SOURCES} ${${the_target}_pch})
       ti_target_include_modules(${the_target} ${perf_deps})
       ti_target_link_libraries(${the_target} PRIVATE ${perf_deps} ${TIGER_MODULE_${the_module}_DEPS} ${TIGER_LINKER_LIBS} ${TIGER_PERF_${the_module}_DEPS})
-      add_dependencies(tiger_perf_tests ${the_target})
+      add_dependencies(${TI_INTERNAL_NAME}_perf_tests ${the_target})
 
-      if(TARGET tiger_videoio_plugins)
-        add_dependencies(${the_target} tiger_videoio_plugins)
+      if(TARGET ${TI_INTERNAL_NAME}_videoio_plugins)
+        add_dependencies(${the_target} ${TI_INTERNAL_NAME}_videoio_plugins)
       endif()
-      if(TARGET tiger_highgui_plugins)
-        add_dependencies(${the_target} tiger_highgui_plugins)
+      if(TARGET ${TI_INTERNAL_NAME}_highgui_plugins)
+        add_dependencies(${the_target} ${TI_INTERNAL_NAME}_highgui_plugins)
       endif()
 
       if(HAVE_HPX)
@@ -1241,17 +1241,17 @@ function(ti_add_perf_tests)
       if(WINRT)
         # removing APPCONTAINER from tests to run from console
         # look for detailed description inside of ti_create_module macro above
-        add_custom_command(TARGET "tiger_perf_${name}"
+        add_custom_command(TARGET "${TI_INTERNAL_NAME}_perf_${name}"
                            POST_BUILD
                            COMMAND link.exe /edit /APPCONTAINER:NO $(TargetPath))
       endif()
 
-      if(NOT BUILD_tiger_world)
+      if(NOT BUILD_${TI_INTERNAL_NAME}_world)
         _ti_add_precompiled_headers(${the_target})
       endif()
 
       ti_add_test_from_target("${the_target}" "Performance" "${the_target}")
-      ti_add_test_from_target("tiger_sanity_${name}" "Sanity" "${the_target}"
+      ti_add_test_from_target("${TI_INTERNAL_NAME}_sanity_${name}" "Sanity" "${the_target}"
                                "--perf_min_samples=1"
                                "--perf_force_samples=1"
                                "--perf_verify_sanity")
@@ -1278,8 +1278,8 @@ macro(ti_add_tests module_name)
     get_filename_component(test_path ${test_src} PATH)
     
     ti_add_executable(${test_name} ${CMAKE_CURRENT_SOURCE_DIR}/tests/${test_src})
-    ti_target_include_modules_recurse(${test_name} tiger_${module_name})
-    ti_target_link_libraries(${test_name} tiger_${module_name})
+    ti_target_include_modules_recurse(${test_name} ${TI_INTERNAL_NAME}_${module_name})
+    ti_target_link_libraries(${test_name} ${TI_INTERNAL_NAME}_${module_name})
     target_include_directories(${test_name}
       PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/test/
@@ -1308,11 +1308,11 @@ function(ti_add_accuracy_tests)
   )
     __ti_parse_test_sources(TEST ${ARGN})
 
-    # tiger_imgcodecs is required for imread/imwrite
-    set(test_deps tiger_ts ${the_module} tiger_imgcodecs tiger_videoio ${TIGER_MODULE_${the_module}_DEPS} ${TIGER_MODULE_tiger_ts_DEPS})
+    # ${TI_INTERNAL_NAME}_imgcodecs is required for imread/imwrite
+    set(test_deps ${TI_INTERNAL_NAME}_ts ${the_module} ${TI_INTERNAL_NAME}_imgcodecs ${TI_INTERNAL_NAME}_videoio ${TIGER_MODULE_${the_module}_DEPS} ${TIGER_MODULE_${TI_INTERNAL_NAME}_ts_DEPS})
     ti_check_dependencies(${test_deps})
     if(TI_DEPENDENCIES_FOUND)
-      set(the_target "tiger_test_${name}")
+      set(the_target "${TI_INTERNAL_NAME}_test_${name}")
       # project(${the_target})
 
       if(NOT TIGER_TEST_${the_module}_SOURCES)
@@ -1328,7 +1328,7 @@ function(ti_add_accuracy_tests)
       endif()
       ti_compiler_optimization_process_sources(TIGER_TEST_${the_module}_SOURCES TIGER_TEST_${the_module}_DEPS ${the_target})
 
-      if(NOT BUILD_tiger_world)
+      if(NOT BUILD_${TI_INTERNAL_NAME}_world)
         get_native_precompiled_header(${the_target} test_precomp.hpp)
       endif()
 
@@ -1339,13 +1339,13 @@ function(ti_add_accuracy_tests)
         ti_target_include_directories(${the_target} "${CMAKE_CURRENT_BINARY_DIR}/test")
       endif()
       ti_target_link_libraries(${the_target} PRIVATE ${test_deps} ${TIGER_MODULE_${the_module}_DEPS} ${TIGER_LINKER_LIBS} ${TIGER_TEST_${the_module}_DEPS})
-      add_dependencies(tiger_tests ${the_target})
+      add_dependencies(${TI_INTERNAL_NAME}_tests ${the_target})
 
-      if(TARGET tiger_videoio_plugins)
-        add_dependencies(${the_target} tiger_videoio_plugins)
+      if(TARGET ${TI_INTERNAL_NAME}_videoio_plugins)
+        add_dependencies(${the_target} ${TI_INTERNAL_NAME}_videoio_plugins)
       endif()
-      if(TARGET tiger_highgui_plugins)
-        add_dependencies(${the_target} tiger_highgui_plugins)
+      if(TARGET ${TI_INTERNAL_NAME}_highgui_plugins)
+        add_dependencies(${the_target} ${TI_INTERNAL_NAME}_highgui_plugins)
       endif()
 
       if(HAVE_HPX)
@@ -1373,7 +1373,7 @@ function(ti_add_accuracy_tests)
         ti_append_target_property(${the_target} COMPILE_DEFINITIONS "TIGER_TEST_BIGDATA=1")
       endif()
 
-      if(NOT BUILD_tiger_world)
+      if(NOT BUILD_${TI_INTERNAL_NAME}_world)
         _ti_add_precompiled_headers(${the_target})
       endif()
 
@@ -1400,10 +1400,10 @@ function(ti_add_samples)
     return()
   endif()
 
-  string(REGEX REPLACE "^tiger_" "" module_id ${the_module})
+  string(REGEX REPLACE "^${TI_INTERNAL_NAME}_" "" module_id ${the_module})
 
   if(BUILD_EXAMPLES)
-    set(samples_deps ${the_module} ${TIGER_MODULE_${the_module}_DEPS} tiger_imgcodecs tiger_videoio tiger_highgui ${ARGN})
+    set(samples_deps ${the_module} ${TIGER_MODULE_${the_module}_DEPS} ${TI_INTERNAL_NAME}_imgcodecs ${TI_INTERNAL_NAME}_videoio ${TI_INTERNAL_NAME}_highgui ${ARGN})
     ti_check_dependencies(${samples_deps})
 
     if(TI_DEPENDENCIES_FOUND)
@@ -1426,19 +1426,19 @@ function(ti_add_samples)
           set_target_properties(${the_target} PROPERTIES
             FOLDER "samples/${module_id}")
         endif()
-        # Add single target to build all samples for the module: 'make tiger_samples_bioinspired'
-        set(parent_target tiger_samples_${module_id})
+        # Add single target to build all samples for the module: 'make ${TI_INTERNAL_NAME}_samples_bioinspired'
+        set(parent_target ${TI_INTERNAL_NAME}_samples_${module_id})
         if(NOT TARGET ${parent_target})
           add_custom_target(${parent_target})
-          add_dependencies(tiger_samples ${parent_target})
+          add_dependencies(${TI_INTERNAL_NAME}_samples ${parent_target})
         endif()
         add_dependencies(${parent_target} ${the_target})
 
-        if(TARGET tiger_videoio_plugins)
-          add_dependencies(${the_target} tiger_videoio_plugins)
+        if(TARGET ${TI_INTERNAL_NAME}_videoio_plugins)
+          add_dependencies(${the_target} ${TI_INTERNAL_NAME}_videoio_plugins)
         endif()
-        if(TARGET tiger_highgui_plugins)
-          add_dependencies(${the_target} tiger_highgui_plugins)
+        if(TARGET ${TI_INTERNAL_NAME}_highgui_plugins)
+          add_dependencies(${the_target} ${TI_INTERNAL_NAME}_highgui_plugins)
         endif()
 
         if(INSTALL_BIN_EXAMPLES)

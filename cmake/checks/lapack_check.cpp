@@ -1,5 +1,5 @@
 #include <complex.h>
-#include "tiger_lapack.h"
+#include "${TI_INTERNAL_NAME}_lapack.h"
 
 static char* check_fn1 = (char*)sgesv_;
 static char* check_fn2 = (char*)sposv_;

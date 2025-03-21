@@ -126,7 +126,7 @@ set(STD_TIGER_DEV lib${TI_INTERNAL_NAME}-dev)
 foreach(module 3d calib core dnn features flann highgui
                imgcodecs imgproc ml objdetect
                photo stereo stitching ts video videoio)
-  if(HAVE_tiger_${module})
+  if(HAVE_${TI_INTERNAL_NAME}_${module})
     list(APPEND STD_TIGER_LIBS "lib${TI_INTERNAL_NAME}-${module}4.0")
     list(APPEND STD_TIGER_DEV "lib${TI_INTERNAL_NAME}-${module}-dev")
   endif()

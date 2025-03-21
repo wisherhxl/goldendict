@@ -10,9 +10,9 @@ include(cmake/TigerGenHeaders.cmake)
 
 # Generate environment setup file
 if(INSTALL_TESTS AND TIGER_TEST_DATA_PATH)
-    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/tiger_run_all_tests_windows.cmd.in"
-                   "${CMAKE_BINARY_DIR}/win-install/tiger_run_all_tests.cmd" @ONLY)
-    install(PROGRAMS "${CMAKE_BINARY_DIR}/win-install/tiger_run_all_tests.cmd"
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/${TI_INTERNAL_NAME}_run_all_tests_windows.cmd.in"
+                   "${CMAKE_BINARY_DIR}/win-install/${TI_INTERNAL_NAME}_run_all_tests.cmd" @ONLY)
+    install(PROGRAMS "${CMAKE_BINARY_DIR}/win-install/${TI_INTERNAL_NAME}_run_all_tests.cmd"
             DESTINATION ${TIGER_TEST_INSTALL_PATH} COMPONENT tests)
 endif()
 
@@ -38,7 +38,7 @@ endif()
 # Summary:
 # ----------------------------------------------------------------------------
 status("")
-status("General configuration for Tiger ${TIGER_VERSION}")
+status("General configuration for ${PROJECT_NAME} ${TIGER_VERSION}")
 status("=====================================")
 if(TIGER_VCSVERSION)
   status("  Version control:" ${TIGER_VCSVERSION})
@@ -179,16 +179,16 @@ status("  Tiger modules:")
 set(TIGER_MODULES_BUILD_ST "")
 foreach(the_module ${TIGER_MODULES_BUILD})
   if(NOT TIGER_MODULE_${the_module}_CLASS STREQUAL "INTERNAL"
-     OR the_module STREQUAL "tiger_ts")
+     OR the_module STREQUAL "${TI_INTERNAL_NAME}_ts")
     list(APPEND TIGER_MODULES_BUILD_ST "${the_module}")
   endif()
 endforeach()
-string(REPLACE "tiger_" "" TIGER_MODULES_BUILD_ST "${TIGER_MODULES_BUILD_ST}")
-string(REPLACE "tiger_" "" TIGER_MODULES_DISABLED_USER_ST
+string(REPLACE "${TI_INTERNAL_NAME}_" "" TIGER_MODULES_BUILD_ST "${TIGER_MODULES_BUILD_ST}")
+string(REPLACE "${TI_INTERNAL_NAME}_" "" TIGER_MODULES_DISABLED_USER_ST
                "${TIGER_MODULES_DISABLED_USER}")
-string(REPLACE "tiger_" "" TIGER_MODULES_DISABLED_AUTO_ST
+string(REPLACE "${TI_INTERNAL_NAME}_" "" TIGER_MODULES_DISABLED_AUTO_ST
                "${TIGER_MODULES_DISABLED_AUTO}")
-string(REPLACE "tiger_" "" TIGER_MODULES_DISABLED_FORCE_ST
+string(REPLACE "${TI_INTERNAL_NAME}_" "" TIGER_MODULES_DISABLED_FORCE_ST
                "${TIGER_MODULES_DISABLED_FORCE}")
 list(SORT TIGER_MODULES_BUILD_ST)
 list(SORT TIGER_MODULES_DISABLED_USER_ST)
@@ -208,13 +208,13 @@ ti_build_features_string(
   IF
   BUILD_TESTS
   AND
-  HAVE_tiger_ts
+  HAVE_${TI_INTERNAL_NAME}_ts
   THEN
   "tests"
   IF
   BUILD_PERF_TESTS
   AND
-  HAVE_tiger_ts
+  HAVE_${TI_INTERNAL_NAME}_ts
   THEN
   "perf_tests"
   IF
@@ -222,7 +222,7 @@ ti_build_features_string(
   THEN
   "examples"
   IF
-  BUILD_tiger_apps
+  BUILD_${TI_INTERNAL_NAME}_apps
   THEN
   "apps"
   IF
@@ -256,7 +256,7 @@ ti_build_features_string(
   THEN
   "javadoc"
   IF
-  BUILD_tiger_js
+  BUILD_${TI_INTERNAL_NAME}_js
   OR
   DEFINED
   TIGER_JS_LOCATION

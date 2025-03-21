@@ -179,7 +179,7 @@ if(TI_GCC OR TI_CLANG OR TI_ICX)
       add_extra_compiler_option(-Wimplicit-fallthrough=3)
     endif()
     if(TI_GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-      add_extra_compiler_option(-Wno-strict-overflow) # Issue appears when compiling surf.cpp from tiger_contrib/modules/xfeatures2d
+      add_extra_compiler_option(-Wno-strict-overflow) # Issue appears when compiling surf.cpp from ${TI_INTERNAL_NAME}_contrib/modules/xfeatures2d
     endif()
     if(TI_GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
       add_extra_compiler_option(-Wno-missing-field-initializers)  # GCC 4.x emits warnings about {}, fixed in GCC 5+
@@ -342,7 +342,7 @@ if(MSVC)
   endif()
 endif()
 
-include("${Tiger_SOURCE_DIR}/cmake/TigerCompilerOptimizations.cmake")
+include("${${PROJECT_NAME}_SOURCE_DIR}/cmake/TigerCompilerOptimizations.cmake")
 
 if(COMMAND ti_compiler_optimization_options)
   ti_compiler_optimization_options()
@@ -362,14 +362,14 @@ endif()
 
 # workaround gcc bug for aligned ld/st
 if((PPC64LE AND NOT CMAKE_CROSSCOMPILING) OR TIGER_FORCE_COMPILER_CHECK_VSX_ALIGNED)
-  ti_check_runtime_flag("${CPU_BASELINE_FLAGS}" TIGER_CHECK_VSX_ALIGNED "${Tiger_SOURCE_DIR}/cmake/checks/runtime/cpu_vsx_aligned.cpp")
+  ti_check_runtime_flag("${CPU_BASELINE_FLAGS}" TIGER_CHECK_VSX_ALIGNED "${${PROJECT_NAME}_SOURCE_DIR}/cmake/checks/runtime/cpu_vsx_aligned.cpp")
   if(NOT TIGER_CHECK_VSX_ALIGNED)
     add_extra_compiler_option_force(-DTI_COMPILER_VSX_BROKEN_ALIGNED)
   endif()
 endif()
 # validate inline asm with fixes register number and constraints wa, wd, wf
 if(PPC64LE)
-  ti_check_compiler_flag(CXX "${CPU_BASELINE_FLAGS}" TIGER_CHECK_VSX_ASM "${Tiger_SOURCE_DIR}/cmake/checks/cpu_vsx_asm.cpp")
+  ti_check_compiler_flag(CXX "${CPU_BASELINE_FLAGS}" TIGER_CHECK_VSX_ASM "${${PROJECT_NAME}_SOURCE_DIR}/cmake/checks/cpu_vsx_asm.cpp")
   if(NOT TIGER_CHECK_VSX_ASM)
     add_extra_compiler_option_force(-DTI_COMPILER_VSX_BROKEN_ASM)
   endif()
