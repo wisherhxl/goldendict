@@ -111,7 +111,7 @@ if(INSTALL_TO_MANGLED_PATHS)
       TIGER_TEST_DATA_INSTALL_PATH
       TIGER_OTHER_INSTALL_PATH
     )
-    string(REGEX REPLACE "tiger[0-9]*" "tiger-${TIGER_VERSION}" ${v} "${${v}}")
+    string(REGEX REPLACE "${TI_INTERNAL_NAME}[0-9]*" "${TI_INTERNAL_NAME}-${TIGER_VERSION}" ${v} "${${v}}")
   endforeach()
 endif()
 

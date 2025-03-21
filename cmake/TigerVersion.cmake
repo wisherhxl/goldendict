@@ -1,4 +1,4 @@
-SET(TIGER_VERSION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/modules/base/include/tiger/base/version.hpp")
+SET(TIGER_VERSION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/modules/base/include/${TI_INTERNAL_NAME}/base/version.hpp")
 file(STRINGS "${TIGER_VERSION_FILE}" TIGER_VERSION_PARTS REGEX "#define TI_VERSION_[A-Z]+[ ]+" )
 
 string(REGEX REPLACE ".+TI_VERSION_MAJOR[ ]+([0-9]+).*" "\\1" TIGER_VERSION_MAJOR "${TIGER_VERSION_PARTS}")
@@ -17,7 +17,7 @@ ti_update(TIGER_LIBVERSION "${TIGER_VERSION_MAJOR}.${TIGER_VERSION_MINOR}.${TIGE
 
 # create a dependency on the version file
 # we never use the output of the following command but cmake will rerun automatically if the version file changes
-configure_file("${TIGER_VERSION_FILE}" "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/opencv_junk/version.junk" COPYONLY)
+configure_file("${TIGER_VERSION_FILE}" "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${TI_INTERNAL_NAME}_junk/version.junk" COPYONLY)
 
 ti_update(TIGER_VS_VER_FILEVERSION_QUAD "${TIGER_VERSION_MAJOR},${TIGER_VERSION_MINOR},${TIGER_VERSION_PATCH},0")
 ti_update(TIGER_VS_VER_PRODUCTVERSION_QUAD "${TIGER_VERSION_MAJOR},${TIGER_VERSION_MINOR},${TIGER_VERSION_PATCH},0")

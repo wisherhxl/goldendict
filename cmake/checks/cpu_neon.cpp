@@ -9,7 +9,7 @@
 #  define TI_NEON 1
 #endif
 
-// MSVC 2019 bug. Details: https://github.com/tiger/tiger/pull/16027
+// MSVC 2019 bug. Details:
 void test_aliased_type(const uint8x16_t& a) { }
 void test_aliased_type(const int8x16_t& a) { }
 

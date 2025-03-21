@@ -1,5 +1,4 @@
 // check sanity of vsx aligned ld/st
-// https://github.com/tiger/tiger/issues/13211
 
 #include <altivec.h>
 #undef bool

@@ -894,7 +894,7 @@ macro(ti_compiler_optimization_fill_cpu_config)
 ")
 
 
-  set(__file "${Tiger_SOURCE_DIR}/modules/base/include/tiger/base/ti_cpu_helper.h")
+  set(__file "${Tiger_SOURCE_DIR}/modules/base/include/${TI_INTERNAL_NAME}/base/ti_cpu_helper.h")
   if(EXISTS "${__file}")
     file(READ "${__file}" __content)
   endif()
@@ -944,7 +944,7 @@ macro(__ti_add_dispatched_file filename target_src_var src_directory dst_directo
 
         set(__declarations_str "${__declarations_str}
 #define TI_CPU_DISPATCH_MODE ${OPT}
-#include \"tiger/core/private/ti_cpu_include_simd_declarations.hpp\"
+#include \"${TI_INTERNAL_NAME}/core/private/ti_cpu_include_simd_declarations.hpp\"
 ")
         set(__dispatch_modes "${OPT}, ${__dispatch_modes}")
       endif()

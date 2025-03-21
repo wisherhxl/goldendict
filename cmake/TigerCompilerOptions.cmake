@@ -204,7 +204,7 @@ if(TI_GCC OR TI_CLANG OR TI_ICX)
           AND NOT (APPLE AND TI_CLANG)
           AND NOT EMSCRIPTEN
         )
-        OR (EMSCRIPTEN AND WITH_PTHREADS_PF)  # https://github.com/tiger/tiger/issues/20285
+        OR (EMSCRIPTEN AND WITH_PTHREADS_PF) 
       )
   ) # TODO
     add_extra_compiler_option(-pthread)
@@ -342,9 +342,7 @@ if(MSVC)
   endif()
 endif()
 
-if(PROJECT_NAME STREQUAL "Tiger")
-  include("${Tiger_SOURCE_DIR}/cmake/TigerCompilerOptimizations.cmake")
-endif()
+include("${Tiger_SOURCE_DIR}/cmake/TigerCompilerOptimizations.cmake")
 
 if(COMMAND ti_compiler_optimization_options)
   ti_compiler_optimization_options()
@@ -363,7 +361,6 @@ if((TI_GCC OR TI_CLANG OR TI_ICX)
 endif()
 
 # workaround gcc bug for aligned ld/st
-# https://github.com/tiger/tiger/issues/13211
 if((PPC64LE AND NOT CMAKE_CROSSCOMPILING) OR TIGER_FORCE_COMPILER_CHECK_VSX_ALIGNED)
   ti_check_runtime_flag("${CPU_BASELINE_FLAGS}" TIGER_CHECK_VSX_ALIGNED "${Tiger_SOURCE_DIR}/cmake/checks/runtime/cpu_vsx_aligned.cpp")
   if(NOT TIGER_CHECK_VSX_ALIGNED)
@@ -378,7 +375,7 @@ if(PPC64LE)
   endif()
 endif()
 
-# Apply "-Wl,--as-needed" linker flags: https://github.com/tiger/tiger/issues/7001
+# Apply "-Wl,--as-needed" linker flags: 
 if(NOT TIGER_SKIP_LINK_AS_NEEDED)
   if(UNIX)
     set(_option "-Wl,--as-needed")
@@ -394,7 +391,7 @@ if(NOT TIGER_SKIP_LINK_AS_NEEDED)
   endif()
 endif()
 
-# Apply "-Wl,--no-undefined" linker flags: https://github.com/tiger/tiger/pull/21347
+# Apply "-Wl,--no-undefined" linker flags: 
 if(NOT TIGER_SKIP_LINK_NO_UNDEFINED)
   if(UNIX AND (NOT CMAKE_SYSTEM_NAME MATCHES "OpenBSD"))
     set(_option "-Wl,--no-undefined")

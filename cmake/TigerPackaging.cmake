@@ -14,9 +14,9 @@ and machine learning software library. Tiger was built to provide a common
 infrastructure for computer vision applications and to accelerate the use of
 machine perception in the commercial products. Being a BSD-licensed product,
 Tiger makes it easy for businesses to utilize and modify the code.")
-  set(CPACK_PACKAGE_VENDOR "Tiger Foundation")
+  set(CPACK_PACKAGE_VENDOR "${TI_ORG_NAME}")
   set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-  set(CPACK_PACKAGE_CONTACT "admin@tiger.org")
+  set(CPACK_PACKAGE_CONTACT "${TI_PROJECT_CONTACT}")
   set(CPACK_PACKAGE_VERSION_MAJOR "${TIGER_VERSION_MAJOR}")
   set(CPACK_PACKAGE_VERSION_MINOR "${TIGER_VERSION_MINOR}")
   set(CPACK_PACKAGE_VERSION_PATCH "${TIGER_VERSION_PATCH}")
@@ -52,21 +52,21 @@ else()
   set(TIGER_PACKAGE_ARCH_SUFFIX ${CMAKE_SYSTEM_PROCESSOR})
 endif()
 
-set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION}-${TIGER_PACKAGE_ARCH_SUFFIX}")
-set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION}-${TIGER_PACKAGE_ARCH_SUFFIX}")
+set(CPACK_PACKAGE_FILE_NAME "${TI_INTERNAL_NAME}-${CPACK_PACKAGE_VERSION}-${TIGER_PACKAGE_ARCH_SUFFIX}")
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${TI_INTERNAL_NAME}-${CPACK_PACKAGE_VERSION}-${TIGER_PACKAGE_ARCH_SUFFIX}")
 
 #rpm options
 set(CPACK_RPM_COMPONENT_INSTALL TRUE)
 set(CPACK_RPM_PACKAGE_SUMMARY ${CPACK_PACKAGE_DESCRIPTION_SUMMARY})
 set(CPACK_RPM_PACKAGE_DESCRIPTION ${CPACK_PACKAGE_DESCRIPTION})
-set(CPACK_RPM_PACKAGE_URL "http://tiger.org")
+set(CPACK_RPM_PACKAGE_URL "http://${TI_INTERNAL_NAME}.org")
 set(CPACK_RPM_PACKAGE_LICENSE "Apache 2.0")
 
 #deb options
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
 set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
 set(CPACK_DEBIAN_PACKAGE_SECTION "libs")
-set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://tiger.org")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://${TI_INTERNAL_NAME}.org")
 
 #display names
 set(CPACK_COMPONENT_DEV_DISPLAY_NAME     "Development files")
@@ -120,15 +120,15 @@ if(HAVE_TBB AND NOT BUILD_TBB)
   endif()
 endif()
 
-set(STD_TIGER_LIBS tiger-data)
-set(STD_TIGER_DEV libtiger-dev)
+set(STD_TIGER_LIBS ${TI_INTERNAL_NAME}-data)
+set(STD_TIGER_DEV lib${TI_INTERNAL_NAME}-dev)
 
 foreach(module 3d calib core dnn features flann highgui
                imgcodecs imgproc ml objdetect
                photo stereo stitching ts video videoio)
   if(HAVE_tiger_${module})
-    list(APPEND STD_TIGER_LIBS "libtiger-${module}4.0")
-    list(APPEND STD_TIGER_DEV "libtiger-${module}-dev")
+    list(APPEND STD_TIGER_LIBS "lib${TI_INTERNAL_NAME}-${module}4.0")
+    list(APPEND STD_TIGER_DEV "lib${TI_INTERNAL_NAME}-${module}-dev")
   endif()
 endforeach()
 
@@ -140,38 +140,38 @@ string(REPLACE ";" ", " CPACK_COMPONENT_DEV_CONFLICTS "${STD_TIGER_DEV}")
 string(REPLACE ";" ", " CPACK_COMPONENT_DEV_PROVIDES "${STD_TIGER_DEV}")
 string(REPLACE ";" ", " CPACK_COMPONENT_DEV_REPLACES "${STD_TIGER_DEV}")
 
-set(CPACK_COMPONENT_PYTHON_CONFLICTS python-tiger)
-set(CPACK_COMPONENT_PYTHON_PROVIDES python-tiger)
-set(CPACK_COMPONENT_PYTHON_REPLACES python-tiger)
+set(CPACK_COMPONENT_PYTHON_CONFLICTS python-${TI_INTERNAL_NAME})
+set(CPACK_COMPONENT_PYTHON_PROVIDES python-${TI_INTERNAL_NAME})
+set(CPACK_COMPONENT_PYTHON_REPLACES python-${TI_INTERNAL_NAME})
 
-set(CPACK_COMPONENT_JAVA_CONFLICTS "libtiger5.0-java, libtiger5.0-jni")
-set(CPACK_COMPONENT_JAVA_PROVIDES "libtiger5.0-java, libtiger5.0-jni")
-set(CPACK_COMPONENT_JAVA_REPLACES "libtiger5.0-java, libtiger5.0-jni")
+set(CPACK_COMPONENT_JAVA_CONFLICTS "lib${TI_INTERNAL_NAME}5.0-java, lib${TI_INTERNAL_NAME}5.0-jni")
+set(CPACK_COMPONENT_JAVA_PROVIDES "lib${TI_INTERNAL_NAME}5.0-java, lib${TI_INTERNAL_NAME}5.0-jni")
+set(CPACK_COMPONENT_JAVA_REPLACES "lib${TI_INTERNAL_NAME}5.0-java, lib${TI_INTERNAL_NAME}5.0-jni")
 
-set(CPACK_COMPONENT_DOCS_CONFLICTS tiger-doc)
-set(CPACK_COMPONENT_SAMPLES_CONFLICTS tiger-doc)
+set(CPACK_COMPONENT_DOCS_CONFLICTS ${TI_INTERNAL_NAME}-doc)
+set(CPACK_COMPONENT_SAMPLES_CONFLICTS ${TI_INTERNAL_NAME}-doc)
 
 if(NOT TIGER_CUSTOM_PACKAGE_INFO)
   set(CPACK_COMPONENT_LIBS_DESCRIPTION "Open Computer Vision Library")
-  set(CPACK_DEBIAN_COMPONENT_LIBS_NAME "lib${CMAKE_PROJECT_NAME}")
+  set(CPACK_DEBIAN_COMPONENT_LIBS_NAME "lib${TI_INTERNAL_NAME}")
 
   set(CPACK_COMPONENT_PYTHON_DESCRIPTION "Python bindings for Open Source Computer Vision Library")
-  set(CPACK_DEBIAN_COMPONENT_PYTHON_NAME "lib${CMAKE_PROJECT_NAME}-python")
+  set(CPACK_DEBIAN_COMPONENT_PYTHON_NAME "lib${TI_INTERNAL_NAME}-python")
 
   set(CPACK_COMPONENT_JAVA_DESCRIPTION "Java bindings for Open Source Computer Vision Library")
-  set(CPACK_DEBIAN_COMPONENT_JAVA_NAME "lib${CMAKE_PROJECT_NAME}-java")
+  set(CPACK_DEBIAN_COMPONENT_JAVA_NAME "lib${TI_INTERNAL_NAME}-java")
 
   set(CPACK_COMPONENT_DEV_DESCRIPTION "Development files for Open Source Computer Vision Library")
-  set(CPACK_DEBIAN_COMPONENT_DEV_NAME "lib${CMAKE_PROJECT_NAME}-dev")
+  set(CPACK_DEBIAN_COMPONENT_DEV_NAME "lib${TI_INTERNAL_NAME}-dev")
 
   set(CPACK_COMPONENT_DOCS_DESCRIPTION "Documentation for Open Source Computer Vision Library")
-  set(CPACK_DEBIAN_COMPONENT_DOCS_NAME "lib${CMAKE_PROJECT_NAME}-docs")
+  set(CPACK_DEBIAN_COMPONENT_DOCS_NAME "lib${TI_INTERNAL_NAME}-docs")
 
   set(CPACK_COMPONENT_SAMPLES_DESCRIPTION "Samples for Open Source Computer Vision Library")
-  set(CPACK_DEBIAN_COMPONENT_SAMPLES_NAME "lib${CMAKE_PROJECT_NAME}-samples")
+  set(CPACK_DEBIAN_COMPONENT_SAMPLES_NAME "lib${TI_INTERNAL_NAME}-samples")
 
   set(CPACK_COMPONENT_TESTS_DESCRIPTION "Accuracy and performance tests for Open Source Computer Vision Library")
-  set(CPACK_DEBIAN_COMPONENT_TESTS_NAME "lib${CMAKE_PROJECT_NAME}-tests")
+  set(CPACK_DEBIAN_COMPONENT_TESTS_NAME "lib${TI_INTERNAL_NAME}-tests")
 endif(NOT TIGER_CUSTOM_PACKAGE_INFO)
 
 ti_cmake_hook(PRE_CPACK)

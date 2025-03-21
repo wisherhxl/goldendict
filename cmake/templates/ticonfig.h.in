@@ -1,7 +1,0 @@
-#ifndef TIGER_TICONFIG_H_INCLUDED
-#define TIGER_TICONFIG_H_INCLUDED
-
-/* Intel Threading Building Blocks */
-#cmakedefine HAVE_TBB
-
-#endif // TIGER_TICONFIG_H_INCLUDED

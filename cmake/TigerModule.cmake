@@ -825,18 +825,18 @@ macro(ti_glob_module_sources)
        "${CMAKE_CURRENT_LIST_DIR}/src/*.h"
   )
   file(GLOB lib_hdrs
-       "${CMAKE_CURRENT_LIST_DIR}/include/tiger/*.hpp"
-       "${CMAKE_CURRENT_LIST_DIR}/include/tiger/${name}/*.hpp"
-       "${CMAKE_CURRENT_LIST_DIR}/include/tiger/${name}/*.h"
-       "${CMAKE_CURRENT_LIST_DIR}/include/tiger/${name}/hal/*.hpp"
-       "${CMAKE_CURRENT_LIST_DIR}/include/tiger/${name}/hal/*.h"
-       "${CMAKE_CURRENT_LIST_DIR}/include/tiger/${name}/utils/*.hpp"
-       "${CMAKE_CURRENT_LIST_DIR}/include/tiger/${name}/utils/*.h"
-       "${CMAKE_CURRENT_LIST_DIR}/include/tiger/${name}/legacy/*.h"
+       "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/*.hpp"
+       "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/*.hpp"
+       "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/*.h"
+       "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/hal/*.hpp"
+       "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/hal/*.h"
+       "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/utils/*.hpp"
+       "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/utils/*.h"
+       "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/legacy/*.h"
   )
   file(GLOB lib_hdrs_detail
-       "${CMAKE_CURRENT_LIST_DIR}/include/tiger/${name}/detail/*.hpp"
-       "${CMAKE_CURRENT_LIST_DIR}/include/tiger/${name}/detail/*.h"
+       "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/detail/*.hpp"
+       "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/detail/*.h"
   )
   if (APPLE)
     file(GLOB_RECURSE lib_srcs_apple
@@ -960,12 +960,12 @@ macro(_ti_create_module)
     endif()
   endif()
 
-  source_group("Include" FILES "${TIGER_CONFIG_FILE_INCLUDE_DIR}/ticonfig.h" "${TIGER_CONFIG_FILE_INCLUDE_DIR}/tiger/tiger_modules.hpp")
+  source_group("Include" FILES "${TIGER_CONFIG_FILE_INCLUDE_DIR}/ti_config.h" "${TIGER_CONFIG_FILE_INCLUDE_DIR}/${TI_INTERNAL_NAME}/${TI_INTERNAL_NAME}_modules.hpp")
   source_group("Src" FILES "${${the_module}_pch}")
   ti_cmake_hook(PRE_CREATE_MODULE_LIBRARY)
   ti_cmake_hook(PRE_CREATE_MODULE_LIBRARY_${the_module})
   ti_add_library(${the_module} ${TIGER_MODULE_TYPE} ${TIGER_MODULE_${the_module}_HEADERS} ${TIGER_MODULE_${the_module}_SOURCES}
-    "${TIGER_CONFIG_FILE_INCLUDE_DIR}/ticonfig.h" "${TIGER_CONFIG_FILE_INCLUDE_DIR}/tiger/tiger_modules.hpp"
+    "${TIGER_CONFIG_FILE_INCLUDE_DIR}/ti_config.h" "${TIGER_CONFIG_FILE_INCLUDE_DIR}/${TI_INTERNAL_NAME}/${TI_INTERNAL_NAME}_modules.hpp"
     ${${the_module}_pch}
     ${_VS_VERSION_FILE}
     ${_DLLMAIN_FILE}
@@ -1055,8 +1055,8 @@ macro(_ti_create_module)
   ti_cmake_hook(PRE_INSTALL_MODULE_HEADERS_${the_module})
   if(TIGER_MODULE_${the_module}_HEADERS AND ";${TIGER_MODULES_PUBLIC};" MATCHES ";${the_module};")
     foreach(hdr ${TIGER_MODULE_${the_module}_HEADERS})
-      string(REGEX REPLACE "^.*tiger/" "tiger/" hdr2 "${hdr}")
-      if(NOT hdr2 MATCHES "private" AND hdr2 MATCHES "^(tiger/?.*)/[^/]+.h(..)?$" )
+      string(REGEX REPLACE "^.*${TI_INTERNAL_NAME}/" "${TI_INTERNAL_NAME}/" hdr2 "${hdr}")
+      if(NOT hdr2 MATCHES "private" AND hdr2 MATCHES "^(${TI_INTERNAL_NAME}/?.*)/[^/]+.h(..)?$" )
         install(FILES ${hdr} OPTIONAL DESTINATION "${TIGER_INCLUDE_INSTALL_PATH}/${CMAKE_MATCH_1}" COMPONENT dev)
       else()
         #message("Header file will be NOT installed: ${hdr}")
@@ -1070,7 +1070,7 @@ macro(_ti_create_module)
   ti_cmake_hook(POST_CREATE_MODULE_LIBRARY_${the_module})
 endmacro()
 
-# tiger precompiled headers macro (can add pch to modules and tests)
+# Tiger precompiled headers macro (can add pch to modules and tests)
 # this macro must be called after any "add_definitions" commands, otherwise precompiled headers will not work
 # Usage:
 # ti_add_precompiled_headers(${the_module})
