@@ -42,7 +42,6 @@ bld/
 deploy/
 opencv/
 .idea/
-modules/base/include/tiger/base/project_config.h
 samples/lidar_calibration/
 
 # Visual Studio 2015/2017 cache/options directory
@@ -90,3 +89,6 @@ CMakeLists.txt.user*
 
 # Auto generated presets by Conan
 CMakeUserPresets.json
+
+# Tiger auto generated files
+modules/base/
