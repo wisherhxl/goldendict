@@ -1,0 +1,3 @@
+set(the_description "base service module")
+
+ti_define_module(base)
