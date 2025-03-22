@@ -35,6 +35,13 @@ set(TI_VERSION_REVISION 0) # Revision version
 project(${TI_PROJECT_NAME} CXX C)
 enable_language(CXX C)
 
+# ============ Modules Information ============
+# TI_FIXED_ORDER_MODULES: Modules listed here are built first, in the order specified.
+# Remaining modules are built in a random order.
+set(TI_FIXED_ORDER_MODULES base)
+
+# ============ Applications Information ============
+
 # ============ Finalize Settings ============
 include(cmake/TigerMainSettings.cmake)
 include(cmake/TigerMainFinalize.cmake)

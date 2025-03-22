@@ -1,1 +1,0 @@
-ti_glob_applications(${CMAKE_CURRENT_SOURCE_DIR})
