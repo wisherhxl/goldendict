@@ -678,7 +678,7 @@ endmacro()
 # to control when option is available for user. Usage: option(<option_variable>
 # "help string describing the option" <initial value or boolean expression>
 # [VISIBLE_IF <condition>] [VERIFY <condition>])
-macro(TI_OPTION variable description value)
+macro(ti_option variable description value)
   set(__value ${value})
   set(__condition "")
   set(__verification)

@@ -108,7 +108,8 @@ function(ti_is_tiger_directory result_var dir)
       PARENT_SCOPE)
 endfunction()
 
-# adds include directories in such a way that directories from the Tiger source tree go first
+# adds include directories in such a way that directories from the Tiger source
+# tree go first
 function(ti_include_directories)
   ti_debug_message("ti_include_directories( ${ARGN} )")
   set(__add_before "")
@@ -116,8 +117,8 @@ function(ti_include_directories)
     ti_is_tiger_directory(__is_${TI_INTERNAL_NAME}_dir "${dir}")
     if(__is_${TI_INTERNAL_NAME}_dir)
       list(APPEND __add_before "${dir}")
-    elseif(((TI_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0") OR TI_CLANG) AND
-           dir MATCHES "/usr/include$")
+    elseif(((TI_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0")
+            OR TI_CLANG) AND dir MATCHES "/usr/include$")
       # workaround for GCC 6.x bug
     else()
       if(${CMAKE_SYSTEM_NAME} MATCHES QNX)
@@ -130,9 +131,10 @@ function(ti_include_directories)
   include_directories(BEFORE ${__add_before})
 endfunction()
 
-# adds include directories in such a way that directories from the Tiger source tree go first
+# adds include directories in such a way that directories from the Tiger source
+# tree go first
 function(ti_target_include_directories target)
-  #ti_debug_message("ti_target_include_directories(${target} ${ARGN})")
+  # ti_debug_message("ti_target_include_directories(${target} ${ARGN})")
   _ti_fix_target(target)
   set(__params "")
   set(__system_params "")
@@ -141,9 +143,10 @@ function(ti_target_include_directories target)
     if("${dir}" STREQUAL "SYSTEM")
       set(__var_name __system_params)
     else()
-      if(TI_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0" AND
-          dir MATCHES "/usr/include$")
-         # workaround for GCC 6.x bug
+      if(TI_GCC
+         AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0"
+         AND dir MATCHES "/usr/include$")
+        # workaround for GCC 6.x bug
       else()
         get_filename_component(__abs_dir "${dir}" ABSOLUTE)
         ti_is_tiger_directory(__is_${TI_INTERNAL_NAME}_dir "${dir}")
@@ -180,12 +183,16 @@ function(ti_target_include_directories target)
       if(__params)
         set(__new_inc ${TI_TARGET_INCLUDE_DIRS_${target}})
         list(APPEND __new_inc ${__params})
-        set(TI_TARGET_INCLUDE_DIRS_${target} "${__new_inc}" CACHE INTERNAL "")
+        set(TI_TARGET_INCLUDE_DIRS_${target}
+            "${__new_inc}"
+            CACHE INTERNAL "")
       endif()
       if(__system_params)
         set(__new_inc ${TI_TARGET_INCLUDE_SYSTEM_DIRS_${target}})
         list(APPEND __new_inc ${__system_params})
-        set(TI_TARGET_INCLUDE_SYSTEM_DIRS_${target} "${__new_inc}" CACHE INTERNAL "")
+        set(TI_TARGET_INCLUDE_SYSTEM_DIRS_${target}
+            "${__new_inc}"
+            CACHE INTERNAL "")
       endif()
     endif()
   endif()

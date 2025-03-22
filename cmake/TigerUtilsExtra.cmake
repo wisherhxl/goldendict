@@ -25,12 +25,15 @@ function(ti_get_date_components year month)
       PARENT_SCOPE)
 endfunction()
 
+# Find modules and 
 macro(ti_assemble_modules)
   add_definitions(-D__TIGER_BUILD=1)
 
   if(NOT TIGER_MODULES_PATH)
     set(TIGER_MODULES_PATH "${${PROJECT_NAME}_SOURCE_DIR}/modules")
   endif()
+
+  ti_glob_modules(${TIGER_MODULES_PATH} ${TIGER_EXTRA_MODULES_PATH})
 
   # build lists of modules to be documented
   set(TIGER_MODULES_MAIN "")
