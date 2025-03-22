@@ -221,7 +221,9 @@ include(cmake/TigerExtraTargets.cmake)
 ti_add_modules_compiler_options()
 
 # proto
-add_subdirectory(proto)
+if(HAVE_PROTOBUF)
+  ti_assemble_protos()
+endif()
 
 # Tiger modules
 ti_assemble_modules()
