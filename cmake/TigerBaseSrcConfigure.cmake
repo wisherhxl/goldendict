@@ -5,10 +5,6 @@ ti_create_directory(${TI_BASE_HEADER_DIR})
 set(TI_BASE_SOURCE_DIR ${TI_BASE_MODULE_DIR}/src)
 ti_create_directory(${TI_BASE_SOURCE_DIR})
 
-configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/ti_base_cmake_lists.txt.in
-  ${TI_BASE_MODULE_DIR}/CMakeLists.txt @ONLY)
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/project_config.h.in
                ${TI_BASE_HEADER_DIR}/project_config.h @ONLY)
 

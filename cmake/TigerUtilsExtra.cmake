@@ -27,6 +27,7 @@ endfunction()
 
 macro(ti_glob_protos protos_dir)
 
+  set(TIGER_HAVE_PROTOS OFF)
   file(
     GLOB_RECURSE proto_files
     LIST_DIRECTORIES false
@@ -35,28 +36,26 @@ macro(ti_glob_protos protos_dir)
   list(LENGTH proto_files PROTO_FILES_LENGTH)
   if(${PROTO_FILES_LENGTH} LESS 1)
     message(STATUS "No proto files has been found: ${protos_dir}")
-    set(proto_link "")
-    return()
+  else()
+    protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${proto_files})
+
+    set(proto_link protos)
+    set(TIGER_HAVE_PROTOS ON)
+
+    add_library(${proto_link} STATIC ${PROTO_SRCS} ${PROTO_HDRS})
+
+    target_include_directories(${proto_link} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+
+    target_link_libraries(${proto_link} PUBLIC ${protobuf_link})
+
+    set_target_properties(
+      ${proto_link}
+      PROPERTIES DEBUG_POSTFIX "${TIGER_DEBUG_POSTFIX}"
+                 ARCHIVE_OUTPUT_DIRECTORY ${LIBRARY_OUTPUT_PATH}
+                 RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
+                 OUTPUT_NAME "${proto_link}")
+    set_property(TARGET ${proto_link} PROPERTY FOLDER "extra")
   endif()
-
-  protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${proto_files})
-
-  set(proto_link protos)
-
-  add_library(${proto_link} STATIC ${PROTO_SRCS} ${PROTO_HDRS})
-
-  target_include_directories(${proto_link} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-
-  target_link_libraries(${proto_link} PUBLIC ${protobuf_link})
-
-  set_target_properties(
-    ${proto_link}
-    PROPERTIES DEBUG_POSTFIX "${TIGER_DEBUG_POSTFIX}"
-               ARCHIVE_OUTPUT_DIRECTORY ${LIBRARY_OUTPUT_PATH}
-               RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
-               OUTPUT_NAME "${proto_link}")
-  set_property(TARGET ${proto_link} PROPERTY FOLDER "extra")
-
 endmacro()
 
 # Find modules and

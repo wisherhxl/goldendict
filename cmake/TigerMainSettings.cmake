@@ -1,7 +1,7 @@
 string(TOLOWER "${TI_PROJECT_NAME}" TI_INTERNAL_NAME)
 
 include(cmake/TigerUtilsExtend.cmake)
-include(cmake/TigerMainAutoConfig.cmake)
+include(cmake/TigerBaseSrcConfigure.cmake)
 
 set(CMAKE_USE_RELATIVE_PATHS
     ON
@@ -226,6 +226,7 @@ if(HAVE_PROTOBUF)
 endif()
 
 # Tiger modules
+include(cmake/TigerBaseCMakeListsConfigure.cmake)
 ti_assemble_modules()
 
 # Tiger applications
