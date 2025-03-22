@@ -1,3 +1,11 @@
+/*
+ *      ** File generated automatically, do not modify **
+ *
+ * This file defines the CPU configuration.
+ *
+ *
+ */
+
 // Tiger CPU baseline features
 @TIGER_CPU_BASELINE_DEFINITIONS_CONFIGMAKE@
 

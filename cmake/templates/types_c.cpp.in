@@ -1,0 +1,109 @@
+/*
+ *      ** File generated automatically, do not modify **
+ *
+ * This file defines the list of modules available in current build
+ * configuration
+ *
+ *
+ */
+
+#include "@TI_INTERNAL_NAME@/base/types_c.h"
+
+#ifdef __cplusplus
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <limits>
+#else
+#include <math.h>
+#include <stdlib.h>
+#endif
+
+#ifdef __cplusplus
+// C++ Implementation (Templates)
+template <typename T>
+T tiAbsoluteValue(T value) {
+    if constexpr (std::is_integral_v<T>) {
+        return std::abs(value);
+    } else {
+        return std::fabs(value);
+    }
+}
+
+template <typename T>
+void tiSwapIfAbsGreater(T& a, T& b) {
+    if (tiAbsoluteValue(a) > tiAbsoluteValue(b)) {
+        std::swap(a, b);
+    }
+}
+
+template <typename T>
+T tiClamp(T value, T minVal, T maxVal) {
+    return std::max(minVal, std::min(value, maxVal));
+}
+
+template <typename T>
+T tiLerp(T a, T b, T t) {
+    return a + (b - a) * t;
+}
+
+template <typename T>
+int tiRoundToInt(T value) {
+    return static_cast<int>(std::round(value));
+}
+
+template <typename T>
+bool tiApproximatelyEqual(T a, T b, T epsilon) {
+    return std::fabs(a - b) <=
+           epsilon * std::max(1.0, std::max(std::fabs(a), std::fabs(b)));
+}
+
+#else
+// C Implementation (No Templates)
+double tiClampDouble(double value, double minVal, double maxVal) {
+    return fmax(minVal, fmin(value, maxVal));
+}
+
+int tiClampInt(int value, int minVal, int maxVal) {
+    return (int)fmax(minVal, fmin(value, maxVal));
+}
+
+double tiLerpDouble(double a, double b, double t) {
+    return a + (b - a) * t;
+}
+
+int tiRoundToIntDouble(double value) {
+    return (int)round(value);
+}
+
+bool tiApproximatelyEqualDouble(double a, double b, double epsilon) {
+    return fabs(a - b) <= epsilon * fmax(1.0, fmax(fabs(a), fabs(b)));
+}
+
+int tiAbsoluteValueInt(int value) {
+    return abs(value);
+}
+
+double tiAbsoluteValueDouble(double value) {
+    return fabs(value);
+}
+
+void tiSwapIfAbsGreaterInt(int* a, int* b) {
+    if (tiAbsoluteValueInt(*a) > tiAbsoluteValueInt(*b)) {
+        int temp = *a;
+        *a = *b;
+        *b = temp;
+    }
+}
+
+#endif
+
+// C and C++ compatible functions, when they are the same.
+int tiWrap(int value, int min, int max) {
+    int range = max - min + 1;
+    if (value < min) {
+        return max - (min - value - 1) % range;
+    } else {
+        return min + (value - min) % range;
+    }
+}

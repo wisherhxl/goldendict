@@ -29,7 +29,7 @@ set(TI_PROJECT_INFO "A C++ Template for CMake and Conan")
 # ============ Project Version ============
 set(TI_VERSION_MAJOR 0) # Major version
 set(TI_VERSION_MINOR 1) # Minor version
-set(TI_VERSION_REVISION 0) # Revision version
+set(TI_VERSION_REVISION 2) # Revision version
 
 # ============ Project Definition ============
 project(${TI_PROJECT_NAME} CXX C)

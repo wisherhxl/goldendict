@@ -1,3 +1,11 @@
+/*
+ *      ** File generated automatically, do not modify **
+ *
+ * This file defines general configuration macros.
+ *
+ *
+ */
+
 #ifndef TIGER_TICONFIG_H_
 #define TIGER_TICONFIG_H_
 

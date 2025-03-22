@@ -153,6 +153,45 @@ direct,
 
 /** @} */
 
+#ifdef __cplusplus
+#include <limits>
+#endif
+
+#ifdef __cplusplus
+// C++ Function Declarations (Templates)
+template <typename T>
+T tiAbsoluteValue(T value);
+
+template <typename T>
+void tiSwapIfAbsGreater(T& a, T& b);
+
+template <typename T>
+T tiClamp(T value, T minVal, T maxVal);
+
+template <typename T>
+T tiLerp(T a, T b, T t);
+
+template <typename T>
+int tiRoundToInt(T value);
+
+template <typename T>
+bool tiApproximatelyEqual(T a, T b,
+                          T epsilon = std::numeric_limits<T>::epsilon());
+#else
+// C Function Declarations (No Templates)
+int tiAbsoluteValueInt(int value);
+double tiAbsoluteValueDouble(double value);
+void tiSwapIfAbsGreaterInt(int* a, int* b);
+double tiClampDouble(double value, double minVal, double maxVal);
+int tiClampInt(int value, int minVal, int maxVal);
+double tiLerpDouble(double a, double b, double t);
+int tiRoundToIntDouble(double value);
+bool tiApproximatelyEqualDouble(double a, double b, double epsilon);
+#endif
+
+// C and C++ compatible functions, when they are the same.
+int tiWrap(int value, int min, int max);
+
 #endif /*TIGER_CORE_TYPES_H_*/
 
 /* End of file. */

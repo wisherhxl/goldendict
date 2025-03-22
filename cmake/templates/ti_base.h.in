@@ -1,11 +1,9 @@
 /*
- * Copyright (c) 2023 Huang Xiling
- * SPDX-License-Identifier: MIT
+ *      ** File generated automatically, do not modify **
  *
- * This file is part of the Tiger Template.
- * Distributed under the MIT License. See LICENSE file for details.
+ * This file defines the base include file for convenience.
  *
- * Created Date: 2023-06-11
+ *
  */
 
 #ifndef TIGER_BASE_H_
