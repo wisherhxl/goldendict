@@ -62,7 +62,7 @@ MACRO(_PCH_GET_COMPILE_FLAGS _out_compile_flags)
 
     GET_DIRECTORY_PROPERTY(DIRINC INCLUDE_DIRECTORIES )
     FOREACH(item ${DIRINC})
-        ti_is_opencv_directory(__result ${item})
+        ti_is_tiger_directory(__result ${item})
         if(__result)
           LIST(APPEND ${_out_compile_flags} "${_PCH_include_prefix}\"${item}\"")
         elseif(TI_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0" AND
@@ -75,7 +75,7 @@ MACRO(_PCH_GET_COMPILE_FLAGS _out_compile_flags)
 
     get_target_property(DIRINC ${_PCH_current_target} INCLUDE_DIRECTORIES )
     FOREACH(item ${DIRINC})
-        ti_is_opencv_directory(__result ${item})
+        ti_is_tiger_directory(__result ${item})
         if(__result)
           LIST(APPEND ${_out_compile_flags} "${_PCH_include_prefix}\"${item}\"")
         elseif(TI_GCC AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0" AND

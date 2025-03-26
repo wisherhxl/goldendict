@@ -12,7 +12,7 @@
 #             but will fail in case when other operations (copy, remove, etc.) failed
 #    UNPACK - downloaded file will be unpacked to DESTINATION_DIR
 #    RELATIVE_URL - if set, then URL is treated as a base, and FILENAME will be appended to it
-#  Note: uses TIGER_DOWNLOAD_PATH folder as cache, default is <opencv>/.cache
+#  Note: uses TIGER_DOWNLOAD_PATH folder as cache, default is <tiger>/.cache
 
 set(HELP_TIGER_DOWNLOAD_PATH "Cache directory for downloaded files")
 if(DEFINED ENV{TIGER_DOWNLOAD_PATH})

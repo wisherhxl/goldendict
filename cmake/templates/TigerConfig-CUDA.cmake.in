@@ -1,0 +1,48 @@
+# Version Compute Capability from which @PROJECT_NAME@ has been compiled is remembered
+set(@PROJECT_NAME@_COMPUTE_CAPABILITIES "${@PROJECT_NAME@_CUDA_CC}")
+
+set(@PROJECT_NAME@_CUDA_VERSION "@CUDA_VERSION_STRING@")
+set(@PROJECT_NAME@_USE_CUBLAS   "@HAVE_CUBLAS@")
+set(@PROJECT_NAME@_USE_CUFFT    "@HAVE_CUFFT@")
+set(@PROJECT_NAME@_USE_NVCUVID  "@HAVE_NVCUVID@")
+set(@PROJECT_NAME@_USE_NVCUVENC "@HAVE_NVCUVENC@")
+set(@PROJECT_NAME@_CUDNN_VERSION    "@CUDNN_VERSION@")
+set(@PROJECT_NAME@_USE_CUDNN        "@HAVE_CUDNN@")
+
+if(NOT CUDA_FOUND)
+  find_host_package(CUDA ${@PROJECT_NAME@_CUDA_VERSION} EXACT REQUIRED)
+else()
+  if(NOT CUDA_VERSION_STRING VERSION_EQUAL @PROJECT_NAME@_CUDA_VERSION)
+    message(FATAL_ERROR "@PROJECT_NAME@ static library was compiled with CUDA ${@PROJECT_NAME@_CUDA_VERSION} support. Please, use the same version or rebuild @PROJECT_NAME@ with CUDA ${CUDA_VERSION_STRING}")
+  endif()
+endif()
+
+set(@PROJECT_NAME@_CUDA_LIBS_ABSPATH ${CUDA_LIBRARIES})
+
+if(CUDA_VERSION VERSION_LESS "5.5")
+  list(APPEND @PROJECT_NAME@_CUDA_LIBS_ABSPATH ${CUDA_npp_LIBRARY})
+else()
+  find_cuda_helper_libs(nppc)
+  find_cuda_helper_libs(nppi)
+  find_cuda_helper_libs(npps)
+  list(APPEND @PROJECT_NAME@_CUDA_LIBS_ABSPATH ${CUDA_nppc_LIBRARY} ${CUDA_nppi_LIBRARY} ${CUDA_npps_LIBRARY})
+endif()
+
+if(@PROJECT_NAME@_USE_CUBLAS)
+  list(APPEND @PROJECT_NAME@_CUDA_LIBS_ABSPATH ${CUDA_CUBLAS_LIBRARIES})
+endif()
+
+if(@PROJECT_NAME@_USE_CUFFT)
+  list(APPEND @PROJECT_NAME@_CUDA_LIBS_ABSPATH ${CUDA_CUFFT_LIBRARIES})
+endif()
+
+set(@PROJECT_NAME@_CUDA_LIBS_RELPATH "")
+foreach(l ${@PROJECT_NAME@_CUDA_LIBS_ABSPATH})
+  get_filename_component(_tmp ${l} PATH)
+  if(NOT ${_tmp} MATCHES "-Wl.*")
+    list(APPEND @PROJECT_NAME@_CUDA_LIBS_RELPATH ${_tmp})
+  endif()
+endforeach()
+
+list(REMOVE_DUPLICATES @PROJECT_NAME@_CUDA_LIBS_RELPATH)
+link_directories(${@PROJECT_NAME@_CUDA_LIBS_RELPATH})

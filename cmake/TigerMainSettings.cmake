@@ -190,7 +190,7 @@ test_big_endian(WORDS_BIGENDIAN)
 # ----------------------------------------------------------------------------
 # find_package(OpenGL REQUIRED)
 
-include(cmake/TigerFindProtobuf.cmake)
+# include(cmake/TigerFindProtobuf.cmake)
 # include(cmake/TigerFindQt.cmake) include(cmake/TigerFindOpenCV.cmake)
 # include(cmake/TigerFindBoost.cmake) include(cmake/TigerFindVTK.cmake)
 # include(cmake/TigerFindlog4cplus.cmake)

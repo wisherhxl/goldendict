@@ -94,7 +94,7 @@ function(ti_create_plugin module default_name dependency_target dependency_targe
   endif()
 
   if(NOT ${PROJECT_NAME}_FOUND)  # build against sources (Linux)
-    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/opencv2/opencv_modules.hpp" "#pragma once")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/@TI_INTERNAL_NAME@/@TI_INTERNAL_NAME@_modules.hpp" "#pragma once")
   endif()
 
   if(WIN32)

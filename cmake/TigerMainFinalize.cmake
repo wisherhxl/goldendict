@@ -7,6 +7,8 @@ ti_cmake_hook(PRE_FINALIZE)
 # Generate platform-dependent and configuration-dependent headers
 include(cmake/TigerGenHeaders.cmake)
 
+# Generate TigerConfig.cmake and TigerConfig-version.cmake for cmake projects
+include(cmake/TigerGenConfig.cmake)
 
 # Generate environment setup file
 if(INSTALL_TESTS AND TIGER_TEST_DATA_PATH)
