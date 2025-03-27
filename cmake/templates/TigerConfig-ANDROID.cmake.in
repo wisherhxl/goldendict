@@ -1,5 +1,5 @@
 # Android API level from which @PROJECT_NAME@ has been compiled is remembered
-set(@PROJECT_NAME@_ANDROID_NATIVE_API_LEVEL "${@PROJECT_NAME@_ANDROID_NATIVE_API_LEVEL_CONFIGCMAKE}")
+set(@PROJECT_NAME@_ANDROID_NATIVE_API_LEVEL "@TIGER_ANDROID_NATIVE_API_LEVEL_CONFIGCMAKE@")
 
 # ==============================================================
 #  Check @PROJECT_NAME@ availability

@@ -77,7 +77,7 @@ endif()
 # Extract the directory where *this* file has been installed (determined at cmake run-time)
 # Get the absolute path with no ../.. relative marks, to eliminate implicit linker warnings
 get_filename_component(@PROJECT_NAME@_CONFIG_PATH "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
-get_filename_component(@PROJECT_NAME@_INSTALL_PATH "${@PROJECT_NAME@_CONFIG_PATH}/${@PROJECT_NAME@_INSTALL_PATH_RELATIVE_CONFIGCMAKE}" REALPATH)
+get_filename_component(@PROJECT_NAME@_INSTALL_PATH "${@PROJECT_NAME@_CONFIG_PATH}/@TIGER_INSTALL_PATH_RELATIVE_CONFIGCMAKE@" REALPATH)
 
 # Search packages for host system instead of packages for target system.
 # in case of cross compilation this macro should be defined by toolchain file
@@ -103,10 +103,10 @@ endif()
 set(@PROJECT_NAME@_SHARED @BUILD_SHARED_LIBS@)
 
 # Enables mangled install paths, that help with side by side installs
-set(@PROJECT_NAME@_USE_MANGLED_PATHS ${@PROJECT_NAME@_USE_MANGLED_PATHS_CONFIGCMAKE})
+set(@PROJECT_NAME@_USE_MANGLED_PATHS @TIGER_USE_MANGLED_PATHS_CONFIGCMAKE@)
 
-set(@PROJECT_NAME@_LIB_COMPONENTS ${@PROJECT_NAME@_MODULES_CONFIGCMAKE})
-set(__@PROJECT_NAME@_INCLUDE_DIRS ${@PROJECT_NAME@_INCLUDE_DIRS_CONFIGCMAKE})
+set(@PROJECT_NAME@_LIB_COMPONENTS @TIGER_MODULES_CONFIGCMAKE@)
+set(__@PROJECT_NAME@_INCLUDE_DIRS @TIGER_INCLUDE_DIRS_CONFIGCMAKE@)
 
 set(@PROJECT_NAME@_INCLUDE_DIRS "")
 foreach(d ${__@PROJECT_NAME@_INCLUDE_DIRS})
@@ -195,7 +195,7 @@ if(NOT @PROJECT_NAME@_FIND_COMPONENTS)
   endif()
 endif()
 
-set(@PROJECT_NAME@_WORLD_COMPONENTS ${@PROJECT_NAME@_WORLD_MODULES})
+set(@PROJECT_NAME@_WORLD_COMPONENTS @TIGER_WORLD_MODULES@)
 
 # expand short module names and see if requested components exist
 foreach(__ticomponent ${@PROJECT_NAME@_FIND_COMPONENTS})

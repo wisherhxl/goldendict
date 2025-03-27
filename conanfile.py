@@ -7,13 +7,13 @@ class CompressorRecipe(ConanFile):
     generators = "CMakeToolchain", "CMakeDeps"
 
     def requirements(self):
-        self.requires("zlib/[>1.3]")
+        # self.requires("zlib/[>1.3]")
         self.requires("protobuf/[>3.0]")
-        self.requires(
-            "qt/[>5.15]",
-            options={"qttranslations": True, "qtserialport": True}
-        )
-        self.requires("log4cplus/[>2.0]")
+        # self.requires(
+        #     "qt/[>5.15]",
+        #     options={"qttranslations": True, "qtserialport": True}
+        # )
+        # self.requires("log4cplus/[>2.0]")
 
     def build_requirements(self):
         self.tool_requires("cmake/[<3.27]")

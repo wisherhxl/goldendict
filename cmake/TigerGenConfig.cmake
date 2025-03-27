@@ -6,9 +6,9 @@
 # -------------------------------------------------------------------------------------------
 
 if(INSTALL_TO_MANGLED_PATHS)
-  set(${TI_PROJECT_NAME}_USE_MANGLED_PATHS_CONFIGCMAKE TRUE)
+  set(TIGER_USE_MANGLED_PATHS_CONFIGCMAKE TRUE)
 else()
-  set(${TI_PROJECT_NAME}_USE_MANGLED_PATHS_CONFIGCMAKE FALSE)
+  set(TIGER_USE_MANGLED_PATHS_CONFIGCMAKE FALSE)
 endif()
 
 if(HAVE_CUDA)
@@ -21,9 +21,9 @@ endif()
 
 if(ANDROID)
   if(NOT ANDROID_NATIVE_API_LEVEL)
-    set(${TI_PROJECT_NAME}_ANDROID_NATIVE_API_LEVEL_CONFIGCMAKE 0)
+    set(TIGER_ANDROID_NATIVE_API_LEVEL_CONFIGCMAKE 0)
   else()
-    set(${TI_PROJECT_NAME}_ANDROID_NATIVE_API_LEVEL_CONFIGCMAKE "${ANDROID_NATIVE_API_LEVEL}")
+    set(TIGER_ANDROID_NATIVE_API_LEVEL_CONFIGCMAKE "${ANDROID_NATIVE_API_LEVEL}")
   endif()
   ti_cmake_configure("${CMAKE_CURRENT_LIST_DIR}/templates/TigerConfig-ANDROID.cmake.in" ANDROID_CONFIGCMAKE @ONLY)
 endif()
@@ -42,11 +42,11 @@ endif()
 # -------------------------------------------------------------------------------------------
 #  Part 1/3: ${BIN_DIR}/TigerConfig.cmake              -> For use *without* "make install"
 # -------------------------------------------------------------------------------------------
-set(${TI_PROJECT_NAME}_INCLUDE_DIRS_CONFIGCMAKE "\"${TIGER_CONFIG_FILE_INCLUDE_DIR}\" \"${${PROJECT_NAME}_SOURCE_DIR}/include\"")
+set(TIGER_INCLUDE_DIRS_CONFIGCMAKE "\"${TIGER_CONFIG_FILE_INCLUDE_DIR}\" \"${${PROJECT_NAME}_SOURCE_DIR}/include\"")
 
 foreach(m ${TIGER_MODULES_BUILD})
   if(EXISTS "${TIGER_MODULE_${m}_LOCATION}/include")
-    set(${PROJECT_NAME}_INCLUDE_DIRS_CONFIGCMAKE "${${PROJECT_NAME}_INCLUDE_DIRS_CONFIGCMAKE} \"${TIGER_MODULE_${m}_LOCATION}/include\"")
+    set(TIGER_INCLUDE_DIRS_CONFIGCMAKE "${TIGER_INCLUDE_DIRS_CONFIGCMAKE} \"${TIGER_MODULE_${m}_LOCATION}/include\"")
   endif()
 endforeach()
 
@@ -76,11 +76,11 @@ configure_file("${${PROJECT_NAME}_SOURCE_DIR}/cmake/templates/TigerConfig-versio
 # --------------------------------------------------------------------------------------------
 #  Part 2/3: ${BIN_DIR}/unix-install/TigerConfig.cmake -> For use *with* "make install"
 # -------------------------------------------------------------------------------------------
-file(RELATIVE_PATH ${PROJECT_NAME}_INSTALL_PATH_RELATIVE_CONFIGCMAKE "${CMAKE_INSTALL_PREFIX}/${TIGER_CONFIG_INSTALL_PATH}/" ${CMAKE_INSTALL_PREFIX})
+file(RELATIVE_PATH TIGER_INSTALL_PATH_RELATIVE_CONFIGCMAKE "${CMAKE_INSTALL_PREFIX}/${TIGER_CONFIG_INSTALL_PATH}/" ${CMAKE_INSTALL_PREFIX})
 if (IS_ABSOLUTE ${TIGER_INCLUDE_INSTALL_PATH})
-  set(${PROJECT_NAME}_INCLUDE_DIRS_CONFIGCMAKE "\"${TIGER_INCLUDE_INSTALL_PATH}\"")
+  set(TIGER_INCLUDE_DIRS_CONFIGCMAKE "\"${TIGER_INCLUDE_INSTALL_PATH}\"")
 else()
-  set(${PROJECT_NAME}_INCLUDE_DIRS_CONFIGCMAKE "\"\${${PROJECT_NAME}_INSTALL_PATH}/${TIGER_INCLUDE_INSTALL_PATH}\"")
+  set(TIGER_INCLUDE_DIRS_CONFIGCMAKE "\"\${${PROJECT_NAME}_INSTALL_PATH}/${TIGER_INCLUDE_INSTALL_PATH}\"")
 endif()
 
 if(USE_IPPICV)
@@ -96,7 +96,7 @@ function(ti_gen_config TMP_DIR NESTED_PATH ROOT_NAME)
   ti_path_join(__install_nested "${TIGER_CONFIG_INSTALL_PATH}" "${NESTED_PATH}")
   ti_path_join(__tmp_nested "${TMP_DIR}" "${NESTED_PATH}")
 
-  file(RELATIVE_PATH ${PROJECT_NAME}_INSTALL_PATH_RELATIVE_CONFIGCMAKE "${CMAKE_INSTALL_PREFIX}/${__install_nested}" "${CMAKE_INSTALL_PREFIX}/")
+  file(RELATIVE_PATH TIGER_INSTALL_PATH_RELATIVE_CONFIGCMAKE "${CMAKE_INSTALL_PREFIX}/${__install_nested}" "${CMAKE_INSTALL_PREFIX}/")
 
   ti_cmake_hook(PRE_CMAKE_CONFIG_INSTALL)
   configure_file("${${PROJECT_NAME}_SOURCE_DIR}/cmake/templates/TigerConfig-version.cmake.in" "${TMP_DIR}/${PROJECT_NAME}Config-version.cmake" @ONLY)
