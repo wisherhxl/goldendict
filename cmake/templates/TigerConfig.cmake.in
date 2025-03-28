@@ -152,7 +152,7 @@ if(NOT DEFINED @PROJECT_NAME@_MAP_IMPORTED_CONFIG)
   endif()
 endif()
 set(__remap_warnings "")
-macro(ti_map_imported_config target)
+macro(@PROJECT_NAME@map_imported_config target)
   if(DEFINED @PROJECT_NAME@_MAP_IMPORTED_CONFIG) # list, "RELWITHDEBINFO=Release;MINSIZEREL=Release"
     get_target_property(__available_configurations ${target} IMPORTED_CONFIGURATIONS)
     foreach(remap ${@PROJECT_NAME@_MAP_IMPORTED_CONFIG})
@@ -260,7 +260,7 @@ foreach(__ticomponent ${@PROJECT_NAME@_FIND_COMPONENTS})
     endif()
   endif()
   if(TARGET ${__ticomponent})
-    ti_map_imported_config(${__ticomponent})
+    @PROJECT_NAME@map_imported_config(${__ticomponent})
   endif()
 endforeach()
 
@@ -302,7 +302,7 @@ endif()
 #
 # Some macros for samples
 #
-macro(ti_check_dependencies)
+macro(@PROJECT_NAME@check_dependencies)
   set(TI_DEPENDENCIES_FOUND TRUE)
   foreach(d ${ARGN})
     if(NOT TARGET ${d})
@@ -314,7 +314,7 @@ macro(ti_check_dependencies)
 endmacro()
 
 # adds include directories in such way that directories from the @PROJECT_NAME@ source tree go first
-function(ti_include_directories)
+function(@PROJECT_NAME@include_directories)
   set(__add_before "")
   file(TO_CMAKE_PATH "${@PROJECT_NAME@_INSTALL_PATH}" __baseDir)
   foreach(dir ${ARGN})
@@ -328,20 +328,20 @@ function(ti_include_directories)
   include_directories(BEFORE ${__add_before})
 endfunction()
 
-macro(ti_include_modules)
+macro(@PROJECT_NAME@include_modules)
   include_directories(BEFORE "${@PROJECT_NAME@_INCLUDE_DIRS}")
 endmacro()
 
-macro(ti_include_modules_recurse)
+macro(@PROJECT_NAME@include_modules_recurse)
   include_directories(BEFORE "${@PROJECT_NAME@_INCLUDE_DIRS}")
 endmacro()
 
-macro(ti_target_link_libraries)
+macro(@PROJECT_NAME@target_link_libraries)
   target_link_libraries(${ARGN})
 endmacro()
 
 # remove all matching elements from the list
-macro(ti_list_filterout lst regex)
+macro(@PROJECT_NAME@list_filterout lst regex)
   foreach(item ${${lst}})
     if(item MATCHES "${regex}")
       list(REMOVE_ITEM ${lst} "${item}")

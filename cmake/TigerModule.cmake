@@ -826,6 +826,7 @@ macro(ti_glob_module_sources)
   )
   file(GLOB lib_hdrs
        "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/*.hpp"
+       "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/*.h"
        "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/*.hpp"
        "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/*.h"
        "${CMAKE_CURRENT_LIST_DIR}/include/${TI_INTERNAL_NAME}/${name}/hal/*.hpp"
