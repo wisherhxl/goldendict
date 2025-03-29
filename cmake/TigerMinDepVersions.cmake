@@ -1,3 +1,0 @@
-if(NOT DEFINED MIN_VER_CMAKE)
-  set(MIN_VER_CMAKE 3.19.0)
-endif()
