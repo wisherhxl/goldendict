@@ -18,6 +18,8 @@ cmake_minimum_required(VERSION "${MIN_VER_CMAKE}" FATAL_ERROR)
 
 # ============ Load Policy and Utils ============
 include(cmake/TigerMainPre.cmake)
+# Sync Version
+ti_sync_version()
 
 # ============ Project Name ============
 set(TI_ORG_NAME "") # Name of organization
@@ -25,11 +27,6 @@ set(TI_PROJECT_CONTACT "") # Email of project maintainer
 set(TI_PROJECT_NAME "Rago") # Name of the project
 # Description of the project
 set(TI_PROJECT_INFO "A C++ Template for CMake and Conan")
-
-# ============ Project Version ============
-set(TI_VERSION_MAJOR 0) # Major version
-set(TI_VERSION_MINOR 1) # Minor version
-set(TI_VERSION_REVISION 2) # Revision version
 
 # ============ Project Definition ============
 project(${TI_PROJECT_NAME} CXX C)
