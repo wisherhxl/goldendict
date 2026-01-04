@@ -10,7 +10,7 @@ class RagoRecipe(ConanFile):
     name = "rago"
     package_type = "library"
     settings = "os", "compiler", "build_type", "arch"
-    generators = "CMakeToolchain", "CMakeDeps"
+    generators = "CMakeDeps"
     revision_mode = "scm"
     options = {
         "shared": [True, False],
