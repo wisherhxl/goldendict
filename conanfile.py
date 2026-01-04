@@ -53,6 +53,7 @@ class RagoRecipe(ConanFile):
         git = Git(self)
         git.clone(url="https://github.com/wisherhxl/tiger_template.git", target=".")
         # git.checkout("")
+        git.run("submodule update --init --recursive")
 
     def generate(self):
         tc = CMakeToolchain(self)
