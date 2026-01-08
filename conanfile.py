@@ -69,9 +69,8 @@ class RagoRecipe(ConanFile):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "config")
-        self.cpp_info.set_property("cmake_file_name", "rago")
-        self.cpp_info.set_property("pkg_config_name", "rago")
+        self.cpp_info.set_property("cmake_find_mode", "none")
+        self.cpp_info.set_property("cmake_file_name", "Rago")
         self.cpp_info.builddirs = ["."]
         
         base = self.cpp_info.components["base"]
