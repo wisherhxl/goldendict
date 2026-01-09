@@ -58,6 +58,7 @@ class RagoRecipe(ConanFile):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
+        tc.variables["INSTALL_PLATFORM_LAYOUT"] = False
         tc.generate()
 
     def build(self):
