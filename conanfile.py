@@ -7,6 +7,7 @@ import os
 import re
 
 class RagoRecipe(ConanFile):
+    # Naming convention: all-lowercase project name used as internal CMake name (TI_INTERNAL_NAME)
     name = "rago"
     package_type = "library"
     settings = "os", "compiler", "build_type", "arch"
@@ -74,5 +75,5 @@ class RagoRecipe(ConanFile):
 
     def package_info(self):
         self.cpp_info.bindirs = ["bin"]
-        self.cpp_info.builddirs = ["lib"]
+        self.cpp_info.builddirs = [f"lib/cmake/{self.name}"]
         self.cpp_info.set_property("cmake_find_mode", "none")
