@@ -59,6 +59,8 @@ class RagoRecipe(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
         tc.variables["INSTALL_PLATFORM_LAYOUT"] = False
+        tc.variables["TIGER_SKIP_CMAKE_ROOT_CONFIG"] = True
+        tc.variables["TIGER_ENABLE_STATIC_BINARIES_SUFFIX"] = False
         tc.generate()
 
     def build(self):
@@ -72,5 +74,5 @@ class RagoRecipe(ConanFile):
 
     def package_info(self):
         self.cpp_info.bindirs = ["bin"]
-        self.cpp_info.builddirs = ["."]
+        self.cpp_info.builddirs = ["lib"]
         self.cpp_info.set_property("cmake_find_mode", "none")
