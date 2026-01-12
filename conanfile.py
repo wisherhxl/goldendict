@@ -59,9 +59,7 @@ class RagoRecipe(ConanFile):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
-        tc.variables["INSTALL_PLATFORM_LAYOUT"] = False
-        tc.variables["TIGER_SKIP_CMAKE_ROOT_CONFIG"] = True
-        tc.variables["TIGER_ENABLE_STATIC_BINARIES_SUFFIX"] = False
+        tc.variables["TIGER_INSTALL_CONAN_LAYOUT"] = True
         tc.generate()
 
     def build(self):
