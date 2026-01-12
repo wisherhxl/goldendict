@@ -73,5 +73,5 @@ class RagoRecipe(ConanFile):
 
     def package_info(self):
         self.cpp_info.bindirs = ["bin"]
-        self.cpp_info.builddirs = [f"lib/cmake/{self.name}"]
+        self.cpp_info.builddirs = ["lib/cmake"]
         self.cpp_info.set_property("cmake_find_mode", "none")
