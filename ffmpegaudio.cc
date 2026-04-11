@@ -118,6 +118,13 @@ struct DecoderContext
   bool play( QString & errorString );
   bool normalizeAudio( AVFrame * frame, vector<char> & samples );
   void playFrame( AVFrame * frame );
+  int nbChannels() {
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+    return codecContext_->ch_layout.nb_channels;
+#else
+    return codecContext_->channels;
+#endif
+  }
 };
 
 DecoderContext::DecoderContext( QByteArray const & audioData, QAtomicInt & isCancelled ):
@@ -260,8 +267,8 @@ bool DecoderContext::openCodec( QString & errorString )
     return false;
   }
 
-  av_log( NULL, AV_LOG_INFO, "Codec open: %s: channels: %d, rate: %d, format: %s\n", codec_->long_name,
-          codecContext_->channels, codecContext_->sample_rate, av_get_sample_fmt_name( codecContext_->sample_fmt ) );
+  gdDebug( "Codec open: %s: channels: %d, rate: %d, format: %s\n", codec_->long_name,
+          nbChannels(), codecContext_->sample_rate, av_get_sample_fmt_name( codecContext_->sample_fmt ) );
 
   if ( codecContext_->sample_fmt == AV_SAMPLE_FMT_S32  ||
        codecContext_->sample_fmt == AV_SAMPLE_FMT_S32P ||
@@ -270,6 +277,21 @@ bool DecoderContext::openCodec( QString & errorString )
        codecContext_->sample_fmt == AV_SAMPLE_FMT_DBL  ||
        codecContext_->sample_fmt == AV_SAMPLE_FMT_DBLP )
   {
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+    int ret = swr_alloc_set_opts2( &swr_,
+        &codecContext_->ch_layout,
+        AV_SAMPLE_FMT_S16,
+        codecContext_->sample_rate,
+        &codecContext_->ch_layout,
+        codecContext_->sample_fmt,
+        codecContext_->sample_rate,
+        0,
+        NULL );
+    if ( ret < 0 ) {
+      errorString = QObject::tr( "swr_alloc_set_opts2() failed: %1." ).arg( avErrorString( ret ) );
+      return false;
+    }
+#else
     swr_ = swr_alloc_set_opts( NULL,
         codecContext_->channel_layout,
         AV_SAMPLE_FMT_S16,
@@ -279,6 +301,7 @@ bool DecoderContext::openCodec( QString & errorString )
         codecContext_->sample_rate,
         0,
         NULL );
+#endif
     swr_init( swr_ );
   }
 
@@ -327,7 +350,9 @@ void DecoderContext::closeCodec()
   if ( audioStream_ && codecContext_ && codec_ )
   {
     audioStream_->discard = AVDISCARD_ALL;
+#if LIBAVCODEC_VERSION_MAJOR < 61
     avcodec_close( codecContext_ );
+#endif
 #if LIBAVCODEC_VERSION_MAJOR > 57 || ( LIBAVCODEC_VERSION_MAJOR == 57 && LIBAVCODEC_VERSION_MINOR >= 33 )
     avcodec_free_context( &codecContext_ );
 #endif
@@ -351,7 +376,7 @@ bool DecoderContext::openOutputDevice( QString & errorString )
 
   ao_sample_format aoSampleFormat;
   memset (&aoSampleFormat, 0, sizeof(aoSampleFormat) );
-  aoSampleFormat.channels = codecContext_->channels;
+  aoSampleFormat.channels = nbChannels();
   aoSampleFormat.rate = codecContext_->sample_rate;
   aoSampleFormat.byte_format = AO_FMT_NATIVE;
   aoSampleFormat.matrix = 0;
@@ -363,7 +388,7 @@ bool DecoderContext::openOutputDevice( QString & errorString )
     return false;
   }
 
-  av_log( NULL, AV_LOG_INFO, "ao_open_live(): %s: channels: %d, rate: %d, bits: %d\n",
+  gdDebug( "ao_open_live(): %s: channels: %d, rate: %d, bits: %d\n",
           aoDrvInfo->name, aoSampleFormat.channels, aoSampleFormat.rate, aoSampleFormat.bits );
 
   aoDevice_ = ao_open_live( aoDriverId, &aoSampleFormat, NULL );
@@ -520,7 +545,7 @@ static inline int32_t toInt32( double v )
 bool DecoderContext::normalizeAudio( AVFrame * frame, vector<char> & samples )
 {
   int lineSize = 0;
-  int dataSize = av_samples_get_buffer_size( &lineSize, codecContext_->channels,
+  int dataSize = av_samples_get_buffer_size( &lineSize, nbChannels(),
                                              frame->nb_samples, codecContext_->sample_fmt, 1 );
 
   // Portions from: https://code.google.com/p/lavfilters/source/browse/decoder/LAVAudio/LAVAudio.cpp
@@ -542,7 +567,7 @@ bool DecoderContext::normalizeAudio( AVFrame * frame, vector<char> & samples )
       uint8_t * out = ( uint8_t * )&samples.front();
       for ( int i = 0; i < frame->nb_samples; i++ )
       {
-        for ( int ch = 0; ch < codecContext_->channels; ch++ )
+        for ( int ch = 0; ch < nbChannels(); ch++ )
         {
           *out++ = ( ( uint8_t * )frame->extended_data[ch] )[i];
         }
@@ -556,7 +581,7 @@ bool DecoderContext::normalizeAudio( AVFrame * frame, vector<char> & samples )
       int16_t * out = ( int16_t * )&samples.front();
       for ( int i = 0; i < frame->nb_samples; i++ )
       {
-        for ( int ch = 0; ch < codecContext_->channels; ch++ )
+        for ( int ch = 0; ch < nbChannels(); ch++ )
         {
           *out++ = ( ( int16_t * )frame->extended_data[ch] )[i];
         }

@@ -7,6 +7,7 @@
 #include "btreeidx.hh"
 #include "fsencoding.hh"
 #include "folding.hh"
+#include "categorized_logging.hh"
 #include "gddebug.hh"
 #include "utf8.hh"
 #include "decompress.hh"
@@ -62,6 +63,7 @@ using BtreeIndexing::IndexInfo;
 
 DEF_EX_STR( exNotZimFile, "Not an Zim file", Dictionary::Ex )
 DEF_EX_STR( exCantReadFile, "Can't read file", Dictionary::Ex )
+DEF_EX_STR( exInvalidZimHeader, "Invalid Zim header", Dictionary::Ex )
 DEF_EX( exUserAbort, "User abort", Dictionary::Ex )
 
 
@@ -128,7 +130,7 @@ __attribute__((packed))
 enum
 {
   Signature = 0x584D495A, // ZIMX on little-endian, XMIZ on big-endian
-  CurrentFormatVersion = 3 + BtreeIndexing::FormatVersion + Folding::Version
+  CurrentFormatVersion = 4 + BtreeIndexing::FormatVersion + Folding::Version
 };
 
 struct IdxHeader
@@ -145,6 +147,7 @@ struct IdxHeader
   quint32 descriptionPtr;
   quint32 langFrom;  // Source language
   quint32 langTo;    // Target language
+  quint32 iconPtr;
 }
 #ifndef _MSC_VER
 __attribute__((packed))
@@ -285,6 +288,9 @@ bool ZimFile::open()
   memset( &zimHeader, 0, sizeof( zimHeader ) );
 
   if( read( reinterpret_cast< char * >( &zimHeader ), sizeof( zimHeader ) ) != sizeof( zimHeader ) )
+    return false;
+
+  if( zimHeader.magicNumber != 0x44D495A || zimHeader.mimeListPos != sizeof( zimHeader ) )
     return false;
 
 // Clusters in zim file may be placed in random order.
@@ -708,7 +714,8 @@ class ZimDictionary: public BtreeIndexing::BtreeDictionary
                                                               int distanceBetweenWords,
                                                               int maxResults,
                                                               bool ignoreWordsOrder,
-                                                              bool ignoreDiacritics );
+                                                              bool ignoreDiacritics,
+                                                              QThreadPool * ftsThreadPoolPtr );
     virtual void getArticleText( uint32_t articleAddress, QString & headword, QString & text );
 
     quint32 getArticleText( uint32_t articleAddress, QString & headword, QString & text,
@@ -807,8 +814,23 @@ void ZimDictionary::loadIcon() throw()
 
   if( !loadIconFromFile( fileName ) )
   {
-    // Load failed -- use default icons
-    dictionaryNativeIcon = dictionaryIcon = QIcon(":/icons/icon32_zim.png");
+    // Load icon from dictionary
+    if( idxHeader.iconPtr != 0xFFFFFFFF )
+    {
+      string pngImage;
+      readArticle( df, idxHeader.iconPtr, pngImage );
+
+      QImage img = QImage::fromData( reinterpret_cast< const uchar *>( pngImage.data() ), pngImage.size() );
+      img.setAlphaChannel( img.createMaskFromColor( QColor( 192, 192, 192 ).rgb(),
+                                                    Qt::MaskOutColor ) );
+
+      dictionaryNativeIcon = dictionaryIcon = QIcon( QPixmap::fromImage( img ) );
+      if( dictionaryIcon.isNull() )
+        dictionaryNativeIcon = dictionaryIcon = QIcon(":/icons/icon32_zim.png");
+    }
+    else
+      // Load failed -- use default icons
+      dictionaryNativeIcon = dictionaryIcon = QIcon(":/icons/icon32_zim.png");
   }
 
   dictionaryIconLoaded = true;
@@ -1144,6 +1166,7 @@ void ZimDictionary::makeFTSIndex( QAtomicInt & isCancelled, bool firstIteration 
 
     // Free memory
     offsetsWithClusters.clear();
+    offsetsWithClusters.squeeze();
 
     if( Qt4x5::AtomicInt::loadAcquire( isCancelled ) )
       throw exUserAbort();
@@ -1172,7 +1195,13 @@ void ZimDictionary::makeFTSIndex( QAtomicInt & isCancelled, bool firstIteration 
     }
 
     // Free memory
+    indexedArticles.clear();
     offsets.clear();
+    offsets.squeeze();
+
+# define BUF_SIZE 20000
+    QVector< QPair< wstring, uint32_t > > wordsWithOffsets;
+    wordsWithOffsets.reserve( BUF_SIZE );
 
     QMap< QString, QVector< uint32_t > >::iterator it = ftsWords.begin();
     while( it != ftsWords.end() )
@@ -1186,13 +1215,36 @@ void ZimDictionary::makeFTSIndex( QAtomicInt & isCancelled, bool firstIteration 
       chunks.addToBlock( &size, sizeof(uint32_t) );
       chunks.addToBlock( it.value().data(), size * sizeof(uint32_t) );
 
-      indexedWords.addSingleWord( gd::toWString( it.key() ), offset );
+      wordsWithOffsets.append( QPair< wstring, uint32_t >( gd::toWString( it.key() ), offset ) );
 
       it = ftsWords.erase( it );
+
+      if( wordsWithOffsets.size() >= BUF_SIZE )
+      {
+        for( int i = 0; i < wordsWithOffsets.size(); i++ )
+        {
+          if( Qt4x5::AtomicInt::loadAcquire( isCancelled ) )
+            throw exUserAbort();
+          indexedWords.addSingleWord( wordsWithOffsets[ i ].first, wordsWithOffsets[ i ].second );
+        }
+        wordsWithOffsets.clear();
+      }
     }
 
     // Free memory
     ftsWords.clear();
+
+    for( int i = 0; i < wordsWithOffsets.size(); i++ )
+    {
+      if( Qt4x5::AtomicInt::loadAcquire( isCancelled ) )
+        throw exUserAbort();
+      indexedWords.addSingleWord( wordsWithOffsets[ i ].first, wordsWithOffsets[ i ].second );
+    }
+#undef BUF_SIZE
+
+    // Free memory
+    wordsWithOffsets.clear();
+    wordsWithOffsets.squeeze();
 
     if( Qt4x5::AtomicInt::loadAcquire( isCancelled ) )
       throw exUserAbort();
@@ -1288,9 +1340,10 @@ sptr< Dictionary::DataRequest > ZimDictionary::getSearchResults( QString const &
                                                                  int distanceBetweenWords,
                                                                  int maxResults,
                                                                  bool ignoreWordsOrder,
-                                                                 bool ignoreDiacritics )
+                                                                 bool ignoreDiacritics,
+                                                                 QThreadPool * ftsThreadPoolPtr )
 {
-  return new FtsHelpers::FTSResultsRequest( *this, searchString,searchMode, matchCase, distanceBetweenWords, maxResults, ignoreWordsOrder, ignoreDiacritics );
+  return new FtsHelpers::FTSResultsRequest( *this, searchString,searchMode, matchCase, distanceBetweenWords, maxResults, ignoreWordsOrder, ignoreDiacritics, ftsThreadPoolPtr );
 }
 
 /// ZimDictionary::getArticle()
@@ -1632,8 +1685,8 @@ void ZimResourceRequest::run()
   }
   catch( std::exception &ex )
   {
-    gdWarning( "ZIM: Failed loading resource \"%s\" from \"%s\", reason: %s\n",
-               resourceName.c_str(), dict.getName().c_str(), ex.what() );
+    gdCWarning( dictionaryResourceLc, "ZIM: Failed loading resource \"%s\" from \"%s\", reason: %s\n",
+                resourceName.c_str(), dict.getName().c_str(), ex.what() );
     // Resource not loaded -- we don't set the hasAnyData flag then
   }
 
@@ -1691,10 +1744,14 @@ vector< sptr< Dictionary::Class > > makeDictionaries(
 
           df.open();
           ZIM_header const & zh = df.header();
-          bool new_namespaces = ( zh.majorVersion >= 6 && zh.minorVersion >= 1 );
 
           if( zh.magicNumber != 0x44D495A )
             throw exNotZimFile( i->c_str() );
+
+          if( zh.mimeListPos != sizeof( ZIM_header ) )
+            throw exInvalidZimHeader( i->c_str() );
+
+          bool new_namespaces = ( zh.majorVersion >= 6 && zh.minorVersion >= 1 );
 
           {
             int n = firstName.lastIndexOf( '/' );
@@ -1706,6 +1763,7 @@ vector< sptr< Dictionary::Class > > makeDictionaries(
           memset( &idxHeader, 0, sizeof( idxHeader ) );
           idxHeader.namePtr = 0xFFFFFFFF;
           idxHeader.descriptionPtr = 0xFFFFFFFF;
+          idxHeader.iconPtr = 0xFFFFFFFF;
 
           // We write a dummy header first. At the end of the process the header
           // will be rewritten with the right values.
@@ -1830,6 +1888,9 @@ vector< sptr< Dictionary::Class > > makeDictionaries(
                   idxHeader.langFrom = LangCoder::findIdForLanguageCode3( lang.c_str() );
                 idxHeader.langTo = idxHeader.langFrom;
               }
+              else
+              if( url.compare( "Illustration_48x48@1" ) == 0 )
+                idxHeader.iconPtr = n;
             }
             else
             if( nameSpace == 'X' )
@@ -1838,6 +1899,9 @@ vector< sptr< Dictionary::Class > > makeDictionaries(
             }
             else
             {
+              if( nameSpace == '-' && idxHeader.iconPtr == 0xFFFFFFFF && url.compare( "favicon" ) == 0 )
+                idxHeader.iconPtr = n;
+
               url.insert( url.begin(), '/' );
               url.insert( url.begin(), nameSpace );
               indexedResources.addSingleWord( Utf8::decode( url ), n );

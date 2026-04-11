@@ -63,7 +63,7 @@
 
 #endif
 
-#ifdef HAVE_X11
+#ifdef X11_MAIN_WINDOW_FOCUS_WORKAROUNDS
 #include <QX11Info>
 #include <X11/Xlib.h>
 #include <fixx11h.h>
@@ -75,6 +75,26 @@ using std::set;
 using std::wstring;
 using std::map;
 using std::pair;
+
+namespace {
+
+#ifdef X11_MAIN_WINDOW_FOCUS_WORKAROUNDS
+class MinimumSizeWidget: public QWidget
+{
+  Q_OBJECT
+public:
+  explicit MinimumSizeWidget( QWidget * parent ):
+    QWidget( parent )
+  {
+    setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
+  }
+
+  virtual QSize sizeHint() const
+  { return QSize( 1, 1 ); }
+};
+#endif
+
+} // unnamed namespace
 
 #ifndef QT_NO_OPENSSL
 
@@ -853,6 +873,18 @@ MainWindow::MainWindow( Config::Class & cfg_ ):
   connect( &newReleaseCheckTimer, SIGNAL( timeout() ),
            this, SLOT( checkForNewRelease() ) );
 
+#ifdef X11_MAIN_WINDOW_FOCUS_WORKAROUNDS
+  // The X11 focus workaround in toggleMainWindow() emulates a left mouse button
+  // click on the top-left pixel of the main GoldenDict window. This hack steals
+  // focus from other applications reliably, but it also performs this click at
+  // the position that belongs to the File menu in the default KDE Plasma style,
+  // because the menu bar has no left margin there.
+  // Insert a minimum-size widget, which ignores mouse clicks, to the left of the
+  // menu bar to work around opening of the File menu each time the main window
+  // is shown (e.g. via a hotkey or when another GoldenDict instance is launched).
+  menuBar()->setCornerWidget( new MinimumSizeWidget( this ), Qt::TopLeftCorner );
+#endif
+
   if ( cfg.preferences.hideMenubar )
   {
     toggleMenuBarTriggered( false );
@@ -976,7 +1008,7 @@ void MainWindow::mousePressEvent( QMouseEvent *event)
     return;
   }
 
-  if (event->button() != Qt::MidButton)
+  if( event->button() != Qt4x5::middleButton() )
     return QMainWindow::mousePressEvent(event);
 
   // middle clicked
@@ -1197,11 +1229,16 @@ void MainWindow::wheelEvent( QWheelEvent *ev )
 {
   if ( ev->modifiers().testFlag( Qt::ControlModifier ) )
   {
-    if ( ev->delta() > 0 )
+#if QT_VERSION >= QT_VERSION_CHECK( 5, 0, 0 )
+    int const delta = ev->angleDelta().y();
+#else
+    int const delta = ev->delta();
+#endif
+    if ( delta > 0 )
     {
         zoomin();
     }
-    else if ( ev->delta() < 0 )
+    else if ( delta < 0 )
     {
         zoomout();
     }
@@ -1725,9 +1762,23 @@ void MainWindow::tabCloseRequested( int x )
   ui.tabWidget->removeTab( x );
   delete w;
 
+  if( ui.tabWidget->count() != 0 )
+    return;
   // if everything is closed, add a new tab
-  if ( ui.tabWidget->count() == 0 )
-    addNewTab();
+  addNewTab();
+
+#if QT_VERSION >= QT_VERSION_CHECK( 5, 0, 0 )
+  QWidget const * const focused = focusWidget();
+  if( !focused || focused == ui.tabWidget->tabBar() )
+  {
+    // The article view in the last closed tab had focus. Now no widget has focus or the tab bar acquired useless to it
+    // focus. In this situation GoldenDict ignores typing a new phrase to be translated. Furthermore, when no widget has
+    // focus, focus-transferring shortcuts don't work. Give focus to the newly created article view to work this around.
+    // Cannot just call focusArticleView() or focusTranslateLine(), because no window should be activated here.
+    Q_ASSERT( getCurrentArticleView() );
+    getCurrentArticleView()->focus();
+  }
+#endif
 }
 
 void MainWindow::closeCurrentTab()
@@ -1827,7 +1878,14 @@ void MainWindow::titleChanged( ArticleView * view, QString const & title )
   if( index == ui.tabWidget->currentIndex() )
   {
     // Set icon for "Add to Favorites" action
-    if( isWordPresentedInFavorites( title, cfg.lastMainGroupId ) )
+    int groupId = 0;
+    ArticleView *view = getCurrentArticleView();
+    if( view )
+      groupId = view->getViewGroup();
+    if( groupId == 0 )
+      groupId = cfg.lastMainGroupId;
+
+    if( isWordPresentedInFavorites( title, groupId ) )
     {
       addToFavorites->setIcon( blueStarIcon );
       addToFavorites->setToolTip( tr( "Remove current tab from Favorites" ) );
@@ -1905,8 +1963,16 @@ void MainWindow::tabSwitched( int )
   }
 
   // Set icon for "Add to Favorites" action
+
+  int groupId = 0;
+  ArticleView *view = getCurrentArticleView();
+  if( view )
+    groupId = view->getViewGroup();
+  if( groupId == 0 )
+    groupId = cfg.lastMainGroupId;
+
   QString headword = ui.tabWidget->tabText( ui.tabWidget->currentIndex() );
-  if( isWordPresentedInFavorites( unescapeTabHeader( headword ), cfg.lastMainGroupId ) )
+  if( isWordPresentedInFavorites( unescapeTabHeader( headword ), groupId ) )
   {
     addToFavorites->setIcon( blueStarIcon );
     addToFavorites->setToolTip( tr( "Remove current tab from Favorites" ) );
@@ -2144,6 +2210,8 @@ void MainWindow::editPreferences()
     p.fts.searchMode = cfg.preferences.fts.searchMode;
     p.fts.useMaxArticlesPerDictionary = cfg.preferences.fts.useMaxArticlesPerDictionary;
     p.fts.useMaxDistanceBetweenWords = cfg.preferences.fts.useMaxDistanceBetweenWords;
+    p.fts.ignoreWordsOrder = cfg.preferences.fts.ignoreWordsOrder;
+    p.fts.ignoreDiacritics = cfg.preferences.fts.ignoreDiacritics;
 
     bool needReload = false;
 
@@ -2343,7 +2411,10 @@ void MainWindow::updateSuggestionList( QString const & newValue )
 
 void MainWindow::translateInputFinished( bool checkModifiers )
 {
-  QString word = Folding::unescapeWildcardSymbols( translateLine->text() );
+  QString word = translateLine->text().trimmed();
+  if( word.isEmpty() )
+    return;
+  word = Folding::unescapeWildcardSymbols( word );
   respondToTranslationRequest( Config::InputPhrase( word, translateBoxSuffix ), checkModifiers );
 }
 
@@ -2942,7 +3013,7 @@ void MainWindow::showTranslationFor( QString const & inWord,
                         ignoreDiacritics );
 }
 
-#ifdef HAVE_X11
+#ifdef X11_MAIN_WINDOW_FOCUS_WORKAROUNDS
 void MainWindow::toggleMainWindow( bool onlyShow, bool byIconClick )
 #else
 void MainWindow::toggleMainWindow( bool onlyShow )
@@ -3041,37 +3112,45 @@ void MainWindow::toggleMainWindow( bool onlyShow )
       ftsDlg->show();
 
     focusTranslateLine();
-#ifdef HAVE_X11
-    Window wh = 0;
-    int rev = 0;
-    XGetInputFocus( QX11Info::display(), &wh, &rev );
-    if( wh != translateLine->internalWinId() && !byIconClick )
-    {
-        QPoint p( 1, 1 );
-        mapToGlobal( p );
-        XEvent event;
-        memset( &event, 0, sizeof( event) );
-        event.type = ButtonPress;
-        event.xbutton.x = 1;
-        event.xbutton.y = 1;
-        event.xbutton.x_root = p.x();
-        event.xbutton.y_root = p.y();
-        event.xbutton.window = internalWinId();
-        event.xbutton.root = QX11Info::appRootWindow( QX11Info::appScreen() );
-        event.xbutton.state = Button1Mask;
-        event.xbutton.button = Button1;
-        event.xbutton.same_screen = true;
-        event.xbutton.time = CurrentTime;
 
-        XSendEvent( QX11Info::display(), internalWinId(), true, 0xfff, &event );
-        XFlush( QX11Info::display() );
-        event.type = ButtonRelease;
-        XSendEvent( QX11Info::display(), internalWinId(), true, 0xfff, &event );
-        XFlush( QX11Info::display() );
-    }
+#ifdef X11_MAIN_WINDOW_FOCUS_WORKAROUNDS
+    if( !byIconClick )
+      QTimer::singleShot( 0, this, SLOT( forceX11Focus() ) );
 #endif
   }
 }
+
+#ifdef X11_MAIN_WINDOW_FOCUS_WORKAROUNDS
+void MainWindow::forceX11Focus()
+{
+  Window wh = 0;
+  int rev = 0;
+  XGetInputFocus( QX11Info::display(), &wh, &rev );
+  if( wh != internalWinId() )
+  {
+    QPoint const pointRelativeToRoot = mapToGlobal( QPoint( 0, 0 ) );
+    XEvent event;
+    memset( &event, 0, sizeof( event) );
+    event.type = ButtonPress;
+    event.xbutton.x = 0;
+    event.xbutton.y = 0;
+    event.xbutton.x_root = pointRelativeToRoot.x();
+    event.xbutton.y_root = pointRelativeToRoot.y();
+    event.xbutton.window = internalWinId();
+    event.xbutton.root = QX11Info::appRootWindow( QX11Info::appScreen() );
+    event.xbutton.state = Button1Mask;
+    event.xbutton.button = Button1;
+    event.xbutton.same_screen = true;
+    event.xbutton.time = CurrentTime;
+
+    XSendEvent( QX11Info::display(), internalWinId(), true, 0xfff, &event );
+    XFlush( QX11Info::display() );
+    event.type = ButtonRelease;
+    XSendEvent( QX11Info::display(), internalWinId(), true, 0xfff, &event );
+    XFlush( QX11Info::display() );
+  }
+}
+#endif
 
 void MainWindow::installHotKeys()
 {
@@ -3273,7 +3352,7 @@ void MainWindow::trayIconActivated( QSystemTrayIcon::ActivationReason r )
   switch(r) {
     case QSystemTrayIcon::Trigger:
       // Left click toggles the visibility of main window
-#ifdef HAVE_X11
+#ifdef X11_MAIN_WINDOW_FOCUS_WORKAROUNDS
       toggleMainWindow( false, true );
 #else
       toggleMainWindow();
@@ -3488,13 +3567,15 @@ void MainWindow::on_pageSetup_triggered()
 
 void MainWindow::on_printPreview_triggered()
 {
-  QPrintPreviewDialog dialog( &getPrinter(), this );
+  QPrintPreviewDialog dialog( &getPrinter(), this,
+                              Qt::WindowSystemMenuHint | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint );
+  dialog.restoreGeometry( cfg.printPreviewDialogGeometry );
 
   connect( &dialog, SIGNAL( paintRequested( QPrinter * ) ),
            this, SLOT( printPreviewPaintRequested( QPrinter * ) ) );
 
-  dialog.showMaximized();
   dialog.exec();
+  cfg.printPreviewDialogGeometry = dialog.saveGeometry();
 }
 
 void MainWindow::on_print_triggered()
@@ -3523,17 +3604,27 @@ static void filterAndCollectResources( QString & html, QRegExp & rx, const QStri
                                        vector< pair< QUrl, QString > > & downloadResources )
 {
   int pos = 0;
+  int queryNom = 1;
 
   while ( ( pos = rx.indexIn( html, pos ) ) != -1 )
   {
     QUrl url( rx.cap( 1 ) );
     QString host = url.host();
-    QString resourcePath = QString::fromLatin1( QUrl::toPercentEncoding( Qt4x5::Url::path( url ), "/" ) );
+    QString resourcePath = Qt4x5::Url::fullPath( url );
 
     if ( !host.startsWith( '/' ) )
       host.insert( 0, '/' );
     if ( !resourcePath.startsWith( '/' ) )
       resourcePath.insert( 0, '/' );
+
+    // Replase query part of url (if exist)
+    int n = resourcePath.indexOf( QLatin1Char( '?' ) );
+    if( n >= 0 )
+    {
+      QString q_str = QString( "_q%1" ).arg( queryNom );
+      resourcePath.replace( n, resourcePath.length() - n, q_str );
+      queryNom += 1;
+    }
 
     QCryptographicHash hash( QCryptographicHash::Md5 );
     hash.addData( rx.cap().toUtf8() );
@@ -3545,6 +3636,7 @@ static void filterAndCollectResources( QString & html, QRegExp & rx, const QStri
     }
 
     // Modify original url, set to the native one
+    resourcePath = QString::fromLatin1( QUrl::toPercentEncoding( resourcePath, "/" ) );
     QString newUrl = sep + QDir( folder ).dirName() + host + resourcePath + sep;
     html.replace( pos, rx.cap().length(), newUrl );
     pos += newUrl.length();
@@ -3585,7 +3677,8 @@ void MainWindow::on_saveArticle_triggered()
                                            filters.join( ";;" ),
                                            &selectedFilter, options );
 
-  bool complete = ( selectedFilter == filters[ 0 ] );
+  // The " (*.html)" part of filters[i] is absent from selectedFilter in Qt 5.
+  bool const complete = filters.at( 0 ).startsWith( selectedFilter );
 
   if ( !fileName.isEmpty() )
   {
@@ -3889,8 +3982,13 @@ void MainWindow::applyWordsZoomLevel()
   }
 
   wordsZoomBase->setEnabled( cfg.preferences.wordsZoomLevel != 0 );
-  // groupList->setFixedHeight(translateLine->height());
-  groupList->parentWidget()->layout()->activate();
+
+  if( !cfg.preferences.searchInDock )
+  {
+    // Invalidating navToolbar's layout displays translateBoxWidget w/o the need to press the toolbar
+    // extension button when Words Zoom level decreases enough for translateBoxWidget to fit in the toolbar.
+    navToolbar->layout()->invalidate();
+  }
 
   if ( scanPopup.get() )
     scanPopup->applyWordsZoomLevel();
@@ -3901,6 +3999,11 @@ void MainWindow::messageFromAnotherInstanceReceived( QString const & message )
   if ( message == "bringToFront" )
   {
     toggleMainWindow( true );
+    return;
+  }
+  if( message == "toggleScanPopup" )
+  {
+    toggleScanPopup();
     return;
   }
   if( message.left( 15 ) == "translateWord: " )
@@ -4448,7 +4551,7 @@ void MainWindow::editDictionary( Dictionary::Class * dict )
       QString headword = unescapeTabHeader( ui.tabWidget->tabText( ui.tabWidget->currentIndex() ) );
       command.replace( "%GDWORD%", headword );
     }
-    if( !QProcess::startDetached( command ) )
+    if( !Qt4x5::Process::startDetached( command ) )
       QApplication::beep();
   }
 }
@@ -4766,16 +4869,33 @@ QString MainWindow::unescapeTabHeader(QString const & header )
   return escaped;
 }
 
-void MainWindow::addCurrentTabToFavorites()
+QString MainWindow::tabFavoritesFolder( int tabNom )
 {
   QString folder;
-  Instances::Group const * igrp = groupInstances.findGroup( cfg.lastMainGroupId );
+  unsigned groupId = 0;
+  ArticleView * view = 0;
+
+  QWidget * cw = ui.tabWidget->widget( tabNom );
+  if ( cw )
+    view = dynamic_cast< ArticleView * >( cw );
+
+  if( view )
+    groupId = view->getViewGroup();
+  if( groupId == 0 )
+    groupId = cfg.lastMainGroupId;
+
+  Instances::Group const * igrp = groupInstances.findGroup( groupId );
   if( igrp )
     folder = igrp->favoritesFolder;
 
+  return folder;
+}
+
+void MainWindow::addCurrentTabToFavorites()
+{
   QString headword = ui.tabWidget->tabText( ui.tabWidget->currentIndex() );
 
-  ui.favoritesPaneWidget->addHeadword( folder, unescapeTabHeader( headword ) );
+  ui.favoritesPaneWidget->addHeadword( tabFavoritesFolder( ui.tabWidget->currentIndex() ), unescapeTabHeader( headword ) );
 
   addToFavorites->setIcon( blueStarIcon );
   addToFavorites->setToolTip( tr( "Remove current tab from Favorites" ) );
@@ -4783,10 +4903,7 @@ void MainWindow::addCurrentTabToFavorites()
 
 void MainWindow::handleAddToFavoritesButton()
 {
-  QString folder;
-  Instances::Group const * igrp = groupInstances.findGroup( cfg.lastMainGroupId );
-  if( igrp )
-    folder = igrp->favoritesFolder;
+  QString folder = tabFavoritesFolder( ui.tabWidget->currentIndex() );
   QString headword = unescapeTabHeader( ui.tabWidget->tabText( ui.tabWidget->currentIndex() ) );
 
   if( ui.favoritesPaneWidget->isHeadwordPresent( folder, headword ) )
@@ -4822,15 +4939,10 @@ void MainWindow::addWordToFavorites( QString const & word, unsigned groupId )
 
 void MainWindow::addAllTabsToFavorites()
 {
-  QString folder;
-  Instances::Group const * igrp = groupInstances.findGroup( cfg.lastMainGroupId );
-  if( igrp )
-    folder = igrp->favoritesFolder;
-
   for( int i = 0; i < ui.tabWidget->count(); i++ )
   {
     QString headword = ui.tabWidget->tabText( i );
-    ui.favoritesPaneWidget->addHeadword( folder, unescapeTabHeader( headword ) );
+    ui.favoritesPaneWidget->addHeadword( tabFavoritesFolder( i ), unescapeTabHeader( headword ) );
   }
   addToFavorites->setIcon( blueStarIcon );
   addToFavorites->setToolTip( tr( "Remove current tab from Favorites" ) );
@@ -4844,6 +4956,11 @@ bool MainWindow::isWordPresentedInFavorites( QString const & word, unsigned grou
     folder = igrp->favoritesFolder;
 
   return ui.favoritesPaneWidget->isHeadwordPresent( folder, word );
+}
+
+void MainWindow::toggleScanPopup()
+{
+  enableScanPopup->toggle();
 }
 
 void MainWindow::setGroupByName( QString const & name, bool main_window )
@@ -4928,4 +5045,8 @@ bool MainWindow::isGoldenDictWindow( HWND hwnd )
   return hwnd == (HWND)winId() || hwnd == (HWND)ui.centralWidget->winId();
 }
 
+#endif
+
+#ifdef X11_MAIN_WINDOW_FOCUS_WORKAROUNDS
+#include "mainwindow.moc"
 #endif

@@ -17,6 +17,7 @@
 #include "wstring_qt.hh"
 #include "zipfile.hh"
 #include "indexedzip.hh"
+#include "categorized_logging.hh"
 #include "gddebug.hh"
 #include "tiff.hh"
 #include "fulltextsearch.hh"
@@ -236,7 +237,8 @@ public:
                                                             int distanceBetweenWords,
                                                             int maxResults,
                                                             bool ignoreWordsOrder,
-                                                            bool ignoreDiacritics );
+                                                            bool ignoreDiacritics,
+                                                            QThreadPool * ftsThreadPoolPtr );
   virtual QString const& getDescription();
 
   virtual QString getMainFilename();
@@ -1026,7 +1028,22 @@ string DslDictionary::nodeToHtml( ArticleDom::Node const & node )
   else
   if ( node.tagName == GD_NATIVE_TO_WS( L"url" ) )
   {
-    string link = Html::escape( Filetype::simplifyString( Utf8::encode( node.renderAsText() ), false ) );
+    string link;
+    if( !node.tagAttrs.empty() )
+    {
+      QString attrs = gd::toQString( node.tagAttrs );
+      int n = attrs.indexOf( "target=\"" );
+      if( n >= 0 )
+      {
+        QString target = attrs.mid( n + 8 );
+        if( target.endsWith( '\"' ) )
+          target.chop( 1 );
+        link = Html::escape( Filetype::simplifyString( string( target.toUtf8().data() ), false ) );
+      }
+    }
+    if( link.empty() )
+      link = Html::escape( Filetype::simplifyString( Utf8::encode( node.renderAsText() ), false ) );
+
     if( QUrl::fromEncoded( link.c_str() ).scheme().isEmpty() )
       link = "http://" + link;
 
@@ -1149,13 +1166,39 @@ string DslDictionary::nodeToHtml( ArticleDom::Node const & node )
   if ( node.tagName == GD_NATIVE_TO_WS( L"ref" ) )
   {
     QUrl url;
+    QString attrs;
+    if( !node.tagAttrs.empty() )
+      attrs = gd::toQString( node.tagAttrs );
+
+    wstring refStr;
+    if( !attrs.isEmpty() )
+    {
+      int n = attrs.indexOf( "target=\"" );
+      if( n >= 0 )
+      {
+        int n_end = attrs.indexOf( '\"', n + 8 );
+        QString target = attrs.mid( n, n_end > n ? n_end - n + 1 : -1 );
+        attrs.remove( target );
+        if( !attrs.isEmpty() )
+          attrs = attrs.trimmed();
+
+        target = target.mid( 8 );
+        if( target.endsWith( '\"' ) )
+          target.chop( 1 );
+        refStr = gd::toWString( target );
+      }
+    }
 
     url.setScheme( "gdlookup" );
     url.setHost( "localhost" );
-    url.setPath( Qt4x5::Url::ensureLeadingSlash( gd::toQString( node.renderAsText() ) ) );
-    if( !node.tagAttrs.empty() )
+
+    if( refStr.empty() )
+      refStr = node.renderAsText();
+    normalizeHeadword( refStr );
+    url.setPath( Qt4x5::Url::ensureLeadingSlash( gd::toQString( refStr ) ) );
+    if( !attrs.isEmpty() )
     {
-      QString attr = gd::toQString( node.tagAttrs ).remove( '\"' );
+      QString attr = attrs.remove( '\"' );
       int n = attr.indexOf( '=' );
       if( n > 0 )
       {
@@ -1989,8 +2032,8 @@ void DslResourceRequest::run()
   }
   catch( std::exception &ex )
   {
-    gdWarning( "DSL: Failed loading resource \"%s\" for \"%s\", reason: %s\n",
-               resourceName.c_str(), dict.getName().c_str(), ex.what() );
+    gdCWarning( dictionaryResourceLc, "DSL: Failed loading resource \"%s\" for \"%s\", reason: %s\n",
+                resourceName.c_str(), dict.getName().c_str(), ex.what() );
     // Resource not loaded -- we don't set the hasAnyData flag then
   }
 
@@ -2045,9 +2088,10 @@ sptr< Dictionary::DataRequest > DslDictionary::getSearchResults( QString const &
                                                                  int distanceBetweenWords,
                                                                  int maxResults,
                                                                  bool ignoreWordsOrder,
-                                                                 bool ignoreDiacritics )
+                                                                 bool ignoreDiacritics,
+                                                                 QThreadPool * ftsThreadPoolPtr )
 {
-  return new FtsHelpers::FTSResultsRequest( *this, searchString,searchMode, matchCase, distanceBetweenWords, maxResults, ignoreWordsOrder, ignoreDiacritics );
+  return new FtsHelpers::FTSResultsRequest( *this, searchString,searchMode, matchCase, distanceBetweenWords, maxResults, ignoreWordsOrder, ignoreDiacritics, ftsThreadPoolPtr );
 }
 
 } // anonymous namespace

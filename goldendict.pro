@@ -1,6 +1,6 @@
 TEMPLATE = app
 TARGET = goldendict
-VERSION = 1.5.0-RC2+git
+VERSION = 1.5.1+git
 
 # Generate version file. We do this here and in a build rule described later.
 # The build rule is required since qmake isn't run each time the project is
@@ -23,7 +23,7 @@ isEmpty( hasGit ) {
 }
 
 CONFIG( release, debug|release ) {
-  DEFINES += NDEBUG
+  DEFINES += NDEBUG NO_GD_DPRINTF
 }
 
 # DEPENDPATH += . generators
@@ -72,7 +72,7 @@ win32 {
     TARGET = GoldenDict
 
     win32-msvc* {
-        VERSION = 1.5.0 # More complicated things cause errors during compilation under MSVC++
+        VERSION = 1.5.1 # More complicated things cause errors during compilation under MSVC++
         DEFINES += __WIN32 _CRT_SECURE_NO_WARNINGS
         contains(QMAKE_TARGET.arch, x86_64) {
             DEFINES += NOMINMAX __WIN64
@@ -367,6 +367,7 @@ HEADERS += folding.hh \
     articleinspector.hh \
     delegate.hh \
     zim.hh \
+    categorized_logging.hh \
     gddebug.hh \
     qt4x5.hh \
     gestures.hh \
@@ -608,6 +609,7 @@ TRANSLATIONS += locale/ru_RU.ts \
     locale/cs_CZ.ts \
     locale/de_DE.ts \
     locale/el_GR.ts \
+    locale/hu_HU.ts \
     locale/bg_BG.ts \
     locale/ar_SA.ts \
     locale/lt_LT.ts \
@@ -619,9 +621,11 @@ TRANSLATIONS += locale/ru_RU.ts \
     locale/zh_TW.ts \
     locale/sq_AL.ts \
     locale/pt_BR.ts \
+    locale/pt_PT.ts \
     locale/es_AR.ts \
     locale/es_BO.ts \
     locale/es_ES.ts \
+    locale/ca_CT.ts \
     locale/sk_SK.ts \
     locale/tr_TR.ts \
     locale/qu_WI.ts \

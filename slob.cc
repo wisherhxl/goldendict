@@ -7,6 +7,7 @@
 #include "btreeidx.hh"
 #include "fsencoding.hh"
 #include "folding.hh"
+#include "categorized_logging.hh"
 #include "gddebug.hh"
 #include "utf8.hh"
 #include "decompress.hh"
@@ -623,7 +624,8 @@ class SlobDictionary: public BtreeIndexing::BtreeDictionary
                                                               int distanceBetweenWords,
                                                               int maxResults,
                                                               bool ignoreWordsOrder,
-                                                              bool ignoreDiacritics );
+                                                              bool ignoreDiacritics,
+                                                              QThreadPool * ftsThreadPoolPtr );
     virtual void getArticleText( uint32_t articleAddress, QString & headword, QString & text );
 
     quint64 getArticlePos(uint32_t articleNumber );
@@ -873,7 +875,10 @@ string SlobDictionary::convert( const string & in, RefEntry const & entry )
     // Find anchor
     int n = list[ 3 ].indexOf( '#' );
     if( n > 0 )
+    {
       anchor = QString( "?gdanchor=" ) + list[ 3 ].mid( n + 1 );
+      tag.remove( list[ 3 ].mid( n ) );
+    }
     else
       anchor.clear();
 
@@ -941,8 +946,14 @@ string SlobDictionary::convert( const string & in, RefEntry const & entry )
           || list[ 1 ].compare( "mwe-math-fallback-image-inline" ) == 0
           || list[ 1 ].endsWith( " tex" ) )
       {
+#if QT_VERSION >= QT_VERSION_CHECK( 5, 5, 0 )
+        QString const name = QString::asprintf(
+#else
         QString name;
-        name.sprintf( "%04X%04X%04X.gif", entry.itemIndex, entry.binIndex, texCount );
+        name.sprintf(
+#endif
+               "%04X%04X%04X.gif", entry.itemIndex, entry.binIndex, texCount );
+
         imgName = texCachePath + "/" + name;
 
         if( !QFileInfo( imgName ).exists() )
@@ -1023,9 +1034,8 @@ string SlobDictionary::convert( const string & in, RefEntry const & entry )
               break;
           }
 
-          QString command = texCgiPath + " -e " +  imgName
-                            + " \"" + tex + "\"";
-          QProcess::execute( command );
+          QStringList const arguments = QStringList() << "-e" << imgName << tex;
+          QProcess::execute( texCgiPath, arguments );
         }
 
         QString tag = QString( "<img class=\"imgtex\" src=\"file://" )
@@ -1196,6 +1206,7 @@ void SlobDictionary::makeFTSIndex( QAtomicInt & isCancelled, bool firstIteration
     // Free memory
     sf.clearRefOffsets();
     setOfOffsets.clear();
+    setOfOffsets.squeeze();
 
     if( Qt4x5::AtomicInt::loadAcquire( isCancelled ) )
       throw exUserAbort();
@@ -1253,6 +1264,11 @@ void SlobDictionary::makeFTSIndex( QAtomicInt & isCancelled, bool firstIteration
 
     // Free memory
     offsets.clear();
+    offsets.squeeze();
+
+# define BUF_SIZE 20000
+    QVector< QPair< wstring, uint32_t > > wordsWithOffsets;
+    wordsWithOffsets.reserve( BUF_SIZE );
 
     QMap< QString, QVector< uint32_t > >::iterator it = ftsWords.begin();
     while( it != ftsWords.end() )
@@ -1266,13 +1282,36 @@ void SlobDictionary::makeFTSIndex( QAtomicInt & isCancelled, bool firstIteration
       chunks.addToBlock( &size, sizeof(uint32_t) );
       chunks.addToBlock( it.value().data(), size * sizeof(uint32_t) );
 
-      indexedWords.addSingleWord( gd::toWString( it.key() ), offset );
+      wordsWithOffsets.append( QPair< wstring, uint32_t >( gd::toWString( it.key() ), offset ) );
 
       it = ftsWords.erase( it );
+
+      if( wordsWithOffsets.size() >= BUF_SIZE )
+      {
+        for( int i = 0; i < wordsWithOffsets.size(); i++ )
+        {
+          if( Qt4x5::AtomicInt::loadAcquire( isCancelled ) )
+            throw exUserAbort();
+          indexedWords.addSingleWord( wordsWithOffsets[ i ].first, wordsWithOffsets[ i ].second );
+        }
+        wordsWithOffsets.clear();
+      }
     }
 
     // Free memory
     ftsWords.clear();
+
+    for( int i = 0; i < wordsWithOffsets.size(); i++ )
+    {
+      if( Qt4x5::AtomicInt::loadAcquire( isCancelled ) )
+        throw exUserAbort();
+      indexedWords.addSingleWord( wordsWithOffsets[ i ].first, wordsWithOffsets[ i ].second );
+    }
+#undef BUF_SIZE
+
+    // Free memory
+    wordsWithOffsets.clear();
+    wordsWithOffsets.squeeze();
 
     if( Qt4x5::AtomicInt::loadAcquire( isCancelled ) )
       throw exUserAbort();
@@ -1344,9 +1383,10 @@ sptr< Dictionary::DataRequest > SlobDictionary::getSearchResults( QString const 
                                                                   int distanceBetweenWords,
                                                                   int maxResults,
                                                                   bool ignoreWordsOrder,
-                                                                  bool ignoreDiacritics )
+                                                                  bool ignoreDiacritics,
+                                                                  QThreadPool * ftsThreadPoolPtr )
 {
-  return new FtsHelpers::FTSResultsRequest( *this, searchString, searchMode, matchCase, distanceBetweenWords, maxResults, ignoreWordsOrder, ignoreDiacritics );
+  return new FtsHelpers::FTSResultsRequest( *this, searchString, searchMode, matchCase, distanceBetweenWords, maxResults, ignoreWordsOrder, ignoreDiacritics, ftsThreadPoolPtr );
 }
 
 
@@ -1674,8 +1714,8 @@ void SlobResourceRequest::run()
   }
   catch( std::exception &ex )
   {
-    gdWarning( "SLOB: Failed loading resource \"%s\" from \"%s\", reason: %s\n",
-               resourceName.c_str(), dict.getName().c_str(), ex.what() );
+    gdCWarning( dictionaryResourceLc, "SLOB: Failed loading resource \"%s\" from \"%s\", reason: %s\n",
+                resourceName.c_str(), dict.getName().c_str(), ex.what() );
     // Resource not loaded -- we don't set the hasAnyData flag then
   }
 

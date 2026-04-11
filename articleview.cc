@@ -159,7 +159,7 @@ public:
 
     for( size_t left = baseText.size(); left; )
     {
-      if( *nextChar >= 0x10000U )
+      if( *nextChar >= 0x10000 )
       {
         // Will be translated into surrogate pair
         normText.push_back( *nextChar );
@@ -569,7 +569,7 @@ void ArticleView::loadFinished( bool )
   {
     // There's some sort of glitch -- sometimes you need to move a mouse
 
-    QMouseEvent ev( QEvent::MouseMove, QPoint(), Qt::MouseButton(), 0, 0 );
+    QMouseEvent ev( QEvent::MouseMove, QPoint(), Qt::MouseButton(), Qt::MouseButtons(), Qt::KeyboardModifiers() );
 
     qApp->sendEvent( ui.definition, &ev );
   }
@@ -726,7 +726,7 @@ unsigned ArticleView::getGroup( QUrl const & url )
 QStringList ArticleView::getArticlesList()
 {
   return evaluateJavaScriptVariableSafe( ui.definition->page()->mainFrame(), "gdArticleContents" )
-      .toString().trimmed().split( ' ', QString::SkipEmptyParts );
+      .toString().trimmed().split( ' ', Qt4x5::skipEmptyParts() );
 }
 
 QString ArticleView::getActiveArticleId()
@@ -980,15 +980,15 @@ bool ArticleView::eventFilter( QObject * obj, QEvent * ev )
 
         QWidget *child = widget->childAt( widget->mapFromGlobal( pt ) );
         if( child )
-        {
-          QWheelEvent whev( child->mapFromGlobal( pt ), pt, delta, Qt::NoButton, Qt::NoModifier );
-          qApp->sendEvent( child, &whev );
-        }
-        else
-        {
-          QWheelEvent whev( widget->mapFromGlobal( pt ), pt, delta, Qt::NoButton, Qt::NoModifier );
-          qApp->sendEvent( widget, &whev );
-        }
+          widget = child;
+
+#if QT_VERSION >= QT_VERSION_CHECK( 5, 12, 0 )
+        QWheelEvent whev( widget->mapFromGlobal( pt ), pt, QPoint(), QPoint( 0, delta ),
+                          Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false );
+#else
+        QWheelEvent whev( widget->mapFromGlobal( pt ), pt, delta, Qt::NoButton, Qt::NoModifier );
+#endif
+        qApp->sendEvent( widget, &whev );
       }
     }
 
@@ -1031,6 +1031,9 @@ bool ArticleView::eventFilter( QObject * obj, QEvent * ev )
       if ( keyEvent->modifiers() &
            ( Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier ) )
         return false; // A non-typing modifier is pressed
+
+      if( keyEvent->key() == Qt::Key_Backspace )
+        return !canGoBack();  // Prevent QWebView navigation to first (empty) page
 
       if ( keyEvent->key() == Qt::Key_Space ||
            keyEvent->key() == Qt::Key_Backspace ||
@@ -1214,7 +1217,7 @@ void ArticleView::openLink( QUrl const & url, QUrl const & ref,
     if( Qt4x5::Url::hasQueryItem( ref, "dictionaries" ) )
     {
       QStringList dictsList = Qt4x5::Url::queryItemValue( ref, "dictionaries" )
-                                          .split( ",", QString::SkipEmptyParts );
+                                          .split( ",", Qt4x5::skipEmptyParts() );
 
       showDefinition( url.path(), dictsList, QRegExp(), getGroup( ref ), false );
     }
@@ -1236,7 +1239,7 @@ void ArticleView::openLink( QUrl const & url, QUrl const & ref,
       {
         // Specific dictionary group from full-text search
         QStringList dictsList = Qt4x5::Url::queryItemValue( ref, "dictionaries" )
-                                            .split( ",", QString::SkipEmptyParts );
+                                            .split( ",", Qt4x5::skipEmptyParts() );
 
         showDefinition( url.path().mid( 1 ), dictsList, QRegExp(), getGroup( ref ), false );
         return;
@@ -2320,7 +2323,7 @@ void ArticleView::doubleClicked( QPoint pos )
   QWebHitTestResult r = ui.definition->page()->mainFrame()->hitTestContent( pos );
   QWebElement el = r.element();
   QUrl imageUrl;
-  if( !popupView && el.tagName().compare( "img", Qt::CaseInsensitive ) == 0 )
+  if( el.tagName().compare( "img", Qt::CaseInsensitive ) == 0 )
   {
     // Double click on image; download it and transfer to external program
 
@@ -2411,7 +2414,7 @@ void ArticleView::doubleClicked( QPoint pos )
         if( Qt4x5::Url::hasQueryItem( ref, "dictionaries" ) )
         {
           QStringList dictsList = Qt4x5::Url::queryItemValue(ref, "dictionaries" )
-                                              .split( ",", QString::SkipEmptyParts );
+                                              .split( ",", Qt4x5::skipEmptyParts() );
           showDefinition( selectedText, dictsList, QRegExp(), getGroup( ref ), false );
         }
         else
@@ -2438,7 +2441,7 @@ void ArticleView::performFindOperation( bool restart, bool backwards, bool check
       }
     }
 
-    QWebPage::FindFlags f( 0 );
+    QWebPage::FindFlags f;
 
     if ( ui.searchCaseSensitive->isChecked() )
       f |= QWebPage::FindCaseSensitively;
@@ -2455,7 +2458,7 @@ void ArticleView::performFindOperation( bool restart, bool backwards, bool check
       return;
   }
 
-  QWebPage::FindFlags f( 0 );
+  QWebPage::FindFlags f;
 
   if ( ui.searchCaseSensitive->isChecked() )
     f |= QWebPage::FindCaseSensitively;
@@ -2508,7 +2511,7 @@ bool ArticleView::closeSearch()
     ui.ftsSearchFrame->hide();
     ui.definition->setFocus();
 
-    QWebPage::FindFlags flags ( 0 );
+    QWebPage::FindFlags flags;
 
   #if QT_VERSION >= 0x040600
     flags |= QWebPage::HighlightAllOccurrences;
@@ -2676,7 +2679,7 @@ void ArticleView::highlightFTSResults()
 
   ftsSearchMatchCase = Qt4x5::Url::hasQueryItem( url, "matchcase" );
 
-  QWebPage::FindFlags flags ( 0 );
+  QWebPage::FindFlags flags;
 
   if( ftsSearchMatchCase )
     flags |= QWebPage::FindCaseSensitively;
@@ -2737,7 +2740,7 @@ void ArticleView::performFtsFindOperation( bool backwards )
     return;
   }
 
-  QWebPage::FindFlags flags( 0 );
+  QWebPage::FindFlags flags;
 
   if( ftsSearchMatchCase )
     flags |= QWebPage::FindCaseSensitively;
