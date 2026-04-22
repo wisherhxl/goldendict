@@ -90,5 +90,10 @@ CMakeLists.txt.user*
 # Auto generated presets by Conan
 CMakeUserPresets.json
 
+# Protobuf auto generated files
+*.pb.h
+*.pb.cc
+
 # Tiger auto generated files
-modules/base/
+*.tp.h
+*.tp.cc
