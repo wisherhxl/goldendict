@@ -24,12 +24,19 @@ ti_sync_version()
 # ============ Project Name ============
 set(TI_ORG_NAME "") # Name of organization
 set(TI_PROJECT_CONTACT "") # Email of project maintainer
-set(TI_PROJECT_NAME "Rago") # Name of the project
-set(TI_PROJECT_NAMESPACE "ra") # NameSpace of the project
+set(TI_PROJECT_NAME "") # Name of the project
+set(TI_PROJECT_NAMESPACE "") # Namespace of the project
 # Description of the project
 set(TI_PROJECT_INFO "A C++ Template for CMake and Conan")
 
 # ============ Project Definition ============
+if(TI_PROJECT_NAME STREQUAL "")
+  message(
+    FATAL_ERROR
+      "TI_PROJECT_NAME is not set.\n"
+      "This template will not generate platform files until the project name is configured.\n"
+      "Please edit CMakeLists.txt and set TI_PROJECT_NAME first. You can also set TI_PROJECT_NAMESPACE there if needed.")
+endif()
 project(${TI_PROJECT_NAME} CXX C)
 enable_language(CXX C)
 
