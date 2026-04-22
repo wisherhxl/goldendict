@@ -34,9 +34,12 @@ project(${TI_PROJECT_NAME} CXX C)
 enable_language(CXX C)
 
 # ============ Modules Information ============
+# Base module directory name. Leave empty to default to TI_INTERNAL_NAME after
+# TigerMainSettings.cmake normalizes project naming variables.
+set(TI_BASE_MODULE "core")
 # TI_FIXED_ORDER_MODULES: Modules listed here are built first, in the order
-# specified. Remaining modules are built in a random order.
-set(TI_FIXED_ORDER_MODULES base)
+# specified. TI_BASE_MODULE is always prepended automatically.
+set(TI_FIXED_ORDER_MODULES "")
 
 # ============ Applications Information ============
 
