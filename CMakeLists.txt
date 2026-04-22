@@ -22,10 +22,15 @@ include(cmake/TigerMainPre.cmake)
 ti_sync_version()
 
 # ============ Project Name ============
-set(TI_ORG_NAME "") # Name of organization
-set(TI_PROJECT_CONTACT "") # Email of project maintainer
-set(TI_PROJECT_NAME "") # Name of the project
-set(TI_PROJECT_NAMESPACE "") # Namespace of the project
+# Name of organization.
+set(TI_ORG_NAME "")
+# Email of project maintainer.
+set(TI_PROJECT_CONTACT "")
+# Name of the project.
+set(TI_PROJECT_NAME "")
+# Namespace of the project.
+# Leave empty to use TI_PROJECT_NAME automatically.
+set(TI_PROJECT_NAMESPACE "")
 # Description of the project
 set(TI_PROJECT_INFO "A C++ Template for CMake and Conan")
 
@@ -43,7 +48,7 @@ enable_language(CXX C)
 # ============ Modules Information ============
 # Base module directory name. Leave empty to default to TI_INTERNAL_NAME after
 # TigerMainSettings.cmake normalizes project naming variables.
-set(TI_BASE_MODULE "core")
+set(TI_BASE_MODULE "")
 # TI_FIXED_ORDER_MODULES: Modules listed here are built first, in the order
 # specified. TI_BASE_MODULE is always prepended automatically.
 set(TI_FIXED_ORDER_MODULES "")
