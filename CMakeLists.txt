@@ -46,9 +46,13 @@ project(${TI_PROJECT_NAME} CXX C)
 enable_language(CXX C)
 
 # ============ Modules Information ============
-# Base module directory name. Leave empty to default to TI_INTERNAL_NAME after
+# Base module directory name for Tiger platform generated files.
+# Leave empty to default to TI_INTERNAL_NAME after
 # TigerMainSettings.cmake normalizes project naming variables.
 set(TI_BASE_MODULE "")
+# Module directory name for generated protobuf files.
+# Leave empty to use TI_BASE_MODULE automatically.
+set(TI_PROTO_GEN_MODULE "")
 # TI_FIXED_ORDER_MODULES: Modules listed here are built first, in the order
 # specified. TI_BASE_MODULE is always prepended automatically.
 set(TI_FIXED_ORDER_MODULES "")
