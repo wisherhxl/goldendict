@@ -34,7 +34,7 @@ class RagoRecipe(ConanFile):
 
     def requirements(self):
         self.requires("zlib/[>1.3]")
-        self.requires("protobuf/[>3.0]")
+        self.requires("protobuf/6.33.5")
         self.requires("qt/[<6.0]")
 
     def build_requirements(self):
