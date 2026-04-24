@@ -42,6 +42,11 @@ foreach(module ${qt_modules})
     list(APPEND qt_link "${QT_NAMESPACE}::${module}")
 endforeach()
 
+ti_add_thirdparty_status(qt
+    DISPLAY "Qt"
+    VERSION "${${QT_NAMESPACE}_VERSION}"
+    TARGETS ${qt_link})
+
 # LinguistTools provides translation commands/tools, not a linkable library target.
 find_package(${QT_NAMESPACE} COMPONENTS LinguistTools QUIET)
 if (${QT_NAMESPACE}LinguistTools_FOUND OR TARGET ${QT_NAMESPACE}::LinguistTools)

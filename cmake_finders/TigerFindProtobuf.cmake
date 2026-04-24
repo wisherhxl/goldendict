@@ -58,18 +58,20 @@ if(HAVE_PROTOBUF AND PROTOBUF_UPDATE_FILES AND NOT COMMAND PROTOBUF_GENERATE_CPP
 endif()
 
 if(HAVE_PROTOBUF)
-  list(APPEND CUSTOM_STATUS protobuf)
-    if(TARGET "${Protobuf_LIBRARIES}")
-      get_target_property(__location "${Protobuf_LIBRARIES}" IMPORTED_LOCATION_RELEASE)
-      if(NOT __location)
-        get_target_property(__location "${Protobuf_LIBRARIES}" IMPORTED_LOCATION)
-      endif()
-    elseif(Protobuf_LIBRARY)
-      set(__location "${Protobuf_LIBRARY}")
-    else()
-      set(__location "${Protobuf_LIBRARIES}")
-    endif()
-  list(APPEND CUSTOM_STATUS_protobuf "    Protobuf:"
-    BUILD_PROTOBUF THEN "build (${Protobuf_VERSION})"
-    ELSE "${__location} (${Protobuf_VERSION})")
+  if(BUILD_PROTOBUF)
+    ti_add_thirdparty_status(protobuf
+      DISPLAY "Protobuf"
+      VERSION "${Protobuf_VERSION}"
+      LOCATION "build")
+  elseif(Protobuf_LIBRARY)
+    ti_add_thirdparty_status(protobuf
+      DISPLAY "Protobuf"
+      VERSION "${Protobuf_VERSION}"
+      LOCATION "${Protobuf_LIBRARY}")
+  else()
+    ti_add_thirdparty_status(protobuf
+      DISPLAY "Protobuf"
+      VERSION "${Protobuf_VERSION}"
+      TARGETS ${Protobuf_LIBRARIES})
+  endif()
 endif()
