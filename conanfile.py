@@ -20,6 +20,7 @@ class RagoRecipe(ConanFile):
     default_options = {
         "shared": True,
         "fPIC": True,
+        "qt/*:qttools": True,
     }
 
     def set_version(self):

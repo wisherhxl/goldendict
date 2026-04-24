@@ -14,13 +14,13 @@ set(qt_modules
 )
 
 # Try Qt6 first, then fall back to Qt5
-find_package(Qt6 COMPONENTS ${qt_modules} LinguistTools QUIET)
+find_package(Qt6 COMPONENTS ${qt_modules} QUIET)
 if (Qt6_FOUND)
     set(QT_MAJOR 6)
     set(QT_NAMESPACE Qt6)
     set(QT_DIR ${Qt6_DIR})
 else()
-    find_package(Qt5 COMPONENTS ${qt_modules} LinguistTools QUIET)
+    find_package(Qt5 COMPONENTS ${qt_modules} QUIET)
     if (Qt5_FOUND)
         set(QT_MAJOR 5)
         set(QT_NAMESPACE Qt5)
@@ -42,11 +42,13 @@ foreach(module ${qt_modules})
     list(APPEND qt_link "${QT_NAMESPACE}::${module}")
 endforeach()
 
-# LinguistTools may be provided as a target as well
-if (TARGET ${QT_NAMESPACE}::LinguistTools)
-    list(APPEND qt_link "${QT_NAMESPACE}::LinguistTools")
+# LinguistTools provides translation commands/tools, not a linkable library target.
+find_package(${QT_NAMESPACE} COMPONENTS LinguistTools QUIET)
+if (${QT_NAMESPACE}LinguistTools_FOUND OR TARGET ${QT_NAMESPACE}::LinguistTools)
+    set(QT_LINGUISTTOOLS_FOUND TRUE)
 else()
-    message(WARNING "${QT_NAMESPACE}::LinguistTools target not found; translation tools may be unavailable.")
+    set(QT_LINGUISTTOOLS_FOUND FALSE)
+    message(WARNING "${QT_NAMESPACE} LinguistTools not found; translation update/release targets will be unavailable.")
 endif()
 
 # Try to locate Qt binaries (uic, etc.) from the discovered Qt_DIR
@@ -67,4 +69,20 @@ if (NOT QT_UIC_EXECUTABLE)
 endif()
 if (NOT QT_UIC_EXECUTABLE)
     message(WARNING "Could not find 'uic' executable. UI compilation may fail if uic is unavailable.")
+endif()
+
+find_program(QT_LUPDATE_EXECUTABLE NAMES lupdate lupdate.exe
+             PATHS ${Qt_BIN}
+             HINTS ENV PATH
+             NO_DEFAULT_PATH)
+if (NOT QT_LUPDATE_EXECUTABLE)
+    find_program(QT_LUPDATE_EXECUTABLE NAMES lupdate lupdate.exe HINTS ENV PATH)
+endif()
+
+find_program(QT_LRELEASE_EXECUTABLE NAMES lrelease lrelease.exe
+             PATHS ${Qt_BIN}
+             HINTS ENV PATH
+             NO_DEFAULT_PATH)
+if (NOT QT_LRELEASE_EXECUTABLE)
+    find_program(QT_LRELEASE_EXECUTABLE NAMES lrelease lrelease.exe HINTS ENV PATH)
 endif()
