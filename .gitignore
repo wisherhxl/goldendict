@@ -89,6 +89,8 @@ CMakeLists.txt.user*
 
 # Auto generated presets by Conan
 CMakeUserPresets.json
+test_package/CMakeLists.txt
+test_package/test_package.c
 
 # Protobuf auto generated files
 *.pb.h

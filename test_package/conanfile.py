@@ -41,6 +41,41 @@ class TestPackageConan(ConanFile):
                 f"Could not find an installed CMake package config in {tested_dep.package_folder}"
             )
 
+        version_headers = glob.glob(
+            os.path.join(tested_dep.package_folder, "**", "*_version.tp.h"),
+            recursive=True,
+        )
+        version_headers.sort()
+        if not version_headers:
+            raise RuntimeError(
+                f"Could not find an installed *_version.tp.h header in {tested_dep.package_folder}"
+            )
+
+        version_header = version_headers[0]
+        version_header_name = os.path.basename(version_header)
+        namespace = version_header_name[:-len("_version.tp.h")]
+        macro_prefix = namespace.upper()
+
+        include_dirs = []
+        for include_dir in tested_dep.cpp_info.includedirs:
+            if os.path.isabs(include_dir):
+                include_dirs.append(include_dir)
+            else:
+                include_dirs.append(os.path.join(tested_dep.package_folder, include_dir))
+        include_dirs.append(tested_dep.package_folder)
+
+        version_header_include = None
+        for include_dir in include_dirs:
+            try:
+                relpath = os.path.relpath(version_header, include_dir)
+            except ValueError:
+                continue
+            if not relpath.startswith(".."):
+                version_header_include = relpath.replace(os.sep, "/")
+                break
+        if version_header_include is None:
+            raise RuntimeError(f"Could not compute include path for {version_header}")
+
         dependency_find_packages = []
         seen_dependency_packages = set()
         for dep in self.dependencies.host.values():
@@ -78,28 +113,31 @@ target_link_libraries(test_package PRIVATE ${{{package_name}_LIBS}})
         save(
             self,
             os.path.join(self.source_folder, "test_package.c"),
-            """#include <stdio.h>
+            f"""#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <rago/base/ra_version.tp.h>
+#include <{version_header_include}>
 
-int main(void) {
-    const char *project_name = RA_PROJECT_NAME;
+#define TESTED_PROJECT_NAME {macro_prefix}_PROJECT_NAME
+#define TESTED_VERSION {macro_prefix}_VERSION
+
+int main(void) {{
+    const char *project_name = TESTED_PROJECT_NAME;
     const char *project_info = strstr(project_name, " - ");
 
-    if (project_info != NULL) {
+    if (project_info != NULL) {{
         printf("test_package: %.*s %s\\n",
                (int)(project_info - project_name),
                project_name,
-               RA_VERSION);
+               TESTED_VERSION);
         printf("              %s\\n", project_info + 3);
-    } else {
-        printf("test_package: %s %s\\n", project_name, RA_VERSION);
-    }
+    }} else {{
+        printf("test_package: %s %s\\n", project_name, TESTED_VERSION);
+    }}
     printf("              linked successfully\\n");
     return EXIT_SUCCESS;
-}
+}}
 """,
         )
 
