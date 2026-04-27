@@ -1,7 +1,9 @@
 from conan import ConanFile
 from conan.tools.build import can_run
 from conan.tools.cmake import CMake, cmake_layout
+from conan.tools.files import save
 import os
+import glob
 
 
 class TestPackageConan(ConanFile):
@@ -14,6 +16,92 @@ class TestPackageConan(ConanFile):
 
     def requirements(self):
         self.requires(self.tested_reference_str)
+
+    def generate(self):
+        tested_dep = None
+        for dep in self.dependencies.host.values():
+            if str(dep.ref) == self.tested_reference_str:
+                tested_dep = dep
+                break
+        if tested_dep is None:
+            tested_dep = next(iter(self.dependencies.host.values()))
+
+        config_files = glob.glob(
+            os.path.join(tested_dep.package_folder, "**", "*Config.cmake"),
+            recursive=True,
+        )
+        config_files = [
+            path for path in config_files
+            if not path.endswith("ConfigVersion.cmake")
+            and not path.endswith("Config-version.cmake")
+        ]
+        config_files.sort()
+        if not config_files:
+            raise RuntimeError(
+                f"Could not find an installed CMake package config in {tested_dep.package_folder}"
+            )
+
+        dependency_find_packages = []
+        seen_dependency_packages = set()
+        for dep in self.dependencies.host.values():
+            if str(dep.ref) == str(tested_dep.ref):
+                continue
+            package_name = None
+            try:
+                package_name = dep.cpp_info.get_property("cmake_file_name")
+            except AttributeError:
+                pass
+            if not package_name:
+                package_name = dep.ref.name
+            if package_name not in seen_dependency_packages:
+                dependency_find_packages.append(f"find_package({package_name} CONFIG REQUIRED)")
+                seen_dependency_packages.add(package_name)
+
+        package_name = os.path.basename(config_files[0])[:-len("Config.cmake")]
+        save(
+            self,
+            os.path.join(self.source_folder, "CMakeLists.txt"),
+            f"""cmake_minimum_required(VERSION 3.15)
+project(test_package LANGUAGES C)
+
+if(CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_CONFIGURATION_TYPES "{self.settings.build_type}" CACHE STRING "" FORCE)
+endif()
+
+{os.linesep.join(dependency_find_packages)}
+find_package({package_name} CONFIG REQUIRED)
+
+add_executable(test_package test_package.c)
+target_link_libraries(test_package PRIVATE ${{{package_name}_LIBS}})
+""",
+        )
+        save(
+            self,
+            os.path.join(self.source_folder, "test_package.c"),
+            """#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <rago/base/ra_version.tp.h>
+
+int main(void) {
+    const char *project_name = RA_PROJECT_NAME;
+    const char *project_info = strstr(project_name, " - ");
+
+    if (project_info != NULL) {
+        printf("test_package: %.*s %s\\n",
+               (int)(project_info - project_name),
+               project_name,
+               RA_VERSION);
+        printf("              %s\\n", project_info + 3);
+    } else {
+        printf("test_package: %s %s\\n", project_name, RA_VERSION);
+    }
+    printf("              linked successfully\\n");
+    return EXIT_SUCCESS;
+}
+""",
+        )
 
     def build(self):
         cmake = CMake(self)
