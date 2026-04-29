@@ -16,10 +16,12 @@ class RagoRecipe(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
+        "install_runtime_dependencies": [True, False],
     }
     default_options = {
         "shared": True,
         "fPIC": True,
+        "install_runtime_dependencies": False,
         "qt/*:qttools": True,
     }
 
@@ -39,7 +41,7 @@ class RagoRecipe(ConanFile):
         self.requires("qt/[<6.0]")
 
     def build_requirements(self):
-        self.tool_requires("cmake/[<3.27]")
+        self.tool_requires("cmake/[>=3.26 <3.27]")
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -62,6 +64,9 @@ class RagoRecipe(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
         tc.variables["TIGER_INSTALL_CONAN_LAYOUT"] = True
+        tc.variables["TIGER_INSTALL_RUNTIME_DEPENDENCIES"] = bool(
+            self.options.install_runtime_dependencies
+        )
         tc.generate()
 
     def build(self):
