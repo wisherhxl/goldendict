@@ -27,10 +27,10 @@ set(TI_ORG_NAME "")
 # Email of project maintainer.
 set(TI_PROJECT_CONTACT "")
 # Name of the project.
-set(TI_PROJECT_NAME "")
+set(TI_PROJECT_NAME "Tiger")
 # Namespace of the project.
 # Leave empty to use TI_PROJECT_NAME automatically.
-set(TI_PROJECT_NAMESPACE "")
+set(TI_PROJECT_NAMESPACE "ti")
 # Description of the project
 set(TI_PROJECT_INFO "A C++ Template for CMake and Conan")
 
@@ -52,7 +52,7 @@ enable_language(CXX C)
 set(TI_BASE_MODULE "")
 # Module directory name for generated protobuf files.
 # Leave empty to use TI_BASE_MODULE automatically.
-set(TI_PROTO_GEN_MODULE "")
+set(TI_PROTO_GEN_MODULE "proto")
 # TI_FIXED_ORDER_MODULES: Modules listed here are built first, in the order
 # specified. TI_BASE_MODULE is always prepended automatically.
 set(TI_FIXED_ORDER_MODULES "")
