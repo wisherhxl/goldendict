@@ -143,7 +143,7 @@ Known prerequisites from the repository:
 On Windows, use a Visual Studio Developer PowerShell or another shell where
 MSVC is available to CMake.
 
-Official local Debug build workflow:
+Official local Windows Debug build workflow:
 
 ```sh
 conan install . --build=missing
@@ -151,7 +151,7 @@ cmake --preset conan-default
 cmake --build --preset conan-debug
 ```
 
-Official local Release build workflow:
+Official local Windows Release build workflow:
 
 ```sh
 conan install . --build=missing -s build_type=Release
@@ -159,13 +159,38 @@ cmake --preset conan-default
 cmake --build --preset conan-release
 ```
 
-Official local install workflow:
+Official local Linux Debug build workflow:
+
+```sh
+conan install . --build=missing
+cmake --preset conan-debug
+cmake --build --preset conan-debug
+```
+
+Official local Linux Release build workflow:
+
+```sh
+conan install . --build=missing -s build_type=Release
+cmake --preset conan-release
+cmake --build --preset conan-release
+```
+
+Official local Windows Release install workflow:
 
 ```sh
 cmake --install build --config Release
 ```
 
-The verified default install destination is `build/install`.
+The verified default Windows install destination is `build/install`.
+
+Official local Linux Release install workflow:
+
+```sh
+cmake --install build/Release
+```
+
+The verified default Linux Release install destination is
+`build/Release/install`.
 
 Packaging through CMake/CPack is under development. Do not treat package output
 as stable until the package workflow is verified and documented.
@@ -186,11 +211,21 @@ change complete, prefer Release tests unless the change is Debug-specific or
 Release cannot be built locally.
 
 `conan install` generates `CMakeUserPresets.json`, which includes the
-Conan-generated preset file under `build/generators/CMakePresets.json`.
+Conan-generated preset files. Use `cmake --list-presets` after `conan install`
+to confirm the available preset names for the current platform and profile.
 
-With the current Debug and Release profiles, Conan generates:
+With the current Windows Debug and Release profiles, Conan generates:
 
 - configure preset: `conan-default`;
+- Debug build preset: `conan-debug`;
+- Debug test preset: `conan-debug`;
+- Release build preset: `conan-release`;
+- Release test preset: `conan-release`.
+
+With the current Linux Debug and Release profiles, Conan generates:
+
+- Debug configure preset: `conan-debug`;
+- Release configure preset: `conan-release`;
 - Debug build preset: `conan-debug`;
 - Debug test preset: `conan-debug`;
 - Release build preset: `conan-release`;
@@ -207,7 +242,7 @@ Before considering a change complete, agents should prefer running the smallest
 relevant verification command that is already documented or confirmed by the
 project owner.
 
-Preferred full Release verification workflow:
+Preferred full Windows Release verification workflow:
 
 ```sh
 conan install . --build=missing -s build_type=Release
@@ -215,6 +250,16 @@ cmake --fresh --preset conan-default
 cmake --build --preset conan-release
 ctest --preset conan-release --output-on-failure
 cmake --install build --config Release
+```
+
+Preferred full Linux Release verification workflow:
+
+```sh
+conan install . --build=missing -s build_type=Release
+cmake --fresh --preset conan-release
+cmake --build --preset conan-release
+ctest --preset conan-release --output-on-failure
+cmake --install build/Release
 ```
 
 Run the full workflow after changes to CMake, Conan, modules, applications,

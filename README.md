@@ -38,7 +38,7 @@ another shell where MSVC is available to CMake.
 Install dependencies first. Conan generates the CMake user presets used by the
 configure and build steps.
 
-Debug build:
+Windows Debug build:
 
 ```sh
 conan install . --build=missing
@@ -46,7 +46,7 @@ cmake --preset conan-default
 cmake --build --preset conan-debug
 ```
 
-Release build:
+Windows Release build:
 
 ```sh
 conan install . --build=missing -s build_type=Release
@@ -54,9 +54,37 @@ cmake --preset conan-default
 cmake --build --preset conan-release
 ```
 
-With the default profiles, Conan generates:
+Linux Debug build:
+
+```sh
+conan install . --build=missing
+cmake --preset conan-debug
+cmake --build --preset conan-debug
+```
+
+Linux Release build:
+
+```sh
+conan install . --build=missing -s build_type=Release
+cmake --preset conan-release
+cmake --build --preset conan-release
+```
+
+Use `cmake --list-presets` after `conan install` to confirm the generated
+preset names for the current platform and profile.
+
+With the default Windows profiles, Conan generates:
 
 - configure preset: `conan-default`
+- Debug build preset: `conan-debug`
+- Release build preset: `conan-release`
+- Debug test preset: `conan-debug`
+- Release test preset: `conan-release`
+
+With the default Linux profiles, Conan generates:
+
+- Debug configure preset: `conan-debug`
+- Release configure preset: `conan-release`
 - Debug build preset: `conan-debug`
 - Release build preset: `conan-release`
 - Debug test preset: `conan-debug`
@@ -76,16 +104,28 @@ when configuring if a project does not need local test targets.
 
 ## Install
 
-Install the Release build:
+Install the Windows Release build:
 
 ```sh
 cmake --install build --config Release
 ```
 
-The default local install destination is:
+The default Windows local install destination is:
 
 ```text
 build/install
+```
+
+Install the Linux Release build:
+
+```sh
+cmake --install build/Release
+```
+
+The default Linux local install destination is:
+
+```text
+build/Release/install
 ```
 
 CMake/CPack packaging is under development and should not be treated as stable
