@@ -1,0 +1,255 @@
+# AGENTS.md
+
+Guidance for AI coding agents and human contributors working in this repository.
+
+## Project Purpose
+
+This project is an easy template for C++ projects that can be built across
+platforms, including Linux, Windows, and macOS.
+
+Officially supported operating systems:
+
+- Linux.
+- Windows.
+- macOS.
+
+Officially supported compiler families:
+
+- MSVC 2019 or newer.
+- GCC 9.1 or newer.
+- Clang/LLVM 8.0 or newer.
+
+For now, treat macOS compiler support under the Clang/LLVM policy instead of
+maintaining a separate AppleClang minimum version.
+
+## Current Project Facts
+
+- Build system: CMake.
+- Package manager: Conan 2.
+- License: MIT, as recorded in `LICENSE`.
+- Official project/template name: `Tiger`.
+- Official CMake project namespace: `ti`.
+- Conan package name: `tiger`.
+- CMake project name: `Tiger`.
+- Version is stored in `VERSION` and must use `X.Y.Z` format.
+
+## Repository Map
+
+- `apps/`: application targets.
+- `apps/<app_name>/resources/`: optional application resource directory for
+  runtime files such as configs, images, and other assets. `TigerApp.cmake`
+  copies its contents to the app binary directory after build when resource
+  copying is enabled.
+- `modules/`: reusable project modules.
+- `protos/`: protobuf definitions.
+- `cmake/`: shared CMake logic, templates, checks, and packaging helpers.
+- `test_package/`: Conan package verification project.
+- `CMakeLists.txt`: root CMake entry point.
+- `conanfile.py`: Conan recipe for configuring, building, and packaging.
+- `VERSION`: project version source.
+
+## Working Rules
+
+- Keep changes scoped to the requested task.
+- Preserve existing user changes. Do not revert unrelated files.
+- Prefer existing project patterns over introducing new structure.
+- Update documentation when changing project behavior, build steps, layout, or
+  contributor workflow.
+- Avoid guessing project policy. If a decision is not documented here or in the
+  repository, ask before encoding it as a rule.
+- Do not commit generated build output.
+- Create a local feature branch for each task before committing.
+- Name task branches as `<type>/<short-kebab-case-description>`.
+- Use these branch types:
+  - `feature/` for new user-visible or template functionality;
+  - `fix/` for bug fixes;
+  - `docs/` for documentation-only changes;
+  - `test/` for test-only changes;
+  - `opt/` for optimization work;
+  - `chore/` for maintenance, tooling, dependency, or cleanup work.
+- Do not upload feature branches to a remote unless opening a pull request or
+  explicitly requested.
+- A feature branch may be deleted after its pull request is merged into `main`
+  or `master`.
+- Agents may create commits for requested changes without asking for separate
+  confirmation, but must keep commit scope focused.
+- The default contribution flow is to create focused local commits and open a
+  pull request automatically when the requested work is ready for review.
+- Use Conventional Commits for commit messages:
+  `<type>(optional-scope): <summary>`.
+- Use these commit types: `feature`, `fix`, `docs`, `test`, `opt`, and `chore`.
+- Use the same Conventional Commit format for pull request titles.
+- Use this pull request description template:
+
+```markdown
+## Summary
+
+- 
+
+## Changes
+
+- 
+
+## Verification
+
+- 
+
+## Notes
+
+- 
+```
+
+## Coding Style
+
+- Use C++17 for new modules.
+- Use Google C++ Style Guide for C++ coding style and naming conventions.
+- Use the repository `.clang-format` for C and C++ formatting.
+- Keep generated files out of source edits unless the task explicitly requires
+  regenerating them.
+- Generated files and directories are managed by the CMake workflow. Do not edit
+  generated files directly; update templates, CMake logic, or source inputs
+  instead.
+- A module named `foo` lives under `modules/foo/`.
+- Public headers for module `foo` live under
+  `modules/foo/include/<TI_INTERNAL_NAME>/foo/`.
+- Implementation files for module `foo` live under `modules/foo/src/`.
+- Proto files live under `protos/<TI_INTERNAL_NAME>/`.
+- An application named `app_name` lives under `apps/app_name/`.
+
+## Build Workflow
+
+Known prerequisites from the repository:
+
+- CMake.
+- Conan 2.
+- A supported C/C++ compiler available in the current shell.
+
+On Windows, use a Visual Studio Developer PowerShell or another shell where
+MSVC is available to CMake.
+
+Official local Debug build workflow:
+
+```sh
+conan install . --build=missing
+cmake --preset conan-default
+cmake --build --preset conan-debug
+```
+
+Official local Release build workflow:
+
+```sh
+conan install . --build=missing -s build_type=Release
+cmake --preset conan-default
+cmake --build --preset conan-release
+```
+
+Official local install workflow:
+
+```sh
+cmake --install build --config Release
+```
+
+The verified default install destination is `build/install`.
+
+Packaging through CMake/CPack is under development. Do not treat package output
+as stable until the package workflow is verified and documented.
+
+Official local test workflow:
+
+```sh
+ctest --preset conan-debug
+ctest --preset conan-release
+```
+
+Use `ctest --preset conan-debug` after a Debug build and
+`ctest --preset conan-release` after a Release build. Before considering a
+change complete, prefer Release tests unless the change is Debug-specific or
+Release cannot be built locally.
+
+`conan install` generates `CMakeUserPresets.json`, which includes the
+Conan-generated preset file under `build/generators/CMakePresets.json`.
+
+With the current Debug and Release profiles, Conan generates:
+
+- configure preset: `conan-default`;
+- Debug build preset: `conan-debug`;
+- Debug test preset: `conan-debug`;
+- Release build preset: `conan-release`;
+- Release test preset: `conan-release`.
+
+Library linkage policy:
+
+- Support both shared and static library builds.
+- Use shared libraries as the default and primary path.
+
+## Verification Workflow
+
+Before considering a change complete, agents should prefer running the smallest
+relevant verification command that is already documented or confirmed by the
+project owner.
+
+Test framework policy:
+
+- Use QTest for sample and project tests.
+- Qt is expected as a dependency for all tests.
+
+Expected verification areas:
+
+- configure;
+- build;
+- test, if tests exist;
+- package verification through `test_package/`, if applicable;
+- formatting, if formatting is changed.
+
+Pre-PR checklist:
+
+- Keep the change focused on the requested task and avoid unrelated refactors.
+- Run the relevant Debug or Release build workflow, with Release preferred
+  before completion.
+- Run the relevant `ctest` preset when tests exist.
+- Run install verification when install or package behavior changes.
+- Run `conan install` after dependency changes.
+- Update `README.md` or `AGENTS.md` when behavior or workflow changes.
+- Do not commit generated build output.
+- Review `git diff` and `git status` before committing or opening a pull
+  request.
+- Mention unverified areas or known limitations in the pull request `Notes`.
+
+## Dependency Policy
+
+Dependency change policy:
+
+- Dependencies are managed through Conan 2 in `conanfile.py`.
+- Do not add or upgrade dependencies without confirming the reason and impact
+  first.
+- After changing dependencies, run `conan install`, configure, build, and the
+  relevant tests.
+- Keep dependencies minimal.
+- Prefer optional integration when a feature is optional.
+- When adding a dependency in `conanfile.py`, add its CMake finder under
+  `cmake_finders/`.
+- CMake finders should come from
+  `https://github.com/wisherhxl/tiger_finder.git`.
+- If the required finder is not available there, do not create one locally.
+  Ask the `tiger_finder` repository maintainer to create it.
+
+Protobuf policy:
+
+- The template should fully support protobuf-based projects.
+- Protobuf usage is optional; projects without `.proto` files must remain
+  supported.
+
+## Documentation Policy
+
+- `README.md` should serve project users.
+- `AGENTS.md` should serve contributors and coding agents.
+- Build instructions should be tested before being presented as the main path.
+- Platform-specific notes should identify the affected platform explicitly.
+- Update `README.md` when a change affects prerequisites, configure/build/test/
+  install commands, module/app/proto creation, template consumption, public
+  behavior, or examples.
+- Update `AGENTS.md` when a change affects contribution workflow, branch,
+  commit, pull request, or review rules, coding style, layout policy,
+  verification expectations, dependency management, or instructions agents must
+  follow while editing the repository.
+- If a change affects both users and contributors, update both files.
