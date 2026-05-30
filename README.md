@@ -1,7 +1,153 @@
-# Tiger® Template
+# Tiger Template
 
-## How to build
+Tiger is a C++ project template built around CMake and Conan 2. It is intended
+to provide a reusable starting point for cross-platform C++ projects on Linux,
+Windows, and macOS.
 
-##### Prerequisites：
+The template includes conventions for modules, applications, protobuf
+generation, Conan dependency integration, installation layout, and generated
+project configuration files.
 
-1. cmake;
+## Supported Toolchains
+
+Supported operating systems:
+
+- Linux
+- Windows
+- macOS
+
+Supported compiler families:
+
+- MSVC 2019 or newer
+- GCC 9.1 or newer
+- Clang/LLVM 8.0 or newer
+
+macOS compiler support is currently treated under the Clang/LLVM policy.
+
+## Prerequisites
+
+- CMake
+- Conan 2
+- A supported C/C++ compiler available in the current shell
+
+On Windows, run the commands from a Visual Studio Developer PowerShell or
+another shell where MSVC is available to CMake.
+
+## Build
+
+Install dependencies first. Conan generates the CMake user presets used by the
+configure and build steps.
+
+Debug build:
+
+```sh
+conan install . --build=missing
+cmake --preset conan-default
+cmake --build --preset conan-debug
+```
+
+Release build:
+
+```sh
+conan install . --build=missing -s build_type=Release
+cmake --preset conan-default
+cmake --build --preset conan-release
+```
+
+With the default profiles, Conan generates:
+
+- configure preset: `conan-default`
+- Debug build preset: `conan-debug`
+- Release build preset: `conan-release`
+- Debug test preset: `conan-debug`
+- Release test preset: `conan-release`
+
+## Test
+
+Run the test preset that matches the build configuration:
+
+```sh
+ctest --preset conan-debug
+ctest --preset conan-release
+```
+
+## Install
+
+Install the Release build:
+
+```sh
+cmake --install build --config Release
+```
+
+The default local install destination is:
+
+```text
+build/install
+```
+
+CMake/CPack packaging is under development and should not be treated as stable
+until the package workflow is verified and documented.
+
+## Project Layout
+
+- `apps/`: application targets.
+- `apps/<app_name>/resources/`: optional runtime resources copied beside the
+  app binary after build.
+- `modules/`: reusable C++ modules.
+- `protos/`: protobuf definitions.
+- `cmake/`: shared Tiger CMake logic, templates, checks, and packaging helpers.
+- `cmake_finders/`: project CMake finder modules for Conan dependencies.
+- `test_package/`: Conan package verification project.
+- `CMakeLists.txt`: root project configuration.
+- `conanfile.py`: Conan recipe.
+- `VERSION`: project version source.
+- `AGENTS.md`: contributor and coding-agent workflow rules.
+
+## Add Modules, Apps, And Protos
+
+Detailed guides live next to each project area:
+
+- [apps/README.md](apps/README.md)
+- [modules/README.md](modules/README.md)
+- [protos/README.md](protos/README.md)
+
+General layout rules:
+
+- A module named `foo` lives under `modules/foo/`.
+- Public headers for module `foo` live under
+  `modules/foo/include/<project_internal_name>/foo/`.
+- Implementation files for module `foo` live under `modules/foo/src/`.
+- Applications live under `apps/<app_name>/`.
+- Project-owned proto files live under `protos/<project_internal_name>/`.
+
+## Dependencies
+
+Dependencies are managed with Conan 2 in `conanfile.py`.
+
+When adding a Conan dependency, add the matching CMake finder under
+`cmake_finders/`. Finder modules should come from:
+
+```text
+https://github.com/wisherhxl/tiger_finder.git
+```
+
+If a required finder does not exist there, request it from the `tiger_finder`
+maintainer instead of creating a local replacement.
+
+## Generated Files
+
+The CMake workflow generates project configuration files, base module files, and
+protobuf C++ output when needed. Do not edit generated files directly. Update
+the source templates, CMake logic, or source inputs instead.
+
+Generated source files use fixed suffixes:
+
+- `*.tp.h` and `*.tp.cc` for Tiger platform-generated files.
+- `*.pb.h` and `*.pb.cc` for protobuf-generated files.
+
+The generated-file cleanup logic relies on these suffixes.
+
+## Contributor Workflow
+
+See [AGENTS.md](AGENTS.md) for branch, commit, pull request, verification, and
+coding-agent rules.

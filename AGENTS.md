@@ -121,6 +121,10 @@ maintaining a separate AppleClang minimum version.
 - Generated files and directories are managed by the CMake workflow. Do not edit
   generated files directly; update templates, CMake logic, or source inputs
   instead.
+- Generated source files must use fixed suffixes: `*.tp.h` and `*.tp.cc` for
+  Tiger platform-generated files, and `*.pb.h` and `*.pb.cc` for
+  protobuf-generated files.
+- Generated-file cleanup logic relies on those suffixes.
 - A module named `foo` lives under `modules/foo/`.
 - Public headers for module `foo` live under
   `modules/foo/include/<TI_INTERNAL_NAME>/foo/`.
