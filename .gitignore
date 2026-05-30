@@ -19,6 +19,7 @@ docs/html
 local.cmake
 # local tmp files
 .cache/
+.codex
 tags
 # vim tmp file
 *.swp
@@ -89,6 +90,13 @@ CMakeLists.txt.user*
 
 # Auto generated presets by Conan
 CMakeUserPresets.json
+test_package/CMakeLists.txt
+test_package/test_package.c
+
+# Protobuf auto generated files
+*.pb.h
+*.pb.cc
 
 # Tiger auto generated files
-modules/base/
+*.tp.h
+*.tp.cc

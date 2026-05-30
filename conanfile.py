@@ -16,10 +16,13 @@ class TigerRecipe(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
+        "install_runtime_dependencies": [True, False],
     }
     default_options = {
         "shared": True,
         "fPIC": True,
+        "install_runtime_dependencies": False,
+        "qt/*:qttools": True,
     }
 
     def set_version(self):
@@ -34,10 +37,11 @@ class TigerRecipe(ConanFile):
 
     def requirements(self):
         self.requires("zlib/[>1.3]")
-        self.requires("protobuf/[>3.0]")
+        self.requires("protobuf/6.33.5")
+        self.requires("qt/[<6.0]")
 
     def build_requirements(self):
-        self.tool_requires("cmake/[<3.27]")
+        self.tool_requires("cmake/[>=3.26 <3.27]")
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -60,6 +64,9 @@ class TigerRecipe(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
         tc.variables["TIGER_INSTALL_CONAN_LAYOUT"] = True
+        tc.variables["TIGER_INSTALL_RUNTIME_DEPENDENCIES"] = bool(
+            self.options.install_runtime_dependencies
+        )
         tc.generate()
 
     def build(self):

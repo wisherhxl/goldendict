@@ -22,21 +22,40 @@ include(cmake/TigerMainPre.cmake)
 ti_sync_version()
 
 # ============ Project Name ============
-set(TI_ORG_NAME "") # Name of organization
-set(TI_PROJECT_CONTACT "") # Email of project maintainer
-set(TI_PROJECT_NAME "Tiger") # Name of the project
-set(TI_PROJECT_NAMESPACE "ti") # NameSpace of the project
+# Name of organization.
+set(TI_ORG_NAME "")
+# Email of project maintainer.
+set(TI_PROJECT_CONTACT "")
+# Name of the project.
+set(TI_PROJECT_NAME "Tiger")
+# Namespace of the project.
+# Leave empty to use TI_PROJECT_NAME automatically.
+set(TI_PROJECT_NAMESPACE "ti")
 # Description of the project
 set(TI_PROJECT_INFO "A C++ Template for CMake and Conan")
 
 # ============ Project Definition ============
+if(TI_PROJECT_NAME STREQUAL "")
+  message(
+    FATAL_ERROR
+      "TI_PROJECT_NAME is not set.\n"
+      "This template will not generate platform files until the project name is configured.\n"
+      "Please edit CMakeLists.txt and set TI_PROJECT_NAME first. You can also set TI_PROJECT_NAMESPACE there if needed.")
+endif()
 project(${TI_PROJECT_NAME} CXX C)
 enable_language(CXX C)
 
 # ============ Modules Information ============
+# Base module directory name for Tiger platform generated files.
+# Leave empty to default to TI_INTERNAL_NAME after
+# TigerMainSettings.cmake normalizes project naming variables.
+set(TI_BASE_MODULE "")
+# Module directory name for generated protobuf files.
+# Leave empty to use TI_BASE_MODULE automatically.
+set(TI_PROTO_GEN_MODULE "proto")
 # TI_FIXED_ORDER_MODULES: Modules listed here are built first, in the order
-# specified. Remaining modules are built in a random order.
-set(TI_FIXED_ORDER_MODULES base)
+# specified. TI_BASE_MODULE is always prepended automatically.
+set(TI_FIXED_ORDER_MODULES "")
 
 # ============ Applications Information ============
 

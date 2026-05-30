@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package rago;
+
+message TestRequest {
+  string id = 1;
+  string name = 2;
+  repeated string tags = 3;
+  map<string, string> metadata = 4;
+  repeated TestItem items = 5;
+}
+
+message TestResponse {
+  string id = 1;
+  Status status = 2;
+  string message = 3;
+  int32 mse = 4;
+}
+
+message TestItem {
+  string key = 1;
+  int32 count = 2;
+  bool active = 3;
+}
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_OK = 1;
+  STATUS_FAILED = 2;
+}
