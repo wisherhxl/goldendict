@@ -207,6 +207,21 @@ Before considering a change complete, agents should prefer running the smallest
 relevant verification command that is already documented or confirmed by the
 project owner.
 
+Preferred full Release verification workflow:
+
+```sh
+conan install . --build=missing -s build_type=Release
+cmake --fresh --preset conan-default
+cmake --build --preset conan-release
+ctest --preset conan-release --output-on-failure
+cmake --install build --config Release
+```
+
+Run the full workflow after changes to CMake, Conan, modules, applications,
+protobuf generation, tests, install behavior, or dependency configuration. For
+documentation-only changes, a full build is not required. If the full workflow
+is skipped, mention why in the final response or pull request notes.
+
 Test framework policy:
 
 - Use QTest for sample and project tests.
