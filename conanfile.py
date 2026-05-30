@@ -6,9 +6,9 @@ from conan.tools.files import copy
 import os
 import re
 
-class RagoRecipe(ConanFile):
+class TigerRecipe(ConanFile):
     # Naming convention: all-lowercase project name used as internal CMake name (TI_INTERNAL_NAME)
-    name = "rago"
+    name = "tiger"
     package_type = "library"
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeDeps"

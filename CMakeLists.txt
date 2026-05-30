@@ -24,8 +24,8 @@ ti_sync_version()
 # ============ Project Name ============
 set(TI_ORG_NAME "") # Name of organization
 set(TI_PROJECT_CONTACT "") # Email of project maintainer
-set(TI_PROJECT_NAME "Rago") # Name of the project
-set(TI_PROJECT_NAMESPACE "ra") # NameSpace of the project
+set(TI_PROJECT_NAME "Tiger") # Name of the project
+set(TI_PROJECT_NAMESPACE "ti") # NameSpace of the project
 # Description of the project
 set(TI_PROJECT_INFO "A C++ Template for CMake and Conan")
 
