@@ -43,6 +43,7 @@ maintaining a separate AppleClang minimum version.
 - `modules/`: reusable project modules.
 - `protos/`: protobuf definitions.
 - `cmake/`: shared CMake logic, templates, checks, and packaging helpers.
+- `cmake_finders/`: project CMake finder modules for Conan dependencies.
 - `test_package/`: Conan package verification project.
 - `CMakeLists.txt`: root CMake entry point.
 - `conanfile.py`: Conan recipe for configuring, building, and packaging.
@@ -58,7 +59,21 @@ maintaining a separate AppleClang minimum version.
 - Avoid guessing project policy. If a decision is not documented here or in the
   repository, ask before encoding it as a rule.
 - Do not commit generated build output.
-- Create a local feature branch for each task before committing.
+- Before starting a new task, fetch the remote and make sure the local base
+  branch is up to date.
+- If the local branch has unpushed commits, uncommitted changes, or diverges
+  from the remote, inspect the state and resolve it before creating a feature
+  branch.
+- In interactive collaboration, do not commit, push, or create pull requests
+  automatically.
+- If the user explicitly asks to commit, push, or create a pull request, do it
+  without asking for another confirmation.
+- For delegated implementation work, such as when the user asks an agent to
+  make a plan and implement it, use the full branch, commit, push, and pull
+  request flow when the work is ready.
+- Create a local feature branch for delegated implementation work before
+  committing.
+- Do not push directly to `main` or `master` unless explicitly requested.
 - Name task branches as `<type>/<short-kebab-case-description>`.
 - Use these branch types:
   - `feature/` for new user-visible or template functionality;
@@ -71,10 +86,7 @@ maintaining a separate AppleClang minimum version.
   explicitly requested.
 - A feature branch may be deleted after its pull request is merged into `main`
   or `master`.
-- Agents may create commits for requested changes without asking for separate
-  confirmation, but must keep commit scope focused.
-- The default contribution flow is to create focused local commits and open a
-  pull request automatically when the requested work is ready for review.
+- Keep commit scope focused.
 - Use Conventional Commits for commit messages:
   `<type>(optional-scope): <summary>`.
 - Use these commit types: `feature`, `fix`, `docs`, `test`, `opt`, and `chore`.
