@@ -4,8 +4,8 @@
 <context>
     <name>z_example</name>
     <message>
-        <source>Rago Qt Example</source>
-        <translation>Rago Qt 案例</translation>
+        <source>Tiger Qt Example</source>
+        <translation>Tiger Qt 案例</translation>
     </message>
     <message>
         <source>Qt example is running with %1 and proto message %2.</source>

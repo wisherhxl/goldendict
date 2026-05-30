@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
         app.installTranslator(&translator);
     }
 
-    rago::TestRequest request;
+    tiger::TestRequest request;
     request.set_id("z_example");
     request.set_name("Tiger Qt Example");
     request.add_tags("module");
@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
     const int wrappedTagIndex = tiWrap(request.tags_size(), 0, 9);
 
     QWidget window;
-    window.setWindowTitle(QApplication::translate("z_example", "Rago Qt Example"));
+    window.setWindowTitle(QApplication::translate("z_example", "Tiger Qt Example"));
     window.resize(360, 180);
 
     auto* layout = new QVBoxLayout(&window);

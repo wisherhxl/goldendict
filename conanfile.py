@@ -38,7 +38,7 @@ class TigerRecipe(ConanFile):
     def requirements(self):
         self.requires("zlib/[>1.3]")
         self.requires("protobuf/6.33.5")
-        self.requires("qt/[<6.0]")
+        self.requires("qt/5.15.16")
 
     def build_requirements(self):
         self.tool_requires("cmake/[>=3.26 <3.27]")

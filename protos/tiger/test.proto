@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package rago;
+package tiger;
 
 message TestRequest {
   string id = 1;

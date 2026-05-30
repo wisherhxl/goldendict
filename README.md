@@ -120,6 +120,27 @@ General layout rules:
 - Applications live under `apps/<app_name>/`.
 - Project-owned proto files live under `protos/<project_internal_name>/`.
 
+## Happy Path Example
+
+The current happy path example is `apps/z_example/`.
+
+It demonstrates:
+
+- a Qt application target;
+- linking Tiger modules with `MODULES tiger proto`;
+- linking external dependencies with `EXTRAS ${qt_link}`;
+- protobuf generation from `protos/tiger/test.proto`;
+- generated protobuf headers included as `tiger/test.pb.h`;
+- QTest coverage for the generated protobuf message;
+- Qt translation source handling through `apps/z_example/lang/zh_cn.ts`.
+
+Qt translation release targets require Qt LinguistTools. The example still
+builds when LinguistTools are unavailable, but translation files are not
+generated in that case.
+
+Build the Release workflow, then run the generated `z_example` executable from
+the build output directory for your platform and generator.
+
 ## Dependencies
 
 Dependencies are managed with Conan 2 in `conanfile.py`.
