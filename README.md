@@ -71,6 +71,9 @@ ctest --preset conan-debug
 ctest --preset conan-release
 ```
 
+Tests are built by default. Disable them explicitly with `-DBUILD_TESTS=OFF`
+when configuring if a project does not need local test targets.
+
 ## Install
 
 Install the Release build:
