@@ -83,6 +83,20 @@ cmake --build --preset conan-release
 Use `cmake --list-presets` after `conan install` to confirm the generated
 preset names for the current platform and profile.
 
+Qt linkage is selected by Conan profiles or CLI options, not hardcoded by the
+template:
+
+```sh
+conan install . --build=missing -o "qt/*:shared=True"
+conan install . --build=missing -o "qt/*:shared=False"
+```
+
+`ti_add_qt_app` handles the matching Qt runtime behavior. Shared Qt builds use
+the platform deployment/install logic; static Qt builds generate the required
+platform plugin import for normal Qt apps. Advanced users can override the
+static platform plugin with `-o "&:qt_linux_platform_plugin=minimal"` or disable
+template-managed imports with `-o "&:qt_linux_platform_plugin=off"`.
+
 With the default Windows profiles, Conan generates:
 
 - configure preset: `conan-default`
