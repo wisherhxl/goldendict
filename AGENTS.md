@@ -143,10 +143,16 @@ Known prerequisites from the repository:
 On Windows, use a Visual Studio Developer PowerShell or another shell where
 MSVC is available to CMake.
 
+After `conan install`, activate the generated Conan build and runtime
+environment scripts before configuring so CMake and Conan-provided tools use
+the expected paths and runtime libraries.
+
 Official local Windows Debug build workflow:
 
 ```sh
 conan install . --build=missing
+build\generators\conanbuild.bat
+build\generators\conanrun.bat
 cmake --preset conan-default
 cmake --build --preset conan-debug
 ```
@@ -155,6 +161,8 @@ Official local Windows Release build workflow:
 
 ```sh
 conan install . --build=missing -s build_type=Release
+build\generators\conanbuild.bat
+build\generators\conanrun.bat
 cmake --preset conan-default
 cmake --build --preset conan-release
 ```
@@ -195,6 +203,11 @@ cmake --install build/Release
 
 The verified default Linux Release install destination is
 `build/Release/install`.
+
+Use `-o '&:install_runtime_dependencies=True'` when preparing deployable
+install/package output that should include runtime shared-library dependencies
+for project binaries. Leave the option off for the default project-only install
+layout.
 
 Packaging through CMake/CPack is under development. Do not treat package output
 as stable until the package workflow is verified and documented.

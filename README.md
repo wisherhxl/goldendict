@@ -36,12 +36,16 @@ another shell where MSVC is available to CMake.
 ## Build
 
 Install dependencies first. Conan generates the CMake user presets used by the
-configure and build steps.
+configure and build steps. After `conan install`, activate the generated Conan
+build and runtime environment scripts before configuring so CMake and
+Conan-provided tools use the expected paths and runtime libraries.
 
 Windows Debug build:
 
 ```sh
 conan install . --build=missing
+build\generators\conanbuild.bat
+build\generators\conanrun.bat
 cmake --preset conan-default
 cmake --build --preset conan-debug
 ```
@@ -50,6 +54,8 @@ Windows Release build:
 
 ```sh
 conan install . --build=missing -s build_type=Release
+build\generators\conanbuild.bat
+build\generators\conanrun.bat
 cmake --preset conan-default
 cmake --build --preset conan-release
 ```
@@ -131,6 +137,38 @@ The default Linux local install destination is:
 ```text
 build/Release/install
 ```
+
+### Deployable Runtime Dependencies
+
+By default, install copies this project's build outputs only. For deployable
+install output that also includes runtime shared-library dependencies needed by
+the project binaries, enable the Conan option.
+
+Windows Release deployable install:
+
+```sh
+conan install . --build=missing -s build_type=Release -o "&:install_runtime_dependencies=True"
+build\generators\conanbuild.bat
+build\generators\conanrun.bat
+cmake --fresh --preset conan-default
+cmake --build --preset conan-release
+cmake --install build --config Release
+```
+
+Linux Release deployable install:
+
+```sh
+conan install . --build=missing -s build_type=Release -o '&:install_runtime_dependencies=True'
+. build/Release/generators/conanbuild.sh
+. build/Release/generators/conanrun.sh
+cmake --fresh --preset conan-release
+cmake --build --preset conan-release
+cmake --install build/Release
+```
+
+This sets `TIGER_INSTALL_RUNTIME_DEPENDENCIES=ON` in the generated CMake
+toolchain, allowing install rules to copy runtime dependencies such as
+Qt/protobuf shared libraries and Qt plugins when applicable.
 
 CMake/CPack packaging is under development and should not be treated as stable
 until the package workflow is verified and documented.
