@@ -60,6 +60,16 @@ class TigerRecipe(ConanFile):
         # git.checkout("")
         git.run("submodule update --init --recursive")
 
+    def _dependency_option(self, dependency_name, option_name):
+        for dependency in self.dependencies.host.values():
+            if dependency.ref and dependency.ref.name == dependency_name:
+                return dependency.options.get_safe(option_name)
+        return None
+
+    @staticmethod
+    def _option_to_bool(option_value):
+        return str(option_value).lower() in ("1", "true", "yes", "on")
+
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
@@ -67,6 +77,9 @@ class TigerRecipe(ConanFile):
         tc.variables["TIGER_INSTALL_RUNTIME_DEPENDENCIES"] = bool(
             self.options.install_runtime_dependencies
         )
+        qt_shared = self._dependency_option("qt", "shared")
+        if qt_shared is not None:
+            tc.variables["TIGER_QT_SHARED"] = self._option_to_bool(qt_shared)
         tc.generate()
 
     def build(self):

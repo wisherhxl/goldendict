@@ -209,6 +209,11 @@ install/package output that should include runtime shared-library dependencies
 for project binaries. Leave the option off for the default project-only install
 layout.
 
+Conan profiles or command-line options own dependency shared/static linkage.
+Do not hardcode dependency linkage in `conanfile.py` unless the project requires
+one mode. Runtime deployment logic must support shared, static, and optional
+dependencies without requiring per-app workarounds.
+
 Packaging through CMake/CPack is under development. Do not treat package output
 as stable until the package workflow is verified and documented.
 
@@ -252,6 +257,9 @@ Library linkage policy:
 
 - Support both shared and static library builds.
 - Use shared libraries as the default and primary path.
+- Treat project linkage and dependency linkage as separate policies. The
+  project `shared` option controls Tiger targets; dependency options such as
+  `qt/*:shared` belong in Conan profiles or command-line overrides.
 
 ## Verification Workflow
 

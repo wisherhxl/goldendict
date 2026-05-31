@@ -64,6 +64,8 @@ ti_add_qt_app(z_example
 
 `ti_add_qt_app` enables Qt-specific handling, including `.ui` files,
 translations, optional `resources/res.qrc`, and a Windows GUI executable target.
+Use Conan profiles or command-line options to choose whether Qt is shared or
+static; `ti_add_qt_app` handles the matching install behavior.
 
 ## App Dependencies
 

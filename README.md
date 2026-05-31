@@ -170,6 +170,10 @@ This sets `TIGER_INSTALL_RUNTIME_DEPENDENCIES=ON` in the generated CMake
 toolchain, allowing install rules to copy runtime dependencies such as
 Qt/protobuf shared libraries and Qt plugins when applicable.
 
+Choose shared or static third-party dependencies in your Conan profile or with
+Conan command-line options; deployable installs handle the selected linkage
+mode.
+
 CMake/CPack packaging is under development and should not be treated as stable
 until the package workflow is verified and documented.
 
