@@ -58,6 +58,8 @@ Linux Debug build:
 
 ```sh
 conan install . --build=missing
+. build/Debug/generators/conanbuild.sh
+. build/Debug/generators/conanrun.sh
 cmake --preset conan-debug
 cmake --build --preset conan-debug
 ```
@@ -66,6 +68,8 @@ Linux Release build:
 
 ```sh
 conan install . --build=missing -s build_type=Release
+. build/Release/generators/conanbuild.sh
+. build/Release/generators/conanrun.sh
 cmake --preset conan-release
 cmake --build --preset conan-release
 ```
