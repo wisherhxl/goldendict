@@ -17,11 +17,15 @@ class TigerRecipe(ConanFile):
         "shared": [True, False],
         "fPIC": [True, False],
         "install_runtime_dependencies": [True, False],
+        "qt_linux_platform_plugin": ["auto", "xcb", "wayland", "minimal", "off"],
+        "qt_windows_platform_plugin": ["auto", "windows", "minimal", "off"],
     }
     default_options = {
         "shared": True,
         "fPIC": True,
         "install_runtime_dependencies": False,
+        "qt_linux_platform_plugin": "auto",
+        "qt_windows_platform_plugin": "auto",
         "qt/*:qttools": True,
     }
 
@@ -74,6 +78,15 @@ class TigerRecipe(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
         tc.variables["TIGER_INSTALL_CONAN_LAYOUT"] = True
+        tc.variables["TIGER_QT_SHARED"] = bool(self.dependencies["qt"].options.shared)
+        if self.settings.os == "Linux":
+            tc.variables["TIGER_QT_PLATFORM_PLUGIN"] = str(
+                self.options.qt_linux_platform_plugin
+            )
+        elif self.settings.os == "Windows":
+            tc.variables["TIGER_QT_PLATFORM_PLUGIN"] = str(
+                self.options.qt_windows_platform_plugin
+            )
         tc.variables["TIGER_INSTALL_RUNTIME_DEPENDENCIES"] = bool(
             self.options.install_runtime_dependencies
         )

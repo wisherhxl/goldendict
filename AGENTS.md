@@ -147,6 +147,15 @@ After `conan install`, activate the generated Conan build and runtime
 environment scripts before configuring so CMake and Conan-provided tools use
 the expected paths and runtime libraries.
 
+Keep dependency linkage profile-owned. Do not hardcode Qt shared/static policy
+in `conanfile.py`; use Conan profiles or CLI options such as
+`-o "qt/*:shared=True"` or `-o "qt/*:shared=False"`. `ti_add_qt_app` owns normal
+Qt app deployment/import behavior: shared Qt uses runtime deployment, while
+static Qt links the selected platform plugin and generates the required
+`Q_IMPORT_PLUGIN(...)` source. Static platform plugin options are advanced
+overrides: `qt_linux_platform_plugin` and `qt_windows_platform_plugin`; use
+`off` only when the app handles plugin imports itself.
+
 Official local Windows Debug build workflow:
 
 ```sh
