@@ -79,6 +79,9 @@ class TigerRecipe(ConanFile):
         tc.variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
         tc.variables["TIGER_INSTALL_CONAN_LAYOUT"] = True
         tc.variables["TIGER_QT_SHARED"] = bool(self.dependencies["qt"].options.shared)
+        tc.variables["TIGER_PROTOBUF_SHARED"] = bool(
+            self.dependencies["protobuf"].options.shared
+        )
         if self.settings.os == "Linux":
             tc.variables["TIGER_QT_PLATFORM_PLUGIN"] = str(
                 self.options.qt_linux_platform_plugin
@@ -93,6 +96,11 @@ class TigerRecipe(ConanFile):
         qt_shared = self._dependency_option("qt", "shared")
         if qt_shared is not None:
             tc.variables["TIGER_QT_SHARED"] = self._option_to_bool(qt_shared)
+        protobuf_shared = self._dependency_option("protobuf", "shared")
+        if protobuf_shared is not None:
+            tc.variables["TIGER_PROTOBUF_SHARED"] = self._option_to_bool(
+                protobuf_shared
+            )
         tc.generate()
 
     def build(self):
