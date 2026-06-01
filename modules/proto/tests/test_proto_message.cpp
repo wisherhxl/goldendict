@@ -23,6 +23,9 @@ void TestProtoMessage::buildsExpectedMessage() {
     QCOMPARE(QString::fromStdString(request.tags(0)), QString("module"));
     QCOMPARE(QString::fromStdString(request.tags(1)), QString("proto"));
     QCOMPARE(tiWrap(request.tags_size(), 0, 9), 2);
+    QVERIFY(request.GetDescriptor() != nullptr);
+    QVERIFY(request.GetReflection() != nullptr);
+    QVERIFY(!QString::fromStdString(request.ShortDebugString()).isEmpty());
 }
 
 QTEST_MAIN(TestProtoMessage)
