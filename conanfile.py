@@ -1,7 +1,7 @@
 from conan import ConanFile
 from conan.tools.scm import Git
 from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
-from conan.errors import ConanException
+from conan.errors import ConanException, ConanInvalidConfiguration
 from conan.tools.files import copy
 import os
 import re
@@ -54,6 +54,21 @@ class TigerRecipe(ConanFile):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
+
+    def validate(self):
+        protobuf_shared = self._dependency_option("protobuf", "shared")
+        abseil_shared = self._dependency_option("abseil", "shared")
+        if (
+            protobuf_shared is not None
+            and abseil_shared is not None
+            and not self._option_to_bool(protobuf_shared)
+            and self._option_to_bool(abseil_shared)
+        ):
+            raise ConanInvalidConfiguration(
+                "Static Protobuf with shared Abseil is unsupported. "
+                "Use -o 'abseil/*:shared=False' when protobuf/*:shared=False, "
+                "or use -o 'protobuf/*:shared=True'."
+            )
 
     def layout(self):
         cmake_layout(self)
