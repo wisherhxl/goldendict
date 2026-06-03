@@ -103,6 +103,9 @@ A feature branch may be deleted after its pull request is merged into `main` or
 
 Use the same Conventional Commit format for pull request titles.
 
+Assign pull requests to `wisherhxl` and request review from `wisherhxl` when
+opening them.
+
 Use this pull request description template:
 
 ```markdown
