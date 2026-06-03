@@ -101,6 +101,11 @@ Use this pull request description template:
   point.
 - `docs/*.md` should own detailed contributor guidance by topic. Prefer updating
   an existing focused doc before expanding `AGENTS.md`.
+- Treat repository Markdown as durable project guidance, not a transcript of the
+  current conversation. Do not write conversational recaps, user-specific
+  wording, or one-off implementation commentary into `AGENTS.md`, `README.md`,
+  or `docs/*.md`; record stable rules, decisions, commands, constraints, and
+  rationale that future contributors can rely on.
 - Build instructions should be tested before being presented as the main path.
 - Platform-specific notes should identify the affected platform explicitly.
 - Update `README.md` when a change affects prerequisites, configure/build/test/
