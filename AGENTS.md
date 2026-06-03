@@ -58,6 +58,9 @@ design rationale.
 - If the local branch has unpushed commits, uncommitted changes, or diverges
   from the remote, inspect the state and resolve it before creating a feature
   branch.
+- For non-trivial implementation, architecture, build, dependency, workflow, or
+  design-rule changes, discuss the approach and get an approved plan before
+  editing.
 - Do not push directly to `main` or `master` unless explicitly requested.
 - In interactive collaboration, do not commit, push, or create pull requests
   automatically.

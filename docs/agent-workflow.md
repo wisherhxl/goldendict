@@ -29,6 +29,33 @@ request, review, and documentation rules.
   committing.
 - Do not push directly to `main` or `master` unless explicitly requested.
 
+## Collaborative Task Lifecycle
+
+Use this lifecycle for non-trivial implementation, architecture, build,
+dependency, workflow, and design-rule changes. Tiny documentation edits, typo
+fixes, and direct command requests may use a lighter workflow when the requested
+action is clear.
+
+1. Discuss the target first. Clarify scope, constraints, success criteria, and
+   relevant best practice before editing.
+2. Read the relevant repository guidance before planning, including
+   `AGENTS.md`, applicable focused docs, project design rules, and nearby code.
+3. Identify conflicts with documented project policy before editing. If the
+   requested direction conflicts with `AGENTS.md`, `docs/project-design-rules.md`,
+   or another focused doc, stop and ask for direction.
+4. Create a concrete plan before implementation. The plan should cover scope,
+   likely files, test strategy, verification commands, and expected pull request
+   shape.
+5. Revise the plan through discussion until it is explicitly approved.
+6. After approval, execute the plan without requiring another confirmation:
+   implement the change, add or update tests when behavior risk exists, run the
+   relevant verification, review the result against repository guidance and
+   design rules, commit, push, and open a pull request.
+7. Treat the pull request review as part of the task. If changes are requested,
+   update the branch, rerun relevant checks, and update the pull request.
+8. The task is complete only when the pull request is merged or the target is
+   explicitly canceled.
+
 ## Branch Rules
 
 Name task branches as `<type>/<short-kebab-case-description>`.
