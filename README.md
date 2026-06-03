@@ -47,20 +47,22 @@ VS Code `code` command to be available in `PATH`.
 Windows:
 
 ```sh
-vscode.bat
-vscode.bat -rel
+start_code.bat
+start_code.bat release
+start_code.bat r
 ```
 
 Linux:
 
 ```sh
-./vscode.sh
-./vscode.sh -rel
+./start_code.sh
+./start_code.sh release
+./start_code.sh r
 ```
 
-Without arguments, the starters use Debug. The `-rel` switch uses Release. The
-platform-specific implementations live under `scripts/windows/` and
-`scripts/linux/`.
+Without arguments, the starters use Debug. Pass `debug`, `dbg`, or `d` for
+Debug, and `release`, `rel`, or `r` for Release. The platform-specific
+implementations live under `scripts/windows/` and `scripts/linux/`.
 
 Windows Debug build:
 

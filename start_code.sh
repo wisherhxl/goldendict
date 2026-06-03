@@ -4,14 +4,14 @@ set -eu
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 case "${1:-}" in
-    "")
+    ""|debug|dbg|d)
         exec "$script_dir/scripts/linux/vscode-debug.sh"
         ;;
-    -rel|--release)
+    release|rel|r)
         exec "$script_dir/scripts/linux/vscode-release.sh"
         ;;
     *)
-        echo "Usage: ./vscode.sh [-rel]" >&2
+        echo "Usage: ./start_code.sh [debug|dbg|d|release|rel|r]" >&2
         exit 2
         ;;
 esac
