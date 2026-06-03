@@ -111,6 +111,30 @@ maintaining a separate AppleClang minimum version.
 - 
 ```
 
+## Project Design Rules
+
+Agents must preserve explicit project design rules before optimizing for local
+fixes. If a requested change appears to conflict with a design rule, stop and
+explain the conflict before editing.
+
+Explicit rules override inferred patterns. Existing code is evidence of design
+intent, but it is not the only source of truth.
+
+When solving a problem:
+
+- Read the relevant design rules first when they exist.
+- State which rule governs the change.
+- Implement the fix in a way that reinforces the rule.
+- If no explicit rule exists, infer one from the nearest relevant code first,
+  then widen to related code when the change affects shared infrastructure or
+  public behavior.
+- Always state the inferred rule's scope.
+- If the inferred rule seems important, recommend adding it to `AGENTS.md` or
+  project docs.
+
+Concrete project design rules should be added here one by one during design
+work. Do not invent rules just to fill this section.
+
 ## Coding Style
 
 - Use C++17 for new modules.
