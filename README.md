@@ -40,6 +40,28 @@ configure and build steps. After `conan install`, activate the generated Conan
 build and runtime environment scripts before configuring so CMake and
 Conan-provided tools use the expected paths and runtime libraries.
 
+For interactive development, the repository includes convenience starters that
+prepare the Conan environment and open the project in VS Code. They require the
+VS Code `code` command to be available in `PATH`.
+
+Windows:
+
+```sh
+vscode.bat
+vscode.bat -rel
+```
+
+Linux:
+
+```sh
+./vscode.sh
+./vscode.sh -rel
+```
+
+Without arguments, the starters use Debug. The `-rel` switch uses Release. The
+platform-specific implementations live under `scripts/windows/` and
+`scripts/linux/`.
+
 Windows Debug build:
 
 ```sh
