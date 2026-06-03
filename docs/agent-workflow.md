@@ -36,25 +36,42 @@ dependency, workflow, and design-rule changes. Tiny documentation edits, typo
 fixes, and direct command requests may use a lighter workflow when the requested
 action is clear.
 
-1. Discuss the target first. Clarify scope, constraints, success criteria, and
-   relevant best practice before editing.
-2. Read the relevant repository guidance before planning, including
-   `AGENTS.md`, applicable focused docs, project design rules, and nearby code.
-3. Identify conflicts with documented project policy before editing. If the
-   requested direction conflicts with `AGENTS.md`, `docs/project-design-rules.md`,
-   or another focused doc, stop and ask for direction.
-4. Create a concrete plan before implementation. The plan should cover scope,
-   likely files, test strategy, verification commands, and expected pull request
-   shape.
-5. Revise the plan through discussion until it is explicitly approved.
-6. After approval, execute the plan without requiring another confirmation:
-   implement the change, add or update tests when behavior risk exists, run the
-   relevant verification, review the result against repository guidance and
-   design rules, commit, push, and open a pull request.
-7. Treat the pull request review as part of the task. If changes are requested,
-   update the branch, rerun relevant checks, and update the pull request.
-8. The task is complete only when the pull request is merged or the target is
-   explicitly canceled.
+Use explicit stage changes so discussion, planning, implementation, and review
+do not blur together.
+
+1. `DISCUSSING`: clarify the target, constraints, risks, alternatives, success
+   criteria, and relevant best practice. Read the high-level governing docs
+   early, including `AGENTS.md`, `docs/project-design-rules.md`, and any focused
+   doc relevant to the target. Ask when intent or project policy is unclear.
+   Do not guess, write a plan, edit files, commit, push, or create a pull
+   request in this stage.
+2. `AWAITING PLAN APPROVAL`: when the direction seems clear enough to plan,
+   propose the stage change to `PROPOSING PLAN` and stop. Keep this gate light:
+   ask for approval to write the plan, or ask what still needs discussion.
+3. `PROPOSING PLAN`: read the nearby code and focused docs needed to make the
+   plan concrete. Write a plan that covers scope, likely files, test strategy,
+   verification commands, expected pull request shape, and the repository rules
+   governing the change. Do not edit files in this stage.
+4. `PLAN REVIEW`: revise the plan through discussion until implementation is
+   explicitly approved. Treat plan feedback as part of this stage. Do not edit
+   files, commit, push, or create a pull request while the plan is still being
+   adjusted.
+5. `IMPLEMENTING`: after explicit approval, execute the approved plan without
+   requiring another confirmation. Implement the change, add or update tests
+   when behavior risk exists, run the relevant verification, review the final
+   diff against `AGENTS.md`, applicable focused docs, and
+   `docs/project-design-rules.md`, then commit, push, and open a pull request
+   when the approved workflow calls for it.
+6. `PR REVIEW`: treat pull request review as part of the task. If changes are
+   requested, update the branch, rerun relevant checks, and update the pull
+   request.
+7. `DONE`: the task is complete only when the pull request is merged or the
+   target is explicitly canceled.
+
+Before proposing a stage change or opening a pull request, identify conflicts
+with documented project policy. If the requested direction or final diff
+conflicts with `AGENTS.md`, `docs/project-design-rules.md`, or another focused
+doc, stop and ask for direction instead of guessing.
 
 ## Branch Rules
 
@@ -85,6 +102,9 @@ A feature branch may be deleted after its pull request is merged into `main` or
 ## Pull Request Rules
 
 Use the same Conventional Commit format for pull request titles.
+
+Assign pull requests to `wisherhxl` and request review from `wisherhxl` when
+opening them.
 
 Use this pull request description template:
 
