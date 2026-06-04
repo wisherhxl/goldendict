@@ -116,8 +116,12 @@ runtime deployment, while static Qt links the selected platform plugin and
 generates the required `Q_IMPORT_PLUGIN(...)` source.
 
 Static platform plugin options are advanced overrides:
-`qt_linux_platform_plugin` and `qt_windows_platform_plugin`; use `off` only
-when the app handles plugin imports itself.
+`qt_linux_platform_plugin` and `qt_windows_platform_plugin`. The selected
+plugin must be exported as a CMake target by the resolved Qt package. For
+example, Linux `auto` selects `xcb`, which Conan's Qt package commonly exports
+as `Qt5::QXcbIntegrationPlugin`. `minimal` is useful for headless or diagnostic
+Qt tools, but only works when the Qt package exports the corresponding static
+plugin target. Use `off` only when the app handles plugin imports itself.
 
 Conan profiles or command-line options own dependency shared/static linkage.
 Do not hardcode dependency linkage in `conanfile.py` unless the project requires
