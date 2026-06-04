@@ -77,10 +77,28 @@ cmake --install build/Release
 The verified default Linux Release install destination is
 `build/Release/install`.
 
-Use `-o '&:install_runtime_dependencies=True'` when preparing deployable
-install/package output that should include runtime shared-library dependencies
-for project binaries. Leave the option off for the default project-only install
-layout.
+Use `-o '&:install_mode=runtime'` when preparing deployable install/package
+output that should contain only runtime files. Runtime mode installs the project
+executables, runtime shared libraries/plugins/resources needed by those
+executables, and package metadata such as the license/readme. It skips
+development files such as headers, static/import archives, and CMake package
+exports/configs.
+
+Use `-o '&:install_mode=library'` for the SDK/library install layout. Library
+mode installs runtime files plus development files such as headers, libraries,
+and CMake package metadata.
+
+`install_runtime_dependencies` controls whether third-party runtime shared
+libraries/plugins are copied into the install prefix. Its default is `auto`:
+
+- `install_mode=library` + `install_runtime_dependencies=auto` resolves to
+  runtime dependencies off.
+- `install_mode=runtime` + `install_runtime_dependencies=auto` resolves to
+  runtime dependencies on.
+
+Users can still force the dependency deployment behavior with
+`-o '&:install_runtime_dependencies=True'` or
+`-o '&:install_runtime_dependencies=False'`.
 
 ## CMake Presets
 
