@@ -51,6 +51,11 @@ protobuf generation, tests, install behavior, or dependency configuration. For
 documentation-only changes, a full build is not required. If the full workflow
 is skipped, mention why in the final response or pull request notes.
 
+When install verification includes a runtime-dependency self-contained smoke
+test, run the installed executable from a clean environment. On Linux, keep only
+the normal system command path with `PATH=/usr/bin:/bin`. On Windows, clear
+`Path`.
+
 ## Test Framework Policy
 
 - Use QTest for sample and project tests.
