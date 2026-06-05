@@ -58,8 +58,10 @@ do not blur together.
    adjusted.
 5. `IMPLEMENTING`: after explicit approval, execute the approved plan without
    requiring another confirmation. Implement the change, add or update tests
-   when behavior risk exists, run the relevant verification, review the final
-   diff against `AGENTS.md`, applicable focused docs, and
+   when behavior risk exists, run the relevant verification, fix verification
+   failures within the approved scope, and report out-of-scope findings with
+   impact and options before expanding the change. Review the final diff
+   against `AGENTS.md`, applicable focused docs, and
    `docs/project-design-rules.md`, then commit, push, and open a pull request
    when the approved workflow calls for it.
 6. `PR REVIEW`: treat pull request review as part of the task. If changes are
