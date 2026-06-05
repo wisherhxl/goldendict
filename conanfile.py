@@ -16,14 +16,16 @@ class TigerRecipe(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "install_runtime_dependencies": [True, False],
+        "install_mode": ["library", "runtime"],
+        "install_runtime_dependencies": ["auto", True, False],
         "qt_linux_platform_plugin": ["auto", "xcb", "wayland", "minimal", "off"],
         "qt_windows_platform_plugin": ["auto", "windows", "minimal", "off"],
     }
     default_options = {
         "shared": True,
         "fPIC": True,
-        "install_runtime_dependencies": False,
+        "install_mode": "library",
+        "install_runtime_dependencies": "auto",
         "qt_linux_platform_plugin": "auto",
         "qt_windows_platform_plugin": "auto",
         "qt/*:qttools": True,
@@ -89,10 +91,17 @@ class TigerRecipe(ConanFile):
     def _option_to_bool(option_value):
         return str(option_value).lower() in ("1", "true", "yes", "on")
 
+    def _resolved_install_runtime_dependencies(self):
+        install_runtime_dependencies = str(self.options.install_runtime_dependencies)
+        if install_runtime_dependencies.lower() == "auto":
+            return str(self.options.install_mode) == "runtime"
+        return self._option_to_bool(install_runtime_dependencies)
+
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
         tc.variables["TIGER_INSTALL_CONAN_LAYOUT"] = True
+        tc.variables["TIGER_INSTALL_MODE"] = str(self.options.install_mode)
         tc.variables["TIGER_QT_SHARED"] = bool(self.dependencies["qt"].options.shared)
         tc.variables["TIGER_PROTOBUF_SHARED"] = bool(
             self.dependencies["protobuf"].options.shared
@@ -106,7 +115,7 @@ class TigerRecipe(ConanFile):
                 self.options.qt_windows_platform_plugin
             )
         tc.variables["TIGER_INSTALL_RUNTIME_DEPENDENCIES"] = bool(
-            self.options.install_runtime_dependencies
+            self._resolved_install_runtime_dependencies()
         )
         qt_shared = self._dependency_option("qt", "shared")
         if qt_shared is not None:
@@ -129,5 +138,10 @@ class TigerRecipe(ConanFile):
 
     def package_info(self):
         self.cpp_info.bindirs = ["bin"]
-        self.cpp_info.builddirs = ["lib/cmake"]
+        if str(self.options.install_mode) == "runtime":
+            self.cpp_info.includedirs = []
+            self.cpp_info.libdirs = []
+            self.cpp_info.builddirs = []
+        else:
+            self.cpp_info.builddirs = ["lib/cmake"]
         self.cpp_info.set_property("cmake_find_mode", "none")
