@@ -45,7 +45,10 @@ endforeach()
 ti_add_thirdparty_status(qt
     DISPLAY "Qt"
     VERSION "${${QT_NAMESPACE}_VERSION}"
-    TARGETS ${qt_link})
+    TARGETS ${qt_link}
+    PACKAGE ${QT_NAMESPACE}
+    CONFIG
+    COMPONENTS ${qt_modules})
 
 # LinguistTools provides translation commands/tools, not a linkable library target.
 find_package(${QT_NAMESPACE} COMPONENTS LinguistTools QUIET)

@@ -67,11 +67,16 @@ if(HAVE_PROTOBUF)
     ti_add_thirdparty_status(protobuf
       DISPLAY "Protobuf"
       VERSION "${Protobuf_VERSION}"
-      LOCATION "${Protobuf_LIBRARY}")
+      LOCATION "${Protobuf_LIBRARY}"
+      TARGETS ${Protobuf_LIBRARIES}
+      PACKAGE Protobuf
+      CONFIG)
   else()
     ti_add_thirdparty_status(protobuf
       DISPLAY "Protobuf"
       VERSION "${Protobuf_VERSION}"
-      TARGETS ${Protobuf_LIBRARIES})
+      TARGETS ${Protobuf_LIBRARIES}
+      PACKAGE Protobuf
+      CONFIG)
   endif()
 endif()
