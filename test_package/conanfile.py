@@ -76,22 +76,6 @@ class TestPackageConan(ConanFile):
         if version_header_include is None:
             raise RuntimeError(f"Could not compute include path for {version_header}")
 
-        dependency_find_packages = []
-        seen_dependency_packages = set()
-        for dep in self.dependencies.host.values():
-            if str(dep.ref) == str(tested_dep.ref):
-                continue
-            package_name = None
-            try:
-                package_name = dep.cpp_info.get_property("cmake_file_name")
-            except AttributeError:
-                pass
-            if not package_name:
-                package_name = dep.ref.name
-            if package_name not in seen_dependency_packages:
-                dependency_find_packages.append(f"find_package({package_name} CONFIG REQUIRED)")
-                seen_dependency_packages.add(package_name)
-
         package_name = os.path.basename(config_files[0])[:-len("Config.cmake")]
         save(
             self,
@@ -103,7 +87,6 @@ if(CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_CONFIGURATION_TYPES "{self.settings.build_type}" CACHE STRING "" FORCE)
 endif()
 
-{os.linesep.join(dependency_find_packages)}
 find_package({package_name} CONFIG REQUIRED)
 
 add_executable(test_package test_package.c)

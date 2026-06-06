@@ -159,6 +159,19 @@ Library linkage policy:
 - Dependencies are managed through Conan 2 in `conanfile.py`.
 - Do not add or upgrade dependencies without confirming the reason and impact
   first.
+- If an installed public header or exported CMake target usage requirement
+  exposes a Conan dependency, declare it with the recipe's `_public_requires()`
+  helper. Public requirements use Conan's transitive header and library traits
+  so consumers that require only `tiger` still receive the needed dependency
+  CMake config files.
+- If an exported public CMake target links an external target, register the
+  external target's package-find metadata in the dependency finder or project
+  CMake code with `ti_register_external_dependency(...)`, or use
+  `ti_add_thirdparty_status(... PACKAGE ... CONFIG ... COMPONENTS ...)`. This
+  lets Tiger's installed config generate `find_dependency(...)` calls without
+  hardcoding third-party package names in config generation.
+- Use plain `self.requires()` for dependencies that are only needed to build or
+  run Tiger itself and are not part of installed library usage requirements.
 - After changing dependencies, run `conan install`, configure, build, and the
   relevant tests.
 - Keep dependencies minimal.

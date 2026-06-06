@@ -272,6 +272,19 @@ the build output directory for your platform and generator.
 
 Dependencies are managed with Conan 2 in `conanfile.py`.
 
+Dependencies that appear in installed public headers or exported CMake target
+usage requirements must be declared as public Conan requirements in the recipe.
+For example, the generated protobuf module installs `.pb.h` headers and exports
+targets linked to Protobuf, so the recipe marks Protobuf as public. This lets a
+consumer that only requires `tiger` get the needed Conan-generated dependency
+config files automatically.
+
+Public external CMake targets also need package-find metadata so Tiger's
+installed config can call `find_dependency(...)` before importing exported
+targets. Register that metadata in the dependency finder or project CMake code
+with `ti_register_external_dependency(...)`, or via `ti_add_thirdparty_status`
+using its `PACKAGE`, `CONFIG`, and `COMPONENTS` arguments.
+
 When adding a Conan dependency, add the matching CMake finder under
 `cmake_finders/`. Finder modules should come from:
 

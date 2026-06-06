@@ -43,7 +43,7 @@ class TigerRecipe(ConanFile):
 
     def requirements(self):
         self.requires("zlib/[>1.3]")
-        self.requires("protobuf/6.33.5")
+        self._public_requires("protobuf/6.33.5")
         self.requires("qt/5.15.16")
 
     def build_requirements(self):
@@ -80,6 +80,13 @@ class TigerRecipe(ConanFile):
         git.clone(url="https://github.com/wisherhxl/tiger_template.git", target=".")
         # git.checkout("")
         git.run("submodule update --init --recursive")
+
+    def _public_requires(self, reference):
+        self.requires(
+            reference,
+            transitive_headers=True,
+            transitive_libs=True,
+        )
 
     def _dependency_option(self, dependency_name, option_name):
         for dependency in self.dependencies.host.values():
