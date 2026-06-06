@@ -1,6 +1,7 @@
 from conan import ConanFile
 from conan.tools.scm import Git
 from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
+from conan.tools.env import VirtualRunEnv
 from conan.errors import ConanException, ConanInvalidConfiguration
 from conan.tools.files import copy
 import os
@@ -136,8 +137,9 @@ class TigerRecipe(ConanFile):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure()
-        cmake.build()
+        with VirtualRunEnv(self).vars().apply():
+            cmake.configure()
+            cmake.build()
 
     def package(self):
         cmake = CMake(self)
