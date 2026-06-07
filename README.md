@@ -227,12 +227,13 @@ cmake --build --preset conan-release
 cmake --build --preset conan-release --target package
 ```
 
-The generated archive is written to the Release build directory, for example
-`build/Release/tiger-2.3.3-linux-x86_64.tar.gz`.
+The generated archive is written to the Release build directory. Package names
+include the active install mode, for example
+`build/Release/tiger-2.3.3-linux-x86_64-library.tar.gz` or
+`build/Release/tiger-2.3.3-linux-x86_64-runtime.tar.gz`.
 
-Linux `TGZ` packages are currently verified. Windows `ZIP` packages are the
-intended Windows archive format and should be verified on Windows before being
-treated as stable. See [docs/build.md](docs/build.md) for details.
+Linux `TGZ` and Windows `ZIP` packages are currently verified. See
+[docs/build.md](docs/build.md) for details.
 
 ## Project Layout
 
