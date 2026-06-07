@@ -163,8 +163,8 @@ Library linkage policy:
 - If an installed public header or exported CMake target usage requirement
   exposes a Conan dependency, declare it with the recipe's `_public_requires()`
   helper. Public requirements use Conan's transitive header and library traits
-  so consumers that require only `tiger` still receive the needed dependency
-  CMake config files.
+  so consumers that require only the `${TI_INTERNAL_NAME}` package still
+  receive the needed dependency CMake config files.
 - If an exported public CMake target links an external target, register the
   external target's package-find metadata in the dependency finder or project
   CMake code with `ti_register_external_dependency(...)`, or use
@@ -195,6 +195,18 @@ The default binary package generator is platform-specific:
 - Linux: `TGZ`;
 - Windows: `ZIP`.
 
+Linux distro packages are selected explicitly with CPack, not by changing the
+default package target:
+
+```sh
+cpack -G DEB --config build/Release/CPackConfig.cmake
+cpack -G RPM --config build/Release/CPackConfig.cmake
+```
+
+`DEB` and `RPM` packages install under `/opt/${TI_INTERNAL_NAME}` and use
+`${TI_INTERNAL_NAME}` as the package name so package-manager upgrades replace
+the previous version in place.
+
 Official Linux Release package workflow:
 
 ```sh
@@ -209,7 +221,7 @@ cmake --build --preset conan-release --target package
 The package is written to the Release build directory with a name like:
 
 ```text
-build/Release/tiger-2.3.3-linux-x86_64-library.tar.gz
+build/Release/${TI_INTERNAL_NAME}-2.3.3-linux-x86_64-library.tar.gz
 ```
 
 Official Windows Release package workflow:
@@ -226,14 +238,14 @@ cmake --build --preset conan-release --target package
 The package is written to the build directory with a name like:
 
 ```text
-build/tiger-2.3.3-windows-amd64-library.zip
+build/${TI_INTERNAL_NAME}-2.3.3-windows-amd64-library.zip
 ```
 
 Runtime-mode packages use the same platform and generator naming with a
 `runtime` suffix, for example:
 
 ```text
-build/tiger-2.3.3-windows-amd64-runtime.zip
+build/${TI_INTERNAL_NAME}-2.3.3-windows-amd64-runtime.zip
 ```
 
 The archive uses Tiger's Conan install layout, so the installed CMake package
@@ -243,16 +255,15 @@ consumers at that directory, along with dependency package config paths, when us
 
 ```sh
 cmake -S <consumer-source> -B <consumer-build> \
-  -DCMAKE_PREFIX_PATH="<extract-root>/tiger-2.3.3-linux-x86_64-library/lib/cmake;<dependency-prefixes>"
+  -DCMAKE_PREFIX_PATH="<extract-root>/${TI_INTERNAL_NAME}-2.3.3-linux-x86_64-library/lib/cmake;<dependency-prefixes>"
 ```
 
 The package target is enabled by default. Disable it with
 `-DTIGER_ENABLE_CPACK=OFF` when configuring.
 
-Linux `TGZ` and Windows `ZIP` package output are currently verified. Other CPack
-generators may be selected with
-`-DCPACK_GENERATOR=...`, but they are not yet part of the supported packaging
-workflow.
+Linux `TGZ`, Windows `ZIP`, and Linux `DEB` package output are currently
+verified. `RPM` package metadata is configured, but full RPM install and upgrade
+testing should run in an RPM-native environment.
 
 If CMake reports duplicate presets after previous package or test-package work,
 inspect the ignored generated `CMakeUserPresets.json`. It may include stale

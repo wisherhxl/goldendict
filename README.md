@@ -229,11 +229,11 @@ cmake --build --preset conan-release --target package
 
 The generated archive is written to the Release build directory. Package names
 include the active install mode, for example
-`build/Release/tiger-2.3.3-linux-x86_64-library.tar.gz` or
-`build/Release/tiger-2.3.3-linux-x86_64-runtime.tar.gz`.
+`build/Release/${TI_INTERNAL_NAME}-2.3.3-linux-x86_64-library.tar.gz` or
+`build/Release/${TI_INTERNAL_NAME}-2.3.3-linux-x86_64-runtime.tar.gz`.
 
-Linux `TGZ` and Windows `ZIP` packages are currently verified. See
-[docs/build.md](docs/build.md) for details.
+Linux `TGZ`, Windows `ZIP`, and explicit Linux `DEB` packages are currently
+verified. See [docs/build.md](docs/build.md) for details.
 
 ## Project Layout
 
@@ -296,8 +296,8 @@ Dependencies that appear in installed public headers or exported CMake target
 usage requirements must be declared as public Conan requirements in the recipe.
 For example, the generated protobuf module installs `.pb.h` headers and exports
 targets linked to Protobuf, so the recipe marks Protobuf as public. This lets a
-consumer that only requires `tiger` get the needed Conan-generated dependency
-config files automatically.
+consumer that only requires the `${TI_INTERNAL_NAME}` package get the needed
+Conan-generated dependency config files automatically.
 
 Public external CMake targets also need package-find metadata so Tiger's
 installed config can call `find_dependency(...)` before importing exported
