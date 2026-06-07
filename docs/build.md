@@ -82,7 +82,8 @@ output that should contain only runtime files. Runtime mode installs the project
 executables, runtime shared libraries/plugins/resources needed by those
 executables, and package metadata such as the license/readme. It skips
 development files such as headers, static/import archives, and CMake package
-exports/configs.
+exports/configs. In `cmd.exe`, quote scoped Conan options with double quotes,
+for example `-o "&:install_mode=runtime"`.
 
 Use `-o '&:install_mode=library'` for the SDK/library install layout. Library
 mode installs runtime files plus development files such as headers, libraries,
@@ -208,7 +209,7 @@ cmake --build --preset conan-release --target package
 The package is written to the Release build directory with a name like:
 
 ```text
-build/Release/tiger-2.3.3-linux-x86_64.tar.gz
+build/Release/tiger-2.3.3-linux-x86_64-library.tar.gz
 ```
 
 Official Windows Release package workflow:
@@ -225,7 +226,14 @@ cmake --build --preset conan-release --target package
 The package is written to the build directory with a name like:
 
 ```text
-build/tiger-2.3.3-windows-amd64.zip
+build/tiger-2.3.3-windows-amd64-library.zip
+```
+
+Runtime-mode packages use the same platform and generator naming with a
+`runtime` suffix, for example:
+
+```text
+build/tiger-2.3.3-windows-amd64-runtime.zip
 ```
 
 The archive uses Tiger's Conan install layout, so the installed CMake package
@@ -235,14 +243,18 @@ consumers at that directory, along with dependency package config paths, when us
 
 ```sh
 cmake -S <consumer-source> -B <consumer-build> \
-  -DCMAKE_PREFIX_PATH="<extract-root>/tiger-2.3.3-linux-x86_64/lib/cmake;<dependency-prefixes>"
+  -DCMAKE_PREFIX_PATH="<extract-root>/tiger-2.3.3-linux-x86_64-library/lib/cmake;<dependency-prefixes>"
 ```
 
 The package target is enabled by default. Disable it with
 `-DTIGER_ENABLE_CPACK=OFF` when configuring.
 
-Linux `TGZ` package output is currently verified. Windows `ZIP` is the intended
-Windows archive format, but must be verified on Windows before it is treated as
-fully stable. Other CPack generators may be selected with
+Linux `TGZ` and Windows `ZIP` package output are currently verified. Other CPack
+generators may be selected with
 `-DCPACK_GENERATOR=...`, but they are not yet part of the supported packaging
 workflow.
+
+If CMake reports duplicate presets after previous package or test-package work,
+inspect the ignored generated `CMakeUserPresets.json`. It may include stale
+Conan preset files from another build tree that define the same preset names as
+the active root build.
