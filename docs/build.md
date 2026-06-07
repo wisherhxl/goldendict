@@ -185,10 +185,14 @@ Library linkage policy:
 
 ## Packaging
 
-Linux `TGZ` packages are produced through CMake/CPack from the current CMake
-install rules. CPack does not define a separate layout; it packages the same
-files that `cmake --install` would install for the active configuration and
-install mode.
+Packages are produced through CMake/CPack from the current CMake install rules.
+CPack does not define a separate layout; it packages the same files that
+`cmake --install` would install for the active configuration and install mode.
+
+The default binary package generator is platform-specific:
+
+- Linux: `TGZ`;
+- Windows: `ZIP`.
 
 Official Linux Release package workflow:
 
@@ -207,9 +211,26 @@ The package is written to the Release build directory with a name like:
 build/Release/tiger-2.3.3-linux-x86_64.tar.gz
 ```
 
+Official Windows Release package workflow:
+
+```sh
+conan install . --build=missing -s build_type=Release
+build\generators\conanbuild.bat
+build\generators\conanrun.bat
+cmake --fresh --preset conan-default
+cmake --build --preset conan-release
+cmake --build --preset conan-release --target package
+```
+
+The package is written to the build directory with a name like:
+
+```text
+build/tiger-2.3.3-windows-amd64.zip
+```
+
 The archive uses Tiger's Conan install layout, so the installed CMake package
-config lives under `lib/cmake` inside the extracted archive. Point consumers at
-that directory, along with dependency package config paths, when using
+config lives under `lib/cmake` inside the extracted Linux archive. Point
+consumers at that directory, along with dependency package config paths, when using
 `find_package(Tiger CONFIG REQUIRED)`:
 
 ```sh
@@ -220,6 +241,8 @@ cmake -S <consumer-source> -B <consumer-build> \
 The package target is enabled by default. Disable it with
 `-DTIGER_ENABLE_CPACK=OFF` when configuring.
 
-Only Linux `TGZ` package output is currently documented and verified. Other
-CPack generators may be selected with `-DCPACK_GENERATOR=...`, but they are not
-yet part of the supported packaging workflow.
+Linux `TGZ` package output is currently verified. Windows `ZIP` is the intended
+Windows archive format, but must be verified on Windows before it is treated as
+fully stable. Other CPack generators may be selected with
+`-DCPACK_GENERATOR=...`, but they are not yet part of the supported packaging
+workflow.
