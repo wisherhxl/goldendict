@@ -185,5 +185,41 @@ Library linkage policy:
 
 ## Packaging
 
-Packaging through CMake/CPack is under development. Do not treat package output
-as stable until the package workflow is verified and documented.
+Linux `TGZ` packages are produced through CMake/CPack from the current CMake
+install rules. CPack does not define a separate layout; it packages the same
+files that `cmake --install` would install for the active configuration and
+install mode.
+
+Official Linux Release package workflow:
+
+```sh
+conan install . --build=missing -s build_type=Release
+. build/Release/generators/conanbuild.sh
+. build/Release/generators/conanrun.sh
+cmake --fresh --preset conan-release
+cmake --build --preset conan-release
+cmake --build --preset conan-release --target package
+```
+
+The package is written to the Release build directory with a name like:
+
+```text
+build/Release/tiger-2.3.3-linux-x86_64.tar.gz
+```
+
+The archive uses Tiger's Conan install layout, so the installed CMake package
+config lives under `lib/cmake` inside the extracted archive. Point consumers at
+that directory, along with dependency package config paths, when using
+`find_package(Tiger CONFIG REQUIRED)`:
+
+```sh
+cmake -S <consumer-source> -B <consumer-build> \
+  -DCMAKE_PREFIX_PATH="<extract-root>/tiger-2.3.3-linux-x86_64/lib/cmake;<dependency-prefixes>"
+```
+
+The package target is enabled by default. Disable it with
+`-DTIGER_ENABLE_CPACK=OFF` when configuring.
+
+Only Linux `TGZ` package output is currently documented and verified. Other
+CPack generators may be selected with `-DCPACK_GENERATOR=...`, but they are not
+yet part of the supported packaging workflow.

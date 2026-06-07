@@ -212,8 +212,25 @@ Choose shared or static third-party dependencies in your Conan profile or with
 Conan command-line options; deployable installs handle the selected linkage
 mode.
 
-CMake/CPack packaging is under development and should not be treated as stable
-until the package workflow is verified and documented.
+## Package
+
+Linux `TGZ` packages are produced through CMake/CPack from the same install
+rules used by `cmake --install`:
+
+```sh
+conan install . --build=missing -s build_type=Release
+. build/Release/generators/conanbuild.sh
+. build/Release/generators/conanrun.sh
+cmake --fresh --preset conan-release
+cmake --build --preset conan-release
+cmake --build --preset conan-release --target package
+```
+
+The generated archive is written to the Release build directory, for example
+`build/Release/tiger-2.3.3-linux-x86_64.tar.gz`.
+
+Only Linux `TGZ` packages are currently documented and verified. See
+[docs/build.md](docs/build.md) for details.
 
 ## Project Layout
 
