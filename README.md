@@ -214,8 +214,9 @@ mode.
 
 ## Package
 
-Linux `TGZ` packages are produced through CMake/CPack from the same install
-rules used by `cmake --install`:
+Packages are produced through CMake/CPack from the same install rules used by
+`cmake --install`. The default binary package generator is `TGZ` on Linux and
+`ZIP` on Windows.
 
 ```sh
 conan install . --build=missing -s build_type=Release
@@ -229,8 +230,9 @@ cmake --build --preset conan-release --target package
 The generated archive is written to the Release build directory, for example
 `build/Release/tiger-2.3.3-linux-x86_64.tar.gz`.
 
-Only Linux `TGZ` packages are currently documented and verified. See
-[docs/build.md](docs/build.md) for details.
+Linux `TGZ` packages are currently verified. Windows `ZIP` packages are the
+intended Windows archive format and should be verified on Windows before being
+treated as stable. See [docs/build.md](docs/build.md) for details.
 
 ## Project Layout
 
