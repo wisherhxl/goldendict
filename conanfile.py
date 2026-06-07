@@ -9,7 +9,6 @@ import re
 
 class TigerRecipe(ConanFile):
     # Naming convention: all-lowercase project name used as internal CMake name (TI_INTERNAL_NAME)
-    name = "tiger"
     package_type = "library"
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeDeps"
@@ -31,6 +30,9 @@ class TigerRecipe(ConanFile):
         "qt_windows_platform_plugin": "auto",
         "qt/*:qttools": True,
     }
+
+    def set_name(self):
+        self.name = self._project_internal_name()
 
     def set_version(self):
         path = os.path.join(self.recipe_folder, "VERSION")
@@ -88,6 +90,21 @@ class TigerRecipe(ConanFile):
             transitive_headers=True,
             transitive_libs=True,
         )
+
+    def _project_internal_name(self):
+        path = os.path.join(self.recipe_folder, "CMakeLists.txt")
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        match = re.search(
+            r'^\s*set\s*\(\s*TI_PROJECT_NAME\s+(?:"([^"]+)"|([^\s\)]+))\s*\)',
+            content,
+            re.MULTILINE,
+        )
+        if not match:
+            raise ConanException("TI_PROJECT_NAME must be set in CMakeLists.txt")
+
+        return (match.group(1) or match.group(2)).lower()
 
     def _dependency_option(self, dependency_name, option_name):
         for dependency in self.dependencies.host.values():
