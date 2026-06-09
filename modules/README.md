@@ -39,22 +39,22 @@ ti_define_module(proto
 ti_define_module(<module_name>
   [INTERNAL]
   [EXCLUDE_CUDA]
-  [MODULES <required Tiger modules>]
-  [EXTRAS <required external dependencies>]
+  [[REQUIRED|OPTIONAL] [PUBLIC|PRIVATE] MODULES <Tiger modules>]
+  [[REQUIRED|OPTIONAL] [PUBLIC|PRIVATE] EXTRAS <external dependencies>]
   [OPTIONAL_MODULES <optional Tiger modules>]
   [OPTIONAL_EXTRAS <optional external dependencies>]
   [WRAP <wrapper names>]
 )
 ```
 
-Use short module names in `MODULES` and `OPTIONAL_MODULES`:
+`REQUIRED` and `PUBLIC` are the defaults. Use short module names in `MODULES`;
+the build system adds the project namespace prefix internally:
 
 ```cmake
 ti_define_module(my_feature MODULES base proto)
 ```
 
-Use `EXTRAS` and `OPTIONAL_EXTRAS` for external CMake targets, libraries, or
-paths:
+Use `EXTRAS` for external CMake targets, libraries, or paths:
 
 ```cmake
 ti_define_module(my_feature
@@ -62,6 +62,22 @@ ti_define_module(my_feature
   EXTRAS Boost::boost SomeVendor::sdk
 )
 ```
+
+Use `PRIVATE` for dependencies needed only to build the module, and `PUBLIC`
+for dependencies that appear in installed headers or exported target usage
+requirements:
+
+```cmake
+ti_define_module(my_feature
+  MODULES base
+  PUBLIC EXTRAS fmt::fmt
+  PRIVATE EXTRAS SomeVendor::implementation
+  OPTIONAL PRIVATE MODULES debug_tools
+)
+```
+
+`OPTIONAL_MODULES` and `OPTIONAL_EXTRAS` are kept as backward-compatible
+spellings for `OPTIONAL PUBLIC MODULES` and `OPTIONAL PUBLIC EXTRAS`.
 
 `WRAP` lists wrappers or binding modules that should expose the current module.
 It does not make the current module depend on the wrapper.
@@ -74,5 +90,7 @@ When adding a new module:
 2. Put public headers under `modules/<module_name>/include/<project_include_namespace>/`.
 3. Put implementation files under `modules/<module_name>/src/`.
 4. Call `ti_define_module(<module_name> ...)`.
-5. Put Tiger module dependencies in `MODULES` or `OPTIONAL_MODULES` using short names.
-6. Put third-party dependencies in `EXTRAS` or `OPTIONAL_EXTRAS`.
+5. Put Tiger module dependencies in `MODULES` using short names.
+6. Put third-party dependencies in `EXTRAS`.
+7. Mark dependencies `PRIVATE` unless they are part of installed public headers
+   or exported target usage requirements.
