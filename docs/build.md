@@ -165,6 +165,10 @@ Library linkage policy:
   helper. Public requirements use Conan's transitive header and library traits
   so consumers that require only the `${TI_INTERNAL_NAME}` package still
   receive the needed dependency CMake config files.
+- Module declarations own dependency visibility. In `ti_define_module(...)`,
+  mark build-only dependencies with `PRIVATE`; dependencies are `PUBLIC` by
+  default and must stay public when they appear in installed headers or
+  exported target usage requirements.
 - If an exported public CMake target links an external target, register the
   external target's package-find metadata in the dependency finder or project
   CMake code with `ti_register_external_dependency(...)`, or use

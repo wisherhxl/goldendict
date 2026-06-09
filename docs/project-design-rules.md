@@ -63,3 +63,16 @@ after `conan install`, without hiding target and install behavior inside the
 recipe. It also prevents duplicate policy: for example, Qt shared/static
 selection belongs to Conan profiles or options, while Qt app deployment/import
 behavior belongs to CMake.
+
+## Module Dependency Visibility
+
+CMake module declarations own dependency visibility. A module dependency is
+public only when it is part of installed public headers or exported CMake target
+usage requirements; otherwise mark it private in `ti_define_module(...)`.
+
+External dependency registration, such as `ti_register_external_dependency(...)`,
+must only describe how an external target is found by consumers. It must not be
+used as the source of truth for whether a module dependency is public or
+private. The same external target may be public for one module and private for
+another; generated package config files should emit dependency discovery only
+when at least one exported module exposes that external target publicly.
