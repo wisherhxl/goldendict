@@ -3,8 +3,10 @@
 #ifndef GOLDENDICT_CORE_SRC_FORMATS_STARDICT_STARDICT_READER_H_
 #define GOLDENDICT_CORE_SRC_FORMATS_STARDICT_STARDICT_READER_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -51,7 +53,10 @@ class Reader final {
 
     const Metadata& metadata() const noexcept { return metadata_; }
 
-    std::vector<Article> LookupExact(std::string_view headword) const;
+    std::vector<Article> LookupExact(
+        std::string_view headword,
+        std::size_t result_limit =
+            std::numeric_limits<std::size_t>::max()) const;
 
    private:
     struct IndexRecord {

@@ -162,7 +162,9 @@ verified. The private StarDict reader now safely handles the generated
 uncompressed `.ifo`, `.idx`, and `.dict` fixture for exact lookup, including
 duplicate and UTF-8 headwords, and rejects missing, truncated, and out-of-range
 data. Discovery, persistent indexing, resource lookup, orchestration, and the
-presentation path remain open.
+presentation path remain open. A private dictionary backend contract now keeps
+format adapters behind bounded results, cancellation, deadlines, provenance,
+and stable error categories.
 
 ### Phase 5 — Non-UI Foundation Hardening
 

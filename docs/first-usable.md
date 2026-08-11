@@ -133,7 +133,7 @@ Deferred means sequenced later, not removed from the formal Linux parity gate.
    links, and resources remain.
 2. [x] Establish the narrow `goldendict_core` headless API and desktop facade,
    internal component boundaries, and dependency tests.
-3. [ ] Port the smallest dictionary request contract and shared primitives
+3. [x] Port the smallest dictionary request contract and shared primitives
    needed by the fixture tests.
 4. [ ] Implement StarDict discovery, indexing, search, article, and resource
    behavior as a private format adapter.

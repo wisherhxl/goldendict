@@ -202,9 +202,13 @@ Reader Reader::Open(const std::filesystem::path& info_path) {
     return reader;
 }
 
-std::vector<Article> Reader::LookupExact(std::string_view headword) const {
+std::vector<Article> Reader::LookupExact(std::string_view headword,
+                                         std::size_t result_limit) const {
     std::vector<Article> articles;
     for (const auto& record : index_) {
+        if (articles.size() == result_limit) {
+            break;
+        }
         if (record.headword != headword) {
             continue;
         }

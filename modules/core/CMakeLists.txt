@@ -10,3 +10,12 @@ if(TARGET stardict_reader_test)
       src/formats/stardict/stardict_reader.cc
   )
 endif()
+
+if(TARGET stardict_dictionary_test)
+  target_sources(stardict_dictionary_test
+    PRIVATE
+      src/dictionary/dictionary_backend.cc
+      src/formats/stardict/stardict_dictionary.cc
+      src/formats/stardict/stardict_reader.cc
+  )
+endif()
