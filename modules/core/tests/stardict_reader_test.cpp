@@ -24,6 +24,12 @@ class StardictReaderTest : public QObject {
     void RejectsTruncatedIndex();
     void RejectsArticleOutsideDictionaryData();
     void ReportsMissingCompanionFile();
+    void ReadsCompressedDictionary();
+    void PrefersUncompressedDictionary();
+    void RejectsCorruptCompressedDictionary();
+    void RejectsTruncatedCompressedDictionary();
+    void RejectsOversizedCompressedDictionary();
+    void RebuildsGeneratedIndexWhenCompressedSourceChanges();
     void CreatesAndReusesGeneratedIndex();
     void RebuildsStaleGeneratedIndex();
     void RebuildsCorruptGeneratedIndex();
@@ -154,6 +160,118 @@ void StardictReaderTest::ReportsMissingCompanionFile() {
     } catch (const Error& error) {
         QCOMPARE(error.code(), ErrorCode::kMissingFile);
     }
+}
+
+void StardictReaderTest::ReadsCompressedDictionary() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path = test::WriteStardictFixture(
+        root, {{"example", "Compressed definition."}});
+    const auto compressed_path = test::CompressStardictDictionary(info_path);
+    QVERIFY(std::filesystem::is_regular_file(compressed_path));
+    QVERIFY(std::filesystem::remove(root / "fixture.dict"));
+
+    const Reader reader = Reader::Open(info_path);
+
+    QCOMPARE(reader.LookupExact("example").front().data,
+             "Compressed definition.");
+}
+
+void StardictReaderTest::PrefersUncompressedDictionary() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "plain"}});
+    const auto compressed_path = test::CompressStardictDictionary(info_path);
+    test::WriteBinaryFile(compressed_path, "corrupt compressed shadow");
+
+    const Reader reader = Reader::Open(info_path);
+
+    QCOMPARE(reader.LookupExact("example").front().data, "plain");
+}
+
+void StardictReaderTest::RejectsCorruptCompressedDictionary() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    const auto compressed_path = test::CompressStardictDictionary(info_path);
+    QVERIFY(std::filesystem::remove(root / "fixture.dict"));
+    test::WriteBinaryFile(compressed_path, "not gzip data");
+
+    try {
+        static_cast<void>(Reader::Open(info_path));
+        QFAIL("Reader::Open should reject corrupt compressed data");
+    } catch (const Error& error) {
+        QCOMPARE(error.code(), ErrorCode::kInvalidDictionary);
+    }
+}
+
+void StardictReaderTest::RejectsTruncatedCompressedDictionary() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path = test::WriteStardictFixture(
+        root, {{"example", "compressed article data"}});
+    const auto compressed_path = test::CompressStardictDictionary(info_path);
+    QVERIFY(std::filesystem::remove(root / "fixture.dict"));
+    const auto compressed_size = std::filesystem::file_size(compressed_path);
+    QVERIFY(compressed_size > 8U);
+    std::filesystem::resize_file(compressed_path, compressed_size - 4U);
+
+    try {
+        static_cast<void>(Reader::Open(info_path));
+        QFAIL("Reader::Open should reject a truncated compressed stream");
+    } catch (const Error& error) {
+        QCOMPARE(error.code(), ErrorCode::kInvalidDictionary);
+    }
+}
+
+void StardictReaderTest::RejectsOversizedCompressedDictionary() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    const auto compressed_path = test::CompressStardictDictionary(info_path);
+    QVERIFY(std::filesystem::remove(root / "fixture.dict"));
+    std::filesystem::resize_file(
+        compressed_path,
+        static_cast<std::uintmax_t>(2U) * 1024U * 1024U * 1024U + 1U);
+
+    try {
+        static_cast<void>(Reader::Open(info_path));
+        QFAIL("Reader::Open should reject oversized compressed data");
+    } catch (const Error& error) {
+        QCOMPARE(error.code(), ErrorCode::kInvalidDictionary);
+    }
+}
+
+void StardictReaderTest::RebuildsGeneratedIndexWhenCompressedSourceChanges() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "first"}});
+    const auto compressed_path = test::CompressStardictDictionary(info_path);
+    QVERIFY(std::filesystem::remove(root / "fixture.dict"));
+    const auto generated_index = root / "fixture.gdidx";
+    const Reader created = Reader::Open(info_path, generated_index);
+    QCOMPARE(created.index_state(), IndexState::kCreated);
+
+    test::WriteBinaryFile(root / "fixture.dict", "later");
+    test::CompressStardictDictionary(info_path);
+    QVERIFY(std::filesystem::remove(root / "fixture.dict"));
+    const auto modified = std::filesystem::last_write_time(compressed_path);
+    std::filesystem::last_write_time(compressed_path,
+                                     modified + std::chrono::seconds(2));
+
+    const Reader rebuilt = Reader::Open(info_path, generated_index);
+    QCOMPARE(rebuilt.index_state(), IndexState::kRebuiltStale);
+    QCOMPARE(rebuilt.LookupExact("example").front().data, "later");
 }
 
 void StardictReaderTest::CreatesAndReusesGeneratedIndex() {

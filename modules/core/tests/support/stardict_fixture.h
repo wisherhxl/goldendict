@@ -6,9 +6,13 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <zlib.h>
 
 namespace goldendict::core::test {
 
@@ -69,6 +73,27 @@ inline std::filesystem::path WriteStardictResource(
     std::filesystem::create_directories(path.parent_path());
     WriteBinaryFile(path, contents);
     return path;
+}
+
+inline std::filesystem::path CompressStardictDictionary(
+    const std::filesystem::path& info_path) {
+    auto dictionary_path = info_path;
+    dictionary_path.replace_extension(".dict");
+    std::ifstream input(dictionary_path, std::ios::binary);
+    const std::string contents((std::istreambuf_iterator<char>(input)),
+                               std::istreambuf_iterator<char>());
+    const auto compressed_path = dictionary_path.string() + ".dz";
+    gzFile output = gzopen(compressed_path.c_str(), "wb9");
+    if (output == nullptr) {
+        throw std::runtime_error("Cannot open compressed StarDict fixture");
+    }
+    const int written = gzwrite(output, contents.data(),
+                                static_cast<unsigned>(contents.size()));
+    const int close_result = gzclose(output);
+    if (written != static_cast<int>(contents.size()) || close_result != Z_OK) {
+        throw std::runtime_error("Cannot write compressed StarDict fixture");
+    }
+    return compressed_path;
 }
 
 }  // namespace goldendict::core::test

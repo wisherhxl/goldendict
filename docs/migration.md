@@ -161,8 +161,8 @@ Status: in progress. The shared core boundary and installed headless API are
 verified. The private StarDict reader now safely handles the generated
 uncompressed `.ifo`, `.idx`, and `.dict` fixture for exact lookup, including
 duplicate and UTF-8 headwords, and rejects missing, truncated, and out-of-range
-data. Compressed StarDict data, orchestration, and the presentation path remain
-open. A private dictionary backend contract now keeps
+data. Catalog/orchestration and the presentation path remain open. A private
+dictionary backend contract now keeps
 format adapters behind bounded results, cancellation, deadlines, provenance,
 and stable error categories. StarDict discovery supports recursive roots and
 explicit `.ifo` files with deterministic ordering, deduplication, and
@@ -178,6 +178,11 @@ plain-text or HTML payloads into bounded inert documents, strips active
 content, rewrites dictionary links and embedded resources to canonical typed
 internal URLs, and retains structured resource references without exposing a
 format adapter to the GUI.
+The StarDict adapter also accepts bounded gzip/dictzip-compatible `.dict.dz`
+data, validates compressed input and checksums through zlib, gives an adjacent
+uncompressed `.dict` deterministic precedence, and source-stamps the selected
+representation for generated-index rebuilds. Zlib is a direct Conan dependency
+and a private `goldendict_core` implementation dependency.
 
 ### Phase 5 — Non-UI Foundation Hardening
 

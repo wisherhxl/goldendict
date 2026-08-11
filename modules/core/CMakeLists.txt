@@ -2,7 +2,12 @@
 
 set(the_description "GoldenDict headless and desktop application core")
 
-ti_define_module(core REQUIRED PUBLIC MODULES tiger)
+find_package(ZLIB REQUIRED)
+
+ti_define_module(core
+  REQUIRED PUBLIC MODULES tiger
+  REQUIRED PRIVATE EXTRAS ZLIB::ZLIB
+)
 
 if(TARGET article_assembler_test)
   target_sources(article_assembler_test
@@ -19,6 +24,7 @@ if(TARGET stardict_reader_test)
       src/dictionary/generated_index.cc
       src/formats/stardict/stardict_reader.cc
   )
+  target_link_libraries(stardict_reader_test PRIVATE ZLIB::ZLIB)
 endif()
 
 if(TARGET stardict_dictionary_test)
@@ -30,6 +36,7 @@ if(TARGET stardict_dictionary_test)
       src/formats/stardict/stardict_reader.cc
       src/formats/stardict/stardict_resource.cc
   )
+  target_link_libraries(stardict_dictionary_test PRIVATE ZLIB::ZLIB)
 endif()
 
 if(TARGET stardict_discovery_test)

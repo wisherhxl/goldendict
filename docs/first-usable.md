@@ -133,7 +133,7 @@ Deferred means sequenced later, not removed from the formal Linux parity gate.
    internal component boundaries, and dependency tests.
 3. [x] Port the smallest dictionary request contract and shared primitives
    needed by the fixture tests.
-4. [ ] Implement StarDict discovery, indexing, search, article, and resource
+4. [x] Implement StarDict discovery, indexing, search, article, and resource
    behavior as a private format adapter.
 5. [x] Add browser-independent article assembly and typed resource URLs as a
    private core component.

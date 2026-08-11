@@ -2,6 +2,7 @@
 
 #include "stardict_reader.h"
 
+#include <array>
 #include <charconv>
 #include <fstream>
 #include <limits>
@@ -9,6 +10,8 @@
 #include <sstream>
 #include <system_error>
 #include <utility>
+
+#include <zlib.h>
 
 #include "../../dictionary/generated_index.h"
 
@@ -48,6 +51,75 @@ std::string ReadFile(const std::filesystem::path& path, ErrorCode error_code,
     if (!data.empty() &&
         !input.read(data.data(), static_cast<std::streamsize>(data.size()))) {
         Throw(error_code, path, "Cannot read complete file");
+    }
+    return data;
+}
+
+std::string ReadCompressedDictionary(const std::filesystem::path& path) {
+    std::error_code filesystem_error;
+    const auto compressed_size =
+        std::filesystem::file_size(path, filesystem_error);
+    if (filesystem_error) {
+        Throw(ErrorCode::kMissingFile, path,
+              "Cannot inspect compressed dictionary file");
+    }
+    if (compressed_size > kMaximumDictionarySize) {
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Compressed dictionary exceeds the supported size limit");
+    }
+
+    std::ifstream header(path, std::ios::binary);
+    if (!header) {
+        Throw(ErrorCode::kMissingFile, path,
+              "Cannot open compressed dictionary file");
+    }
+    std::array<unsigned char, 2> signature{};
+    if (!header.read(reinterpret_cast<char*>(signature.data()),
+                     static_cast<std::streamsize>(signature.size()))) {
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Compressed dictionary header is truncated");
+    }
+    if (signature[0] != 0x1fU || signature[1] != 0x8bU) {
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Compressed dictionary has an invalid gzip signature");
+    }
+
+    gzFile input = gzopen(path.string().c_str(), "rb");
+    if (input == nullptr) {
+        Throw(ErrorCode::kMissingFile, path,
+              "Cannot open compressed dictionary file");
+    }
+
+    std::string data;
+    std::array<char, 64U * 1024U> buffer{};
+    while (true) {
+        const int count =
+            gzread(input, buffer.data(), static_cast<unsigned>(buffer.size()));
+        if (count > 0) {
+            const auto size = static_cast<std::size_t>(count);
+            if (size > kMaximumDictionarySize - data.size()) {
+                gzclose(input);
+                Throw(ErrorCode::kInvalidDictionary, path,
+                      "Decompressed dictionary exceeds the supported size "
+                      "limit");
+            }
+            data.append(buffer.data(), size);
+            continue;
+        }
+        if (count < 0) {
+            int error_code = Z_OK;
+            const char* message = gzerror(input, &error_code);
+            const std::string detail =
+                message == nullptr ? "Unknown decompression error" : message;
+            gzclose(input);
+            Throw(ErrorCode::kInvalidDictionary, path,
+                  "Cannot decompress dictionary: " + detail);
+        }
+        break;
+    }
+    if (gzclose(input) != Z_OK) {
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Compressed dictionary checksum or trailer is invalid");
     }
     return data;
 }
@@ -154,6 +226,14 @@ Reader Reader::Open(
     index_path.replace_extension(".idx");
     auto dictionary_path = info_path;
     dictionary_path.replace_extension(".dict");
+    std::error_code filesystem_error;
+    if (!std::filesystem::exists(dictionary_path, filesystem_error)) {
+        if (filesystem_error) {
+            Throw(ErrorCode::kMissingFile, dictionary_path,
+                  "Cannot inspect dictionary file");
+        }
+        dictionary_path += ".dz";
+    }
     const std::vector<std::filesystem::path> source_paths = {
         info_path, index_path, dictionary_path};
     std::optional<dictionary::SourceSnapshot> initial_sources;
@@ -201,8 +281,11 @@ Reader Reader::Open(
               "Only sametypesequence=m or h is supported in this increment");
     }
 
-    reader.dictionary_data_ = ReadFile(
-        dictionary_path, ErrorCode::kInvalidDictionary, kMaximumDictionarySize);
+    reader.dictionary_data_ =
+        dictionary_path.extension() == ".dz"
+            ? ReadCompressedDictionary(dictionary_path)
+            : ReadFile(dictionary_path, ErrorCode::kInvalidDictionary,
+                       kMaximumDictionarySize);
 
     const auto parse_source_index = [&reader, &index_path]() {
         const std::string index_data =
