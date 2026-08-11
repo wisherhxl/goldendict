@@ -65,7 +65,9 @@ std::vector<dictionary::Article> Dictionary::LookupExact(
                        dictionary::Article article;
                        article.headword = std::move(raw_article.headword);
                        article.format =
-                           "stardict/" + reader_.metadata().same_type_sequence;
+                           reader_.metadata().same_type_sequence == "h"
+                               ? "text/html"
+                               : "text/plain";
                        article.data = std::move(raw_article.data);
                        return article;
                    });

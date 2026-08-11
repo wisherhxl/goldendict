@@ -4,6 +4,15 @@ set(the_description "GoldenDict headless and desktop application core")
 
 ti_define_module(core REQUIRED PUBLIC MODULES tiger)
 
+if(TARGET article_assembler_test)
+  target_sources(article_assembler_test
+    PRIVATE
+      src/article/article_assembler.cc
+      src/article/internal_url.cc
+      src/dictionary/dictionary_backend.cc
+  )
+endif()
+
 if(TARGET stardict_reader_test)
   target_sources(stardict_reader_test
     PRIVATE

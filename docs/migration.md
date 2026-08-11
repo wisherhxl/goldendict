@@ -161,8 +161,8 @@ Status: in progress. The shared core boundary and installed headless API are
 verified. The private StarDict reader now safely handles the generated
 uncompressed `.ifo`, `.idx`, and `.dict` fixture for exact lookup, including
 duplicate and UTF-8 headwords, and rejects missing, truncated, and out-of-range
-data. Discovery, persistent indexing, resource lookup, orchestration, and the
-presentation path remain open. A private dictionary backend contract now keeps
+data. Compressed StarDict data, orchestration, and the presentation path remain
+open. A private dictionary backend contract now keeps
 format adapters behind bounded results, cancellation, deadlines, provenance,
 and stable error categories. StarDict discovery supports recursive roots and
 explicit `.ifo` files with deterministic ordering, deduplication, and
@@ -173,6 +173,11 @@ cache files. The generated index remains replaceable implementation data. The
 fixture now covers raw HTML article data, an internal dictionary link, and an
 embedded resource. Private resource loading confines paths to the dictionary's
 `res` directory, applies size and request limits, and returns typed inert data.
+The private browser-independent article component converts backend-neutral
+plain-text or HTML payloads into bounded inert documents, strips active
+content, rewrites dictionary links and embedded resources to canonical typed
+internal URLs, and retains structured resource references without exposing a
+format adapter to the GUI.
 
 ### Phase 5 — Non-UI Foundation Hardening
 

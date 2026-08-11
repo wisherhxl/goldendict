@@ -135,7 +135,7 @@ Deferred means sequenced later, not removed from the formal Linux parity gate.
    needed by the fixture tests.
 4. [ ] Implement StarDict discovery, indexing, search, article, and resource
    behavior as a private format adapter.
-5. [ ] Add browser-independent article assembly and typed resource URLs as a
+5. [x] Add browser-independent article assembly and typed resource URLs as a
    private core component.
 6. [ ] Implement configuration, catalog, and lookup orchestration behind the
    core application facade.

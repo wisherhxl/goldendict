@@ -54,7 +54,7 @@ void StardictDictionaryTest::ExposesIdentityAndBoundedArticles() {
     QCOMPARE(dictionary.identity().source, info_path.string());
     QCOMPARE(articles.size(), std::size_t{1});
     QCOMPARE(articles.front().headword, "example");
-    QCOMPARE(articles.front().format, "stardict/m");
+    QCOMPARE(articles.front().format, "text/plain");
     QCOMPARE(articles.front().data, "first");
 }
 
@@ -71,7 +71,7 @@ void StardictDictionaryTest::PreservesFormattedArticleData() {
     const auto articles = dictionary.LookupExact("example");
 
     QCOMPARE(articles.size(), std::size_t{1});
-    QCOMPARE(articles.front().format, "stardict/h");
+    QCOMPARE(articles.front().format, "text/html");
     QCOMPARE(articles.front().data, html);
 }
 

@@ -42,6 +42,12 @@ cancellation.
 stable deduplication, unrelated-file filtering, and partial results when a
 configured dictionary root is missing.
 
+`article_assembler_test` verifies browser-independent plain-text and HTML
+assembly, a strict formatting allowlist, active-content and event-attribute
+removal, inert malformed-markup fallback, bounded document size, and canonical
+typed lookup and resource URLs. It also verifies that unsafe resource paths and
+non-internal navigation are not emitted into rendered HTML.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
