@@ -6,6 +6,8 @@
 #include <iterator>
 #include <utility>
 
+#include "stardict_resource.h"
+
 namespace goldendict::core::formats::stardict {
 namespace {
 
@@ -38,6 +40,7 @@ Dictionary Dictionary::Open(
         dictionary.identity_.id = std::move(id);
         dictionary.identity_.name = dictionary.reader_.metadata().book_name;
         dictionary.identity_.source = info_path.string();
+        dictionary.resource_root_ = info_path.parent_path() / "res";
         return dictionary;
     } catch (const Error& error) {
         throw TranslateReaderError(error);
@@ -58,10 +61,11 @@ std::vector<dictionary::Article> Dictionary::LookupExact(
     std::vector<dictionary::Article> articles;
     articles.reserve(raw_articles.size());
     std::transform(raw_articles.begin(), raw_articles.end(),
-                   std::back_inserter(articles), [](auto&& raw_article) {
+                   std::back_inserter(articles), [this](auto&& raw_article) {
                        dictionary::Article article;
                        article.headword = std::move(raw_article.headword);
-                       article.format = "stardict/m";
+                       article.format =
+                           "stardict/" + reader_.metadata().same_type_sequence;
                        article.data = std::move(raw_article.data);
                        return article;
                    });
@@ -71,10 +75,7 @@ std::vector<dictionary::Article> Dictionary::LookupExact(
 std::optional<dictionary::Resource> Dictionary::GetResource(
     std::string_view resource_id,
     const dictionary::RequestOptions& options) const {
-    static_cast<void>(resource_id);
-    dictionary::CheckRequest(options);
-    throw dictionary::Error(dictionary::ErrorCode::kUnsupported,
-                            "StarDict resources are not implemented yet");
+    return LoadResource(resource_root_, resource_id, options);
 }
 
 }  // namespace goldendict::core::formats::stardict

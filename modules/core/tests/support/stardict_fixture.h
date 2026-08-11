@@ -33,7 +33,8 @@ inline void WriteBinaryFile(const std::filesystem::path& path,
 
 inline std::filesystem::path WriteStardictFixture(
     const std::filesystem::path& directory,
-    const std::vector<FixtureEntry>& entries) {
+    const std::vector<FixtureEntry>& entries,
+    std::string same_type_sequence = "m") {
     std::string index;
     std::string dictionary;
     for (const auto& entry : entries) {
@@ -54,11 +55,20 @@ inline std::filesystem::path WriteStardictFixture(
         "wordcount=" +
         std::to_string(entries.size()) +
         "\nidxfilesize=" + std::to_string(index.size()) +
-        "\nsametypesequence=m\n";
+        "\nsametypesequence=" + same_type_sequence + "\n";
     WriteBinaryFile(info_path, info);
     WriteBinaryFile(directory / "fixture.idx", index);
     WriteBinaryFile(directory / "fixture.dict", dictionary);
     return info_path;
+}
+
+inline std::filesystem::path WriteStardictResource(
+    const std::filesystem::path& dictionary_directory,
+    const std::filesystem::path& resource_id, const std::string& contents) {
+    const auto path = dictionary_directory / "res" / resource_id;
+    std::filesystem::create_directories(path.parent_path());
+    WriteBinaryFile(path, contents);
+    return path;
 }
 
 }  // namespace goldendict::core::test

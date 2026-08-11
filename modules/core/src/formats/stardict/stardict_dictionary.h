@@ -35,6 +35,7 @@ class Dictionary final : public dictionary::Backend {
    private:
     dictionary::Identity identity_;
     Reader reader_;
+    std::filesystem::path resource_root_;
 };
 
 }  // namespace goldendict::core::formats::stardict

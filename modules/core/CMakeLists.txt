@@ -19,6 +19,7 @@ if(TARGET stardict_dictionary_test)
       src/dictionary/generated_index.cc
       src/formats/stardict/stardict_dictionary.cc
       src/formats/stardict/stardict_reader.cc
+      src/formats/stardict/stardict_resource.cc
   )
 endif()
 

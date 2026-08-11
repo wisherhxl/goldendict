@@ -33,7 +33,10 @@ directory used as an index-file target.
 
 `stardict_dictionary_test` verifies the private backend contract and StarDict
 adapter: identity and provenance, bounded exact results, cancellation,
-deadlines, translated format errors, and explicit unsupported behavior.
+deadlines, translated format errors, raw formatted article preservation, and
+typed resources. Resource checks cover legacy delimiters, missing files,
+traversal and absolute paths, symlink escapes, oversized data, and
+cancellation.
 
 `stardict_discovery_test` verifies recursive and explicit-file discovery,
 stable deduplication, unrelated-file filtering, and partial results when a

@@ -128,9 +128,7 @@ Deferred means sequenced later, not removed from the formal Linux parity gate.
 
 ## Implementation Increments
 
-1. [ ] Commit the generated StarDict fixture and parser-facing tests. The
-   initial uncompressed exact-lookup fixture is complete; formatted content,
-   links, and resources remain.
+1. [x] Commit the generated StarDict fixture and parser-facing tests.
 2. [x] Establish the narrow `goldendict_core` headless API and desktop facade,
    internal component boundaries, and dependency tests.
 3. [x] Port the smallest dictionary request contract and shared primitives

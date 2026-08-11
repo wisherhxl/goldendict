@@ -169,7 +169,10 @@ explicit `.ifo` files with deterministic ordering, deduplication, and
 non-fatal per-root diagnostics. The first application-owned generated-index
 format now creates and atomically commits a bounded checksummed record cache,
 reuses it when all source stamps match, and safely rebuilds stale or corrupt
-cache files. The generated index remains replaceable implementation data.
+cache files. The generated index remains replaceable implementation data. The
+fixture now covers raw HTML article data, an internal dictionary link, and an
+embedded resource. Private resource loading confines paths to the dictionary's
+`res` directory, applies size and request limits, and returns typed inert data.
 
 ### Phase 5 — Non-UI Foundation Hardening
 

@@ -195,9 +195,10 @@ Reader Reader::Open(
                       "idxfilesize");
     reader.metadata_.same_type_sequence =
         RequireField(fields, "sametypesequence", info_path);
-    if (reader.metadata_.same_type_sequence != "m") {
+    if (reader.metadata_.same_type_sequence != "m" &&
+        reader.metadata_.same_type_sequence != "h") {
         Throw(ErrorCode::kUnsupportedFeature, info_path,
-              "Only sametypesequence=m is supported in this increment");
+              "Only sametypesequence=m or h is supported in this increment");
     }
 
     reader.dictionary_data_ = ReadFile(
