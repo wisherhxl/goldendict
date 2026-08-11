@@ -1,0 +1,7 @@
+include(default)
+
+[tool_requires]
+qt/*: python-html5lib/1.1
+
+[buildenv]
+NINJAFLAGS=-j1

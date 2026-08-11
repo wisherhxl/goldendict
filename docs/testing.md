@@ -1,6 +1,6 @@
 # Testing
 
-This document contains Tiger's test commands, verification strategy, and
+This document contains GoldenDict's test commands, verification strategy, and
 pre-PR verification guidance.
 
 ## Local Tests
@@ -14,6 +14,9 @@ ctest --preset conan-release
 
 Tests are built by default. Disable them explicitly with `-DBUILD_TESTS=OFF`
 only when a task does not need local test targets.
+
+The Phase 2 focused test is `goldendict_smoke`. It exercises the executable's
+non-GUI startup path and therefore does not require a display server.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
@@ -39,7 +42,9 @@ cmake --install build --config Release
 Preferred full Linux Release verification workflow:
 
 ```sh
-conan install . --build=missing -s build_type=Release
+conan export conan/recipes/python-html5lib
+conan install . --build=missing -s build_type=Release \
+  -pr:h=profiles/qt-webengine -pr:b=default
 cmake --fresh --preset conan-release
 cmake --build --preset conan-release
 ctest --preset conan-release --output-on-failure
@@ -47,7 +52,7 @@ cmake --install build/Release
 ```
 
 Run the full workflow after changes to CMake, Conan, modules, applications,
-protobuf generation, tests, install behavior, or dependency configuration. For
+tests, install behavior, or dependency configuration. For
 documentation-only changes, a full build is not required. If the full workflow
 is skipped, mention why in the final response or pull request notes.
 

@@ -1,6 +1,6 @@
 # Coding Style
 
-This document contains Tiger's coding, formatting, naming, and code
+This document contains GoldenDict's coding, formatting, naming, and code
 organization rules.
 
 ## C++ Style
@@ -16,21 +16,16 @@ organization rules.
 - Generated files and directories are managed by the CMake workflow. Do not edit
   generated files directly; update templates, CMake logic, or source inputs
   instead.
-- Generated source files must use fixed suffixes: `*.tp.h` and `*.tp.cc` for
-  Tiger platform-generated files, and `*.pb.h` and `*.pb.cc` for
-  protobuf-generated files.
+- Tiger platform-generated source files use the fixed suffixes `*.tp.h` and
+  `*.tp.cc`.
 - Generated-file cleanup logic relies on those suffixes.
 
 ## Module Layout
 
 - A module named `foo` lives under `modules/foo/`.
 - Public headers for module `foo` live under
-  `modules/foo/include/<TI_INTERNAL_NAME>/foo/`.
+  `modules/foo/include/goldendict/foo/`.
 - Implementation files for module `foo` live under `modules/foo/src/`.
-
-## Proto Layout
-
-- Proto files live under `protos/<TI_INTERNAL_NAME>/`.
 
 ## Application Layout
 

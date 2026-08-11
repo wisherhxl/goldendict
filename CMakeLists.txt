@@ -1,8 +1,8 @@
 # ----------------------------------------------------------------------------
 # Copyright (c) 2021 SPDX-License-Identifier: MIT
 #
-# This file is the Root CMake file for Tiger Template. Distributed under the MIT
-# License. See LICENSE file for details.
+# This file is the root CMake file for GoldenDict. The reusable project
+# structure is provided by Tiger under MIT. See LICENSES/README.md.
 #
 # This file is intended to be used with Conan and CMake, Please refer to
 # TigerPlatformUsage.md for more information.
@@ -27,12 +27,12 @@ set(TI_ORG_NAME "")
 # Email of project maintainer.
 set(TI_PROJECT_CONTACT "")
 # Name of the project.
-set(TI_PROJECT_NAME "Tiger")
+set(TI_PROJECT_NAME "GoldenDict")
 # Namespace of the project.
 # Leave empty to use TI_PROJECT_NAME automatically.
-set(TI_PROJECT_NAMESPACE "ti")
+set(TI_PROJECT_NAMESPACE "GoldenDict")
 # Description of the project
-set(TI_PROJECT_INFO "A C++ Template for CMake and Conan")
+set(TI_PROJECT_INFO "A feature-rich dictionary lookup program")
 
 # ============ Project Definition ============
 if(TI_PROJECT_NAME STREQUAL "")
@@ -49,10 +49,10 @@ enable_language(CXX C)
 # Base module directory name for Tiger platform generated files.
 # Leave empty to default to TI_INTERNAL_NAME after
 # TigerMainSettings.cmake normalizes project naming variables.
-set(TI_BASE_MODULE "")
+set(TI_BASE_MODULE "tiger")
 # Module directory name for generated protobuf files.
 # Leave empty to use TI_BASE_MODULE automatically.
-set(TI_PROTO_GEN_MODULE "proto")
+set(TI_PROTO_GEN_MODULE "")
 # TI_FIXED_ORDER_MODULES: Modules listed here are built first, in the order
 # specified. TI_BASE_MODULE is always prepended automatically.
 set(TI_FIXED_ORDER_MODULES "")
@@ -62,3 +62,9 @@ set(TI_FIXED_ORDER_MODULES "")
 # ============ Finalize Settings ============
 include(cmake/TigerMainSettings.cmake)
 include(cmake/TigerMainFinalize.cmake)
+
+# Preserve component license notices alongside the distributed GPL license.
+install(
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/LICENSES/"
+  DESTINATION "licenses"
+  COMPONENT licenses)

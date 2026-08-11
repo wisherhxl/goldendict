@@ -1,17 +1,17 @@
 # Architecture
 
-This document describes Tiger's repository structure, project layout rules, and
-design rationale. `AGENTS.md` stays short and links here for details.
+This document describes GoldenDict's Tiger-based repository structure, project
+layout rules, and design rationale. `AGENTS.md` stays short and links here for
+details.
 
 ## Project Purpose
 
-Tiger is a C++ project template built around CMake and Conan 2. It is intended
-to provide a reusable starting point for cross-platform C++ projects on Linux,
-Windows, and macOS.
+GoldenDict is a cross-platform dictionary lookup application. The migration
+uses Tiger's reusable CMake and Conan 2 structure on Linux, Windows, and macOS.
 
-The template includes conventions for modules, applications, protobuf
-generation, Conan dependency integration, installation layout, and generated
-project configuration files.
+Tiger owns module and application conventions, Conan dependency integration,
+installation layout, and generated project configuration files. GoldenDict
+owns product identity and behavior. See [migration.md](migration.md).
 
 ## Supported Platforms And Toolchains
 
@@ -38,9 +38,11 @@ maintaining a separate AppleClang minimum version.
   copies its contents to the app binary directory after build when resource
   copying is enabled.
 - `modules/`: reusable project modules.
-- `protos/`: protobuf definitions.
 - `cmake/`: shared CMake logic, templates, checks, and packaging helpers.
 - `cmake_finders/`: project CMake finder modules for Conan dependencies.
+- `conan/recipes/`: narrowly scoped local recipes for dependencies unavailable
+  from configured Conan remotes.
+- `profiles/`: project Conan profiles for dependency build requirements.
 - `test_package/`: Conan package verification project.
 - `CMakeLists.txt`: root CMake entry point.
 - `conanfile.py`: Conan recipe for configuring, building, and packaging.
@@ -51,17 +53,11 @@ proto, and generated-file layout rules.
 
 ## Module Design
 
-Tiger separates reusable code, generated protobuf code, and runnable
-applications. Reusable project behavior belongs in `modules/`; applications in
+Tiger separates reusable code and runnable applications. Reusable project
+behavior belongs in `modules/`; applications in
 `apps/` should consume modules instead of becoming shared infrastructure
-themselves. Protobuf definitions live under `protos/` so generated code can be
-managed consistently by the CMake workflow.
-
-## Protobuf Support
-
-- The template should fully support protobuf-based projects.
-- Protobuf usage is optional; projects without `.proto` files must remain
-  supported.
+themselves. Phase 2 retains Tiger's base module as build infrastructure and
+adds the minimal GoldenDict application under `apps/goldendict/`.
 
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

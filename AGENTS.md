@@ -5,8 +5,8 @@ this repository. Keep this file short; move detailed procedures into `docs/`.
 
 ## Project Overview
 
-Tiger is a C++ project template built around CMake and Conan 2. It supports
-Linux, Windows, and macOS.
+GoldenDict is migrating to Qt 6 on Tiger's CMake and Conan 2 project
+structure. It supports Linux, Windows, and macOS.
 
 Supported compiler families:
 
@@ -21,24 +21,27 @@ Current project facts:
 
 - Build system: CMake.
 - Package manager: Conan 2.
-- License: MIT, as recorded in `LICENSE`.
-- Official project/template name: `Tiger`.
-- Official CMake project namespace: `ti`.
-- Conan package name: `tiger`.
-- CMake project name: `Tiger`.
+- Distributed application license: GPL-3.0-or-later, as recorded in `LICENSE`.
+- Reusable Tiger infrastructure retains its MIT license; component ownership
+  and license boundaries are recorded in `LICENSES/README.md`.
+- Official product name: `GoldenDict`.
+- Official CMake project namespace: `GoldenDict`.
+- Conan package name: `goldendict`.
+- CMake project name: `GoldenDict`.
+- Reusable Tiger CMake files and `ti_*` commands retain their existing names.
 - Version is stored in `VERSION` and must use `X.Y.Z` format.
 
 ## Repository Map
 
 - `apps/`: application targets.
 - `modules/`: reusable project modules.
-- `protos/`: protobuf definitions.
 - `cmake/`: shared CMake logic, templates, checks, and packaging helpers.
 - `cmake_finders/`: project CMake finder modules for Conan dependencies.
 - `test_package/`: Conan package verification project.
 - `CMakeLists.txt`: root CMake entry point.
 - `conanfile.py`: Conan recipe for configuring, building, and packaging.
 - `VERSION`: project version source.
+- `docs/migration.md`: migration provenance and phase baseline.
 
 See [docs/architecture.md](docs/architecture.md) for detailed structure and
 design rationale.
@@ -118,7 +121,9 @@ Known prerequisites:
 Linux Debug quick path:
 
 ```sh
-conan install . --build=missing
+conan export conan/recipes/python-html5lib
+conan install . --build=missing \
+  -pr:h=profiles/qt-webengine -pr:b=default
 . build/Debug/generators/conanbuild.sh
 . build/Debug/generators/conanrun.sh
 cmake --preset conan-debug

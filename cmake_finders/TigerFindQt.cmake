@@ -1,34 +1,19 @@
 # ----------------------
-# Find Qt (supports Qt6 and Qt5)
+# Find the Qt 6 components used by GoldenDict.
 set(qt_modules
         Core
         Gui
         Widgets
         Network
-        OpenGL
-        # Sql
-        # Xml
-        # SerialPort
-        # SerialBus
-        Test
+        WebChannel
+        WebEngineCore
+        WebEngineWidgets
 )
 
-# Try Qt6 first, then fall back to Qt5
-find_package(Qt6 COMPONENTS ${qt_modules} QUIET)
-if (Qt6_FOUND)
-    set(QT_MAJOR 6)
-    set(QT_NAMESPACE Qt6)
-    set(QT_DIR ${Qt6_DIR})
-else()
-    find_package(Qt5 COMPONENTS ${qt_modules} QUIET)
-    if (Qt5_FOUND)
-        set(QT_MAJOR 5)
-        set(QT_NAMESPACE Qt5)
-        set(QT_DIR ${Qt5_DIR})
-    else()
-        message(FATAL_ERROR "Neither Qt6 nor Qt5 was found. Please install Qt or adjust CMAKE_PREFIX_PATH.")
-    endif()
-endif()
+find_package(Qt6 6.11.1 REQUIRED COMPONENTS ${qt_modules})
+set(QT_MAJOR 6)
+set(QT_NAMESPACE Qt6)
+set(QT_DIR ${Qt6_DIR})
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
