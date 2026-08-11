@@ -10,6 +10,7 @@ class TestPackageConan(ConanFile):
     settings = "os", "arch", "compiler", "build_type"
     generators = "CMakeToolchain", "CMakeDeps", "VirtualRunEnv"
     test_type = "explicit"
+    exports_sources = "headless_api_test.cpp"
 
     def layout(self):
         cmake_layout(self)
@@ -127,54 +128,6 @@ int main(void) {{
 }}
 """,
         )
-        save(
-            self,
-            os.path.join(self.source_folder, "headless_api_test.cpp"),
-            """#include <cstdlib>
-#include <iostream>
-#include <vector>
-
-#include <goldendict/core/dictionary_service.h>
-
-class EmptyDictionaryService final
-    : public goldendict::core::DictionaryService {
- public:
-    std::vector<goldendict::core::DictionaryIdentity> GetCatalog()
-        const override {
-        return {};
-    }
-
-    goldendict::core::LookupResponse Lookup(
-        const goldendict::core::LookupQuery& query,
-        const goldendict::core::CancellationToken* cancellation) const override {
-        static_cast<void>(query);
-        static_cast<void>(cancellation);
-        return {};
-    }
-
-    std::vector<std::byte> GetResource(
-        const goldendict::core::ResourceReference& resource,
-        const goldendict::core::CancellationToken* cancellation) const override {
-        static_cast<void>(resource);
-        static_cast<void>(cancellation);
-        return {};
-    }
-};
-
-int main() {
-    const EmptyDictionaryService service;
-    const goldendict::core::LookupQuery query;
-
-    if (!service.GetCatalog().empty() || query.result_limit == 0) {
-        return EXIT_FAILURE;
-    }
-
-    std::cout << "headless_api_test: goldendict::core API linked successfully\\n";
-    return EXIT_SUCCESS;
-}
-""",
-        )
-
     def build(self):
         cmake = CMake(self)
         cmake.configure()
