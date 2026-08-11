@@ -3,3 +3,10 @@
 set(the_description "GoldenDict headless and desktop application core")
 
 ti_define_module(core REQUIRED PUBLIC MODULES tiger)
+
+if(TARGET stardict_reader_test)
+  target_sources(stardict_reader_test
+    PRIVATE
+      src/formats/stardict/stardict_reader.cc
+  )
+endif()

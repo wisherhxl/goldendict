@@ -23,6 +23,11 @@ Phase 4 adds `core_api_test` for the bounded headless API defaults and a C++
 link only against the installed `goldendict::core` target, without Qt Widgets,
 Qt Gui, or Qt WebEngine.
 
+`stardict_reader_test` generates a deterministic uncompressed StarDict fixture
+at runtime. It verifies metadata, duplicate and UTF-8 headwords, exact and
+missing lookup, and stable error categories for invalid metadata, truncated
+indexes, missing companion files, and article ranges outside dictionary data.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

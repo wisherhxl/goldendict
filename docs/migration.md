@@ -131,8 +131,9 @@ Working documents:
 - [first-usable.md](first-usable.md): the bounded Phase 4 StarDict vertical
   slice and its acceptance gate.
 
-Status: mapped and documented; awaiting review and approval of the Phase 3
-gate before broad source movement.
+Status: complete. The architecture, ownership boundaries, backend order,
+fixture policy, and Phase 4 gate were reviewed and approved before broad
+source movement.
 
 ### Phase 4 — Minimal Vertical Slice
 
@@ -155,6 +156,13 @@ Gate: a fixture dictionary can be discovered, indexed, searched, and retrieved
 through the public headless API, then rendered through the real Qt 6
 application path, with automated checks for non-visual behavior and a
 documented rendering smoke test.
+
+Status: in progress. The shared core boundary and installed headless API are
+verified. The private StarDict reader now safely handles the generated
+uncompressed `.ifo`, `.idx`, and `.dict` fixture for exact lookup, including
+duplicate and UTF-8 headwords, and rejects missing, truncated, and out-of-range
+data. Discovery, persistent indexing, resource lookup, orchestration, and the
+presentation path remain open.
 
 ### Phase 5 — Non-UI Foundation Hardening
 

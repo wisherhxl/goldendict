@@ -128,20 +128,22 @@ Deferred means sequenced later, not removed from the formal Linux parity gate.
 
 ## Implementation Increments
 
-1. Commit the generated StarDict fixture and parser-facing tests.
-2. Establish the narrow `goldendict_core` headless API and desktop facade,
+1. [ ] Commit the generated StarDict fixture and parser-facing tests. The
+   initial uncompressed exact-lookup fixture is complete; formatted content,
+   links, and resources remain.
+2. [x] Establish the narrow `goldendict_core` headless API and desktop facade,
    internal component boundaries, and dependency tests.
-3. Port the smallest dictionary request contract and shared primitives needed
-   by the fixture tests.
-4. Implement StarDict discovery, indexing, search, article, and resource
+3. [ ] Port the smallest dictionary request contract and shared primitives
+   needed by the fixture tests.
+4. [ ] Implement StarDict discovery, indexing, search, article, and resource
    behavior as a private format adapter.
-5. Add browser-independent article assembly and typed resource URLs as a
+5. [ ] Add browser-independent article assembly and typed resource URLs as a
    private core component.
-6. Implement configuration, catalog, and lookup orchestration behind the core
-   application facade.
-7. Add presentation-only lookup controls and article view, then pass the
+6. [ ] Implement configuration, catalog, and lookup orchestration behind the
+   core application facade.
+7. [ ] Add presentation-only lookup controls and article view, then pass the
    WebEngine checks.
-8. Add the installed headless consumer and run the full Release,
+8. [ ] Add the installed headless consumer and run the full Release,
    `goldendict_core` install/export, package, and Conan consumer gate.
 
 Each increment should build and test independently. Mechanical source import,
