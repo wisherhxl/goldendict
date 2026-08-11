@@ -19,6 +19,8 @@ class StardictReaderTest : public QObject {
    private slots:
     void ReadsMetadataAndExactArticles();
     void MatchesFoldEquivalentHeadwords();
+    void RanksFoldedPrefixMatches();
+    void InvokesLookupCheckpoints();
     void ReturnsNoArticleForMissingHeadword();
     void RejectsInvalidInfoSignature();
     void RejectsInvalidNumericMetadata();
@@ -85,6 +87,39 @@ void StardictReaderTest::MatchesFoldEquivalentHeadwords() {
     QCOMPARE(cjk.size(), std::size_t{1});
     QCOMPARE(cjk.front().data, "cjk");
     QVERIFY(reader.LookupExact("!!!").empty());
+}
+
+void StardictReaderTest::RanksFoldedPrefixMatches() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto info_path = test::WriteStardictFixture(
+        TemporaryPath(directory), {{"cafeteria", "long"},
+                                   {"caf\xc3\xa9 noir", "medium"},
+                                   {"Caf\xc3\xa9", "exact"},
+                                   {"caffeine", "different-prefix"}});
+
+    const Reader reader = Reader::Open(info_path);
+    const auto articles = reader.LookupPrefix("CAFE", 3U);
+
+    QCOMPARE(articles.size(), std::size_t{3});
+    QCOMPARE(articles[0].data, "exact");
+    QCOMPARE(articles[1].data, "medium");
+    QCOMPARE(articles[2].data, "long");
+}
+
+void StardictReaderTest::InvokesLookupCheckpoints() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto info_path = test::WriteStardictFixture(TemporaryPath(directory),
+                                                      {{"example", "article"}});
+    const Reader reader = Reader::Open(info_path);
+    std::size_t checkpoints = 0;
+
+    const auto articles =
+        reader.LookupPrefix("exa", 1U, [&checkpoints]() { ++checkpoints; });
+
+    QCOMPARE(articles.size(), std::size_t{1});
+    QCOMPARE(checkpoints, std::size_t{1});
 }
 
 void StardictReaderTest::ReturnsNoArticleForMissingHeadword() {

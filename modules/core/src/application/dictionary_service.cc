@@ -108,6 +108,24 @@ bool HasInvalidFilter(const std::vector<std::string>& filters) {
     });
 }
 
+std::size_t Utf8CodePointCount(std::string_view text) noexcept {
+    return static_cast<std::size_t>(
+        std::count_if(text.begin(), text.end(), [](char byte) {
+            return (static_cast<unsigned char>(byte) & 0xc0U) != 0x80U;
+        }));
+}
+
+double PrefixScore(std::string_view folded_query,
+                   std::string_view folded_headword) noexcept {
+    const auto query_length = Utf8CodePointCount(folded_query);
+    const auto headword_length = Utf8CodePointCount(folded_headword);
+    if (query_length == 0U || headword_length == 0U) {
+        return 0.0;
+    }
+    return static_cast<double>(query_length) /
+           static_cast<double>(headword_length);
+}
+
 std::optional<std::string> ValidateQuery(const LookupQuery& query) {
     if (query.text.empty() || query.result_limit == 0U) {
         return "Lookup text and result limit must be non-empty";
@@ -185,13 +203,15 @@ class ServiceState final {
                 {LookupErrorCode::kInvalidQuery, {}, *validation_error});
             return response;
         }
-        if (query.match_mode != MatchMode::kExact) {
+        if (query.match_mode != MatchMode::kExact &&
+            query.match_mode != MatchMode::kPrefix) {
             response.errors.push_back(
                 {LookupErrorCode::kInvalidQuery,
                  {},
-                 "Only exact lookup is currently supported"});
+                 "Only exact and prefix lookup are currently supported"});
             return response;
         }
+        const std::string folded_query = foundation::FoldForLookup(query.text);
         response.errors = startup_errors_;
         const std::unordered_set<std::string> requested(
             query.dictionary_ids.begin(), query.dictionary_ids.end());
@@ -219,7 +239,9 @@ class ServiceState final {
                 options.result_limit - response.entries.size();
             try {
                 const auto articles =
-                    backend->LookupExact(query.text, backend_options);
+                    query.match_mode == MatchMode::kExact
+                        ? backend->LookupExact(query.text, backend_options)
+                        : backend->LookupPrefix(query.text, backend_options);
                 for (const auto& article : articles) {
                     const auto document =
                         article::Assemble(identity, {article});
@@ -227,9 +249,14 @@ class ServiceState final {
                     entry.dictionary = PublicIdentity(identity);
                     entry.language = {identity.source_language,
                                       identity.target_language};
-                    entry.match = {query.text,
-                                   foundation::FoldForLookup(article.headword),
-                                   MatchMode::kExact, 1.0};
+                    const std::string folded_headword =
+                        foundation::FoldForLookup(article.headword);
+                    const bool exact = folded_headword == folded_query;
+                    entry.match = {
+                        query.text, folded_headword,
+                        exact ? MatchMode::kExact : MatchMode::kPrefix,
+                        exact ? 1.0
+                              : PrefixScore(folded_query, folded_headword)};
                     entry.article.plain_text = document.plain_text;
                     entry.article.sanitized_html = document.sanitized_html;
                     for (const auto& resource : document.resources) {

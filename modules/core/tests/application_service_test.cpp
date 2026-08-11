@@ -26,6 +26,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsMalformedConfiguration();
     void DiscoversAndQueriesARealFixture();
     void ReturnsCanonicalFoldedMatchInformation();
+    void ReturnsRankedPrefixMatches();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -146,6 +147,33 @@ void ApplicationServiceTest::ReturnsCanonicalFoldedMatchInformation() {
     QCOMPARE(response.entries.front().match.normalized_headword, "cafeaulait");
 }
 
+void ApplicationServiceTest::ReturnsRankedPrefixMatches() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteStardictFixture(root, {{"cafeteria", "long"},
+                                      {"caf\xc3\xa9 noir", "medium"},
+                                      {"Caf\xc3\xa9", "exact"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "CAFE";
+    query.match_mode = MatchMode::kPrefix;
+
+    const auto response = service->Lookup(query);
+
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{3});
+    QCOMPARE(response.entries[0].match.normalized_headword, "cafe");
+    QCOMPARE(response.entries[0].match.mode, MatchMode::kExact);
+    QCOMPARE(response.entries[0].match.score, 1.0);
+    QCOMPARE(response.entries[1].match.normalized_headword, "cafenoir");
+    QCOMPARE(response.entries[1].match.mode, MatchMode::kPrefix);
+    QCOMPARE(response.entries[1].match.score, 0.5);
+    QVERIFY(response.entries[2].match.score < response.entries[1].match.score);
+}
+
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -197,6 +225,12 @@ void ApplicationServiceTest::RejectsUnboundedOrMalformedQueries() {
 
     query.dictionary_ids.clear();
     query.languages = {std::string(kMaximumLookupFilterBytes + 1U, 'x')};
+    response = service->Lookup(query);
+    QCOMPARE(response.errors.size(), std::size_t{1});
+    QCOMPARE(response.errors.front().code, LookupErrorCode::kInvalidQuery);
+
+    query.languages.clear();
+    query.match_mode = MatchMode::kFuzzy;
     response = service->Lookup(query);
     QCOMPARE(response.errors.size(), std::size_t{1});
     QCOMPARE(response.errors.front().code, LookupErrorCode::kInvalidQuery);

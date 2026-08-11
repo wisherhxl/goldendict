@@ -30,6 +30,23 @@ dictionary::Error TranslateReaderError(const Error& error) {
     return dictionary::Error(dictionary::ErrorCode::kInvalidData, error.what());
 }
 
+std::vector<dictionary::Article> TranslateArticles(
+    std::vector<Article> raw_articles, std::string_view same_type_sequence) {
+    std::vector<dictionary::Article> articles;
+    articles.reserve(raw_articles.size());
+    std::transform(
+        raw_articles.begin(), raw_articles.end(), std::back_inserter(articles),
+        [same_type_sequence](auto&& raw_article) {
+            dictionary::Article article;
+            article.headword = std::move(raw_article.headword);
+            article.format =
+                same_type_sequence == "h" ? "text/html" : "text/plain";
+            article.data = std::move(raw_article.data);
+            return article;
+        });
+    return articles;
+}
+
 }  // namespace
 
 Dictionary Dictionary::Open(
@@ -65,23 +82,28 @@ std::vector<dictionary::Article> Dictionary::LookupExact(
         return {};
     }
 
-    auto raw_articles = reader_.LookupExact(headword, options.result_limit);
+    auto raw_articles = reader_.LookupExact(
+        headword, options.result_limit,
+        [&options]() { dictionary::CheckRequest(options); });
     dictionary::CheckRequest(options);
 
-    std::vector<dictionary::Article> articles;
-    articles.reserve(raw_articles.size());
-    std::transform(raw_articles.begin(), raw_articles.end(),
-                   std::back_inserter(articles), [this](auto&& raw_article) {
-                       dictionary::Article article;
-                       article.headword = std::move(raw_article.headword);
-                       article.format =
-                           reader_.metadata().same_type_sequence == "h"
-                               ? "text/html"
-                               : "text/plain";
-                       article.data = std::move(raw_article.data);
-                       return article;
-                   });
-    return articles;
+    return TranslateArticles(std::move(raw_articles),
+                             reader_.metadata().same_type_sequence);
+}
+
+std::vector<dictionary::Article> Dictionary::LookupPrefix(
+    std::string_view prefix, const dictionary::RequestOptions& options) const {
+    dictionary::CheckRequest(options);
+    if (prefix.empty() || options.result_limit == 0U) {
+        return {};
+    }
+
+    auto raw_articles = reader_.LookupPrefix(
+        prefix, options.result_limit,
+        [&options]() { dictionary::CheckRequest(options); });
+    dictionary::CheckRequest(options);
+    return TranslateArticles(std::move(raw_articles),
+                             reader_.metadata().same_type_sequence);
 }
 
 std::optional<dictionary::Resource> Dictionary::GetResource(

@@ -153,7 +153,18 @@ int main() {
             return Fail("generated index was not created");
         }
 
+        query.text = "EXA";
+        query.match_mode = goldendict::core::MatchMode::kPrefix;
+        const auto prefix = service->Lookup(query);
+        if (!prefix.errors.empty() || prefix.entries.size() != 1U ||
+            prefix.entries.front().match.mode !=
+                goldendict::core::MatchMode::kPrefix ||
+            prefix.entries.front().match.normalized_headword != "example") {
+            return Fail("installed prefix lookup failed");
+        }
+
         query.text = "missing";
+        query.match_mode = goldendict::core::MatchMode::kExact;
         const auto missing = service->Lookup(query);
         if (!missing.entries.empty() || !missing.errors.empty()) {
             return Fail("missing lookup did not complete cleanly");

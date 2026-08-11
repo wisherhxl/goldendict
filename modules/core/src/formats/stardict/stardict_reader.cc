@@ -2,6 +2,7 @@
 
 #include "stardict_reader.h"
 
+#include <algorithm>
 #include <array>
 #include <charconv>
 #include <fstream>
@@ -24,6 +25,18 @@ constexpr std::uintmax_t kMaximumIndexSize = 256U * 1024U * 1024U;
 constexpr std::uintmax_t kMaximumDictionarySize =
     static_cast<std::uintmax_t>(2U) * 1024U * 1024U * 1024U;
 constexpr std::string_view kGeneratedIndexFormat = "stardict-records-v1";
+
+bool HasPrefix(std::string_view text, std::string_view prefix) noexcept {
+    return text.size() >= prefix.size() &&
+           text.compare(0, prefix.size(), prefix) == 0;
+}
+
+std::size_t Utf8CodePointCount(std::string_view text) noexcept {
+    return static_cast<std::size_t>(
+        std::count_if(text.begin(), text.end(), [](char byte) {
+            return (static_cast<unsigned char>(byte) & 0xc0U) != 0x80U;
+        }));
+}
 
 [[noreturn]] void Throw(ErrorCode code, const std::filesystem::path& path,
                         std::string message) {
@@ -460,14 +473,19 @@ Reader Reader::Open(
     return reader;
 }
 
-std::vector<Article> Reader::LookupExact(std::string_view headword,
-                                         std::size_t result_limit) const {
+std::vector<Article> Reader::LookupExact(
+    std::string_view headword, std::size_t result_limit,
+    const std::function<void()>& checkpoint) const {
     std::vector<Article> articles;
     const std::string folded_headword = foundation::FoldForLookup(headword);
-    if (folded_headword.empty()) {
+    if (folded_headword.empty() || result_limit == 0U) {
         return articles;
     }
+    std::size_t record_number = 0;
     for (const auto& record : index_) {
+        if (checkpoint && (record_number++ % 1024U) == 0U) {
+            checkpoint();
+        }
         if (articles.size() == result_limit) {
             break;
         }
@@ -478,6 +496,59 @@ std::vector<Article> Reader::LookupExact(std::string_view headword,
         article.headword = record.headword;
         article.data =
             dictionary_data_.substr(record.article_offset, record.article_size);
+        articles.push_back(std::move(article));
+    }
+    return articles;
+}
+
+std::vector<Article> Reader::LookupPrefix(
+    std::string_view prefix, std::size_t result_limit,
+    const std::function<void()>& checkpoint) const {
+    std::vector<Article> articles;
+    const std::string folded_prefix = foundation::FoldForLookup(prefix);
+    if (folded_prefix.empty() || result_limit == 0U) {
+        return articles;
+    }
+
+    std::vector<const IndexRecord*> matches;
+    std::size_t record_number = 0;
+    for (const auto& record : index_) {
+        if (checkpoint && (record_number++ % 1024U) == 0U) {
+            checkpoint();
+        }
+        if (HasPrefix(record.folded_headword, folded_prefix)) {
+            matches.push_back(&record);
+        }
+    }
+    std::stable_sort(
+        matches.begin(), matches.end(),
+        [&folded_prefix](const auto* left, const auto* right) {
+            const bool left_exact = left->folded_headword == folded_prefix;
+            const bool right_exact = right->folded_headword == folded_prefix;
+            if (left_exact != right_exact) {
+                return left_exact;
+            }
+            const auto left_length = Utf8CodePointCount(left->folded_headword);
+            const auto right_length =
+                Utf8CodePointCount(right->folded_headword);
+            if (left_length != right_length) {
+                return left_length < right_length;
+            }
+            if (left->folded_headword != right->folded_headword) {
+                return left->folded_headword < right->folded_headword;
+            }
+            return left->headword < right->headword;
+        });
+
+    articles.reserve(std::min(result_limit, matches.size()));
+    for (const auto* record : matches) {
+        if (articles.size() == result_limit) {
+            break;
+        }
+        Article article;
+        article.headword = record->headword;
+        article.data = dictionary_data_.substr(record->article_offset,
+                                               record->article_size);
         articles.push_back(std::move(article));
     }
     return articles;

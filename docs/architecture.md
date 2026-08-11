@@ -93,6 +93,13 @@ retain the dictionary's original headword and expose the canonical form only as
 transport-neutral match metadata, so GUI and future AI-service adapters share
 identical lookup semantics.
 
+The same headless lookup request supports bounded prefix matching through
+`MatchMode::kPrefix`. Prefix ranking is core behavior: canonical exact matches
+come first, followed by shorter canonical candidates with deterministic scores.
+Adapters may present these entries as type-ahead results, but neither the GUI
+nor a future AI transport reimplements folding, ranking, limits, cancellation,
+or dictionary traversal.
+
 `main.cpp` may wire a future optional integration module into the core
 extension contracts; other GUI code must not include adapter headers.
 

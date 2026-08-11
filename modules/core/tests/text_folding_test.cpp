@@ -22,6 +22,10 @@ void TextFoldingTest::FoldsLookupEquivalentText_data() {
     QTest::newRow("empty") << QString() << QString();
     QTest::newRow("case-diacritic-punctuation")
         << QString::fromUtf8(" Café-au LAIT! ") << QStringLiteral("cafeaulait");
+    QTest::newRow("prefix-cafeteria")
+        << QStringLiteral("cafeteria") << QStringLiteral("cafeteria");
+    QTest::newRow("prefix-cafe-noir")
+        << QString::fromUtf8("café noir") << QStringLiteral("cafenoir");
     QTest::newRow("full-case-fold")
         << QString::fromUtf8("Straße") << QStringLiteral("strasse");
     QTest::newRow("compatibility-characters")

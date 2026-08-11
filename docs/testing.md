@@ -26,7 +26,8 @@ Qt Gui, or Qt WebEngine.
 `stardict_reader_test` generates deterministic uncompressed and gzip/dictzip-
 compatible `.dict.dz` StarDict fixtures at runtime. It verifies metadata,
 duplicate and UTF-8 headwords, exact and missing lookup, uncompressed-file
-precedence, and stable error categories for invalid metadata, corrupt
+precedence, Unicode-folded ranked prefix lookup, scan checkpoints, and stable
+error categories for invalid metadata, corrupt
 compression, truncated indexes, missing companion files, and article ranges
 outside dictionary data. It also verifies generated-index creation and reuse,
 source-stamp invalidation for either data representation, checksum corruption
@@ -35,8 +36,9 @@ index-file target.
 
 `stardict_dictionary_test` verifies the private backend contract and StarDict
 adapter: identity and provenance, bounded exact results, cancellation,
-deadlines, translated format errors, raw formatted article preservation, and
-typed resources. Resource checks cover legacy delimiters, missing files,
+deadlines, bounded prefix results, translated format errors, raw formatted
+article preservation, and typed resources. Resource checks cover legacy
+delimiters, missing files,
 traversal and absolute paths, symlink escapes, oversized data, and
 cancellation.
 

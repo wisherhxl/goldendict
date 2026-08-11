@@ -28,6 +28,9 @@ class Dictionary final : public dictionary::Backend {
     std::vector<dictionary::Article> LookupExact(
         std::string_view headword,
         const dictionary::RequestOptions& options = {}) const override;
+    std::vector<dictionary::Article> LookupPrefix(
+        std::string_view prefix,
+        const dictionary::RequestOptions& options = {}) const override;
     std::optional<dictionary::Resource> GetResource(
         std::string_view resource_id,
         const dictionary::RequestOptions& options = {}) const override;

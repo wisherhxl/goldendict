@@ -194,6 +194,13 @@ diacritic removal, and whitespace/punctuation folding. StarDict exact lookup
 uses the canonical folded form while preserving the source headword, and the
 headless response publishes that canonical form as match metadata. ICU is a
 private implementation dependency and does not enter the public core ABI.
+The third increment activates the existing transport-neutral `kPrefix` match
+mode without adding another public module or format-specific API. StarDict
+prefix lookup uses the same canonical Unicode form, ranks exact canonical
+matches first and then shorter candidates, publishes deterministic match
+scores, observes cancellation/deadline checkpoints during index scans, and is
+covered by the installed headless consumer. Fuzzy matching and a dedicated
+headword-only suggestion API remain deferred.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

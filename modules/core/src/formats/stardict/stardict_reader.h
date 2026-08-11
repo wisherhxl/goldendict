@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -71,8 +72,12 @@ class Reader final {
 
     std::vector<Article> LookupExact(
         std::string_view headword,
-        std::size_t result_limit =
-            std::numeric_limits<std::size_t>::max()) const;
+        std::size_t result_limit = std::numeric_limits<std::size_t>::max(),
+        const std::function<void()>& checkpoint = {}) const;
+    std::vector<Article> LookupPrefix(
+        std::string_view prefix,
+        std::size_t result_limit = std::numeric_limits<std::size_t>::max(),
+        const std::function<void()>& checkpoint = {}) const;
 
    private:
     struct IndexRecord {

@@ -34,6 +34,7 @@
 | Dictionary identity and index lifecycle | slice | Phase 4 | deterministic index tests |
 | Async word/article/resource requests | slice | Phase 4 | completion/cancel/error tests |
 | Exact headword lookup | slice | Phase 4 | generated StarDict fixture |
+| Ranked Unicode-folded prefix lookup | slice | Phase 5 | bounded prefix ranking and installed-consumer tests |
 | Unicode case/diacritic/punctuation folding | slice | Phase 5 | data-driven text and folded-lookup tests |
 | Headword suggestions | later | Phase 5 | ranked suggestion fixtures |
 | Morphology and transliteration | later | Phase 5 | per-language fixtures |
