@@ -86,9 +86,10 @@ new product entry points, and package metadata.
 Gate: a clean Linux environment can reproduce the minimal GoldenDict Qt 6
 skeleton, and Qt WebEngine is demonstrably enabled.
 
-Status: implementation and direct Release verification complete. Conan
-`test_package` verification remains deferred until an approved commit makes
-the SCM revision exportable.
+Status: complete. A clean pushed revision reproduces the exact migration source
+and Tiger submodule through Conan, builds and packages `goldendict/1.6.0`, and
+passes the generated C consumer in `test_package`. Direct Release configure,
+build, smoke test, install, and TGZ package checks also pass.
 
 ### Stage 3 — Porting Map And First-Usable Definition
 
