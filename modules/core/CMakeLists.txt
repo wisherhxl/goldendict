@@ -36,6 +36,11 @@ if(TARGET text_folding_test)
   target_link_libraries(text_folding_test PRIVATE ICU::uc)
 endif()
 
+if(TARGET text_encoding_test)
+  target_sources(text_encoding_test PRIVATE src/foundation/text_encoding.cc)
+  target_link_libraries(text_encoding_test PRIVATE ICU::uc)
+endif()
+
 if(TARGET stardict_reader_test)
   target_sources(stardict_reader_test
     PRIVATE

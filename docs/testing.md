@@ -27,8 +27,8 @@ Qt Gui, or Qt WebEngine.
 compatible `.dict.dz` StarDict fixtures at runtime. It verifies metadata,
 duplicate and UTF-8 headwords, exact and missing lookup, uncompressed-file
 precedence, Unicode-folded ranked prefix lookup, scan checkpoints, and stable
-error categories for invalid metadata, corrupt
-compression, truncated indexes, missing companion files, and article ranges
+error categories for invalid metadata, corrupt compression, truncated indexes,
+missing companion files, and article ranges
 outside dictionary data. It also verifies generated-index creation and reuse,
 source-stamp invalidation for either data representation, checksum corruption
 recovery, temporary-file cleanup, and rejection of a directory used as an
@@ -38,9 +38,8 @@ index-file target.
 adapter: identity and provenance, bounded exact results, cancellation,
 deadlines, bounded prefix results, translated format errors, raw formatted
 article preservation, and typed resources. Resource checks cover legacy
-delimiters, missing files,
-traversal and absolute paths, symlink escapes, oversized data, and
-cancellation.
+delimiters, missing files, traversal and absolute paths, symlink escapes,
+oversized data, and cancellation.
 
 `stardict_discovery_test` verifies recursive and explicit-file discovery,
 stable deduplication, unrelated-file filtering, and partial results when a
@@ -51,6 +50,11 @@ assembly, a strict formatting allowlist, active-content and event-attribute
 removal, inert malformed-markup fallback, bounded document size, and canonical
 typed lookup and resource URLs. It also verifies that unsafe resource paths and
 non-internal navigation are not emitted into rendered HTML.
+
+`text_encoding_test` verifies strict bounded conversion between UTF-8 and the
+representative legacy encodings Latin-1, UTF-16LE, GB18030, and EUC-JP. It also
+rejects malformed byte sequences, malformed UTF-8, unrepresentable target
+characters, unknown or oversized encoding names, and output-limit violations.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

@@ -213,10 +213,11 @@ Library linkage policy:
   repository maintainer to create it.
 
 ICU 74.2 is a direct private `goldendict_core` implementation dependency for
-Unicode lookup folding. Conan already resolves the same ICU revision through
-Qt, so the explicit requirement does not add a second runtime implementation.
-Its CMakeDeps config exports `ICU::uc`; ICU types and linkage do not appear in
-the installed public headers or exported target usage requirements.
+Unicode lookup folding and strict legacy text-encoding conversion. Conan
+already resolves the same ICU revision through Qt, so the explicit requirement
+does not add a second runtime implementation. Its CMakeDeps config exports
+`ICU::uc`; ICU types and linkage do not appear in the installed public headers
+or exported target usage requirements.
 
 ## Packaging
 

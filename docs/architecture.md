@@ -100,6 +100,12 @@ Adapters may present these entries as type-ahead results, but neither the GUI
 nor a future AI transport reimplements folding, ranking, limits, cancellation,
 or dictionary traversal.
 
+Legacy text encoding is also a private foundation concern. Format adapters use
+one bounded, strict UTF-8 conversion primitive rather than Qt GUI-era codec
+objects or format-local conversion loops. The primitive supports both decoding
+dictionary payloads and encoding query text, rejects substitution on malformed
+or unrepresentable data, and keeps ICU types out of public headers.
+
 `main.cpp` may wire a future optional integration module into the core
 extension contracts; other GUI code must not include adapter headers.
 

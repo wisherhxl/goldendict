@@ -36,6 +36,7 @@
 | Exact headword lookup | slice | Phase 4 | generated StarDict fixture |
 | Ranked Unicode-folded prefix lookup | slice | Phase 5 | bounded prefix ranking and installed-consumer tests |
 | Unicode case/diacritic/punctuation folding | slice | Phase 5 | data-driven text and folded-lookup tests |
+| Bounded legacy text encoding conversion | slice | Phase 5 | strict Latin-1, UTF-16, GB18030, and EUC-JP fixtures |
 | Headword suggestions | later | Phase 5 | ranked suggestion fixtures |
 | Morphology and transliteration | later | Phase 5 | per-language fixtures |
 | Full-text search | later | Phase 5/8 | index and UI workflow tests |

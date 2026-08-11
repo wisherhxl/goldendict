@@ -201,6 +201,13 @@ matches first and then shorter candidates, publishes deterministic match
 scores, observes cancellation/deadline checkpoints during index scans, and is
 covered by the installed headless consumer. Fuzzy matching and a dedicated
 headword-only suggestion API remain deferred.
+The fourth increment adds a private, bounded text-encoding primitive on the
+existing ICU dependency. It strictly decodes legacy dictionary bytes to UTF-8
+and encodes UTF-8 query text for format adapters, rejects malformed input,
+unrepresentable output, unknown or oversized encoding names, and output-limit
+violations, and covers Latin-1, UTF-16LE, GB18030, and EUC-JP. This establishes
+one encoding policy for later SLOB, MDict, Babylon, Hunspell, and EPWING ports
+without exposing a codec library through the public core ABI.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 
