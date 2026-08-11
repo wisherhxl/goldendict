@@ -21,6 +21,9 @@ local.cmake
 .cache/
 .codex
 tags
+# Python bytecode caches generated while loading Conan recipes
+__pycache__/
+*.py[cod]
 # vim tmp file
 *.swp
 # protobuf autogen
