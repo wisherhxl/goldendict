@@ -17,7 +17,9 @@ namespace goldendict::core::formats::stardict {
 class Dictionary final : public dictionary::Backend {
    public:
     static Dictionary Open(std::string id,
-                           const std::filesystem::path& info_path);
+                           const std::filesystem::path& info_path,
+                           const std::optional<std::filesystem::path>&
+                               generated_index_path = std::nullopt);
 
     const dictionary::Identity& identity() const noexcept override {
         return identity_;

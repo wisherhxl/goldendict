@@ -2,6 +2,7 @@
 
 #include <QtTest>
 
+#include <chrono>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -23,6 +24,10 @@ class StardictReaderTest : public QObject {
     void RejectsTruncatedIndex();
     void RejectsArticleOutsideDictionaryData();
     void ReportsMissingCompanionFile();
+    void CreatesAndReusesGeneratedIndex();
+    void RebuildsStaleGeneratedIndex();
+    void RebuildsCorruptGeneratedIndex();
+    void RejectsDirectoryAsGeneratedIndexTarget();
 };
 
 std::filesystem::path TemporaryPath(const QTemporaryDir& directory) {
@@ -149,6 +154,87 @@ void StardictReaderTest::ReportsMissingCompanionFile() {
     } catch (const Error& error) {
         QCOMPARE(error.code(), ErrorCode::kMissingFile);
     }
+}
+
+void StardictReaderTest::CreatesAndReusesGeneratedIndex() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "A test definition."}});
+    const auto generated_index = root / "indexes" / "fixture.gdidx";
+
+    const Reader created = Reader::Open(info_path, generated_index);
+    QCOMPARE(created.index_state(), IndexState::kCreated);
+    QVERIFY(std::filesystem::is_regular_file(generated_index));
+    std::size_t generated_file_count = 0;
+    for (const auto& entry :
+         std::filesystem::directory_iterator(generated_index.parent_path())) {
+        static_cast<void>(entry);
+        ++generated_file_count;
+    }
+    QCOMPARE(generated_file_count, std::size_t{1});
+
+    const Reader reused = Reader::Open(info_path, generated_index);
+    QCOMPARE(reused.index_state(), IndexState::kReused);
+    QCOMPARE(reused.LookupExact("example").front().data, "A test definition.");
+}
+
+void StardictReaderTest::RebuildsStaleGeneratedIndex() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    const auto generated_index = root / "fixture.gdidx";
+    const Reader created = Reader::Open(info_path, generated_index);
+    QCOMPARE(created.index_state(), IndexState::kCreated);
+
+    const auto source_index = root / "fixture.idx";
+    const auto modified = std::filesystem::last_write_time(source_index);
+    std::filesystem::last_write_time(source_index,
+                                     modified + std::chrono::seconds(2));
+
+    const Reader rebuilt = Reader::Open(info_path, generated_index);
+    QCOMPARE(rebuilt.index_state(), IndexState::kRebuiltStale);
+    QCOMPARE(rebuilt.LookupExact("example").front().data, "article");
+}
+
+void StardictReaderTest::RebuildsCorruptGeneratedIndex() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    const auto generated_index = root / "fixture.gdidx";
+    const Reader created = Reader::Open(info_path, generated_index);
+    QCOMPARE(created.index_state(), IndexState::kCreated);
+    test::WriteBinaryFile(generated_index, "corrupt generated index");
+
+    const Reader rebuilt = Reader::Open(info_path, generated_index);
+    QCOMPARE(rebuilt.index_state(), IndexState::kRebuiltCorrupt);
+    QCOMPARE(rebuilt.LookupExact("example").front().data, "article");
+
+    const Reader reused = Reader::Open(info_path, generated_index);
+    QCOMPARE(reused.index_state(), IndexState::kReused);
+}
+
+void StardictReaderTest::RejectsDirectoryAsGeneratedIndexTarget() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    const auto generated_index = root / "fixture.gdidx";
+    QVERIFY(std::filesystem::create_directory(generated_index));
+
+    try {
+        static_cast<void>(Reader::Open(info_path, generated_index));
+        QFAIL("Reader::Open should reject a directory index target");
+    } catch (const Error& error) {
+        QCOMPARE(error.code(), ErrorCode::kIndexStorage);
+    }
+    QVERIFY(std::filesystem::is_directory(generated_index));
 }
 
 }  // namespace

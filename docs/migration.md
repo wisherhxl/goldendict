@@ -166,7 +166,10 @@ presentation path remain open. A private dictionary backend contract now keeps
 format adapters behind bounded results, cancellation, deadlines, provenance,
 and stable error categories. StarDict discovery supports recursive roots and
 explicit `.ifo` files with deterministic ordering, deduplication, and
-non-fatal per-root diagnostics.
+non-fatal per-root diagnostics. The first application-owned generated-index
+format now creates and atomically commits a bounded checksummed record cache,
+reuses it when all source stamps match, and safely rebuilds stale or corrupt
+cache files. The generated index remains replaceable implementation data.
 
 ### Phase 5 — Non-UI Foundation Hardening
 

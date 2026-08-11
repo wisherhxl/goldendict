@@ -27,6 +27,9 @@ Qt Gui, or Qt WebEngine.
 at runtime. It verifies metadata, duplicate and UTF-8 headwords, exact and
 missing lookup, and stable error categories for invalid metadata, truncated
 indexes, missing companion files, and article ranges outside dictionary data.
+It also verifies generated-index creation and reuse, source-stamp invalidation,
+checksum corruption recovery, temporary-file cleanup, and rejection of a
+directory used as an index-file target.
 
 `stardict_dictionary_test` verifies the private backend contract and StarDict
 adapter: identity and provenance, bounded exact results, cancellation,

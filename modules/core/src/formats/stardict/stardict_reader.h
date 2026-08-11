@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -19,7 +20,16 @@ enum class ErrorCode {
     kInvalidInfo,
     kInvalidIndex,
     kInvalidDictionary,
+    kIndexStorage,
     kUnsupportedFeature,
+};
+
+enum class IndexState {
+    kSourceOnly,
+    kCreated,
+    kReused,
+    kRebuiltStale,
+    kRebuiltCorrupt,
 };
 
 class Error final : public std::runtime_error {
@@ -49,9 +59,13 @@ struct Article {
 
 class Reader final {
    public:
-    static Reader Open(const std::filesystem::path& info_path);
+    static Reader Open(const std::filesystem::path& info_path,
+                       const std::optional<std::filesystem::path>&
+                           generated_index_path = std::nullopt);
 
     const Metadata& metadata() const noexcept { return metadata_; }
+
+    IndexState index_state() const noexcept { return index_state_; }
 
     std::vector<Article> LookupExact(
         std::string_view headword,
@@ -68,6 +82,7 @@ class Reader final {
     Metadata metadata_;
     std::vector<IndexRecord> index_;
     std::string dictionary_data_;
+    IndexState index_state_ = IndexState::kSourceOnly;
 };
 
 }  // namespace goldendict::core::formats::stardict

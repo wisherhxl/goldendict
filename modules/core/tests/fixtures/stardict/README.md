@@ -12,3 +12,7 @@ The initial fixture covers uncompressed StarDict 2.4.2 files with 32-bit index
 offsets and `sametypesequence=m`. Compressed data, synonyms, resources, and
 other article type sequences require separate compatibility fixtures before
 they are enabled.
+
+The generated application index is not dictionary source data. Tests create it
+in a temporary index location, verify reuse and safe stale/corrupt rebuilds,
+and discard it with the temporary directory.

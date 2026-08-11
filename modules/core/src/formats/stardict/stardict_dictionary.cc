@@ -12,6 +12,7 @@ namespace {
 dictionary::Error TranslateReaderError(const Error& error) {
     switch (error.code()) {
         case ErrorCode::kMissingFile:
+        case ErrorCode::kIndexStorage:
             return dictionary::Error(dictionary::ErrorCode::kUnavailable,
                                      error.what());
         case ErrorCode::kUnsupportedFeature:
@@ -28,11 +29,12 @@ dictionary::Error TranslateReaderError(const Error& error) {
 
 }  // namespace
 
-Dictionary Dictionary::Open(std::string id,
-                            const std::filesystem::path& info_path) {
+Dictionary Dictionary::Open(
+    std::string id, const std::filesystem::path& info_path,
+    const std::optional<std::filesystem::path>& generated_index_path) {
     try {
         Dictionary dictionary;
-        dictionary.reader_ = Reader::Open(info_path);
+        dictionary.reader_ = Reader::Open(info_path, generated_index_path);
         dictionary.identity_.id = std::move(id);
         dictionary.identity_.name = dictionary.reader_.metadata().book_name;
         dictionary.identity_.source = info_path.string();

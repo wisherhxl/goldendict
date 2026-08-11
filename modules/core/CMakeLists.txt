@@ -7,6 +7,7 @@ ti_define_module(core REQUIRED PUBLIC MODULES tiger)
 if(TARGET stardict_reader_test)
   target_sources(stardict_reader_test
     PRIVATE
+      src/dictionary/generated_index.cc
       src/formats/stardict/stardict_reader.cc
   )
 endif()
@@ -15,6 +16,7 @@ if(TARGET stardict_dictionary_test)
   target_sources(stardict_dictionary_test
     PRIVATE
       src/dictionary/dictionary_backend.cc
+      src/dictionary/generated_index.cc
       src/formats/stardict/stardict_dictionary.cc
       src/formats/stardict/stardict_reader.cc
   )
