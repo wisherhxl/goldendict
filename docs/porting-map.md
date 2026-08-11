@@ -55,12 +55,13 @@ manual parity check.
 The paths below are ownership boundaries, not a requirement to create every
 directory before code needs it.
 
-- `modules/goldendict_core/`: the shared-library boundary containing internal
+- `modules/core/`: the Tiger module that produces the `goldendict_core`
+  shared-library boundary and contains internal
   foundation, dictionary, local-format, article, configuration, and
   application components.
-- `modules/goldendict_core/include/goldendict/core/`: narrow installed desktop
+- `modules/core/include/goldendict/core/`: narrow installed desktop
   and headless APIs, transport-neutral DTOs, and genuine extension contracts.
-- `modules/goldendict_core/src/`: private implementations organized by
+- `modules/core/src/`: private implementations organized by
   responsibility, including `foundation/`, `dictionary/`, `formats/`,
   `article/`, and `application/`.
 - Later optional integration modules are added only when their deployment or

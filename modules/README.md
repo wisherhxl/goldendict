@@ -1,7 +1,8 @@
 # GoldenDict Modules
 
 GoldenDict product logic initially lives in the public `goldendict_core`
-shared-library module declared with Tiger's `ti_define_module` helper. The GUI
+shared library. Its Tiger short name is `core`, so the source lives under
+`modules/core/` and is declared with `ti_define_module(core ...)`. The GUI
 executable consumes its desktop facade and remains responsible only for
 presentation and composition. A future dictionary-service executable consumes
 the separate headless API from the same library, primarily to provide

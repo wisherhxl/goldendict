@@ -18,6 +18,11 @@ only when a task does not need local test targets.
 The Phase 2 focused test is `goldendict_smoke`. It exercises the executable's
 non-GUI startup path and therefore does not require a display server.
 
+Phase 4 adds `core_api_test` for the bounded headless API defaults and a C++
+`headless_api_test` consumer under `test_package/`. The latter must compile and
+link only against the installed `goldendict::core` target, without Qt Widgets,
+Qt Gui, or Qt WebEngine.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

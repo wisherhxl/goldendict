@@ -81,7 +81,7 @@ class TestPackageConan(ConanFile):
             self,
             os.path.join(self.source_folder, "CMakeLists.txt"),
             f"""cmake_minimum_required(VERSION 3.15)
-project(test_package LANGUAGES C)
+project(test_package LANGUAGES C CXX)
 
 if(CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_CONFIGURATION_TYPES "{self.settings.build_type}" CACHE STRING "" FORCE)
@@ -91,6 +91,10 @@ find_package({package_name} CONFIG REQUIRED)
 
 add_executable(test_package test_package.c)
 target_link_libraries(test_package PRIVATE ${{{package_name}_LIBS}})
+
+add_executable(headless_api_test headless_api_test.cpp)
+target_compile_features(headless_api_test PRIVATE cxx_std_17)
+target_link_libraries(headless_api_test PRIVATE goldendict::core)
 """,
         )
         save(
@@ -123,6 +127,53 @@ int main(void) {{
 }}
 """,
         )
+        save(
+            self,
+            os.path.join(self.source_folder, "headless_api_test.cpp"),
+            """#include <cstdlib>
+#include <iostream>
+#include <vector>
+
+#include <goldendict/core/dictionary_service.h>
+
+class EmptyDictionaryService final
+    : public goldendict::core::DictionaryService {
+ public:
+    std::vector<goldendict::core::DictionaryIdentity> GetCatalog()
+        const override {
+        return {};
+    }
+
+    goldendict::core::LookupResponse Lookup(
+        const goldendict::core::LookupQuery& query,
+        const goldendict::core::CancellationToken* cancellation) const override {
+        static_cast<void>(query);
+        static_cast<void>(cancellation);
+        return {};
+    }
+
+    std::vector<std::byte> GetResource(
+        const goldendict::core::ResourceReference& resource,
+        const goldendict::core::CancellationToken* cancellation) const override {
+        static_cast<void>(resource);
+        static_cast<void>(cancellation);
+        return {};
+    }
+};
+
+int main() {
+    const EmptyDictionaryService service;
+    const goldendict::core::LookupQuery query;
+
+    if (!service.GetCatalog().empty() || query.result_limit == 0) {
+        return EXIT_FAILURE;
+    }
+
+    std::cout << "headless_api_test: goldendict::core API linked successfully\\n";
+    return EXIT_SUCCESS;
+}
+""",
+        )
 
     def build(self):
         cmake = CMake(self)
@@ -133,3 +184,7 @@ int main(void) {{
         if can_run(self):
             bin_path = os.path.join(self.cpp.build.bindirs[0], "test_package")
             self.run(bin_path, env="conanrun")
+            headless_path = os.path.join(
+                self.cpp.build.bindirs[0], "headless_api_test"
+            )
+            self.run(headless_path, env="conanrun")

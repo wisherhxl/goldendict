@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include <QtTest>
+
+#include <utility>
+
+#include "goldendict/core/desktop_facade.h"
+#include "goldendict/core/dictionary_service.h"
+
+namespace goldendict::core {
+
+class NeverCancelled final : public CancellationToken {
+   public:
+    bool IsCancellationRequested() const noexcept override { return false; }
+};
+
+class EmptyDictionaryService final : public DictionaryService {
+   public:
+    std::vector<DictionaryIdentity> GetCatalog() const override { return {}; }
+
+    LookupResponse Lookup(
+        const LookupQuery& query,
+        const CancellationToken* cancellation) const override {
+        if (cancellation != nullptr &&
+            cancellation->IsCancellationRequested()) {
+            LookupResponse response;
+            LookupError error;
+            error.code = LookupErrorCode::kCancelled;
+            error.message = "Lookup cancelled";
+            response.errors.push_back(std::move(error));
+            return response;
+        }
+        LookupResponse response;
+        LookupError error;
+        error.code = LookupErrorCode::kDictionaryUnavailable;
+        error.message = "No dictionaries for " + query.text;
+        response.errors.push_back(std::move(error));
+        return response;
+    }
+
+    std::vector<std::byte> GetResource(
+        const ResourceReference& resource,
+        const CancellationToken* cancellation) const override {
+        static_cast<void>(resource);
+        static_cast<void>(cancellation);
+        return {};
+    }
+};
+
+class CoreApiTest : public QObject {
+    Q_OBJECT
+
+   private slots:
+    void LookupQueryHasBoundedDefaults();
+    void HeadlessServiceDoesNotRequireAGuiApplication();
+};
+
+void CoreApiTest::LookupQueryHasBoundedDefaults() {
+    const LookupQuery query;
+
+    QCOMPARE(query.match_mode, MatchMode::kExact);
+    QCOMPARE(query.result_limit, std::size_t{20});
+    QCOMPARE(query.timeout, std::chrono::seconds(5));
+}
+
+void CoreApiTest::HeadlessServiceDoesNotRequireAGuiApplication() {
+    const EmptyDictionaryService service;
+    const NeverCancelled cancellation;
+    LookupQuery query;
+    query.text = "example";
+
+    const LookupResponse response = service.Lookup(query, &cancellation);
+
+    QVERIFY(response.entries.empty());
+    QCOMPARE(response.errors.size(), std::size_t{1});
+    QCOMPARE(response.errors.front().code,
+             LookupErrorCode::kDictionaryUnavailable);
+    QVERIFY(!response.partial);
+}
+
+}  // namespace goldendict::core
+
+using goldendict::core::CoreApiTest;
+
+QTEST_APPLESS_MAIN(CoreApiTest)
+
+#include "core_api_test.moc"
