@@ -157,32 +157,19 @@ through the public headless API, then rendered through the real Qt 6
 application path, with automated checks for non-visual behavior and a
 documented rendering smoke test.
 
-Status: in progress. The shared core boundary and installed headless API are
-verified. The private StarDict reader now safely handles the generated
-uncompressed `.ifo`, `.idx`, and `.dict` fixture for exact lookup, including
-duplicate and UTF-8 headwords, and rejects missing, truncated, and out-of-range
-data. Catalog/orchestration and the presentation path remain open. A private
-dictionary backend contract now keeps
-format adapters behind bounded results, cancellation, deadlines, provenance,
-and stable error categories. StarDict discovery supports recursive roots and
-explicit `.ifo` files with deterministic ordering, deduplication, and
-non-fatal per-root diagnostics. The first application-owned generated-index
-format now creates and atomically commits a bounded checksummed record cache,
-reuses it when all source stamps match, and safely rebuilds stale or corrupt
-cache files. The generated index remains replaceable implementation data. The
-fixture now covers raw HTML article data, an internal dictionary link, and an
-embedded resource. Private resource loading confines paths to the dictionary's
-`res` directory, applies size and request limits, and returns typed inert data.
-The private browser-independent article component converts backend-neutral
-plain-text or HTML payloads into bounded inert documents, strips active
-content, rewrites dictionary links and embedded resources to canonical typed
-internal URLs, and retains structured resource references without exposing a
-format adapter to the GUI.
-The StarDict adapter also accepts bounded gzip/dictzip-compatible `.dict.dz`
-data, validates compressed input and checksums through zlib, gives an adjacent
-uncompressed `.dict` deterministic precedence, and source-stamps the selected
-representation for generated-index rebuilds. Zlib is a direct Conan dependency
-and a private `goldendict_core` implementation dependency.
+Status: in progress. The automated vertical-slice gate is complete. The
+installed `goldendict_core` headless API now exercises configuration,
+discovery, generated indexing, asynchronous exact lookup, stable provenance,
+language metadata, inert article assembly, typed resource retrieval, and clean
+missing results against a generated StarDict fixture. The private StarDict
+adapter supports bounded uncompressed and gzip/dictzip-compatible data,
+validates source and index corruption, and rebuilds stale generated indexes.
+The presentation-only Qt Widgets shell performs lookup through the desktop
+facade, renders local articles with Qt WebEngine, resolves internal lookup and
+resource URLs through typed core APIs, and denies external embedded
+navigation. Release tests, install/export, an independent installed consumer,
+and exact-SCM Conan package creation pass. The documented visible Linux GUI
+check remains before Phase 4 can be declared complete.
 
 ### Phase 5 — Non-UI Foundation Hardening
 
