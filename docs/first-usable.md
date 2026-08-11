@@ -144,7 +144,7 @@ Deferred means sequenced later, not removed from the formal Linux parity gate.
    core application facade.
 7. [ ] Add presentation-only lookup controls and article view, then pass the
    WebEngine checks.
-8. [ ] Add the installed headless consumer and run the full Release,
+8. [x] Add the installed headless consumer and run the full Release,
    `goldendict_core` install/export, package, and Conan consumer gate.
 
 Each increment should build and test independently. Mechanical source import,
