@@ -14,6 +14,12 @@
 
 namespace goldendict::core {
 
+inline constexpr std::size_t kMaximumLookupTextBytes = 4096U;
+inline constexpr std::size_t kMaximumLookupDictionaryFilters = 100U;
+inline constexpr std::size_t kMaximumLookupLanguageFilters = 32U;
+inline constexpr std::size_t kMaximumLookupFilterBytes = 256U;
+inline constexpr std::size_t kMaximumLookupResults = 100U;
+
 enum class MatchMode {
     kExact,
     kPrefix,

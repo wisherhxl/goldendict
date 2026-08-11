@@ -185,6 +185,11 @@ check remains before Phase 4 can be declared complete.
 Gate: focused tests pass without requiring the GUI, and the Phase 4 vertical
 slice remains functional.
 
+Status: in progress. The first hardening increment publishes headless query
+limits and rejects oversized, malformed UTF-8, embedded-NUL, and invalid
+filter inputs before backend dispatch. UTF-8 validation is a private,
+browser-independent foundation primitive with data-driven tests.
+
 ### Phase 6 — Dictionary Backends In Priority Batches
 
 - Port backends in approved core, common optional, and deferred/high-cost

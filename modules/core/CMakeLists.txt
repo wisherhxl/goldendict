@@ -22,6 +22,10 @@ if(TARGET application_service_test)
   target_link_libraries(application_service_test PRIVATE ZLIB::ZLIB)
 endif()
 
+if(TARGET utf8_test)
+  target_sources(utf8_test PRIVATE src/foundation/utf8.cc)
+endif()
+
 if(TARGET stardict_reader_test)
   target_sources(stardict_reader_test
     PRIVATE

@@ -119,6 +119,12 @@ The contract is designed around:
 - deterministic errors and partial-result reporting without hidden desktop
   state.
 
+The installed API publishes hard limits for query text, filter counts, filter
+size, and result count. The core rejects malformed UTF-8 and embedded NUL
+bytes at the service boundary before dispatching work to a format adapter;
+requested result counts above the published maximum are deterministically
+clamped.
+
 Dictionary content is untrusted data. The core and service adapter must not
 execute embedded active content or interpret article text as instructions.
 Transport adapters apply authentication, authorization, rate limits, request

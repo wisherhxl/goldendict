@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
@@ -20,12 +21,11 @@
 #include "../dictionary/dictionary_backend.h"
 #include "../formats/stardict/stardict_dictionary.h"
 #include "../formats/stardict/stardict_discovery.h"
+#include "../foundation/utf8.h"
 #include "goldendict/core/application.h"
 
 namespace goldendict::core {
 namespace {
-
-constexpr std::size_t kMaximumResults = 100U;
 
 class CancellationAdapter final : public dictionary::CancellationSignal {
    public:
@@ -84,7 +84,7 @@ LookupErrorCode TranslateErrorCode(dictionary::ErrorCode code) {
 dictionary::RequestOptions MakeOptions(
     const LookupQuery& query, const dictionary::CancellationSignal* signal) {
     dictionary::RequestOptions options;
-    options.result_limit = std::min(query.result_limit, kMaximumResults);
+    options.result_limit = std::min(query.result_limit, kMaximumLookupResults);
     options.cancellation = signal;
     if (query.timeout <= std::chrono::milliseconds::zero()) {
         options.deadline = std::chrono::steady_clock::time_point::min();
@@ -97,6 +97,34 @@ dictionary::RequestOptions MakeOptions(
                                : now + query.timeout;
     }
     return options;
+}
+
+bool HasInvalidFilter(const std::vector<std::string>& filters) {
+    return std::any_of(filters.begin(), filters.end(), [](const auto& filter) {
+        return filter.empty() || filter.size() > kMaximumLookupFilterBytes ||
+               filter.find('\0') != std::string::npos ||
+               !foundation::IsValidUtf8(filter);
+    });
+}
+
+std::optional<std::string> ValidateQuery(const LookupQuery& query) {
+    if (query.text.empty() || query.result_limit == 0U) {
+        return "Lookup text and result limit must be non-empty";
+    }
+    if (query.text.size() > kMaximumLookupTextBytes ||
+        query.text.find('\0') != std::string::npos ||
+        !foundation::IsValidUtf8(query.text)) {
+        return "Lookup text exceeds the UTF-8 input bounds";
+    }
+    if (query.dictionary_ids.size() > kMaximumLookupDictionaryFilters ||
+        HasInvalidFilter(query.dictionary_ids)) {
+        return "Dictionary filters exceed the UTF-8 input bounds";
+    }
+    if (query.languages.size() > kMaximumLookupLanguageFilters ||
+        HasInvalidFilter(query.languages)) {
+        return "Language filters exceed the UTF-8 input bounds";
+    }
+    return std::nullopt;
 }
 
 class ServiceState final {
@@ -150,11 +178,10 @@ class ServiceState final {
     LookupResponse Lookup(const LookupQuery& query,
                           const CancellationToken* cancellation) const {
         LookupResponse response;
-        if (query.text.empty() || query.result_limit == 0U) {
+        if (const auto validation_error = ValidateQuery(query);
+            validation_error.has_value()) {
             response.errors.push_back(
-                {LookupErrorCode::kInvalidQuery,
-                 {},
-                 "Lookup text and result limit must be non-empty"});
+                {LookupErrorCode::kInvalidQuery, {}, *validation_error});
             return response;
         }
         if (query.match_mode != MatchMode::kExact) {

@@ -28,6 +28,7 @@ class ApplicationServiceTest : public QObject {
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
+    void RejectsUnboundedOrMalformedQueries();
 };
 
 std::filesystem::path TemporaryPath(const QTemporaryDir& directory) {
@@ -150,6 +151,34 @@ void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {
     QCOMPARE(unavailable.errors.size(), std::size_t{1});
     QCOMPARE(unavailable.errors.front().code,
              LookupErrorCode::kDictionaryUnavailable);
+}
+
+void ApplicationServiceTest::RejectsUnboundedOrMalformedQueries() {
+    auto service = CreateDictionaryService({});
+    LookupQuery query;
+    query.text = std::string(kMaximumLookupTextBytes + 1U, 'x');
+
+    auto response = service->Lookup(query);
+    QCOMPARE(response.errors.size(), std::size_t{1});
+    QCOMPARE(response.errors.front().code, LookupErrorCode::kInvalidQuery);
+
+    query.text = std::string("\xc3\x28", 2);
+    response = service->Lookup(query);
+    QCOMPARE(response.errors.size(), std::size_t{1});
+    QCOMPARE(response.errors.front().code, LookupErrorCode::kInvalidQuery);
+
+    query.text = "example";
+    query.dictionary_ids.assign(kMaximumLookupDictionaryFilters + 1U,
+                                "dictionary");
+    response = service->Lookup(query);
+    QCOMPARE(response.errors.size(), std::size_t{1});
+    QCOMPARE(response.errors.front().code, LookupErrorCode::kInvalidQuery);
+
+    query.dictionary_ids.clear();
+    query.languages = {std::string(kMaximumLookupFilterBytes + 1U, 'x')};
+    response = service->Lookup(query);
+    QCOMPARE(response.errors.size(), std::size_t{1});
+    QCOMPARE(response.errors.front().code, LookupErrorCode::kInvalidQuery);
 }
 
 void ApplicationServiceTest::CompletesAnOwnedAsynchronousLookup() {
