@@ -49,6 +49,7 @@ class GoldenDictRecipe(ConanFile):
         self.version = ver
 
     def requirements(self):
+        self.requires("icu/74.2")
         self.requires("qt/6.11.1")
         self.requires("zlib/1.3.1")
 

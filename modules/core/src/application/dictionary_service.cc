@@ -21,6 +21,7 @@
 #include "../dictionary/dictionary_backend.h"
 #include "../formats/stardict/stardict_dictionary.h"
 #include "../formats/stardict/stardict_discovery.h"
+#include "../foundation/text_folding.h"
 #include "../foundation/utf8.h"
 #include "goldendict/core/application.h"
 
@@ -226,7 +227,8 @@ class ServiceState final {
                     entry.dictionary = PublicIdentity(identity);
                     entry.language = {identity.source_language,
                                       identity.target_language};
-                    entry.match = {query.text, article.headword,
+                    entry.match = {query.text,
+                                   foundation::FoldForLookup(article.headword),
                                    MatchMode::kExact, 1.0};
                     entry.article.plain_text = document.plain_text;
                     entry.article.sanitized_html = document.sanitized_html;

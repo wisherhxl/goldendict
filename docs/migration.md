@@ -188,7 +188,12 @@ slice remains functional.
 Status: in progress. The first hardening increment publishes headless query
 limits and rejects oversized, malformed UTF-8, embedded-NUL, and invalid
 filter inputs before backend dispatch. UTF-8 validation is a private,
-browser-independent foundation primitive with data-driven tests.
+browser-independent foundation primitive with data-driven tests. The second
+increment adds private Unicode compatibility normalization, full case folding,
+diacritic removal, and whitespace/punctuation folding. StarDict exact lookup
+uses the canonical folded form while preserving the source headword, and the
+headless response publishes that canonical form as match metadata. ICU is a
+private implementation dependency and does not enter the public core ABI.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

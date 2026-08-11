@@ -86,6 +86,13 @@ StarDict type. Synchronous lookup is available for simple headless consumers,
 and `StartLookup` returns an owned request with explicit completion and
 cancellation whose lifetime does not depend on the service object.
 
+Lookup normalization is a private foundation concern. Backends compare a
+canonical Unicode form that applies compatibility normalization, full case
+folding, diacritic removal, and whitespace/punctuation folding. Public results
+retain the dictionary's original headword and expose the canonical form only as
+transport-neutral match metadata, so GUI and future AI-service adapters share
+identical lookup semantics.
+
 `main.cpp` may wire a future optional integration module into the core
 extension contracts; other GUI code must not include adapter headers.
 

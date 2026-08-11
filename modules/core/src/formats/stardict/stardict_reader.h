@@ -77,6 +77,7 @@ class Reader final {
    private:
     struct IndexRecord {
         std::string headword;
+        std::string folded_headword;
         std::uint32_t article_offset = 0;
         std::uint32_t article_size = 0;
     };

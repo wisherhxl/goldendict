@@ -204,12 +204,19 @@ Library linkage policy:
   relevant tests.
 - Keep dependencies minimal.
 - Prefer optional integration when a feature is optional.
-- When adding a dependency in `conanfile.py`, add its CMake finder under
-  `cmake_finders/`.
-- CMake finders should come from
-  `https://github.com/wisherhxl/tiger_finder.git`.
-- If the required finder is not available there, do not create one locally.
-  Ask the `tiger_finder` repository maintainer to create it.
+- Prefer a Conan CMakeDeps package config when it exports the required CMake
+  targets. No project finder is needed in that case.
+- When a dependency does not provide a usable package config, add its CMake
+  finder under `cmake_finders/`. CMake finders should come from
+  `https://github.com/wisherhxl/tiger_finder.git`. If the required finder is
+  not available there, do not create one locally; ask the `tiger_finder`
+  repository maintainer to create it.
+
+ICU 74.2 is a direct private `goldendict_core` implementation dependency for
+Unicode lookup folding. Conan already resolves the same ICU revision through
+Qt, so the explicit requirement does not add a second runtime implementation.
+Its CMakeDeps config exports `ICU::uc`; ICU types and linkage do not appear in
+the installed public headers or exported target usage requirements.
 
 ## Packaging
 

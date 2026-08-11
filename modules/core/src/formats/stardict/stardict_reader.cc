@@ -14,6 +14,7 @@
 #include <zlib.h>
 
 #include "../../dictionary/generated_index.h"
+#include "../../foundation/text_folding.h"
 
 namespace goldendict::core::formats::stardict {
 namespace {
@@ -441,7 +442,13 @@ Reader Reader::Open(
         }
     }
 
-    for (const auto& record : reader.index_) {
+    for (auto& record : reader.index_) {
+        try {
+            record.folded_headword = foundation::FoldForLookup(record.headword);
+        } catch (const foundation::TextFoldingError& error) {
+            Throw(ErrorCode::kInvalidIndex, index_path,
+                  std::string("Invalid UTF-8 headword: ") + error.what());
+        }
         const auto offset = static_cast<std::uint64_t>(record.article_offset);
         const auto size = static_cast<std::uint64_t>(record.article_size);
         if (offset > reader.dictionary_data_.size() ||
@@ -456,11 +463,15 @@ Reader Reader::Open(
 std::vector<Article> Reader::LookupExact(std::string_view headword,
                                          std::size_t result_limit) const {
     std::vector<Article> articles;
+    const std::string folded_headword = foundation::FoldForLookup(headword);
+    if (folded_headword.empty()) {
+        return articles;
+    }
     for (const auto& record : index_) {
         if (articles.size() == result_limit) {
             break;
         }
-        if (record.headword != headword) {
+        if (record.folded_headword != folded_headword) {
             continue;
         }
         Article article;

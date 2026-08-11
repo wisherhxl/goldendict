@@ -25,6 +25,7 @@ class ApplicationServiceTest : public QObject {
     void ConfigurationRoundTripsEscapedPaths();
     void RejectsMalformedConfiguration();
     void DiscoversAndQueriesARealFixture();
+    void ReturnsCanonicalFoldedMatchInformation();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -123,6 +124,26 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
     const auto missing = service.Lookup(query);
     QVERIFY(missing.entries.empty());
     QVERIFY(missing.errors.empty());
+}
+
+void ApplicationServiceTest::ReturnsCanonicalFoldedMatchInformation() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteStardictFixture(root,
+                               {{"Caf\xc3\xa9-au-lait", "folded definition"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "CAFE AU LAIT";
+
+    const auto response = service->Lookup(query);
+
+    QCOMPARE(response.errors.size(), std::size_t{0});
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    QCOMPARE(response.entries.front().match.requested_headword, "CAFE AU LAIT");
+    QCOMPARE(response.entries.front().match.normalized_headword, "cafeaulait");
 }
 
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {

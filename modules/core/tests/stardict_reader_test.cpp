@@ -18,9 +18,11 @@ class StardictReaderTest : public QObject {
 
    private slots:
     void ReadsMetadataAndExactArticles();
+    void MatchesFoldEquivalentHeadwords();
     void ReturnsNoArticleForMissingHeadword();
     void RejectsInvalidInfoSignature();
     void RejectsInvalidNumericMetadata();
+    void RejectsInvalidUtf8Headword();
     void RejectsTruncatedIndex();
     void RejectsArticleOutsideDictionaryData();
     void ReportsMissingCompanionFile();
@@ -59,6 +61,30 @@ void StardictReaderTest::ReadsMetadataAndExactArticles() {
     QCOMPARE(articles[1].data, "A second article.");
     QCOMPARE(reader.LookupExact("\xE8\xAF\x8D\xE5\x85\xB8").front().data,
              "A UTF-8 headword.");
+}
+
+void StardictReaderTest::MatchesFoldEquivalentHeadwords() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto info_path = test::WriteStardictFixture(
+        TemporaryPath(directory), {{"Caf\xc3\xa9-au-lait", "accented"},
+                                   {"Stra\xc3\x9f"
+                                    "e",
+                                    "case-folded"},
+                                   {"\xe8\xaf\x8d\xe5\x85\xb8", "cjk"}});
+
+    const Reader reader = Reader::Open(info_path);
+
+    const auto accented = reader.LookupExact("CAFE AU LAIT");
+    QCOMPARE(accented.size(), std::size_t{1});
+    QCOMPARE(accented.front().headword, "Caf\xc3\xa9-au-lait");
+    const auto case_folded = reader.LookupExact("STRASSE");
+    QCOMPARE(case_folded.size(), std::size_t{1});
+    QCOMPARE(case_folded.front().data, "case-folded");
+    const auto cjk = reader.LookupExact("\xe8\xaf\x8d\xe5\x85\xb8");
+    QCOMPARE(cjk.size(), std::size_t{1});
+    QCOMPARE(cjk.front().data, "cjk");
+    QVERIFY(reader.LookupExact("!!!").empty());
 }
 
 void StardictReaderTest::ReturnsNoArticleForMissingHeadword() {
@@ -100,6 +126,20 @@ void StardictReaderTest::RejectsInvalidNumericMetadata() {
         QFAIL("Reader::Open should reject invalid numeric metadata");
     } catch (const Error& error) {
         QCOMPARE(error.code(), ErrorCode::kInvalidInfo);
+    }
+}
+
+void StardictReaderTest::RejectsInvalidUtf8Headword() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto info_path = test::WriteStardictFixture(
+        TemporaryPath(directory), {{std::string("\xc3\x28", 2), "invalid"}});
+
+    try {
+        static_cast<void>(Reader::Open(info_path));
+        QFAIL("Reader::Open should reject an invalid UTF-8 headword");
+    } catch (const Error& error) {
+        QCOMPARE(error.code(), ErrorCode::kInvalidIndex);
     }
 }
 
