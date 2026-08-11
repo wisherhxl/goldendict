@@ -163,6 +163,9 @@ strategy, QTest policy, and pre-PR verification expectations.
 
 ## Documentation
 
+- Write all repository documentation in English.
+- Use `Phase` consistently for the numbered migration plan; do not introduce a
+  separate `Stage` terminology.
 - `README.md` should serve project users.
 - `AGENTS.md` should stay a short entry point for rules agents must always
   know before editing the repository.

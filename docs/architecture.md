@@ -53,11 +53,66 @@ proto, and generated-file layout rules.
 
 ## Module Design
 
-Tiger separates reusable code and runnable applications. Reusable project
-behavior belongs in `modules/`; applications in
-`apps/` should consume modules instead of becoming shared infrastructure
-themselves. Phase 2 retains Tiger's base module as build infrastructure and
-adds the minimal GoldenDict application under `apps/goldendict/`.
+Tiger separates public shared-library modules from runnable applications.
+GoldenDict initially uses one product library, `goldendict_core`, while
+`apps/goldendict` contains presentation and the composition root only.
+
+The planned dependency spine is:
+
+```text
+apps/goldendict GUI ----------> desktop application facade --+
+                                                             |
+future dictionary service ---> headless dictionary API ------+-> goldendict_core
+                                                             |
+future transport adapter -----> transport-neutral DTOs ------+
+
+goldendict_core contains private application/domain, dictionary-format,
+article, configuration, and infrastructure components.
+```
+
+The internal components preserve dependency inversion and focused tests
+without creating a public ABI for each layer or dictionary format. The
+headless API supports discovery, indexing, lookup, article/resource retrieval,
+cancellation, and lifecycle without Qt Widgets, Qt Gui, or Qt WebEngine. It
+does not choose HTTP, gRPC, JSON, or another future service transport.
+
+`main.cpp` may wire a future optional integration module into the core
+extension contracts; other GUI code must not include adapter headers.
+
+Another product DLL is justified only by a real deployment boundary such as
+optional dependencies, platform isolation, or plugin loading. Network, audio,
+and desktop integration are evaluated against that rule when their phases
+begin instead of being pre-split speculatively.
+
+Phase 2 retains Tiger's base module as build infrastructure and the minimal
+GoldenDict application shell. Phase 4 introduces `goldendict_core`.
+
+## AI Dictionary Service Compatibility
+
+The future service is an AI retrieval surface, not a remote copy of the GUI.
+Its adapter may use MCP, HTTP, gRPC, or another protocol, but those transports
+map onto the same headless core contract.
+
+The contract is designed around:
+
+- dictionary catalog and capability discovery;
+- exact, suggested, and later full-text lookup with explicit dictionary and
+  language filters;
+- bounded single or batch requests with cancellation, deadlines, pagination,
+  and result limits;
+- structured results containing the requested and normalized headword, match
+  kind or score, stable dictionary identity, dictionary metadata, language
+  metadata, article text, optional sanitized HTML, and typed resource
+  references;
+- provenance sufficient for an AI client to identify and cite the dictionary
+  source and edition; and
+- deterministic errors and partial-result reporting without hidden desktop
+  state.
+
+Dictionary content is untrusted data. The core and service adapter must not
+execute embedded active content or interpret article text as instructions.
+Transport adapters apply authentication, authorization, rate limits, request
+budgets, logging, and protocol serialization outside `goldendict_core`.
 
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

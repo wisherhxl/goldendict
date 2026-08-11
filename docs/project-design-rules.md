@@ -23,6 +23,12 @@ When solving a problem:
 Concrete project design rules should be added here one by one during design
 work. Do not invent rules just to fill this section.
 
+## Documentation Language And Migration Terminology
+
+All repository documentation must be written in English. The numbered
+migration plan uses `Phase` consistently. `Stage` is not a second hierarchy or
+an alias for those phases and must not be introduced into migration documents.
+
 ## Conan/CMake Responsibility Boundary
 
 `conanfile.py` owns package-manager policy:
@@ -76,3 +82,54 @@ used as the source of truth for whether a module dependency is public or
 private. The same external target may be public for one module and private for
 another; generated package config files should emit dependency discovery only
 when at least one exported module exposes that external target publicly.
+
+## Shared-Library And GUI Boundary
+
+GoldenDict product logic must be separated from the GUI through a Tiger public
+module built as a shared library when `BUILD_SHARED_LIBS=ON`.
+
+- `apps/goldendict` is the presentation executable and composition root. GUI
+  classes display state, collect user input, and translate view events into
+  application commands. They do not parse dictionaries, build indexes,
+  persist configuration, implement lookup workflows, assemble articles, or
+  contain backend-specific behavior.
+- The initial `goldendict_core` module owns domain contracts, application use
+  cases, local dictionary formats, article assembly, configuration, and shared
+  primitives. These remain separate internal components, but do not create
+  separate binary interfaces without an independent deployment boundary.
+- `goldendict_core` exports separate narrow interfaces for headless dictionary
+  operations and desktop-application orchestration, plus transport-neutral
+  DTOs and extension contracts that an external adapter genuinely needs.
+  Concrete formats and implementation details remain private.
+- The core public surface must not depend on Qt Widgets, Qt Gui, Qt WebEngine,
+  a GUI thread, or a network transport protocol. A future dictionary-service
+  executable must be able to discover, index, query, and retrieve resources
+  through the same library using a headless event loop.
+- Asynchronous operations expose explicit completion, cancellation, errors,
+  and ownership. Configuration paths, storage, and policies are injected or
+  passed as data rather than read from GUI globals.
+- Headless results are structured and bounded. They preserve stable dictionary
+  identity, source/edition provenance, language metadata, match information,
+  plain text or sanitized markup, and typed resource references so an AI
+  client can filter and cite results without scraping GUI HTML.
+- Dictionary text, markup, and resources are untrusted payloads. Core code does
+  not execute active content or treat retrieved text as commands. A future
+  service adapter owns authentication, authorization, rate limits, request
+  budgets, logging, and transport serialization.
+- High-level core components depend on abstractions rather than concrete
+  backends. Built-in format composition stays private to `goldendict_core`.
+  The executable's `main.cpp` may reference only a future optional module's
+  narrow composition API; presentation classes may not.
+- Add another shared-library module only when it has an independent consumer,
+  optional deployment lifecycle, distinct platform/license/dependency
+  boundary, or a required plugin ABI. A source-level responsibility alone is
+  not sufficient. Do not create one module per layer, format, or legacy file,
+  and do not introduce pass-through libraries with no independent contract.
+- Public and private module dependencies must be declared accurately in
+  `ti_define_module(...)`. Exposing a dependency through installed headers or
+  exported usage requirements makes it public; implementation-only
+  dependencies remain private.
+
+This rule applies to all migrated GoldenDict product behavior. It implements
+single responsibility, interface segregation, and dependency inversion while
+keeping the GUI replaceable and backend code independently testable.

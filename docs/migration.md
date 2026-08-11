@@ -28,11 +28,19 @@ GoldenDict name.
   available under MIT.
 - Tiger owns the project, dependency, build, test, install, and package
   structure. GoldenDict product behavior is migrated into that structure.
-- Runtime entry points, GUI, Qt WebEngine integration, application resources,
-  translations, and product orchestration belong in `apps/goldendict`.
-- Add a library under `modules/` only when it is genuinely reusable, has a
-  clear interface, and can be tested independently. Do not create modules only
-  to mirror the legacy file layout.
+- Runtime entry points, GUI presentation, Qt WebEngine view integration,
+  application resources, translations, and the composition root belong in
+  `apps/goldendict`.
+- Product logic belongs behind the public `goldendict_core` shared-library
+  boundary. The GUI only displays state and forwards user intent. The library
+  must also support a future headless dictionary-service executable through a
+  transport-neutral API that does not depend on Qt Widgets, Qt Gui, or Qt
+  WebEngine. Its primary future consumer is AI lookup, so return bounded,
+  structured results with stable dictionary provenance rather than requiring
+  GUI HTML scraping. Keep domain responsibilities as tested internal
+  components; add another DLL only for a demonstrated deployment, dependency,
+  platform, or plugin boundary, never merely for each layer, format, or legacy
+  file.
 - Linux with Qt 6 is the first supported target. Keep platform dependencies
   behind narrow boundaries so Windows and macOS can be restored later.
 - Conan resolves all external dependencies. Official Conan `*/system`
@@ -48,7 +56,7 @@ GoldenDict name.
 
 ## Optimized Migration Plan
 
-### Stage 1 — Baseline, Isolation, And License Boundary
+### Phase 1 — Baseline, Isolation, And License Boundary
 
 - Pin the GoldenDict and Tiger source commits.
 - Keep the legacy GoldenDict worktree clean and create the Tiger-based
@@ -68,7 +76,7 @@ and the repository represents the product/component boundary through the root
 GPL license, `LICENSES/README.md`, preserved Tiger MIT notices, SPDX headers on
 new product entry points, and package metadata.
 
-### Stage 2 — Reproducible Tiger And Qt 6 Skeleton
+### Phase 2 — Reproducible Tiger And Qt 6 Skeleton
 
 - Apply GoldenDict product and package identity without renaming reusable Tiger
   internals.
@@ -91,11 +99,12 @@ and Tiger submodule through Conan, builds and packages `goldendict/1.6.0`, and
 passes the generated C consumer in `test_package`. Direct Release configure,
 build, smoke test, install, and TGZ package checks also pass.
 
-### Stage 3 — Porting Map And First-Usable Definition
+### Phase 3 — Porting Map And First-Usable Definition
 
 Classify every legacy source and resource by:
 
-- ownership in `apps/goldendict` or a justified reusable module;
+- ownership in the public core facade, a private core component, a justified
+  optional integration module, or presentation-only `apps/goldendict` code;
 - dependencies and direction of dependency;
 - required Qt 6 API changes;
 - operating-system coupling;
@@ -105,7 +114,7 @@ Classify every legacy source and resource by:
 
 Produce a dependency graph, feature-parity matrix, and prioritized backend
 batches. StarDict is the approved representative dictionary format for the
-Stage 4 vertical slice. Batching controls migration and verification order; it
+Phase 4 vertical slice. Batching controls migration and verification order; it
 does not reduce the formal Linux release scope. The first formal Linux release
 must restore every dictionary format supported by the pinned legacy
 GoldenDict baseline.
@@ -114,26 +123,40 @@ Gate: the ownership/dependency map, first-usable feature set, representative
 backend, fixtures, and deferred-feature list are reviewed and approved before
 broad source movement.
 
-### Stage 4 — Minimal Vertical Slice
+Working documents:
+
+- [porting-map.md](porting-map.md): source/resource ownership, dependency
+  direction, Qt 6 risks, backend batches, and fixture policy;
+- [feature-parity.md](feature-parity.md): formal Linux parity matrix;
+- [first-usable.md](first-usable.md): the bounded Phase 4 StarDict vertical
+  slice and its acceptance gate.
+
+Status: mapped and documented; awaiting review and approval of the Phase 3
+gate before broad source movement.
+
+### Phase 4 — Minimal Vertical Slice
 
 Migrate the smallest complete user path:
 
-1. application configuration;
-2. dictionary abstraction and asynchronous request path;
-3. one representative dictionary backend;
-4. dictionary discovery and indexing;
-5. headword lookup and article HTML generation;
-6. Qt WebEngine rendering in a minimal application UI.
+1. the `goldendict_core` shared-library facade and private components;
+2. application configuration;
+3. dictionary abstraction and asynchronous request path;
+4. one representative dictionary backend;
+5. dictionary discovery and indexing;
+6. headword lookup and browser-independent article HTML generation;
+7. a headless lookup consumer that exercises the public core API; and
+8. Qt WebEngine rendering in a presentation-only application UI.
 
-Keep scope deliberately narrow. This stage validates dependency direction,
+Keep scope deliberately narrow. This phase validates dependency direction,
 the WebEngine bridge, and the end-to-end migration strategy before expanding
 the foundation or format count.
 
-Gate: a fixture dictionary can be discovered, indexed, searched, and rendered
-through the real Qt 6 application path with automated checks for non-visual
-behavior and a documented rendering smoke test.
+Gate: a fixture dictionary can be discovered, indexed, searched, and retrieved
+through the public headless API, then rendered through the real Qt 6
+application path, with automated checks for non-visual behavior and a
+documented rendering smoke test.
 
-### Stage 5 — Non-UI Foundation Hardening
+### Phase 5 — Non-UI Foundation Hardening
 
 - Port common utilities, configuration, logging, and error handling.
 - Harden dictionary interfaces and asynchronous request ownership.
@@ -141,13 +164,13 @@ behavior and a documented rendering smoke test.
   transliteration, and encoding behavior in dependency order.
 - Replace obsolete Qt APIs deliberately, including regular expressions,
   codecs, containers, and signal/slot usage where required.
-- Promote code into `modules/` only when the Stage 3 ownership map and actual
-  reuse justify it.
+- Keep non-UI behavior behind the core facade and preserve internal dependency
+  direction as the foundation grows.
 
-Gate: focused tests pass without requiring the GUI, and the Stage 4 vertical
+Gate: focused tests pass without requiring the GUI, and the Phase 4 vertical
 slice remains functional.
 
-### Stage 6 — Dictionary Backends In Priority Batches
+### Phase 6 — Dictionary Backends In Priority Batches
 
 - Port backends in approved core, common optional, and deferred/high-cost
   batches.
@@ -164,7 +187,7 @@ passes its gate. Original dictionary files must remain directly usable without
 format conversion; implementation-generated indexes may be rebuilt when
 binary compatibility cannot be preserved safely.
 
-### Stage 7 — Articles, WebEngine, And Networking
+### Phase 7 — Articles, WebEngine, And Networking
 
 Run three separately gated workstreams:
 
@@ -181,7 +204,7 @@ Gate: representative local articles render correctly, links and resources
 work, and approved online dictionary scenarios pass without weakening the
 local rendering gate.
 
-### Stage 8 — Complete Application UI
+### Phase 8 — Complete Application UI
 
 - Port the main window, tabs, dictionary and group controls, preferences,
   history, favorites, inspector, and scan popup.
@@ -189,8 +212,9 @@ local rendering gate.
   This migration does not include a voluntary UI redesign; make only the
   smallest behavior or layout changes required by Qt 6, Qt WebEngine, or Linux
   platform compatibility, and document those differences.
-- Keep UI code dependent on application or module interfaces rather than
-  concrete backend internals.
+- Keep UI code dependent only on the `goldendict_core` application facade.
+  Concrete local formats remain private to the core library; the executable
+  composition root may reference only justified optional integration modules.
 - Provide a compatible migration path for legacy configuration, dictionary
   groups, history, and favorites. Do not silently discard these user-owned
   states. Implementation-generated dictionary indexes may be rebuilt
@@ -199,7 +223,7 @@ local rendering gate.
 Gate: the Linux application can load, index, search, and render the approved
 dictionary set through the intended user workflows.
 
-### Stage 9 — Linux Integration And Release Quality
+### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
   behavior, desktop files, icons, MIME integration, paths, process launching,
@@ -209,7 +233,7 @@ dictionary set through the intended user workflows.
   formatter/static checks, dependency and license inventory, feature-parity
   matrix, known issues, and intentionally deferred features.
 
-Packaging and clean-build checks run throughout the migration; this stage is
+Packaging and clean-build checks run throughout the migration; this phase is
 the final Linux acceptance gate, not the first time packaging is attempted.
 
 Gate: clean clone/configure/build succeeds; the application launches;
@@ -217,7 +241,7 @@ representative dictionaries index and search; articles and embedded resources
 render; settings persist; packages install and uninstall; automated tests
 pass; and the build has no dependency on the legacy worktree.
 
-### Stage 10 — Windows And macOS Restoration
+### Phase 10 — Windows And macOS Restoration
 
 After Linux acceptance:
 
@@ -243,11 +267,11 @@ may be narrower only to make migration and verification incremental.
 - Separate mechanical import, build wiring, Qt 6 API changes, and behavioral
   changes whenever practical.
 - Run the smallest relevant tests after each increment and a clean build,
-  install, and package gate at each stage boundary.
+  install, and package gate at each phase boundary.
 - Preserve source notices and update the dependency/license inventory whenever
   code or a dependency enters the migration tree.
-- Report stage start, meaningful checkpoints, blockers or failed durable jobs,
-  and stage completion. Long-running jobs must have a durable exit wake or an
+- Report phase start, meaningful checkpoints, blockers or failed durable jobs,
+  and phase completion. Long-running jobs must have a durable exit wake or an
   equivalent reconciliation mechanism.
 - Do not modify legacy `master`, push, open a pull request, or publish artifacts
   without explicit authorization.
