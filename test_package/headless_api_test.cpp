@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 
+#include "goldendict/core/application.h"
 #include "goldendict/core/dictionary_service.h"
 
 namespace {
@@ -25,6 +26,12 @@ class EmptyDictionaryService final
         return {};
     }
 
+    std::unique_ptr<goldendict::core::LookupRequest> StartLookup(
+        goldendict::core::LookupQuery query) const override {
+        static_cast<void>(query);
+        return {};
+    }
+
     std::vector<std::byte> GetResource(
         const goldendict::core::ResourceReference& resource,
         const goldendict::core::CancellationToken* cancellation)
@@ -42,6 +49,10 @@ int main() {
     const goldendict::core::LookupQuery query;
 
     if (!service.GetCatalog().empty() || query.result_limit == 0) {
+        return EXIT_FAILURE;
+    }
+    const auto packaged_service = goldendict::core::CreateDictionaryService({});
+    if (!packaged_service->GetCatalog().empty()) {
         return EXIT_FAILURE;
     }
 

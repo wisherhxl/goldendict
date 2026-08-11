@@ -68,33 +68,6 @@ bool IsWithin(const std::filesystem::path& root,
     return true;
 }
 
-std::string MediaTypeFor(const std::filesystem::path& path) {
-    std::string extension = path.extension().string();
-    std::transform(extension.begin(), extension.end(), extension.begin(),
-                   [](unsigned char character) {
-                       return static_cast<char>(std::tolower(character));
-                   });
-    if (extension == ".css") {
-        return "text/css";
-    }
-    if (extension == ".gif") {
-        return "image/gif";
-    }
-    if (extension == ".jpg" || extension == ".jpeg") {
-        return "image/jpeg";
-    }
-    if (extension == ".png") {
-        return "image/png";
-    }
-    if (extension == ".svg") {
-        return "image/svg+xml";
-    }
-    if (extension == ".wav") {
-        return "audio/wav";
-    }
-    return "application/octet-stream";
-}
-
 }  // namespace
 
 std::optional<dictionary::Resource> LoadResource(
@@ -150,7 +123,7 @@ std::optional<dictionary::Resource> LoadResource(
     }
     dictionary::Resource resource;
     resource.id = normalized_id;
-    resource.media_type = MediaTypeFor(candidate);
+    resource.media_type = dictionary::MediaTypeForResourceId(normalized_id);
     resource.data.reserve(static_cast<std::size_t>(size));
     std::array<char, 64U * 1024U> buffer{};
     while (input) {

@@ -38,6 +38,12 @@ class EmptyDictionaryService final : public DictionaryService {
         return response;
     }
 
+    std::unique_ptr<LookupRequest> StartLookup(
+        LookupQuery query) const override {
+        static_cast<void>(query);
+        return {};
+    }
+
     std::vector<std::byte> GetResource(
         const ResourceReference& resource,
         const CancellationToken* cancellation) const override {

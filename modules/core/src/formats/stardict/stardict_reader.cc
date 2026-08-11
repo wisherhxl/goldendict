@@ -268,6 +268,14 @@ Reader Reader::Open(
 
     Reader reader;
     reader.metadata_.book_name = RequireField(fields, "bookname", info_path);
+    if (const auto iterator = fields.find("lang_from");
+        iterator != fields.end()) {
+        reader.metadata_.source_language = iterator->second;
+    }
+    if (const auto iterator = fields.find("lang_to");
+        iterator != fields.end()) {
+        reader.metadata_.target_language = iterator->second;
+    }
     reader.metadata_.word_count = ParseUnsigned(
         RequireField(fields, "wordcount", info_path), info_path, "wordcount");
     reader.metadata_.index_file_size =

@@ -49,6 +49,8 @@ struct Identity {
     std::string id;
     std::string name;
     std::string source;
+    std::string source_language;
+    std::string target_language;
 };
 
 struct Article {
@@ -77,6 +79,7 @@ class Backend {
 };
 
 void CheckRequest(const RequestOptions& options);
+std::string MediaTypeForResourceId(std::string_view resource_id);
 
 }  // namespace goldendict::core::dictionary
 

@@ -56,6 +56,8 @@ inline std::filesystem::path WriteStardictFixture(
         "StarDict's dict ifo file\n"
         "version=2.4.2\n"
         "bookname=Generated Test Dictionary\n"
+        "lang_from=en\n"
+        "lang_to=en\n"
         "wordcount=" +
         std::to_string(entries.size()) +
         "\nidxfilesize=" + std::to_string(index.size()) +

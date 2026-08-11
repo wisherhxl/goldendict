@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <system_error>
 #include <utility>
 
 #include "stardict_resource.h"
@@ -39,7 +40,16 @@ Dictionary Dictionary::Open(
         dictionary.reader_ = Reader::Open(info_path, generated_index_path);
         dictionary.identity_.id = std::move(id);
         dictionary.identity_.name = dictionary.reader_.metadata().book_name;
-        dictionary.identity_.source = info_path.string();
+        std::error_code filesystem_error;
+        const auto canonical_source =
+            std::filesystem::weakly_canonical(info_path, filesystem_error);
+        dictionary.identity_.source =
+            filesystem_error ? info_path.lexically_normal().string()
+                             : canonical_source.string();
+        dictionary.identity_.source_language =
+            dictionary.reader_.metadata().source_language;
+        dictionary.identity_.target_language =
+            dictionary.reader_.metadata().target_language;
         dictionary.resource_root_ = info_path.parent_path() / "res";
         return dictionary;
     } catch (const Error& error) {

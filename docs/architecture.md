@@ -76,6 +76,16 @@ headless API supports discovery, indexing, lookup, article/resource retrieval,
 cancellation, and lifecycle without Qt Widgets, Qt Gui, or Qt WebEngine. It
 does not choose HTTP, gRPC, JSON, or another future service transport.
 
+Consumers inject a `CoreConfiguration` containing dictionary roots and the
+generated-index directory. `LoadConfiguration` treats a missing file as a
+clean profile, while `SaveConfiguration` persists the same bounded,
+versioned schema. `CreateDictionaryService` is the headless composition entry
+point and `CreateDesktopFacade` is the presentation-facing entry point. Both
+compose private format adapters inside `goldendict_core`; neither exposes a
+StarDict type. Synchronous lookup is available for simple headless consumers,
+and `StartLookup` returns an owned request with explicit completion and
+cancellation whose lifetime does not depend on the service object.
+
 `main.cpp` may wire a future optional integration module into the core
 extension contracts; other GUI code must not include adapter headers.
 

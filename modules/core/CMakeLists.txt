@@ -18,6 +18,10 @@ if(TARGET article_assembler_test)
   )
 endif()
 
+if(TARGET application_service_test)
+  target_link_libraries(application_service_test PRIVATE ZLIB::ZLIB)
+endif()
+
 if(TARGET stardict_reader_test)
   target_sources(stardict_reader_test
     PRIVATE

@@ -137,7 +137,7 @@ Deferred means sequenced later, not removed from the formal Linux parity gate.
    behavior as a private format adapter.
 5. [x] Add browser-independent article assembly and typed resource URLs as a
    private core component.
-6. [ ] Implement configuration, catalog, and lookup orchestration behind the
+6. [x] Implement configuration, catalog, and lookup orchestration behind the
    core application facade.
 7. [ ] Add presentation-only lookup controls and article view, then pass the
    WebEngine checks.

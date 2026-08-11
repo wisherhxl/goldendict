@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -94,6 +95,15 @@ class GOLDENDICT_EXPORTS CancellationToken {
     virtual bool IsCancellationRequested() const noexcept = 0;
 };
 
+class GOLDENDICT_EXPORTS LookupRequest {
+   public:
+    virtual ~LookupRequest();
+
+    virtual void Cancel() noexcept = 0;
+    virtual bool IsFinished() const noexcept = 0;
+    virtual LookupResponse Await() = 0;
+};
+
 class GOLDENDICT_EXPORTS DictionaryService {
    public:
     virtual ~DictionaryService();
@@ -102,6 +112,8 @@ class GOLDENDICT_EXPORTS DictionaryService {
     virtual LookupResponse Lookup(
         const LookupQuery& query,
         const CancellationToken* cancellation = nullptr) const = 0;
+    virtual std::unique_ptr<LookupRequest> StartLookup(
+        LookupQuery query) const = 0;
     virtual std::vector<std::byte> GetResource(
         const ResourceReference& resource,
         const CancellationToken* cancellation = nullptr) const = 0;
