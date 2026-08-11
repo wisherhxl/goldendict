@@ -26,6 +26,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsMalformedConfiguration();
     void DiscoversAndQueriesARealFixture();
     void CompletesAnOwnedAsynchronousLookup();
+    void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
 };
 
@@ -170,6 +171,26 @@ void ApplicationServiceTest::CompletesAnOwnedAsynchronousLookup() {
     QCOMPARE(response.errors.size(), std::size_t{0});
     QCOMPARE(response.entries.size(), std::size_t{1});
     QCOMPARE(response.entries.front().match.normalized_headword, "example");
+}
+
+void ApplicationServiceTest::ResolvesTypedArticleUrlsBehindTheDesktopFacade() {
+    auto facade = CreateDesktopFacade({});
+
+    const auto lookup =
+        facade->ResolveArticleUrl("goldendict://lookup/linked%20word");
+    QVERIFY(lookup.has_value());
+    QCOMPARE(lookup->kind, ArticleUrlKind::kLookup);
+    QCOMPARE(lookup->lookup_text, "linked word");
+
+    const auto resource = facade->ResolveArticleUrl(
+        "goldendict://resource/fixture/images%2Fpixel.png");
+    QVERIFY(resource.has_value());
+    QCOMPARE(resource->kind, ArticleUrlKind::kResource);
+    QCOMPARE(resource->resource.dictionary_id, "fixture");
+    QCOMPARE(resource->resource.resource_id, "images/pixel.png");
+    QCOMPARE(resource->resource.media_type, "image/png");
+
+    QVERIFY(!facade->ResolveArticleUrl("https://example.test").has_value());
 }
 
 }  // namespace

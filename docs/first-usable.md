@@ -98,6 +98,9 @@ lifetime code. Sanitizers supplement, not replace, normal Release verification.
 
 ## Rendering Acceptance
 
+Use the automated and manual procedure in
+[webengine-smoke.md](webengine-smoke.md).
+
 Document one Linux Qt WebEngine smoke procedure that verifies:
 
 - the expected article text appears;

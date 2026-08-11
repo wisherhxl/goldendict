@@ -4,6 +4,8 @@
 
 #include <memory>
 
+#include "../article/internal_url.h"
+#include "../dictionary/dictionary_backend.h"
 #include "goldendict/core/application.h"
 
 namespace goldendict::core {
@@ -20,6 +22,26 @@ class DesktopFacadeImpl final : public DesktopFacade {
 
     const DictionaryService& GetDictionaryService() const noexcept override {
         return *service_;
+    }
+
+    std::optional<ArticleUrl> ResolveArticleUrl(
+        const std::string& url) const override {
+        const auto parsed = article::ParseInternalUrl(url);
+        if (!parsed.has_value()) {
+            return std::nullopt;
+        }
+        ArticleUrl result;
+        if (parsed->kind == article::InternalUrlKind::kLookup) {
+            result.kind = ArticleUrlKind::kLookup;
+            result.lookup_text = parsed->target;
+        } else {
+            result.kind = ArticleUrlKind::kResource;
+            result.resource.dictionary_id = parsed->dictionary_id;
+            result.resource.resource_id = parsed->target;
+            result.resource.media_type =
+                dictionary::MediaTypeForResourceId(parsed->target);
+        }
+        return result;
     }
 
    private:

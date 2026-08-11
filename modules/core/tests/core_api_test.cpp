@@ -53,6 +53,26 @@ class EmptyDictionaryService final : public DictionaryService {
     }
 };
 
+class EmptyDesktopFacade final : public DesktopFacade {
+   public:
+    DictionaryService& GetDictionaryService() noexcept override {
+        return service_;
+    }
+
+    const DictionaryService& GetDictionaryService() const noexcept override {
+        return service_;
+    }
+
+    std::optional<ArticleUrl> ResolveArticleUrl(
+        const std::string& url) const override {
+        static_cast<void>(url);
+        return std::nullopt;
+    }
+
+   private:
+    EmptyDictionaryService service_;
+};
+
 class CoreApiTest : public QObject {
     Q_OBJECT
 

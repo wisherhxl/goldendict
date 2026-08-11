@@ -18,3 +18,15 @@ fixtures before they are enabled.
 The generated application index is not dictionary source data. Tests create it
 in a temporary index location, verify reuse and safe stale/corrupt rebuilds,
 and discard it with the temporary directory.
+
+For the manual Qt WebEngine check, generate a persistent copy outside the
+source tree:
+
+```sh
+python3 modules/core/tests/fixtures/stardict/generate_fixture.py \
+  /tmp/goldendict-stardict-fixture
+```
+
+Choose `/tmp/goldendict-stardict-fixture` in the application and look up
+`example`. Regenerating the same directory produces byte-identical dictionary
+source and resource files.
