@@ -32,6 +32,10 @@ indexes, missing companion files, and article ranges outside dictionary data.
 adapter: identity and provenance, bounded exact results, cancellation,
 deadlines, translated format errors, and explicit unsupported behavior.
 
+`stardict_discovery_test` verifies recursive and explicit-file discovery,
+stable deduplication, unrelated-file filtering, and partial results when a
+configured dictionary root is missing.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

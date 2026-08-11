@@ -164,7 +164,9 @@ duplicate and UTF-8 headwords, and rejects missing, truncated, and out-of-range
 data. Discovery, persistent indexing, resource lookup, orchestration, and the
 presentation path remain open. A private dictionary backend contract now keeps
 format adapters behind bounded results, cancellation, deadlines, provenance,
-and stable error categories.
+and stable error categories. StarDict discovery supports recursive roots and
+explicit `.ifo` files with deterministic ordering, deduplication, and
+non-fatal per-root diagnostics.
 
 ### Phase 5 — Non-UI Foundation Hardening
 

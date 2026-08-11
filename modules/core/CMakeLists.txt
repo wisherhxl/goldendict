@@ -19,3 +19,10 @@ if(TARGET stardict_dictionary_test)
       src/formats/stardict/stardict_reader.cc
   )
 endif()
+
+if(TARGET stardict_discovery_test)
+  target_sources(stardict_discovery_test
+    PRIVATE
+      src/formats/stardict/stardict_discovery.cc
+  )
+endif()
