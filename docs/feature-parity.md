@@ -104,7 +104,7 @@ not authorize dropping a legacy format.
 | Main tabs and navigation | mapped | Phase 8 | interaction tests |
 | Dictionary/group controls | mapped | Phase 8 | config round-trip |
 | Preferences and source editor | mapped | Phase 8 | settings migration tests |
-| History | mapped | Phase 8 | legacy-data migration |
+| History | slice | Phase 8 | bounded UTF-8/group-aware current store, legacy line-format migration, current-state precedence, atomic persistence, and untouched source fixtures; application recording, history pane, filtering, and clear/export UI remain |
 | Favorites | mapped | Phase 8 | legacy-data migration |
 | Dictionary info/headword browser | mapped | Phase 8 | fixture-backed UI checks |
 | Scan popup | mapped | Phase 9 | X11 and Wayland behavior |

@@ -331,6 +331,12 @@ file is never modified, a current configuration always takes precedence, and
 malformed input leaves no partial replacement. Groups, online sources,
 preferences, history, favorites, and platform-specific legacy location
 discovery remain separately gated migration work.
+
+The following user-state increment adds a transport-neutral core history store
+with bounded group-aware UTF-8 entries and a recoverable legacy line-format
+migration. Current state takes precedence, new state is written atomically,
+and the legacy history is never modified. Application-side recording, the
+history pane, filtering, clearing, and export remain later Phase 8 increments.
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.
 - Provide a compatible migration path for legacy configuration, dictionary

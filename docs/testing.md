@@ -104,6 +104,12 @@ configuration always wins, rejects entity declarations and malformed input,
 persists the new format atomically, and proves that the legacy source remains
 unchanged after both success and failure.
 
+`history_store_test` verifies the first user-history migration slice: strict
+bounded UTF-8/group-aware current-format round trips, bounded import of the
+legacy line format, entry-limit truncation, current-state precedence, atomic
+new-format persistence, and recoverable malformed-input failure that leaves
+the legacy source untouched.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
