@@ -13,6 +13,34 @@ ti_define_module(core
   REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat ICU::uc Vorbis::vorbisfile ZLIB::ZLIB
 )
 
+if(TARGET zipsounds_discovery_test)
+  target_sources(zipsounds_discovery_test PRIVATE
+    src/formats/zipsounds/zipsounds_discovery.cc
+  )
+endif()
+
+if(TARGET zipsounds_reader_test)
+  target_sources(zipsounds_reader_test PRIVATE
+    src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
+    src/formats/zipsounds/zipsounds_reader.cc
+  )
+  target_link_libraries(zipsounds_reader_test PRIVATE ICU::uc ZLIB::ZLIB)
+endif()
+
+if(TARGET zipsounds_dictionary_test)
+  target_sources(zipsounds_dictionary_test PRIVATE
+    src/dictionary/dictionary_backend.cc
+    src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
+    src/formats/zipsounds/zipsounds_dictionary.cc
+    src/formats/zipsounds/zipsounds_reader.cc
+  )
+  target_link_libraries(zipsounds_dictionary_test PRIVATE ICU::uc ZLIB::ZLIB)
+endif()
+
 if(TARGET lsa_discovery_test)
   target_sources(lsa_discovery_test PRIVATE src/formats/lsa/lsa_discovery.cc)
   target_link_libraries(lsa_discovery_test

@@ -69,8 +69,16 @@ void ArticleAssemblerTest::PreservesSafeAudioAndCollectsItsResource() {
             std::string::npos);
     QVERIFY(document.sanitized_html.find("type=\"audio/wav\"") !=
             std::string::npos);
+    QVERIFY(document.sanitized_html.find("media-src goldendict:") !=
+            std::string::npos);
     QCOMPARE(document.resources.size(), std::size_t{1});
     QCOMPARE(document.resources.front().resource_id, "spoken.wav");
+
+    const Document ogg = Assemble(
+        kDictionary, {{"example", "text/html",
+                       "<audio controls=\"controls\"><source "
+                       "src=\"spoken.ogg\" type=\"audio/ogg\"></audio>"}});
+    QVERIFY(ogg.sanitized_html.find("type=\"audio/ogg\"") != std::string::npos);
 }
 
 void ArticleAssemblerTest::DeduplicatesResourceReferencesAcrossArticles() {

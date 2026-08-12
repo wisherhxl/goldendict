@@ -20,6 +20,7 @@
 #include "support/stardict_fixture.h"
 #include "support/xdxf_fixture.h"
 #include "support/zim_fixture.h"
+#include "support/zipsounds_fixture.h"
 
 namespace goldendict::core {
 namespace {
@@ -53,6 +54,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesSlobResources();
     void DiscoversSanitizesAndQueriesEpwingResources();
     void DiscoversSanitizesAndQueriesLsaAudio();
+    void DiscoversSanitizesAndQueriesZipSoundsAudio();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -598,6 +600,30 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesLsaAudio() {
     QCOMPARE(entry.resources.size(), std::size_t{1});
     const auto wav = service->GetResource(entry.resources.front());
     QCOMPARE(wav.size(), std::size_t{44U + 16U * 2U});
+}
+
+void ApplicationServiceTest::DiscoversSanitizesAndQueriesZipSoundsAudio() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    formats::zipsounds::test::WriteZipSoundsFixture(root);
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "NESTED/SECOND";
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().id.rfind("zipsounds-", 0) == 0U);
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    const auto& entry = response.entries.front();
+    QVERIFY(entry.article.sanitized_html->find("type=\"audio/ogg\"") !=
+            std::string::npos);
+    QCOMPARE(entry.resources.size(), std::size_t{1});
+    QCOMPARE(entry.resources.front().media_type, "audio/ogg");
+    const auto audio = service->GetResource(entry.resources.front());
+    QCOMPARE(audio.size(), std::size_t{15U});
 }
 
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {

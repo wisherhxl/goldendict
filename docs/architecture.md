@@ -187,6 +187,14 @@ through the typed resource API; codec types do not cross the dictionary or
 public API boundaries. Archive icons and streaming very large recordings
 remain explicit parity work.
 
+ZIP sound packs consume recursively discovered `.zips` archives through a
+private bounded ZIP adapter. It validates classic single-volume central and
+local headers, member ranges, names, sizes, and CRC-32 values; supports stored
+and deflated audio members; exposes folded exact/prefix/suggestion queries;
+and serves typed audio resources through sanitized HTML5 playback references.
+ZIP64, encrypted/split archives, archive icons, and streaming very large audio
+members remain explicit parity work.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

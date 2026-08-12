@@ -81,6 +81,14 @@ word-link conversion, cancellation, confined resource paths, and bounded image
 resource loading. The application service test verifies sanitized HTML and
 typed resource retrieval through the format-neutral facade.
 
+`zipsounds_discovery_test`, `zipsounds_reader_test`, and
+`zipsounds_dictionary_test` generate legal classic ZIP archives with stored and
+raw-deflated audio entries. They verify recursive `.zips` discovery, folded
+lookup and suggestions, safe nested member names, bounded decompression,
+CRC-32 rejection, typed audio resources, and sanitized HTML5 playback. The
+application service test verifies discovery, article assembly, MIME typing,
+and resource retrieval through the format-neutral facade.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

@@ -48,6 +48,27 @@ std::string MediaTypeForResourceId(std::string_view resource_id) {
     if (extension == ".wav") {
         return "audio/wav";
     }
+    if (extension == ".ogg" || extension == ".oga" || extension == ".spx") {
+        return "audio/ogg";
+    }
+    if (extension == ".mp3" || extension == ".mpa" || extension == ".mp2") {
+        return "audio/mpeg";
+    }
+    if (extension == ".flac") {
+        return "audio/flac";
+    }
+    if (extension == ".opus") {
+        return "audio/opus";
+    }
+    if (extension == ".m4a") {
+        return "audio/mp4";
+    }
+    if (extension == ".aac") {
+        return "audio/aac";
+    }
+    if (extension == ".mid" || extension == ".kar") {
+        return "audio/midi";
+    }
     return "application/octet-stream";
 }
 

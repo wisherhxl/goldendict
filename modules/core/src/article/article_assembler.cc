@@ -35,6 +35,13 @@ bool Contains(const std::vector<std::string>& values, std::string_view value) {
     return std::find(values.begin(), values.end(), value) != values.end();
 }
 
+bool IsAllowedAudioType(std::string_view value) {
+    static const std::vector<std::string> kAllowedAudioTypes = {
+        "audio/wav",  "audio/ogg", "audio/mpeg", "audio/flac",
+        "audio/opus", "audio/mp4", "audio/aac",  "audio/midi"};
+    return Contains(kAllowedAudioTypes, value);
+}
+
 std::string Escape(std::string_view value) {
     std::string escaped;
     escaped.reserve(value.size());
@@ -345,7 +352,7 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                 if (tag.name == "source") {
                     const auto type = tag.attributes.find("type");
                     if (type != tag.attributes.end() &&
-                        type->second == "audio/wav") {
+                        IsAllowedAudioType(type->second)) {
                         html->append(" type=\"" + Escape(type->second) + "\"");
                     }
                 }
@@ -376,7 +383,8 @@ Document Assemble(const dictionary::Identity& dictionary,
     document.sanitized_html =
         "<!doctype html><html><head><meta charset=\"utf-8\">"
         "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src "
-        "'none'; img-src goldendict:; style-src 'none'\"></head><body>";
+        "'none'; img-src goldendict:; media-src goldendict:; style-src "
+        "'none'\"></head><body>";
     for (const auto& article : articles) {
         document.sanitized_html += "<section class=\"gd-article\">";
         if (article.format == "text/html") {
