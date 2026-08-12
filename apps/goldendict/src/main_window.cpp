@@ -12,6 +12,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
@@ -122,6 +123,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     add_favorite_action_ =
         article_toolbar->addAction(QStringLiteral("Add to Favorites"));
     add_favorite_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_E));
+    add_favorite_folder_action_ =
+        article_toolbar->addAction(QStringLiteral("New Favorite Folder"));
     remove_favorite_action_ =
         article_toolbar->addAction(QStringLiteral("Remove Favorite"));
     remove_favorite_action_->setShortcut(QKeySequence::Delete);
@@ -205,9 +208,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(add_favorite_action_, &QAction::triggered, this, [this]() {
         const QString word = query_->text().trimmed();
         if (!word.isEmpty()) {
-            emit AddFavoriteRequested(word);
+            emit AddFavoriteRequested(word, SelectedFavoriteFolderPath());
         }
     });
+    connect(add_favorite_folder_action_, &QAction::triggered, this,
+            &MainWindow::CreateFavoriteFolder);
     connect(favorites_tree_, &QTreeWidget::itemSelectionChanged, this,
             [this]() {
                 remove_favorite_action_->setEnabled(
@@ -373,29 +378,49 @@ void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
     const QString expected = QStringLiteral("favorites-smoke-entry");
     const int initial_count = favorites_tree_->topLevelItemCount();
     connect(
-        this, &MainWindow::AddFavoriteRequested, this,
-        [this, expected, initial_count,
-         completion = std::move(completion)](const QString& submitted) mutable {
-            auto* item = favorites_tree_->topLevelItem(
-                favorites_tree_->topLevelItemCount() - 1);
-            const bool added = submitted == expected && item != nullptr &&
-                               item->text(0) == expected;
+        this, &MainWindow::AddFavoriteFolderRequested, this,
+        [this, expected, initial_count, completion = std::move(completion)](
+            const QString& name, const QList<int>& folder_parent_path) mutable {
+            auto* folder = favorites_tree_->topLevelItem(initial_count);
+            const bool folder_added = name == QStringLiteral("Smoke Folder") &&
+                                      folder_parent_path.isEmpty() &&
+                                      folder != nullptr &&
+                                      folder->data(0, Qt::UserRole).toBool();
+            favorites_tree_->setCurrentItem(folder);
             connect(
-                this, &MainWindow::RemoveFavoriteRequested, this,
-                [this, added, initial_count,
-                 completion =
-                     std::move(completion)](const QList<int>& path) mutable {
-                    completion(added && path == QList<int>{initial_count} &&
-                               favorites_tree_->topLevelItemCount() ==
-                                   initial_count);
+                this, &MainWindow::AddFavoriteRequested, this,
+                [this, expected, folder_added, initial_count,
+                 completion = std::move(completion)](
+                    const QString& submitted,
+                    const QList<int>& word_parent_path) mutable {
+                    auto* refreshed_folder =
+                        favorites_tree_->topLevelItem(initial_count);
+                    const bool nested =
+                        folder_added && submitted == expected &&
+                        word_parent_path == QList<int>{initial_count} &&
+                        refreshed_folder != nullptr &&
+                        refreshed_folder->childCount() == 1 &&
+                        refreshed_folder->child(0)->text(0) == expected;
+                    connect(
+                        this, &MainWindow::RemoveFavoriteRequested, this,
+                        [this, nested, initial_count,
+                         completion = std::move(completion)](
+                            const QList<int>& path) mutable {
+                            completion(nested &&
+                                       path == QList<int>{initial_count} &&
+                                       favorites_tree_->topLevelItemCount() ==
+                                           initial_count);
+                        },
+                        Qt::SingleShotConnection);
+                    favorites_tree_->setCurrentItem(refreshed_folder);
+                    remove_favorite_action_->trigger();
                 },
                 Qt::SingleShotConnection);
-            favorites_tree_->setCurrentItem(item);
-            remove_favorite_action_->trigger();
+            query_->setText(expected);
+            add_favorite_action_->trigger();
         },
         Qt::SingleShotConnection);
-    query_->setText(expected);
-    add_favorite_action_->trigger();
+    emit AddFavoriteFolderRequested(QStringLiteral("Smoke Folder"), {});
 }
 
 void MainWindow::RunDictionaryBrowserSmokeCheck(
@@ -487,6 +512,31 @@ void MainWindow::ImportHistory() {
     if (!path.isEmpty()) {
         emit ImportHistoryRequested(path);
     }
+}
+
+void MainWindow::CreateFavoriteFolder() {
+    bool accepted = false;
+    const QString name =
+        QInputDialog::getText(this, QStringLiteral("New favorite folder"),
+                              QStringLiteral("Folder name:"), QLineEdit::Normal,
+                              QString(), &accepted)
+            .trimmed();
+    if (accepted && !name.isEmpty()) {
+        emit AddFavoriteFolderRequested(name, SelectedFavoriteFolderPath());
+    }
+}
+
+QList<int> MainWindow::SelectedFavoriteFolderPath() const {
+    const auto* item = favorites_tree_->currentItem();
+    if (item == nullptr) {
+        return {};
+    }
+    if (!item->data(0, Qt::UserRole).toBool()) {
+        item = item->parent();
+    }
+    return item == nullptr
+               ? QList<int>{}
+               : item->data(0, Qt::UserRole + 1).value<QList<int>>();
 }
 
 bool MainWindow::ExportHistoryToFile(const QString& path) {

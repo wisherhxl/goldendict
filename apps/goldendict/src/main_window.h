@@ -60,7 +60,10 @@ class MainWindow final : public QMainWindow {
    signals:
     void DictionaryDirectorySelected(const QString& directory);
     void LookupSubmitted(const QString& word);
-    void AddFavoriteRequested(const QString& word);
+    void AddFavoriteRequested(const QString& word,
+                              const QList<int>& parent_path);
+    void AddFavoriteFolderRequested(const QString& name,
+                                    const QList<int>& parent_path);
     void RemoveFavoriteRequested(const QList<int>& path);
     void ClearHistoryRequested();
     void ImportHistoryRequested(const QString& path);
@@ -77,11 +80,13 @@ class MainWindow final : public QMainWindow {
     void ShowDictionaryBrowser();
     void ExportHistory();
     void ImportHistory();
+    void CreateFavoriteFolder();
 
    private:
     void ShowMessage(const QString& title, const QString& message);
     void RefreshHistoryList();
     bool ExportHistoryToFile(const QString& path);
+    QList<int> SelectedFavoriteFolderPath() const;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
     std::unique_ptr<goldendict::core::LookupRequest> request_;
@@ -94,6 +99,7 @@ class MainWindow final : public QMainWindow {
     QPushButton* import_history_button_ = nullptr;
     QTreeWidget* favorites_tree_ = nullptr;
     QAction* add_favorite_action_ = nullptr;
+    QAction* add_favorite_folder_action_ = nullptr;
     QAction* remove_favorite_action_ = nullptr;
     QAction* dictionary_browser_action_ = nullptr;
     QPushButton* lookup_button_ = nullptr;

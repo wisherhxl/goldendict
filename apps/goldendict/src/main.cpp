@@ -92,6 +92,26 @@ bool RemoveFavoriteAtPath(goldendict::core::Favorites* favorites,
     return true;
 }
 
+goldendict::core::Favorites* FavoriteContainerAtPath(
+    goldendict::core::Favorites* favorites, const QList<int>& path) {
+    if (favorites == nullptr) {
+        return nullptr;
+    }
+    auto* items = favorites;
+    for (const int index : path) {
+        if (index < 0 || static_cast<std::size_t>(index) >= items->size()) {
+            return nullptr;
+        }
+        auto& item = (*items)[static_cast<std::size_t>(index)];
+        if (item.kind != goldendict::core::FavoriteItemKind::kFolder) {
+            return nullptr;
+        }
+        item.expanded = true;
+        items = &item.children;
+    }
+    return items;
+}
+
 void RegisterArticleScheme() {
     QWebEngineUrlScheme scheme(QByteArrayLiteral("goldendict"));
     scheme.setSyntax(QWebEngineUrlScheme::Syntax::HostAndPort);
@@ -267,9 +287,15 @@ int main(int argc, char* argv[]) {
         });
     QObject::connect(
         &window, &MainWindow::AddFavoriteRequested, &window,
-        [&](const QString& word) {
+        [&](const QString& word, const QList<int>& parent_path) {
+            auto updated = favorites;
+            auto* target = FavoriteContainerAtPath(&updated, parent_path);
+            if (target == nullptr) {
+                refresh_favorites();
+                return;
+            }
             const bool exists = std::any_of(
-                favorites.begin(), favorites.end(), [&word](const auto& item) {
+                target->begin(), target->end(), [&word](const auto& item) {
                     return item.kind ==
                                goldendict::core::FavoriteItemKind::kHeadword &&
                            QString::fromStdString(item.text).compare(
@@ -279,10 +305,33 @@ int main(int argc, char* argv[]) {
                 refresh_favorites();
                 return;
             }
-            auto updated = favorites;
-            updated.push_back({goldendict::core::FavoriteItemKind::kHeadword,
+            target->push_back({goldendict::core::FavoriteItemKind::kHeadword,
                                word.toStdString(),
                                false,
+                               {}});
+            try {
+                goldendict::core::SaveFavorites(favorites_path.toStdString(),
+                                                updated);
+                favorites = std::move(updated);
+                refresh_favorites();
+            } catch (const std::exception& error) {
+                QMessageBox::warning(&window,
+                                     QStringLiteral("GoldenDict favorites"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+        });
+    QObject::connect(
+        &window, &MainWindow::AddFavoriteFolderRequested, &window,
+        [&](const QString& name, const QList<int>& parent_path) {
+            auto updated = favorites;
+            auto* target = FavoriteContainerAtPath(&updated, parent_path);
+            if (target == nullptr) {
+                refresh_favorites();
+                return;
+            }
+            target->push_back({goldendict::core::FavoriteItemKind::kFolder,
+                               name.toStdString(),
+                               true,
                                {}});
             try {
                 goldendict::core::SaveFavorites(favorites_path.toStdString(),
