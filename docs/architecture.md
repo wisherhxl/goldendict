@@ -152,6 +152,15 @@ suggestions, and rewrites Aard word/redirect links into the common typed lookup
 path before sanitization. Multi-volume aggregation, icon sidecars, and
 full-text indexes remain explicit parity work.
 
+ZIM consumes single `.zim` archives and consecutive split volumes beginning at
+`.zimaa` through a private bounded adapter. It validates the fixed header,
+MIME, URL, directory, cluster, and 32/64-bit blob-offset tables; resolves
+bounded redirects; exposes metadata, folded article lookup and suggestions;
+and serves namespaced binary resources through the typed resource API. Raw,
+zlib, and bzip2 clusters are supported in this slice. LZMA2/Zstd clusters,
+complex relative-link rewriting, icon conversion, and full-text indexes remain
+explicit parity work.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

@@ -37,6 +37,8 @@
 #include "../formats/stardict/stardict_discovery.h"
 #include "../formats/xdxf/xdxf_dictionary.h"
 #include "../formats/xdxf/xdxf_discovery.h"
+#include "../formats/zim/zim_dictionary.h"
+#include "../formats/zim/zim_discovery.h"
 #include "../foundation/text_folding.h"
 #include "../foundation/utf8.h"
 #include "goldendict/core/application.h"
@@ -360,6 +362,24 @@ class ServiceState final {
                 dictionaries_.push_back(
                     std::make_unique<formats::aard::Dictionary>(
                         formats::aard::Dictionary::Open(id, dictionary_path)));
+            } catch (const dictionary::Error& error) {
+                startup_errors_.push_back(
+                    {TranslateErrorCode(error.code()), id, error.what()});
+            }
+        }
+        const auto zim_discovery = formats::zim::Discover(roots);
+        for (const auto& issue : zim_discovery.issues) {
+            startup_errors_.push_back(
+                {LookupErrorCode::kDictionaryUnavailable,
+                 {},
+                 issue.path.string() + ": " + issue.message});
+        }
+        for (const auto& files : zim_discovery.dictionaries) {
+            const std::string id = StableId("zim", files.primary);
+            try {
+                dictionaries_.push_back(
+                    std::make_unique<formats::zim::Dictionary>(
+                        formats::zim::Dictionary::Open(id, files)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});

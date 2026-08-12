@@ -79,6 +79,14 @@ void WriteLittle32(std::uint32_t value, std::size_t offset,
     }
 }
 
+void WriteLittle64(std::uint64_t value, std::size_t offset,
+                   std::string* output) {
+    for (std::size_t byte = 0; byte < 8U; ++byte) {
+        (*output)[offset + byte] =
+            static_cast<char>((value >> (byte * 8U)) & 0xffU);
+    }
+}
+
 std::uint32_t Crc32(std::string_view data) {
     std::uint32_t crc = 0xffffffffU;
     for (const unsigned char byte : data) {
@@ -322,6 +330,45 @@ void WriteAardFixture(const std::filesystem::path& root) {
     AppendBigEndian32(static_cast<std::uint32_t>(article.size()), &file);
     file += article;
     Write(root / "fixture.aar", file);
+}
+
+void WriteZimFixture(const std::filesystem::path& root) {
+    std::filesystem::create_directories(root);
+    const std::string article = "<b>Installed ZIM definition.</b>";
+    std::string cluster_data(8U, '\0');
+    WriteLittle32(8U, 0U, &cluster_data);
+    WriteLittle32(8U + article.size(), 4U, &cluster_data);
+    cluster_data += article;
+    std::string cluster(1U, '\1');
+    cluster += cluster_data;
+
+    std::string file(80U, '\0');
+    WriteLittle32(0x044d495aU, 0U, &file);
+    file[4U] = 6;
+    file[6U] = 1;
+    WriteLittle32(1U, 24U, &file);
+    WriteLittle32(1U, 28U, &file);
+    WriteLittle64(80U, 56U, &file);
+    file.append("text/html\0\0", 11U);
+    const auto url_table = file.size();
+    file.resize(file.size() + 8U);
+    const auto cluster_table = file.size();
+    file.resize(file.size() + 8U);
+    WriteLittle64(file.size(), url_table, &file);
+    const auto entry = file.size();
+    file.resize(file.size() + 16U, '\0');
+    file[entry + 3U] = 'A';
+    file += "example";
+    file.push_back('\0');
+    file += "Example";
+    file.push_back('\0');
+    WriteLittle64(file.size(), cluster_table, &file);
+    file += cluster;
+    WriteLittle64(url_table, 32U, &file);
+    WriteLittle64(url_table, 40U, &file);
+    WriteLittle64(cluster_table, 48U, &file);
+    WriteLittle64(file.size(), 72U, &file);
+    Write(root / "fixture.zim", file);
 }
 
 std::string MdictUtf16Le(std::string_view ascii) {
@@ -720,6 +767,25 @@ int main() {
             aard_response.entries.front().article.sanitized_html->find(
                 "Installed Aard definition.") == std::string::npos) {
             return Fail("installed Aard lookup failed");
+        }
+
+        const auto zim_root = directory.path() / "zim";
+        WriteZimFixture(zim_root);
+        goldendict::core::CoreConfiguration zim_configuration;
+        zim_configuration.dictionary_paths = {zim_root.string()};
+        auto zim_service =
+            goldendict::core::CreateDictionaryService(zim_configuration);
+        const auto zim_catalog = zim_service->GetCatalog();
+        query = {};
+        query.text = "EXAMPLE";
+        const auto zim_response = zim_service->Lookup(query);
+        if (zim_catalog.size() != 1U ||
+            zim_catalog.front().id.rfind("zim-", 0) != 0U ||
+            !zim_response.errors.empty() || zim_response.entries.size() != 1U ||
+            !zim_response.entries.front().article.sanitized_html.has_value() ||
+            zim_response.entries.front().article.sanitized_html->find(
+                "Installed ZIM definition.") == std::string::npos) {
+            return Fail("installed ZIM lookup failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";
