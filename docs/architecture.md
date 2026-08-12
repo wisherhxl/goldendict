@@ -125,6 +125,16 @@ Resource reads are confined to safe relative paths beside the dictionary or
 under either applicable `.files` directory. Abbreviation expansion, resource
 ZIP archives, nested cards, and full-text indexes remain later parity work.
 
+Babylon BGL consumes original `.bgl` containers. The private adapter strictly
+validates the Babylon signature, embedded gzip stream, variable-width block
+lengths, entry ranges, and aggregate output limits before exposing data. It
+preserves title and language metadata, decodes UTF-8 and the common Babylon
+legacy code pages through the shared encoding primitive, exposes alternate
+headwords through folded lookup and suggestions, and keeps embedded resources
+behind the typed resource API. Definitions enter the common sanitizer as
+untrusted HTML. Advanced transcription/control records, historical Hebrew
+repairs, and full-text indexes remain later parity work.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

@@ -7,6 +7,7 @@
 #include <string>
 
 #include "goldendict/core/application.h"
+#include "support/bgl_fixture.h"
 #include "support/dictd_fixture.h"
 #include "support/dsl_fixture.h"
 #include "support/gls_fixture.h"
@@ -39,6 +40,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesXdxfResources();
     void DiscoversSanitizesAndQueriesGlsResources();
     void DiscoversSanitizesAndQueriesDslResources();
+    void DiscoversSanitizesAndQueriesBglResources();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -396,6 +398,34 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesDslResources() {
     QVERIFY(entry.article.sanitized_html->find("<b>drink</b>") !=
             std::string::npos);
     QVERIFY(entry.article.sanitized_html->find("goldendict://lookup/coffee") !=
+            std::string::npos);
+    QCOMPARE(entry.resources.size(), std::size_t{1});
+    QCOMPARE(service->GetResource(entry.resources.front()).size(),
+             std::size_t{8});
+}
+
+void ApplicationServiceTest::DiscoversSanitizesAndQueriesBglResources() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteBglFixture(root);
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "EXAMPLE";
+
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().id.rfind("bgl-", 0) == 0U);
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    const auto& entry = response.entries.front();
+    QCOMPARE(entry.language.source_language, "en");
+    QCOMPARE(entry.language.target_language, "de");
+    QVERIFY(entry.article.sanitized_html->find("<b>definition</b>") !=
             std::string::npos);
     QCOMPARE(entry.resources.size(), std::size_t{1});
     QCOMPARE(service->GetResource(entry.resources.front()).size(),

@@ -8,6 +8,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -62,6 +63,45 @@ void WriteLittle32(std::uint32_t value, std::size_t offset,
         (*output)[offset + byte] =
             static_cast<char>((value >> (byte * 8U)) & 0xffU);
     }
+}
+
+std::uint32_t Crc32(std::string_view data) {
+    std::uint32_t crc = 0xffffffffU;
+    for (const unsigned char byte : data) {
+        crc ^= byte;
+        for (unsigned bit = 0; bit < 8U; ++bit) {
+            crc = (crc >> 1U) ^
+                  (0xedb88320U & (0U - static_cast<std::uint32_t>(crc & 1U)));
+        }
+    }
+    return ~crc;
+}
+
+std::string StoredGzip(std::string_view data) {
+    if (data.size() > 65535U) {
+        throw std::runtime_error("Consumer gzip fixture is too large");
+    }
+    std::string gzip{"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff", 10U};
+    gzip.push_back('\x01');
+    AppendLittle16(static_cast<std::uint16_t>(data.size()), &gzip);
+    AppendLittle16(static_cast<std::uint16_t>(~data.size()), &gzip);
+    gzip.append(data);
+    AppendLittle32(Crc32(data), &gzip);
+    AppendLittle32(static_cast<std::uint32_t>(data.size()), &gzip);
+    return gzip;
+}
+
+void AppendBglBlock(unsigned type, std::string_view data, std::string* stream) {
+    if (data.size() <= 11U) {
+        stream->push_back(static_cast<char>(((data.size() + 4U) << 4U) | type));
+    } else {
+        if (data.size() > 255U) {
+            throw std::runtime_error("Consumer BGL block is too large");
+        }
+        stream->push_back(static_cast<char>(type));
+        stream->push_back(static_cast<char>(data.size()));
+    }
+    stream->append(data);
 }
 
 std::string EncodeDictdBase64(std::uint32_t value) {
@@ -188,6 +228,32 @@ void WriteDslFixture(const std::filesystem::path& root) {
     Write(std::filesystem::u8path(path.string() + ".files") / "images" /
               "pixel.png",
           "dsl-png");
+}
+
+void WriteBglFixture(const std::filesystem::path& root) {
+    std::string stream;
+    AppendBglBlock(3U, std::string("\0\1Installed BGL", 15U), &stream);
+    AppendBglBlock(3U, std::string("\0\7\0\0\0\0", 6U), &stream);
+    AppendBglBlock(3U, std::string("\0\10\0\0\0\6", 6U), &stream);
+    AppendBglBlock(3U, std::string("\0\21\0\0\200", 5U), &stream);
+    const std::string definition =
+        "<b>Installed BGL definition.</b><img src=\"pixel.png\">";
+    std::string entry;
+    entry.push_back(7);
+    entry += "example";
+    AppendLittle16(static_cast<std::uint16_t>(definition.size()), &entry);
+    entry += definition;
+    AppendBglBlock(1U, entry, &stream);
+    std::string resource;
+    resource.push_back(9);
+    resource += "pixel.png";
+    resource += "bgl-png";
+    AppendBglBlock(2U, resource, &stream);
+    stream.push_back(4);
+
+    std::string file{"\x12\x34\x00\x01\x00\x06", 6U};
+    file += StoredGzip(stream);
+    Write(root / "fixture.bgl", file);
 }
 
 int Fail(const std::string& message) {
@@ -418,6 +484,36 @@ int main() {
             dsl_resource.size());
         if (dsl_resource_text != "dsl-png") {
             return Fail("installed DSL resource retrieval failed");
+        }
+
+        const auto bgl_root = directory.path() / "bgl";
+        WriteBglFixture(bgl_root);
+        goldendict::core::CoreConfiguration bgl_configuration;
+        bgl_configuration.dictionary_paths = {bgl_root.string()};
+        auto bgl_service =
+            goldendict::core::CreateDictionaryService(bgl_configuration);
+        const auto bgl_catalog = bgl_service->GetCatalog();
+        query = {};
+        query.text = "EXAMPLE";
+        const auto bgl_response = bgl_service->Lookup(query);
+        if (bgl_catalog.size() != 1U ||
+            bgl_catalog.front().id.rfind("bgl-", 0) != 0U ||
+            !bgl_response.errors.empty() || bgl_response.entries.size() != 1U ||
+            bgl_response.entries.front().language.source_language != "en" ||
+            bgl_response.entries.front().language.target_language != "de" ||
+            !bgl_response.entries.front().article.sanitized_html.has_value() ||
+            bgl_response.entries.front().article.sanitized_html->find(
+                "Installed BGL definition.") == std::string::npos ||
+            bgl_response.entries.front().resources.size() != 1U) {
+            return Fail("installed BGL lookup failed");
+        }
+        const auto bgl_resource = bgl_service->GetResource(
+            bgl_response.entries.front().resources.front());
+        const std::string bgl_resource_text(
+            reinterpret_cast<const char*>(bgl_resource.data()),
+            bgl_resource.size());
+        if (bgl_resource_text != "bgl-png") {
+            return Fail("installed BGL resource retrieval failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";

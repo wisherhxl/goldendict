@@ -51,7 +51,7 @@
 | XDXF | slice | text batch | bounded XML/compressed XML, folded lookup/suggestions, sanitized markup/links, and confined directory resources; resource ZIP and full-text parity remain |
 | GLS | slice | text batch | bounded UTF-8/UTF-16 and compressed text, metadata, aliases, folded lookup/suggestions, sanitized HTML, and confined directory resources; resource ZIP and full-text parity remain |
 | ABBYY Lingvo DSL | slice | text batch | bounded plain/compressed decoding, directives, optional/tilde headwords, common markup/links, and confined directory resources; abbreviations, resource ZIP, nested cards, and full-text parity remain |
-| Babylon BGL | mapped | binary batch | compression, metadata, resources |
+| Babylon BGL | slice | binary batch | bounded signature/gzip/block parsing, metadata and common code pages, aliases, folded lookup/suggestions, sanitized HTML, and embedded resources; advanced control records and full-text parity remain |
 | MDict MDX/MDD | mapped | binary batch | encryption/compression, styles, resources |
 | Aard | mapped | binary batch | archive lookup and article links |
 | ZIM | mapped | binary batch | split files, compression, resources |

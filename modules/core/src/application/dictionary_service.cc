@@ -19,12 +19,14 @@
 
 #include "../article/article_assembler.h"
 #include "../dictionary/dictionary_backend.h"
+#include "../formats/bgl/bgl_dictionary.h"
+#include "../formats/bgl/bgl_discovery.h"
 #include "../formats/dictd/dictd_dictionary.h"
 #include "../formats/dictd/dictd_discovery.h"
-#include "../formats/gls/gls_dictionary.h"
-#include "../formats/gls/gls_discovery.h"
 #include "../formats/dsl/dsl_dictionary.h"
 #include "../formats/dsl/dsl_discovery.h"
+#include "../formats/gls/gls_dictionary.h"
+#include "../formats/gls/gls_discovery.h"
 #include "../formats/sdict/sdict_dictionary.h"
 #include "../formats/sdict/sdict_discovery.h"
 #include "../formats/stardict/stardict_dictionary.h"
@@ -336,6 +338,24 @@ class ServiceState final {
                 dictionaries_.push_back(
                     std::make_unique<formats::dsl::Dictionary>(
                         formats::dsl::Dictionary::Open(id, dictionary_path)));
+            } catch (const dictionary::Error& error) {
+                startup_errors_.push_back(
+                    {TranslateErrorCode(error.code()), id, error.what()});
+            }
+        }
+        const auto bgl_discovery = formats::bgl::Discover(roots);
+        for (const auto& issue : bgl_discovery.issues) {
+            startup_errors_.push_back(
+                {LookupErrorCode::kDictionaryUnavailable,
+                 {},
+                 issue.path.string() + ": " + issue.message});
+        }
+        for (const auto& dictionary_path : bgl_discovery.dictionary_files) {
+            const std::string id = StableId("bgl", dictionary_path);
+            try {
+                dictionaries_.push_back(
+                    std::make_unique<formats::bgl::Dictionary>(
+                        formats::bgl::Dictionary::Open(id, dictionary_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});
