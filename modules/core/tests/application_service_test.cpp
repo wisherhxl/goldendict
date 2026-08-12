@@ -552,6 +552,7 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesMdictResources() {
     QCOMPARE(catalog.size(), std::size_t{1});
     QVERIFY(catalog.front().id.rfind("mdict-", 0) == 0U);
     QCOMPARE(catalog.front().name, "Fixture MDict");
+    QCOMPARE(catalog.front().description, "Fixture description");
     QVERIFY(response.errors.empty());
     QCOMPARE(response.entries.size(), std::size_t{1});
     const auto& entry = response.entries.front();
@@ -580,6 +581,7 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesAard() {
     QCOMPARE(catalog.size(), std::size_t{1});
     QVERIFY(catalog.front().id.rfind("aard-", 0) == 0U);
     QCOMPARE(catalog.front().name, "Fixture Aard");
+    QCOMPARE(catalog.front().description, "fixture");
     QVERIFY(response.errors.empty());
     QCOMPARE(response.entries.size(), std::size_t{1});
     const auto& entry = response.entries.front();
@@ -635,6 +637,7 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesSlobResources() {
     QCOMPARE(catalog.size(), std::size_t{1});
     QVERIFY(catalog.front().id.rfind("slob-", 0) == 0U);
     QCOMPARE(catalog.front().name, "Fixture SLOB");
+    QCOMPARE(catalog.front().description, "fixture");
     QVERIFY(response.errors.empty());
     QCOMPARE(response.entries.size(), std::size_t{1});
     const auto& entry = response.entries.front();

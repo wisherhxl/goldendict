@@ -39,9 +39,15 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
     source_->setObjectName(QStringLiteral("dictionarySource"));
     source_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     source_->setWordWrap(true);
+    description_ = new QLabel(this);
+    description_->setObjectName(QStringLiteral("dictionaryDescription"));
+    description_->setTextFormat(Qt::PlainText);
+    description_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    description_->setWordWrap(true);
     details->addRow(QStringLiteral("Identifier:"), identifier_);
     details->addRow(QStringLiteral("Edition:"), edition_);
     details->addRow(QStringLiteral("Source:"), source_);
+    details->addRow(QStringLiteral("Description:"), description_);
     layout->addLayout(details);
 
     prefix_ = new QLineEdit(this);
@@ -148,6 +154,7 @@ void DictionaryBrowser::RefreshDictionaryInfo() {
         identifier_->clear();
         edition_->clear();
         source_->clear();
+        description_->clear();
         return;
     }
     const auto& dictionary = catalog_[static_cast<std::size_t>(index)];
@@ -156,6 +163,9 @@ void DictionaryBrowser::RefreshDictionaryInfo() {
                           ? QStringLiteral("Not specified")
                           : QString::fromStdString(dictionary.edition));
     source_->setText(QString::fromStdString(dictionary.source));
+    description_->setText(dictionary.description.empty()
+                              ? QStringLiteral("Not specified")
+                              : QString::fromStdString(dictionary.description));
 }
 
 void DictionaryBrowser::RefreshHeadwords() {

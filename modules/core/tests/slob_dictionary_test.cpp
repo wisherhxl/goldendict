@@ -25,6 +25,7 @@ void SlobDictionaryTest::ExposesIdentityArticlesSuggestionsAndResources() {
         "slob-id", test::WriteSlobFixture(
                        std::filesystem::path(directory.path().toStdString())));
     QCOMPARE(dictionary.identity().name, "Fixture SLOB");
+    QCOMPARE(dictionary.identity().description, "fixture");
     QCOMPARE(dictionary.identity().source_language, "en");
     QCOMPARE(dictionary.identity().target_language, "de");
     QCOMPARE(dictionary.LookupExact("alias").front().format, "text/html");

@@ -40,6 +40,7 @@ struct DictionaryIdentity {
     std::string name;
     std::string edition;
     std::string source;
+    std::string description;
 };
 
 struct LanguageInfo {

@@ -30,6 +30,7 @@ void MdictDictionaryTest::ExposesIdentityHtmlSuggestionsAndResources() {
     const Dictionary dictionary = Dictionary::Open("mdict-id", files);
 
     QCOMPARE(dictionary.identity().name, "Fixture MDict");
+    QCOMPARE(dictionary.identity().description, "Fixture description");
     QCOMPARE(dictionary.LookupExact("example").front().format, "text/html");
     QCOMPARE(dictionary.LookupExact("alias").size(), std::size_t{1});
     QCOMPARE(dictionary.SuggestPrefix("exa").front(), "example");

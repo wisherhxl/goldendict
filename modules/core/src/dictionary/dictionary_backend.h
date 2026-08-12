@@ -49,6 +49,7 @@ struct Identity {
     std::string id;
     std::string name;
     std::string source;
+    std::string description;
     std::string source_language;
     std::string target_language;
 };

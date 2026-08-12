@@ -25,6 +25,7 @@ void AardDictionaryTest::ExposesIdentityHtmlAndSuggestions() {
         "aard-id", test::WriteAardFixture(
                        std::filesystem::path(directory.path().toStdString())));
     QCOMPARE(dictionary.identity().name, "Fixture Aard");
+    QCOMPARE(dictionary.identity().description, "fixture");
     QCOMPARE(dictionary.identity().source_language, "en");
     QCOMPARE(dictionary.identity().target_language, "de");
     QCOMPARE(dictionary.LookupExact("example").front().format, "text/html");

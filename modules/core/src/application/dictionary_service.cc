@@ -92,6 +92,7 @@ DictionaryIdentity PublicIdentity(const dictionary::Identity& identity) {
     result.id = identity.id;
     result.name = identity.name;
     result.source = identity.source;
+    result.description = identity.description;
     return result;
 }
 

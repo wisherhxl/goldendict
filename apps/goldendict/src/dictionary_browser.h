@@ -49,6 +49,7 @@ class DictionaryBrowser final : public QDialog {
     QLabel* identifier_ = nullptr;
     QLabel* edition_ = nullptr;
     QLabel* source_ = nullptr;
+    QLabel* description_ = nullptr;
     QLineEdit* prefix_ = nullptr;
     QListWidget* headwords_ = nullptr;
     QLabel* result_status_ = nullptr;

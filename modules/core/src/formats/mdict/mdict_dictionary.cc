@@ -39,6 +39,8 @@ Dictionary Dictionary::Open(std::string id, const DictionaryFiles& files) {
         dictionary.reader_ = Reader::Open(files);
         dictionary.identity_.id = std::move(id);
         dictionary.identity_.name = dictionary.reader_.metadata().name;
+        dictionary.identity_.description =
+            dictionary.reader_.metadata().description;
         std::error_code error;
         const auto canonical =
             std::filesystem::weakly_canonical(files.mdx, error);
