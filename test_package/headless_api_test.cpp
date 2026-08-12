@@ -45,6 +45,11 @@ void AppendBigEndian32(std::uint32_t value, std::string* output) {
     output->push_back(static_cast<char>(value & 0xffU));
 }
 
+void AppendBigEndian16(std::uint16_t value, std::string* output) {
+    output->push_back(static_cast<char>((value >> 8U) & 0xffU));
+    output->push_back(static_cast<char>(value & 0xffU));
+}
+
 void AppendLittle16(std::uint16_t value, std::string* output) {
     output->push_back(static_cast<char>(value & 0xffU));
     output->push_back(static_cast<char>((value >> 8U) & 0xffU));
@@ -241,7 +246,7 @@ void WriteBglFixture(const std::filesystem::path& root) {
     std::string entry;
     entry.push_back(7);
     entry += "example";
-    AppendLittle16(static_cast<std::uint16_t>(definition.size()), &entry);
+    AppendBigEndian16(static_cast<std::uint16_t>(definition.size()), &entry);
     entry += definition;
     AppendBglBlock(1U, entry, &stream);
     std::string resource;
