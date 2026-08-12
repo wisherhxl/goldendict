@@ -362,8 +362,10 @@ parity work.
 The history-management increment adds case-insensitive live filtering to the
 reusable history pane and an explicit clear action. Clearing remains a
 composition-root command: it atomically persists an empty bounded history
-through the core store and refreshes the presentation only after success.
-History export and group-selection controls remain later Phase 8 work.
+through the core store and refreshes the presentation only after success. The
+pane also exports the complete history as an atomically replaced UTF-8 text
+file with a compatibility BOM and one sanitized headword per line. History
+import and group-selection controls remain later Phase 8 work.
 
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.

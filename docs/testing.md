@@ -125,6 +125,11 @@ through the application, checks the refreshed favorites tree, and reloads the
 persisted empty state through the public core API in an isolated configuration
 directory.
 
+`goldendict_history_export_smoke` exports a history containing ordinary and
+embedded-newline headwords, then verifies the compatibility UTF-8 BOM,
+one-headword-per-line sanitization, and exact file contents in an isolated
+configuration directory.
+
 `goldendict_dictionary_browser_smoke` loads a small checked-in Dictd fixture,
 opens the real dictionary browser offscreen, verifies catalog identity and
 source provenance, performs a dictionary-filtered prefix query, and confirms

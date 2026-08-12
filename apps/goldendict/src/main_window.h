@@ -50,6 +50,8 @@ class MainWindow final : public QMainWindow {
     void RunWebEngineInteractionCheck(std::function<void(bool)> completion);
     void RunHistorySmokeCheck(std::function<void(bool)> completion);
     void RunHistoryManagementSmokeCheck(std::function<void(bool)> completion);
+    void RunHistoryExportSmokeCheck(const QString& path,
+                                    std::function<void(bool)> completion);
     void RunFavoritesSmokeCheck(std::function<void(bool)> completion);
     void RunDictionaryBrowserSmokeCheck(std::function<void(bool)> completion);
 
@@ -70,10 +72,12 @@ class MainWindow final : public QMainWindow {
     void UpdateNavigationActions();
     void ZoomArticle(double delta);
     void ShowDictionaryBrowser();
+    void ExportHistory();
 
    private:
     void ShowMessage(const QString& title, const QString& message);
     void RefreshHistoryList();
+    bool ExportHistoryToFile(const QString& path);
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
     std::unique_ptr<goldendict::core::LookupRequest> request_;
@@ -82,6 +86,7 @@ class MainWindow final : public QMainWindow {
     QListWidget* history_list_ = nullptr;
     QStringList history_words_;
     QPushButton* clear_history_button_ = nullptr;
+    QPushButton* export_history_button_ = nullptr;
     QTreeWidget* favorites_tree_ = nullptr;
     QAction* add_favorite_action_ = nullptr;
     QAction* remove_favorite_action_ = nullptr;

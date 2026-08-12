@@ -359,6 +359,20 @@ int main(int argc, char* argv[]) {
                     app.exit(passed ? 0 : 1);
                 });
         });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--history-export-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window,
+                           [&app, &configuration_directory, &window]() {
+                               QDir().mkpath(configuration_directory);
+                               window.RunHistoryExportSmokeCheck(
+                                   QDir(configuration_directory)
+                                       .filePath(QStringLiteral(
+                                           "history-export-smoke.txt")),
+                                   [&app](bool passed) {
+                                       app.exit(passed ? 0 : 1);
+                                   });
+                           });
     }
 
     return app.exec();

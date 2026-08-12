@@ -9,6 +9,7 @@
 #include <QDesktopServices>
 #include <QDockWidget>
 #include <QFileDialog>
+#include <QFile>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QKeySequence>
@@ -81,9 +82,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     clear_history_button_ =
         new QPushButton(QStringLiteral("Clear History"), history_widget);
     clear_history_button_->setObjectName(QStringLiteral("clearHistoryButton"));
+    export_history_button_ =
+        new QPushButton(QStringLiteral("Export History..."), history_widget);
+    export_history_button_->setObjectName(
+        QStringLiteral("exportHistoryButton"));
+    auto* history_buttons = new QHBoxLayout();
+    history_buttons->addWidget(export_history_button_);
+    history_buttons->addWidget(clear_history_button_);
     history_layout->addWidget(history_filter_);
     history_layout->addWidget(history_list_, 1);
-    history_layout->addWidget(clear_history_button_);
+    history_layout->addLayout(history_buttons);
     history_dock->setWidget(history_widget);
     addDockWidget(Qt::LeftDockWidgetArea, history_dock);
 
@@ -177,6 +185,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             &MainWindow::RefreshHistoryList);
     connect(clear_history_button_, &QPushButton::clicked, this,
             &MainWindow::ClearHistoryRequested);
+    connect(export_history_button_, &QPushButton::clicked, this,
+            &MainWindow::ExportHistory);
     connect(favorites_tree_, &QTreeWidget::itemActivated, this,
             [this](QTreeWidgetItem* item, int) {
                 if (item == nullptr || item->data(0, Qt::UserRole).toBool()) {
@@ -326,6 +336,18 @@ void MainWindow::RunHistoryManagementSmokeCheck(
     clear_history_button_->click();
 }
 
+void MainWindow::RunHistoryExportSmokeCheck(
+    const QString& path, std::function<void(bool)> completion) {
+    SetHistoryWords({QStringLiteral("Alpha"),
+                     QStringLiteral("line\nbreak\rentry")});
+    const bool exported = ExportHistoryToFile(path);
+    QFile file(path);
+    const bool opened = file.open(QIODevice::ReadOnly);
+    const QByteArray expected =
+        QByteArray::fromHex("efbbbf") + "Alpha\nline break entry\n";
+    completion(exported && opened && file.readAll() == expected);
+}
+
 void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
     const QString expected = QStringLiteral("favorites-smoke-entry");
     const int initial_count = favorites_tree_->topLevelItemCount();
@@ -423,6 +445,38 @@ void MainWindow::RefreshHistoryList() {
             history_list_->addItem(word);
         }
     }
+}
+
+void MainWindow::ExportHistory() {
+    const QString path = QFileDialog::getSaveFileName(
+        this, QStringLiteral("Export history to file"), QString(),
+        QStringLiteral("Text files (*.txt);;All files (*.*)"));
+    if (path.isEmpty()) {
+        return;
+    }
+    status_->setText(ExportHistoryToFile(path)
+                         ? QStringLiteral("History export complete")
+                         : QStringLiteral("History export failed"));
+}
+
+bool MainWindow::ExportHistoryToFile(const QString& path) {
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    if (file.write(QByteArray::fromHex("efbbbf")) != 3) {
+        return false;
+    }
+    for (const QString& word : history_words_) {
+        QByteArray line = word.toUtf8();
+        line.replace('\n', ' ');
+        line.replace('\r', ' ');
+        line.push_back('\n');
+        if (file.write(line) != line.size()) {
+            return false;
+        }
+    }
+    return file.commit();
 }
 
 void MainWindow::SetFavoriteItems(const std::vector<FavoriteViewItem>& items) {
