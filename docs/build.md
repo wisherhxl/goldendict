@@ -234,6 +234,13 @@ Expat types and linkage do not appear in installed public headers or exported
 target usage requirements. Expat uses the MIT license and is covered by the
 package dependency/license inventory.
 
+Vorbis 1.3.7 (and its Ogg dependency) is a direct private `goldendict_core`
+implementation dependency for bounded LSA sample-range decoding. The private
+audio component owns the codec calls and returns transport-neutral WAV bytes;
+Vorbis/Ogg types and linkage do not appear in installed public headers or
+exported target usage requirements. Both libraries use BSD-style licenses and
+are covered by the package dependency/license inventory.
+
 ## Packaging
 
 Packages are produced through CMake/CPack from the current CMake install rules.

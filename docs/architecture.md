@@ -178,6 +178,15 @@ confines resources to catalog-declared subbooks. Compressed HONMON streams,
 mixed JIS/GB2312 text, grouped indexes, gaiji and multimedia rendering, and
 full-text indexing remain explicit parity work.
 
+LSA consumes recursively discovered `.lsa` and `.dat` audio archives through
+a private bounded adapter. It validates the UTF-16 entry table and all sample
+ranges, exposes folded exact/prefix/suggestion queries, and emits sanitized
+HTML5 audio references. Ogg Vorbis inspection and sample-range decoding live
+behind a separate private audio component, which returns bounded PCM WAV data
+through the typed resource API; codec types do not cross the dictionary or
+public API boundaries. Archive icons and streaming very large recordings
+remain explicit parity work.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

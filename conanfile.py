@@ -53,6 +53,7 @@ class GoldenDictRecipe(ConanFile):
         self.requires("expat/2.7.5")
         self.requires("icu/74.2")
         self.requires("qt/6.11.1")
+        self.requires("vorbis/1.3.7")
         self.requires("zlib/1.3.1")
 
     def build_requirements(self):

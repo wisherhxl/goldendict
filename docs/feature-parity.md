@@ -57,7 +57,7 @@
 | ZIM | slice | binary batch | bounded header/directory/cluster parsing, consecutive split files, raw/zlib/bzip2 clusters, 32/64-bit blob offsets, metadata, redirects, folded lookup/suggestions, and resources; LZMA2/Zstd, complex link rewriting, icons, and full-text parity remain |
 | SLOB | slice | binary batch | bounded header/reference/item/bin parsing, declared text encoding, metadata tags, aliases, raw/zlib/bzip2 stores, folded lookup/suggestions, sanitized articles, and resources; LZMA2, advanced conversion, icons, and full-text parity remain |
 | EPWING | slice | specialized batch | bounded `CATALOGS`/subbook/index parsing, Latin-1 and JIS X 0208 text, folded lookup/suggestions, internal references, and confined subbook resources; compressed HONMON, mixed GB2312, gaiji/media rendering, grouped indexes, and full-text parity remain |
-| LSA audio archive | mapped | specialized batch | index and audio retrieval |
+| LSA audio archive | slice | specialized batch | bounded `.lsa`/`.dat` index and UTF-16 name parsing, folded lookup/suggestions, safe HTML5 audio references, and sample-range Vorbis-to-WAV retrieval; icons and large-file streaming remain |
 | ZIP sound packs | mapped | specialized batch | index and audio retrieval |
 | Sound directories | mapped | specialized batch | recursive discovery and audio retrieval |
 

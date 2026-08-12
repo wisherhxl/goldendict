@@ -31,6 +31,8 @@ Phase 2 directly declares these external components:
   permissive BSD-style license.
 - Expat 2.7.5, used privately for bounded XDXF XML parsing, under the MIT
   license.
+- Vorbis 1.3.7 and Ogg 1.3.5, used privately for bounded LSA audio decoding,
+  under their BSD-3-Clause licenses.
 - `python-html5lib/1.1`, used only in Qt's build context. Its local Conan
   recipe packages the html5lib, six, and webencodings license files and
   declares their MIT and BSD-3-Clause licenses.

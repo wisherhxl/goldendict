@@ -18,7 +18,7 @@ const std::vector<std::string> kAllowedTags = {
     "p",  "div",        "span", "b",   "strong", "i",     "em",
     "u",  "br",         "ul",   "ol",  "li",     "dl",    "dt",
     "dd", "blockquote", "code", "pre", "table",  "thead", "tbody",
-    "tr", "th",         "td",   "a",   "img"};
+    "tr", "th",         "td",   "a",   "img",    "audio", "source"};
 const std::vector<std::string> kSuppressedTags = {
     "script", "style", "iframe", "object", "embed", "svg", "math"};
 constexpr std::size_t kMaximumDocumentBytes = 16U * 1024U * 1024U;
@@ -174,7 +174,7 @@ std::optional<Tag> ParseTag(std::string_view raw) {
         tag.attributes.emplace(name, *decoded);
         index = end + 1U;
     }
-    if (tag.name == "br" || tag.name == "img") {
+    if (tag.name == "br" || tag.name == "img" || tag.name == "source") {
         tag.self_closing = true;
     }
     return tag;
@@ -305,7 +305,7 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                                          "\"");
                         } catch (const std::invalid_argument&) {}
                     }
-                } else if (tag.name == "img") {
+                } else if (tag.name == "img" || tag.name == "source") {
                     const auto source = tag.attributes.find("src");
                     if (source != tag.attributes.end()) {
                         const auto resource_id =
@@ -336,6 +336,17 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                         attribute != tag.attributes.end()) {
                         html->append(" " + std::string(attribute_name) + "=\"" +
                                      Escape(attribute->second) + "\"");
+                    }
+                }
+                if (tag.name == "audio" &&
+                    tag.attributes.find("controls") != tag.attributes.end()) {
+                    html->append(" controls=\"controls\"");
+                }
+                if (tag.name == "source") {
+                    const auto type = tag.attributes.find("type");
+                    if (type != tag.attributes.end() &&
+                        type->second == "audio/wav") {
+                        html->append(" type=\"" + Escape(type->second) + "\"");
                     }
                 }
                 html->append(">");

@@ -14,6 +14,7 @@ class ArticleAssemblerTest : public QObject {
    private slots:
     void EscapesPlainTextAndKeepsItStructured();
     void SanitizesMarkupAndRewritesTypedLinks();
+    void PreservesSafeAudioAndCollectsItsResource();
     void DeduplicatesResourceReferencesAcrossArticles();
     void RemovesActiveContentAndUnsafeAttributes();
     void FallsBackToInertTextForMalformedMarkup();
@@ -54,6 +55,22 @@ void ArticleAssemblerTest::SanitizesMarkupAndRewritesTypedLinks() {
     QCOMPARE(document.resources.size(), std::size_t{1});
     QCOMPARE(document.resources.front().dictionary_id, "fixture id");
     QCOMPARE(document.resources.front().resource_id, "images/pixel.png");
+}
+
+void ArticleAssemblerTest::PreservesSafeAudioAndCollectsItsResource() {
+    const Document document = Assemble(
+        kDictionary, {{"example", "text/html",
+                       "<audio controls=\"yes\"><source src=\"spoken.wav\" "
+                       "type=\"audio/wav\"></audio>spoken"}});
+    QVERIFY(document.sanitized_html.find("<audio controls=\"controls\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "src=\"goldendict://resource/fixture%20id/spoken.wav\"") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("type=\"audio/wav\"") !=
+            std::string::npos);
+    QCOMPARE(document.resources.size(), std::size_t{1});
+    QCOMPARE(document.resources.front().resource_id, "spoken.wav");
 }
 
 void ArticleAssemblerTest::DeduplicatesResourceReferencesAcrossArticles() {

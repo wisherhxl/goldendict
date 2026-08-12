@@ -5,12 +5,48 @@ set(the_description "GoldenDict headless and desktop application core")
 find_package(BZip2 REQUIRED)
 find_package(expat REQUIRED CONFIG)
 find_package(ICU REQUIRED CONFIG COMPONENTS uc)
+find_package(Vorbis REQUIRED CONFIG)
 find_package(ZLIB REQUIRED)
 
 ti_define_module(core
   REQUIRED PUBLIC MODULES tiger
-  REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat ICU::uc ZLIB::ZLIB
+  REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat ICU::uc Vorbis::vorbisfile ZLIB::ZLIB
 )
+
+if(TARGET lsa_discovery_test)
+  target_sources(lsa_discovery_test PRIVATE src/formats/lsa/lsa_discovery.cc)
+  target_link_libraries(lsa_discovery_test
+    PRIVATE Vorbis::vorbisenc Vorbis::vorbisfile
+  )
+endif()
+
+if(TARGET lsa_reader_test)
+  target_sources(lsa_reader_test PRIVATE
+    src/audio/vorbis_decoder.cc
+    src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
+    src/formats/lsa/lsa_reader.cc
+  )
+  target_link_libraries(lsa_reader_test
+    PRIVATE ICU::uc Vorbis::vorbisenc Vorbis::vorbisfile
+  )
+endif()
+
+if(TARGET lsa_dictionary_test)
+  target_sources(lsa_dictionary_test PRIVATE
+    src/audio/vorbis_decoder.cc
+    src/dictionary/dictionary_backend.cc
+    src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
+    src/formats/lsa/lsa_dictionary.cc
+    src/formats/lsa/lsa_reader.cc
+  )
+  target_link_libraries(lsa_dictionary_test
+    PRIVATE ICU::uc Vorbis::vorbisenc Vorbis::vorbisfile
+  )
+endif()
 
 if(TARGET epwing_discovery_test)
   target_sources(epwing_discovery_test PRIVATE
@@ -189,7 +225,7 @@ endif()
 
 if(TARGET application_service_test)
   target_link_libraries(application_service_test
-    PRIVATE BZip2::BZip2 ZLIB::ZLIB
+    PRIVATE BZip2::BZip2 Vorbis::vorbisenc Vorbis::vorbisfile ZLIB::ZLIB
   )
 endif()
 

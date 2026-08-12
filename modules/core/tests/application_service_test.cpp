@@ -13,6 +13,7 @@
 #include "support/dsl_fixture.h"
 #include "support/epwing_fixture.h"
 #include "support/gls_fixture.h"
+#include "support/lsa_fixture.h"
 #include "support/mdict_fixture.h"
 #include "support/sdict_fixture.h"
 #include "support/slob_fixture.h"
@@ -51,6 +52,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesZimResources();
     void DiscoversSanitizesAndQueriesSlobResources();
     void DiscoversSanitizesAndQueriesEpwingResources();
+    void DiscoversSanitizesAndQueriesLsaAudio();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -573,6 +575,29 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesEpwingResources() {
     QCOMPARE(response.entries.size(), std::size_t{1});
     QVERIFY(response.entries.front().article.sanitized_html->find(
                 "goldendict://lookup/second") != std::string::npos);
+}
+
+void ApplicationServiceTest::DiscoversSanitizesAndQueriesLsaAudio() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteLsaFixture(root);
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "EXAMPLE";
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().id.rfind("lsa-", 0) == 0U);
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    const auto& entry = response.entries.front();
+    QVERIFY(entry.article.sanitized_html->find("<audio controls") !=
+            std::string::npos);
+    QCOMPARE(entry.resources.size(), std::size_t{1});
+    const auto wav = service->GetResource(entry.resources.front());
+    QCOMPARE(wav.size(), std::size_t{44U + 16U * 2U});
 }
 
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {

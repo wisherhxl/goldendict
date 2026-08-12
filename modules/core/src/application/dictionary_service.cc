@@ -31,6 +31,8 @@
 #include "../formats/epwing/epwing_discovery.h"
 #include "../formats/gls/gls_dictionary.h"
 #include "../formats/gls/gls_discovery.h"
+#include "../formats/lsa/lsa_dictionary.h"
+#include "../formats/lsa/lsa_discovery.h"
 #include "../formats/mdict/mdict_dictionary.h"
 #include "../formats/mdict/mdict_discovery.h"
 #include "../formats/sdict/sdict_dictionary.h"
@@ -366,6 +368,24 @@ class ServiceState final {
                 dictionaries_.push_back(
                     std::make_unique<formats::epwing::Dictionary>(
                         formats::epwing::Dictionary::Open(id, catalog_path)));
+            } catch (const dictionary::Error& error) {
+                startup_errors_.push_back(
+                    {TranslateErrorCode(error.code()), id, error.what()});
+            }
+        }
+        const auto lsa_discovery = formats::lsa::Discover(roots);
+        for (const auto& issue : lsa_discovery.issues) {
+            startup_errors_.push_back(
+                {LookupErrorCode::kDictionaryUnavailable,
+                 {},
+                 issue.path.string() + ": " + issue.message});
+        }
+        for (const auto& dictionary_path : lsa_discovery.dictionary_files) {
+            const std::string id = StableId("lsa", dictionary_path);
+            try {
+                dictionaries_.push_back(
+                    std::make_unique<formats::lsa::Dictionary>(
+                        formats::lsa::Dictionary::Open(id, dictionary_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});
