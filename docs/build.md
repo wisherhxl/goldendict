@@ -226,10 +226,13 @@ config exports `BZip2::BZip2`; bzip2 types and linkage do not appear in public
 headers or exported target usage requirements. bzip2 uses its permissive
 BSD-style license and is covered by the package dependency/license inventory.
 
-Qt Core is a private `goldendict_core` implementation dependency for bounded
-XDXF stream parsing. The dependency is already part of the application's Conan
-Qt graph and is declared private because no Qt type appears in the installed
-headless API or exported target usage requirements.
+Expat 2.7.5 is a direct private `goldendict_core` implementation dependency for
+bounded XDXF stream parsing on every supported platform. Conan already resolves
+the same Expat revision through Qt, so the explicit requirement does not add a
+second runtime implementation. Its CMakeDeps config exports `expat::expat`;
+Expat types and linkage do not appear in installed public headers or exported
+target usage requirements. Expat uses the MIT license and is covered by the
+package dependency/license inventory.
 
 ## Packaging
 

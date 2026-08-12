@@ -6,13 +6,14 @@
 #include <array>
 #include <cctype>
 #include <fstream>
+#include <iterator>
+#include <optional>
 #include <set>
 #include <unordered_set>
 #include <utility>
 
+#include <expat.h>
 #include <zlib.h>
-#include <QByteArray>
-#include <QXmlStreamReader>
 
 #include "../../foundation/text_folding.h"
 #include "../../foundation/utf8.h"
@@ -135,96 +136,291 @@ std::string Trim(std::string value) {
     return value;
 }
 
-std::string LanguageCode(QStringView language) {
-    QString code = language.toString().trimmed();
-    const qsizetype separator = code.indexOf(QLatin1Char('-'));
-    if (separator >= 0) {
-        code.truncate(separator);
+std::string Lower(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char character) {
+                       return static_cast<char>(std::tolower(character));
+                   });
+    return value;
+}
+
+std::string LanguageCode(std::string_view language) {
+    std::string code = Lower(Trim(std::string(language)));
+    const auto separator = code.find('-');
+    if (separator != std::string::npos) {
+        code.resize(separator);
     }
-    return code.toLower().toStdString();
+    return code;
+}
+
+std::optional<std::string_view> Attribute(const XML_Char** attributes,
+                                          std::string_view name) {
+    if (attributes == nullptr) {
+        return std::nullopt;
+    }
+    for (std::size_t index = 0; attributes[index] != nullptr; index += 2U) {
+        if (name == attributes[index]) {
+            return std::string_view(attributes[index + 1U]);
+        }
+    }
+    return std::nullopt;
 }
 
 struct Element {
+    std::string name;
     std::string text;
     std::string html;
     std::vector<std::string> keys;
 };
 
-std::string HtmlTag(QStringView name) {
-    if (name == u"k" || name == u"def") {
+struct ParsedRecord {
+    std::string headword;
+    std::size_t article = 0;
+};
+
+struct ParsedDocument {
+    Metadata metadata;
+    std::vector<ParsedRecord> records;
+    std::vector<std::string> articles;
+};
+
+std::string HtmlTag(std::string_view name) {
+    if (name == "k" || name == "def") {
         return "div";
     }
-    if (name == u"ex") {
+    if (name == "ex") {
         return "blockquote";
     }
-    if (name == u"tr" || name == u"pos" || name == u"co" || name == u"abr" ||
-        name == u"abbr") {
+    if (name == "tr" || name == "pos" || name == "co" || name == "abr" ||
+        name == "abbr") {
         return "span";
     }
-    if (name == u"b" || name == u"strong" || name == u"i" || name == u"em" ||
-        name == u"u" || name == u"p" || name == u"ul" || name == u"ol" ||
-        name == u"li" || name == u"dl" || name == u"dt" || name == u"dd" ||
-        name == u"table" || name == u"thead" || name == u"tbody" ||
-        name == u"tr" || name == u"th" || name == u"td" || name == u"code" ||
-        name == u"pre") {
-        return name.toString().toStdString();
+    if (name == "b" || name == "strong" || name == "i" || name == "em" ||
+        name == "u" || name == "p" || name == "ul" || name == "ol" ||
+        name == "li" || name == "dl" || name == "dt" || name == "dd" ||
+        name == "table" || name == "thead" || name == "tbody" || name == "th" ||
+        name == "td" || name == "code" || name == "pre") {
+        return std::string(name);
     }
     return {};
 }
 
-Element ReadElement(QXmlStreamReader* stream,
-                    const std::filesystem::path& path) {
-    const QString name = stream->name().toString().toLower();
-    Element result;
-    while (!stream->atEnd()) {
-        stream->readNext();
-        if (stream->isCharacters()) {
-            const auto text = stream->text().toString().toStdString();
-            result.text += text;
-            result.html += Escape(text);
-        } else if (stream->isStartElement()) {
-            Element child = ReadElement(stream, path);
-            result.text += child.text;
-            result.keys.insert(result.keys.end(), child.keys.begin(),
-                               child.keys.end());
-            result.html += std::move(child.html);
-        } else if (stream->isEndElement()) {
-            break;
-        }
-        if (result.html.size() > kMaximumArticleSize) {
-            Throw(ErrorCode::kInvalidDictionary, path,
-                  "XDXF article exceeds the supported size limit");
-        }
-    }
-    if (name == u"k") {
-        const std::string key = Trim(result.text);
+void FinalizeElement(Element* element) {
+    if (element->name == "k") {
+        const std::string key = Trim(element->text);
         if (!key.empty()) {
-            result.keys.push_back(key);
+            element->keys.push_back(key);
         }
     }
-    if (name == u"kref" || name == u"iref") {
-        const std::string target = Trim(result.text);
-        result.html = target.empty() ? Escape(result.text)
-                                     : "<a href=\"bword://" + Escape(target) +
-                                           "\">" + Escape(result.text) + "</a>";
-        return result;
+    if (element->name == "kref" || element->name == "iref") {
+        const std::string target = Trim(element->text);
+        element->html = target.empty()
+                            ? Escape(element->text)
+                            : "<a href=\"bword://" + Escape(target) + "\">" +
+                                  Escape(element->text) + "</a>";
+        return;
     }
-    if (name == u"rref") {
-        const std::string resource = Trim(result.text);
-        if (!resource.empty()) {
-            result.html = "<img src=\"" + Escape(resource) + "\">";
-        }
-        return result;
+    if (element->name == "rref") {
+        const std::string resource = Trim(element->text);
+        element->html = resource.empty()
+                            ? std::string{}
+                            : "<img src=\"" + Escape(resource) + "\">";
+        return;
     }
-    if (name == u"br") {
-        result.html = "<br>";
-        return result;
+    if (element->name == "br") {
+        element->html = "<br>";
+        return;
     }
-    const std::string tag = HtmlTag(name);
+    const std::string tag = HtmlTag(element->name);
     if (!tag.empty()) {
-        result.html = "<" + tag + ">" + result.html + "</" + tag + ">";
+        element->html = "<" + tag + ">" + element->html + "</" + tag + ">";
     }
-    return result;
+}
+
+struct ParserState {
+    XML_Parser parser = nullptr;
+    ParsedDocument document;
+    std::vector<Element> elements;
+    std::optional<std::string> error;
+    std::string metadata_element;
+    std::string metadata_text;
+    std::size_t total_article_bytes = 0;
+    bool found_root = false;
+    bool inside_article = false;
+};
+
+void Fail(ParserState* state, std::string message) {
+    if (!state->error.has_value()) {
+        state->error = std::move(message);
+        XML_StopParser(state->parser, XML_FALSE);
+    }
+}
+
+void StartElement(void* user_data, const XML_Char* raw_name,
+                  const XML_Char** attributes) {
+    auto* state = static_cast<ParserState*>(user_data);
+    const std::string name = Lower(raw_name);
+    if (!state->found_root) {
+        if (name != "xdxf") {
+            Fail(state, "Not an XDXF dictionary file");
+            return;
+        }
+        state->found_root = true;
+        if (const auto language = Attribute(attributes, "lang_from")) {
+            state->document.metadata.source_language = LanguageCode(*language);
+        }
+        if (const auto language = Attribute(attributes, "lang_to")) {
+            state->document.metadata.target_language = LanguageCode(*language);
+        }
+        return;
+    }
+    if (state->inside_article) {
+        state->elements.push_back({name, {}, {}, {}});
+        return;
+    }
+    if (name == "ar") {
+        state->inside_article = true;
+        state->elements.push_back({name, {}, {}, {}});
+        return;
+    }
+    if ((name == "full_name" || name == "full_title") &&
+        state->document.metadata.name.empty()) {
+        state->metadata_element = name;
+        state->metadata_text.clear();
+    } else if (name == "from" &&
+               state->document.metadata.source_language.empty()) {
+        auto language = Attribute(attributes, "xml:lang");
+        if (!language.has_value()) {
+            language = Attribute(attributes, "lang");
+        }
+        if (language.has_value()) {
+            state->document.metadata.source_language = LanguageCode(*language);
+        }
+    } else if (name == "to" &&
+               state->document.metadata.target_language.empty()) {
+        auto language = Attribute(attributes, "xml:lang");
+        if (!language.has_value()) {
+            language = Attribute(attributes, "lang");
+        }
+        if (language.has_value()) {
+            state->document.metadata.target_language = LanguageCode(*language);
+        }
+    }
+}
+
+void CharacterData(void* user_data, const XML_Char* data, int length) {
+    auto* state = static_cast<ParserState*>(user_data);
+    const std::string_view text(data, static_cast<std::size_t>(length));
+    if (state->inside_article && !state->elements.empty()) {
+        auto& element = state->elements.back();
+        if (text.size() > kMaximumArticleSize - element.text.size()) {
+            Fail(state, "XDXF article exceeds the supported size limit");
+            return;
+        }
+        element.text.append(text);
+        const std::string escaped = Escape(text);
+        if (escaped.size() > kMaximumArticleSize - element.html.size()) {
+            Fail(state, "XDXF article exceeds the supported size limit");
+            return;
+        }
+        element.html += escaped;
+    } else if (!state->metadata_element.empty()) {
+        if (text.size() > kMaximumArticleSize - state->metadata_text.size()) {
+            Fail(state, "XDXF metadata exceeds the supported size limit");
+            return;
+        }
+        state->metadata_text.append(text);
+    }
+}
+
+void EndElement(void* user_data, const XML_Char* raw_name) {
+    auto* state = static_cast<ParserState*>(user_data);
+    const std::string name = Lower(raw_name);
+    if (state->inside_article) {
+        if (state->elements.empty() || state->elements.back().name != name) {
+            Fail(state, "Malformed XDXF article structure");
+            return;
+        }
+        Element element = std::move(state->elements.back());
+        state->elements.pop_back();
+        FinalizeElement(&element);
+        if (element.name == "ar") {
+            if (element.keys.empty()) {
+                Fail(state, "XDXF article has no headword");
+                return;
+            }
+            if (element.html.size() >
+                kMaximumXmlSize - state->total_article_bytes) {
+                Fail(state,
+                     "Rendered XDXF articles exceed the supported size limit");
+                return;
+            }
+            const std::size_t article = state->document.articles.size();
+            state->total_article_bytes += element.html.size();
+            state->document.articles.push_back(std::move(element.html));
+            for (auto& key : element.keys) {
+                state->document.records.push_back({std::move(key), article});
+            }
+            state->inside_article = false;
+            return;
+        }
+        if (state->elements.empty()) {
+            Fail(state, "Malformed XDXF article structure");
+            return;
+        }
+        auto& parent = state->elements.back();
+        if (element.text.size() > kMaximumArticleSize - parent.text.size() ||
+            element.html.size() > kMaximumArticleSize - parent.html.size()) {
+            Fail(state, "XDXF article exceeds the supported size limit");
+            return;
+        }
+        parent.text += element.text;
+        parent.html += element.html;
+        parent.keys.insert(parent.keys.end(),
+                           std::make_move_iterator(element.keys.begin()),
+                           std::make_move_iterator(element.keys.end()));
+        return;
+    }
+    if (name == state->metadata_element) {
+        if (state->document.metadata.name.empty()) {
+            state->document.metadata.name = Trim(state->metadata_text);
+        }
+        state->metadata_element.clear();
+        state->metadata_text.clear();
+    }
+}
+
+ParsedDocument ParseXml(std::string_view xml,
+                        const std::filesystem::path& path) {
+    ParserState state;
+    state.parser = XML_ParserCreate("UTF-8");
+    if (state.parser == nullptr) {
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Cannot initialize XDXF XML parser");
+    }
+    XML_SetUserData(state.parser, &state);
+    XML_SetElementHandler(state.parser, StartElement, EndElement);
+    XML_SetCharacterDataHandler(state.parser, CharacterData);
+    XML_SetParamEntityParsing(state.parser, XML_PARAM_ENTITY_PARSING_NEVER);
+    const XML_Status status = XML_Parse(state.parser, xml.data(),
+                                        static_cast<int>(xml.size()), XML_TRUE);
+    const XML_Size line = XML_GetCurrentLineNumber(state.parser);
+    const XML_Error parser_error = XML_GetErrorCode(state.parser);
+    XML_ParserFree(state.parser);
+    state.parser = nullptr;
+    if (state.error.has_value()) {
+        Throw(ErrorCode::kInvalidDictionary, path, *state.error);
+    }
+    if (status != XML_STATUS_OK) {
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Malformed XDXF XML at line " + std::to_string(line) + ": " +
+                  XML_ErrorString(parser_error));
+    }
+    if (!state.found_root) {
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Not an XDXF dictionary file");
+    }
+    return std::move(state.document);
 }
 
 bool HasPrefix(std::string_view text, std::string_view prefix) noexcept {
@@ -261,87 +457,30 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path) {
               "XDXF is not valid UTF-8");
     }
 
-    QXmlStreamReader stream(QByteArray::fromRawData(
-        xml.data(), static_cast<qsizetype>(xml.size())));
-    stream.setEntityExpansionLimit(4096);
-    bool found_root = false;
-    std::size_t total_article_bytes = 0;
-    while (!stream.atEnd()) {
-        stream.readNext();
-        if (!stream.isStartElement()) {
-            continue;
-        }
-        if (!found_root) {
-            if (stream.name().compare(u"xdxf", Qt::CaseInsensitive) != 0) {
-                Throw(ErrorCode::kInvalidDictionary, dictionary_path,
-                      "Not an XDXF dictionary file");
-            }
-            found_root = true;
-            reader.metadata_.source_language =
-                LanguageCode(stream.attributes().value(u"lang_from"));
-            reader.metadata_.target_language =
-                LanguageCode(stream.attributes().value(u"lang_to"));
-            continue;
-        }
-        const QString name = stream.name().toString().toLower();
-        if ((name == u"full_name" || name == u"full_title") &&
-            reader.metadata_.name.empty()) {
-            reader.metadata_.name =
-                stream.readElementText(QXmlStreamReader::SkipChildElements)
-                    .trimmed()
-                    .toStdString();
-        } else if (name == u"from" &&
-                   reader.metadata_.source_language.empty()) {
-            reader.metadata_.source_language =
-                LanguageCode(stream.attributes().value(u"xml:lang"));
-            stream.skipCurrentElement();
-        } else if (name == u"to" && reader.metadata_.target_language.empty()) {
-            reader.metadata_.target_language =
-                LanguageCode(stream.attributes().value(u"xml:lang"));
-            stream.skipCurrentElement();
-        } else if (name == u"ar") {
-            Element article = ReadElement(&stream, dictionary_path);
-            if (article.keys.empty()) {
-                Throw(ErrorCode::kInvalidDictionary, dictionary_path,
-                      "XDXF article has no headword");
-            }
-            if (article.html.size() > kMaximumXmlSize - total_article_bytes) {
-                Throw(ErrorCode::kInvalidDictionary, dictionary_path,
-                      "Rendered XDXF articles exceed the supported size limit");
-            }
-            total_article_bytes += article.html.size();
-            const std::size_t article_number = reader.articles_.size();
-            reader.articles_.push_back(std::move(article.html));
-            for (auto& key : article.keys) {
-                if (reader.records_.size() == kMaximumRecords) {
-                    Throw(ErrorCode::kInvalidDictionary, dictionary_path,
-                          "XDXF contains too many headwords");
-                }
-                key = Trim(std::move(key));
-                if (key.empty() || key.size() > kMaximumHeadwordSize) {
-                    Throw(ErrorCode::kInvalidDictionary, dictionary_path,
-                          "Invalid XDXF headword size");
-                }
-                try {
-                    reader.records_.push_back(
-                        {key, foundation::FoldForLookup(key), article_number});
-                } catch (const foundation::TextFoldingError& error) {
-                    Throw(ErrorCode::kInvalidDictionary, dictionary_path,
-                          "Invalid UTF-8 XDXF headword: " +
-                              std::string(error.what()));
-                }
-            }
-        }
-    }
-    if (!found_root) {
+    ParsedDocument parsed = ParseXml(xml, dictionary_path);
+    reader.metadata_ = std::move(parsed.metadata);
+    reader.articles_ = std::move(parsed.articles);
+    if (parsed.records.size() > kMaximumRecords) {
         Throw(ErrorCode::kInvalidDictionary, dictionary_path,
-              "Not an XDXF dictionary file");
+              "XDXF contains too many headwords");
     }
-    if (stream.hasError()) {
-        Throw(ErrorCode::kInvalidDictionary, dictionary_path,
-              "Malformed XDXF XML at line " +
-                  std::to_string(stream.lineNumber()) + ": " +
-                  stream.errorString().toStdString());
+    reader.records_.reserve(parsed.records.size());
+    for (auto& parsed_record : parsed.records) {
+        parsed_record.headword = Trim(std::move(parsed_record.headword));
+        if (parsed_record.headword.empty() ||
+            parsed_record.headword.size() > kMaximumHeadwordSize) {
+            Throw(ErrorCode::kInvalidDictionary, dictionary_path,
+                  "Invalid XDXF headword size");
+        }
+        try {
+            reader.records_.push_back(
+                {parsed_record.headword,
+                 foundation::FoldForLookup(parsed_record.headword),
+                 parsed_record.article});
+        } catch (const foundation::TextFoldingError& error) {
+            Throw(ErrorCode::kInvalidDictionary, dictionary_path,
+                  "Invalid UTF-8 XDXF headword: " + std::string(error.what()));
+        }
     }
     if (reader.metadata_.name.empty()) {
         std::string filename = dictionary_path.filename().string();

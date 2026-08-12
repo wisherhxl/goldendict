@@ -253,7 +253,7 @@ URLs before reaching desktop or headless consumers. Full-text indexing remains
 separately gated Phase 5 work.
 
 The third text-batch increment adds recursive XDXF `.xdxf` and `.xdxf.dz`
-discovery with bounded stored and decompressed input. A private Qt Core stream
+discovery with bounded stored and decompressed input. A private Expat stream
 reader validates UTF-8 and XML structure, preserves dictionary and language
 metadata, enumerates article aliases, and reuses common folded
 exact/prefix/suggestion ranking. Logical markup, word references, and image

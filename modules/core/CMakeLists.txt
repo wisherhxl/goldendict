@@ -3,12 +3,13 @@
 set(the_description "GoldenDict headless and desktop application core")
 
 find_package(BZip2 REQUIRED)
+find_package(expat REQUIRED CONFIG)
 find_package(ICU REQUIRED CONFIG COMPONENTS uc)
 find_package(ZLIB REQUIRED)
 
 ti_define_module(core
   REQUIRED PUBLIC MODULES tiger
-  REQUIRED PRIVATE EXTRAS BZip2::BZip2 ICU::uc Qt6::Core ZLIB::ZLIB
+  REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat ICU::uc ZLIB::ZLIB
 )
 
 if(TARGET article_assembler_test)
@@ -153,7 +154,7 @@ if(TARGET xdxf_reader_test)
       src/formats/xdxf/xdxf_reader.cc
   )
   target_link_libraries(xdxf_reader_test
-    PRIVATE ICU::uc Qt6::Core ZLIB::ZLIB
+    PRIVATE expat::expat ICU::uc ZLIB::ZLIB
   )
 endif()
 
@@ -167,6 +168,6 @@ if(TARGET xdxf_dictionary_test)
       src/formats/xdxf/xdxf_reader.cc
   )
   target_link_libraries(xdxf_dictionary_test
-    PRIVATE ICU::uc Qt6::Core ZLIB::ZLIB
+    PRIVATE expat::expat ICU::uc ZLIB::ZLIB
   )
 endif()

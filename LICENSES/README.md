@@ -23,6 +23,14 @@ Phase 2 directly declares these external components:
 - Qt 6.11.1, including Qt WebEngine, resolved by Conan. The Conan recipe
   declares `LGPL-3.0-only`; the packaged Qt sources and binaries carry their
   complete module and bundled third-party notices.
+- ICU 74.2, used privately for Unicode lookup folding and legacy encoding
+  conversion, under the Unicode License V3.
+- zlib 1.3.1, used privately for compressed dictionary data, under the zlib
+  license.
+- bzip2 1.0.8, used privately for SDict compressed fields, under its
+  permissive BSD-style license.
+- Expat 2.7.5, used privately for bounded XDXF XML parsing, under the MIT
+  license.
 - `python-html5lib/1.1`, used only in Qt's build context. Its local Conan
   recipe packages the html5lib, six, and webencodings license files and
   declares their MIT and BSD-3-Clause licenses.
