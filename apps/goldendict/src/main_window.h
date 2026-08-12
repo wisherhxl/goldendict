@@ -10,6 +10,7 @@
 
 class ArticlePage;
 class ArticleSchemeHandler;
+class QAction;
 class QLabel;
 class QLineEdit;
 class QPushButton;
@@ -30,6 +31,7 @@ class MainWindow final : public QMainWindow {
 
     void SetFacade(goldendict::core::DesktopFacade* facade);
     void RunWebEngineSmokeCheck(std::function<void(bool)> completion);
+    void RunWebEngineInteractionCheck(std::function<void(bool)> completion);
 
    signals:
     void DictionaryDirectorySelected(const QString& directory);
@@ -38,6 +40,9 @@ class MainWindow final : public QMainWindow {
     void ChooseDictionaryDirectory();
     void StartLookup();
     void FinishLookup();
+    void FindInArticle(bool backwards = false);
+    void UpdateNavigationActions();
+    void ZoomArticle(double delta);
 
    private:
     void ShowMessage(const QString& title, const QString& message);
@@ -50,6 +55,10 @@ class MainWindow final : public QMainWindow {
     QWebEngineView* article_view_ = nullptr;
     ArticlePage* article_page_ = nullptr;
     ArticleSchemeHandler* scheme_handler_ = nullptr;
+    QLineEdit* article_search_ = nullptr;
+    QLabel* article_search_status_ = nullptr;
+    QAction* back_action_ = nullptr;
+    QAction* forward_action_ = nullptr;
     QTimer* completion_timer_ = nullptr;
 };
 

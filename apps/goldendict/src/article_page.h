@@ -5,6 +5,8 @@
 
 #include <QWebEnginePage>
 
+class QUrl;
+
 namespace goldendict::core {
 class DesktopFacade;
 }
@@ -19,6 +21,7 @@ class ArticlePage final : public QWebEnginePage {
 
    signals:
     void LookupRequested(const QString& text);
+    void ExternalUrlRequested(const QUrl& url);
 
    protected:
     bool acceptNavigationRequest(const QUrl& url, NavigationType type,

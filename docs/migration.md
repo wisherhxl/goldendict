@@ -275,6 +275,14 @@ Stabilize local article rendering and embedded resources before enabling
 online dictionary workflows. Treat WebKit-to-WebEngine behavior as a redesign,
 not a mechanical API rename.
 
+The first WebEngine interaction increment provides bounded in-article search,
+back/forward/reload controls, clamped zoom controls, application-routed lookup
+links, and an allowlisted `http`/`https`/`mailto` external URL bridge. Embedded
+content cannot navigate the article view directly. An offscreen WebEngine
+interaction smoke verifies real Chromium text matching and zoom behavior in
+addition to the existing local-rendering smoke. Context menus, print/save, and
+the remaining JavaScript integration stay behind later Phase 7/8 gates.
+
 Gate: representative local articles render correctly, links and resources
 work, and approved online dictionary scenarios pass without weakening the
 local rendering gate.

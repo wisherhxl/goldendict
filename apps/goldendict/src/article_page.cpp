@@ -27,8 +27,14 @@ bool ArticlePage::acceptNavigationRequest(const QUrl& url, NavigationType type,
     if (resolved.has_value() &&
         resolved->kind == goldendict::core::ArticleUrlKind::kLookup) {
         emit LookupRequested(QString::fromStdString(resolved->lookup_text));
+    } else if (!resolved.has_value() &&
+               (url.scheme() == QStringLiteral("http") ||
+                url.scheme() == QStringLiteral("https") ||
+                url.scheme() == QStringLiteral("mailto"))) {
+        emit ExternalUrlRequested(url);
     }
     // Article links never navigate the embedded browser. Internal lookup links
-    // become application commands; external links are denied by policy.
+    // become application commands, while explicitly allowed external schemes
+    // are handed to the desktop integration layer. Everything else is denied.
     return false;
 }

@@ -115,6 +115,11 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         window.RunWebEngineSmokeCheck(
             [&app](bool passed) { app.exit(passed ? 0 : 1); });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--webengine-interaction-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        window.RunWebEngineInteractionCheck(
+            [&app](bool passed) { app.exit(passed ? 0 : 1); });
     }
 
     return app.exec();

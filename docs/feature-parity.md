@@ -72,7 +72,7 @@ not authorize dropping a legacy format.
 | Internal article/resource URL model | slice | Phase 4 | scheme routing tests |
 | Qt WebEngine rendering of local article | slice | Phase 4 | documented rendering smoke |
 | Embedded images/styles/resources | slice | Phase 4 | generated fixture resources |
-| Navigation, links, search, zoom | mapped | Phase 7/8 | WebEngine integration tests |
+| Navigation, links, search, zoom | slice | Phase 7/8 | WebEngine integration tests |
 | Context menus, copy, print, save | mapped | Phase 7/8 | manual and automated checks |
 | Inspector/DevTools integration | later | Phase 7 | manual parity check |
 | Proxy and authentication | mapped | Phase 7 | local HTTP proxy fixture |
