@@ -44,10 +44,18 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
     description_->setTextFormat(Qt::PlainText);
     description_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     description_->setWordWrap(true);
+    article_count_ = new QLabel(this);
+    article_count_->setObjectName(QStringLiteral("dictionaryArticleCount"));
+    article_count_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    headword_count_ = new QLabel(this);
+    headword_count_->setObjectName(QStringLiteral("dictionaryHeadwordCount"));
+    headword_count_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     details->addRow(QStringLiteral("Identifier:"), identifier_);
     details->addRow(QStringLiteral("Edition:"), edition_);
     details->addRow(QStringLiteral("Source:"), source_);
     details->addRow(QStringLiteral("Description:"), description_);
+    details->addRow(QStringLiteral("Articles:"), article_count_);
+    details->addRow(QStringLiteral("Headwords:"), headword_count_);
     layout->addLayout(details);
 
     prefix_ = new QLineEdit(this);
@@ -129,23 +137,25 @@ void DictionaryBrowser::RunSmokeCheck(const QString& expected_dictionary,
                                       const QString& expected_headword,
                                       std::function<void(bool)> completion) {
     prefix_->setText(prefix);
-    QTimer::singleShot(0, this,
-                       [this, expected_dictionary, expected_headword,
-                        completion = std::move(completion)]() mutable {
-                           const auto matches = headwords_->findItems(
-                               expected_headword, Qt::MatchFixedString);
-                           const bool passed = dictionaries_->currentText() ==
-                                                   expected_dictionary &&
-                                               !identifier_->text().isEmpty() &&
-                                               !source_->text().isEmpty() &&
-                                               matches.size() == 1;
-                           if (!passed) {
-                               completion(false);
-                               return;
-                           }
-                           emit HeadwordSelected(matches.front()->text());
-                           completion(true);
-                       });
+    QTimer::singleShot(
+        0, this,
+        [this, expected_dictionary, expected_headword,
+         completion = std::move(completion)]() mutable {
+            const auto matches =
+                headwords_->findItems(expected_headword, Qt::MatchFixedString);
+            const bool passed =
+                dictionaries_->currentText() == expected_dictionary &&
+                !identifier_->text().isEmpty() && !source_->text().isEmpty() &&
+                article_count_->text() == QStringLiteral("3") &&
+                headword_count_->text() == QStringLiteral("3") &&
+                matches.size() == 1;
+            if (!passed) {
+                completion(false);
+                return;
+            }
+            emit HeadwordSelected(matches.front()->text());
+            completion(true);
+        });
 }
 
 void DictionaryBrowser::RefreshDictionaryInfo() {
@@ -155,6 +165,8 @@ void DictionaryBrowser::RefreshDictionaryInfo() {
         edition_->clear();
         source_->clear();
         description_->clear();
+        article_count_->clear();
+        headword_count_->clear();
         return;
     }
     const auto& dictionary = catalog_[static_cast<std::size_t>(index)];
@@ -166,6 +178,8 @@ void DictionaryBrowser::RefreshDictionaryInfo() {
     description_->setText(dictionary.description.empty()
                               ? QStringLiteral("Not specified")
                               : QString::fromStdString(dictionary.description));
+    article_count_->setText(QString::number(dictionary.article_count));
+    headword_count_->setText(QString::number(dictionary.headword_count));
 }
 
 void DictionaryBrowser::RefreshHeadwords() {

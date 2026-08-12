@@ -247,12 +247,14 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
             record.article_offset = offset;
             record.article_size = size;
             reader.records_.push_back(std::move(record));
+            ++reader.headword_count_;
         };
         add_record(fields[0]);
         if (fields.size() == 4U && !fields[3].empty() &&
             fields[3] != fields[0]) {
             add_record(fields[3]);
         }
+        ++reader.article_count_;
     }
     if (!input.eof()) {
         Throw(ErrorCode::kInvalidIndex, index_path,

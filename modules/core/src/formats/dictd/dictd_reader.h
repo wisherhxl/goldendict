@@ -45,6 +45,10 @@ class Reader final {
 
     const std::string& name() const noexcept { return name_; }
 
+    std::size_t headword_count() const noexcept { return headword_count_; }
+
+    std::size_t article_count() const noexcept { return article_count_; }
+
     const std::filesystem::path& index_path() const noexcept {
         return index_path_;
     }
@@ -78,6 +82,8 @@ class Reader final {
     std::string name_;
     std::vector<Record> records_;
     std::string dictionary_data_;
+    std::size_t headword_count_ = 0;
+    std::size_t article_count_ = 0;
 };
 
 }  // namespace goldendict::core::formats::dictd

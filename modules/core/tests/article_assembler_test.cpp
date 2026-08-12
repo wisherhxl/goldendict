@@ -23,8 +23,8 @@ class ArticleAssemblerTest : public QObject {
     void RejectsMalformedAndUnsafeInternalUrls();
 };
 
-const dictionary::Identity kDictionary{"fixture id", "Fixture", "/fixture",
-                                       "",           "",        ""};
+const dictionary::Identity kDictionary{"fixture id", "Fixture", "/fixture", "",
+                                       "",           "",        0U,         0U};
 
 void ArticleAssemblerTest::EscapesPlainTextAndKeepsItStructured() {
     const Document document =

@@ -54,6 +54,8 @@ void StardictDictionaryTest::ExposesIdentityAndBoundedArticles() {
     QCOMPARE(dictionary.identity().id, "fixture-id");
     QCOMPARE(dictionary.identity().name, "Generated Test Dictionary");
     QCOMPARE(dictionary.identity().source, info_path.string());
+    QCOMPARE(dictionary.identity().article_count, std::size_t{2});
+    QCOMPARE(dictionary.identity().headword_count, std::size_t{2});
     QCOMPARE(articles.size(), std::size_t{1});
     QCOMPARE(articles.front().headword, "example");
     QCOMPARE(articles.front().format, "text/plain");

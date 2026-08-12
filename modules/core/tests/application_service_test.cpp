@@ -212,6 +212,8 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
     QCOMPARE(catalog.size(), std::size_t{1});
     QCOMPARE(catalog.front().name, "Generated Test Dictionary");
     QCOMPARE(catalog.front().source, (root / "fixture.ifo").string());
+    QCOMPARE(catalog.front().article_count, std::size_t{1});
+    QCOMPARE(catalog.front().headword_count, std::size_t{1});
 
     LookupQuery query;
     query.text = "example";

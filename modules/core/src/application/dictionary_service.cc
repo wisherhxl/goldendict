@@ -93,6 +93,8 @@ DictionaryIdentity PublicIdentity(const dictionary::Identity& identity) {
     result.name = identity.name;
     result.source = identity.source;
     result.description = identity.description;
+    result.article_count = identity.article_count;
+    result.headword_count = identity.headword_count;
     return result;
 }
 

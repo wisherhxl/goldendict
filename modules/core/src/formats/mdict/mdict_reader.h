@@ -47,6 +47,10 @@ class Reader final {
 
     const Metadata& metadata() const noexcept { return metadata_; }
 
+    std::size_t headword_count() const noexcept { return records_.size(); }
+
+    std::size_t article_count() const noexcept { return articles_.size(); }
+
     const std::filesystem::path& dictionary_path() const noexcept {
         return path_;
     }

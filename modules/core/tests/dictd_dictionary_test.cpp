@@ -29,7 +29,8 @@ void DictdDictionaryTest::ExposesPlainArticlesAndSuggestions() {
     QVERIFY(directory.isValid());
     const auto root = std::filesystem::path(directory.path().toStdString());
     const auto index = test::WriteDictdFixture(
-        root, {{"example", "definition", {}}, {"examples", "plural", {}}});
+        root, {{"example", "definition", "Example Original"},
+               {"examples", "plural", {}}});
     const Dictionary dictionary = Dictionary::Open("dictd-id", index);
     dictionary::RequestOptions options;
     options.result_limit = 1U;
@@ -39,6 +40,8 @@ void DictdDictionaryTest::ExposesPlainArticlesAndSuggestions() {
 
     QCOMPARE(dictionary.identity().id, "dictd-id");
     QCOMPARE(dictionary.identity().name, "fixture");
+    QCOMPARE(dictionary.identity().article_count, std::size_t{2});
+    QCOMPARE(dictionary.identity().headword_count, std::size_t{3});
     QCOMPARE(articles.size(), std::size_t{1});
     QCOMPARE(articles.front().format, "text/plain");
     QCOMPARE(articles.front().data, "definition");

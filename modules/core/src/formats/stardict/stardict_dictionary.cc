@@ -57,6 +57,9 @@ Dictionary Dictionary::Open(
         dictionary.reader_ = Reader::Open(info_path, generated_index_path);
         dictionary.identity_.id = std::move(id);
         dictionary.identity_.name = dictionary.reader_.metadata().book_name;
+        dictionary.identity_.article_count = dictionary.reader_.article_count();
+        dictionary.identity_.headword_count =
+            dictionary.reader_.headword_count();
         std::error_code filesystem_error;
         const auto canonical_source =
             std::filesystem::weakly_canonical(info_path, filesystem_error);

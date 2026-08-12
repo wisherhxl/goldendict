@@ -40,6 +40,10 @@ class Reader final {
 
     const Metadata& metadata() const noexcept { return metadata_; }
 
+    std::size_t headword_count() const noexcept { return records_.size(); }
+
+    std::size_t article_count() const noexcept { return records_.size(); }
+
     const std::filesystem::path& catalog_path() const noexcept { return path_; }
 
     std::vector<Article> LookupExact(

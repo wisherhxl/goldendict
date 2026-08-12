@@ -33,6 +33,9 @@ Dictionary Dictionary::Open(std::string id, const std::filesystem::path& path,
         dictionary.reader_ = Reader::Open(path, std::move(display_name));
         dictionary.identity_.id = std::move(id);
         dictionary.identity_.name = dictionary.reader_.metadata().name;
+        dictionary.identity_.article_count = dictionary.reader_.article_count();
+        dictionary.identity_.headword_count =
+            dictionary.reader_.headword_count();
         dictionary.identity_.source =
             dictionary.reader_.directory_path().string();
         return dictionary;

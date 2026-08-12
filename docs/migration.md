@@ -358,10 +358,11 @@ Activating a suggested headword routes through the existing lookup workflow.
 The displayed bounded result can also be exported atomically as a UTF-8 text
 file with a compatibility BOM and one sanitized headword per line. Descriptions
 from metadata-bearing Aard, MDict, SLOB, and ZIM dictionaries are exposed by
-the core catalog and rendered as plain text. The legacy article/word counts,
-descriptions for formats without equivalent metadata, unbounded full-list
-export, wildcard and regular-expression filtering, and local-file actions
-remain later Phase 8 parity work.
+the core catalog and rendered as plain text. Backend-owned article and headword
+counts are also exposed for every migrated local format without loading article
+content in the GUI. Descriptions for formats without equivalent metadata,
+unbounded full-list export, wildcard and regular-expression filtering, and
+local-file actions remain later Phase 8 parity work.
 
 The history-management increment adds case-insensitive live filtering to the
 reusable history pane and an explicit clear action. Clearing remains a
