@@ -11,6 +11,7 @@
 #include "support/bgl_fixture.h"
 #include "support/dictd_fixture.h"
 #include "support/dsl_fixture.h"
+#include "support/epwing_fixture.h"
 #include "support/gls_fixture.h"
 #include "support/mdict_fixture.h"
 #include "support/sdict_fixture.h"
@@ -49,6 +50,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesAard();
     void DiscoversSanitizesAndQueriesZimResources();
     void DiscoversSanitizesAndQueriesSlobResources();
+    void DiscoversSanitizesAndQueriesEpwingResources();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -550,6 +552,27 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesSlobResources() {
     QCOMPARE(entry.resources.size(), std::size_t{1});
     QCOMPARE(service->GetResource(entry.resources.front()).size(),
              std::size_t{8});
+}
+
+void ApplicationServiceTest::DiscoversSanitizesAndQueriesEpwingResources() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteEpwingFixture(root);
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "EXAMPLE";
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().id.rfind("epwing-", 0) == 0U);
+    QCOMPARE(catalog.front().name, "Fixture EPWING");
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    QVERIFY(response.entries.front().article.sanitized_html->find(
+                "goldendict://lookup/second") != std::string::npos);
 }
 
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {

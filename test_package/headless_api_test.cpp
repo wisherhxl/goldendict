@@ -428,6 +428,51 @@ void WriteSlobFixture(const std::filesystem::path& root) {
     Write(root / "fixture.slob", file);
 }
 
+void WriteEpwingFixture(const std::filesystem::path& root) {
+    const auto set16 = [](std::uint16_t value, std::size_t at,
+                          std::string* output) {
+        (*output)[at] = static_cast<char>(value >> 8U);
+        (*output)[at + 1U] = static_cast<char>(value);
+    };
+    const auto set32 = [](std::uint32_t value, std::size_t at,
+                          std::string* output) {
+        for (unsigned i = 0; i < 4U; ++i) {
+            (*output)[at + i] = static_cast<char>(value >> ((3U - i) * 8U));
+        }
+    };
+    std::string catalog(16U + 164U, '\0');
+    set16(1U, 0U, &catalog);
+    set16(1U, 2U, &catalog);
+    catalog.replace(18U, 16U, "Installed EPWING");
+    catalog.replace(98U, 7U, "FIXTURE");
+    set16(1U, 110U, &catalog);
+    Write(root / "CATALOGS", catalog);
+    std::string language(16U, '\0');
+    set16(1U, 0U, &language);
+    Write(root / "LANGUAGE", language);
+    std::string honmon(3U * 2048U, '\0');
+    honmon[1U] = 1;
+    honmon[16U] = static_cast<char>(0x92);
+    set32(2U, 18U, &honmon);
+    set32(1U, 22U, &honmon);
+    honmon[2048U] = static_cast<char>(0xe0);
+    set16(1U, 2050U, &honmon);
+    std::size_t cursor = 2052U;
+    const std::string word = "example";
+    honmon[cursor++] = static_cast<char>(word.size());
+    honmon.replace(cursor, word.size(), word);
+    cursor += word.size();
+    set32(3U, cursor, &honmon);
+    set16(0U, cursor + 4U, &honmon);
+    set32(3U, cursor + 6U, &honmon);
+    set16(0U, cursor + 10U, &honmon);
+    const std::string article = std::string("\x1f\x02", 2U) +
+                                "Installed EPWING definition." +
+                                std::string("\x1f\x03", 2U);
+    honmon.replace(4096U, article.size(), article);
+    Write(root / "FIXTURE" / "DATA" / "HONMON", honmon);
+}
+
 std::string MdictUtf16Le(std::string_view ascii) {
     std::string result;
     result.reserve((ascii.size() + 1U) * 2U);
@@ -864,6 +909,28 @@ int main() {
             slob_response.entries.front().article.sanitized_html->find(
                 "Installed SLOB definition.") == std::string::npos) {
             return Fail("installed SLOB lookup failed");
+        }
+
+        const auto epwing_root = directory.path() / "epwing";
+        WriteEpwingFixture(epwing_root);
+        goldendict::core::CoreConfiguration epwing_configuration;
+        epwing_configuration.dictionary_paths = {epwing_root.string()};
+        auto epwing_service =
+            goldendict::core::CreateDictionaryService(epwing_configuration);
+        const auto epwing_catalog = epwing_service->GetCatalog();
+        query = {};
+        query.text = "EXAMPLE";
+        const auto epwing_response = epwing_service->Lookup(query);
+        if (epwing_catalog.size() != 1U ||
+            epwing_catalog.front().id.rfind("epwing-", 0) != 0U ||
+            epwing_catalog.front().name != "Installed EPWING" ||
+            !epwing_response.errors.empty() ||
+            epwing_response.entries.size() != 1U ||
+            !epwing_response.entries.front()
+                 .article.sanitized_html.has_value() ||
+            epwing_response.entries.front().article.sanitized_html->find(
+                "Installed EPWING definition.") == std::string::npos) {
+            return Fail("installed EPWING lookup failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";

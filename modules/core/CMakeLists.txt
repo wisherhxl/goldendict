@@ -12,6 +12,34 @@ ti_define_module(core
   REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat ICU::uc ZLIB::ZLIB
 )
 
+if(TARGET epwing_discovery_test)
+  target_sources(epwing_discovery_test PRIVATE
+    src/formats/epwing/epwing_discovery.cc
+  )
+endif()
+
+if(TARGET epwing_reader_test)
+  target_sources(epwing_reader_test PRIVATE
+    src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
+    src/formats/epwing/epwing_reader.cc
+  )
+  target_link_libraries(epwing_reader_test PRIVATE ICU::uc)
+endif()
+
+if(TARGET epwing_dictionary_test)
+  target_sources(epwing_dictionary_test PRIVATE
+    src/dictionary/dictionary_backend.cc
+    src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
+    src/formats/epwing/epwing_dictionary.cc
+    src/formats/epwing/epwing_reader.cc
+  )
+  target_link_libraries(epwing_dictionary_test PRIVATE ICU::uc)
+endif()
+
 if(TARGET aard_reader_test)
   target_sources(aard_reader_test PRIVATE
     src/foundation/text_folding.cc

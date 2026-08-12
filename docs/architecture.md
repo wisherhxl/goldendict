@@ -169,6 +169,15 @@ resource API. Raw, zlib, and bzip2 item stores are supported in this slice.
 LZMA2, advanced content conversion, icons, and full-text indexes remain
 explicit parity work.
 
+EPWING consumes recursively discovered `CATALOGS` books through a private,
+bounded adapter rather than exposing the legacy libeb ABI. The first slice
+validates catalog/subbook/index page ranges, decodes declared Latin-1 or the
+default JIS X 0208 text, supports simple word-index entries with folded exact,
+prefix, and suggestion queries, rewrites resolved article references, and
+confines resources to catalog-declared subbooks. Compressed HONMON streams,
+mixed JIS/GB2312 text, grouped indexes, gaiji and multimedia rendering, and
+full-text indexing remain explicit parity work.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results
