@@ -151,6 +151,17 @@ void WriteSdictFixture(const std::filesystem::path& root) {
     Write(root / "fixture.dct", file);
 }
 
+void WriteXdxfFixture(const std::filesystem::path& root) {
+    const std::string xml =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        "<xdxf lang_from=\"eng\" lang_to=\"deu\" format=\"logical\" "
+        "revision=\"34\"><full_name>Installed XDXF</full_name>"
+        "<ar><k>example</k><def><b>Installed XDXF definition.</b>"
+        "<rref>images/pixel.png</rref></def></ar></xdxf>";
+    Write(root / "fixture.xdxf", xml);
+    Write(root / "images" / "pixel.png", "xdxf-png");
+}
+
 int Fail(const std::string& message) {
     std::cerr << "headless_api_test: " << message << '\n';
     return EXIT_FAILURE;
@@ -288,6 +299,37 @@ int main() {
             sdict_response.entries.front().article.sanitized_html->find(
                 "Installed SDict definition.") == std::string::npos) {
             return Fail("installed SDict lookup failed");
+        }
+
+        const auto xdxf_root = directory.path() / "xdxf";
+        WriteXdxfFixture(xdxf_root);
+        goldendict::core::CoreConfiguration xdxf_configuration;
+        xdxf_configuration.dictionary_paths = {xdxf_root.string()};
+        auto xdxf_service =
+            goldendict::core::CreateDictionaryService(xdxf_configuration);
+        const auto xdxf_catalog = xdxf_service->GetCatalog();
+        query = {};
+        query.text = "EXAMPLE";
+        const auto xdxf_response = xdxf_service->Lookup(query);
+        if (xdxf_catalog.size() != 1U ||
+            xdxf_catalog.front().id.rfind("xdxf-", 0) != 0U ||
+            !xdxf_response.errors.empty() ||
+            xdxf_response.entries.size() != 1U ||
+            xdxf_response.entries.front().language.source_language != "eng" ||
+            xdxf_response.entries.front().language.target_language != "deu" ||
+            !xdxf_response.entries.front().article.sanitized_html.has_value() ||
+            xdxf_response.entries.front().article.sanitized_html->find(
+                "Installed XDXF definition.") == std::string::npos ||
+            xdxf_response.entries.front().resources.size() != 1U) {
+            return Fail("installed XDXF lookup failed");
+        }
+        const auto xdxf_resource = xdxf_service->GetResource(
+            xdxf_response.entries.front().resources.front());
+        const std::string xdxf_resource_text(
+            reinterpret_cast<const char*>(xdxf_resource.data()),
+            xdxf_resource.size());
+        if (xdxf_resource_text != "xdxf-png") {
+            return Fail("installed XDXF resource retrieval failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";

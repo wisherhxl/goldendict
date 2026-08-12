@@ -252,6 +252,16 @@ markup and word references are converted into sanitized HTML and typed lookup
 URLs before reaching desktop or headless consumers. Full-text indexing remains
 separately gated Phase 5 work.
 
+The third text-batch increment adds recursive XDXF `.xdxf` and `.xdxf.dz`
+discovery with bounded stored and decompressed input. A private Qt Core stream
+reader validates UTF-8 and XML structure, preserves dictionary and language
+metadata, enumerates article aliases, and reuses common folded
+exact/prefix/suggestion ranking. Logical markup, word references, and image
+references enter the common sanitized-HTML and typed-resource path; resource
+loads are size-bounded and confined to safe relative paths beside the source
+or in its `.files` directory. Legacy resource ZIP archives and full-text
+indexing remain later parity increments.
+
 ### Phase 7 — Articles, WebEngine, And Networking
 
 Run three separately gated workstreams:

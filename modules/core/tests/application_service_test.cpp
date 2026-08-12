@@ -10,6 +10,7 @@
 #include "support/dictd_fixture.h"
 #include "support/sdict_fixture.h"
 #include "support/stardict_fixture.h"
+#include "support/xdxf_fixture.h"
 
 namespace goldendict::core {
 namespace {
@@ -33,6 +34,7 @@ class ApplicationServiceTest : public QObject {
     void RanksSuggestionsAcrossDictionaries();
     void DiscoversAndQueriesDictdAlongsideStardict();
     void DiscoversSanitizesAndQueriesSdict();
+    void DiscoversSanitizesAndQueriesXdxfResources();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -302,6 +304,38 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesSdict() {
                 "goldendict://lookup/target") != std::string::npos);
     QVERIFY(response.entries.front().article.plain_text.find("target") !=
             std::string::npos);
+}
+
+void ApplicationServiceTest::DiscoversSanitizesAndQueriesXdxfResources() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto path = test::WriteXdxfFixture(
+        root, {{{"example"},
+                "<def><b>XDXF article</b> <kref>target</kref> "
+                "<rref>images/pixel.png</rref></def>"}});
+    test::WriteXdxfResource(path, "images/pixel.png", "png-data");
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "EXAMPLE";
+
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().id.rfind("xdxf-", 0) == 0U);
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    const auto& entry = response.entries.front();
+    QVERIFY(entry.article.sanitized_html->find("<b>XDXF article</b>") !=
+            std::string::npos);
+    QVERIFY(entry.article.sanitized_html->find("goldendict://lookup/target") !=
+            std::string::npos);
+    QCOMPARE(entry.resources.size(), std::size_t{1});
+    const auto data = service->GetResource(entry.resources.front());
+    QCOMPARE(data.size(), std::size_t{8});
 }
 
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {

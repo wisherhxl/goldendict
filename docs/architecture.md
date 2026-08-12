@@ -100,6 +100,13 @@ and article ranges before exposing entries. Plain, zlib, and bzip2 fields are
 decompressed under explicit output limits; legacy structural tags and word
 references are converted to the common sanitized-HTML and typed-link path.
 
+XDXF consumes original `.xdxf` XML and gzip-compatible `.xdxf.dz` files
+directly through a bounded Qt Core stream parser. The private adapter preserves
+dictionary and language metadata, maps logical XDXF markup and word references
+into the common sanitized-HTML path, and resolves bounded resources from safe
+relative paths beside the dictionary or below its `.files` directory. Resource
+ZIP archives and full-text indexes remain later parity increments.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

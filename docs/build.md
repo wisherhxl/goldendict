@@ -226,6 +226,11 @@ config exports `BZip2::BZip2`; bzip2 types and linkage do not appear in public
 headers or exported target usage requirements. bzip2 uses its permissive
 BSD-style license and is covered by the package dependency/license inventory.
 
+Qt Core is a private `goldendict_core` implementation dependency for bounded
+XDXF stream parsing. The dependency is already part of the application's Conan
+Qt graph and is declared private because no Qt type appears in the installed
+headless API or exported target usage requirements.
+
 ## Packaging
 
 Packages are produced through CMake/CPack from the current CMake install rules.

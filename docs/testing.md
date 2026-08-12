@@ -73,6 +73,14 @@ conversion, scan checkpoints, cancellation, invalid signatures, and truncated
 article rejection. The application service and installed headless consumer
 also verify sanitized SDict HTML through the format-neutral facade.
 
+`xdxf_discovery_test`, `xdxf_reader_test`, and `xdxf_dictionary_test` generate
+minimal XDXF XML and gzip-compatible `.xdxf.dz` fixtures. They verify recursive
+discovery, metadata and aliases, Unicode-folded ranking, bounded gzip input,
+standard document types, malformed XML and UTF-8 rejection, safe markup and
+word-link conversion, cancellation, confined resource paths, and bounded image
+resource loading. The application service test verifies sanitized HTML and
+typed resource retrieval through the format-neutral facade.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

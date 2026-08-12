@@ -8,7 +8,7 @@ find_package(ZLIB REQUIRED)
 
 ti_define_module(core
   REQUIRED PUBLIC MODULES tiger
-  REQUIRED PRIVATE EXTRAS BZip2::BZip2 ICU::uc ZLIB::ZLIB
+  REQUIRED PRIVATE EXTRAS BZip2::BZip2 ICU::uc Qt6::Core ZLIB::ZLIB
 )
 
 if(TARGET article_assembler_test)
@@ -135,5 +135,38 @@ if(TARGET sdict_dictionary_test)
   )
   target_link_libraries(sdict_dictionary_test
     PRIVATE BZip2::BZip2 ICU::uc ZLIB::ZLIB
+  )
+endif()
+
+if(TARGET xdxf_discovery_test)
+  target_sources(xdxf_discovery_test
+    PRIVATE
+      src/formats/xdxf/xdxf_discovery.cc
+  )
+endif()
+
+if(TARGET xdxf_reader_test)
+  target_sources(xdxf_reader_test
+    PRIVATE
+      src/foundation/text_folding.cc
+      src/foundation/utf8.cc
+      src/formats/xdxf/xdxf_reader.cc
+  )
+  target_link_libraries(xdxf_reader_test
+    PRIVATE ICU::uc Qt6::Core ZLIB::ZLIB
+  )
+endif()
+
+if(TARGET xdxf_dictionary_test)
+  target_sources(xdxf_dictionary_test
+    PRIVATE
+      src/dictionary/dictionary_backend.cc
+      src/foundation/text_folding.cc
+      src/foundation/utf8.cc
+      src/formats/xdxf/xdxf_dictionary.cc
+      src/formats/xdxf/xdxf_reader.cc
+  )
+  target_link_libraries(xdxf_dictionary_test
+    PRIVATE ICU::uc Qt6::Core ZLIB::ZLIB
   )
 endif()
