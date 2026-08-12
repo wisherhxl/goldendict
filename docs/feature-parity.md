@@ -76,6 +76,7 @@ not authorize dropping a legacy format.
 | Navigation, links, search, zoom | slice | Phase 7/8 | WebEngine integration tests |
 | Context menus, copy, print, save | slice | Phase 7/8 | manual and automated checks |
 | Inspector/DevTools integration | later | Phase 7 | manual parity check |
+| Bounded HTTP transport | slice | Phase 7 | deterministic local HTTP server |
 | Proxy and authentication | mapped | Phase 7 | local HTTP proxy fixture |
 | MediaWiki sources | mapped | Phase 7 | deterministic local HTTP server |
 | Arbitrary websites | mapped | Phase 7 | encoding/link-rewrite fixtures |
