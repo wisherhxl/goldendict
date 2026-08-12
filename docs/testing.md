@@ -110,6 +110,11 @@ legacy line format, entry-limit truncation, current-state precedence, atomic
 new-format persistence, and recoverable malformed-input failure that leaves
 the legacy source untouched.
 
+`goldendict_history_smoke` exercises the application composition path in an
+isolated configuration directory. It submits a lookup through the window,
+checks that the history dock is refreshed, and reloads the atomically persisted
+entry through the public core history API.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

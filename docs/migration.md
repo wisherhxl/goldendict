@@ -335,8 +335,10 @@ discovery remain separately gated migration work.
 The following user-state increment adds a transport-neutral core history store
 with bounded group-aware UTF-8 entries and a recoverable legacy line-format
 migration. Current state takes precedence, new state is written atomically,
-and the legacy history is never modified. Application-side recording, the
-history pane, filtering, clearing, and export remain later Phase 8 increments.
+and the legacy history is never modified. The application now records submitted
+lookups, deduplicates them case-insensitively, persists them atomically, and
+exposes a reusable history dock. Filtering, clearing, and export remain later
+Phase 8 increments.
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.
 - Provide a compatible migration path for legacy configuration, dictionary

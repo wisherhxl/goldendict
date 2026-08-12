@@ -7,12 +7,14 @@
 
 #include <QAction>
 #include <QDesktopServices>
+#include <QDockWidget>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QPushButton>
 #include <QSaveFile>
 #include <QTimer>
@@ -61,6 +63,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     article_page_ = new ArticlePage(article_view_);
     article_view_->setPage(article_page_);
     layout->addWidget(article_view_, 1);
+
+    auto* history_dock = new QDockWidget(QStringLiteral("History"), this);
+    history_dock->setObjectName(QStringLiteral("historyDock"));
+    history_list_ = new QListWidget(history_dock);
+    history_list_->setObjectName(QStringLiteral("historyList"));
+    history_list_->setAlternatingRowColors(true);
+    history_dock->setWidget(history_list_);
+    addDockWidget(Qt::LeftDockWidgetArea, history_dock);
 
     auto* article_toolbar = addToolBar(QStringLiteral("Article"));
     article_toolbar->setObjectName(QStringLiteral("articleToolbar"));
@@ -118,6 +128,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(article_page_, &ArticlePage::LookupRequested, this,
             [this](const QString& text) {
                 query_->setText(text);
+                StartLookup();
+            });
+    connect(history_list_, &QListWidget::itemActivated, this,
+            [this](const QListWidgetItem* item) {
+                if (item == nullptr) {
+                    return;
+                }
+                query_->setText(item->text());
                 StartLookup();
             });
     connect(article_page_, &ArticlePage::ExternalUrlRequested, this,
@@ -208,6 +226,20 @@ void MainWindow::RunWebEngineInteractionCheck(
         "<!doctype html><html><body><p>needle</p><p>needle</p></body></html>"));
 }
 
+void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
+    const QString expected = QStringLiteral("history-smoke-entry");
+    connect(
+        this, &MainWindow::LookupSubmitted, this,
+        [this, expected, completion = std::move(completion)](
+            const QString& submitted) mutable {
+            completion(submitted == expected && history_list_->count() > 0 &&
+                       history_list_->item(0)->text() == expected);
+        },
+        Qt::SingleShotConnection);
+    query_->setText(expected);
+    StartLookup();
+}
+
 MainWindow::~MainWindow() {
     QWebEngineProfile::defaultProfile()->removeUrlSchemeHandler(
         scheme_handler_);
@@ -224,6 +256,11 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
                            : facade->GetDictionaryService().GetCatalog().size();
     status_->setText(
         tr("%1 dictionary loaded").arg(static_cast<qulonglong>(count)));
+}
+
+void MainWindow::SetHistoryWords(const QStringList& words) {
+    history_list_->clear();
+    history_list_->addItems(words);
 }
 
 void MainWindow::RunWebEngineSmokeCheck(std::function<void(bool)> completion) {
@@ -261,7 +298,9 @@ void MainWindow::StartLookup() {
     completion_timer_->stop();
     request_.reset();
     goldendict::core::LookupQuery query;
-    query.text = query_->text().trimmed().toStdString();
+    const QString word = query_->text().trimmed();
+    query.text = word.toStdString();
+    emit LookupSubmitted(word);
     request_ = facade_->GetDictionaryService().StartLookup(std::move(query));
     status_->setText(QStringLiteral("Looking up..."));
     lookup_button_->setEnabled(false);

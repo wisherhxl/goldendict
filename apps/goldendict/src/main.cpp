@@ -5,13 +5,17 @@
 #include <QMessageBox>
 #include <QStandardPaths>
 #include <QString>
+#include <QStringList>
 #include <QTimer>
 #include <QWebEngineUrlScheme>
 
+#include <algorithm>
 #include <memory>
 #include <stdexcept>
+#include <vector>
 
 #include "goldendict/core/application.h"
+#include "goldendict/core/history_store.h"
 #include "main_window.h"
 
 namespace {
@@ -71,6 +75,10 @@ int main(int argc, char* argv[]) {
         QDir(configuration_directory).filePath(QStringLiteral("core.conf"));
     const QString legacy_configuration_path =
         QDir(configuration_directory).filePath(QStringLiteral("config"));
+    const QString history_path =
+        QDir(configuration_directory).filePath(QStringLiteral("history-v1"));
+    const QString legacy_history_path =
+        QDir(configuration_directory).filePath(QStringLiteral("history"));
     const std::string default_index_directory =
         QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
             .filePath(QStringLiteral("indexes"))
@@ -93,8 +101,56 @@ int main(int argc, char* argv[]) {
     }
 
     auto facade = goldendict::core::CreateDesktopFacade(configuration);
+    constexpr std::size_t kMaximumHistoryEntries = 500U;
+    std::vector<goldendict::core::HistoryEntry> history;
+    try {
+        history = goldendict::core::LoadOrMigrateHistory(
+            history_path.toStdString(), legacy_history_path.toStdString(),
+            kMaximumHistoryEntries);
+    } catch (const std::exception& error) {
+        QMessageBox::warning(nullptr, QStringLiteral("GoldenDict history"),
+                             QString::fromLocal8Bit(error.what()));
+    }
     MainWindow window;
     window.SetFacade(facade.get());
+    const auto refresh_history = [&window, &history]() {
+        QStringList words;
+        words.reserve(static_cast<qsizetype>(history.size()));
+        for (const auto& entry : history) {
+            words.push_back(QString::fromStdString(entry.word));
+        }
+        window.SetHistoryWords(words);
+    };
+    refresh_history();
+    QObject::connect(&window, &MainWindow::LookupSubmitted, &window,
+                     [&](const QString& word) {
+                         auto updated = history;
+                         const std::string encoded = word.toStdString();
+                         updated.erase(
+                             std::remove_if(
+                                 updated.begin(), updated.end(),
+                                 [&word](const auto& entry) {
+                                     return QString::fromStdString(entry.word)
+                                                .compare(word,
+                                                         Qt::CaseInsensitive) ==
+                                            0;
+                                 }),
+                             updated.end());
+                         updated.insert(updated.begin(), {0U, encoded});
+                         if (updated.size() > kMaximumHistoryEntries) {
+                             updated.resize(kMaximumHistoryEntries);
+                         }
+                         try {
+                             goldendict::core::SaveHistory(
+                                 history_path.toStdString(), updated);
+                             history = std::move(updated);
+                             refresh_history();
+                         } catch (const std::exception& error) {
+                             QMessageBox::warning(
+                                 &window, QStringLiteral("GoldenDict history"),
+                                 QString::fromLocal8Bit(error.what()));
+                         }
+                     });
     QObject::connect(&window, &MainWindow::DictionaryDirectorySelected, &window,
                      [&](const QString& directory) {
                          auto updated = configuration;
@@ -124,6 +180,21 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         window.RunWebEngineInteractionCheck(
             [&app](bool passed) { app.exit(passed ? 0 : 1); });
+    } else if (HasArgument(argc, argv, QStringLiteral("--history-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &history_path, &window]() {
+            window.RunHistorySmokeCheck([&app, &history_path](bool passed) {
+                try {
+                    const auto persisted = goldendict::core::LoadHistory(
+                        history_path.toStdString());
+                    passed = passed && !persisted.empty() &&
+                             persisted.front().word == "history-smoke-entry";
+                } catch (const std::exception&) {
+                    passed = false;
+                }
+                app.exit(passed ? 0 : 1);
+            });
+        });
     }
 
     return app.exec();

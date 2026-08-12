@@ -7,12 +7,14 @@
 #include <memory>
 
 #include <QMainWindow>
+#include <QStringList>
 
 class ArticlePage;
 class ArticleSchemeHandler;
 class QAction;
 class QLabel;
 class QLineEdit;
+class QListWidget;
 class QPushButton;
 class QTimer;
 class QWebEngineView;
@@ -30,11 +32,14 @@ class MainWindow final : public QMainWindow {
     ~MainWindow() override;
 
     void SetFacade(goldendict::core::DesktopFacade* facade);
+    void SetHistoryWords(const QStringList& words);
     void RunWebEngineSmokeCheck(std::function<void(bool)> completion);
     void RunWebEngineInteractionCheck(std::function<void(bool)> completion);
+    void RunHistorySmokeCheck(std::function<void(bool)> completion);
 
    signals:
     void DictionaryDirectorySelected(const QString& directory);
+    void LookupSubmitted(const QString& word);
 
    private slots:
     void ChooseDictionaryDirectory();
@@ -52,6 +57,7 @@ class MainWindow final : public QMainWindow {
     goldendict::core::DesktopFacade* facade_ = nullptr;
     std::unique_ptr<goldendict::core::LookupRequest> request_;
     QLineEdit* query_ = nullptr;
+    QListWidget* history_list_ = nullptr;
     QPushButton* lookup_button_ = nullptr;
     QLabel* status_ = nullptr;
     QWebEngineView* article_view_ = nullptr;
