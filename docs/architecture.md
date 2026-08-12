@@ -135,6 +135,15 @@ behind the typed resource API. Definitions enter the common sanitizer as
 untrusted HTML. Advanced transcription/control records, historical Hebrew
 repairs, and full-text indexes remain later parity work.
 
+MDict consumes 2.x `.mdx` dictionaries and their `.mdd`, `.1.mdd`, and later
+resource volumes. The private adapter validates UTF-16 header XML and checksums,
+bounds key/record tables and all decompression, strictly decodes declared text,
+applies embedded stylesheet markers, resolves bounded article redirects, and
+serves normalized MDD resource names through the typed resource API. Plain and
+zlib blocks are supported in this slice; encrypted dictionaries, LZO blocks,
+older 1.x containers, local-file resource fallback, and full-text indexes
+remain explicit parity work.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

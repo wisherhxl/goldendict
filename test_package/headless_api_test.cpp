@@ -45,6 +45,15 @@ void AppendBigEndian32(std::uint32_t value, std::string* output) {
     output->push_back(static_cast<char>(value & 0xffU));
 }
 
+void AppendBigEndian64(std::uint64_t value, std::string* output) {
+    for (unsigned shift = 56U;; shift -= 8U) {
+        output->push_back(static_cast<char>((value >> shift) & 0xffU));
+        if (shift == 0U) {
+            break;
+        }
+    }
+}
+
 void AppendBigEndian16(std::uint16_t value, std::string* output) {
     output->push_back(static_cast<char>((value >> 8U) & 0xffU));
     output->push_back(static_cast<char>(value & 0xffU));
@@ -80,6 +89,16 @@ std::uint32_t Crc32(std::string_view data) {
         }
     }
     return ~crc;
+}
+
+std::uint32_t Adler32(std::string_view data) {
+    std::uint32_t first = 1U;
+    std::uint32_t second = 0U;
+    for (const unsigned char byte : data) {
+        first = (first + byte) % 65521U;
+        second = (second + first) % 65521U;
+    }
+    return (second << 16U) | first;
 }
 
 std::string StoredGzip(std::string_view data) {
@@ -259,6 +278,90 @@ void WriteBglFixture(const std::filesystem::path& root) {
     std::string file{"\x12\x34\x00\x01\x00\x06", 6U};
     file += StoredGzip(stream);
     Write(root / "fixture.bgl", file);
+}
+
+std::string MdictUtf16Le(std::string_view ascii) {
+    std::string result;
+    result.reserve((ascii.size() + 1U) * 2U);
+    for (const unsigned char byte : ascii) {
+        result.push_back(static_cast<char>(byte));
+        result.push_back('\0');
+    }
+    result.append(2U, '\0');
+    return result;
+}
+
+std::string MdictPlainBlock(std::string_view data) {
+    std::string block(4U, '\0');
+    AppendBigEndian32(Adler32(data), &block);
+    block.append(data);
+    return block;
+}
+
+void WriteMdictContainer(
+    const std::filesystem::path& path, std::string_view title,
+    const std::vector<std::pair<std::string, std::string>>& entries) {
+    const std::string header_text =
+        "<Dictionary GeneratedByEngineVersion=\"2.0\" Encoding=\"UTF-8\" "
+        "Encrypted=\"0\" Left2Right=\"Yes\" Title=\"" +
+        std::string(title) + "\"/>";
+    const std::string header = MdictUtf16Le(header_text);
+    std::string records;
+    std::string keys;
+    for (const auto& entry : entries) {
+        AppendBigEndian64(records.size(), &keys);
+        keys += entry.first;
+        keys.push_back('\0');
+        records += entry.second;
+    }
+    const std::string key_block = MdictPlainBlock(keys);
+    std::string key_info;
+    AppendBigEndian64(entries.size(), &key_info);
+    AppendBigEndian16(static_cast<std::uint16_t>(entries.front().first.size()),
+                      &key_info);
+    key_info += entries.front().first;
+    key_info.push_back('\0');
+    AppendBigEndian16(static_cast<std::uint16_t>(entries.back().first.size()),
+                      &key_info);
+    key_info += entries.back().first;
+    key_info.push_back('\0');
+    AppendBigEndian64(key_block.size(), &key_info);
+    AppendBigEndian64(keys.size(), &key_info);
+    const std::string key_info_block = MdictPlainBlock(key_info);
+
+    std::string file;
+    AppendBigEndian32(static_cast<std::uint32_t>(header.size()), &file);
+    file += header;
+    AppendLittle32(Adler32(header), &file);
+    std::string key_header;
+    AppendBigEndian64(1U, &key_header);
+    AppendBigEndian64(entries.size(), &key_header);
+    AppendBigEndian64(key_info.size(), &key_header);
+    AppendBigEndian64(key_info_block.size(), &key_header);
+    AppendBigEndian64(key_block.size(), &key_header);
+    file += key_header;
+    AppendBigEndian32(Adler32(key_header), &file);
+    file += key_info_block;
+    file += key_block;
+
+    const std::string record_block = MdictPlainBlock(records);
+    AppendBigEndian64(1U, &file);
+    AppendBigEndian64(entries.size(), &file);
+    AppendBigEndian64(16U, &file);
+    AppendBigEndian64(record_block.size(), &file);
+    AppendBigEndian64(record_block.size(), &file);
+    AppendBigEndian64(records.size(), &file);
+    file += record_block;
+    Write(path, file);
+}
+
+void WriteMdictFixture(const std::filesystem::path& root) {
+    WriteMdictContainer(root / "fixture.mdx", "Installed MDict",
+                        {{"example",
+                          "<b>Installed MDict definition.</b>"
+                          "<img src=\"pixel.png\">"}});
+    WriteMdictContainer(root / "fixture.mdd", "Installed resources",
+                        {{"\\pixel.png", "mdict-png"}});
 }
 
 int Fail(const std::string& message) {
@@ -519,6 +622,37 @@ int main() {
             bgl_resource.size());
         if (bgl_resource_text != "bgl-png") {
             return Fail("installed BGL resource retrieval failed");
+        }
+
+        const auto mdict_root = directory.path() / "mdict";
+        WriteMdictFixture(mdict_root);
+        goldendict::core::CoreConfiguration mdict_configuration;
+        mdict_configuration.dictionary_paths = {mdict_root.string()};
+        auto mdict_service =
+            goldendict::core::CreateDictionaryService(mdict_configuration);
+        const auto mdict_catalog = mdict_service->GetCatalog();
+        query = {};
+        query.text = "EXAMPLE";
+        const auto mdict_response = mdict_service->Lookup(query);
+        if (mdict_catalog.size() != 1U ||
+            mdict_catalog.front().id.rfind("mdict-", 0) != 0U ||
+            mdict_catalog.front().name != "Installed MDict" ||
+            !mdict_response.errors.empty() ||
+            mdict_response.entries.size() != 1U ||
+            !mdict_response.entries.front()
+                 .article.sanitized_html.has_value() ||
+            mdict_response.entries.front().article.sanitized_html->find(
+                "Installed MDict definition.") == std::string::npos ||
+            mdict_response.entries.front().resources.size() != 1U) {
+            return Fail("installed MDict lookup failed");
+        }
+        const auto mdict_resource = mdict_service->GetResource(
+            mdict_response.entries.front().resources.front());
+        const std::string mdict_resource_text(
+            reinterpret_cast<const char*>(mdict_resource.data()),
+            mdict_resource.size());
+        if (mdict_resource_text != "mdict-png") {
+            return Fail("installed MDict resource retrieval failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";

@@ -12,6 +12,40 @@ ti_define_module(core
   REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat ICU::uc ZLIB::ZLIB
 )
 
+if(TARGET mdict_reader_test)
+  target_sources(mdict_reader_test PRIVATE
+    src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
+    src/formats/mdict/mdict_discovery.cc
+    src/formats/mdict/mdict_reader.cc
+  )
+  target_link_libraries(mdict_reader_test
+    PRIVATE expat::expat ICU::uc ZLIB::ZLIB
+  )
+endif()
+
+if(TARGET mdict_discovery_test)
+  target_sources(mdict_discovery_test PRIVATE
+    src/formats/mdict/mdict_discovery.cc
+  )
+endif()
+
+if(TARGET mdict_dictionary_test)
+  target_sources(mdict_dictionary_test PRIVATE
+    src/dictionary/dictionary_backend.cc
+    src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
+    src/formats/mdict/mdict_dictionary.cc
+    src/formats/mdict/mdict_discovery.cc
+    src/formats/mdict/mdict_reader.cc
+  )
+  target_link_libraries(mdict_dictionary_test
+    PRIVATE expat::expat ICU::uc ZLIB::ZLIB
+  )
+endif()
+
 if(TARGET bgl_reader_test)
   target_sources(bgl_reader_test PRIVATE
     src/foundation/text_encoding.cc
