@@ -44,6 +44,20 @@ void AppendBigEndian32(std::uint32_t value, std::string* output) {
     output->push_back(static_cast<char>(value & 0xffU));
 }
 
+std::string EncodeDictdBase64(std::uint32_t value) {
+    constexpr char digits[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    if (value == 0U) {
+        return "A";
+    }
+    std::string result;
+    while (value != 0U) {
+        result.insert(result.begin(), digits[value % 64U]);
+        value /= 64U;
+    }
+    return result;
+}
+
 void Write(const std::filesystem::path& path, const std::string& contents) {
     std::filesystem::create_directories(path.parent_path());
     std::ofstream output(path, std::ios::binary);
@@ -83,6 +97,15 @@ void WriteFixture(const std::filesystem::path& root) {
     Write(root / "fixture.idx", index);
     Write(root / "fixture.dict", dictionary);
     Write(root / "res" / "images" / "pixel.png", "fixture-png");
+}
+
+void WriteDictdFixture(const std::filesystem::path& root) {
+    const std::string article = "Installed Dictd definition.";
+    const std::string index =
+        "example\tA\t" +
+        EncodeDictdBase64(static_cast<std::uint32_t>(article.size())) + "\n";
+    Write(root / "fixture.index", index);
+    Write(root / "fixture.dict", article);
 }
 
 int Fail(const std::string& message) {
@@ -180,6 +203,25 @@ int main() {
         const auto missing = service->Lookup(query);
         if (!missing.entries.empty() || !missing.errors.empty()) {
             return Fail("missing lookup did not complete cleanly");
+        }
+
+        const auto dictd_root = directory.path() / "dictd";
+        WriteDictdFixture(dictd_root);
+        goldendict::core::CoreConfiguration dictd_configuration;
+        dictd_configuration.dictionary_paths = {dictd_root.string()};
+        auto dictd_service =
+            goldendict::core::CreateDictionaryService(dictd_configuration);
+        const auto dictd_catalog = dictd_service->GetCatalog();
+        query = {};
+        query.text = "EXAMPLE";
+        const auto dictd_response = dictd_service->Lookup(query);
+        if (dictd_catalog.size() != 1U ||
+            dictd_catalog.front().id.rfind("dictd-", 0) != 0U ||
+            !dictd_response.errors.empty() ||
+            dictd_response.entries.size() != 1U ||
+            dictd_response.entries.front().article.plain_text.find(
+                "Installed Dictd definition.") == std::string::npos) {
+            return Fail("installed Dictd lookup failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";

@@ -72,3 +72,32 @@ if(TARGET stardict_discovery_test)
       src/formats/stardict/stardict_discovery.cc
   )
 endif()
+
+if(TARGET dictd_discovery_test)
+  target_sources(dictd_discovery_test
+    PRIVATE
+      src/formats/dictd/dictd_discovery.cc
+  )
+endif()
+
+if(TARGET dictd_reader_test)
+  target_sources(dictd_reader_test
+    PRIVATE
+      src/foundation/text_folding.cc
+      src/foundation/utf8.cc
+      src/formats/dictd/dictd_reader.cc
+  )
+  target_link_libraries(dictd_reader_test PRIVATE ICU::uc ZLIB::ZLIB)
+endif()
+
+if(TARGET dictd_dictionary_test)
+  target_sources(dictd_dictionary_test
+    PRIVATE
+      src/dictionary/dictionary_backend.cc
+      src/foundation/text_folding.cc
+      src/foundation/utf8.cc
+      src/formats/dictd/dictd_dictionary.cc
+      src/formats/dictd/dictd_reader.cc
+  )
+  target_link_libraries(dictd_dictionary_test PRIVATE ICU::uc ZLIB::ZLIB)
+endif()

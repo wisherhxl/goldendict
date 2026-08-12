@@ -86,6 +86,14 @@ StarDict type. Synchronous lookup is available for simple headless consumers,
 and `StartLookup` returns an owned request with explicit completion and
 cancellation whose lifetime does not depend on the service object.
 
+Built-in local formats are composed behind the same private backend contract.
+StarDict owns its generated index and typed resource adapter. Dictd consumes
+the original `.index` plus `.dict` or `.dict.dz` files directly, including the
+optional original-headword column and `00databaseshort` title metadata. Dictd
+articles enter the common inert article assembler as untrusted plain text;
+legacy presentation-specific phonetic and cross-reference markup remains an
+article-phase concern rather than format discovery behavior.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

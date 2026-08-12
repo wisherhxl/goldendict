@@ -7,6 +7,7 @@
 #include <string>
 
 #include "goldendict/core/application.h"
+#include "support/dictd_fixture.h"
 #include "support/stardict_fixture.h"
 
 namespace goldendict::core {
@@ -29,6 +30,7 @@ class ApplicationServiceTest : public QObject {
     void ReturnsRankedPrefixMatches();
     void ReturnsLightweightHeadwordSuggestions();
     void RanksSuggestionsAcrossDictionaries();
+    void DiscoversAndQueriesDictdAlongsideStardict();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -240,6 +242,36 @@ void ApplicationServiceTest::RanksSuggestionsAcrossDictionaries() {
     QCOMPARE(response.suggestions.size(), std::size_t{1});
     QCOMPARE(response.suggestions.front().headword, "Caf\xc3\xa9");
     QCOMPARE(response.suggestions.front().match.mode, MatchMode::kExact);
+}
+
+void ApplicationServiceTest::DiscoversAndQueriesDictdAlongsideStardict() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    QVERIFY(std::filesystem::create_directories(root / "stardict"));
+    test::WriteStardictFixture(root / "stardict",
+                               {{"example", "StarDict article"}});
+    test::WriteDictdFixture(root / "dictd", {{"example", "Dictd article", {}}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "EXAMPLE";
+    query.result_limit = 5U;
+
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+
+    QCOMPARE(catalog.size(), std::size_t{2});
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{2});
+    QVERIFY(std::any_of(response.entries.begin(), response.entries.end(),
+                        [](const auto& entry) {
+                            return entry.dictionary.id.rfind("dictd-", 0) ==
+                                       0U &&
+                                   entry.article.plain_text.find(
+                                       "Dictd article") != std::string::npos;
+                        }));
 }
 
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {

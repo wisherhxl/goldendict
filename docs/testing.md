@@ -56,6 +56,15 @@ representative legacy encodings Latin-1, UTF-16LE, GB18030, and EUC-JP. It also
 rejects malformed byte sequences, malformed UTF-8, unrepresentable target
 characters, unknown or oversized encoding names, and output-limit violations.
 
+`dictd_discovery_test`, `dictd_reader_test`, and `dictd_dictionary_test` use
+generated `.index` and data fixtures. They verify companion discovery,
+base-64 offset/size parsing, the optional original-headword column,
+`00databaseshort` naming, Unicode-folded ranking, distinct suggestions, plain
+and gzip/dictzip-compatible data, scan checkpoints, cancellation, malformed
+indexes, corrupt compression, and out-of-range article rejection.
+`application_service_test` also verifies that Dictd and StarDict coexist behind
+the same catalog and lookup facade.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

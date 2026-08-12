@@ -232,6 +232,17 @@ passes its gate. Original dictionary files must remain directly usable without
 format conversion; implementation-generated indexes may be rebuilt when
 binary compatibility cannot be preserved safely.
 
+Status: in progress. The first text-batch increment adds a private Dictd
+adapter for original `.index` plus `.dict` or gzip/dictzip-compatible
+`.dict.dz` files. It validates base-64 article ranges and UTF-8 headwords,
+honors the optional original-headword column, reads `00databaseshort` title
+metadata, reuses Unicode-folded exact/prefix/suggestion ranking, and exposes
+bounded inert plain-text articles through the existing headless and desktop
+facades. Discovery reports incomplete companion sets, compressed input is
+checksum-checked and bounded, and scan checkpoints preserve cancellation and
+deadline behavior. Legacy full-text indexing and presentation-specific Dictd
+markup conversion remain separately gated Phase 5/7 work.
+
 ### Phase 7 — Articles, WebEngine, And Networking
 
 Run three separately gated workstreams:

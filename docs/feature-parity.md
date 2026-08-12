@@ -46,7 +46,7 @@
 | Format/source | Status | Batch | Required verification |
 | --- | --- | --- | --- |
 | StarDict | slice | vertical slice | discover/index/search/article/resource |
-| Dictd | mapped | text batch | `.index` + data/compressed data |
+| Dictd | slice | text batch | strict `.index` + bounded plain/dictzip data, folded lookup, suggestions, and corruption tests |
 | SDict | mapped | text batch | parse/search/HTML/link conversion |
 | XDXF | mapped | text batch | XML/compressed XML/resources |
 | GLS | mapped | text batch | text/compressed text/resources |

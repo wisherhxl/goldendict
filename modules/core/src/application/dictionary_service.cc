@@ -19,6 +19,8 @@
 
 #include "../article/article_assembler.h"
 #include "../dictionary/dictionary_backend.h"
+#include "../formats/dictd/dictd_dictionary.h"
+#include "../formats/dictd/dictd_discovery.h"
 #include "../formats/stardict/stardict_dictionary.h"
 #include "../formats/stardict/stardict_discovery.h"
 #include "../foundation/text_folding.h"
@@ -41,7 +43,8 @@ class CancellationAdapter final : public dictionary::CancellationSignal {
     const CancellationToken* token_;
 };
 
-std::string StableId(const std::filesystem::path& path) {
+std::string StableId(std::string_view format,
+                     const std::filesystem::path& path) {
     std::error_code filesystem_error;
     const auto canonical =
         std::filesystem::weakly_canonical(path, filesystem_error);
@@ -54,7 +57,7 @@ std::string StableId(const std::filesystem::path& path) {
         hash *= 1099511628211ULL;
     }
     std::ostringstream output;
-    output << "stardict-" << std::hex << std::setfill('0') << std::setw(16)
+    output << format << '-' << std::hex << std::setfill('0') << std::setw(16)
            << hash;
     return output.str();
 }
@@ -223,7 +226,7 @@ class ServiceState final {
                  issue.path.string() + ": " + issue.message});
         }
         for (const auto& info_path : discovery.info_files) {
-            const std::string id = StableId(info_path);
+            const std::string id = StableId("stardict", info_path);
             std::optional<std::filesystem::path> index_path;
             if (!configuration.index_directory.empty()) {
                 index_path =
@@ -235,6 +238,24 @@ class ServiceState final {
                     std::make_unique<formats::stardict::Dictionary>(
                         formats::stardict::Dictionary::Open(id, info_path,
                                                             index_path)));
+            } catch (const dictionary::Error& error) {
+                startup_errors_.push_back(
+                    {TranslateErrorCode(error.code()), id, error.what()});
+            }
+        }
+        const auto dictd_discovery = formats::dictd::Discover(roots);
+        for (const auto& issue : dictd_discovery.issues) {
+            startup_errors_.push_back(
+                {LookupErrorCode::kDictionaryUnavailable,
+                 {},
+                 issue.path.string() + ": " + issue.message});
+        }
+        for (const auto& index_path : dictd_discovery.index_files) {
+            const std::string id = StableId("dictd", index_path);
+            try {
+                dictionaries_.push_back(
+                    std::make_unique<formats::dictd::Dictionary>(
+                        formats::dictd::Dictionary::Open(id, index_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});
