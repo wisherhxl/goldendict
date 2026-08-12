@@ -68,10 +68,23 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     auto* history_dock = new QDockWidget(QStringLiteral("History"), this);
     history_dock->setObjectName(QStringLiteral("historyDock"));
-    history_list_ = new QListWidget(history_dock);
+    auto* history_widget = new QWidget(history_dock);
+    auto* history_layout = new QVBoxLayout(history_widget);
+    history_layout->setContentsMargins(4, 4, 4, 4);
+    history_filter_ = new QLineEdit(history_widget);
+    history_filter_->setObjectName(QStringLiteral("historyFilter"));
+    history_filter_->setPlaceholderText(QStringLiteral("Filter history"));
+    history_filter_->setClearButtonEnabled(true);
+    history_list_ = new QListWidget(history_widget);
     history_list_->setObjectName(QStringLiteral("historyList"));
     history_list_->setAlternatingRowColors(true);
-    history_dock->setWidget(history_list_);
+    clear_history_button_ =
+        new QPushButton(QStringLiteral("Clear History"), history_widget);
+    clear_history_button_->setObjectName(QStringLiteral("clearHistoryButton"));
+    history_layout->addWidget(history_filter_);
+    history_layout->addWidget(history_list_, 1);
+    history_layout->addWidget(clear_history_button_);
+    history_dock->setWidget(history_widget);
     addDockWidget(Qt::LeftDockWidgetArea, history_dock);
 
     auto* favorites_dock = new QDockWidget(QStringLiteral("Favorites"), this);
@@ -157,6 +170,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 query_->setText(item->text());
                 StartLookup();
             });
+    connect(history_filter_, &QLineEdit::textChanged, this,
+            &MainWindow::RefreshHistoryList);
+    connect(clear_history_button_, &QPushButton::clicked, this,
+            &MainWindow::ClearHistoryRequested);
     connect(favorites_tree_, &QTreeWidget::itemActivated, this,
             [this](QTreeWidgetItem* item, int) {
                 if (item == nullptr || item->data(0, Qt::UserRole).toBool()) {
@@ -275,6 +292,27 @@ void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
     StartLookup();
 }
 
+void MainWindow::RunHistoryManagementSmokeCheck(
+    std::function<void(bool)> completion) {
+    SetHistoryWords(
+        {QStringLiteral("Alpha"), QStringLiteral("Beta"),
+         QStringLiteral("Alpine")});
+    history_filter_->setText(QStringLiteral("alp"));
+    const bool filtered = history_list_->count() == 2 &&
+                          history_list_->item(0)->text() ==
+                              QStringLiteral("Alpha") &&
+                          history_list_->item(1)->text() ==
+                              QStringLiteral("Alpine");
+    connect(
+        this, &MainWindow::ClearHistoryRequested, this,
+        [this, filtered, completion = std::move(completion)]() mutable {
+            completion(filtered && history_words_.isEmpty() &&
+                       history_list_->count() == 0);
+        },
+        Qt::SingleShotConnection);
+    clear_history_button_->click();
+}
+
 void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
     const QString expected = QStringLiteral("favorites-smoke-entry");
     connect(
@@ -347,8 +385,18 @@ void MainWindow::ShowDictionaryBrowser() {
 }
 
 void MainWindow::SetHistoryWords(const QStringList& words) {
+    history_words_ = words;
+    RefreshHistoryList();
+}
+
+void MainWindow::RefreshHistoryList() {
     history_list_->clear();
-    history_list_->addItems(words);
+    const QString filter = history_filter_->text().trimmed();
+    for (const QString& word : history_words_) {
+        if (filter.isEmpty() || word.contains(filter, Qt::CaseInsensitive)) {
+            history_list_->addItem(word);
+        }
+    }
 }
 
 void MainWindow::SetFavoriteItems(

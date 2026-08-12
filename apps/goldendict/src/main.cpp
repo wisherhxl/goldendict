@@ -186,6 +186,21 @@ int main(int argc, char* argv[]) {
                                  QString::fromLocal8Bit(error.what()));
                          }
                      });
+    QObject::connect(&window, &MainWindow::ClearHistoryRequested, &window,
+                     [&]() {
+                         try {
+                             const std::vector<goldendict::core::HistoryEntry>
+                                 empty;
+                             goldendict::core::SaveHistory(
+                                 history_path.toStdString(), empty);
+                             history.clear();
+                             refresh_history();
+                         } catch (const std::exception& error) {
+                             QMessageBox::warning(
+                                 &window, QStringLiteral("GoldenDict history"),
+                                 QString::fromLocal8Bit(error.what()));
+                         }
+                     });
     QObject::connect(&window, &MainWindow::AddFavoriteRequested, &window,
                      [&](const QString& word) {
                          const bool exists = std::any_of(
@@ -286,6 +301,23 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(0, &window, [&app, &window]() {
             window.RunDictionaryBrowserSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--history-management-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &history_path, &window]() {
+            window.RunHistoryManagementSmokeCheck(
+                [&app, &history_path](bool passed) {
+                    try {
+                        passed = passed &&
+                                 goldendict::core::LoadHistory(
+                                     history_path.toStdString())
+                                     .empty();
+                    } catch (const std::exception&) {
+                        passed = false;
+                    }
+                    app.exit(passed ? 0 : 1);
+                });
         });
     }
 

@@ -359,6 +359,12 @@ The legacy article/word counts, description field, full-list export, wildcard
 and regular-expression filtering, and local-file actions remain later Phase 8
 parity work.
 
+The history-management increment adds case-insensitive live filtering to the
+reusable history pane and an explicit clear action. Clearing remains a
+composition-root command: it atomically persists an empty bounded history
+through the core store and refreshes the presentation only after success.
+History export and group-selection controls remain later Phase 8 work.
+
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.
 - Provide a compatible migration path for legacy configuration, dictionary

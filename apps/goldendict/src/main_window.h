@@ -47,6 +47,7 @@ class MainWindow final : public QMainWindow {
     void RunWebEngineSmokeCheck(std::function<void(bool)> completion);
     void RunWebEngineInteractionCheck(std::function<void(bool)> completion);
     void RunHistorySmokeCheck(std::function<void(bool)> completion);
+    void RunHistoryManagementSmokeCheck(std::function<void(bool)> completion);
     void RunFavoritesSmokeCheck(std::function<void(bool)> completion);
     void RunDictionaryBrowserSmokeCheck(std::function<void(bool)> completion);
 
@@ -54,6 +55,7 @@ class MainWindow final : public QMainWindow {
     void DictionaryDirectorySelected(const QString& directory);
     void LookupSubmitted(const QString& word);
     void AddFavoriteRequested(const QString& word);
+    void ClearHistoryRequested();
 
    private slots:
     void ChooseDictionaryDirectory();
@@ -68,11 +70,15 @@ class MainWindow final : public QMainWindow {
 
    private:
     void ShowMessage(const QString& title, const QString& message);
+    void RefreshHistoryList();
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
     std::unique_ptr<goldendict::core::LookupRequest> request_;
     QLineEdit* query_ = nullptr;
+    QLineEdit* history_filter_ = nullptr;
     QListWidget* history_list_ = nullptr;
+    QStringList history_words_;
+    QPushButton* clear_history_button_ = nullptr;
     QTreeWidget* favorites_tree_ = nullptr;
     QAction* add_favorite_action_ = nullptr;
     QAction* dictionary_browser_action_ = nullptr;

@@ -129,6 +129,11 @@ opens the real dictionary browser offscreen, verifies catalog identity and
 source provenance, performs a dictionary-filtered prefix query, and confirms
 that activating the returned headword enters the normal lookup path.
 
+`goldendict_history_management_smoke` verifies case-insensitive live history
+filtering, sends the clear command through the real application composition
+path, checks the refreshed empty pane, and reloads the atomically persisted
+empty history through the public core API.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
