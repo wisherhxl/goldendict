@@ -161,6 +161,14 @@ zlib, and bzip2 clusters are supported in this slice. LZMA2/Zstd clusters,
 complex relative-link rewriting, icon conversion, and full-text indexes remain
 explicit parity work.
 
+SLOB consumes `.slob` containers through a private bounded adapter. It
+validates the magic, declared encoding, metadata tags, content types,
+reference/item/bin offset tables, and decompressed lengths; supports aliases,
+folded lookup and suggestions, and serves non-article bins through the typed
+resource API. Raw, zlib, and bzip2 item stores are supported in this slice.
+LZMA2, advanced content conversion, icons, and full-text indexes remain
+explicit parity work.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

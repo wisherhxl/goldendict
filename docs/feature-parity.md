@@ -55,7 +55,7 @@
 | MDict MDX/MDD | slice | binary batch | bounded 2.x headers/key/record tables, plain/zlib blocks, strict text decoding, styles, redirects, folded lookup/suggestions, sanitized HTML, and companion MDD resources; encryption, LZO, 1.x, and full-text parity remain |
 | Aard | slice | binary batch | bounded 32/64-bit archive indexes, zlib/bzip2/raw articles, metadata, folded lookup/suggestions, redirects, and sanitized article links; multi-volume aggregation, icons, and full-text parity remain |
 | ZIM | slice | binary batch | bounded header/directory/cluster parsing, consecutive split files, raw/zlib/bzip2 clusters, 32/64-bit blob offsets, metadata, redirects, folded lookup/suggestions, and resources; LZMA2/Zstd, complex link rewriting, icons, and full-text parity remain |
-| SLOB | mapped | binary batch | codec/container/resources |
+| SLOB | slice | binary batch | bounded header/reference/item/bin parsing, declared text encoding, metadata tags, aliases, raw/zlib/bzip2 stores, folded lookup/suggestions, sanitized articles, and resources; LZMA2, advanced conversion, icons, and full-text parity remain |
 | EPWING | mapped | specialized batch | catalog, encoding, references, resources |
 | LSA audio archive | mapped | specialized batch | index and audio retrieval |
 | ZIP sound packs | mapped | specialized batch | index and audio retrieval |

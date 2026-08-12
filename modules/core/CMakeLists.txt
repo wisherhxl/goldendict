@@ -21,6 +21,32 @@ if(TARGET aard_reader_test)
   target_link_libraries(aard_reader_test PRIVATE BZip2::BZip2 ICU::uc ZLIB::ZLIB)
 endif()
 
+if(TARGET slob_discovery_test)
+  target_sources(slob_discovery_test PRIVATE src/formats/slob/slob_discovery.cc)
+endif()
+
+if(TARGET slob_reader_test)
+  target_sources(slob_reader_test PRIVATE
+    src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
+    src/formats/slob/slob_reader.cc
+  )
+  target_link_libraries(slob_reader_test PRIVATE BZip2::BZip2 ICU::uc ZLIB::ZLIB)
+endif()
+
+if(TARGET slob_dictionary_test)
+  target_sources(slob_dictionary_test PRIVATE
+    src/dictionary/dictionary_backend.cc
+    src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
+    src/formats/slob/slob_dictionary.cc
+    src/formats/slob/slob_reader.cc
+  )
+  target_link_libraries(slob_dictionary_test PRIVATE BZip2::BZip2 ICU::uc ZLIB::ZLIB)
+endif()
+
 if(TARGET zim_discovery_test)
   target_sources(zim_discovery_test PRIVATE src/formats/zim/zim_discovery.cc)
 endif()

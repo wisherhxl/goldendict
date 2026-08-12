@@ -87,6 +87,14 @@ void WriteLittle64(std::uint64_t value, std::size_t offset,
     }
 }
 
+void WriteBigEndian64(std::uint64_t value, std::size_t offset,
+                      std::string* output) {
+    for (std::size_t byte = 0; byte < 8U; ++byte) {
+        (*output)[offset + byte] =
+            static_cast<char>((value >> ((7U - byte) * 8U)) & 0xffU);
+    }
+}
+
 std::uint32_t Crc32(std::string_view data) {
     std::uint32_t crc = 0xffffffffU;
     for (const unsigned char byte : data) {
@@ -369,6 +377,55 @@ void WriteZimFixture(const std::filesystem::path& root) {
     WriteLittle64(cluster_table, 48U, &file);
     WriteLittle64(file.size(), 72U, &file);
     Write(root / "fixture.zim", file);
+}
+
+void WriteSlobFixture(const std::filesystem::path& root) {
+    std::filesystem::create_directories(root);
+    const auto tiny = [](std::string_view value, std::string* output) {
+        output->push_back(static_cast<char>(value.size()));
+        output->append(value);
+    };
+    const auto text = [](std::string_view value, std::string* output) {
+        AppendBigEndian16(static_cast<std::uint16_t>(value.size()), output);
+        output->append(value);
+    };
+    std::string file("\x21\x2d\x31SLOB\x1f", 8U);
+    file.append(16U, '\0');
+    tiny("UTF-8", &file);
+    tiny("none", &file);
+    file.push_back(1);
+    tiny("name", &file);
+    tiny("Installed SLOB", &file);
+    file.push_back(1);
+    text("text/html", &file);
+    AppendBigEndian32(1U, &file);
+    const auto store_field = file.size();
+    AppendBigEndian64(0U, &file);
+    const auto size_field = file.size();
+    AppendBigEndian64(0U, &file);
+    AppendBigEndian32(1U, &file);
+    const auto ref_offset = file.size();
+    AppendBigEndian64(0U, &file);
+    text("example", &file);
+    AppendBigEndian32(0U, &file);
+    AppendBigEndian16(0U, &file);
+    tiny("", &file);
+    const auto store = file.size();
+    AppendBigEndian32(1U, &file);
+    AppendBigEndian64(0U, &file);
+    const std::string article = "<b>Installed SLOB definition.</b>";
+    std::string data;
+    AppendBigEndian32(0U, &data);
+    AppendBigEndian32(static_cast<std::uint32_t>(article.size()), &data);
+    data += article;
+    AppendBigEndian32(1U, &file);
+    file.push_back(0);
+    AppendBigEndian32(static_cast<std::uint32_t>(data.size()), &file);
+    file += data;
+    WriteBigEndian64(0U, ref_offset, &file);
+    WriteBigEndian64(store, store_field, &file);
+    WriteBigEndian64(file.size(), size_field, &file);
+    Write(root / "fixture.slob", file);
 }
 
 std::string MdictUtf16Le(std::string_view ascii) {
@@ -786,6 +843,27 @@ int main() {
             zim_response.entries.front().article.sanitized_html->find(
                 "Installed ZIM definition.") == std::string::npos) {
             return Fail("installed ZIM lookup failed");
+        }
+
+        const auto slob_root = directory.path() / "slob";
+        WriteSlobFixture(slob_root);
+        goldendict::core::CoreConfiguration slob_configuration;
+        slob_configuration.dictionary_paths = {slob_root.string()};
+        auto slob_service =
+            goldendict::core::CreateDictionaryService(slob_configuration);
+        const auto slob_catalog = slob_service->GetCatalog();
+        query = {};
+        query.text = "EXAMPLE";
+        const auto slob_response = slob_service->Lookup(query);
+        if (slob_catalog.size() != 1U ||
+            slob_catalog.front().id.rfind("slob-", 0) != 0U ||
+            slob_catalog.front().name != "Installed SLOB" ||
+            !slob_response.errors.empty() ||
+            slob_response.entries.size() != 1U ||
+            !slob_response.entries.front().article.sanitized_html.has_value() ||
+            slob_response.entries.front().article.sanitized_html->find(
+                "Installed SLOB definition.") == std::string::npos) {
+            return Fail("installed SLOB lookup failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";

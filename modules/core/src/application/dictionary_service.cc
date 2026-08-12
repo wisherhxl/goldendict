@@ -33,6 +33,8 @@
 #include "../formats/mdict/mdict_discovery.h"
 #include "../formats/sdict/sdict_dictionary.h"
 #include "../formats/sdict/sdict_discovery.h"
+#include "../formats/slob/slob_dictionary.h"
+#include "../formats/slob/slob_discovery.h"
 #include "../formats/stardict/stardict_dictionary.h"
 #include "../formats/stardict/stardict_discovery.h"
 #include "../formats/xdxf/xdxf_dictionary.h"
@@ -373,6 +375,24 @@ class ServiceState final {
                 {LookupErrorCode::kDictionaryUnavailable,
                  {},
                  issue.path.string() + ": " + issue.message});
+        }
+        const auto slob_discovery = formats::slob::Discover(roots);
+        for (const auto& issue : slob_discovery.issues) {
+            startup_errors_.push_back(
+                {LookupErrorCode::kDictionaryUnavailable,
+                 {},
+                 issue.path.string() + ": " + issue.message});
+        }
+        for (const auto& dictionary_path : slob_discovery.dictionary_files) {
+            const std::string id = StableId("slob", dictionary_path);
+            try {
+                dictionaries_.push_back(
+                    std::make_unique<formats::slob::Dictionary>(
+                        formats::slob::Dictionary::Open(id, dictionary_path)));
+            } catch (const dictionary::Error& error) {
+                startup_errors_.push_back(
+                    {TranslateErrorCode(error.code()), id, error.what()});
+            }
         }
         for (const auto& files : zim_discovery.dictionaries) {
             const std::string id = StableId("zim", files.primary);

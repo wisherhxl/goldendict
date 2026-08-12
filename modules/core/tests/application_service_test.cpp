@@ -14,6 +14,7 @@
 #include "support/gls_fixture.h"
 #include "support/mdict_fixture.h"
 #include "support/sdict_fixture.h"
+#include "support/slob_fixture.h"
 #include "support/stardict_fixture.h"
 #include "support/xdxf_fixture.h"
 #include "support/zim_fixture.h"
@@ -47,6 +48,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesMdictResources();
     void DiscoversSanitizesAndQueriesAard();
     void DiscoversSanitizesAndQueriesZimResources();
+    void DiscoversSanitizesAndQueriesSlobResources();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -516,6 +518,33 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesZimResources() {
     const auto& entry = response.entries.front();
     QCOMPARE(entry.language.source_language, "en");
     QVERIFY(entry.article.sanitized_html.has_value());
+    QVERIFY(entry.article.sanitized_html->find("<b>definition</b>") !=
+            std::string::npos);
+    QCOMPARE(entry.resources.size(), std::size_t{1});
+    QCOMPARE(service->GetResource(entry.resources.front()).size(),
+             std::size_t{8});
+}
+
+void ApplicationServiceTest::DiscoversSanitizesAndQueriesSlobResources() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteSlobFixture(root);
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "ALIAS";
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().id.rfind("slob-", 0) == 0U);
+    QCOMPARE(catalog.front().name, "Fixture SLOB");
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    const auto& entry = response.entries.front();
+    QCOMPARE(entry.language.source_language, "en");
+    QCOMPARE(entry.language.target_language, "de");
     QVERIFY(entry.article.sanitized_html->find("<b>definition</b>") !=
             std::string::npos);
     QCOMPARE(entry.resources.size(), std::size_t{1});
