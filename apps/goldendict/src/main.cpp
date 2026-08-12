@@ -146,6 +146,24 @@ bool MoveFavoriteAtPath(goldendict::core::Favorites* favorites,
     return true;
 }
 
+bool MoveFavoriteToRoot(goldendict::core::Favorites* favorites,
+                        const QList<int>& path) {
+    if (favorites == nullptr || path.size() < 2) {
+        return false;
+    }
+    auto parent_path = path;
+    const int index = parent_path.takeLast();
+    auto* source = FavoriteContainerAtPath(favorites, parent_path);
+    if (source == nullptr || index < 0 ||
+        static_cast<std::size_t>(index) >= source->size()) {
+        return false;
+    }
+    auto item = std::move((*source)[static_cast<std::size_t>(index)]);
+    source->erase(source->begin() + index);
+    favorites->push_back(std::move(item));
+    return true;
+}
+
 void RegisterArticleScheme() {
     QWebEngineUrlScheme scheme(QByteArrayLiteral("goldendict"));
     scheme.setSyntax(QWebEngineUrlScheme::Syntax::HostAndPort);
@@ -401,6 +419,25 @@ int main(int argc, char* argv[]) {
                      [&](const QList<int>& path, int offset) {
                          auto updated = favorites;
                          if (!MoveFavoriteAtPath(&updated, path, offset)) {
+                             refresh_favorites();
+                             return;
+                         }
+                         try {
+                             goldendict::core::SaveFavorites(
+                                 favorites_path.toStdString(), updated);
+                             favorites = std::move(updated);
+                             refresh_favorites();
+                         } catch (const std::exception& error) {
+                             QMessageBox::warning(
+                                 &window,
+                                 QStringLiteral("GoldenDict favorites"),
+                                 QString::fromLocal8Bit(error.what()));
+                         }
+                     });
+    QObject::connect(&window, &MainWindow::MoveFavoriteToRootRequested, &window,
+                     [&](const QList<int>& path) {
+                         auto updated = favorites;
+                         if (!MoveFavoriteToRoot(&updated, path)) {
                              refresh_favorites();
                              return;
                          }

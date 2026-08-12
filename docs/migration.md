@@ -376,9 +376,10 @@ the selected folder (or a selected headword's parent). The composition root
 applies each tree mutation to a copy, persists it atomically through core, and
 refreshes the tree only after success. Selected folders and headwords can also
 be renamed or reordered among their siblings through the same validated
-copy-and-persist command path. The pane also imports and atomically exports the
-bounded legacy-compatible UTF-8 XML tree; import replaces current state only
-after complete XML validation and successful current-format persistence.
+copy-and-persist command path; nested selections can also be moved back to the
+root. The pane imports and atomically exports the bounded legacy-compatible
+UTF-8 XML tree; import replaces current state only after complete XML
+validation and successful current-format persistence.
 
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.

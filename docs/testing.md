@@ -122,9 +122,9 @@ malformed-input rejection, atomic persistence, and untouched legacy fixtures.
 
 `goldendict_favorites_smoke` creates a root folder, adds a headword inside the
 selected folder, renames that nested headword, verifies the updated view path,
-adds a sibling and moves it upward, removes the complete subtree, and reloads
-the atomically persisted empty tree through the public core API in an isolated
-configuration directory.
+adds a sibling, moves it upward and then to the root, removes the moved item and
+remaining subtree, and reloads the atomically persisted empty tree through the
+public core API in an isolated configuration directory.
 
 `favorites_store_test` also round-trips the legacy-compatible XML transfer
 format, including Unicode and XML escaping, and verifies that invalid exports

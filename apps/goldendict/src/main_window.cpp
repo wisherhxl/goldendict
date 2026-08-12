@@ -134,6 +134,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     move_favorite_down_action_ =
         article_toolbar->addAction(QStringLiteral("Move Favorite Down"));
     move_favorite_down_action_->setEnabled(false);
+    move_favorite_to_root_action_ =
+        article_toolbar->addAction(QStringLiteral("Move Favorite to Root"));
+    move_favorite_to_root_action_->setEnabled(false);
     import_favorites_action_ =
         article_toolbar->addAction(QStringLiteral("Import Favorites"));
     export_favorites_action_ =
@@ -233,6 +236,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 rename_favorite_action_->setEnabled(selected);
                 move_favorite_up_action_->setEnabled(selected);
                 move_favorite_down_action_->setEnabled(selected);
+                move_favorite_to_root_action_->setEnabled(
+                    selected &&
+                    favorites_tree_->currentItem()->parent() != nullptr);
             });
     connect(rename_favorite_action_, &QAction::triggered, this,
             &MainWindow::RenameFavorite);
@@ -248,6 +254,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         if (item != nullptr) {
             emit MoveFavoriteRequested(
                 item->data(0, Qt::UserRole + 1).value<QList<int>>(), 1);
+        }
+    });
+    connect(move_favorite_to_root_action_, &QAction::triggered, this, [this]() {
+        const auto* item = favorites_tree_->currentItem();
+        if (item != nullptr && item->parent() != nullptr) {
+            emit MoveFavoriteToRootRequested(
+                item->data(0, Qt::UserRole + 1).value<QList<int>>());
         }
     });
     connect(import_favorites_action_, &QAction::triggered, this,
@@ -519,26 +532,86 @@ void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
                                             connect(
                                                 this,
                                                 &MainWindow::
-                                                    RemoveFavoriteRequested,
+                                                    MoveFavoriteToRootRequested,
                                                 this,
                                                 [this, moved, initial_count,
                                                  completion =
                                                      std::move(completion)](
                                                     const QList<int>&
-                                                        remove_path) mutable {
-                                                    completion(
-                                                        moved &&
-                                                        remove_path ==
-                                                            QList<int>{
-                                                                initial_count} &&
+                                                        root_path) mutable {
+                                                    auto* root_item =
                                                         favorites_tree_
-                                                                ->topLevelItemCount() ==
-                                                            initial_count);
+                                                            ->topLevelItem(
+                                                                initial_count +
+                                                                1);
+                                                    const bool moved_to_root =
+                                                        moved &&
+                                                        root_path ==
+                                                            QList<int>{
+                                                                initial_count,
+                                                                0} &&
+                                                        root_item != nullptr &&
+                                                        root_item->text(0) ==
+                                                            QStringLiteral(
+                                                                "second-entry");
+                                                    connect(
+                                                        this,
+                                                        &MainWindow::
+                                                            RemoveFavoriteRequested,
+                                                        this,
+                                                        [this, moved_to_root,
+                                                         initial_count,
+                                                         completion = std::move(
+                                                             completion)](
+                                                            const QList<int>&
+                                                                root_remove_path) mutable {
+                                                            const bool root_removed =
+                                                                moved_to_root &&
+                                                                root_remove_path ==
+                                                                    QList<int>{
+                                                                        initial_count +
+                                                                        1} &&
+                                                                favorites_tree_
+                                                                        ->topLevelItemCount() ==
+                                                                    initial_count +
+                                                                        1;
+                                                            connect(
+                                                                this,
+                                                                &MainWindow::
+                                                                    RemoveFavoriteRequested,
+                                                                this,
+                                                                [this,
+                                                                 root_removed,
+                                                                 initial_count,
+                                                                 completion =
+                                                                     std::move(
+                                                                         completion)](
+                                                                    const QList<
+                                                                        int>&
+                                                                        folder_remove_path) mutable {
+                                                                    completion(
+                                                                        root_removed &&
+                                                                        folder_remove_path ==
+                                                                            QList<
+                                                                                int>{
+                                                                                initial_count} &&
+                                                                        favorites_tree_
+                                                                                ->topLevelItemCount() ==
+                                                                            initial_count);
+                                                                },
+                                                                Qt::SingleShotConnection);
+                                                            emit RemoveFavoriteRequested(
+                                                                {initial_count});
+                                                        },
+                                                        Qt::SingleShotConnection);
+                                                    emit
+                                                        RemoveFavoriteRequested(
+                                                            {initial_count +
+                                                             1});
                                                 },
                                                 Qt::SingleShotConnection);
-                                            favorites_tree_->setCurrentItem(
-                                                folder_after_move);
-                                            remove_favorite_action_->trigger();
+                                            emit MoveFavoriteToRootRequested(
+                                                {initial_count, 0});
                                         },
                                         Qt::SingleShotConnection);
                                     favorites_tree_->setCurrentItem(

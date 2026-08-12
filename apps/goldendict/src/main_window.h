@@ -68,6 +68,7 @@ class MainWindow final : public QMainWindow {
                                     const QList<int>& parent_path);
     void RenameFavoriteRequested(const QList<int>& path, const QString& name);
     void MoveFavoriteRequested(const QList<int>& path, int offset);
+    void MoveFavoriteToRootRequested(const QList<int>& path);
     void ImportFavoritesRequested(const QString& path);
     void ExportFavoritesRequested(const QString& path);
     void RemoveFavoriteRequested(const QList<int>& path);
@@ -112,6 +113,7 @@ class MainWindow final : public QMainWindow {
     QAction* rename_favorite_action_ = nullptr;
     QAction* move_favorite_up_action_ = nullptr;
     QAction* move_favorite_down_action_ = nullptr;
+    QAction* move_favorite_to_root_action_ = nullptr;
     QAction* import_favorites_action_ = nullptr;
     QAction* export_favorites_action_ = nullptr;
     QAction* remove_favorite_action_ = nullptr;
