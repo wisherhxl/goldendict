@@ -115,6 +115,11 @@ isolated configuration directory. It submits a lookup through the window,
 checks that the history dock is refreshed, and reloads the atomically persisted
 entry through the public core history API.
 
+`favorites_store_test` verifies hierarchical current-format round trips and
+recoverable migration of the legacy favorites XML, including folder ordering,
+expansion state, Unicode headwords, current-state precedence, entity and
+malformed-input rejection, atomic persistence, and untouched legacy fixtures.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

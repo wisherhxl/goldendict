@@ -339,6 +339,13 @@ and the legacy history is never modified. The application now records submitted
 lookups, deduplicates them case-insensitively, persists them atomically, and
 exposes a reusable history dock. Filtering, clearing, and export remain later
 Phase 8 increments.
+
+The first favorites increment adds a transport-neutral hierarchical store for
+folders, expansion state, ordered headwords, and Unicode content. It imports
+the bounded legacy XML tree only when current favorites are absent, rejects
+entities and malformed or over-limit input, writes the upgraded representation
+atomically, and never modifies the legacy source. Favorites presentation,
+editing, and import/export remain later Phase 8 increments.
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.
 - Provide a compatible migration path for legacy configuration, dictionary
