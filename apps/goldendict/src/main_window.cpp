@@ -128,6 +128,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     rename_favorite_action_ =
         article_toolbar->addAction(QStringLiteral("Rename Favorite"));
     rename_favorite_action_->setEnabled(false);
+    move_favorite_up_action_ =
+        article_toolbar->addAction(QStringLiteral("Move Favorite Up"));
+    move_favorite_up_action_->setEnabled(false);
+    move_favorite_down_action_ =
+        article_toolbar->addAction(QStringLiteral("Move Favorite Down"));
+    move_favorite_down_action_->setEnabled(false);
     remove_favorite_action_ =
         article_toolbar->addAction(QStringLiteral("Remove Favorite"));
     remove_favorite_action_->setShortcut(QKeySequence::Delete);
@@ -221,9 +227,25 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 const bool selected = favorites_tree_->currentItem() != nullptr;
                 remove_favorite_action_->setEnabled(selected);
                 rename_favorite_action_->setEnabled(selected);
+                move_favorite_up_action_->setEnabled(selected);
+                move_favorite_down_action_->setEnabled(selected);
             });
     connect(rename_favorite_action_, &QAction::triggered, this,
             &MainWindow::RenameFavorite);
+    connect(move_favorite_up_action_, &QAction::triggered, this, [this]() {
+        const auto* item = favorites_tree_->currentItem();
+        if (item != nullptr) {
+            emit MoveFavoriteRequested(
+                item->data(0, Qt::UserRole + 1).value<QList<int>>(), -1);
+        }
+    });
+    connect(move_favorite_down_action_, &QAction::triggered, this, [this]() {
+        const auto* item = favorites_tree_->currentItem();
+        if (item != nullptr) {
+            emit MoveFavoriteRequested(
+                item->data(0, Qt::UserRole + 1).value<QList<int>>(), 1);
+        }
+    });
     connect(remove_favorite_action_, &QAction::triggered, this, [this]() {
         const auto* item = favorites_tree_->currentItem();
         if (item != nullptr) {
@@ -425,22 +447,100 @@ void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
                                 renamed_folder->childCount() == 1 &&
                                 renamed_folder->child(0)->text(0) ==
                                     renamed_name;
+                            if (!renamed) {
+                                completion(false);
+                                return;
+                            }
                             connect(
-                                this, &MainWindow::RemoveFavoriteRequested,
-                                this,
+                                this, &MainWindow::AddFavoriteRequested, this,
                                 [this, renamed, initial_count,
                                  completion = std::move(completion)](
-                                    const QList<int>& remove_path) mutable {
-                                    completion(
-                                        renamed &&
-                                        remove_path ==
-                                            QList<int>{initial_count} &&
-                                        favorites_tree_->topLevelItemCount() ==
+                                    const QString& second_word,
+                                    const QList<int>&
+                                        second_parent_path) mutable {
+                                    auto* folder_after_add =
+                                        favorites_tree_->topLevelItem(
                                             initial_count);
+                                    const bool second_added =
+                                        renamed &&
+                                        second_word ==
+                                            QStringLiteral("second-entry") &&
+                                        second_parent_path ==
+                                            QList<int>{initial_count} &&
+                                        folder_after_add != nullptr &&
+                                        folder_after_add->childCount() == 2 &&
+                                        folder_after_add->child(0)->text(0) ==
+                                            QStringLiteral("renamed-entry") &&
+                                        folder_after_add->child(1)->text(0) ==
+                                            second_word;
+                                    if (!second_added) {
+                                        completion(false);
+                                        return;
+                                    }
+                                    connect(
+                                        this,
+                                        &MainWindow::MoveFavoriteRequested,
+                                        this,
+                                        [this, second_added, initial_count,
+                                         completion = std::move(completion)](
+                                            const QList<int>& move_path,
+                                            int offset) mutable {
+                                            auto* folder_after_move =
+                                                favorites_tree_->topLevelItem(
+                                                    initial_count);
+                                            const bool moved =
+                                                second_added && offset == -1 &&
+                                                move_path ==
+                                                    QList<int>{initial_count,
+                                                               1} &&
+                                                folder_after_move != nullptr &&
+                                                folder_after_move
+                                                        ->childCount() == 2 &&
+                                                folder_after_move->child(0)
+                                                        ->text(0) ==
+                                                    QStringLiteral(
+                                                        "second-entry") &&
+                                                folder_after_move->child(1)
+                                                        ->text(0) ==
+                                                    QStringLiteral(
+                                                        "renamed-entry");
+                                            if (!moved) {
+                                                completion(false);
+                                                return;
+                                            }
+                                            connect(
+                                                this,
+                                                &MainWindow::
+                                                    RemoveFavoriteRequested,
+                                                this,
+                                                [this, moved, initial_count,
+                                                 completion =
+                                                     std::move(completion)](
+                                                    const QList<int>&
+                                                        remove_path) mutable {
+                                                    completion(
+                                                        moved &&
+                                                        remove_path ==
+                                                            QList<int>{
+                                                                initial_count} &&
+                                                        favorites_tree_
+                                                                ->topLevelItemCount() ==
+                                                            initial_count);
+                                                },
+                                                Qt::SingleShotConnection);
+                                            favorites_tree_->setCurrentItem(
+                                                folder_after_move);
+                                            remove_favorite_action_->trigger();
+                                        },
+                                        Qt::SingleShotConnection);
+                                    favorites_tree_->setCurrentItem(
+                                        folder_after_add->child(1));
+                                    move_favorite_up_action_->trigger();
                                 },
                                 Qt::SingleShotConnection);
-                            favorites_tree_->setCurrentItem(renamed_folder);
-                            remove_favorite_action_->trigger();
+                            emit AddFavoriteRequested(
+                                QStringLiteral("second-entry"),
+                                {initial_count});
                         },
                         Qt::SingleShotConnection);
                     emit RenameFavoriteRequested(

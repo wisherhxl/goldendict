@@ -128,6 +128,24 @@ bool RenameFavoriteAtPath(goldendict::core::Favorites* favorites,
     return true;
 }
 
+bool MoveFavoriteAtPath(goldendict::core::Favorites* favorites,
+                        const QList<int>& path, int offset) {
+    if (path.empty() || (offset != -1 && offset != 1)) {
+        return false;
+    }
+    auto parent_path = path;
+    const int index = parent_path.takeLast();
+    auto* items = FavoriteContainerAtPath(favorites, parent_path);
+    const int destination = index + offset;
+    if (items == nullptr || index < 0 || destination < 0 ||
+        static_cast<std::size_t>(index) >= items->size() ||
+        static_cast<std::size_t>(destination) >= items->size()) {
+        return false;
+    }
+    std::iter_swap(items->begin() + index, items->begin() + destination);
+    return true;
+}
+
 void RegisterArticleScheme() {
     QWebEngineUrlScheme scheme(QByteArrayLiteral("goldendict"));
     scheme.setSyntax(QWebEngineUrlScheme::Syntax::HostAndPort);
@@ -379,6 +397,25 @@ int main(int argc, char* argv[]) {
                                      QString::fromLocal8Bit(error.what()));
             }
         });
+    QObject::connect(&window, &MainWindow::MoveFavoriteRequested, &window,
+                     [&](const QList<int>& path, int offset) {
+                         auto updated = favorites;
+                         if (!MoveFavoriteAtPath(&updated, path, offset)) {
+                             refresh_favorites();
+                             return;
+                         }
+                         try {
+                             goldendict::core::SaveFavorites(
+                                 favorites_path.toStdString(), updated);
+                             favorites = std::move(updated);
+                             refresh_favorites();
+                         } catch (const std::exception& error) {
+                             QMessageBox::warning(
+                                 &window,
+                                 QStringLiteral("GoldenDict favorites"),
+                                 QString::fromLocal8Bit(error.what()));
+                         }
+                     });
     QObject::connect(&window, &MainWindow::DictionaryDirectorySelected, &window,
                      [&](const QString& directory) {
                          auto updated = configuration;
