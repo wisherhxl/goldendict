@@ -44,6 +44,26 @@ void AppendBigEndian32(std::uint32_t value, std::string* output) {
     output->push_back(static_cast<char>(value & 0xffU));
 }
 
+void AppendLittle16(std::uint16_t value, std::string* output) {
+    output->push_back(static_cast<char>(value & 0xffU));
+    output->push_back(static_cast<char>((value >> 8U) & 0xffU));
+}
+
+void AppendLittle32(std::uint32_t value, std::string* output) {
+    output->push_back(static_cast<char>(value & 0xffU));
+    output->push_back(static_cast<char>((value >> 8U) & 0xffU));
+    output->push_back(static_cast<char>((value >> 16U) & 0xffU));
+    output->push_back(static_cast<char>((value >> 24U) & 0xffU));
+}
+
+void WriteLittle32(std::uint32_t value, std::size_t offset,
+                   std::string* output) {
+    for (std::size_t byte = 0; byte < 4U; ++byte) {
+        (*output)[offset + byte] =
+            static_cast<char>((value >> (byte * 8U)) & 0xffU);
+    }
+}
+
 std::string EncodeDictdBase64(std::uint32_t value) {
     constexpr char digits[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -106,6 +126,29 @@ void WriteDictdFixture(const std::filesystem::path& root) {
         EncodeDictdBase64(static_cast<std::uint32_t>(article.size())) + "\n";
     Write(root / "fixture.index", index);
     Write(root / "fixture.dict", article);
+}
+
+void WriteSdictFixture(const std::filesystem::path& root) {
+    const std::string headword = "example";
+    const std::string title = "Installed SDict";
+    const std::string article = "<b>Installed SDict definition.</b>";
+    std::string file(43U, '\0');
+    file.replace(0U, 4U, "sdct");
+    file.replace(4U, 3U, "eng");
+    file.replace(7U, 3U, "deu");
+    WriteLittle32(1U, 11U, &file);
+    WriteLittle32(43U, 19U, &file);
+    AppendLittle32(static_cast<std::uint32_t>(title.size()), &file);
+    file += title;
+    WriteLittle32(static_cast<std::uint32_t>(file.size()), 35U, &file);
+    AppendLittle16(static_cast<std::uint16_t>(8U + headword.size()), &file);
+    AppendLittle16(0U, &file);
+    AppendLittle32(0U, &file);
+    file += headword;
+    WriteLittle32(static_cast<std::uint32_t>(file.size()), 39U, &file);
+    AppendLittle32(static_cast<std::uint32_t>(article.size()), &file);
+    file += article;
+    Write(root / "fixture.dct", file);
 }
 
 int Fail(const std::string& message) {
@@ -222,6 +265,29 @@ int main() {
             dictd_response.entries.front().article.plain_text.find(
                 "Installed Dictd definition.") == std::string::npos) {
             return Fail("installed Dictd lookup failed");
+        }
+
+        const auto sdict_root = directory.path() / "sdict";
+        WriteSdictFixture(sdict_root);
+        goldendict::core::CoreConfiguration sdict_configuration;
+        sdict_configuration.dictionary_paths = {sdict_root.string()};
+        auto sdict_service =
+            goldendict::core::CreateDictionaryService(sdict_configuration);
+        const auto sdict_catalog = sdict_service->GetCatalog();
+        query = {};
+        query.text = "EXAMPLE";
+        const auto sdict_response = sdict_service->Lookup(query);
+        if (sdict_catalog.size() != 1U ||
+            sdict_catalog.front().id.rfind("sdict-", 0) != 0U ||
+            sdict_catalog.front().source_language != "eng" ||
+            sdict_catalog.front().target_language != "deu" ||
+            !sdict_response.errors.empty() ||
+            sdict_response.entries.size() != 1U ||
+            !sdict_response.entries.front()
+                 .article.sanitized_html.has_value() ||
+            sdict_response.entries.front().article.sanitized_html->find(
+                "Installed SDict definition.") == std::string::npos) {
+            return Fail("installed SDict lookup failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";

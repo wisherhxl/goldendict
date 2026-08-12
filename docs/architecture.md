@@ -94,6 +94,12 @@ articles enter the common inert article assembler as untrusted plain text;
 legacy presentation-specific phonetic and cross-reference markup remains an
 article-phase concern rather than format discovery behavior.
 
+SDict consumes original `.dct` containers directly. Its private adapter
+validates the packed little-endian header, full-index chain, headword UTF-8,
+and article ranges before exposing entries. Plain, zlib, and bzip2 fields are
+decompressed under explicit output limits; legacy structural tags and word
+references are converted to the common sanitized-HTML and typed-link path.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

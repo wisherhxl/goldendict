@@ -21,6 +21,8 @@
 #include "../dictionary/dictionary_backend.h"
 #include "../formats/dictd/dictd_dictionary.h"
 #include "../formats/dictd/dictd_discovery.h"
+#include "../formats/sdict/sdict_dictionary.h"
+#include "../formats/sdict/sdict_discovery.h"
 #include "../formats/stardict/stardict_dictionary.h"
 #include "../formats/stardict/stardict_discovery.h"
 #include "../foundation/text_folding.h"
@@ -256,6 +258,24 @@ class ServiceState final {
                 dictionaries_.push_back(
                     std::make_unique<formats::dictd::Dictionary>(
                         formats::dictd::Dictionary::Open(id, index_path)));
+            } catch (const dictionary::Error& error) {
+                startup_errors_.push_back(
+                    {TranslateErrorCode(error.code()), id, error.what()});
+            }
+        }
+        const auto sdict_discovery = formats::sdict::Discover(roots);
+        for (const auto& issue : sdict_discovery.issues) {
+            startup_errors_.push_back(
+                {LookupErrorCode::kDictionaryUnavailable,
+                 {},
+                 issue.path.string() + ": " + issue.message});
+        }
+        for (const auto& dictionary_path : sdict_discovery.dictionary_files) {
+            const std::string id = StableId("sdict", dictionary_path);
+            try {
+                dictionaries_.push_back(
+                    std::make_unique<formats::sdict::Dictionary>(
+                        formats::sdict::Dictionary::Open(id, dictionary_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});

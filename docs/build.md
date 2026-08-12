@@ -219,6 +219,13 @@ does not add a second runtime implementation. Its CMakeDeps config exports
 `ICU::uc`; ICU types and linkage do not appear in the installed public headers
 or exported target usage requirements.
 
+bzip2 1.0.8 is a direct private `goldendict_core` implementation dependency
+for SDict's legacy per-field compression mode. It is declared explicitly even
+though Qt's graph may already contain bzip2 transitively. The Conan CMakeDeps
+config exports `BZip2::BZip2`; bzip2 types and linkage do not appear in public
+headers or exported target usage requirements. bzip2 uses its permissive
+BSD-style license and is covered by the package dependency/license inventory.
+
 ## Packaging
 
 Packages are produced through CMake/CPack from the current CMake install rules.

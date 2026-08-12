@@ -47,7 +47,7 @@
 | --- | --- | --- | --- |
 | StarDict | slice | vertical slice | discover/index/search/article/resource |
 | Dictd | slice | text batch | strict `.index` + bounded plain/dictzip data, folded lookup, suggestions, and corruption tests |
-| SDict | mapped | text batch | parse/search/HTML/link conversion |
+| SDict | slice | text batch | bounded `.dct` parsing, plain/zlib/bzip2 fields, folded search/suggestions, sanitized HTML/link conversion, and corruption tests |
 | XDXF | mapped | text batch | XML/compressed XML/resources |
 | GLS | mapped | text batch | text/compressed text/resources |
 | ABBYY Lingvo DSL | mapped | text batch | directives, markup, resource directory |

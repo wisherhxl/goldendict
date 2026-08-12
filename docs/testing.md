@@ -65,6 +65,14 @@ indexes, corrupt compression, and out-of-range article rejection.
 `application_service_test` also verifies that Dictd and StarDict coexist behind
 the same catalog and lookup facade.
 
+`sdict_discovery_test`, `sdict_reader_test`, and `sdict_dictionary_test` use a
+generated packed `.dct` container. They verify recursive discovery, title and
+language metadata, little-endian index/article ranges, Unicode-folded ranking,
+suggestions, plain/zlib/bzip2 fields, markup and typed word-reference
+conversion, scan checkpoints, cancellation, invalid signatures, and truncated
+article rejection. The application service and installed headless consumer
+also verify sanitized SDict HTML through the format-neutral facade.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

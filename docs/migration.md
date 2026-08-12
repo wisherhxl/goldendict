@@ -243,6 +243,15 @@ checksum-checked and bounded, and scan checkpoints preserve cancellation and
 deadline behavior. Legacy full-text indexing and presentation-specific Dictd
 markup conversion remain separately gated Phase 5/7 work.
 
+The second text-batch increment adds SDict `.dct` discovery and a bounded
+private reader for the packed little-endian container. It validates header,
+full-index, headword, and article ranges; preserves source/target language
+metadata; supports the legacy plain, zlib, and bzip2 compression modes; and
+reuses common Unicode-folded exact/prefix/suggestion ranking. SDict structural
+markup and word references are converted into sanitized HTML and typed lookup
+URLs before reaching desktop or headless consumers. Full-text indexing remains
+separately gated Phase 5 work.
+
 ### Phase 7 — Articles, WebEngine, And Networking
 
 Run three separately gated workstreams:

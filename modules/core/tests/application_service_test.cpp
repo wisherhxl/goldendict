@@ -8,6 +8,7 @@
 
 #include "goldendict/core/application.h"
 #include "support/dictd_fixture.h"
+#include "support/sdict_fixture.h"
 #include "support/stardict_fixture.h"
 
 namespace goldendict::core {
@@ -31,6 +32,7 @@ class ApplicationServiceTest : public QObject {
     void ReturnsLightweightHeadwordSuggestions();
     void RanksSuggestionsAcrossDictionaries();
     void DiscoversAndQueriesDictdAlongsideStardict();
+    void DiscoversSanitizesAndQueriesSdict();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -272,6 +274,34 @@ void ApplicationServiceTest::DiscoversAndQueriesDictdAlongsideStardict() {
                                    entry.article.plain_text.find(
                                        "Dictd article") != std::string::npos;
                         }));
+}
+
+void ApplicationServiceTest::DiscoversSanitizesAndQueriesSdict() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteSdictFixture(
+        root, {{"example", "<b>SDict article</b> <r>target</r>"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "EXAMPLE";
+
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().id.rfind("sdict-", 0) == 0U);
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    QVERIFY(response.entries.front().article.sanitized_html.has_value());
+    QVERIFY(response.entries.front().article.sanitized_html->find(
+                "<b>SDict article</b>") != std::string::npos);
+    QVERIFY(response.entries.front().article.sanitized_html->find(
+                "goldendict://lookup/target") != std::string::npos);
+    QVERIFY(response.entries.front().article.plain_text.find("target") !=
+            std::string::npos);
 }
 
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {
