@@ -19,3 +19,11 @@ if(TARGET mediawiki_source_test)
   )
   target_link_libraries(mediawiki_source_test PRIVATE Qt6::Network)
 endif()
+
+if(TARGET website_source_test)
+  target_sources(website_source_test PRIVATE
+    src/http_client.cc
+    src/website_source.cc
+  )
+  target_link_libraries(website_source_test PRIVATE Qt6::Network)
+endif()
