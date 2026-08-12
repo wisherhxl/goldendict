@@ -19,6 +19,7 @@
 #include <QSaveFile>
 #include <QTimer>
 #include <QToolBar>
+#include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QWebEngineFindTextResult>
 #include <QWebEngineHistory>
@@ -72,6 +73,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     history_dock->setWidget(history_list_);
     addDockWidget(Qt::LeftDockWidgetArea, history_dock);
 
+    auto* favorites_dock = new QDockWidget(QStringLiteral("Favorites"), this);
+    favorites_dock->setObjectName(QStringLiteral("favoritesDock"));
+    favorites_tree_ = new QTreeWidget(favorites_dock);
+    favorites_tree_->setObjectName(QStringLiteral("favoritesTree"));
+    favorites_tree_->setHeaderHidden(true);
+    favorites_dock->setWidget(favorites_tree_);
+    addDockWidget(Qt::LeftDockWidgetArea, favorites_dock);
+    tabifyDockWidget(history_dock, favorites_dock);
+    history_dock->raise();
+
     auto* article_toolbar = addToolBar(QStringLiteral("Article"));
     article_toolbar->setObjectName(QStringLiteral("articleToolbar"));
     back_action_ = article_toolbar->addAction(QStringLiteral("Back"));
@@ -80,6 +91,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     forward_action_->setShortcut(QKeySequence::Forward);
     auto* reload_action = article_toolbar->addAction(QStringLiteral("Reload"));
     reload_action->setShortcut(QKeySequence::Refresh);
+    article_toolbar->addSeparator();
+    add_favorite_action_ =
+        article_toolbar->addAction(QStringLiteral("Add to Favorites"));
+    add_favorite_action_->setShortcut(
+        QKeySequence(Qt::CTRL | Qt::Key_E));
     article_toolbar->addSeparator();
     article_search_ = new QLineEdit(article_toolbar);
     article_search_->setPlaceholderText(QStringLiteral("Find in article"));
@@ -138,6 +154,20 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 query_->setText(item->text());
                 StartLookup();
             });
+    connect(favorites_tree_, &QTreeWidget::itemActivated, this,
+            [this](QTreeWidgetItem* item, int) {
+                if (item == nullptr || item->data(0, Qt::UserRole).toBool()) {
+                    return;
+                }
+                query_->setText(item->text(0));
+                StartLookup();
+            });
+    connect(add_favorite_action_, &QAction::triggered, this, [this]() {
+        const QString word = query_->text().trimmed();
+        if (!word.isEmpty()) {
+            emit AddFavoriteRequested(word);
+        }
+    });
     connect(article_page_, &ArticlePage::ExternalUrlRequested, this,
             [](const QUrl& url) { QDesktopServices::openUrl(url); });
     connect(back_action_, &QAction::triggered, article_view_,
@@ -240,6 +270,22 @@ void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
     StartLookup();
 }
 
+void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
+    const QString expected = QStringLiteral("favorites-smoke-entry");
+    connect(
+        this, &MainWindow::AddFavoriteRequested, this,
+        [this, expected, completion = std::move(completion)](
+            const QString& submitted) mutable {
+            const auto* item = favorites_tree_->topLevelItem(
+                favorites_tree_->topLevelItemCount() - 1);
+            completion(submitted == expected && item != nullptr &&
+                       item->text(0) == expected);
+        },
+        Qt::SingleShotConnection);
+    query_->setText(expected);
+    add_favorite_action_->trigger();
+}
+
 MainWindow::~MainWindow() {
     QWebEngineProfile::defaultProfile()->removeUrlSchemeHandler(
         scheme_handler_);
@@ -261,6 +307,26 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
 void MainWindow::SetHistoryWords(const QStringList& words) {
     history_list_->clear();
     history_list_->addItems(words);
+}
+
+void MainWindow::SetFavoriteItems(
+    const std::vector<FavoriteViewItem>& items) {
+    const auto append = [&](const auto& self, QTreeWidgetItem* parent,
+                            const FavoriteViewItem& item) -> void {
+        auto* tree_item = parent == nullptr
+                              ? new QTreeWidgetItem(favorites_tree_)
+                              : new QTreeWidgetItem(parent);
+        tree_item->setText(0, item.text);
+        tree_item->setData(0, Qt::UserRole, item.folder);
+        for (const auto& child : item.children) {
+            self(self, tree_item, child);
+        }
+        tree_item->setExpanded(item.expanded);
+    };
+    favorites_tree_->clear();
+    for (const auto& item : items) {
+        append(append, nullptr, item);
+    }
 }
 
 void MainWindow::RunWebEngineSmokeCheck(std::function<void(bool)> completion) {

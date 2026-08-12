@@ -344,8 +344,11 @@ The first favorites increment adds a transport-neutral hierarchical store for
 folders, expansion state, ordered headwords, and Unicode content. It imports
 the bounded legacy XML tree only when current favorites are absent, rejects
 entities and malformed or over-limit input, writes the upgraded representation
-atomically, and never modifies the legacy source. Favorites presentation,
-editing, and import/export remain later Phase 8 increments.
+atomically, and never modifies the legacy source. The application presents the
+tree with preserved hierarchy and expansion state, supports re-lookup and
+case-insensitively deduplicated root-level additions, and keeps persistence in
+the composition root. Nested editing, removal, and import/export remain later
+Phase 8 increments.
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.
 - Provide a compatible migration path for legacy configuration, dictionary

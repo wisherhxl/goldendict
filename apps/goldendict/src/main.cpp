@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "goldendict/core/application.h"
+#include "goldendict/core/favorites_store.h"
 #include "goldendict/core/history_store.h"
 #include "main_window.h"
 
@@ -48,6 +49,19 @@ QString DictionaryRootArgument(int argc, char* argv[]) {
     return {};
 }
 
+FavoriteViewItem MakeFavoriteViewItem(
+    const goldendict::core::FavoriteItem& item) {
+    FavoriteViewItem view;
+    view.text = QString::fromStdString(item.text);
+    view.folder = item.kind == goldendict::core::FavoriteItemKind::kFolder;
+    view.expanded = item.expanded;
+    view.children.reserve(item.children.size());
+    for (const auto& child : item.children) {
+        view.children.push_back(MakeFavoriteViewItem(child));
+    }
+    return view;
+}
+
 void RegisterArticleScheme() {
     QWebEngineUrlScheme scheme(QByteArrayLiteral("goldendict"));
     scheme.setSyntax(QWebEngineUrlScheme::Syntax::HostAndPort);
@@ -79,6 +93,10 @@ int main(int argc, char* argv[]) {
         QDir(configuration_directory).filePath(QStringLiteral("history-v1"));
     const QString legacy_history_path =
         QDir(configuration_directory).filePath(QStringLiteral("history"));
+    const QString favorites_path = QDir(configuration_directory)
+                                       .filePath(QStringLiteral("favorites-v1"));
+    const QString legacy_favorites_path =
+        QDir(configuration_directory).filePath(QStringLiteral("favorites"));
     const std::string default_index_directory =
         QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
             .filePath(QStringLiteral("indexes"))
@@ -111,6 +129,14 @@ int main(int argc, char* argv[]) {
         QMessageBox::warning(nullptr, QStringLiteral("GoldenDict history"),
                              QString::fromLocal8Bit(error.what()));
     }
+    goldendict::core::Favorites favorites;
+    try {
+        favorites = goldendict::core::LoadOrMigrateFavorites(
+            favorites_path.toStdString(), legacy_favorites_path.toStdString());
+    } catch (const std::exception& error) {
+        QMessageBox::warning(nullptr, QStringLiteral("GoldenDict favorites"),
+                             QString::fromLocal8Bit(error.what()));
+    }
     MainWindow window;
     window.SetFacade(facade.get());
     const auto refresh_history = [&window, &history]() {
@@ -122,6 +148,15 @@ int main(int argc, char* argv[]) {
         window.SetHistoryWords(words);
     };
     refresh_history();
+    const auto refresh_favorites = [&window, &favorites]() {
+        std::vector<FavoriteViewItem> items;
+        items.reserve(favorites.size());
+        for (const auto& favorite : favorites) {
+            items.push_back(MakeFavoriteViewItem(favorite));
+        }
+        window.SetFavoriteItems(items);
+    };
+    refresh_favorites();
     QObject::connect(&window, &MainWindow::LookupSubmitted, &window,
                      [&](const QString& word) {
                          auto updated = history;
@@ -148,6 +183,39 @@ int main(int argc, char* argv[]) {
                          } catch (const std::exception& error) {
                              QMessageBox::warning(
                                  &window, QStringLiteral("GoldenDict history"),
+                                 QString::fromLocal8Bit(error.what()));
+                         }
+                     });
+    QObject::connect(&window, &MainWindow::AddFavoriteRequested, &window,
+                     [&](const QString& word) {
+                         const bool exists = std::any_of(
+                             favorites.begin(), favorites.end(),
+                             [&word](const auto& item) {
+                                 return item.kind ==
+                                            goldendict::core::FavoriteItemKind::
+                                                kHeadword &&
+                                        QString::fromStdString(item.text)
+                                                .compare(word,
+                                                         Qt::CaseInsensitive) ==
+                                            0;
+                             });
+                         if (exists) {
+                             refresh_favorites();
+                             return;
+                         }
+                         auto updated = favorites;
+                         updated.push_back(
+                             {goldendict::core::FavoriteItemKind::kHeadword,
+                              word.toStdString(), false, {}});
+                         try {
+                             goldendict::core::SaveFavorites(
+                                 favorites_path.toStdString(), updated);
+                             favorites = std::move(updated);
+                             refresh_favorites();
+                         } catch (const std::exception& error) {
+                             QMessageBox::warning(
+                                 &window,
+                                 QStringLiteral("GoldenDict favorites"),
                                  QString::fromLocal8Bit(error.what()));
                          }
                      });
@@ -194,6 +262,23 @@ int main(int argc, char* argv[]) {
                 }
                 app.exit(passed ? 0 : 1);
             });
+        });
+    } else if (HasArgument(argc, argv, QStringLiteral("--favorites-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &favorites_path, &window]() {
+            window.RunFavoritesSmokeCheck(
+                [&app, &favorites_path](bool passed) {
+                    try {
+                        const auto persisted = goldendict::core::LoadFavorites(
+                            favorites_path.toStdString());
+                        passed = passed && !persisted.empty() &&
+                                 persisted.back().text ==
+                                     "favorites-smoke-entry";
+                    } catch (const std::exception&) {
+                        passed = false;
+                    }
+                    app.exit(passed ? 0 : 1);
+                });
         });
     }
 

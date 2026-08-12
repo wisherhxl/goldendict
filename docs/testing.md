@@ -120,6 +120,10 @@ recoverable migration of the legacy favorites XML, including folder ordering,
 expansion state, Unicode headwords, current-state precedence, entity and
 malformed-input rejection, atomic persistence, and untouched legacy fixtures.
 
+`goldendict_favorites_smoke` submits an add request through the application,
+checks the refreshed favorites tree, and reloads the persisted root headword
+through the public core API in an isolated configuration directory.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
