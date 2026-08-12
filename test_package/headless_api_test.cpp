@@ -115,6 +115,19 @@ std::string StoredGzip(std::string_view data) {
     return gzip;
 }
 
+std::string StoredZlib(std::string_view data) {
+    if (data.size() > 65535U) {
+        throw std::runtime_error("Consumer zlib fixture is too large");
+    }
+    std::string zlib{"\x78\x01", 2U};
+    zlib.push_back('\x01');
+    AppendLittle16(static_cast<std::uint16_t>(data.size()), &zlib);
+    AppendLittle16(static_cast<std::uint16_t>(~data.size()), &zlib);
+    zlib.append(data);
+    AppendBigEndian32(Adler32(data), &zlib);
+    return zlib;
+}
+
 void AppendBglBlock(unsigned type, std::string_view data, std::string* stream) {
     if (data.size() <= 11U) {
         stream->push_back(static_cast<char>(((data.size() + 4U) << 4U) | type));
@@ -278,6 +291,37 @@ void WriteBglFixture(const std::filesystem::path& root) {
     std::string file{"\x12\x34\x00\x01\x00\x06", 6U};
     file += StoredGzip(stream);
     Write(root / "fixture.bgl", file);
+}
+
+void WriteAardFixture(const std::filesystem::path& root) {
+    const std::string metadata = StoredZlib(
+        "{\"title\":\"Installed Aard\",\"index_language\":\"en\","
+        "\"article_language\":\"de\"}");
+    const std::string word = "example";
+    const std::string article =
+        StoredZlib("[\"<b>Installed Aard definition.</b>\"]");
+    const std::uint32_t article_base = static_cast<std::uint32_t>(
+        86U + metadata.size() + 8U + 2U + word.size());
+    std::string file(44U, '\0');
+    file.replace(0U, 4U, "aard");
+    AppendBigEndian16(1U, &file);
+    file.append(16U, '\0');
+    AppendBigEndian16(1U, &file);
+    AppendBigEndian16(1U, &file);
+    AppendBigEndian32(static_cast<std::uint32_t>(metadata.size()), &file);
+    AppendBigEndian32(1U, &file);
+    AppendBigEndian32(article_base, &file);
+    file.append(">LL", 3U);
+    file.push_back('\0');
+    file += ">H>L";
+    file += metadata;
+    AppendBigEndian32(0U, &file);
+    AppendBigEndian32(0U, &file);
+    AppendBigEndian16(static_cast<std::uint16_t>(word.size()), &file);
+    file += word;
+    AppendBigEndian32(static_cast<std::uint32_t>(article.size()), &file);
+    file += article;
+    Write(root / "fixture.aar", file);
 }
 
 std::string MdictUtf16Le(std::string_view ascii) {
@@ -653,6 +697,29 @@ int main() {
             mdict_resource.size());
         if (mdict_resource_text != "mdict-png") {
             return Fail("installed MDict resource retrieval failed");
+        }
+
+        const auto aard_root = directory.path() / "aard";
+        WriteAardFixture(aard_root);
+        goldendict::core::CoreConfiguration aard_configuration;
+        aard_configuration.dictionary_paths = {aard_root.string()};
+        auto aard_service =
+            goldendict::core::CreateDictionaryService(aard_configuration);
+        const auto aard_catalog = aard_service->GetCatalog();
+        query = {};
+        query.text = "EXAMPLE";
+        const auto aard_response = aard_service->Lookup(query);
+        if (aard_catalog.size() != 1U ||
+            aard_catalog.front().id.rfind("aard-", 0) != 0U ||
+            aard_catalog.front().name != "Installed Aard" ||
+            !aard_response.errors.empty() ||
+            aard_response.entries.size() != 1U ||
+            aard_response.entries.front().language.source_language != "en" ||
+            aard_response.entries.front().language.target_language != "de" ||
+            !aard_response.entries.front().article.sanitized_html.has_value() ||
+            aard_response.entries.front().article.sanitized_html->find(
+                "Installed Aard definition.") == std::string::npos) {
+            return Fail("installed Aard lookup failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";

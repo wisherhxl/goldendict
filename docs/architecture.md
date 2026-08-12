@@ -144,6 +144,14 @@ zlib blocks are supported in this slice; encrypted dictionaries, LZO blocks,
 older 1.x containers, local-file resource fallback, and full-text indexes
 remain explicit parity work.
 
+Aard consumes `.aar` archive volumes through a private bounded adapter. It
+validates the fixed header and 32/64-bit index layouts, decompresses metadata
+and articles with bzip2 or zlib (while accepting legacy raw article payloads),
+strictly validates UTF-8 headwords and JSON strings, exposes folded lookup and
+suggestions, and rewrites Aard word/redirect links into the common typed lookup
+path before sanitization. Multi-volume aggregation, icon sidecars, and
+full-text indexes remain explicit parity work.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

@@ -53,7 +53,7 @@
 | ABBYY Lingvo DSL | slice | text batch | bounded plain/compressed decoding, directives, optional/tilde headwords, common markup/links, and confined directory resources; abbreviations, resource ZIP, nested cards, and full-text parity remain |
 | Babylon BGL | slice | binary batch | bounded signature/gzip/block parsing, metadata and common code pages, aliases, folded lookup/suggestions, sanitized HTML, and embedded resources; advanced control records and full-text parity remain |
 | MDict MDX/MDD | slice | binary batch | bounded 2.x headers/key/record tables, plain/zlib blocks, strict text decoding, styles, redirects, folded lookup/suggestions, sanitized HTML, and companion MDD resources; encryption, LZO, 1.x, and full-text parity remain |
-| Aard | mapped | binary batch | archive lookup and article links |
+| Aard | slice | binary batch | bounded 32/64-bit archive indexes, zlib/bzip2/raw articles, metadata, folded lookup/suggestions, redirects, and sanitized article links; multi-volume aggregation, icons, and full-text parity remain |
 | ZIM | mapped | binary batch | split files, compression, resources |
 | SLOB | mapped | binary batch | codec/container/resources |
 | EPWING | mapped | specialized batch | catalog, encoding, references, resources |

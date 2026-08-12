@@ -7,6 +7,7 @@
 #include <string>
 
 #include "goldendict/core/application.h"
+#include "support/aard_fixture.h"
 #include "support/bgl_fixture.h"
 #include "support/dictd_fixture.h"
 #include "support/dsl_fixture.h"
@@ -43,6 +44,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesDslResources();
     void DiscoversSanitizesAndQueriesBglResources();
     void DiscoversSanitizesAndQueriesMdictResources();
+    void DiscoversSanitizesAndQueriesAard();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -460,6 +462,34 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesMdictResources() {
     QCOMPARE(entry.resources.size(), std::size_t{1});
     const auto data = service->GetResource(entry.resources.front());
     QCOMPARE(data.size(), std::size_t{9});
+}
+
+void ApplicationServiceTest::DiscoversSanitizesAndQueriesAard() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteAardFixture(root);
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "EXAMPLE";
+
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().id.rfind("aard-", 0) == 0U);
+    QCOMPARE(catalog.front().name, "Fixture Aard");
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    const auto& entry = response.entries.front();
+    QCOMPARE(entry.language.source_language, "en");
+    QCOMPARE(entry.language.target_language, "de");
+    QVERIFY(entry.article.sanitized_html->find("<b>definition</b>") !=
+            std::string::npos);
+    QVERIFY(entry.article.sanitized_html->find("goldendict://lookup/alias") !=
+            std::string::npos);
 }
 
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {

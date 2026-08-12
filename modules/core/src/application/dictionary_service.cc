@@ -19,6 +19,8 @@
 
 #include "../article/article_assembler.h"
 #include "../dictionary/dictionary_backend.h"
+#include "../formats/aard/aard_dictionary.h"
+#include "../formats/aard/aard_discovery.h"
 #include "../formats/bgl/bgl_dictionary.h"
 #include "../formats/bgl/bgl_discovery.h"
 #include "../formats/dictd/dictd_dictionary.h"
@@ -340,6 +342,24 @@ class ServiceState final {
                 dictionaries_.push_back(
                     std::make_unique<formats::dsl::Dictionary>(
                         formats::dsl::Dictionary::Open(id, dictionary_path)));
+            } catch (const dictionary::Error& error) {
+                startup_errors_.push_back(
+                    {TranslateErrorCode(error.code()), id, error.what()});
+            }
+        }
+        const auto aard_discovery = formats::aard::Discover(roots);
+        for (const auto& issue : aard_discovery.issues) {
+            startup_errors_.push_back(
+                {LookupErrorCode::kDictionaryUnavailable,
+                 {},
+                 issue.path.string() + ": " + issue.message});
+        }
+        for (const auto& dictionary_path : aard_discovery.dictionary_files) {
+            const std::string id = StableId("aard", dictionary_path);
+            try {
+                dictionaries_.push_back(
+                    std::make_unique<formats::aard::Dictionary>(
+                        formats::aard::Dictionary::Open(id, dictionary_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});
