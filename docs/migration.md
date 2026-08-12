@@ -323,6 +323,14 @@ local rendering gate.
   smallest behavior or layout changes required by Qt 6, Qt WebEngine, or Linux
   platform compatibility, and document those differences.
 - Keep UI code dependent only on the `goldendict_core` application facade.
+
+The first Phase 8 state-migration increment imports dictionary paths and named
+sound directories from a bounded legacy XML configuration when no current
+configuration exists. The core owns parsing and atomic persistence; the legacy
+file is never modified, a current configuration always takes precedence, and
+malformed input leaves no partial replacement. Groups, online sources,
+preferences, history, favorites, and platform-specific legacy location
+discovery remain separately gated migration work.
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.
 - Provide a compatible migration path for legacy configuration, dictionary

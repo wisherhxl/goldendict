@@ -97,6 +97,13 @@ reads, MIME typing, and empty-directory rejection. Configuration and
 application-service tests verify path/name persistence and end-to-end HTML5
 playback resource retrieval.
 
+`application_service_test` also pins the first legacy configuration migration
+slice. It imports dictionary paths and named sound directories from bounded
+legacy XML only when the new configuration is absent, verifies that a current
+configuration always wins, rejects entity declarations and malformed input,
+persists the new format atomically, and proves that the legacy source remains
+unchanged after both success and failure.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

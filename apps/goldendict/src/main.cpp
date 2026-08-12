@@ -69,19 +69,23 @@ int main(int argc, char* argv[]) {
         QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     const QString configuration_path =
         QDir(configuration_directory).filePath(QStringLiteral("core.conf"));
+    const QString legacy_configuration_path =
+        QDir(configuration_directory).filePath(QStringLiteral("config"));
+    const std::string default_index_directory =
+        QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
+            .filePath(QStringLiteral("indexes"))
+            .toStdString();
     goldendict::core::CoreConfiguration configuration;
     try {
-        configuration = goldendict::core::LoadConfiguration(
-            configuration_path.toStdString());
+        configuration = goldendict::core::LoadOrMigrateConfiguration(
+            configuration_path.toStdString(),
+            legacy_configuration_path.toStdString(), default_index_directory);
     } catch (const std::exception& error) {
         QMessageBox::warning(nullptr, QStringLiteral("GoldenDict"),
                              QString::fromLocal8Bit(error.what()));
     }
     if (configuration.index_directory.empty()) {
-        configuration.index_directory = QDir(QStandardPaths::writableLocation(
-                                                 QStandardPaths::CacheLocation))
-                                            .filePath(QStringLiteral("indexes"))
-                                            .toStdString();
+        configuration.index_directory = default_index_directory;
     }
     const QString command_line_root = DictionaryRootArgument(argc, argv);
     if (!command_line_root.isEmpty()) {

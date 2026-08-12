@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
 
 #include "goldendict/core/application.h"
@@ -37,6 +38,9 @@ class ApplicationServiceTest : public QObject {
    private slots:
     void MissingConfigurationIsACleanProfile();
     void ConfigurationRoundTripsEscapedPaths();
+    void MigratesLegacyPathsWithoutTouchingTheSource();
+    void CurrentConfigurationTakesPrecedenceOverLegacy();
+    void RejectsMalformedLegacyWithoutCreatingCurrent();
     void RejectsMalformedConfiguration();
     void DiscoversAndQueriesARealFixture();
     void ReturnsCanonicalFoldedMatchInformation();
@@ -99,6 +103,82 @@ void ApplicationServiceTest::ConfigurationRoundTripsEscapedPaths() {
              expected.sound_directories.front().path);
     QCOMPARE(actual.sound_directories.front().name,
              expected.sound_directories.front().name);
+}
+
+void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto legacy_path = root / "config";
+    const auto current_path = root / "core.conf";
+    const std::string legacy =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<config><paths>"
+        "<path recursive=\"1\">/dicts/English &amp; French</path>"
+        "<path recursive=\"0\">/dicts/CJK</path>"
+        "</paths><sounddirs>"
+        "<sounddir name=\"Spoken &amp; examples\" icon=\"ignored.png\">"
+        "/audio/words</sounddir>"
+        "</sounddirs><preferences><zoomFactor>1.5</zoomFactor></preferences>"
+        "</config>";
+    test::WriteBinaryFile(legacy_path, legacy);
+
+    const auto migrated = LoadOrMigrateConfiguration(
+        current_path.string(), legacy_path.string(), "/cache/indexes");
+
+    QCOMPARE(
+        migrated.dictionary_paths,
+        (std::vector<std::string>{"/dicts/English & French", "/dicts/CJK"}));
+    QCOMPARE(migrated.index_directory, "/cache/indexes");
+    QCOMPARE(migrated.sound_directories.size(), std::size_t{1});
+    QCOMPARE(migrated.sound_directories.front().path, "/audio/words");
+    QCOMPARE(migrated.sound_directories.front().name, "Spoken & examples");
+    QVERIFY(std::filesystem::exists(current_path));
+    std::ifstream legacy_input(legacy_path, std::ios::binary);
+    const std::string unchanged((std::istreambuf_iterator<char>(legacy_input)),
+                                std::istreambuf_iterator<char>());
+    QCOMPARE(unchanged, legacy);
+    const auto round_trip = LoadConfiguration(current_path.string());
+    QCOMPARE(round_trip.dictionary_paths, migrated.dictionary_paths);
+    QCOMPARE(round_trip.sound_directories, migrated.sound_directories);
+}
+
+void ApplicationServiceTest::CurrentConfigurationTakesPrecedenceOverLegacy() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto legacy_path = root / "config";
+    const auto current_path = root / "core.conf";
+    test::WriteBinaryFile(legacy_path, "<not-config>");
+    CoreConfiguration current;
+    current.dictionary_paths = {"/current"};
+    current.index_directory = "/current/indexes";
+    SaveConfiguration(current_path.string(), current);
+
+    const auto loaded = LoadOrMigrateConfiguration(
+        current_path.string(), legacy_path.string(), "/unused/indexes");
+
+    QCOMPARE(loaded.dictionary_paths, current.dictionary_paths);
+    QCOMPARE(loaded.index_directory, current.index_directory);
+}
+
+void ApplicationServiceTest::RejectsMalformedLegacyWithoutCreatingCurrent() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto legacy_path = root / "config";
+    const auto current_path = root / "core.conf";
+    test::WriteBinaryFile(
+        legacy_path,
+        "<!DOCTYPE config [<!ENTITY unsafe 'expanded'>]>"
+        "<config><paths><path>&unsafe;</path></paths></config>");
+
+    QVERIFY_EXCEPTION_THROWN(
+        LoadOrMigrateConfiguration(current_path.string(), legacy_path.string(),
+                                   "/cache/indexes"),
+        std::runtime_error);
+    QVERIFY(!std::filesystem::exists(current_path));
+    QVERIFY(std::filesystem::exists(legacy_path));
 }
 
 void ApplicationServiceTest::RejectsMalformedConfiguration() {
