@@ -9,6 +9,7 @@
 #include <string_view>
 #include <utility>
 
+#include "article_document.h"
 #include "internal_url.h"
 
 namespace goldendict::core::article {
@@ -380,11 +381,7 @@ Document Assemble(const dictionary::Identity& dictionary,
         }
         input_size += article.data.size();
     }
-    document.sanitized_html =
-        "<!doctype html><html><head><meta charset=\"utf-8\">"
-        "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src "
-        "'none'; img-src goldendict:; media-src goldendict:; style-src "
-        "'none'\"></head><body>";
+    document.sanitized_html = NewDocument();
     for (const auto& article : articles) {
         document.sanitized_html += "<section class=\"gd-article\">";
         if (article.format == "text/html") {
@@ -423,7 +420,7 @@ Document Assemble(const dictionary::Identity& dictionary,
     while (!document.plain_text.empty() && document.plain_text.back() == '\n') {
         document.plain_text.pop_back();
     }
-    document.sanitized_html += "</body></html>";
+    FinishDocument(&document.sanitized_html);
     return document;
 }
 

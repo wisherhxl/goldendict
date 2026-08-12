@@ -119,7 +119,7 @@ behavior and a recoverable failure path.
 
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |
-| Core styles for vertical slice | slice | Phase 4 | rendered fixture article |
+| Core styles for vertical slice | slice | Phase 4/7 | responsive shell and sanitizer tests |
 | Complete styles and icons | mapped | Phase 8/9 | visual parity checklist |
 | Translations | mapped | Phase 9 | Linguist build and locale smoke |
 | Help | mapped | Phase 9 | installed resource checks |

@@ -295,6 +295,12 @@ URLs already emitted by the core assemblers. Composition remains inside the
 core facade: the desktop application receives presentation-ready HTML and does
 not depend on format implementations or concatenate trusted markup itself.
 
+The core-controlled article shell adds responsive typography, bounded media,
+scrollable tables, wrapped preformatted text, dictionary separators, and
+light/dark color support. Inline styles remain stripped from dictionary input;
+the CSP permits only the fixed inline stylesheet emitted by the core, while
+scripts and all network content remain disabled.
+
 Gate: representative local articles render correctly, links and resources
 work, and approved online dictionary scenarios pass without weakening the
 local rendering gate.

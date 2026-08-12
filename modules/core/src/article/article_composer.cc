@@ -6,15 +6,11 @@
 #include <string_view>
 #include <utility>
 
+#include "article_document.h"
+
 namespace goldendict::core::article {
 namespace {
 
-constexpr std::string_view kDocumentPrefix =
-    "<!doctype html><html><head><meta charset=\"utf-8\">"
-    "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src "
-    "'none'; img-src goldendict:; media-src goldendict:; style-src "
-    "'none'\"></head><body>";
-constexpr std::string_view kDocumentSuffix = "</body></html>";
 constexpr std::size_t kMaximumComposedDocumentBytes = 16U * 1024U * 1024U;
 
 void AppendBounded(std::string_view value, std::string* output) {
@@ -51,23 +47,11 @@ std::string Escape(std::string_view value) {
     return escaped;
 }
 
-std::string_view BodyOf(std::string_view document) {
-    if (document.size() < kDocumentPrefix.size() + kDocumentSuffix.size() ||
-        document.compare(0, kDocumentPrefix.size(), kDocumentPrefix) != 0 ||
-        document.compare(document.size() - kDocumentSuffix.size(),
-                         kDocumentSuffix.size(), kDocumentSuffix) != 0) {
-        return {};
-    }
-    document.remove_prefix(kDocumentPrefix.size());
-    document.remove_suffix(kDocumentSuffix.size());
-    return document;
-}
-
 }  // namespace
 
 ArticleContent ComposeLookupPage(const LookupResponse& response) {
     ArticleContent page;
-    std::string html(kDocumentPrefix);
+    std::string html = NewDocument();
     for (const auto& entry : response.entries) {
         const std::string label = entry.dictionary.name.empty()
                                       ? entry.dictionary.id
@@ -77,7 +61,7 @@ ArticleContent ComposeLookupPage(const LookupResponse& response) {
         AppendBounded("</h2>", &html);
         const std::string_view body =
             entry.article.sanitized_html.has_value()
-                ? BodyOf(*entry.article.sanitized_html)
+                ? ExtractDocumentBody(*entry.article.sanitized_html)
                 : std::string_view{};
         if (!body.empty()) {
             AppendBounded(body, &html);
@@ -96,7 +80,10 @@ ArticleContent ComposeLookupPage(const LookupResponse& response) {
             page.plain_text += "\n" + entry.article.plain_text;
         }
     }
-    AppendBounded(kDocumentSuffix, &html);
+    FinishDocument(&html);
+    if (html.size() > kMaximumComposedDocumentBytes) {
+        throw std::length_error("Composed article exceeds the size limit");
+    }
     page.sanitized_html = std::move(html);
     return page;
 }

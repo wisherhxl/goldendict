@@ -3,6 +3,7 @@
 #include <QtTest>
 
 #include "../src/article/article_composer.h"
+#include "../src/article/article_document.h"
 
 namespace goldendict::core::article {
 
@@ -20,21 +21,17 @@ void ArticleComposerTest::CombinesEntriesAndEscapesDictionaryLabels() {
     DictionaryEntry first;
     first.dictionary.name = "First <Dictionary>";
     first.article.plain_text = "first article";
-    first.article.sanitized_html =
-        "<!doctype html><html><head><meta charset=\"utf-8\">"
-        "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src "
-        "'none'; img-src goldendict:; media-src goldendict:; style-src "
-        "'none'\"></head><body><section class=\"gd-article\"><p>first "
-        "article</p></section></body></html>";
+    first.article.sanitized_html = NewDocument();
+    first.article.sanitized_html->append(
+        "<section class=\"gd-article\"><p>first article</p></section>");
+    FinishDocument(&*first.article.sanitized_html);
     DictionaryEntry second;
     second.dictionary.name = "Second";
     second.article.plain_text = "second article";
-    second.article.sanitized_html =
-        "<!doctype html><html><head><meta charset=\"utf-8\">"
-        "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src "
-        "'none'; img-src goldendict:; media-src goldendict:; style-src "
-        "'none'\"></head><body><section class=\"gd-article\"><b>second "
-        "article</b></section></body></html>";
+    second.article.sanitized_html = NewDocument();
+    second.article.sanitized_html->append(
+        "<section class=\"gd-article\"><b>second article</b></section>");
+    FinishDocument(&*second.article.sanitized_html);
     response.entries = {std::move(first), std::move(second)};
 
     const ArticleContent page = ComposeLookupPage(response);

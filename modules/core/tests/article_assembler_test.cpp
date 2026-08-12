@@ -35,6 +35,10 @@ void ArticleAssemblerTest::EscapesPlainTextAndKeepsItStructured() {
             std::string::npos);
     QVERIFY(document.sanitized_html.find("Content-Security-Policy") !=
             std::string::npos);
+    QVERIFY(document.sanitized_html.find("max-width:72rem") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("style-src 'unsafe-inline'") !=
+            std::string::npos);
     QVERIFY(document.resources.empty());
 }
 
@@ -91,15 +95,18 @@ void ArticleAssemblerTest::DeduplicatesResourceReferencesAcrossArticles() {
 }
 
 void ArticleAssemblerTest::RemovesActiveContentAndUnsafeAttributes() {
-    const Document document = Assemble(
-        kDictionary, {{"example", "text/html",
-                       "<p onclick=\"steal()\">safe<script>alert(1)</script>"
-                       "<a href=\"javascript:steal()\">link</a>"
-                       "<img src=\"../secret\" onerror=\"steal()\"></p>"}});
+    const Document document =
+        Assemble(kDictionary,
+                 {{"example", "text/html",
+                   "<p style=\"display:none\" onclick=\"steal()\">safe"
+                   "<style>body{display:none}</style><script>alert(1)</script>"
+                   "<a href=\"javascript:steal()\">link</a>"
+                   "<img src=\"../secret\" onerror=\"steal()\"></p>"}});
 
     QCOMPARE(document.plain_text, "safelink");
     QVERIFY(document.sanitized_html.find("script") == std::string::npos);
     QVERIFY(document.sanitized_html.find("onclick") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("display:none") == std::string::npos);
     QVERIFY(document.sanitized_html.find("onerror") == std::string::npos);
     QVERIFY(document.sanitized_html.find("javascript:") == std::string::npos);
     QVERIFY(document.sanitized_html.find("secret") == std::string::npos);
