@@ -89,6 +89,14 @@ CRC-32 rejection, typed audio resources, and sanitized HTML5 playback. The
 application service test verifies discovery, article assembly, MIME typing,
 and resource retrieval through the format-neutral facade.
 
+`sounddir_reader_test` and `sounddir_dictionary_test` generate nested regular
+audio files under an explicitly configured root. They verify filename-based
+headwords, recursive indexing without treating unrelated files as entries,
+folded lookup and suggestions, configured identity, bounded confined resource
+reads, MIME typing, and empty-directory rejection. Configuration and
+application-service tests verify path/name persistence and end-to-end HTML5
+playback resource retrieval.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

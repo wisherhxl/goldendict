@@ -2,12 +2,12 @@
 #include "zipsounds_reader.h"
 #include <zlib.h>
 #include <algorithm>
-#include <array>
 #include <cctype>
 #include <fstream>
 #include <set>
 #include <tuple>
 #include <utility>
+#include "../../audio/audio_file_types.h"
 #include "../../foundation/text_encoding.h"
 #include "../../foundation/text_folding.h"
 
@@ -65,55 +65,6 @@ std::string ReadFile(const std::filesystem::path& path) {
         Throw(ErrorCode::kInvalidDictionary, path,
               "Cannot read complete ZIP sound pack");
     return data;
-}
-
-std::string LowerExtension(std::string_view name) {
-    std::size_t end = name.size();
-    while (end > 0U &&
-           std::isspace(static_cast<unsigned char>(name[end - 1U])) != 0)
-        --end;
-    name = name.substr(0U, end);
-    const auto slash = name.find_last_of('/');
-    const auto dot = name.find_last_of('.');
-    if (dot == std::string_view::npos ||
-        (slash != std::string_view::npos && dot < slash))
-        return {};
-    std::string extension(name.substr(dot));
-    std::transform(
-        extension.begin(), extension.end(), extension.begin(),
-        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    return extension;
-}
-
-bool IsSound(std::string_view name) {
-    static constexpr std::array<std::string_view, 19U> kExtensions = {
-        ".wav", ".au",   ".voc",  ".ogg", ".oga", ".mp3", ".m4a",
-        ".aac", ".flac", ".mid",  ".kar", ".mpc", ".wma", ".wv",
-        ".ape", ".spx",  ".opus", ".mpa", ".mp2"};
-    const auto extension = LowerExtension(name);
-    return std::find(kExtensions.begin(), kExtensions.end(), extension) !=
-           kExtensions.end();
-}
-
-std::string MediaType(std::string_view name) {
-    const auto extension = LowerExtension(name);
-    if (extension == ".wav")
-        return "audio/wav";
-    if (extension == ".ogg" || extension == ".oga" || extension == ".spx")
-        return "audio/ogg";
-    if (extension == ".mp3" || extension == ".mpa" || extension == ".mp2")
-        return "audio/mpeg";
-    if (extension == ".flac")
-        return "audio/flac";
-    if (extension == ".opus")
-        return "audio/opus";
-    if (extension == ".m4a")
-        return "audio/mp4";
-    if (extension == ".aac")
-        return "audio/aac";
-    if (extension == ".mid" || extension == ".kar")
-        return "audio/midi";
-    return "application/octet-stream";
 }
 
 std::string DecodeName(std::string_view bytes, bool utf8,
@@ -266,7 +217,8 @@ Reader Reader::Open(const std::filesystem::path& path) {
         std::string resource_id =
             DecodeName(raw_name, (flags & 0x800U) != 0U, path);
         std::replace(resource_id.begin(), resource_id.end(), '\\', '/');
-        if (!SafeResourceId(resource_id) || !IsSound(resource_id))
+        if (!SafeResourceId(resource_id) ||
+            !audio::IsSupportedAudioFile(resource_id))
             continue;
         std::string word = Headword(resource_id);
         if (word.empty())
@@ -282,7 +234,7 @@ Reader Reader::Open(const std::filesystem::path& path) {
                                    local_offset});
         auto& record = reader.records_.back();
         record.folded = foundation::FoldForLookup(record.word);
-        record.media_type = MediaType(record.resource_id);
+        record.media_type = audio::MediaTypeForAudioFile(record.resource_id);
     }
     if (cursor != central_offset + central_size || reader.records_.empty())
         Throw(ErrorCode::kInvalidDictionary, path,

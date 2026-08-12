@@ -13,9 +13,23 @@
 
 namespace goldendict::core {
 
+struct SoundDirectoryConfiguration {
+    std::string path;
+    std::string name;
+
+    bool operator==(const SoundDirectoryConfiguration& other) const noexcept {
+        return path == other.path && name == other.name;
+    }
+
+    bool operator!=(const SoundDirectoryConfiguration& other) const noexcept {
+        return !(*this == other);
+    }
+};
+
 struct CoreConfiguration {
     std::vector<std::string> dictionary_paths;
     std::string index_directory;
+    std::vector<SoundDirectoryConfiguration> sound_directories;
 };
 
 // Missing files load as an empty clean-profile configuration. Malformed files

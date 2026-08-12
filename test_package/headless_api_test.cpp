@@ -579,7 +579,8 @@ int main() {
         const auto loaded =
             goldendict::core::LoadConfiguration(configuration_path.string());
         if (loaded.dictionary_paths != configuration.dictionary_paths ||
-            loaded.index_directory != configuration.index_directory) {
+            loaded.index_directory != configuration.index_directory ||
+            loaded.sound_directories != configuration.sound_directories) {
             return Fail("configuration round-trip failed");
         }
 
@@ -931,6 +932,30 @@ int main() {
             epwing_response.entries.front().article.sanitized_html->find(
                 "Installed EPWING definition.") == std::string::npos) {
             return Fail("installed EPWING lookup failed");
+        }
+
+        const auto sound_root = directory.path() / "sounds";
+        Write(sound_root / "nested" / "spoken.ogg", "OggSconsumer-audio");
+        goldendict::core::CoreConfiguration sound_configuration;
+        sound_configuration.sound_directories = {
+            {sound_root.string(), "Installed sounds"}};
+        auto sound_service =
+            goldendict::core::CreateDictionaryService(sound_configuration);
+        const auto sound_catalog = sound_service->GetCatalog();
+        query = {};
+        query.text = "SPOKEN";
+        const auto sound_response = sound_service->Lookup(query);
+        if (sound_catalog.size() != 1U ||
+            sound_catalog.front().id.rfind("sounddir-", 0) != 0U ||
+            sound_catalog.front().name != "Installed sounds" ||
+            !sound_response.errors.empty() ||
+            sound_response.entries.size() != 1U ||
+            sound_response.entries.front().resources.size() != 1U ||
+            sound_service
+                    ->GetResource(
+                        sound_response.entries.front().resources.front())
+                    .size() != 18U) {
+            return Fail("installed sound directory lookup failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";

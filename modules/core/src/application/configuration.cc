@@ -16,6 +16,7 @@ namespace {
 constexpr std::string_view kHeader = "goldendict-core-config-v1\n";
 constexpr std::size_t kMaximumConfigurationBytes = 1024U * 1024U;
 constexpr std::size_t kMaximumDictionaryPaths = 256U;
+constexpr std::size_t kMaximumSoundDirectories = 256U;
 
 bool IsUnescaped(unsigned char character) {
     return std::isalnum(character) != 0 || character == '-' ||
@@ -74,13 +75,29 @@ void Validate(const CoreConfiguration& configuration) {
     if (configuration.dictionary_paths.size() > kMaximumDictionaryPaths) {
         throw std::runtime_error("Configuration has too many dictionary paths");
     }
+    if (configuration.sound_directories.size() > kMaximumSoundDirectories) {
+        throw std::runtime_error(
+            "Configuration has too many sound directories");
+    }
     const auto has_nul = [](const std::string& value) {
         return value.find('\0') != std::string::npos;
     };
+    if (std::any_of(
+            configuration.sound_directories.begin(),
+            configuration.sound_directories.end(),
+            [](const auto& directory) { return directory.path.empty(); })) {
+        throw std::runtime_error("Sound directory paths cannot be empty");
+    }
     if (has_nul(configuration.index_directory) ||
         std::any_of(configuration.dictionary_paths.begin(),
-                    configuration.dictionary_paths.end(), has_nul)) {
-        throw std::runtime_error("Configuration paths cannot contain NUL");
+                    configuration.dictionary_paths.end(), has_nul) ||
+        std::any_of(configuration.sound_directories.begin(),
+                    configuration.sound_directories.end(),
+                    [&has_nul](const auto& directory) {
+                        return has_nul(directory.path) ||
+                               has_nul(directory.name);
+                    })) {
+        throw std::runtime_error("Configuration values cannot contain NUL");
     }
 }
 
@@ -123,6 +140,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         const std::string_view line(contents.data() + position, end - position);
         constexpr std::string_view kIndex = "index_directory=";
         constexpr std::string_view kDictionary = "dictionary_path=";
+        constexpr std::string_view kSoundDirectory = "sound_directory=";
         if (line.substr(0, kIndex.size()) == kIndex) {
             if (has_index_directory) {
                 throw std::runtime_error("Duplicate index directory");
@@ -132,6 +150,15 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         } else if (line.substr(0, kDictionary.size()) == kDictionary) {
             configuration.dictionary_paths.push_back(
                 Decode(line.substr(kDictionary.size())));
+        } else if (line.substr(0, kSoundDirectory.size()) == kSoundDirectory) {
+            const auto value = line.substr(kSoundDirectory.size());
+            const auto separator = value.find('|');
+            if (separator == std::string_view::npos) {
+                throw std::runtime_error("Malformed sound directory field");
+            }
+            configuration.sound_directories.push_back(
+                {Decode(value.substr(0U, separator)),
+                 Decode(value.substr(separator + 1U))});
         } else if (!line.empty()) {
             throw std::runtime_error("Unknown configuration field");
         }
@@ -149,6 +176,10 @@ void SaveConfiguration(const std::string& configuration_path,
         "index_directory=" + Encode(configuration.index_directory) + "\n";
     for (const auto& path : configuration.dictionary_paths) {
         contents += "dictionary_path=" + Encode(path) + "\n";
+    }
+    for (const auto& directory : configuration.sound_directories) {
+        contents += "sound_directory=" + Encode(directory.path) + "|" +
+                    Encode(directory.name) + "\n";
     }
     if (contents.size() > kMaximumConfigurationBytes) {
         throw std::runtime_error("Configuration exceeds the size limit");

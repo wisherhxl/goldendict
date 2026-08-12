@@ -17,6 +17,7 @@
 #include "support/mdict_fixture.h"
 #include "support/sdict_fixture.h"
 #include "support/slob_fixture.h"
+#include "support/sounddir_fixture.h"
 #include "support/stardict_fixture.h"
 #include "support/xdxf_fixture.h"
 #include "support/zim_fixture.h"
@@ -55,6 +56,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesEpwingResources();
     void DiscoversSanitizesAndQueriesLsaAudio();
     void DiscoversSanitizesAndQueriesZipSoundsAudio();
+    void QueriesExplicitlyConfiguredSoundDirectory();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -84,12 +86,19 @@ void ApplicationServiceTest::ConfigurationRoundTripsEscapedPaths() {
     expected.dictionary_paths = {"/dictionaries/English & French",
                                  "/dictionaries/CJK=demo"};
     expected.index_directory = "/cache/index files";
+    expected.sound_directories = {
+        {"/audio/English | examples", "Spoken English & notes"}};
 
     SaveConfiguration(path.string(), expected);
     const auto actual = LoadConfiguration(path.string());
 
     QCOMPARE(actual.dictionary_paths, expected.dictionary_paths);
     QCOMPARE(actual.index_directory, expected.index_directory);
+    QCOMPARE(actual.sound_directories.size(), std::size_t{1});
+    QCOMPARE(actual.sound_directories.front().path,
+             expected.sound_directories.front().path);
+    QCOMPARE(actual.sound_directories.front().name,
+             expected.sound_directories.front().name);
 }
 
 void ApplicationServiceTest::RejectsMalformedConfiguration() {
@@ -624,6 +633,28 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesZipSoundsAudio() {
     QCOMPARE(entry.resources.front().media_type, "audio/ogg");
     const auto audio = service->GetResource(entry.resources.front());
     QCOMPARE(audio.size(), std::size_t{15U});
+}
+
+void ApplicationServiceTest::QueriesExplicitlyConfiguredSoundDirectory() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    formats::sounddir::test::WriteSoundDirectoryFixture(root);
+    CoreConfiguration configuration;
+    configuration.sound_directories = {{root.string(), "Fixture sounds"}};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "SECOND";
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().id.rfind("sounddir-", 0) == 0U);
+    QCOMPARE(catalog.front().name, "Fixture sounds");
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    QCOMPARE(response.entries.front().resources.size(), std::size_t{1});
+    QCOMPARE(
+        service->GetResource(response.entries.front().resources.front()).size(),
+        std::size_t{15U});
 }
 
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {

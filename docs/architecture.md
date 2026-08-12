@@ -195,6 +195,15 @@ and serves typed audio resources through sanitized HTML5 playback references.
 ZIP64, encrypted/split archives, archive icons, and streaming very large audio
 members remain explicit parity work.
 
+Sound directories remain explicit configuration rather than being inferred
+from ordinary dictionary roots. Each configured path and display name becomes
+one private backend that recursively indexes regular audio files by filename
+without its extension, exposes folded exact/prefix/suggestion queries, and
+serves bounded resources through sanitized HTML5 playback references. Symlink
+traversal is excluded and resource paths are re-confined to the configured
+canonical root. Per-directory icon configuration and streaming very large
+files remain explicit parity work.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

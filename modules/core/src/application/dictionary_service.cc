@@ -39,6 +39,7 @@
 #include "../formats/sdict/sdict_discovery.h"
 #include "../formats/slob/slob_dictionary.h"
 #include "../formats/slob/slob_discovery.h"
+#include "../formats/sounddir/sounddir_dictionary.h"
 #include "../formats/stardict/stardict_dictionary.h"
 #include "../formats/stardict/stardict_discovery.h"
 #include "../formats/xdxf/xdxf_dictionary.h"
@@ -241,6 +242,19 @@ class ServiceState final {
         roots.reserve(configuration.dictionary_paths.size());
         for (const auto& root : configuration.dictionary_paths) {
             roots.push_back(std::filesystem::u8path(root));
+        }
+        for (const auto& sound_directory : configuration.sound_directories) {
+            const auto path = std::filesystem::u8path(sound_directory.path);
+            const std::string id = StableId("sounddir", path);
+            try {
+                dictionaries_.push_back(
+                    std::make_unique<formats::sounddir::Dictionary>(
+                        formats::sounddir::Dictionary::Open(
+                            id, path, sound_directory.name)));
+            } catch (const dictionary::Error& error) {
+                startup_errors_.push_back(
+                    {TranslateErrorCode(error.code()), id, error.what()});
+            }
         }
         const auto discovery = formats::stardict::Discover(roots);
         for (const auto& issue : discovery.issues) {
