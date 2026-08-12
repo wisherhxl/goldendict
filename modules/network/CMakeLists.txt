@@ -11,3 +11,11 @@ if(TARGET http_client_test)
   target_sources(http_client_test PRIVATE src/http_client.cc)
   target_link_libraries(http_client_test PRIVATE Qt6::Network)
 endif()
+
+if(TARGET mediawiki_source_test)
+  target_sources(mediawiki_source_test PRIVATE
+    src/http_client.cc
+    src/mediawiki_source.cc
+  )
+  target_link_libraries(mediawiki_source_test PRIVATE Qt6::Network)
+endif()

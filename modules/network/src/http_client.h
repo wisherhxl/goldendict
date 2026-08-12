@@ -23,6 +23,7 @@ enum class HttpErrorCode {
     kTooManyRedirects,
     kHttpStatus,
     kTransport,
+    kInvalidResponse,
 };
 
 class HttpError final : public std::runtime_error {
