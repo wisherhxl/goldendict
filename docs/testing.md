@@ -151,6 +151,11 @@ opens the real dictionary browser offscreen, verifies catalog identity and
 source provenance, performs a dictionary-filtered prefix query, and confirms
 that activating the returned headword enters the normal lookup path.
 
+`goldendict_dictionary_browser_export_smoke` uses the same fixture and real
+dialog to export the displayed prefix results, then verifies the compatibility
+UTF-8 BOM, deterministic suggestion order, one-headword-per-line format, and
+exact file contents in an isolated configuration directory.
+
 `goldendict_history_management_smoke` verifies case-insensitive live history
 filtering, sends the clear command through the real application composition
 path, checks the refreshed empty pane, and reloads the atomically persisted

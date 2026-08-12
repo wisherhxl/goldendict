@@ -58,6 +58,8 @@ class MainWindow final : public QMainWindow {
     void RunFavoritesTransferSmokeCheck(const QString& path,
                                         std::function<void(bool)> completion);
     void RunDictionaryBrowserSmokeCheck(std::function<void(bool)> completion);
+    void RunDictionaryBrowserExportSmokeCheck(
+        const QString& path, std::function<void(bool)> completion);
 
    signals:
     void DictionaryDirectorySelected(const QString& directory);

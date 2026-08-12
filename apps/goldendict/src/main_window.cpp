@@ -713,6 +713,15 @@ void MainWindow::RunDictionaryBrowserSmokeCheck(
         });
 }
 
+void MainWindow::RunDictionaryBrowserExportSmokeCheck(
+    const QString& path, std::function<void(bool)> completion) {
+    ShowDictionaryBrowser();
+    dictionary_browser_->RunExportSmokeCheck(
+        path, QStringLiteral("app"),
+        QByteArray::fromHex("efbbbf") + "apple\napplication\n",
+        std::move(completion));
+}
+
 MainWindow::~MainWindow() {
     QWebEngineProfile::defaultProfile()->removeUrlSchemeHandler(
         scheme_handler_);

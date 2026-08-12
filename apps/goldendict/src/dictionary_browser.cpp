@@ -5,10 +5,14 @@
 #include <utility>
 
 #include <QComboBox>
+#include <QFile>
+#include <QFileDialog>
 #include <QFormLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QPushButton>
+#include <QSaveFile>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -53,6 +57,11 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
     result_status_ = new QLabel(this);
     result_status_->setObjectName(QStringLiteral("headwordStatus"));
     layout->addWidget(result_status_);
+    export_headwords_ =
+        new QPushButton(QStringLiteral("Export Displayed Headwords..."), this);
+    export_headwords_->setObjectName(QStringLiteral("exportHeadwords"));
+    export_headwords_->setEnabled(false);
+    layout->addWidget(export_headwords_);
 
     connect(dictionaries_, qOverload<int>(&QComboBox::currentIndexChanged),
             this, [this]() {
@@ -67,6 +76,32 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
                     emit HeadwordSelected(item->text());
                 }
             });
+    connect(export_headwords_, &QPushButton::clicked, this, [this]() {
+        const QString path = QFileDialog::getSaveFileName(
+            this, QStringLiteral("Export displayed headwords"), QString(),
+            QStringLiteral("Text files (*.txt);;All files (*.*)"));
+        if (path.isEmpty()) {
+            return;
+        }
+        result_status_->setText(
+            ExportHeadwordsToFile(path)
+                ? tr("Exported %1 headword(s)").arg(headwords_->count())
+                : QStringLiteral("Could not export headwords"));
+    });
+}
+
+void DictionaryBrowser::RunExportSmokeCheck(
+    const QString& path, const QString& prefix, const QByteArray& expected,
+    std::function<void(bool)> completion) {
+    prefix_->setText(prefix);
+    QTimer::singleShot(
+        0, this,
+        [this, path, expected, completion = std::move(completion)]() mutable {
+            const bool exported = ExportHeadwordsToFile(path);
+            QFile file(path);
+            const bool opened = file.open(QIODevice::ReadOnly);
+            completion(exported && opened && file.readAll() == expected);
+        });
 }
 
 void DictionaryBrowser::SetFacade(goldendict::core::DesktopFacade* facade) {
@@ -125,6 +160,7 @@ void DictionaryBrowser::RefreshDictionaryInfo() {
 
 void DictionaryBrowser::RefreshHeadwords() {
     headwords_->clear();
+    export_headwords_->setEnabled(false);
     const int index = dictionaries_->currentIndex();
     const QString prefix = prefix_->text().trimmed();
     if (facade_ == nullptr || index < 0 ||
@@ -150,7 +186,29 @@ void DictionaryBrowser::RefreshHeadwords() {
             QString::fromStdString(response.errors.front().message));
         return;
     }
+    export_headwords_->setEnabled(headwords_->count() > 0);
     result_status_->setText(
         tr("%1 headword(s); at most 100 shown")
             .arg(static_cast<qulonglong>(response.suggestions.size())));
+}
+
+bool DictionaryBrowser::ExportHeadwordsToFile(const QString& path) {
+    if (headwords_->count() == 0) {
+        return false;
+    }
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly) ||
+        file.write(QByteArray::fromHex("efbbbf")) != 3) {
+        return false;
+    }
+    for (int index = 0; index < headwords_->count(); ++index) {
+        QByteArray line = headwords_->item(index)->text().toUtf8();
+        line.replace('\n', ' ');
+        line.replace('\r', ' ');
+        line.push_back('\n');
+        if (file.write(line) != line.size()) {
+            return false;
+        }
+    }
+    return file.commit();
 }

@@ -6,6 +6,7 @@
 #include <functional>
 #include <vector>
 
+#include <QByteArray>
 #include <QDialog>
 
 #include "goldendict/core/dictionary_service.h"
@@ -14,6 +15,7 @@ class QLabel;
 class QLineEdit;
 class QListWidget;
 class QComboBox;
+class QPushButton;
 
 namespace goldendict::core {
 class DesktopFacade;
@@ -29,6 +31,9 @@ class DictionaryBrowser final : public QDialog {
     void RunSmokeCheck(const QString& expected_dictionary,
                        const QString& prefix, const QString& expected_headword,
                        std::function<void(bool)> completion);
+    void RunExportSmokeCheck(const QString& path, const QString& prefix,
+                             const QByteArray& expected,
+                             std::function<void(bool)> completion);
 
    signals:
     void HeadwordSelected(const QString& headword);
@@ -36,6 +41,7 @@ class DictionaryBrowser final : public QDialog {
    private:
     void RefreshDictionaryInfo();
     void RefreshHeadwords();
+    bool ExportHeadwordsToFile(const QString& path);
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
     std::vector<goldendict::core::DictionaryIdentity> catalog_;
@@ -46,6 +52,7 @@ class DictionaryBrowser final : public QDialog {
     QLineEdit* prefix_ = nullptr;
     QListWidget* headwords_ = nullptr;
     QLabel* result_status_ = nullptr;
+    QPushButton* export_headwords_ = nullptr;
 };
 
 #endif  // GOLDENDICT_APPS_GOLDENDICT_DICTIONARY_BROWSER_H_

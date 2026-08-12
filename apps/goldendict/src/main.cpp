@@ -579,6 +579,20 @@ int main(int argc, char* argv[]) {
             window.RunDictionaryBrowserSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--dictionary-browser-export-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window, [&app, &configuration_directory, &window]() {
+                QDir().mkpath(configuration_directory);
+                const QString export_path =
+                    QDir(configuration_directory)
+                        .filePath(QStringLiteral("headwords-export.txt"));
+                window.RunDictionaryBrowserExportSmokeCheck(
+                    export_path,
+                    [&app](bool passed) { app.exit(passed ? 0 : 1); });
+            });
     } else if (HasArgument(argc, argv,
                            QStringLiteral("--history-management-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
