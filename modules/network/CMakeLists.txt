@@ -35,3 +35,8 @@ if(TARGET forvo_source_test)
   )
   target_link_libraries(forvo_source_test PRIVATE Qt6::Network)
 endif()
+
+if(TARGET dict_server_source_test)
+  target_sources(dict_server_source_test PRIVATE src/dict_server_source.cc)
+  target_link_libraries(dict_server_source_test PRIVATE Qt6::Network)
+endif()

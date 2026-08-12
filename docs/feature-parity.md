@@ -81,7 +81,7 @@ not authorize dropping a legacy format.
 | MediaWiki sources | slice | Phase 7 | bounded JSON API suggestions/articles with encoded queries, duplicate suppression, transport policy reuse, and deterministic local HTTP fixture; source persistence and UI composition remain |
 | Arbitrary websites | slice | Phase 7 | bounded `%GDWORD%` URL templates, strict UTF-8/Latin-1/Windows-1252 response decoding, and quoted/unquoted relative `href`/`src` resolution verified by local fixtures; persistence, legacy query encodings, resources, and UI composition remain |
 | Forvo | slice | Phase 7 | bounded, strictly encoded XML API lookup with validated pronunciation metadata and bounded typed audio retrieval, verified by a deterministic local API/audio fixture; source persistence, UI composition, and playback remain |
-| DICT servers | mapped | Phase 7 | local protocol server |
+| DICT servers | slice | Phase 7 | bounded RFC 2229 TCP handshake, MIME negotiation, quoted `MATCH`/`DEFINE`, dot-stuffed definition parsing, timeout/cancellation, and deterministic local protocol fixture; authentication, persistence, and UI composition remain |
 | External programs | mapped | Phase 7 | controlled helper executable |
 
 ## Audio And Speech
