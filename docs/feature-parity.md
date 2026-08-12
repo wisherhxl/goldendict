@@ -80,7 +80,7 @@ not authorize dropping a legacy format.
 | Proxy and authentication | slice | Phase 7 | explicit HTTP proxy and scoped Basic credentials, including cross-origin redirect isolation, verified by local origin/proxy fixtures; system proxy discovery and interactive credential storage remain |
 | MediaWiki sources | slice | Phase 7 | bounded JSON API suggestions/articles with encoded queries, duplicate suppression, transport policy reuse, and deterministic local HTTP fixture; source persistence and UI composition remain |
 | Arbitrary websites | slice | Phase 7 | bounded `%GDWORD%` URL templates, strict UTF-8/Latin-1/Windows-1252 response decoding, and quoted/unquoted relative `href`/`src` resolution verified by local fixtures; persistence, legacy query encodings, resources, and UI composition remain |
-| Forvo | mapped | Phase 7 | mocked API and audio response |
+| Forvo | slice | Phase 7 | bounded, strictly encoded XML API lookup with validated pronunciation metadata and bounded typed audio retrieval, verified by a deterministic local API/audio fixture; source persistence, UI composition, and playback remain |
 | DICT servers | mapped | Phase 7 | local protocol server |
 | External programs | mapped | Phase 7 | controlled helper executable |
 

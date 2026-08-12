@@ -27,3 +27,11 @@ if(TARGET website_source_test)
   )
   target_link_libraries(website_source_test PRIVATE Qt6::Network)
 endif()
+
+if(TARGET forvo_source_test)
+  target_sources(forvo_source_test PRIVATE
+    src/forvo_source.cc
+    src/http_client.cc
+  )
+  target_link_libraries(forvo_source_test PRIVATE Qt6::Network)
+endif()
