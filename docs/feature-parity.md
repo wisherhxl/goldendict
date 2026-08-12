@@ -73,7 +73,7 @@ not authorize dropping a legacy format.
 | Qt WebEngine rendering of local article | slice | Phase 4 | documented rendering smoke |
 | Embedded images/styles/resources | slice | Phase 4 | generated fixture resources |
 | Navigation, links, search, zoom | slice | Phase 7/8 | WebEngine integration tests |
-| Context menus, copy, print, save | mapped | Phase 7/8 | manual and automated checks |
+| Context menus, copy, print, save | slice | Phase 7/8 | manual and automated checks |
 | Inspector/DevTools integration | later | Phase 7 | manual parity check |
 | Proxy and authentication | mapped | Phase 7 | local HTTP proxy fixture |
 | MediaWiki sources | mapped | Phase 7 | deterministic local HTTP server |

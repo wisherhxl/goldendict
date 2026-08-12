@@ -41,6 +41,8 @@ class MainWindow final : public QMainWindow {
     void StartLookup();
     void FinishLookup();
     void FindInArticle(bool backwards = false);
+    void PrintArticle();
+    void SaveArticle();
     void UpdateNavigationActions();
     void ZoomArticle(double delta);
 

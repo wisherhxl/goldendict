@@ -280,8 +280,14 @@ back/forward/reload controls, clamped zoom controls, application-routed lookup
 links, and an allowlisted `http`/`https`/`mailto` external URL bridge. Embedded
 content cannot navigate the article view directly. An offscreen WebEngine
 interaction smoke verifies real Chromium text matching and zoom behavior in
-addition to the existing local-rendering smoke. Context menus, print/save, and
-the remaining JavaScript integration stay behind later Phase 7/8 gates.
+addition to the existing local-rendering smoke. Advanced context menus and the
+remaining JavaScript integration stay behind later Phase 7/8 gates.
+
+The following article export increment exposes native copy, atomic sanitized
+HTML save, and asynchronous PDF print actions. The WebEngine interaction smoke
+also verifies serialized HTML and a real Chromium-generated PDF payload.
+Advanced context-menu customization and system print-dialog integration remain
+later Phase 8 parity work.
 
 Gate: representative local articles render correctly, links and resources
 work, and approved online dictionary scenarios pass without weakening the

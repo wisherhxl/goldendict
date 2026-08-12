@@ -8,11 +8,13 @@
 #include <QAction>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QSaveFile>
 #include <QTimer>
 #include <QToolBar>
 #include <QVBoxLayout>
@@ -90,6 +92,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     auto* zoom_in_action =
         article_toolbar->addAction(QStringLiteral("Zoom In"));
     zoom_in_action->setShortcut(QKeySequence::ZoomIn);
+    article_toolbar->addSeparator();
+    auto* copy_action = article_toolbar->addAction(QStringLiteral("Copy"));
+    copy_action->setShortcut(QKeySequence::Copy);
+    auto* save_action = article_toolbar->addAction(QStringLiteral("Save HTML"));
+    save_action->setShortcut(QKeySequence::Save);
+    auto* print_action =
+        article_toolbar->addAction(QStringLiteral("Print PDF"));
+    print_action->setShortcut(QKeySequence::Print);
     setCentralWidget(central);
 
     scheme_handler_ = new ArticleSchemeHandler(this);
@@ -139,6 +149,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             [this]() { article_view_->setZoomFactor(1.0); });
     connect(zoom_in_action, &QAction::triggered, this,
             [this]() { ZoomArticle(0.1); });
+    connect(copy_action, &QAction::triggered, article_page_,
+            [this]() { article_page_->triggerAction(QWebEnginePage::Copy); });
+    connect(save_action, &QAction::triggered, this, &MainWindow::SaveArticle);
+    connect(print_action, &QAction::triggered, this, &MainWindow::PrintArticle);
+    connect(article_view_, &QWebEngineView::pdfPrintingFinished, this,
+            [this](const QString&, bool success) {
+                status_->setText(success ? QStringLiteral("PDF saved")
+                                         : QStringLiteral("PDF save failed"));
+            });
     auto* find_action = new QAction(this);
     find_action->setShortcut(QKeySequence::Find);
     find_action->setShortcutContext(Qt::WindowShortcut);
@@ -164,10 +183,24 @@ void MainWindow::RunWebEngineInteractionCheck(
                 QStringLiteral("needle"), {},
                 [this, completion = std::move(completion)](
                     const QWebEngineFindTextResult& result) mutable {
-                    const bool passed = result.numberOfMatches() == 2 &&
-                                        article_view_->zoomFactor() == 1.25;
+                    const bool interaction_passed =
+                        result.numberOfMatches() == 2 &&
+                        article_view_->zoomFactor() == 1.25;
                     article_view_->findText(QString());
-                    completion(passed);
+                    article_view_->page()->toHtml(
+                        [this, interaction_passed,
+                         completion = std::move(completion)](
+                            const QString& html) mutable {
+                            article_view_->printToPdf(
+                                [interaction_passed, html,
+                                 completion = std::move(completion)](
+                                    const QByteArray& pdf) mutable {
+                                    completion(interaction_passed &&
+                                               html.contains(
+                                                   QStringLiteral("needle")) &&
+                                               pdf.startsWith("%PDF-"));
+                                });
+                        });
                 });
         },
         Qt::SingleShotConnection);
@@ -295,6 +328,42 @@ void MainWindow::FindInArticle(bool backwards) {
                                                 .arg(result.activeMatch())
                                                 .arg(result.numberOfMatches()));
         });
+}
+
+void MainWindow::PrintArticle() {
+    const QString file_name = QFileDialog::getSaveFileName(
+        this, QStringLiteral("Save Article as PDF"), QString(),
+        QStringLiteral("PDF files (*.pdf)"));
+    if (file_name.isEmpty()) {
+        return;
+    }
+    const QString path =
+        file_name.endsWith(QStringLiteral(".pdf"), Qt::CaseInsensitive)
+            ? file_name
+            : file_name + QStringLiteral(".pdf");
+    status_->setText(QStringLiteral("Saving PDF..."));
+    article_view_->printToPdf(path);
+}
+
+void MainWindow::SaveArticle() {
+    const QString file_name = QFileDialog::getSaveFileName(
+        this, QStringLiteral("Save Article as HTML"), QString(),
+        QStringLiteral("HTML files (*.html *.htm)"));
+    if (file_name.isEmpty()) {
+        return;
+    }
+    const QString path = QFileInfo(file_name).suffix().isEmpty()
+                             ? file_name + QStringLiteral(".html")
+                             : file_name;
+    article_view_->page()->toHtml([this, path](const QString& html) {
+        QSaveFile file(path);
+        if (!file.open(QIODevice::WriteOnly) ||
+            file.write(html.toUtf8()) == -1 || !file.commit()) {
+            status_->setText(QStringLiteral("HTML save failed"));
+            return;
+        }
+        status_->setText(QStringLiteral("HTML saved"));
+    });
 }
 
 void MainWindow::UpdateNavigationActions() {
