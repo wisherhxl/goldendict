@@ -124,6 +124,11 @@ malformed-input rejection, atomic persistence, and untouched legacy fixtures.
 checks the refreshed favorites tree, and reloads the persisted root headword
 through the public core API in an isolated configuration directory.
 
+`goldendict_dictionary_browser_smoke` loads a small checked-in Dictd fixture,
+opens the real dictionary browser offscreen, verifies catalog identity and
+source provenance, performs a dictionary-filtered prefix query, and confirms
+that activating the returned headword enters the normal lookup path.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

@@ -349,6 +349,16 @@ tree with preserved hierarchy and expansion state, supports re-lookup and
 case-insensitively deduplicated root-level additions, and keeps persistence in
 the composition root. Nested editing, removal, and import/export remain later
 Phase 8 increments.
+
+The dictionary-browser increment restores a reusable dictionary-information
+dialog backed only by the public desktop facade. It lists the loaded catalog,
+shows stable identity, edition, and source provenance, and performs bounded
+per-dictionary prefix suggestions without reading articles in the GUI.
+Activating a suggested headword routes through the existing lookup workflow.
+The legacy article/word counts, description field, full-list export, wildcard
+and regular-expression filtering, and local-file actions remain later Phase 8
+parity work.
+
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.
 - Provide a compatible migration path for legacy configuration, dictionary

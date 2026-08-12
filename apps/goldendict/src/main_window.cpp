@@ -29,6 +29,7 @@
 
 #include "article_page.h"
 #include "article_scheme_handler.h"
+#include "dictionary_browser.h"
 #include "goldendict/core/desktop_facade.h"
 
 namespace {
@@ -96,6 +97,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         article_toolbar->addAction(QStringLiteral("Add to Favorites"));
     add_favorite_action_->setShortcut(
         QKeySequence(Qt::CTRL | Qt::Key_E));
+    dictionary_browser_action_ =
+        article_toolbar->addAction(QStringLiteral("Dictionaries"));
     article_toolbar->addSeparator();
     article_search_ = new QLineEdit(article_toolbar);
     article_search_->setPlaceholderText(QStringLiteral("Find in article"));
@@ -168,6 +171,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             emit AddFavoriteRequested(word);
         }
     });
+    connect(dictionary_browser_action_, &QAction::triggered, this,
+            &MainWindow::ShowDictionaryBrowser);
     connect(article_page_, &ArticlePage::ExternalUrlRequested, this,
             [](const QUrl& url) { QDesktopServices::openUrl(url); });
     connect(back_action_, &QAction::triggered, article_view_,
@@ -286,6 +291,25 @@ void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
     add_favorite_action_->trigger();
 }
 
+void MainWindow::RunDictionaryBrowserSmokeCheck(
+    std::function<void(bool)> completion) {
+    auto lookup_passed = std::make_shared<bool>(false);
+    connect(
+        this, &MainWindow::LookupSubmitted, this,
+        [lookup_passed](const QString& submitted) {
+            *lookup_passed = submitted == QStringLiteral("application");
+        },
+        Qt::SingleShotConnection);
+    ShowDictionaryBrowser();
+    dictionary_browser_->RunSmokeCheck(
+        QStringLiteral("Fixture Dictionary"), QStringLiteral("app"),
+        QStringLiteral("application"),
+        [lookup_passed,
+         completion = std::move(completion)](bool browser_passed) mutable {
+            completion(browser_passed && *lookup_passed);
+        });
+}
+
 MainWindow::~MainWindow() {
     QWebEngineProfile::defaultProfile()->removeUrlSchemeHandler(
         scheme_handler_);
@@ -297,11 +321,29 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     facade_ = facade;
     article_page_->SetFacade(facade);
     scheme_handler_->SetFacade(facade);
+    if (dictionary_browser_ != nullptr) {
+        dictionary_browser_->SetFacade(facade);
+    }
     const auto count = facade == nullptr
                            ? std::size_t{0}
                            : facade->GetDictionaryService().GetCatalog().size();
     status_->setText(
         tr("%1 dictionary loaded").arg(static_cast<qulonglong>(count)));
+}
+
+void MainWindow::ShowDictionaryBrowser() {
+    if (dictionary_browser_ == nullptr) {
+        dictionary_browser_ = new DictionaryBrowser(this);
+        dictionary_browser_->SetFacade(facade_);
+        connect(dictionary_browser_, &DictionaryBrowser::HeadwordSelected, this,
+                [this](const QString& word) {
+                    query_->setText(word);
+                    StartLookup();
+                });
+    }
+    dictionary_browser_->show();
+    dictionary_browser_->raise();
+    dictionary_browser_->activateWindow();
 }
 
 void MainWindow::SetHistoryWords(const QStringList& words) {

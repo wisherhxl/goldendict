@@ -12,6 +12,7 @@
 
 class ArticlePage;
 class ArticleSchemeHandler;
+class DictionaryBrowser;
 class QAction;
 class QLabel;
 class QLineEdit;
@@ -47,6 +48,7 @@ class MainWindow final : public QMainWindow {
     void RunWebEngineInteractionCheck(std::function<void(bool)> completion);
     void RunHistorySmokeCheck(std::function<void(bool)> completion);
     void RunFavoritesSmokeCheck(std::function<void(bool)> completion);
+    void RunDictionaryBrowserSmokeCheck(std::function<void(bool)> completion);
 
    signals:
     void DictionaryDirectorySelected(const QString& directory);
@@ -62,6 +64,7 @@ class MainWindow final : public QMainWindow {
     void SaveArticle();
     void UpdateNavigationActions();
     void ZoomArticle(double delta);
+    void ShowDictionaryBrowser();
 
    private:
     void ShowMessage(const QString& title, const QString& message);
@@ -72,6 +75,7 @@ class MainWindow final : public QMainWindow {
     QListWidget* history_list_ = nullptr;
     QTreeWidget* favorites_tree_ = nullptr;
     QAction* add_favorite_action_ = nullptr;
+    QAction* dictionary_browser_action_ = nullptr;
     QPushButton* lookup_button_ = nullptr;
     QLabel* status_ = nullptr;
     QWebEngineView* article_view_ = nullptr;
@@ -82,6 +86,7 @@ class MainWindow final : public QMainWindow {
     QAction* back_action_ = nullptr;
     QAction* forward_action_ = nullptr;
     QTimer* completion_timer_ = nullptr;
+    DictionaryBrowser* dictionary_browser_ = nullptr;
 };
 
 #endif  // GOLDENDICT_APPS_GOLDENDICT_MAIN_WINDOW_H_

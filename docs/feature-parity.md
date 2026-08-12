@@ -106,7 +106,7 @@ not authorize dropping a legacy format.
 | Preferences and source editor | mapped | Phase 8 | settings migration tests |
 | History | slice | Phase 8 | bounded UTF-8/group-aware current store, legacy line-format migration, current-state precedence, atomic persistence, application lookup recording, and a reusable history pane; filtering and clear/export UI remain |
 | Favorites | slice | Phase 8 | bounded hierarchical current store, strict legacy XML migration, current-state precedence, atomic persistence, reusable tree pane, root-level add, and re-lookup; nested editing, removal, and import/export UI remain |
-| Dictionary info/headword browser | mapped | Phase 8 | fixture-backed UI checks |
+| Dictionary info/headword browser | slice | Phase 8 | facade-backed catalog identity/source display, bounded per-dictionary prefix suggestions, lookup activation, and fixture-backed UI smoke; counts, descriptions, export, advanced filtering, and local-file actions remain |
 | Scan popup | mapped | Phase 9 | X11 and Wayland behavior |
 | Global hotkeys | mapped | Phase 9 | X11 and Wayland behavior |
 | Clipboard/selection lookup | mapped | Phase 9 | X11 and Wayland behavior |

@@ -280,6 +280,13 @@ int main(int argc, char* argv[]) {
                     app.exit(passed ? 0 : 1);
                 });
         });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--dictionary-browser-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunDictionaryBrowserSmokeCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
     }
 
     return app.exec();
