@@ -8,9 +8,9 @@
 #include <chrono>
 #include <string>
 
-#include "../src/network/http_client.h"
+#include "../src/http_client.h"
 
-namespace goldendict::core::network {
+namespace goldendict::network {
 namespace {
 
 class HttpFixture final : public QObject {
@@ -155,9 +155,9 @@ void HttpClientTest::ObservesCancellation() {
                 [&]() { FetchHttp(request, [&]() { return ++polls > 1; }); });
 }
 
-}  // namespace goldendict::core::network
+}  // namespace goldendict::network
 
-using goldendict::core::network::HttpClientTest;
+using goldendict::network::HttpClientTest;
 
 QTEST_GUILESS_MAIN(HttpClientTest)
 

@@ -16,7 +16,7 @@
 #include <limits>
 #include <utility>
 
-namespace goldendict::core::network {
+namespace goldendict::network {
 namespace {
 
 constexpr auto kCancellationPollInterval = std::chrono::milliseconds(10);
@@ -182,4 +182,4 @@ HttpResponse FetchHttp(const HttpRequest& request,
     }
 }
 
-}  // namespace goldendict::core::network
+}  // namespace goldendict::network

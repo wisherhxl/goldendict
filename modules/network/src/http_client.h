@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-namespace goldendict::core::network {
+namespace goldendict::network {
 
 enum class HttpErrorCode {
     kInvalidRequest,
@@ -52,6 +52,6 @@ HttpResponse FetchHttp(
     const HttpRequest& request,
     const std::function<bool()>& is_cancellation_requested = {});
 
-}  // namespace goldendict::core::network
+}  // namespace goldendict::network
 
 #endif  // GOLDENDICT_CORE_NETWORK_HTTP_CLIENT_H_

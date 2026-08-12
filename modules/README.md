@@ -25,9 +25,12 @@ results carry bounded content, match metadata, stable dictionary provenance,
 and typed resources suitable for AI retrieval. Public APIs must not expose Qt
 Widgets, Qt Gui, Qt WebEngine, GUI-thread assumptions, or a service transport.
 Internal components and concrete formats stay under `src/` or private headers.
-A later network, audio, desktop, transport, or plugin module requires a
-demonstrated optional deployment, dependency, platform, or ABI boundary.
-Source-level separation alone does not justify another DLL.
+The internal network integration module is the first demonstrated optional
+dependency boundary: it owns Qt Network based transport without making local
+headless core consumers resolve Qt's runtime graph. A later audio, desktop,
+transport, or plugin module likewise requires a demonstrated optional
+deployment, dependency, platform, or ABI boundary. Source-level separation
+alone does not justify another DLL.
 
 Phase 2 retains `modules/tiger/` as the base module because it is reusable
 Tiger infrastructure, not product-facing GoldenDict identity.

@@ -10,13 +10,8 @@ find_package(ZLIB REQUIRED)
 
 ti_define_module(core
   REQUIRED PUBLIC MODULES tiger
-  REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat ICU::uc Qt6::Network Vorbis::vorbisfile ZLIB::ZLIB
+  REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat ICU::uc Vorbis::vorbisfile ZLIB::ZLIB
 )
-
-if(TARGET http_client_test)
-  target_sources(http_client_test PRIVATE src/network/http_client.cc)
-  target_link_libraries(http_client_test PRIVATE Qt6::Network)
-endif()
 
 if(TARGET sounddir_reader_test)
   target_sources(sounddir_reader_test PRIVATE

@@ -301,12 +301,14 @@ light/dark color support. Inline styles remain stripped from dictionary input;
 the CSP permits only the fixed inline stylesheet emitted by the core, while
 scripts and all network content remain disabled.
 
-The networking foundation increment keeps Qt Network private to the core and
-exposes no transport type through installed headers. Its HTTP client accepts
-only credential-free HTTP(S) URLs, follows a bounded number of explicit
-redirects without permitting HTTPS downgrade, and enforces aggregate timeout,
-response-size, cancellation, and successful-status policies. Tests use a
-loopback HTTP fixture and never contact a public service.
+The networking foundation increment establishes an internal optional network
+module so Qt Network does not become an installed core dependency or enter its
+public headers. This split is justified by the independently deployable
+headless core consumer. The module's HTTP client accepts only credential-free
+HTTP(S) URLs, follows a bounded number of explicit redirects without permitting
+HTTPS downgrade, and enforces aggregate timeout, response-size, cancellation,
+and successful-status policies. Tests use a loopback HTTP fixture and never
+contact a public service.
 
 Gate: representative local articles render correctly, links and resources
 work, and approved online dictionary scenarios pass without weakening the
