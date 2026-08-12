@@ -42,6 +42,8 @@ class DictionaryBrowser final : public QDialog {
     void RefreshDictionaryInfo();
     void RefreshHeadwords();
     bool ExportHeadwordsToFile(const QString& path);
+    QString CurrentSourcePath() const;
+    QString CurrentSourceDirectory() const;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
     std::vector<goldendict::core::DictionaryIdentity> catalog_;
@@ -52,6 +54,8 @@ class DictionaryBrowser final : public QDialog {
     QLabel* description_ = nullptr;
     QLabel* article_count_ = nullptr;
     QLabel* headword_count_ = nullptr;
+    QPushButton* copy_source_ = nullptr;
+    QPushButton* open_source_directory_ = nullptr;
     QLineEdit* prefix_ = nullptr;
     QListWidget* headwords_ = nullptr;
     QLabel* result_status_ = nullptr;

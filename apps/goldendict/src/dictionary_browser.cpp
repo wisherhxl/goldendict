@@ -4,16 +4,22 @@
 
 #include <utility>
 
+#include <QApplication>
+#include <QClipboard>
 #include <QComboBox>
+#include <QDesktopServices>
 #include <QFile>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QFormLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
 #include <QSaveFile>
 #include <QTimer>
+#include <QUrl>
 #include <QVBoxLayout>
 
 #include "goldendict/core/desktop_facade.h"
@@ -57,6 +63,18 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
     details->addRow(QStringLiteral("Articles:"), article_count_);
     details->addRow(QStringLiteral("Headwords:"), headword_count_);
     layout->addLayout(details);
+
+    auto* source_actions = new QHBoxLayout();
+    copy_source_ = new QPushButton(QStringLiteral("Copy Source Path"), this);
+    copy_source_->setObjectName(QStringLiteral("copyDictionarySource"));
+    open_source_directory_ =
+        new QPushButton(QStringLiteral("Open Containing Folder"), this);
+    open_source_directory_->setObjectName(
+        QStringLiteral("openDictionarySourceDirectory"));
+    source_actions->addWidget(copy_source_);
+    source_actions->addWidget(open_source_directory_);
+    source_actions->addStretch(1);
+    layout->addLayout(source_actions);
 
     prefix_ = new QLineEdit(this);
     prefix_->setObjectName(QStringLiteral("headwordPrefix"));
@@ -102,6 +120,15 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
                 ? tr("Exported %1 headword(s)").arg(headwords_->count())
                 : QStringLiteral("Could not export headwords"));
     });
+    connect(copy_source_, &QPushButton::clicked, this, [this]() {
+        QApplication::clipboard()->setText(CurrentSourcePath());
+    });
+    connect(open_source_directory_, &QPushButton::clicked, this, [this]() {
+        const QString directory = CurrentSourceDirectory();
+        if (!directory.isEmpty()) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(directory));
+        }
+    });
 }
 
 void DictionaryBrowser::RunExportSmokeCheck(
@@ -143,11 +170,15 @@ void DictionaryBrowser::RunSmokeCheck(const QString& expected_dictionary,
          completion = std::move(completion)]() mutable {
             const auto matches =
                 headwords_->findItems(expected_headword, Qt::MatchFixedString);
+            copy_source_->click();
             const bool passed =
                 dictionaries_->currentText() == expected_dictionary &&
                 !identifier_->text().isEmpty() && !source_->text().isEmpty() &&
                 article_count_->text() == QStringLiteral("3") &&
                 headword_count_->text() == QStringLiteral("3") &&
+                copy_source_->isEnabled() &&
+                open_source_directory_->isEnabled() &&
+                QApplication::clipboard()->text() == source_->text() &&
                 matches.size() == 1;
             if (!passed) {
                 completion(false);
@@ -167,6 +198,8 @@ void DictionaryBrowser::RefreshDictionaryInfo() {
         description_->clear();
         article_count_->clear();
         headword_count_->clear();
+        copy_source_->setEnabled(false);
+        open_source_directory_->setEnabled(false);
         return;
     }
     const auto& dictionary = catalog_[static_cast<std::size_t>(index)];
@@ -180,6 +213,26 @@ void DictionaryBrowser::RefreshDictionaryInfo() {
                               : QString::fromStdString(dictionary.description));
     article_count_->setText(QString::number(dictionary.article_count));
     headword_count_->setText(QString::number(dictionary.headword_count));
+    const QFileInfo source(CurrentSourcePath());
+    copy_source_->setEnabled(!CurrentSourcePath().isEmpty());
+    open_source_directory_->setEnabled(source.exists());
+}
+
+QString DictionaryBrowser::CurrentSourcePath() const {
+    const int index = dictionaries_->currentIndex();
+    if (index < 0 || static_cast<std::size_t>(index) >= catalog_.size()) {
+        return {};
+    }
+    return QString::fromStdString(
+        catalog_[static_cast<std::size_t>(index)].source);
+}
+
+QString DictionaryBrowser::CurrentSourceDirectory() const {
+    const QFileInfo source(CurrentSourcePath());
+    if (!source.exists()) {
+        return {};
+    }
+    return source.isDir() ? source.absoluteFilePath() : source.absolutePath();
 }
 
 void DictionaryBrowser::RefreshHeadwords() {

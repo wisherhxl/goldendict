@@ -149,8 +149,9 @@ atomically persisted replacement through the public core API.
 `goldendict_dictionary_browser_smoke` loads a small checked-in Dictd fixture,
 opens the real dictionary browser offscreen, verifies catalog identity and
 source provenance plus backend-owned article/headword counts, performs a
-dictionary-filtered prefix query, and confirms that activating the returned
-headword enters the normal lookup path.
+dictionary-filtered prefix query, verifies the copy-source action and the
+availability of the containing-folder action, and confirms that activating the
+returned headword enters the normal lookup path.
 
 `goldendict_dictionary_browser_export_smoke` uses the same fixture and real
 dialog to export the displayed prefix results, then verifies the compatibility
