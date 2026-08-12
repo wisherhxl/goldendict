@@ -115,6 +115,16 @@ reads are confined to safe relative paths beside the glossary or below its
 `.files` directory. Resource ZIP archives and full-text indexes remain later
 parity increments.
 
+ABBYY Lingvo DSL consumes original `.dsl` and gzip-compatible `.dsl.dz` files;
+companion `_abrv` files are not exposed as standalone dictionaries. The
+private adapter strictly decodes BOM-marked UTF-8/UTF-16 and declared
+Windows-1250/1251/1252 input, preserves name and language directives, expands
+bounded optional headword parts and tildes, and converts common DSL markup,
+word links, and image references into the common sanitized article path.
+Resource reads are confined to safe relative paths beside the dictionary or
+under either applicable `.files` directory. Abbreviation expansion, resource
+ZIP archives, nested cards, and full-text indexes remain later parity work.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

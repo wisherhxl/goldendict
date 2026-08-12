@@ -8,6 +8,7 @@
 
 #include "goldendict/core/application.h"
 #include "support/dictd_fixture.h"
+#include "support/dsl_fixture.h"
 #include "support/gls_fixture.h"
 #include "support/sdict_fixture.h"
 #include "support/stardict_fixture.h"
@@ -37,6 +38,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesSdict();
     void DiscoversSanitizesAndQueriesXdxfResources();
     void DiscoversSanitizesAndQueriesGlsResources();
+    void DiscoversSanitizesAndQueriesDslResources();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -367,6 +369,37 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesGlsResources() {
     QCOMPARE(entry.resources.size(), std::size_t{1});
     const auto data = service->GetResource(entry.resources.front());
     QCOMPARE(data.size(), std::size_t{8});
+}
+
+void ApplicationServiceTest::DiscoversSanitizesAndQueriesDslResources() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto path = test::WriteDslFixture(root);
+    test::WriteDslResource(path, "images/cup.png", "png-data");
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "CAFE";
+
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().id.rfind("dsl-", 0) == 0U);
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    const auto& entry = response.entries.front();
+    QCOMPARE(entry.language.source_language, "en");
+    QCOMPARE(entry.language.target_language, "de");
+    QVERIFY(entry.article.sanitized_html->find("<b>drink</b>") !=
+            std::string::npos);
+    QVERIFY(entry.article.sanitized_html->find("goldendict://lookup/coffee") !=
+            std::string::npos);
+    QCOMPARE(entry.resources.size(), std::size_t{1});
+    QCOMPARE(service->GetResource(entry.resources.front()).size(),
+             std::size_t{8});
 }
 
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {

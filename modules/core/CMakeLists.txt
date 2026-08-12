@@ -202,3 +202,34 @@ if(TARGET gls_dictionary_test)
   )
   target_link_libraries(gls_dictionary_test PRIVATE ICU::uc ZLIB::ZLIB)
 endif()
+
+if(TARGET dsl_discovery_test)
+  target_sources(dsl_discovery_test
+    PRIVATE
+      src/formats/dsl/dsl_discovery.cc
+  )
+endif()
+
+if(TARGET dsl_reader_test)
+  target_sources(dsl_reader_test
+    PRIVATE
+      src/foundation/text_encoding.cc
+      src/foundation/text_folding.cc
+      src/foundation/utf8.cc
+      src/formats/dsl/dsl_reader.cc
+  )
+  target_link_libraries(dsl_reader_test PRIVATE ICU::uc ZLIB::ZLIB)
+endif()
+
+if(TARGET dsl_dictionary_test)
+  target_sources(dsl_dictionary_test
+    PRIVATE
+      src/dictionary/dictionary_backend.cc
+      src/foundation/text_encoding.cc
+      src/foundation/text_folding.cc
+      src/foundation/utf8.cc
+      src/formats/dsl/dsl_dictionary.cc
+      src/formats/dsl/dsl_reader.cc
+  )
+  target_link_libraries(dsl_dictionary_test PRIVATE ICU::uc ZLIB::ZLIB)
+endif()

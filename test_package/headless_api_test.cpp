@@ -175,6 +175,21 @@ void WriteGlsFixture(const std::filesystem::path& root) {
     Write(root / "images" / "pixel.png", "gls-png");
 }
 
+void WriteDslFixture(const std::filesystem::path& root) {
+    const std::string dictionary =
+        "#NAME \"Installed DSL\"\n"
+        "#INDEX_LANGUAGE \"English\"\n"
+        "#CONTENTS_LANGUAGE \"German\"\n"
+        "#SOURCE_CODE_PAGE \"UTF-8\"\n"
+        "example\n"
+        "\t[b]Installed DSL definition.[/b] [s]images/pixel.png[/s]\n";
+    const auto path = root / "fixture.dsl";
+    Write(path, dictionary);
+    Write(std::filesystem::u8path(path.string() + ".files") / "images" /
+              "pixel.png",
+          "dsl-png");
+}
+
 int Fail(const std::string& message) {
     std::cerr << "headless_api_test: " << message << '\n';
     return EXIT_FAILURE;
@@ -373,6 +388,36 @@ int main() {
             gls_resource.size());
         if (gls_resource_text != "gls-png") {
             return Fail("installed GLS resource retrieval failed");
+        }
+
+        const auto dsl_root = directory.path() / "dsl";
+        WriteDslFixture(dsl_root);
+        goldendict::core::CoreConfiguration dsl_configuration;
+        dsl_configuration.dictionary_paths = {dsl_root.string()};
+        auto dsl_service =
+            goldendict::core::CreateDictionaryService(dsl_configuration);
+        const auto dsl_catalog = dsl_service->GetCatalog();
+        query = {};
+        query.text = "EXAMPLE";
+        const auto dsl_response = dsl_service->Lookup(query);
+        if (dsl_catalog.size() != 1U ||
+            dsl_catalog.front().id.rfind("dsl-", 0) != 0U ||
+            !dsl_response.errors.empty() || dsl_response.entries.size() != 1U ||
+            dsl_response.entries.front().language.source_language != "en" ||
+            dsl_response.entries.front().language.target_language != "de" ||
+            !dsl_response.entries.front().article.sanitized_html.has_value() ||
+            dsl_response.entries.front().article.sanitized_html->find(
+                "Installed DSL definition.") == std::string::npos ||
+            dsl_response.entries.front().resources.size() != 1U) {
+            return Fail("installed DSL lookup failed");
+        }
+        const auto dsl_resource = dsl_service->GetResource(
+            dsl_response.entries.front().resources.front());
+        const std::string dsl_resource_text(
+            reinterpret_cast<const char*>(dsl_resource.data()),
+            dsl_resource.size());
+        if (dsl_resource_text != "dsl-png") {
+            return Fail("installed DSL resource retrieval failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";
