@@ -374,7 +374,8 @@ Favorites can be organized without leaving the main window: a new folder is
 created at the root or inside the selected folder, and Add to Favorites targets
 the selected folder (or a selected headword's parent). The composition root
 applies each tree mutation to a copy, persists it atomically through core, and
-refreshes the tree only after success.
+refreshes the tree only after success. Selected folders and headwords can also
+be renamed through the same validated copy-and-persist command path.
 
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.

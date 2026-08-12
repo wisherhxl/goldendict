@@ -112,6 +112,22 @@ goldendict::core::Favorites* FavoriteContainerAtPath(
     return items;
 }
 
+bool RenameFavoriteAtPath(goldendict::core::Favorites* favorites,
+                          const QList<int>& path, std::string name) {
+    if (path.empty()) {
+        return false;
+    }
+    auto parent_path = path;
+    const int index = parent_path.takeLast();
+    auto* items = FavoriteContainerAtPath(favorites, parent_path);
+    if (items == nullptr || index < 0 ||
+        static_cast<std::size_t>(index) >= items->size()) {
+        return false;
+    }
+    (*items)[static_cast<std::size_t>(index)].text = std::move(name);
+    return true;
+}
+
 void RegisterArticleScheme() {
     QWebEngineUrlScheme scheme(QByteArrayLiteral("goldendict"));
     scheme.setSyntax(QWebEngineUrlScheme::Syntax::HostAndPort);
@@ -333,6 +349,25 @@ int main(int argc, char* argv[]) {
                                name.toStdString(),
                                true,
                                {}});
+            try {
+                goldendict::core::SaveFavorites(favorites_path.toStdString(),
+                                                updated);
+                favorites = std::move(updated);
+                refresh_favorites();
+            } catch (const std::exception& error) {
+                QMessageBox::warning(&window,
+                                     QStringLiteral("GoldenDict favorites"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+        });
+    QObject::connect(
+        &window, &MainWindow::RenameFavoriteRequested, &window,
+        [&](const QList<int>& path, const QString& name) {
+            auto updated = favorites;
+            if (!RenameFavoriteAtPath(&updated, path, name.toStdString())) {
+                refresh_favorites();
+                return;
+            }
             try {
                 goldendict::core::SaveFavorites(favorites_path.toStdString(),
                                                 updated);

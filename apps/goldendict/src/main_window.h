@@ -64,6 +64,7 @@ class MainWindow final : public QMainWindow {
                               const QList<int>& parent_path);
     void AddFavoriteFolderRequested(const QString& name,
                                     const QList<int>& parent_path);
+    void RenameFavoriteRequested(const QList<int>& path, const QString& name);
     void RemoveFavoriteRequested(const QList<int>& path);
     void ClearHistoryRequested();
     void ImportHistoryRequested(const QString& path);
@@ -81,6 +82,7 @@ class MainWindow final : public QMainWindow {
     void ExportHistory();
     void ImportHistory();
     void CreateFavoriteFolder();
+    void RenameFavorite();
 
    private:
     void ShowMessage(const QString& title, const QString& message);
@@ -100,6 +102,7 @@ class MainWindow final : public QMainWindow {
     QTreeWidget* favorites_tree_ = nullptr;
     QAction* add_favorite_action_ = nullptr;
     QAction* add_favorite_folder_action_ = nullptr;
+    QAction* rename_favorite_action_ = nullptr;
     QAction* remove_favorite_action_ = nullptr;
     QAction* dictionary_browser_action_ = nullptr;
     QPushButton* lookup_button_ = nullptr;
