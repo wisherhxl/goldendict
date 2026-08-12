@@ -56,6 +56,14 @@ struct LookupQuery {
     std::chrono::milliseconds timeout = std::chrono::seconds(5);
 };
 
+struct SuggestionQuery {
+    std::string text;
+    std::vector<std::string> dictionary_ids;
+    std::vector<std::string> languages;
+    std::size_t result_limit = 20;
+    std::chrono::milliseconds timeout = std::chrono::seconds(5);
+};
+
 struct MatchInfo {
     std::string requested_headword;
     std::string normalized_headword;
@@ -94,6 +102,19 @@ struct LookupResponse {
     bool partial = false;
 };
 
+struct HeadwordSuggestion {
+    DictionaryIdentity dictionary;
+    LanguageInfo language;
+    MatchInfo match;
+    std::string headword;
+};
+
+struct SuggestionResponse {
+    std::vector<HeadwordSuggestion> suggestions;
+    std::vector<LookupError> errors;
+    bool partial = false;
+};
+
 class GOLDENDICT_EXPORTS CancellationToken {
    public:
     virtual ~CancellationToken();
@@ -117,6 +138,9 @@ class GOLDENDICT_EXPORTS DictionaryService {
     virtual std::vector<DictionaryIdentity> GetCatalog() const = 0;
     virtual LookupResponse Lookup(
         const LookupQuery& query,
+        const CancellationToken* cancellation = nullptr) const = 0;
+    virtual SuggestionResponse Suggest(
+        const SuggestionQuery& query,
         const CancellationToken* cancellation = nullptr) const = 0;
     virtual std::unique_ptr<LookupRequest> StartLookup(
         LookupQuery query) const = 0;

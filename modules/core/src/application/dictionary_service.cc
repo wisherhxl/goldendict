@@ -100,6 +100,25 @@ dictionary::RequestOptions MakeOptions(
     return options;
 }
 
+dictionary::RequestOptions MakeOptions(
+    const SuggestionQuery& query,
+    const dictionary::CancellationSignal* signal) {
+    dictionary::RequestOptions options;
+    options.result_limit = std::min(query.result_limit, kMaximumLookupResults);
+    options.cancellation = signal;
+    if (query.timeout <= std::chrono::milliseconds::zero()) {
+        options.deadline = std::chrono::steady_clock::time_point::min();
+    } else {
+        const auto now = std::chrono::steady_clock::now();
+        const auto remaining =
+            std::chrono::steady_clock::time_point::max() - now;
+        options.deadline = query.timeout >= remaining
+                               ? std::chrono::steady_clock::time_point::max()
+                               : now + query.timeout;
+    }
+    return options;
+}
+
 bool HasInvalidFilter(const std::vector<std::string>& filters) {
     return std::any_of(filters.begin(), filters.end(), [](const auto& filter) {
         return filter.empty() || filter.size() > kMaximumLookupFilterBytes ||
@@ -126,6 +145,28 @@ double PrefixScore(std::string_view folded_query,
            static_cast<double>(headword_length);
 }
 
+bool SuggestionLess(const HeadwordSuggestion& left,
+                    const HeadwordSuggestion& right) noexcept {
+    const bool left_exact = left.match.mode == MatchMode::kExact;
+    const bool right_exact = right.match.mode == MatchMode::kExact;
+    if (left_exact != right_exact) {
+        return left_exact;
+    }
+    const auto left_length = Utf8CodePointCount(left.match.normalized_headword);
+    const auto right_length =
+        Utf8CodePointCount(right.match.normalized_headword);
+    if (left_length != right_length) {
+        return left_length < right_length;
+    }
+    if (left.match.normalized_headword != right.match.normalized_headword) {
+        return left.match.normalized_headword < right.match.normalized_headword;
+    }
+    if (left.headword != right.headword) {
+        return left.headword < right.headword;
+    }
+    return left.dictionary.id < right.dictionary.id;
+}
+
 std::optional<std::string> ValidateQuery(const LookupQuery& query) {
     if (query.text.empty() || query.result_limit == 0U) {
         return "Lookup text and result limit must be non-empty";
@@ -134,6 +175,26 @@ std::optional<std::string> ValidateQuery(const LookupQuery& query) {
         query.text.find('\0') != std::string::npos ||
         !foundation::IsValidUtf8(query.text)) {
         return "Lookup text exceeds the UTF-8 input bounds";
+    }
+    if (query.dictionary_ids.size() > kMaximumLookupDictionaryFilters ||
+        HasInvalidFilter(query.dictionary_ids)) {
+        return "Dictionary filters exceed the UTF-8 input bounds";
+    }
+    if (query.languages.size() > kMaximumLookupLanguageFilters ||
+        HasInvalidFilter(query.languages)) {
+        return "Language filters exceed the UTF-8 input bounds";
+    }
+    return std::nullopt;
+}
+
+std::optional<std::string> ValidateQuery(const SuggestionQuery& query) {
+    if (query.text.empty() || query.result_limit == 0U) {
+        return "Suggestion text and result limit must be non-empty";
+    }
+    if (query.text.size() > kMaximumLookupTextBytes ||
+        query.text.find('\0') != std::string::npos ||
+        !foundation::IsValidUtf8(query.text)) {
+        return "Suggestion text exceeds the UTF-8 input bounds";
     }
     if (query.dictionary_ids.size() > kMaximumLookupDictionaryFilters ||
         HasInvalidFilter(query.dictionary_ids)) {
@@ -287,6 +348,81 @@ class ServiceState final {
         return response;
     }
 
+    SuggestionResponse Suggest(const SuggestionQuery& query,
+                               const CancellationToken* cancellation) const {
+        SuggestionResponse response;
+        if (const auto validation_error = ValidateQuery(query);
+            validation_error.has_value()) {
+            response.errors.push_back(
+                {LookupErrorCode::kInvalidQuery, {}, *validation_error});
+            return response;
+        }
+        const std::string folded_query = foundation::FoldForLookup(query.text);
+        response.errors = startup_errors_;
+        const std::unordered_set<std::string> requested(
+            query.dictionary_ids.begin(), query.dictionary_ids.end());
+        std::unordered_set<std::string> found;
+        const CancellationAdapter signal(cancellation);
+        const auto options = MakeOptions(query, &signal);
+        for (const auto& backend : dictionaries_) {
+            const auto& identity = backend->identity();
+            if (!requested.empty() && requested.count(identity.id) == 0U) {
+                continue;
+            }
+            found.insert(identity.id);
+            if (!query.languages.empty() &&
+                std::find(query.languages.begin(), query.languages.end(),
+                          identity.source_language) == query.languages.end() &&
+                std::find(query.languages.begin(), query.languages.end(),
+                          identity.target_language) == query.languages.end()) {
+                continue;
+            }
+            auto backend_options = options;
+            backend_options.result_limit = options.result_limit;
+            try {
+                const auto headwords =
+                    backend->SuggestPrefix(query.text, backend_options);
+                for (const auto& headword : headwords) {
+                    const std::string folded_headword =
+                        foundation::FoldForLookup(headword);
+                    const bool exact = folded_headword == folded_query;
+                    HeadwordSuggestion suggestion;
+                    suggestion.dictionary = PublicIdentity(identity);
+                    suggestion.language = {identity.source_language,
+                                           identity.target_language};
+                    suggestion.match = {
+                        query.text, folded_headword,
+                        exact ? MatchMode::kExact : MatchMode::kPrefix,
+                        exact ? 1.0
+                              : PrefixScore(folded_query, folded_headword)};
+                    suggestion.headword = headword;
+                    response.suggestions.push_back(std::move(suggestion));
+                }
+            } catch (const dictionary::Error& error) {
+                response.errors.push_back({TranslateErrorCode(error.code()),
+                                           identity.id, error.what()});
+            } catch (const std::exception& error) {
+                response.errors.push_back(
+                    {LookupErrorCode::kInternal, identity.id, error.what()});
+            }
+        }
+        for (const auto& id : requested) {
+            if (found.count(id) == 0U) {
+                response.errors.push_back(
+                    {LookupErrorCode::kDictionaryUnavailable, id,
+                     "Requested dictionary is unavailable"});
+            }
+        }
+        std::stable_sort(response.suggestions.begin(),
+                         response.suggestions.end(), SuggestionLess);
+        if (response.suggestions.size() > options.result_limit) {
+            response.suggestions.resize(options.result_limit);
+        }
+        response.partial =
+            !response.suggestions.empty() && !response.errors.empty();
+        return response;
+    }
+
     std::vector<std::byte> GetResource(
         const ResourceReference& resource,
         const CancellationToken* cancellation) const {
@@ -390,6 +526,12 @@ class DictionaryServiceImpl final : public DictionaryService {
         const LookupQuery& query,
         const CancellationToken* cancellation) const override {
         return state_->Lookup(query, cancellation);
+    }
+
+    SuggestionResponse Suggest(
+        const SuggestionQuery& query,
+        const CancellationToken* cancellation) const override {
+        return state_->Suggest(query, cancellation);
     }
 
     std::unique_ptr<LookupRequest> StartLookup(

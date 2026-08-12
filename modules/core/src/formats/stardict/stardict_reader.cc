@@ -10,6 +10,7 @@
 #include <map>
 #include <sstream>
 #include <system_error>
+#include <unordered_set>
 #include <utility>
 
 #include <zlib.h>
@@ -505,11 +506,53 @@ std::vector<Article> Reader::LookupPrefix(
     std::string_view prefix, std::size_t result_limit,
     const std::function<void()>& checkpoint) const {
     std::vector<Article> articles;
-    const std::string folded_prefix = foundation::FoldForLookup(prefix);
-    if (folded_prefix.empty() || result_limit == 0U) {
+    if (result_limit == 0U) {
         return articles;
     }
 
+    const auto matches = RankedPrefixMatches(prefix, checkpoint);
+
+    articles.reserve(std::min(result_limit, matches.size()));
+    for (const auto* record : matches) {
+        if (articles.size() == result_limit) {
+            break;
+        }
+        Article article;
+        article.headword = record->headword;
+        article.data = dictionary_data_.substr(record->article_offset,
+                                               record->article_size);
+        articles.push_back(std::move(article));
+    }
+    return articles;
+}
+
+std::vector<std::string> Reader::SuggestPrefix(
+    std::string_view prefix, std::size_t result_limit,
+    const std::function<void()>& checkpoint) const {
+    std::vector<std::string> suggestions;
+    if (result_limit == 0U) {
+        return suggestions;
+    }
+    const auto matches = RankedPrefixMatches(prefix, checkpoint);
+    std::unordered_set<std::string> seen;
+    suggestions.reserve(std::min(result_limit, matches.size()));
+    for (const auto* record : matches) {
+        if (suggestions.size() == result_limit) {
+            break;
+        }
+        if (seen.insert(record->headword).second) {
+            suggestions.push_back(record->headword);
+        }
+    }
+    return suggestions;
+}
+
+std::vector<const Reader::IndexRecord*> Reader::RankedPrefixMatches(
+    std::string_view prefix, const std::function<void()>& checkpoint) const {
+    const std::string folded_prefix = foundation::FoldForLookup(prefix);
+    if (folded_prefix.empty()) {
+        return {};
+    }
     std::vector<const IndexRecord*> matches;
     std::size_t record_number = 0;
     for (const auto& record : index_) {
@@ -539,19 +582,7 @@ std::vector<Article> Reader::LookupPrefix(
             }
             return left->headword < right->headword;
         });
-
-    articles.reserve(std::min(result_limit, matches.size()));
-    for (const auto* record : matches) {
-        if (articles.size() == result_limit) {
-            break;
-        }
-        Article article;
-        article.headword = record->headword;
-        article.data = dictionary_data_.substr(record->article_offset,
-                                               record->article_size);
-        articles.push_back(std::move(article));
-    }
-    return articles;
+    return matches;
 }
 
 }  // namespace goldendict::core::formats::stardict

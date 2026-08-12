@@ -76,6 +76,9 @@ class Backend {
     virtual std::vector<Article> LookupPrefix(
         std::string_view prefix,
         const RequestOptions& options = RequestOptions{}) const = 0;
+    virtual std::vector<std::string> SuggestPrefix(
+        std::string_view prefix,
+        const RequestOptions& options = RequestOptions{}) const = 0;
     virtual std::optional<Resource> GetResource(
         std::string_view resource_id,
         const RequestOptions& options = RequestOptions{}) const = 0;

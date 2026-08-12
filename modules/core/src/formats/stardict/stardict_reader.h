@@ -78,6 +78,10 @@ class Reader final {
         std::string_view prefix,
         std::size_t result_limit = std::numeric_limits<std::size_t>::max(),
         const std::function<void()>& checkpoint = {}) const;
+    std::vector<std::string> SuggestPrefix(
+        std::string_view prefix,
+        std::size_t result_limit = std::numeric_limits<std::size_t>::max(),
+        const std::function<void()>& checkpoint = {}) const;
 
    private:
     struct IndexRecord {
@@ -86,6 +90,9 @@ class Reader final {
         std::uint32_t article_offset = 0;
         std::uint32_t article_size = 0;
     };
+
+    std::vector<const IndexRecord*> RankedPrefixMatches(
+        std::string_view prefix, const std::function<void()>& checkpoint) const;
 
     Metadata metadata_;
     std::vector<IndexRecord> index_;

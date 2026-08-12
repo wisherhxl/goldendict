@@ -20,6 +20,7 @@ class StardictReaderTest : public QObject {
     void ReadsMetadataAndExactArticles();
     void MatchesFoldEquivalentHeadwords();
     void RanksFoldedPrefixMatches();
+    void SuggestsDistinctRankedHeadwords();
     void InvokesLookupCheckpoints();
     void ReturnsNoArticleForMissingHeadword();
     void RejectsInvalidInfoSignature();
@@ -105,6 +106,24 @@ void StardictReaderTest::RanksFoldedPrefixMatches() {
     QCOMPARE(articles[0].data, "exact");
     QCOMPARE(articles[1].data, "medium");
     QCOMPARE(articles[2].data, "long");
+}
+
+void StardictReaderTest::SuggestsDistinctRankedHeadwords() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto info_path = test::WriteStardictFixture(
+        TemporaryPath(directory), {{"cafeteria", "long"},
+                                   {"caf\xc3\xa9 noir", "medium"},
+                                   {"Caf\xc3\xa9", "first"},
+                                   {"Caf\xc3\xa9", "second"}});
+
+    const Reader reader = Reader::Open(info_path);
+    const auto suggestions = reader.SuggestPrefix("CAFE", 3U);
+
+    QCOMPARE(suggestions.size(), std::size_t{3});
+    QCOMPARE(suggestions[0], "Caf\xc3\xa9");
+    QCOMPARE(suggestions[1], "caf\xc3\xa9 noir");
+    QCOMPARE(suggestions[2], "cafeteria");
 }
 
 void StardictReaderTest::InvokesLookupCheckpoints() {

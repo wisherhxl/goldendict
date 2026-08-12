@@ -38,6 +38,14 @@ class EmptyDictionaryService final : public DictionaryService {
         return response;
     }
 
+    SuggestionResponse Suggest(
+        const SuggestionQuery& query,
+        const CancellationToken* cancellation) const override {
+        static_cast<void>(query);
+        static_cast<void>(cancellation);
+        return {};
+    }
+
     std::unique_ptr<LookupRequest> StartLookup(
         LookupQuery query) const override {
         static_cast<void>(query);
@@ -78,6 +86,7 @@ class CoreApiTest : public QObject {
 
    private slots:
     void LookupQueryHasBoundedDefaults();
+    void SuggestionQueryHasBoundedDefaults();
     void HeadlessServiceDoesNotRequireAGuiApplication();
 };
 
@@ -85,6 +94,13 @@ void CoreApiTest::LookupQueryHasBoundedDefaults() {
     const LookupQuery query;
 
     QCOMPARE(query.match_mode, MatchMode::kExact);
+    QCOMPARE(query.result_limit, std::size_t{20});
+    QCOMPARE(query.timeout, std::chrono::seconds(5));
+}
+
+void CoreApiTest::SuggestionQueryHasBoundedDefaults() {
+    const SuggestionQuery query;
+
     QCOMPARE(query.result_limit, std::size_t{20});
     QCOMPARE(query.timeout, std::chrono::seconds(5));
 }

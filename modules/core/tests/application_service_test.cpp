@@ -27,6 +27,8 @@ class ApplicationServiceTest : public QObject {
     void DiscoversAndQueriesARealFixture();
     void ReturnsCanonicalFoldedMatchInformation();
     void ReturnsRankedPrefixMatches();
+    void ReturnsLightweightHeadwordSuggestions();
+    void RanksSuggestionsAcrossDictionaries();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -172,6 +174,72 @@ void ApplicationServiceTest::ReturnsRankedPrefixMatches() {
     QCOMPARE(response.entries[1].match.mode, MatchMode::kPrefix);
     QCOMPARE(response.entries[1].match.score, 0.5);
     QVERIFY(response.entries[2].match.score < response.entries[1].match.score);
+}
+
+void ApplicationServiceTest::ReturnsLightweightHeadwordSuggestions() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteStardictFixture(root, {{"cafeteria", "long article"},
+                                      {"caf\xc3\xa9 noir", "medium article"},
+                                      {"Caf\xc3\xa9", "exact article"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    SuggestionQuery query;
+    query.text = "CAFE";
+    query.result_limit = 2U;
+
+    const auto response = service->Suggest(query);
+
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.suggestions.size(), std::size_t{2});
+    QCOMPARE(response.suggestions[0].headword, "Caf\xc3\xa9");
+    QCOMPARE(response.suggestions[0].match.mode, MatchMode::kExact);
+    QCOMPARE(response.suggestions[0].match.score, 1.0);
+    QCOMPARE(response.suggestions[1].headword, "caf\xc3\xa9 noir");
+    QCOMPARE(response.suggestions[1].match.mode, MatchMode::kPrefix);
+    QCOMPARE(response.suggestions[1].match.normalized_headword, "cafenoir");
+    QCOMPARE(response.suggestions[1].dictionary.name,
+             "Generated Test Dictionary");
+
+    const CancelledToken cancelled;
+    const auto cancelled_response = service->Suggest(query, &cancelled);
+    QVERIFY(cancelled_response.suggestions.empty());
+    QCOMPARE(cancelled_response.errors.size(), std::size_t{1});
+    QCOMPARE(cancelled_response.errors.front().code,
+             LookupErrorCode::kCancelled);
+
+    query.dictionary_ids = {"unavailable"};
+    const auto unavailable = service->Suggest(query);
+    QVERIFY(unavailable.suggestions.empty());
+    QCOMPARE(unavailable.errors.size(), std::size_t{1});
+    QCOMPARE(unavailable.errors.front().code,
+             LookupErrorCode::kDictionaryUnavailable);
+}
+
+void ApplicationServiceTest::RanksSuggestionsAcrossDictionaries() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    QVERIFY(std::filesystem::create_directories(root / "prefix"));
+    QVERIFY(std::filesystem::create_directories(root / "exact"));
+    test::WriteStardictFixture(root / "prefix",
+                               {{"cafeteria", "prefix article"}});
+    test::WriteStardictFixture(root / "exact", {{"Caf\xc3\xa9", "exact"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    SuggestionQuery query;
+    query.text = "CAFE";
+    query.result_limit = 1U;
+
+    const auto response = service->Suggest(query);
+
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.suggestions.size(), std::size_t{1});
+    QCOMPARE(response.suggestions.front().headword, "Caf\xc3\xa9");
+    QCOMPARE(response.suggestions.front().match.mode, MatchMode::kExact);
 }
 
 void ApplicationServiceTest::ReportsCancellationAndUnavailableDictionaries() {

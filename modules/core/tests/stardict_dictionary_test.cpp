@@ -24,6 +24,7 @@ class StardictDictionaryTest : public QObject {
    private slots:
     void ExposesIdentityAndBoundedArticles();
     void ReturnsBoundedPrefixArticles();
+    void ReturnsBoundedHeadwordSuggestions();
     void PreservesFormattedArticleData();
     void HonorsCancellationAndDeadline();
     void TranslatesReaderFailures();
@@ -74,6 +75,23 @@ void StardictDictionaryTest::ReturnsBoundedPrefixArticles() {
     QCOMPARE(articles.size(), std::size_t{2});
     QCOMPARE(articles[0].data, "exact");
     QCOMPARE(articles[1].data, "prefix");
+}
+
+void StardictDictionaryTest::ReturnsBoundedHeadwordSuggestions() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto info_path = test::WriteStardictFixture(
+        TemporaryPath(directory),
+        {{"example", "exact"}, {"examples", "prefix"}, {"examine", "other"}});
+    const Dictionary dictionary = Dictionary::Open("fixture-id", info_path);
+    dictionary::RequestOptions options;
+    options.result_limit = 2U;
+
+    const auto suggestions = dictionary.SuggestPrefix("EXAMPLE", options);
+
+    QCOMPARE(suggestions.size(), std::size_t{2});
+    QCOMPARE(suggestions[0], "example");
+    QCOMPARE(suggestions[1], "examples");
 }
 
 void StardictDictionaryTest::PreservesFormattedArticleData() {

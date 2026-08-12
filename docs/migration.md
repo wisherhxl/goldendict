@@ -199,8 +199,7 @@ mode without adding another public module or format-specific API. StarDict
 prefix lookup uses the same canonical Unicode form, ranks exact canonical
 matches first and then shorter candidates, publishes deterministic match
 scores, observes cancellation/deadline checkpoints during index scans, and is
-covered by the installed headless consumer. Fuzzy matching and a dedicated
-headword-only suggestion API remain deferred.
+covered by the installed headless consumer. Fuzzy matching remains deferred.
 The fourth increment adds a private, bounded text-encoding primitive on the
 existing ICU dependency. It strictly decodes legacy dictionary bytes to UTF-8
 and encodes UTF-8 query text for format adapters, rejects malformed input,
@@ -208,6 +207,13 @@ unrepresentable output, unknown or oversized encoding names, and output-limit
 violations, and covers Latin-1, UTF-16LE, GB18030, and EUC-JP. This establishes
 one encoding policy for later SLOB, MDict, Babylon, Hunspell, and EPWING ports
 without exposing a codec library through the public core ABI.
+The fifth increment adds a dedicated bounded headword-suggestion contract.
+StarDict ranks and deduplicates matching index headwords without reading
+article bodies, while the public headless response preserves dictionary and
+language identity, canonical match metadata, filtering, cancellation,
+deadlines, partial errors, global cross-dictionary ranking, and deterministic
+result limits. The installed consumer exercises this lightweight path
+independently of prefix article lookup.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

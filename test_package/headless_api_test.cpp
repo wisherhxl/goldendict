@@ -163,6 +163,18 @@ int main() {
             return Fail("installed prefix lookup failed");
         }
 
+        goldendict::core::SuggestionQuery suggestion_query;
+        suggestion_query.text = "EXA";
+        suggestion_query.result_limit = 1U;
+        const auto suggestions = service->Suggest(suggestion_query);
+        if (!suggestions.errors.empty() ||
+            suggestions.suggestions.size() != 1U ||
+            suggestions.suggestions.front().headword != "example" ||
+            suggestions.suggestions.front().match.mode !=
+                goldendict::core::MatchMode::kPrefix) {
+            return Fail("installed headword suggestion failed");
+        }
+
         query.text = "missing";
         query.match_mode = goldendict::core::MatchMode::kExact;
         const auto missing = service->Lookup(query);

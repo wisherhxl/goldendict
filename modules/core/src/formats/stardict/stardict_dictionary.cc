@@ -106,6 +106,19 @@ std::vector<dictionary::Article> Dictionary::LookupPrefix(
                              reader_.metadata().same_type_sequence);
 }
 
+std::vector<std::string> Dictionary::SuggestPrefix(
+    std::string_view prefix, const dictionary::RequestOptions& options) const {
+    dictionary::CheckRequest(options);
+    if (prefix.empty() || options.result_limit == 0U) {
+        return {};
+    }
+    auto suggestions = reader_.SuggestPrefix(
+        prefix, options.result_limit,
+        [&options]() { dictionary::CheckRequest(options); });
+    dictionary::CheckRequest(options);
+    return suggestions;
+}
+
 std::optional<dictionary::Resource> Dictionary::GetResource(
     std::string_view resource_id,
     const dictionary::RequestOptions& options) const {
