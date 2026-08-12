@@ -77,7 +77,7 @@ not authorize dropping a legacy format.
 | Context menus, copy, print, save | slice | Phase 7/8 | manual and automated checks |
 | Inspector/DevTools integration | later | Phase 7 | manual parity check |
 | Bounded HTTP transport | slice | Phase 7 | deterministic local HTTP server |
-| Proxy and authentication | mapped | Phase 7 | local HTTP proxy fixture |
+| Proxy and authentication | slice | Phase 7 | explicit HTTP proxy and scoped Basic credentials, including cross-origin redirect isolation, verified by local origin/proxy fixtures; system proxy discovery and interactive credential storage remain |
 | MediaWiki sources | mapped | Phase 7 | deterministic local HTTP server |
 | Arbitrary websites | mapped | Phase 7 | encoding/link-rewrite fixtures |
 | Forvo | mapped | Phase 7 | mocked API and audio response |

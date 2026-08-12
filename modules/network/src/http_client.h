@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -35,10 +36,23 @@ class HttpError final : public std::runtime_error {
 };
 
 struct HttpRequest {
+    struct Credentials {
+        std::string username;
+        std::string password;
+    };
+
+    struct Proxy {
+        std::string host;
+        unsigned short port = 0;
+        std::optional<Credentials> credentials;
+    };
+
     std::string url;
     std::chrono::milliseconds timeout = std::chrono::seconds(5);
     std::size_t maximum_response_bytes = 4U * 1024U * 1024U;
     std::size_t maximum_redirects = 5U;
+    std::optional<Credentials> credentials;
+    std::optional<Proxy> proxy;
 };
 
 struct HttpResponse {

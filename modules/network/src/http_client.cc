@@ -2,10 +2,12 @@
 
 #include "http_client.h"
 
+#include <QAuthenticator>
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QNetworkAccessManager>
+#include <QNetworkProxy>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimer>
@@ -40,6 +42,13 @@ std::chrono::milliseconds Remaining(const QElapsedTimer& elapsed,
                             : timeout - spent;
 }
 
+bool HasSameOrigin(const QUrl& first, const QUrl& second) {
+    return first.scheme().compare(second.scheme(), Qt::CaseInsensitive) == 0 &&
+           first.host().compare(second.host(), Qt::CaseInsensitive) == 0 &&
+           first.port(first.scheme() == "https" ? 443 : 80) ==
+               second.port(second.scheme() == "https" ? 443 : 80);
+}
+
 }  // namespace
 
 HttpError::HttpError(HttpErrorCode code, std::string message)
@@ -58,7 +67,43 @@ HttpResponse FetchHttp(const HttpRequest& request,
     }
 
     QUrl url = ValidateUrl(QString::fromStdString(request.url));
+    const QUrl credential_origin = url;
     QNetworkAccessManager manager;
+    if (request.proxy.has_value()) {
+        if (request.proxy->host.empty() || request.proxy->port == 0U) {
+            throw HttpError(HttpErrorCode::kInvalidRequest,
+                            "HTTP proxy host and port must be valid");
+        }
+        QNetworkProxy proxy(QNetworkProxy::HttpProxy,
+                            QString::fromStdString(request.proxy->host),
+                            request.proxy->port);
+        manager.setProxy(proxy);
+    }
+    QObject::connect(
+        &manager, &QNetworkAccessManager::authenticationRequired, &manager,
+        [&](QNetworkReply* challenged_reply, QAuthenticator* authenticator) {
+            if (!request.credentials.has_value() ||
+                !HasSameOrigin(credential_origin,
+                               challenged_reply->request().url())) {
+                return;
+            }
+            authenticator->setUser(
+                QString::fromStdString(request.credentials->username));
+            authenticator->setPassword(
+                QString::fromStdString(request.credentials->password));
+        });
+    QObject::connect(
+        &manager, &QNetworkAccessManager::proxyAuthenticationRequired, &manager,
+        [&](const QNetworkProxy&, QAuthenticator* authenticator) {
+            if (!request.proxy.has_value() ||
+                !request.proxy->credentials.has_value()) {
+                return;
+            }
+            authenticator->setUser(
+                QString::fromStdString(request.proxy->credentials->username));
+            authenticator->setPassword(
+                QString::fromStdString(request.proxy->credentials->password));
+        });
     QElapsedTimer elapsed;
     elapsed.start();
 
