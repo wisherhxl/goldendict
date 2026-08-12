@@ -279,10 +279,10 @@ int main() {
         const auto sdict_response = sdict_service->Lookup(query);
         if (sdict_catalog.size() != 1U ||
             sdict_catalog.front().id.rfind("sdict-", 0) != 0U ||
-            sdict_catalog.front().source_language != "eng" ||
-            sdict_catalog.front().target_language != "deu" ||
             !sdict_response.errors.empty() ||
             sdict_response.entries.size() != 1U ||
+            sdict_response.entries.front().language.source_language != "eng" ||
+            sdict_response.entries.front().language.target_language != "deu" ||
             !sdict_response.entries.front()
                  .article.sanitized_html.has_value() ||
             sdict_response.entries.front().article.sanitized_html->find(
