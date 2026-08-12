@@ -8,8 +8,8 @@
 #include <QAction>
 #include <QDesktopServices>
 #include <QDockWidget>
-#include <QFileDialog>
 #include <QFile>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QKeySequence>
@@ -86,7 +86,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         new QPushButton(QStringLiteral("Export History..."), history_widget);
     export_history_button_->setObjectName(
         QStringLiteral("exportHistoryButton"));
+    import_history_button_ =
+        new QPushButton(QStringLiteral("Import History..."), history_widget);
+    import_history_button_->setObjectName(
+        QStringLiteral("importHistoryButton"));
     auto* history_buttons = new QHBoxLayout();
+    history_buttons->addWidget(import_history_button_);
     history_buttons->addWidget(export_history_button_);
     history_buttons->addWidget(clear_history_button_);
     history_layout->addWidget(history_filter_);
@@ -187,6 +192,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             &MainWindow::ClearHistoryRequested);
     connect(export_history_button_, &QPushButton::clicked, this,
             &MainWindow::ExportHistory);
+    connect(import_history_button_, &QPushButton::clicked, this,
+            &MainWindow::ImportHistory);
     connect(favorites_tree_, &QTreeWidget::itemActivated, this,
             [this](QTreeWidgetItem* item, int) {
                 if (item == nullptr || item->data(0, Qt::UserRole).toBool()) {
@@ -338,14 +345,28 @@ void MainWindow::RunHistoryManagementSmokeCheck(
 
 void MainWindow::RunHistoryExportSmokeCheck(
     const QString& path, std::function<void(bool)> completion) {
-    SetHistoryWords({QStringLiteral("Alpha"),
-                     QStringLiteral("line\nbreak\rentry")});
+    SetHistoryWords(
+        {QStringLiteral("Alpha"), QStringLiteral("line\nbreak\rentry")});
     const bool exported = ExportHistoryToFile(path);
     QFile file(path);
     const bool opened = file.open(QIODevice::ReadOnly);
     const QByteArray expected =
         QByteArray::fromHex("efbbbf") + "Alpha\nline break entry\n";
     completion(exported && opened && file.readAll() == expected);
+}
+
+void MainWindow::RunHistoryImportSmokeCheck(
+    const QString& path, std::function<void(bool)> completion) {
+    connect(
+        this, &MainWindow::ImportHistoryRequested, this,
+        [this, path, completion = std::move(completion)](
+            const QString& requested_path) mutable {
+            completion(requested_path == path && history_words_.size() == 2 &&
+                       history_words_[0] == QStringLiteral("Alpha") &&
+                       history_words_[1] == QStringLiteral("第二个"));
+        },
+        Qt::SingleShotConnection);
+    emit ImportHistoryRequested(path);
 }
 
 void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
@@ -457,6 +478,15 @@ void MainWindow::ExportHistory() {
     status_->setText(ExportHistoryToFile(path)
                          ? QStringLiteral("History export complete")
                          : QStringLiteral("History export failed"));
+}
+
+void MainWindow::ImportHistory() {
+    const QString path = QFileDialog::getOpenFileName(
+        this, QStringLiteral("Import history from file"), QString(),
+        QStringLiteral("Text files (*.txt);;All files (*.*)"));
+    if (!path.isEmpty()) {
+        emit ImportHistoryRequested(path);
+    }
 }
 
 bool MainWindow::ExportHistoryToFile(const QString& path) {

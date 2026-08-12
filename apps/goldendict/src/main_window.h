@@ -52,6 +52,8 @@ class MainWindow final : public QMainWindow {
     void RunHistoryManagementSmokeCheck(std::function<void(bool)> completion);
     void RunHistoryExportSmokeCheck(const QString& path,
                                     std::function<void(bool)> completion);
+    void RunHistoryImportSmokeCheck(const QString& path,
+                                    std::function<void(bool)> completion);
     void RunFavoritesSmokeCheck(std::function<void(bool)> completion);
     void RunDictionaryBrowserSmokeCheck(std::function<void(bool)> completion);
 
@@ -61,6 +63,7 @@ class MainWindow final : public QMainWindow {
     void AddFavoriteRequested(const QString& word);
     void RemoveFavoriteRequested(const QList<int>& path);
     void ClearHistoryRequested();
+    void ImportHistoryRequested(const QString& path);
 
    private slots:
     void ChooseDictionaryDirectory();
@@ -73,6 +76,7 @@ class MainWindow final : public QMainWindow {
     void ZoomArticle(double delta);
     void ShowDictionaryBrowser();
     void ExportHistory();
+    void ImportHistory();
 
    private:
     void ShowMessage(const QString& title, const QString& message);
@@ -87,6 +91,7 @@ class MainWindow final : public QMainWindow {
     QStringList history_words_;
     QPushButton* clear_history_button_ = nullptr;
     QPushButton* export_history_button_ = nullptr;
+    QPushButton* import_history_button_ = nullptr;
     QTreeWidget* favorites_tree_ = nullptr;
     QAction* add_favorite_action_ = nullptr;
     QAction* remove_favorite_action_ = nullptr;

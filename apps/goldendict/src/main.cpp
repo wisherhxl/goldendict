@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QFile>
 #include <QMessageBox>
 #include <QStandardPaths>
 #include <QString>
@@ -249,6 +250,22 @@ int main(int argc, char* argv[]) {
             }
         });
     QObject::connect(
+        &window, &MainWindow::ImportHistoryRequested, &window,
+        [&](const QString& path) {
+            try {
+                auto imported = goldendict::core::ImportHistoryText(
+                    path.toStdString(), kMaximumHistoryEntries);
+                goldendict::core::SaveHistory(history_path.toStdString(),
+                                              imported);
+                history = std::move(imported);
+                refresh_history();
+            } catch (const std::exception& error) {
+                QMessageBox::warning(&window,
+                                     QStringLiteral("GoldenDict history"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+        });
+    QObject::connect(
         &window, &MainWindow::AddFavoriteRequested, &window,
         [&](const QString& word) {
             const bool exists = std::any_of(
@@ -362,17 +379,46 @@ int main(int argc, char* argv[]) {
     } else if (HasArgument(argc, argv,
                            QStringLiteral("--history-export-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
-        QTimer::singleShot(0, &window,
-                           [&app, &configuration_directory, &window]() {
-                               QDir().mkpath(configuration_directory);
-                               window.RunHistoryExportSmokeCheck(
-                                   QDir(configuration_directory)
-                                       .filePath(QStringLiteral(
-                                           "history-export-smoke.txt")),
-                                   [&app](bool passed) {
-                                       app.exit(passed ? 0 : 1);
-                                   });
-                           });
+        QTimer::singleShot(
+            0, &window, [&app, &configuration_directory, &window]() {
+                QDir().mkpath(configuration_directory);
+                window.RunHistoryExportSmokeCheck(
+                    QDir(configuration_directory)
+                        .filePath(QStringLiteral("history-export-smoke.txt")),
+                    [&app](bool passed) { app.exit(passed ? 0 : 1); });
+            });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--history-import-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window,
+            [&app, &configuration_directory, &history_path, &window]() {
+                QDir().mkpath(configuration_directory);
+                const QString import_path =
+                    QDir(configuration_directory)
+                        .filePath(QStringLiteral("history-import-smoke.txt"));
+                QFile fixture(import_path);
+                const bool prepared =
+                    fixture.open(QIODevice::WriteOnly) &&
+                    fixture.write(QByteArray::fromHex("efbbbf") +
+                                  " Alpha \r\n第二个\n") > 0;
+                fixture.close();
+                window.RunHistoryImportSmokeCheck(
+                    import_path, [&app, &history_path, prepared](bool passed) {
+                        try {
+                            const auto persisted =
+                                goldendict::core::LoadHistory(
+                                    history_path.toStdString());
+                            passed = prepared && passed &&
+                                     persisted.size() == 2U &&
+                                     persisted[0].word == "Alpha" &&
+                                     persisted[1].word == "第二个";
+                        } catch (const std::exception&) {
+                            passed = false;
+                        }
+                        app.exit(passed ? 0 : 1);
+                    });
+            });
     }
 
     return app.exec();

@@ -130,6 +130,13 @@ embedded-newline headwords, then verifies the compatibility UTF-8 BOM,
 one-headword-per-line sanitization, and exact file contents in an isolated
 configuration directory.
 
+`history_store_test` also verifies bounded UTF-8 text import, optional BOM and
+whitespace handling, entry limits, and invalid-UTF-8 rejection.
+
+`goldendict_history_import_smoke` imports a compatibility text file through
+the application command, checks the refreshed history pane, and reloads the
+atomically persisted replacement through the public core API.
+
 `goldendict_dictionary_browser_smoke` loads a small checked-in Dictd fixture,
 opens the real dictionary browser offscreen, verifies catalog identity and
 source provenance, performs a dictionary-filtered prefix query, and confirms

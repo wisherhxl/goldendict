@@ -365,7 +365,10 @@ composition-root command: it atomically persists an empty bounded history
 through the core store and refreshes the presentation only after success. The
 pane also exports the complete history as an atomically replaced UTF-8 text
 file with a compatibility BOM and one sanitized headword per line. History
-import and group-selection controls remain later Phase 8 work.
+import accepts a bounded UTF-8 text file with an optional BOM, ignores blank
+lines, trims surrounding whitespace, preserves file order, and atomically
+replaces current history only after complete validation. Group-selection
+controls remain later Phase 8 work.
 
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.

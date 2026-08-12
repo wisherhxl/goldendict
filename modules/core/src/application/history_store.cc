@@ -110,6 +110,16 @@ std::vector<HistoryEntry> LoadLegacy(const std::string& path,
     return ParseLines(ReadBounded(path), maximum_entries);
 }
 
+std::string_view TrimAsciiWhitespace(std::string_view text) {
+    constexpr std::string_view kWhitespace = " \t\r";
+    const auto first = text.find_first_not_of(kWhitespace);
+    if (first == std::string_view::npos) {
+        return {};
+    }
+    const auto last = text.find_last_not_of(kWhitespace);
+    return text.substr(first, last - first + 1U);
+}
+
 }  // namespace
 
 std::vector<HistoryEntry> LoadHistory(const std::string& history_path,
@@ -155,6 +165,42 @@ void SaveHistory(const std::string& history_path,
         throw std::runtime_error("Cannot replace history file: " +
                                  error.message());
     }
+}
+
+std::vector<HistoryEntry> ImportHistoryText(const std::string& import_path,
+                                            std::size_t maximum_entries,
+                                            std::uint32_t group_id) {
+    ValidateLimit(maximum_entries);
+    const std::string contents = ReadBounded(import_path);
+    std::string_view text(contents);
+    constexpr std::string_view kUtf8Bom("\xEF\xBB\xBF", 3U);
+    if (text.substr(0U, kUtf8Bom.size()) == kUtf8Bom) {
+        text.remove_prefix(kUtf8Bom.size());
+    }
+    if (!foundation::IsValidUtf8(text)) {
+        throw std::runtime_error("History import is not valid UTF-8");
+    }
+
+    std::vector<HistoryEntry> entries;
+    std::size_t position = 0U;
+    while (position <= text.size() && entries.size() < maximum_entries) {
+        const auto end = text.find('\n', position);
+        const auto length = end == std::string_view::npos
+                                ? text.size() - position
+                                : end - position;
+        const std::string_view word =
+            TrimAsciiWhitespace(text.substr(position, length));
+        if (!word.empty()) {
+            HistoryEntry entry{group_id, std::string(word)};
+            ValidateEntry(entry);
+            entries.push_back(std::move(entry));
+        }
+        if (end == std::string_view::npos) {
+            break;
+        }
+        position = end + 1U;
+    }
+    return entries;
 }
 
 std::vector<HistoryEntry> LoadOrMigrateHistory(

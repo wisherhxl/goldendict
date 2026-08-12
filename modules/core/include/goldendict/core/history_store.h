@@ -26,6 +26,13 @@ GOLDENDICT_EXPORTS std::vector<HistoryEntry> LoadHistory(
 GOLDENDICT_EXPORTS void SaveHistory(const std::string& history_path,
                                     const std::vector<HistoryEntry>& entries);
 
+// Imports a bounded UTF-8 text export with an optional BOM and one headword
+// per line. Blank lines are ignored and surrounding ASCII whitespace is
+// removed. The returned order matches the file order.
+GOLDENDICT_EXPORTS std::vector<HistoryEntry> ImportHistoryText(
+    const std::string& import_path, std::size_t maximum_entries = 500U,
+    std::uint32_t group_id = 0U);
+
 // Loads current history when present. Otherwise imports the bounded legacy
 // line format, atomically saves the current format, and leaves legacy data
 // untouched. Missing files produce an empty history.

@@ -22,6 +22,8 @@ class HistoryStoreTest : public QObject {
     void MigratesBoundedLegacyHistoryWithoutChangingIt();
     void CurrentHistoryTakesPrecedence();
     void RejectsMalformedHistoryWithoutPartialMigration();
+    void ImportsBoundedUtf8Text();
+    void RejectsInvalidTextImport();
 };
 
 std::filesystem::path Path(const QTemporaryDir& directory, const char* name) {
@@ -95,6 +97,26 @@ void HistoryStoreTest::RejectsMalformedHistoryWithoutPartialMigration() {
         std::runtime_error);
     QVERIFY(!std::filesystem::exists(current));
     QVERIFY(std::filesystem::exists(legacy));
+}
+
+void HistoryStoreTest::ImportsBoundedUtf8Text() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = Path(directory, "history.txt");
+    Write(path, "\xEF\xBB\xBF  first  \r\n\n第二个\nignored\n");
+
+    QCOMPARE(ImportHistoryText(path.string(), 2U, 7U),
+             (std::vector<HistoryEntry>{{7U, "first"}, {7U, "第二个"}}));
+}
+
+void HistoryStoreTest::RejectsInvalidTextImport() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = Path(directory, "history.txt");
+    Write(path, std::string("invalid\xFF\n", 9U));
+
+    QVERIFY_EXCEPTION_THROWN(ImportHistoryText(path.string()),
+                             std::runtime_error);
 }
 
 }  // namespace
