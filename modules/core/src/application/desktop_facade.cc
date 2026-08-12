@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include "../article/article_composer.h"
 #include "../article/internal_url.h"
 #include "../dictionary/dictionary_backend.h"
 #include "goldendict/core/application.h"
@@ -22,6 +23,11 @@ class DesktopFacadeImpl final : public DesktopFacade {
 
     const DictionaryService& GetDictionaryService() const noexcept override {
         return *service_;
+    }
+
+    ArticleContent ComposeLookupPage(
+        const LookupResponse& response) const override {
+        return article::ComposeLookupPage(response);
     }
 
     std::optional<ArticleUrl> ResolveArticleUrl(

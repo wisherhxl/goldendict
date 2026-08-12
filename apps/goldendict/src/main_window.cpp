@@ -278,7 +278,7 @@ void MainWindow::FinishLookup() {
         const auto response = request_->Await();
         request_.reset();
         if (!response.entries.empty()) {
-            const auto& article = response.entries.front().article;
+            const auto article = facade_->ComposeLookupPage(response);
             if (article.sanitized_html.has_value()) {
                 article_view_->setHtml(QString::fromUtf8(
                     article.sanitized_html->data(),

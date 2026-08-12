@@ -289,6 +289,12 @@ also verifies serialized HTML and a real Chromium-generated PDF payload.
 Advanced context-menu customization and system print-dialog integration remain
 later Phase 8 parity work.
 
+The article composition increment combines every returned dictionary entry in
+one bounded inert document, retaining per-dictionary headings and the resource
+URLs already emitted by the core assemblers. Composition remains inside the
+core facade: the desktop application receives presentation-ready HTML and does
+not depend on format implementations or concatenate trusted markup itself.
+
 Gate: representative local articles render correctly, links and resources
 work, and approved online dictionary scenarios pass without weakening the
 local rendering gate.

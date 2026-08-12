@@ -28,6 +28,8 @@ class GOLDENDICT_EXPORTS DesktopFacade {
 
     virtual DictionaryService& GetDictionaryService() noexcept = 0;
     virtual const DictionaryService& GetDictionaryService() const noexcept = 0;
+    virtual ArticleContent ComposeLookupPage(
+        const LookupResponse& response) const = 0;
     virtual std::optional<ArticleUrl> ResolveArticleUrl(
         const std::string& url) const = 0;
 };

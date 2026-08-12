@@ -271,6 +271,10 @@ if(TARGET article_assembler_test)
   )
 endif()
 
+if(TARGET article_composer_test)
+  target_sources(article_composer_test PRIVATE src/article/article_composer.cc)
+endif()
+
 if(TARGET application_service_test)
   target_link_libraries(application_service_test
     PRIVATE BZip2::BZip2 Vorbis::vorbisenc Vorbis::vorbisfile ZLIB::ZLIB

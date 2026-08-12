@@ -69,6 +69,7 @@ not authorize dropping a legacy format.
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |
 | Backend-independent article assembly | slice | Phase 4 | exact HTML assertions |
+| Multi-dictionary result composition | slice | Phase 7 | bounded composition and escaping tests |
 | Internal article/resource URL model | slice | Phase 4 | scheme routing tests |
 | Qt WebEngine rendering of local article | slice | Phase 4 | documented rendering smoke |
 | Embedded images/styles/resources | slice | Phase 4 | generated fixture resources |

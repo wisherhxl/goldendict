@@ -71,6 +71,12 @@ class EmptyDesktopFacade final : public DesktopFacade {
         return service_;
     }
 
+    ArticleContent ComposeLookupPage(
+        const LookupResponse& response) const override {
+        static_cast<void>(response);
+        return {};
+    }
+
     std::optional<ArticleUrl> ResolveArticleUrl(
         const std::string& url) const override {
         static_cast<void>(url);
