@@ -108,8 +108,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     article_toolbar->addSeparator();
     add_favorite_action_ =
         article_toolbar->addAction(QStringLiteral("Add to Favorites"));
-    add_favorite_action_->setShortcut(
-        QKeySequence(Qt::CTRL | Qt::Key_E));
+    add_favorite_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_E));
+    remove_favorite_action_ =
+        article_toolbar->addAction(QStringLiteral("Remove Favorite"));
+    remove_favorite_action_->setShortcut(QKeySequence::Delete);
+    remove_favorite_action_->setEnabled(false);
     dictionary_browser_action_ =
         article_toolbar->addAction(QStringLiteral("Dictionaries"));
     article_toolbar->addSeparator();
@@ -186,6 +189,18 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         const QString word = query_->text().trimmed();
         if (!word.isEmpty()) {
             emit AddFavoriteRequested(word);
+        }
+    });
+    connect(favorites_tree_, &QTreeWidget::itemSelectionChanged, this,
+            [this]() {
+                remove_favorite_action_->setEnabled(
+                    favorites_tree_->currentItem() != nullptr);
+            });
+    connect(remove_favorite_action_, &QAction::triggered, this, [this]() {
+        const auto* item = favorites_tree_->currentItem();
+        if (item != nullptr) {
+            emit RemoveFavoriteRequested(
+                item->data(0, Qt::UserRole + 1).value<QList<int>>());
         }
     });
     connect(dictionary_browser_action_, &QAction::triggered, this,
@@ -282,8 +297,8 @@ void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
     const QString expected = QStringLiteral("history-smoke-entry");
     connect(
         this, &MainWindow::LookupSubmitted, this,
-        [this, expected, completion = std::move(completion)](
-            const QString& submitted) mutable {
+        [this, expected,
+         completion = std::move(completion)](const QString& submitted) mutable {
             completion(submitted == expected && history_list_->count() > 0 &&
                        history_list_->item(0)->text() == expected);
         },
@@ -294,15 +309,13 @@ void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
 
 void MainWindow::RunHistoryManagementSmokeCheck(
     std::function<void(bool)> completion) {
-    SetHistoryWords(
-        {QStringLiteral("Alpha"), QStringLiteral("Beta"),
-         QStringLiteral("Alpine")});
+    SetHistoryWords({QStringLiteral("Alpha"), QStringLiteral("Beta"),
+                     QStringLiteral("Alpine")});
     history_filter_->setText(QStringLiteral("alp"));
-    const bool filtered = history_list_->count() == 2 &&
-                          history_list_->item(0)->text() ==
-                              QStringLiteral("Alpha") &&
-                          history_list_->item(1)->text() ==
-                              QStringLiteral("Alpine");
+    const bool filtered =
+        history_list_->count() == 2 &&
+        history_list_->item(0)->text() == QStringLiteral("Alpha") &&
+        history_list_->item(1)->text() == QStringLiteral("Alpine");
     connect(
         this, &MainWindow::ClearHistoryRequested, this,
         [this, filtered, completion = std::move(completion)]() mutable {
@@ -315,14 +328,27 @@ void MainWindow::RunHistoryManagementSmokeCheck(
 
 void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
     const QString expected = QStringLiteral("favorites-smoke-entry");
+    const int initial_count = favorites_tree_->topLevelItemCount();
     connect(
         this, &MainWindow::AddFavoriteRequested, this,
-        [this, expected, completion = std::move(completion)](
-            const QString& submitted) mutable {
-            const auto* item = favorites_tree_->topLevelItem(
+        [this, expected, initial_count,
+         completion = std::move(completion)](const QString& submitted) mutable {
+            auto* item = favorites_tree_->topLevelItem(
                 favorites_tree_->topLevelItemCount() - 1);
-            completion(submitted == expected && item != nullptr &&
-                       item->text(0) == expected);
+            const bool added = submitted == expected && item != nullptr &&
+                               item->text(0) == expected;
+            connect(
+                this, &MainWindow::RemoveFavoriteRequested, this,
+                [this, added, initial_count,
+                 completion =
+                     std::move(completion)](const QList<int>& path) mutable {
+                    completion(added && path == QList<int>{initial_count} &&
+                               favorites_tree_->topLevelItemCount() ==
+                                   initial_count);
+                },
+                Qt::SingleShotConnection);
+            favorites_tree_->setCurrentItem(item);
+            remove_favorite_action_->trigger();
         },
         Qt::SingleShotConnection);
     query_->setText(expected);
@@ -399,8 +425,7 @@ void MainWindow::RefreshHistoryList() {
     }
 }
 
-void MainWindow::SetFavoriteItems(
-    const std::vector<FavoriteViewItem>& items) {
+void MainWindow::SetFavoriteItems(const std::vector<FavoriteViewItem>& items) {
     const auto append = [&](const auto& self, QTreeWidgetItem* parent,
                             const FavoriteViewItem& item) -> void {
         auto* tree_item = parent == nullptr
@@ -408,6 +433,7 @@ void MainWindow::SetFavoriteItems(
                               : new QTreeWidgetItem(parent);
         tree_item->setText(0, item.text);
         tree_item->setData(0, Qt::UserRole, item.folder);
+        tree_item->setData(0, Qt::UserRole + 1, QVariant::fromValue(item.path));
         for (const auto& child : item.children) {
             self(self, tree_item, child);
         }

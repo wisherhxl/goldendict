@@ -337,8 +337,8 @@ with bounded group-aware UTF-8 entries and a recoverable legacy line-format
 migration. Current state takes precedence, new state is written atomically,
 and the legacy history is never modified. The application now records submitted
 lookups, deduplicates them case-insensitively, persists them atomically, and
-exposes a reusable history dock. Filtering, clearing, and export remain later
-Phase 8 increments.
+exposes a reusable history dock. Filtering and explicit clearing are also
+available; export remains later Phase 8 work.
 
 The first favorites increment adds a transport-neutral hierarchical store for
 folders, expansion state, ordered headwords, and Unicode content. It imports
@@ -346,9 +346,9 @@ the bounded legacy XML tree only when current favorites are absent, rejects
 entities and malformed or over-limit input, writes the upgraded representation
 atomically, and never modifies the legacy source. The application presents the
 tree with preserved hierarchy and expansion state, supports re-lookup and
-case-insensitively deduplicated root-level additions, and keeps persistence in
-the composition root. Nested editing, removal, and import/export remain later
-Phase 8 increments.
+case-insensitively deduplicated root-level additions, removes a selected item
+or folder through its stable tree path, and keeps persistence in the
+composition root. Nested editing and import/export remain later Phase 8 work.
 
 The dictionary-browser increment restores a reusable dictionary-information
 dialog backed only by the public desktop facade. It lists the loaded catalog,

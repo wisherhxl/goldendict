@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include <QList>
 #include <QMainWindow>
 #include <QStringList>
 
@@ -31,6 +32,7 @@ struct FavoriteViewItem {
     QString text;
     bool folder = false;
     bool expanded = false;
+    QList<int> path;
     std::vector<FavoriteViewItem> children;
 };
 
@@ -55,6 +57,7 @@ class MainWindow final : public QMainWindow {
     void DictionaryDirectorySelected(const QString& directory);
     void LookupSubmitted(const QString& word);
     void AddFavoriteRequested(const QString& word);
+    void RemoveFavoriteRequested(const QList<int>& path);
     void ClearHistoryRequested();
 
    private slots:
@@ -81,6 +84,7 @@ class MainWindow final : public QMainWindow {
     QPushButton* clear_history_button_ = nullptr;
     QTreeWidget* favorites_tree_ = nullptr;
     QAction* add_favorite_action_ = nullptr;
+    QAction* remove_favorite_action_ = nullptr;
     QAction* dictionary_browser_action_ = nullptr;
     QPushButton* lookup_button_ = nullptr;
     QLabel* status_ = nullptr;

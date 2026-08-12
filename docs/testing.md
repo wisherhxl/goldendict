@@ -120,9 +120,10 @@ recoverable migration of the legacy favorites XML, including folder ordering,
 expansion state, Unicode headwords, current-state precedence, entity and
 malformed-input rejection, atomic persistence, and untouched legacy fixtures.
 
-`goldendict_favorites_smoke` submits an add request through the application,
-checks the refreshed favorites tree, and reloads the persisted root headword
-through the public core API in an isolated configuration directory.
+`goldendict_favorites_smoke` submits add and selected-item removal requests
+through the application, checks the refreshed favorites tree, and reloads the
+persisted empty state through the public core API in an isolated configuration
+directory.
 
 `goldendict_dictionary_browser_smoke` loads a small checked-in Dictd fixture,
 opens the real dictionary browser offscreen, verifies catalog identity and
