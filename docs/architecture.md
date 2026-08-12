@@ -107,6 +107,14 @@ into the common sanitized-HTML path, and resolves bounded resources from safe
 relative paths beside the dictionary or below its `.files` directory. Resource
 ZIP archives and full-text indexes remain later parity increments.
 
+GLS consumes original `.gls` and gzip-compatible `.gls.dz` glossaries. The
+private adapter strictly decodes UTF-8, UTF-16LE, and UTF-16BE input under
+explicit size limits, preserves title/language metadata and alternate
+headwords, and sends glossary HTML through the common sanitizer. Resource
+reads are confined to safe relative paths beside the glossary or below its
+`.files` directory. Resource ZIP archives and full-text indexes remain later
+parity increments.
+
 Lookup normalization is a private foundation concern. Backends compare a
 canonical Unicode form that applies compatibility normalization, full case
 folding, diacritic removal, and whitespace/punctuation folding. Public results

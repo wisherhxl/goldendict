@@ -162,6 +162,19 @@ void WriteXdxfFixture(const std::filesystem::path& root) {
     Write(root / "images" / "pixel.png", "xdxf-png");
 }
 
+void WriteGlsFixture(const std::filesystem::path& root) {
+    const std::string glossary =
+        "### Glossary title: Installed GLS\n"
+        "### Source language: eng\n"
+        "### Target language: deu\n"
+        "### Glossary section:\n\n"
+        "example\n"
+        "<b>Installed GLS definition.</b> "
+        "<img src=\"images/pixel.png\">\n";
+    Write(root / "fixture.gls", glossary);
+    Write(root / "images" / "pixel.png", "gls-png");
+}
+
 int Fail(const std::string& message) {
     std::cerr << "headless_api_test: " << message << '\n';
     return EXIT_FAILURE;
@@ -330,6 +343,36 @@ int main() {
             xdxf_resource.size());
         if (xdxf_resource_text != "xdxf-png") {
             return Fail("installed XDXF resource retrieval failed");
+        }
+
+        const auto gls_root = directory.path() / "gls";
+        WriteGlsFixture(gls_root);
+        goldendict::core::CoreConfiguration gls_configuration;
+        gls_configuration.dictionary_paths = {gls_root.string()};
+        auto gls_service =
+            goldendict::core::CreateDictionaryService(gls_configuration);
+        const auto gls_catalog = gls_service->GetCatalog();
+        query = {};
+        query.text = "EXAMPLE";
+        const auto gls_response = gls_service->Lookup(query);
+        if (gls_catalog.size() != 1U ||
+            gls_catalog.front().id.rfind("gls-", 0) != 0U ||
+            !gls_response.errors.empty() || gls_response.entries.size() != 1U ||
+            gls_response.entries.front().language.source_language != "eng" ||
+            gls_response.entries.front().language.target_language != "deu" ||
+            !gls_response.entries.front().article.sanitized_html.has_value() ||
+            gls_response.entries.front().article.sanitized_html->find(
+                "Installed GLS definition.") == std::string::npos ||
+            gls_response.entries.front().resources.size() != 1U) {
+            return Fail("installed GLS lookup failed");
+        }
+        const auto gls_resource = gls_service->GetResource(
+            gls_response.entries.front().resources.front());
+        const std::string gls_resource_text(
+            reinterpret_cast<const char*>(gls_resource.data()),
+            gls_resource.size());
+        if (gls_resource_text != "gls-png") {
+            return Fail("installed GLS resource retrieval failed");
         }
 
         std::cout << "headless_api_test: installed fixture workflow passed\n";

@@ -8,6 +8,7 @@
 
 #include "goldendict/core/application.h"
 #include "support/dictd_fixture.h"
+#include "support/gls_fixture.h"
 #include "support/sdict_fixture.h"
 #include "support/stardict_fixture.h"
 #include "support/xdxf_fixture.h"
@@ -35,6 +36,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversAndQueriesDictdAlongsideStardict();
     void DiscoversSanitizesAndQueriesSdict();
     void DiscoversSanitizesAndQueriesXdxfResources();
+    void DiscoversSanitizesAndQueriesGlsResources();
     void CompletesAnOwnedAsynchronousLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -332,6 +334,35 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesXdxfResources() {
     QVERIFY(entry.article.sanitized_html->find("<b>XDXF article</b>") !=
             std::string::npos);
     QVERIFY(entry.article.sanitized_html->find("goldendict://lookup/target") !=
+            std::string::npos);
+    QCOMPARE(entry.resources.size(), std::size_t{1});
+    const auto data = service->GetResource(entry.resources.front());
+    QCOMPARE(data.size(), std::size_t{8});
+}
+
+void ApplicationServiceTest::DiscoversSanitizesAndQueriesGlsResources() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto path = test::WriteGlsFixture(
+        root,
+        {{{"example"}, "<b>GLS article</b> <img src=\"images/pixel.png\">"}});
+    test::WriteGlsResource(path, "images/pixel.png", "png-data");
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "EXAMPLE";
+
+    const auto catalog = service->GetCatalog();
+    const auto response = service->Lookup(query);
+
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().id.rfind("gls-", 0) == 0U);
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    const auto& entry = response.entries.front();
+    QVERIFY(entry.article.sanitized_html->find("<b>GLS article</b>") !=
             std::string::npos);
     QCOMPARE(entry.resources.size(), std::size_t{1});
     const auto data = service->GetResource(entry.resources.front());

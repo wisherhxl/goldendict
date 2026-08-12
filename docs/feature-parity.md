@@ -49,7 +49,7 @@
 | Dictd | slice | text batch | strict `.index` + bounded plain/dictzip data, folded lookup, suggestions, and corruption tests |
 | SDict | slice | text batch | bounded `.dct` parsing, plain/zlib/bzip2 fields, folded search/suggestions, sanitized HTML/link conversion, and corruption tests |
 | XDXF | slice | text batch | bounded XML/compressed XML, folded lookup/suggestions, sanitized markup/links, and confined directory resources; resource ZIP and full-text parity remain |
-| GLS | mapped | text batch | text/compressed text/resources |
+| GLS | slice | text batch | bounded UTF-8/UTF-16 and compressed text, metadata, aliases, folded lookup/suggestions, sanitized HTML, and confined directory resources; resource ZIP and full-text parity remain |
 | ABBYY Lingvo DSL | mapped | text batch | directives, markup, resource directory |
 | Babylon BGL | mapped | binary batch | compression, metadata, resources |
 | MDict MDX/MDD | mapped | binary batch | encryption/compression, styles, resources |
