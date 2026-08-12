@@ -49,7 +49,8 @@ std::string ReadBounded(const std::string& path) {
     }
     input.seekg(0, std::ios::end);
     const auto size = input.tellg();
-    if (size < 0 || static_cast<std::uintmax_t>(size) > kMaximumFavoritesBytes) {
+    if (size < 0 ||
+        static_cast<std::uintmax_t>(size) > kMaximumFavoritesBytes) {
         throw std::runtime_error("Cannot read bounded favorites file");
     }
     std::string contents(static_cast<std::size_t>(size), '\0');
@@ -106,6 +107,70 @@ void SerializeItems(const Favorites& items, std::string* output) {
         if (item.kind == FavoriteItemKind::kFolder) {
             SerializeItems(item.children, output);
         }
+    }
+}
+
+std::string EscapeXml(std::string_view text) {
+    std::string escaped;
+    for (const char character : text) {
+        switch (character) {
+            case '&':
+                escaped += "&amp;";
+                break;
+            case '<':
+                escaped += "&lt;";
+                break;
+            case '>':
+                escaped += "&gt;";
+                break;
+            case '"':
+                escaped += "&quot;";
+                break;
+            case '\'':
+                escaped += "&apos;";
+                break;
+            default:
+                escaped.push_back(character);
+                break;
+        }
+    }
+    return escaped;
+}
+
+void SerializeXmlItems(const Favorites& items, std::string* output) {
+    for (const auto& item : items) {
+        if (item.kind == FavoriteItemKind::kHeadword) {
+            *output += "<headword>" + EscapeXml(item.text) + "</headword>";
+            continue;
+        }
+        *output += "<folder name=\"" + EscapeXml(item.text) + "\" expanded=\"" +
+                   (item.expanded ? "1" : "0") + "\">";
+        SerializeXmlItems(item.children, output);
+        *output += "</folder>";
+    }
+}
+
+void WriteAtomically(const std::string& path, std::string_view contents) {
+    const std::filesystem::path destination(path);
+    if (!destination.parent_path().empty()) {
+        std::filesystem::create_directories(destination.parent_path());
+    }
+    const std::string temporary = destination.string() + ".tmp";
+    {
+        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+        output.write(contents.data(),
+                     static_cast<std::streamsize>(contents.size()));
+        output.close();
+        if (!output) {
+            throw std::runtime_error("Cannot write favorites file");
+        }
+    }
+    std::error_code error;
+    std::filesystem::rename(temporary, destination, error);
+    if (error) {
+        std::filesystem::remove(temporary);
+        throw std::runtime_error("Cannot replace favorites file: " +
+                                 error.message());
     }
 }
 
@@ -172,7 +237,7 @@ Favorites ParseItems(BinaryReader* reader, std::size_t depth,
         }
         FavoriteItem item;
         item.kind = kind == 1U ? FavoriteItemKind::kFolder
-                              : FavoriteItemKind::kHeadword;
+                               : FavoriteItemKind::kHeadword;
         item.expanded = expanded != 0U;
         item.text = reader->ReadText();
         if (item.kind == FavoriteItemKind::kFolder) {
@@ -284,8 +349,7 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
         }
         state->containers.back()->push_back(
             {FavoriteItemKind::kFolder, std::move(text), expanded, {}});
-        state->containers.push_back(
-            &state->containers.back()->back().children);
+        state->containers.push_back(&state->containers.back()->back().children);
     } else {
         Fail(state, "Legacy favorites has an unsupported element");
         return;
@@ -307,8 +371,9 @@ void XMLCALL CharacterData(void* user_data, const XML_Char* value, int length) {
         }
         return;
     }
-    if (length < 0 || state->headword.size() + static_cast<std::size_t>(length) >
-                          kMaximumTextBytes) {
+    if (length < 0 ||
+        state->headword.size() + static_cast<std::size_t>(length) >
+            kMaximumTextBytes) {
         Fail(state, "Legacy favorite headword is too large");
         return;
     }
@@ -363,9 +428,9 @@ Favorites LoadLegacy(const std::string& path) {
         throw std::runtime_error(state.error);
     }
     if (status != XML_STATUS_OK) {
-        throw std::runtime_error(std::string("Malformed legacy favorites XML: ") +
-                                 XML_ErrorString(
-                                     XML_GetErrorCode(parser.get())));
+        throw std::runtime_error(
+            std::string("Malformed legacy favorites XML: ") +
+            XML_ErrorString(XML_GetErrorCode(parser.get())));
     }
     if (!state.elements.empty() || !state.containers.empty()) {
         throw std::runtime_error("Legacy favorites XML is incomplete");
@@ -388,27 +453,24 @@ void SaveFavorites(const std::string& favorites_path,
     if (contents.size() > kMaximumFavoritesBytes) {
         throw std::runtime_error("Favorites exceed the size limit");
     }
-    const std::filesystem::path destination(favorites_path);
-    if (!destination.parent_path().empty()) {
-        std::filesystem::create_directories(destination.parent_path());
+    WriteAtomically(favorites_path, contents);
+}
+
+Favorites ImportFavoritesXml(const std::string& import_path) {
+    return LoadLegacy(import_path);
+}
+
+void ExportFavoritesXml(const std::string& export_path,
+                        const Favorites& favorites) {
+    std::size_t total = 0U;
+    ValidateItems(favorites, 0U, &total);
+    std::string contents = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root>";
+    SerializeXmlItems(favorites, &contents);
+    contents += "</root>\n";
+    if (contents.size() > kMaximumFavoritesBytes) {
+        throw std::runtime_error("Favorites XML exceeds the size limit");
     }
-    const std::string temporary = destination.string() + ".tmp";
-    {
-        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
-        output.write(contents.data(),
-                     static_cast<std::streamsize>(contents.size()));
-        output.close();
-        if (!output) {
-            throw std::runtime_error("Cannot write favorites file");
-        }
-    }
-    std::error_code error;
-    std::filesystem::rename(temporary, destination, error);
-    if (error) {
-        std::filesystem::remove(temporary);
-        throw std::runtime_error("Cannot replace favorites file: " +
-                                 error.message());
-    }
+    WriteAtomically(export_path, contents);
 }
 
 Favorites LoadOrMigrateFavorites(const std::string& favorites_path,

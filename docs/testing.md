@@ -126,6 +126,14 @@ adds a sibling and moves it upward, removes the complete subtree, and reloads
 the atomically persisted empty tree through the public core API in an isolated
 configuration directory.
 
+`favorites_store_test` also round-trips the legacy-compatible XML transfer
+format, including Unicode and XML escaping, and verifies that invalid exports
+do not replace an existing destination.
+
+`goldendict_favorites_transfer_smoke` exports a fixture folder through the
+application command, removes it, imports the generated XML, checks the restored
+tree, and reloads the atomically persisted replacement through the core API.
+
 `goldendict_history_export_smoke` exports a history containing ordinary and
 embedded-newline headwords, then verifies the compatibility UTF-8 BOM,
 one-headword-per-line sanitization, and exact file contents in an isolated

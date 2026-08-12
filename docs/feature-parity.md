@@ -105,7 +105,7 @@ not authorize dropping a legacy format.
 | Dictionary/group controls | mapped | Phase 8 | config round-trip |
 | Preferences and source editor | mapped | Phase 8 | settings migration tests |
 | History | slice | Phase 8 | bounded UTF-8/group-aware current store, legacy line-format migration, current-state precedence, atomic persistence, application lookup recording, case-insensitive live filtering, clear action, bounded UTF-8 text import, atomic text export, and a reusable history pane; group-selection UI remains |
-| Favorites | slice | Phase 8 | bounded hierarchical current store, strict legacy XML migration, current-state precedence, atomic persistence, reusable tree pane, root/selected-folder add, nested folder creation, item/folder rename, sibling reordering and removal, and re-lookup; cross-folder move and import/export UI remain |
+| Favorites | slice | Phase 8 | bounded hierarchical current store, strict legacy XML migration, current-state precedence, atomic persistence, reusable tree pane, root/selected-folder add, nested folder creation, item/folder rename, sibling reordering and removal, re-lookup, and bounded legacy-compatible XML import/export; cross-folder move remains |
 | Dictionary info/headword browser | slice | Phase 8 | facade-backed catalog identity/source display, bounded per-dictionary prefix suggestions, lookup activation, and fixture-backed UI smoke; counts, descriptions, export, advanced filtering, and local-file actions remain |
 | Scan popup | mapped | Phase 9 | X11 and Wayland behavior |
 | Global hotkeys | mapped | Phase 9 | X11 and Wayland behavior |

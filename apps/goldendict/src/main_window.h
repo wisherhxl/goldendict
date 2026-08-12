@@ -55,6 +55,8 @@ class MainWindow final : public QMainWindow {
     void RunHistoryImportSmokeCheck(const QString& path,
                                     std::function<void(bool)> completion);
     void RunFavoritesSmokeCheck(std::function<void(bool)> completion);
+    void RunFavoritesTransferSmokeCheck(const QString& path,
+                                        std::function<void(bool)> completion);
     void RunDictionaryBrowserSmokeCheck(std::function<void(bool)> completion);
 
    signals:
@@ -66,6 +68,8 @@ class MainWindow final : public QMainWindow {
                                     const QList<int>& parent_path);
     void RenameFavoriteRequested(const QList<int>& path, const QString& name);
     void MoveFavoriteRequested(const QList<int>& path, int offset);
+    void ImportFavoritesRequested(const QString& path);
+    void ExportFavoritesRequested(const QString& path);
     void RemoveFavoriteRequested(const QList<int>& path);
     void ClearHistoryRequested();
     void ImportHistoryRequested(const QString& path);
@@ -84,6 +88,8 @@ class MainWindow final : public QMainWindow {
     void ImportHistory();
     void CreateFavoriteFolder();
     void RenameFavorite();
+    void ImportFavorites();
+    void ExportFavorites();
 
    private:
     void ShowMessage(const QString& title, const QString& message);
@@ -106,6 +112,8 @@ class MainWindow final : public QMainWindow {
     QAction* rename_favorite_action_ = nullptr;
     QAction* move_favorite_up_action_ = nullptr;
     QAction* move_favorite_down_action_ = nullptr;
+    QAction* import_favorites_action_ = nullptr;
+    QAction* export_favorites_action_ = nullptr;
     QAction* remove_favorite_action_ = nullptr;
     QAction* dictionary_browser_action_ = nullptr;
     QPushButton* lookup_button_ = nullptr;

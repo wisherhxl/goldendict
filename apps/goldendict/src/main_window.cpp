@@ -134,6 +134,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     move_favorite_down_action_ =
         article_toolbar->addAction(QStringLiteral("Move Favorite Down"));
     move_favorite_down_action_->setEnabled(false);
+    import_favorites_action_ =
+        article_toolbar->addAction(QStringLiteral("Import Favorites"));
+    export_favorites_action_ =
+        article_toolbar->addAction(QStringLiteral("Export Favorites"));
     remove_favorite_action_ =
         article_toolbar->addAction(QStringLiteral("Remove Favorite"));
     remove_favorite_action_->setShortcut(QKeySequence::Delete);
@@ -246,6 +250,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 item->data(0, Qt::UserRole + 1).value<QList<int>>(), 1);
         }
     });
+    connect(import_favorites_action_, &QAction::triggered, this,
+            &MainWindow::ImportFavorites);
+    connect(export_favorites_action_, &QAction::triggered, this,
+            &MainWindow::ExportFavorites);
     connect(remove_favorite_action_, &QAction::triggered, this, [this]() {
         const auto* item = favorites_tree_->currentItem();
         if (item != nullptr) {
@@ -554,6 +562,65 @@ void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
     emit AddFavoriteFolderRequested(QStringLiteral("Smoke Folder"), {});
 }
 
+void MainWindow::RunFavoritesTransferSmokeCheck(
+    const QString& path, std::function<void(bool)> completion) {
+    const int initial_count = favorites_tree_->topLevelItemCount();
+    connect(
+        this, &MainWindow::AddFavoriteFolderRequested, this,
+        [this, path, initial_count, completion = std::move(completion)](
+            const QString& folder_name, const QList<int>& parent_path) mutable {
+            auto* folder = favorites_tree_->topLevelItem(initial_count);
+            const bool folder_added =
+                folder_name == QStringLiteral("Transfer Folder") &&
+                parent_path.isEmpty() && folder != nullptr;
+            connect(
+                this, &MainWindow::ExportFavoritesRequested, this,
+                [this, path, folder_added, folder, initial_count,
+                 completion = std::move(completion)](
+                    const QString& export_path) mutable {
+                    const bool exported = folder_added && export_path == path &&
+                                          QFileInfo(export_path).size() > 0;
+                    connect(
+                        this, &MainWindow::RemoveFavoriteRequested, this,
+                        [this, path, exported, initial_count,
+                         completion = std::move(completion)](
+                            const QList<int>& remove_path) mutable {
+                            const bool removed =
+                                exported &&
+                                remove_path == QList<int>{initial_count} &&
+                                favorites_tree_->topLevelItemCount() ==
+                                    initial_count;
+                            connect(
+                                this, &MainWindow::ImportFavoritesRequested,
+                                this,
+                                [this, path, removed, initial_count,
+                                 completion = std::move(completion)](
+                                    const QString& import_path) mutable {
+                                    auto* restored =
+                                        favorites_tree_->topLevelItem(
+                                            initial_count);
+                                    completion(
+                                        removed && import_path == path &&
+                                        favorites_tree_->topLevelItemCount() ==
+                                            initial_count + 1 &&
+                                        restored != nullptr &&
+                                        restored->text(0) ==
+                                            QStringLiteral("Transfer Folder"));
+                                },
+                                Qt::SingleShotConnection);
+                            emit ImportFavoritesRequested(path);
+                        },
+                        Qt::SingleShotConnection);
+                    favorites_tree_->setCurrentItem(folder);
+                    remove_favorite_action_->trigger();
+                },
+                Qt::SingleShotConnection);
+            emit ExportFavoritesRequested(path);
+        },
+        Qt::SingleShotConnection);
+    emit AddFavoriteFolderRequested(QStringLiteral("Transfer Folder"), {});
+}
+
 void MainWindow::RunDictionaryBrowserSmokeCheck(
     std::function<void(bool)> completion) {
     auto lookup_passed = std::make_shared<bool>(false);
@@ -671,6 +738,24 @@ void MainWindow::RenameFavorite() {
     if (accepted && !name.isEmpty() && name != item->text(0)) {
         emit RenameFavoriteRequested(
             item->data(0, Qt::UserRole + 1).value<QList<int>>(), name);
+    }
+}
+
+void MainWindow::ImportFavorites() {
+    const QString path = QFileDialog::getOpenFileName(
+        this, QStringLiteral("Import favorites from file"), QString(),
+        QStringLiteral("GoldenDict favorites (*.xml);;All files (*.*)"));
+    if (!path.isEmpty()) {
+        emit ImportFavoritesRequested(path);
+    }
+}
+
+void MainWindow::ExportFavorites() {
+    const QString path = QFileDialog::getSaveFileName(
+        this, QStringLiteral("Export favorites to file"), QString(),
+        QStringLiteral("GoldenDict favorites (*.xml);;All files (*.*)"));
+    if (!path.isEmpty()) {
+        emit ExportFavoritesRequested(path);
     }
 }
 

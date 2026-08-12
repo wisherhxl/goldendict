@@ -22,6 +22,7 @@ class FavoritesStoreTest : public QObject {
     void CurrentFavoritesTakePrecedence();
     void RejectsMalformedLegacyWithoutPartialMigration();
     void RejectsLegacyEntityDeclarations();
+    void ImportsAndExportsCompatibilityXml();
 };
 
 std::filesystem::path Path(const QTemporaryDir& directory, const char* name) {
@@ -125,6 +126,33 @@ void FavoritesStoreTest::RejectsLegacyEntityDeclarations() {
         LoadOrMigrateFavorites(current.string(), legacy.string()),
         std::runtime_error);
     QVERIFY(!std::filesystem::exists(current));
+}
+
+void FavoritesStoreTest::ImportsAndExportsCompatibilityXml() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = Path(directory, "favorites.xml");
+    const Favorites expected = {
+        {FavoriteItemKind::kFolder,
+         "A & \"B\"",
+         true,
+         {{FavoriteItemKind::kHeadword, "<café>", false, {}}}},
+        {FavoriteItemKind::kHeadword, "rock'n", false, {}}};
+
+    ExportFavoritesXml(path.string(), expected);
+
+    QCOMPARE(ImportFavoritesXml(path.string()), expected);
+    QCOMPARE(Read(path),
+             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root>"
+             "<folder name=\"A &amp; &quot;B&quot;\" expanded=\"1\">"
+             "<headword>&lt;café&gt;</headword></folder>"
+             "<headword>rock&apos;n</headword></root>\n");
+
+    Write(path, "sentinel");
+    const Favorites invalid = {{FavoriteItemKind::kHeadword, {}, false, {}}};
+    QVERIFY_EXCEPTION_THROWN(ExportFavoritesXml(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(Read(path), "sentinel");
 }
 
 }  // namespace

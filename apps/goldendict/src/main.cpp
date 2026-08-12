@@ -416,6 +416,34 @@ int main(int argc, char* argv[]) {
                                  QString::fromLocal8Bit(error.what()));
                          }
                      });
+    QObject::connect(
+        &window, &MainWindow::ImportFavoritesRequested, &window,
+        [&](const QString& path) {
+            try {
+                auto imported =
+                    goldendict::core::ImportFavoritesXml(path.toStdString());
+                goldendict::core::SaveFavorites(favorites_path.toStdString(),
+                                                imported);
+                favorites = std::move(imported);
+                refresh_favorites();
+            } catch (const std::exception& error) {
+                QMessageBox::warning(&window,
+                                     QStringLiteral("GoldenDict favorites"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+        });
+    QObject::connect(&window, &MainWindow::ExportFavoritesRequested, &window,
+                     [&](const QString& path) {
+                         try {
+                             goldendict::core::ExportFavoritesXml(
+                                 path.toStdString(), favorites);
+                         } catch (const std::exception& error) {
+                             QMessageBox::warning(
+                                 &window,
+                                 QStringLiteral("GoldenDict favorites"),
+                                 QString::fromLocal8Bit(error.what()));
+                         }
+                     });
     QObject::connect(&window, &MainWindow::DictionaryDirectorySelected, &window,
                      [&](const QString& directory) {
                          auto updated = configuration;
@@ -474,6 +502,39 @@ int main(int argc, char* argv[]) {
                 app.exit(passed ? 0 : 1);
             });
         });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--favorites-transfer-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window,
+            [&app, &configuration_directory, &favorites_path, &window]() {
+                QDir().mkpath(configuration_directory);
+                const QString transfer_path =
+                    QDir(configuration_directory)
+                        .filePath(QStringLiteral("favorites-transfer.xml"));
+                window.RunFavoritesTransferSmokeCheck(
+                    transfer_path, [&app, &favorites_path](bool passed) {
+                        try {
+                            const auto persisted =
+                                goldendict::core::LoadFavorites(
+                                    favorites_path.toStdString());
+                            passed =
+                                passed &&
+                                std::any_of(
+                                    persisted.begin(), persisted.end(),
+                                    [](const auto& item) {
+                                        return item.kind ==
+                                                   goldendict::core::
+                                                       FavoriteItemKind::
+                                                           kFolder &&
+                                               item.text == "Transfer Folder";
+                                    });
+                        } catch (const std::exception&) {
+                            passed = false;
+                        }
+                        app.exit(passed ? 0 : 1);
+                    });
+            });
     } else if (HasArgument(argc, argv,
                            QStringLiteral("--dictionary-browser-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });

@@ -26,17 +26,23 @@ struct FavoriteItem {
 
 using Favorites = std::vector<FavoriteItem>;
 
-GOLDENDICT_EXPORTS Favorites LoadFavorites(
-    const std::string& favorites_path);
+GOLDENDICT_EXPORTS Favorites LoadFavorites(const std::string& favorites_path);
 GOLDENDICT_EXPORTS void SaveFavorites(const std::string& favorites_path,
                                       const Favorites& favorites);
+
+// Imports/exports the bounded legacy-compatible UTF-8 XML tree. Export uses
+// atomic replacement and import validates the complete document before
+// returning any state.
+GOLDENDICT_EXPORTS Favorites ImportFavoritesXml(const std::string& import_path);
+GOLDENDICT_EXPORTS void ExportFavoritesXml(const std::string& export_path,
+                                           const Favorites& favorites);
 
 // Loads current favorites when present. Otherwise imports the bounded legacy
 // XML tree, atomically saves the current format, and leaves legacy data
 // untouched. Missing files produce an empty tree.
-GOLDENDICT_EXPORTS Favorites LoadOrMigrateFavorites(
-    const std::string& favorites_path,
-    const std::string& legacy_favorites_path);
+GOLDENDICT_EXPORTS Favorites
+LoadOrMigrateFavorites(const std::string& favorites_path,
+                       const std::string& legacy_favorites_path);
 
 }  // namespace goldendict::core
 
