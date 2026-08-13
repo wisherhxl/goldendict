@@ -381,8 +381,15 @@ configuration. It canonically stores stable identity, display name, enabled
 intent, and only fields accepted by the Phase 7 adapters. Forvo credentials,
 website iframe and legacy query-encoding settings, runtime composition, UI,
 and network activity remain excluded. Older current files receive fixed safe
-defaults. The one-shot complete P4c legacy source migration remains separately
-pending.
+defaults. The P4c closure imports all P4a-supported legacy source families in
+the same bounded Expat pass as the rest of the configuration and persists only
+after the complete candidate validates. MediaWiki and credential-free Forvo
+records map directly. Websites require the supported `%GDWORD%` template and
+explicit non-iframe intent. DICT URLs map to a credential-free host and port,
+with the legacy empty database/strategy defaults, only when each list contains
+at most one value. Icons, API keys, userinfo, legacy query encodings,
+iframe-enabled websites, and multi-database or multi-strategy DICT records are
+not imported; recognized unrepresentable intent aborts the entire migration.
 
 The P4b external-program current-persistence increment adds ordered bounded
 shell-free program records with stable identity, enabled intent, plain-text,
@@ -390,8 +397,13 @@ HTML, or prefix-match output, absolute executable paths, ordered argument
 templates, and optional absolute working directories. Canonical collection and
 argument counts distinguish explicit empty state and reject malformed parent or
 argument ordering. Audio programs, icons, environment and process policy,
-runtime composition, UI, and execution remain excluded. The one-shot complete
-P4c legacy source migration remains pending.
+runtime composition, UI, and execution remain excluded. P4c parses legacy
+external command lines with the pinned GoldenDict grammar and stores the
+absolute executable plus ordered arguments without a shell. Only plain-text,
+HTML, and prefix-match programs are representable. Audio, relative, empty,
+shell-dependent, and otherwise invalid commands abort the entire migration;
+icons remain excluded. This closes P4 and unlocks P5 source composition without
+activating adapters, processes, networking, or UI here.
 
 The current-preferences foundation adds deterministic portable defaults and
 bounded optional preference records to the core-owned current configuration.

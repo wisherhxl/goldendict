@@ -5,16 +5,19 @@
 #include <expat.h>
 
 #include <algorithm>
+#include <cctype>
 #include <charconv>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
 #include <type_traits>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -36,6 +39,15 @@ constexpr std::size_t kMaximumEncodedMainWindowGeometryBytes =
     ((kMaximumMainWindowGeometryBytes + 2U) / 3U) * 4U;
 constexpr std::uint32_t kKnownScanPopupModifierMask = 0x03ffU;
 
+enum class SourceContainer : std::uint8_t {
+    kForvo,
+    kMediaWikis,
+    kWebsites,
+    kDictServers,
+    kPrograms,
+    kCount
+};
+
 struct ParserDeleter {
     void operator()(XML_Parser parser) const noexcept {
         XML_ParserFree(parser);
@@ -54,9 +66,173 @@ struct LegacyParserState {
     std::string preference_key;
     bool reading_main_window_geometry = false;
     bool has_main_window_geometry = false;
+    bool source_containers[static_cast<std::size_t>(SourceContainer::kCount)] =
+        {};
+    std::unordered_set<std::string> online_ids;
+    std::unordered_set<std::string> forvo_fields;
+    std::string forvo_field;
     bool failed = false;
     std::string error;
 };
+
+template <typename Integer>
+Integer ParseInteger(std::string_view value);
+
+bool IsDirectElement(const LegacyParserState& state, std::string_view parent,
+                     std::string_view element) {
+    return state.elements.size() == 3U && state.elements[0] == "config" &&
+           state.elements[1] == parent && state.elements[2] == element;
+}
+
+bool IsContainer(const LegacyParserState& state, std::string_view name) {
+    return state.elements.size() == 2U && state.elements[0] == "config" &&
+           state.elements[1] == name;
+}
+
+std::unordered_map<std::string, std::string> ReadAttributes(
+    const XML_Char** attributes,
+    std::initializer_list<std::string_view> allowed) {
+    std::unordered_map<std::string, std::string> result;
+    for (std::size_t index = 0U; attributes[index] != nullptr; index += 2U) {
+        const std::string_view key(attributes[index]);
+        const std::string_view value(attributes[index + 1U]);
+        if (std::find(allowed.begin(), allowed.end(), key) == allowed.end() ||
+            value.size() > kMaximumLegacyValueBytes ||
+            !result.emplace(key, value).second) {
+            throw std::runtime_error("invalid source attribute");
+        }
+    }
+    return result;
+}
+
+const std::string& RequiredAttribute(
+    const std::unordered_map<std::string, std::string>& attributes,
+    std::string_view name) {
+    const auto found = attributes.find(std::string(name));
+    if (found == attributes.end())
+        throw std::runtime_error("missing source attribute");
+    return found->second;
+}
+
+void AddOnlineId(LegacyParserState& state, const std::string& id) {
+    if (!state.online_ids.insert(id).second)
+        throw std::runtime_error("duplicate online source ID");
+}
+
+std::pair<std::string, std::uint16_t> ParseDictUrl(std::string_view value) {
+    constexpr std::string_view kScheme = "dict://";
+    if (value.substr(0U, kScheme.size()) == kScheme)
+        value.remove_prefix(kScheme.size());
+    else if (value.find("://") != std::string_view::npos)
+        throw std::runtime_error("unsupported DICT URL scheme");
+    if (value.empty() || value.find_first_of("/@?#") != std::string_view::npos)
+        throw std::runtime_error("invalid DICT URL");
+    std::uint16_t port = 2628U;
+    const auto colon = value.rfind(':');
+    if (colon != std::string_view::npos) {
+        if (value.find(':') != colon)
+            throw std::runtime_error("unsupported DICT host syntax");
+        port = ParseInteger<std::uint16_t>(value.substr(colon + 1U));
+        if (port == 0U)
+            throw std::runtime_error("invalid DICT port");
+        value = value.substr(0U, colon);
+    }
+    if (value.empty())
+        throw std::runtime_error("empty DICT host");
+    return {std::string(value), port};
+}
+
+std::string ParseSingleDictAtom(std::string_view value,
+                                std::string_view default_value) {
+    std::vector<std::string> atoms;
+    std::size_t start = 0U;
+    for (std::size_t index = 0U; index <= value.size(); ++index) {
+        if (index != value.size() && value[index] != ' ' &&
+            value[index] != ',' && value[index] != ';') {
+            continue;
+        }
+        if (index > start)
+            atoms.emplace_back(value.substr(start, index - start));
+        start = index + 1U;
+    }
+    if (atoms.empty())
+        return std::string(default_value);
+    if (atoms.size() != 1U)
+        throw std::runtime_error("unrepresentable DICT list");
+    return std::move(atoms.front());
+}
+
+std::vector<std::string> ParseLegacyCommandLine(std::string_view command_line) {
+    std::vector<std::string> arguments;
+    bool open_quote = false;
+    bool possible_double_quote = false;
+    bool start_new = true;
+    std::size_t index = 0U;
+    while (index < command_line.size()) {
+        const char character = command_line[index];
+        if (character == '"' && !possible_double_quote) {
+            ++index;
+            if (!open_quote) {
+                open_quote = true;
+                if (start_new) {
+                    arguments.emplace_back();
+                    start_new = false;
+                }
+            } else {
+                possible_double_quote = true;
+            }
+        } else if (possible_double_quote && character != '"') {
+            open_quote = false;
+            possible_double_quote = false;
+        } else if (character == ' ' && !open_quote) {
+            ++index;
+            start_new = true;
+        } else {
+            if (start_new) {
+                arguments.emplace_back();
+                start_new = false;
+            }
+            arguments.back().push_back(character);
+            ++index;
+            possible_double_quote = false;
+        }
+    }
+    return arguments;
+}
+
+bool IsShellExecutable(const std::filesystem::path& executable) {
+    std::string name = executable.filename().string();
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return name == "sh" || name == "bash" || name == "dash" || name == "zsh" ||
+           name == "fish" || name == "csh" || name == "tcsh" || name == "cmd" ||
+           name == "cmd.exe" || name == "powershell" ||
+           name == "powershell.exe" || name == "pwsh" || name == "pwsh.exe";
+}
+
+bool IsSourceRecord(const LegacyParserState& state) {
+    return IsDirectElement(state, "mediawikis", "mediawiki") ||
+           IsDirectElement(state, "websites", "website") ||
+           IsDirectElement(state, "dictservers", "server") ||
+           IsDirectElement(state, "programs", "program");
+}
+
+bool IsSourceContainerName(std::string_view name) {
+    return name == "forvo" || name == "mediawikis" || name == "websites" ||
+           name == "dictservers" || name == "programs";
+}
+
+bool HasUnsupportedWebsiteMarker(std::string_view value) {
+    constexpr std::string_view kSupported = "%GDWORD%";
+    std::size_t position = 0U;
+    while ((position = value.find("%GD", position)) != std::string_view::npos) {
+        if (value.substr(position, kSupported.size()) != kSupported)
+            return true;
+        position += kSupported.size();
+    }
+    return false;
+}
 
 template <typename Integer>
 Integer ParseInteger(std::string_view value) {
@@ -449,6 +625,7 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
                           const XML_Char** attributes) {
     auto* state = static_cast<LegacyParserState*>(user_data);
     if (IsPathElement(*state) || IsSoundDirectoryElement(*state) ||
+        IsSourceRecord(*state) || !state->forvo_field.empty() ||
         CurrentGroupValue(*state) != GroupValue::kNone ||
         !state->preference_key.empty() || state->reading_main_window_geometry) {
         Fail(state, "Legacy configuration values cannot contain markup");
@@ -461,6 +638,155 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
     state->elements.emplace_back(name);
     if (state->elements.size() == 1U && state->elements.front() != "config") {
         Fail(state, "Legacy configuration has an invalid root element");
+        return;
+    }
+    const auto begin_container = [&](SourceContainer container) {
+        if (attributes[0] != nullptr)
+            throw std::runtime_error("invalid legacy source container");
+        const auto index = static_cast<std::size_t>(container);
+        if (state->source_containers[index])
+            throw std::runtime_error("duplicate legacy source container");
+        state->source_containers[index] = true;
+    };
+    try {
+        if (IsContainer(*state, "forvo")) {
+            begin_container(SourceContainer::kForvo);
+            state->configuration.forvo_sources = {
+                {"forvo", "Forvo", false, "https://apifree.forvo.com", {}}};
+            return;
+        }
+        if (IsContainer(*state, "mediawikis")) {
+            begin_container(SourceContainer::kMediaWikis);
+            state->configuration.mediawiki_sources.clear();
+            return;
+        }
+        if (IsContainer(*state, "websites")) {
+            begin_container(SourceContainer::kWebsites);
+            state->configuration.website_sources.clear();
+            return;
+        }
+        if (IsContainer(*state, "dictservers")) {
+            begin_container(SourceContainer::kDictServers);
+            state->configuration.dict_server_sources.clear();
+            return;
+        }
+        if (IsContainer(*state, "programs")) {
+            begin_container(SourceContainer::kPrograms);
+            state->configuration.external_program_sources.clear();
+            return;
+        }
+        if (state->elements.size() == 3U && state->elements[0] == "config" &&
+            state->elements[1] == "forvo") {
+            const std::string_view field = state->elements[2];
+            if (field != "enable" && field != "apiKey" &&
+                field != "languageCodes") {
+                throw std::runtime_error("unsupported Forvo field");
+            }
+            if (attributes[0] != nullptr ||
+                !state->forvo_fields.insert(std::string(field)).second) {
+                throw std::runtime_error("invalid or duplicate Forvo field");
+            }
+            state->forvo_field = field;
+            state->value.clear();
+            return;
+        }
+        if (IsDirectElement(*state, "mediawikis", "mediawiki")) {
+            if (state->configuration.mediawiki_sources.size() ==
+                kMaximumOnlineSources)
+                throw std::runtime_error("too many MediaWiki sources");
+            const auto values = ReadAttributes(
+                attributes, {"id", "name", "url", "enabled", "icon"});
+            const auto& id = RequiredAttribute(values, "id");
+            AddOnlineId(*state, id);
+            state->configuration.mediawiki_sources.push_back(
+                {id, RequiredAttribute(values, "name"),
+                 ParseBoolean(RequiredAttribute(values, "enabled")),
+                 RequiredAttribute(values, "url")});
+            return;
+        }
+        if (IsDirectElement(*state, "websites", "website")) {
+            if (state->configuration.website_sources.size() ==
+                kMaximumOnlineSources)
+                throw std::runtime_error("too many website sources");
+            const auto values = ReadAttributes(
+                attributes,
+                {"id", "name", "url", "enabled", "icon", "inside_iframe"});
+            if (ParseBoolean(RequiredAttribute(values, "inside_iframe")))
+                throw std::runtime_error("iframe website is unrepresentable");
+            if (HasUnsupportedWebsiteMarker(RequiredAttribute(values, "url")))
+                throw std::runtime_error(
+                    "website encoding marker is unrepresentable");
+            const auto& id = RequiredAttribute(values, "id");
+            AddOnlineId(*state, id);
+            state->configuration.website_sources.push_back(
+                {id, RequiredAttribute(values, "name"),
+                 ParseBoolean(RequiredAttribute(values, "enabled")),
+                 RequiredAttribute(values, "url")});
+            return;
+        }
+        if (IsDirectElement(*state, "dictservers", "server")) {
+            if (state->configuration.dict_server_sources.size() ==
+                kMaximumOnlineSources)
+                throw std::runtime_error("too many DICT sources");
+            const auto values =
+                ReadAttributes(attributes, {"id", "name", "url", "enabled",
+                                            "databases", "strategies", "icon"});
+            const auto& id = RequiredAttribute(values, "id");
+            AddOnlineId(*state, id);
+            auto [host, port] = ParseDictUrl(RequiredAttribute(values, "url"));
+            state->configuration.dict_server_sources.push_back(
+                {id, RequiredAttribute(values, "name"),
+                 ParseBoolean(RequiredAttribute(values, "enabled")),
+                 std::move(host), port,
+                 ParseSingleDictAtom(RequiredAttribute(values, "databases"),
+                                     "*"),
+                 ParseSingleDictAtom(RequiredAttribute(values, "strategies"),
+                                     "prefix")});
+            return;
+        }
+        if (IsDirectElement(*state, "programs", "program")) {
+            if (state->configuration.external_program_sources.size() ==
+                kMaximumOnlineSources)
+                throw std::runtime_error("too many external programs");
+            const auto values = ReadAttributes(
+                attributes,
+                {"id", "name", "commandLine", "enabled", "type", "icon"});
+            const auto type =
+                ParseInteger<std::uint8_t>(RequiredAttribute(values, "type"));
+            if (type == 0U || type > 3U)
+                throw std::runtime_error("unsupported external program type");
+            auto arguments = ParseLegacyCommandLine(
+                RequiredAttribute(values, "commandLine"));
+            if (arguments.empty() || arguments.front().empty() ||
+                arguments.size() - 1U > kMaximumExternalProgramArguments) {
+                throw std::runtime_error("invalid external program command");
+            }
+            std::string executable = std::move(arguments.front());
+            arguments.erase(arguments.begin());
+            if (!std::filesystem::path(executable).is_absolute() ||
+                executable.find("%GDWORD%") != std::string::npos ||
+                IsShellExecutable(executable)) {
+                throw std::runtime_error(
+                    "unrepresentable external program command");
+            }
+            const auto& id = RequiredAttribute(values, "id");
+            AddOnlineId(*state, id);
+            state->configuration.external_program_sources.push_back(
+                {id,
+                 RequiredAttribute(values, "name"),
+                 ParseBoolean(RequiredAttribute(values, "enabled")),
+                 static_cast<ExternalProgramOutputKind>(type - 1U),
+                 std::move(executable),
+                 std::move(arguments),
+                 {}});
+            return;
+        }
+        if (state->elements.size() >= 3U && state->elements[0] == "config" &&
+            IsSourceContainerName(state->elements[1])) {
+            throw std::runtime_error("unsupported legacy source markup");
+        }
+    } catch (const std::runtime_error&) {
+        Fail(state, "Legacy source configuration is invalid or unsupported");
         return;
     }
     if (IsMainWindowGeometryElement(*state)) {
@@ -605,15 +931,21 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
 
 void XMLCALL CharacterData(void* user_data, const XML_Char* value, int length) {
     auto* state = static_cast<LegacyParserState*>(user_data);
+    if (IsSourceRecord(*state)) {
+        if (length != 0)
+            Fail(state, "Legacy source records cannot contain text");
+        return;
+    }
     if (!IsPathElement(*state) && !IsSoundDirectoryElement(*state) &&
         CurrentGroupValue(*state) == GroupValue::kNone &&
-        state->preference_key.empty() && !state->reading_main_window_geometry) {
+        state->preference_key.empty() && state->forvo_field.empty() &&
+        !state->reading_main_window_geometry) {
         return;
     }
     const std::size_t maximum =
         state->reading_main_window_geometry
             ? kMaximumEncodedMainWindowGeometryBytes
-        : !state->preference_key.empty()
+        : !state->preference_key.empty() || !state->forvo_field.empty()
             ? kMaximumPreferenceValueBytes
             : (CurrentGroupValue(*state) == GroupValue::kNone
                    ? kMaximumLegacyValueBytes
@@ -628,8 +960,52 @@ void XMLCALL CharacterData(void* user_data, const XML_Char* value, int length) {
 
 void XMLCALL EndElement(void* user_data, const XML_Char*) {
     auto* state = static_cast<LegacyParserState*>(user_data);
-    if (state->reading_main_window_geometry &&
-        IsMainWindowGeometryElement(*state)) {
+    if (!state->forvo_field.empty() && state->elements.size() == 3U &&
+        state->elements[0] == "config" && state->elements[1] == "forvo" &&
+        state->elements[2] == state->forvo_field) {
+        try {
+            auto& forvo = state->configuration.forvo_sources.front();
+            if (state->forvo_field == "enable") {
+                forvo.enabled = ParseBoolean(state->value);
+            } else if (state->forvo_field == "languageCodes") {
+                std::size_t start = 0U;
+                while (start <= state->value.size()) {
+                    const auto comma = state->value.find(',', start);
+                    std::string language = state->value.substr(
+                        start, comma == std::string::npos
+                                   ? state->value.size() - start
+                                   : comma - start);
+                    const auto not_space = [](unsigned char character) {
+                        return std::isspace(character) == 0;
+                    };
+                    language.erase(language.begin(),
+                                   std::find_if(language.begin(),
+                                                language.end(), not_space));
+                    language.erase(std::find_if(language.rbegin(),
+                                                language.rend(), not_space)
+                                       .base(),
+                                   language.end());
+                    if (language.empty())
+                        throw std::runtime_error("empty Forvo language");
+                    forvo.language_codes.push_back(std::move(language));
+                    if (comma == std::string::npos)
+                        break;
+                    start = comma + 1U;
+                }
+            }
+        } catch (const std::runtime_error&) {
+            Fail(state, "Legacy Forvo configuration is invalid");
+            return;
+        }
+        state->forvo_field.clear();
+    } else if (IsContainer(*state, "forvo")) {
+        if (state->forvo_fields.count("enable") == 0U ||
+            state->forvo_fields.count("languageCodes") == 0U) {
+            Fail(state, "Legacy Forvo configuration is incomplete");
+            return;
+        }
+    } else if (state->reading_main_window_geometry &&
+               IsMainWindowGeometryElement(*state)) {
         try {
             state->configuration.main_window_geometry =
                 DecodeMainWindowGeometry(state->value);
@@ -758,6 +1134,7 @@ CoreConfiguration ImportLegacyConfiguration(const std::string& path,
     if (!state.elements.empty()) {
         throw std::runtime_error("Legacy configuration XML is incomplete");
     }
+    ValidateConfiguration(state.configuration);
     return state.configuration;
 }
 

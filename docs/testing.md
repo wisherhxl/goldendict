@@ -130,6 +130,16 @@ identity uniqueness, adapter-compatible path and template bounds, output-kind
 validation, malformed UTF-8 and controls, orphan and ordering rejection, and
 atomic rejected-save preservation. Legacy migration, composition, UI, and
 process execution remain outside P4b.
+P4c coverage performs one complete legacy configuration migration containing
+MediaWiki, website, Forvo, DICT, and external-program records. It pins family
+order, safe missing and empty defaults, secret and icon exclusion, legacy DICT
+defaults, and the exact pinned command-line token grammar. Duplicate
+containers or global IDs, malformed values, entities or markup, unsupported
+iframe/encoding/list intent, userinfo, bounds, and unsafe or unrepresentable
+programs abort without a current or temporary file and leave the legacy bytes
+unchanged. A current file still takes precedence without parsing malformed
+legacy XML. P4c adds persistence only; P5 composition, network calls, and
+process execution remain separate.
 `goldendict_source_directories_smoke` exercises offscreen remove, reorder,
 inline edit, and cancel behavior plus invalid-candidate rollback, forced save
 failure, duplicate preservation, successful facade replacement, exact tab

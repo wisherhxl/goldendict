@@ -53,6 +53,8 @@ class ApplicationServiceTest : public QObject {
     void ConfigurationRejectsGroupBoundsAndDuplicatesAtomically();
     void ConfigurationRejectsMalformedGroups();
     void MigratesLegacyPathsWithoutTouchingTheSource();
+    void MigratesAllLegacyOnlineSourcesAtomically();
+    void RejectsUnsupportedLegacyOnlineSourcesAtomically();
     void MissingLegacyPreferencesRetainCurrentDefaults();
     void RejectsMalformedLegacyPreferencesAtomically();
     void CurrentConfigurationTakesPrecedenceOverLegacy();
@@ -1142,6 +1144,191 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(round_trip.dictionary_groups, migrated.dictionary_groups);
     QCOMPARE(round_trip.preferences, migrated.preferences);
     QCOMPARE(round_trip.main_window_geometry, migrated.main_window_geometry);
+}
+
+void ApplicationServiceTest::MigratesAllLegacyOnlineSourcesAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto legacy_path = root / "config";
+    const auto current_path = root / "core.conf";
+    const std::string legacy =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><config>"
+        "<mediawikis>"
+        "<mediawiki id=\"wiki-a\" name=\"Wiki A\" "
+        "url=\"https://a.example/w\" enabled=\"1\" icon=\"secret-a\"/>"
+        "<mediawiki id=\"wiki-b\" name=\"Wiki B\" "
+        "url=\"http://b.example/w\" enabled=\"0\" icon=\"\"/>"
+        "</mediawikis><websites>"
+        "<website id=\"site\" name=\"Site\" "
+        "url=\"https://site.example/?q=%GDWORD%\" enabled=\"1\" "
+        "icon=\"private-icon\" inside_iframe=\"0\"/>"
+        "</websites><forvo><enable>1</enable>"
+        "<apiKey>never-persist-this-key</apiKey>"
+        "<languageCodes> en, zh-CN </languageCodes></forvo>"
+        "<dictservers>"
+        "<server id=\"dict-a\" name=\"DICT A\" "
+        "url=\"dict://dict.example:2630\" enabled=\"1\" "
+        "databases=\"wn\" strategies=\"exact\" icon=\"ignored\"/>"
+        "<server id=\"dict-defaults\" name=\"DICT Defaults\" "
+        "url=\"default.example\" enabled=\"0\" databases=\"\" "
+        "strategies=\"\" icon=\"\"/>"
+        "</dictservers><programs>"
+        "<program id=\"plain\" name=\"Plain\" "
+        "commandLine=\"/usr/bin/tool &quot;two words&quot; "
+        "&quot;&quot; %GDWORD%\" enabled=\"1\" type=\"1\" icon=\"x\"/>"
+        "<program id=\"html\" name=\"HTML\" commandLine=\"/opt/render --html\" "
+        "enabled=\"0\" type=\"2\" icon=\"\"/>"
+        "<program id=\"prefix\" name=\"Prefix\" "
+        "commandLine=\"/opt/prefix %GDWORD%\" enabled=\"1\" type=\"3\" "
+        "icon=\"\"/>"
+        "<program id=\"quotes\" name=\"Quotes\" "
+        "commandLine=\"/opt/quote &quot;a&quot;&quot;b&quot; &quot;open a|b\" "
+        "enabled=\"0\" type=\"1\" icon=\"\"/>"
+        "</programs></config>";
+    test::WriteBinaryFile(legacy_path, legacy);
+
+    const auto migrated = LoadOrMigrateConfiguration(
+        current_path.string(), legacy_path.string(), "/indexes");
+
+    QCOMPARE(migrated.mediawiki_sources,
+             (std::vector<MediaWikiSourceConfiguration>{
+                 {"wiki-a", "Wiki A", true, "https://a.example/w"},
+                 {"wiki-b", "Wiki B", false, "http://b.example/w"}}));
+    QCOMPARE(migrated.website_sources,
+             (std::vector<WebsiteSourceConfiguration>{
+                 {"site", "Site", true, "https://site.example/?q=%GDWORD%"}}));
+    QCOMPARE(
+        migrated.forvo_sources,
+        (std::vector<ForvoSourceConfiguration>{{"forvo",
+                                                "Forvo",
+                                                true,
+                                                "https://apifree.forvo.com",
+                                                {"en", "zh-CN"}}}));
+    QCOMPARE(
+        migrated.dict_server_sources,
+        (std::vector<DictServerSourceConfiguration>{
+            {"dict-a", "DICT A", true, "dict.example", 2630U, "wn", "exact"},
+            {"dict-defaults", "DICT Defaults", false, "default.example", 2628U,
+             "*", "prefix"}}));
+    QCOMPARE(migrated.external_program_sources.size(), std::size_t{4});
+    QCOMPARE(migrated.external_program_sources[0].executable, "/usr/bin/tool");
+    QCOMPARE(migrated.external_program_sources[0].argument_templates,
+             (std::vector<std::string>{"two words", "", "%GDWORD%"}));
+    QCOMPARE(migrated.external_program_sources[0].output_kind,
+             ExternalProgramOutputKind::kPlainText);
+    QCOMPARE(migrated.external_program_sources[1].output_kind,
+             ExternalProgramOutputKind::kHtml);
+    QCOMPARE(migrated.external_program_sources[2].output_kind,
+             ExternalProgramOutputKind::kPrefixMatch);
+    QCOMPARE(migrated.external_program_sources[3].argument_templates,
+             (std::vector<std::string>{"a\"b", "open a|b"}));
+    QCOMPARE(LoadConfiguration(current_path.string()).external_program_sources,
+             migrated.external_program_sources);
+    QCOMPARE(ReadFile(legacy_path), legacy);
+    QVERIFY(ReadFile(current_path).find("never-persist-this-key") ==
+            std::string::npos);
+    QVERIFY(ReadFile(current_path).find("private-icon") == std::string::npos);
+
+    const auto defaults_legacy_path = root / "defaults-config";
+    const auto defaults_current_path = root / "defaults-core.conf";
+    const std::string defaults_legacy =
+        "<config><mediawikis/><websites/><dictservers/><programs/></config>";
+    test::WriteBinaryFile(defaults_legacy_path, defaults_legacy);
+    const auto defaults =
+        LoadOrMigrateConfiguration(defaults_current_path.string(),
+                                   defaults_legacy_path.string(), "/indexes");
+    QVERIFY(defaults.mediawiki_sources.empty());
+    QVERIFY(defaults.website_sources.empty());
+    QVERIFY(defaults.dict_server_sources.empty());
+    QVERIFY(defaults.external_program_sources.empty());
+    QCOMPARE(
+        defaults.forvo_sources,
+        (std::vector<ForvoSourceConfiguration>{{"forvo",
+                                                "Forvo",
+                                                false,
+                                                "https://apifree.forvo.com",
+                                                {"en", "ru"}}}));
+    QCOMPARE(ReadFile(defaults_legacy_path), defaults_legacy);
+}
+
+void ApplicationServiceTest::RejectsUnsupportedLegacyOnlineSourcesAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto legacy_path = root / "config";
+    const auto current_path = root / "core.conf";
+    std::vector<std::string> invalid = {
+        "<mediawikis/><mediawikis/>",
+        "<mediawikis><mediawiki id=\"same\" name=\"A\" url=\"https://a/w\" "
+        "enabled=\"1\"/></mediawikis><websites><website id=\"same\" name=\"B\" "
+        "url=\"https://b/?q=%GDWORD%\" enabled=\"0\" "
+        "inside_iframe=\"0\"/></websites>",
+        "<mediawikis><mediawiki id=\"wiki\" name=\"A\" url=\"https://a/w\" "
+        "enabled=\"true\"/></mediawikis>",
+        "<websites><website id=\"site\" name=\"S\" "
+        "url=\"https://s/?q=%GDWORD%\" enabled=\"1\" "
+        "inside_iframe=\"1\"/></websites>",
+        "<websites><website id=\"site\" name=\"S\" "
+        "url=\"https://s/?q=%GD1251%\" enabled=\"1\" "
+        "inside_iframe=\"0\"/></websites>",
+        "<forvo><enable>1</enable><languageCodes>en,,ru</languageCodes></"
+        "forvo>",
+        "<forvo><enable><nested/></enable><languageCodes>en</languageCodes></"
+        "forvo>",
+        "<dictservers><server id=\"d\" name=\"D\" "
+        "url=\"dict://user:secret@host\" enabled=\"1\" databases=\"*\" "
+        "strategies=\"prefix\"/></dictservers>",
+        "<dictservers><server id=\"d\" name=\"D\" url=\"host:70000\" "
+        "enabled=\"1\" databases=\"*\" strategies=\"prefix\"/></dictservers>",
+        "<dictservers><server id=\"d\" name=\"D\" url=\"host\" enabled=\"1\" "
+        "databases=\"one,two\" strategies=\"prefix\"/></dictservers>",
+        "<programs><program id=\"p\" name=\"P\" commandLine=\"/bin/play\" "
+        "enabled=\"1\" type=\"0\"/></programs>",
+        "<programs><program id=\"p\" name=\"P\" commandLine=\"relative --arg\" "
+        "enabled=\"1\" type=\"1\"/></programs>",
+        "<programs><program id=\"p\" name=\"P\" commandLine=\"/bin/sh -c "
+        "echo\" enabled=\"1\" type=\"1\"/></programs>",
+        "<programs><program id=\"p\" name=\"P\" commandLine=\"\" enabled=\"1\" "
+        "type=\"1\"/></programs>",
+        "<programs><program id=\"p\" name=\"P\" commandLine=\"/opt/%GDWORD%\" "
+        "enabled=\"1\" type=\"1\"/></programs>",
+    };
+    std::string oversized = "<mediawikis>";
+    for (std::size_t index = 0U; index <= kMaximumOnlineSources; ++index) {
+        oversized +=
+            "<mediawiki id=\"w" + std::to_string(index) +
+            "\" name=\"W\" url=\"https://w.example/w\" enabled=\"0\"/>";
+    }
+    invalid.push_back(oversized + "</mediawikis>");
+    invalid.push_back(
+        "<mediawikis><mediawiki id=\"w\" name=\"" +
+        std::string(64U * 1024U + 1U, 'x') +
+        "\" url=\"https://w.example/w\" enabled=\"0\"/></mediawikis>");
+    std::string excessive_arguments = "/opt/tool";
+    for (std::size_t index = 0U; index <= kMaximumExternalProgramArguments;
+         ++index) {
+        excessive_arguments += " argument";
+    }
+    invalid.push_back("<programs><program id=\"p\" name=\"P\" commandLine=\"" +
+                      excessive_arguments +
+                      "\" enabled=\"1\" type=\"1\"/></programs>");
+    invalid.push_back(
+        std::string("<mediawikis><mediawiki id=\"w\" name=\"") +
+        std::string("bad\xC3", 4U) +
+        "\" url=\"https://w.example/w\" enabled=\"0\"/></mediawikis>");
+
+    for (const auto& body : invalid) {
+        const std::string legacy = "<config>" + body + "</config>";
+        test::WriteBinaryFile(legacy_path, legacy);
+        QVERIFY_EXCEPTION_THROWN(
+            LoadOrMigrateConfiguration(current_path.string(),
+                                       legacy_path.string(), "/indexes"),
+            std::runtime_error);
+        QVERIFY(!std::filesystem::exists(current_path));
+        QVERIFY(!std::filesystem::exists(current_path.string() + ".tmp"));
+        QCOMPARE(ReadFile(legacy_path), legacy);
+    }
 }
 
 void ApplicationServiceTest::MissingLegacyPreferencesRetainCurrentDefaults() {

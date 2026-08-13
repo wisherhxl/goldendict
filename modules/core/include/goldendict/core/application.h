@@ -399,10 +399,10 @@ GOLDENDICT_EXPORTS void SaveConfiguration(
     const std::string& configuration_path,
     const CoreConfiguration& configuration);
 
-// Loads the current configuration when present. Otherwise, imports dictionary
-// and sound-directory paths plus dictionary groups from a legacy GoldenDict
-// XML configuration, saves the new configuration atomically, and leaves the
-// legacy file untouched.
+// Loads the current configuration when present. Otherwise, imports supported
+// local sources, groups, preferences, geometry, online sources, and external
+// programs from a legacy GoldenDict XML configuration, saves the complete new
+// configuration atomically, and leaves the legacy file untouched.
 // Missing current and legacy files return an empty configuration with the
 // supplied index directory. Malformed files and I/O failures throw.
 GOLDENDICT_EXPORTS CoreConfiguration
