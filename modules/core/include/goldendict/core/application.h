@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -262,6 +263,7 @@ struct CoreConfiguration {
     std::vector<SoundDirectoryConfiguration> sound_directories;
     std::vector<DictionaryGroupConfiguration> dictionary_groups;
     ApplicationPreferences preferences;
+    std::optional<ArticleTabSession> article_tab_session;
 };
 
 // Missing files load as an empty clean-profile configuration. Malformed files

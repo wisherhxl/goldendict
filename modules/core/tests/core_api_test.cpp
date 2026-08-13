@@ -85,6 +85,14 @@ class EmptyDesktopFacade final : public DesktopFacade {
 
     ArticleTabsState GetArticleTabsState() const override { return {}; }
 
+    ArticleTabSession ExportArticleTabSession() const override { return {}; }
+
+    TabOperationResult RestoreArticleTabSession(
+        const ArticleTabSession& session) override {
+        static_cast<void>(session);
+        return {};
+    }
+
     TabOperationResult OpenArticleTab(
         const TabNavigationState& navigation, TabOpenPolicy open_policy,
         TabActivationPolicy activation_policy) override {

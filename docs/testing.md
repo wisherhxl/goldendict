@@ -153,7 +153,15 @@ initial single-tab compatibility, stable ordered creation and activation,
 deterministic close and close-others fallback, exact reuse versus explicit new
 tabs, per-tab query/group/title/internal-link state, back/forward restoration
 and truncation, and atomic errors for invalid IDs, malformed state, and tab or
-navigation limits.
+navigation limits. It also verifies complete session export and atomic restore,
+including ordered histories/cursors, sparse stable IDs, deterministic
+collision-free ID continuation, and atomic rejection of duplicate,
+inconsistent, invalid, overflowing, or over-limit sessions.
+
+`application_service_test` verifies the optional canonical current-config
+session block, deterministic round trips, older-file compatibility, atomic
+invalid-save behavior, and complete rejection of partial, duplicate,
+inconsistent, malformed, or over-limit serialized sessions.
 
 `goldendict_article_tabs_smoke` uses the checked-in Dictd fixture with the real
 offscreen Qt Widgets/WebEngine presentation. It verifies single-tab startup,

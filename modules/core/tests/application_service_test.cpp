@@ -39,6 +39,8 @@ class ApplicationServiceTest : public QObject {
     void MissingConfigurationIsACleanProfile();
     void ConfigurationRoundTripsEscapedPaths();
     void ConfigurationRoundTripsDictionaryGroups();
+    void ConfigurationRoundTripsArticleTabSession();
+    void ConfigurationRejectsMalformedArticleTabSessionsAtomically();
     void ApplicationPreferencesCompareByValue();
     void ConfigurationRoundTripsPreferencesDeterministically();
     void ConfigurationRejectsMalformedPreferencesAtomically();
@@ -150,6 +152,99 @@ void ApplicationServiceTest::ConfigurationRoundTripsDictionaryGroups() {
     QCOMPARE(g1.dictionary_groups.front().dictionary_ids,
              (std::vector<std::string>{"unknown-id"}));
     QVERIFY(g1.dictionary_groups.front().favorites_folder.empty());
+}
+
+void ApplicationServiceTest::ConfigurationRoundTripsArticleTabSession() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration expected;
+    TabNavigationState lookup;
+    lookup.kind = TabNavigationKind::kLookup;
+    lookup.query = "alpha | beta";
+    lookup.group_id = 7U;
+    lookup.title = "Alpha & Beta";
+    TabNavigationState link;
+    link.kind = TabNavigationKind::kInternalLink;
+    link.query = "linked";
+    link.group_id = 9U;
+    link.title = "Linked";
+    link.internal_url = "goldendict://lookup/linked%20word";
+    link.source_dictionary_id = "dict|source";
+    link.source_article_id = "source/article";
+    link.target_article_id = "target:article";
+    link.target_anchor = "part 2";
+    expected.article_tab_session =
+        ArticleTabSession{{{7U, {lookup, link}, 1U}, {20U, {lookup}, 0U}}, 20U};
+
+    SaveConfiguration(path.string(), expected);
+    const std::string canonical = ReadFile(path);
+    const auto actual = LoadConfiguration(path.string());
+    QVERIFY(actual.article_tab_session.has_value());
+    QCOMPARE(*actual.article_tab_session, *expected.article_tab_session);
+    SaveConfiguration(path.string(), actual);
+    QCOMPARE(ReadFile(path), canonical);
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\nindex_directory=\n");
+    QVERIFY(!LoadConfiguration(path.string()).article_tab_session.has_value());
+}
+
+void ApplicationServiceTest::
+    ConfigurationRejectsMalformedArticleTabSessionsAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration original;
+    original.dictionary_paths = {"/original"};
+    SaveConfiguration(path.string(), original);
+    const std::string original_bytes = ReadFile(path);
+
+    CoreConfiguration invalid = original;
+    invalid.article_tab_session = ArticleTabSession{};
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+    QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+
+    ArticleTabSession over_limit;
+    over_limit.active_tab_id = 1U;
+    TabNavigationState navigation;
+    navigation.kind = TabNavigationKind::kLookup;
+    navigation.query = "bounded";
+    navigation.title = "bounded";
+    for (ArticleTabId id = 1U; id <= kMaximumArticleTabs + 1U; ++id) {
+        over_limit.tabs.push_back({id, {navigation}, 0U});
+    }
+    invalid.article_tab_session = std::move(over_limit);
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+    QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+
+    const std::vector<std::string> malformed = {
+        "article_tab=1|0\n",
+        "article_tab_session=1\n",
+        "article_tab_session=1\narticle_tab_session=1\n",
+        "article_tab_session=1\narticle_tab=1|0\n",
+        "article_tab_session=1\narticle_tab=1|0\narticle_tab=1|0\n",
+        "article_tab_session=2\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||\n",
+        "article_tab_session=1\narticle_tab=1|1\n"
+        "article_tab_navigation=1|1|word|0|word|||||\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=2|1|word|0|word|||||\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|99|word|0|word|||||\n",
+        "article_tab_session=18446744073709551615\n"
+        "article_tab=18446744073709551615|0\n"
+        "article_tab_navigation=18446744073709551615|1|word|0|word|||||\n",
+    };
+    for (const auto& fields : malformed) {
+        test::WriteBinaryFile(path, "goldendict-core-config-v1\n" + fields);
+        QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                                 std::runtime_error);
+    }
 }
 
 void ApplicationServiceTest::ApplicationPreferencesCompareByValue() {

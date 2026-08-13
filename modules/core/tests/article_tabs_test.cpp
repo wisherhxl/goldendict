@@ -2,6 +2,7 @@
 
 #include <QtTest>
 
+#include <limits>
 #include <string>
 
 #include "goldendict/core/application.h"
@@ -28,6 +29,8 @@ class ArticleTabsTest : public QObject {
     void PreservesNavigationAndTruncatesForwardHistory();
     void AppliesReuseAndNewTabPolicies();
     void PreservesInternalLinkState();
+    void ExportsAndRestoresCompleteSession();
+    void RejectsInvalidSessionsAtomically();
     void RejectsLimitsAndInvalidOperationsAtomically();
 };
 
@@ -161,6 +164,97 @@ void ArticleTabsTest::PreservesInternalLinkState() {
     const ArticleTabId id = facade->GetArticleTabsState().active_tab_id;
     QVERIFY(facade->GoBackInArticleTab(id));
     QCOMPARE(facade->GetArticleTabsState().tabs.front().navigation, link);
+}
+
+void ArticleTabsTest::ExportsAndRestoresCompleteSession() {
+    auto facade = CreateDesktopFacade({});
+    TabNavigationState link;
+    link.kind = TabNavigationKind::kInternalLink;
+    link.query = "linked word";
+    link.group_id = 42U;
+    link.title = "Linked title";
+    link.internal_url = "goldendict://lookup/linked%20word";
+    link.source_dictionary_id = "source-dictionary";
+    link.source_article_id = "source-article";
+    link.target_article_id = "target-article";
+    link.target_anchor = "section-2";
+
+    ArticleTabSession expected;
+    expected.active_tab_id = 42U;
+    expected.tabs = {
+        {7U, {Lookup("first", 3U), Lookup("second", 4U)}, 0U},
+        {42U, {Lookup("other", 8U), link, Lookup("after", 9U)}, 1U}};
+
+    QVERIFY(facade->RestoreArticleTabSession(expected));
+    QCOMPARE(facade->ExportArticleTabSession(), expected);
+    const auto state = facade->GetArticleTabsState();
+    QCOMPARE(state.tabs.size(), std::size_t{2});
+    QCOMPARE(state.tabs[0].id, ArticleTabId{7U});
+    QCOMPARE(state.tabs[0].navigation.query, "first");
+    QVERIFY(state.tabs[0].can_go_forward);
+    QCOMPARE(state.tabs[1].navigation, link);
+    QVERIFY(state.tabs[1].can_go_back);
+    QVERIFY(state.tabs[1].can_go_forward);
+
+    QVERIFY(facade->GoForwardInArticleTab(42U));
+    QCOMPARE(facade->GetArticleTabsState().tabs[1].navigation.query, "after");
+    QVERIFY(facade->GoBackInArticleTab(42U));
+    QVERIFY(facade->OpenArticleTab(Lookup("branch", 10U),
+                                   TabOpenPolicy::kCurrentTab,
+                                   TabActivationPolicy::kActivate));
+    QCOMPARE(facade->ExportArticleTabSession().tabs[1].history.size(),
+             std::size_t{3});
+    QCOMPARE(facade->GetArticleTabsState().tabs[1].navigation.query, "branch");
+
+    const auto created =
+        facade->OpenArticleTab(Lookup("collision-free"), TabOpenPolicy::kNewTab,
+                               TabActivationPolicy::kKeepActive);
+    QVERIFY(created);
+    QCOMPARE(created.tab_id, ArticleTabId{43U});
+}
+
+void ArticleTabsTest::RejectsInvalidSessionsAtomically() {
+    auto facade = CreateDesktopFacade({});
+    ArticleTabSession valid;
+    valid.active_tab_id = 12U;
+    valid.tabs = {{12U, {Lookup("stable")}, 0U}};
+    QVERIFY(facade->RestoreArticleTabSession(valid));
+    const auto before = facade->ExportArticleTabSession();
+
+    std::vector<ArticleTabSession> invalid = {
+        {},
+        {{{0U, {Lookup("zero")}, 0U}}, 0U},
+        {{{12U, {Lookup("first")}, 0U}, {12U, {Lookup("duplicate")}, 0U}}, 12U},
+        {{{12U, {}, 0U}}, 12U},
+        {{{12U, {Lookup("cursor")}, 1U}}, 12U},
+        {{{12U, {Lookup("missing-active")}, 0U}}, 99U},
+        {{{std::numeric_limits<ArticleTabId>::max(), {Lookup("overflow")}, 0U}},
+         std::numeric_limits<ArticleTabId>::max()},
+    };
+    auto bad_navigation = Lookup("bad");
+    bad_navigation.kind = static_cast<TabNavigationKind>(99);
+    invalid.push_back({{{12U, {bad_navigation}, 0U}}, 12U});
+    ArticleTabSession too_many;
+    too_many.active_tab_id = 1U;
+    for (ArticleTabId id = 1U; id <= kMaximumArticleTabs + 1U; ++id) {
+        too_many.tabs.push_back({id, {Lookup("bounded")}, 0U});
+    }
+    invalid.push_back(std::move(too_many));
+    ArticleTabSession too_much_history = valid;
+    too_much_history.tabs.front().history.assign(
+        kMaximumTabNavigationEntries + 1U, Lookup("bounded"));
+    invalid.push_back(std::move(too_much_history));
+
+    for (const auto& candidate : invalid) {
+        QCOMPARE(facade->RestoreArticleTabSession(candidate).error,
+                 TabOperationError::kInvalidSession);
+        QCOMPARE(facade->ExportArticleTabSession(), before);
+    }
+    const auto created =
+        facade->OpenArticleTab(Lookup("next"), TabOpenPolicy::kNewTab,
+                               TabActivationPolicy::kKeepActive);
+    QVERIFY(created);
+    QCOMPARE(created.tab_id, ArticleTabId{13U});
 }
 
 void ArticleTabsTest::RejectsLimitsAndInvalidOperationsAtomically() {

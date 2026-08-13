@@ -3,6 +3,7 @@
 #include "goldendict/core/application.h"
 
 #include "../foundation/utf8.h"
+#include "article_tab_session.h"
 
 #include <algorithm>
 #include <cctype>
@@ -342,6 +343,11 @@ void Validate(const CoreConfiguration& configuration) {
         throw std::runtime_error(
             "Configuration has too many dictionary groups");
     }
+    if (configuration.article_tab_session.has_value() &&
+        !application::ValidateArticleTabSession(
+            *configuration.article_tab_session)) {
+        throw std::runtime_error("Article tab session is invalid");
+    }
     const auto has_nul = [](const std::string& value) {
         return value.find('\0') != std::string::npos;
     };
@@ -502,6 +508,8 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
     std::unordered_map<std::uint32_t, std::size_t> group_indexes;
     std::unordered_set<std::uint32_t> group_metadata_ids;
     std::unordered_set<std::string> preference_names;
+    std::unordered_map<ArticleTabId, std::size_t> tab_indexes;
+    bool has_article_tab_session = false;
     bool has_index_directory = false;
     std::size_t position = kHeader.size();
     while (position < contents.size()) {
@@ -517,6 +525,10 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         constexpr std::string_view kDictionaryGroupMetadata =
             "dictionary_group_metadata=";
         constexpr std::string_view kPreference = "preference=";
+        constexpr std::string_view kArticleTabSession = "article_tab_session=";
+        constexpr std::string_view kArticleTab = "article_tab=";
+        constexpr std::string_view kArticleTabNavigation =
+            "article_tab_navigation=";
         if (line.substr(0, kIndex.size()) == kIndex) {
             if (has_index_directory) {
                 throw std::runtime_error("Duplicate index directory");
@@ -644,6 +656,79 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
                 group.popup_muted_dictionary_ids.push_back(
                     Decode(fields[index]));
             }
+        } else if (line.substr(0, kArticleTabSession.size()) ==
+                   kArticleTabSession) {
+            if (has_article_tab_session) {
+                throw std::runtime_error("Duplicate article tab session");
+            }
+            has_article_tab_session = true;
+            configuration.article_tab_session.emplace();
+            configuration.article_tab_session->active_tab_id =
+                ParseInteger<ArticleTabId>(
+                    line.substr(kArticleTabSession.size()));
+        } else if (line.substr(0, kArticleTab.size()) == kArticleTab) {
+            if (!has_article_tab_session) {
+                throw std::runtime_error(
+                    "Article tab appears outside a session");
+            }
+            const auto value = line.substr(kArticleTab.size());
+            const auto separator = value.find('|');
+            if (separator == std::string_view::npos ||
+                value.find('|', separator + 1U) != std::string_view::npos) {
+                throw std::runtime_error("Malformed article tab field");
+            }
+            ArticleTabSessionTab tab;
+            tab.id = ParseInteger<ArticleTabId>(value.substr(0U, separator));
+            tab.history_cursor =
+                ParseInteger<std::size_t>(value.substr(separator + 1U));
+            auto& tabs = configuration.article_tab_session->tabs;
+            tabs.push_back(std::move(tab));
+            if (!tab_indexes.emplace(tabs.back().id, tabs.size() - 1U).second) {
+                throw std::runtime_error("Duplicate article tab ID");
+            }
+        } else if (line.substr(0, kArticleTabNavigation.size()) ==
+                   kArticleTabNavigation) {
+            if (!has_article_tab_session) {
+                throw std::runtime_error(
+                    "Article navigation appears outside a session");
+            }
+            const auto value = line.substr(kArticleTabNavigation.size());
+            std::vector<std::string_view> fields;
+            std::size_t start = 0U;
+            while (start <= value.size()) {
+                const auto separator = value.find('|', start);
+                fields.push_back(
+                    value.substr(start, separator == std::string_view::npos
+                                            ? value.size() - start
+                                            : separator - start));
+                if (separator == std::string_view::npos) {
+                    break;
+                }
+                start = separator + 1U;
+            }
+            if (fields.size() != 10U) {
+                throw std::runtime_error(
+                    "Malformed article tab navigation field");
+            }
+            const ArticleTabId tab_id = ParseInteger<ArticleTabId>(fields[0]);
+            const auto found = tab_indexes.find(tab_id);
+            if (found == tab_indexes.end()) {
+                throw std::runtime_error(
+                    "Article navigation references an unknown tab");
+            }
+            TabNavigationState navigation;
+            navigation.kind = static_cast<TabNavigationKind>(
+                ParseInteger<std::uint8_t>(fields[1]));
+            navigation.query = Decode(fields[2]);
+            navigation.group_id = ParseInteger<std::uint32_t>(fields[3]);
+            navigation.title = Decode(fields[4]);
+            navigation.internal_url = Decode(fields[5]);
+            navigation.source_dictionary_id = Decode(fields[6]);
+            navigation.source_article_id = Decode(fields[7]);
+            navigation.target_article_id = Decode(fields[8]);
+            navigation.target_anchor = Decode(fields[9]);
+            configuration.article_tab_session->tabs[found->second]
+                .history.push_back(std::move(navigation));
         } else if (line.substr(0, kPreference.size()) == kPreference) {
             const auto value = line.substr(kPreference.size());
             const auto separator = value.find('|');
@@ -704,6 +789,29 @@ void SaveConfiguration(const std::string& configuration_path,
                 contents += "|" + Encode(id);
             }
             contents += "\n";
+        }
+    }
+    if (configuration.article_tab_session.has_value()) {
+        const auto& session = *configuration.article_tab_session;
+        contents +=
+            "article_tab_session=" + std::to_string(session.active_tab_id) +
+            "\n";
+        for (const auto& tab : session.tabs) {
+            contents += "article_tab=" + std::to_string(tab.id) + "|" +
+                        std::to_string(tab.history_cursor) + "\n";
+            for (const auto& navigation : tab.history) {
+                contents +=
+                    "article_tab_navigation=" + std::to_string(tab.id) + "|" +
+                    std::to_string(static_cast<unsigned int>(navigation.kind)) +
+                    "|" + Encode(navigation.query) + "|" +
+                    std::to_string(navigation.group_id) + "|" +
+                    Encode(navigation.title) + "|" +
+                    Encode(navigation.internal_url) + "|" +
+                    Encode(navigation.source_dictionary_id) + "|" +
+                    Encode(navigation.source_article_id) + "|" +
+                    Encode(navigation.target_article_id) + "|" +
+                    Encode(navigation.target_anchor) + "\n";
+            }
         }
     }
     const auto& p = configuration.preferences;

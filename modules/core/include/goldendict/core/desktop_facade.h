@@ -69,6 +69,26 @@ struct ArticleTabsState {
     ArticleTabId active_tab_id = 0U;
 };
 
+struct ArticleTabSessionTab {
+    ArticleTabId id = 0U;
+    std::vector<TabNavigationState> history;
+    std::size_t history_cursor = 0U;
+
+    bool operator==(const ArticleTabSessionTab& other) const noexcept {
+        return id == other.id && history == other.history &&
+               history_cursor == other.history_cursor;
+    }
+};
+
+struct ArticleTabSession {
+    std::vector<ArticleTabSessionTab> tabs;
+    ArticleTabId active_tab_id = 0U;
+
+    bool operator==(const ArticleTabSession& other) const noexcept {
+        return tabs == other.tabs && active_tab_id == other.active_tab_id;
+    }
+};
+
 enum class TabOpenPolicy {
     kCurrentTab,
     kReuseExisting,
@@ -88,6 +108,7 @@ enum class TabOperationError {
     kNavigationLimitReached,
     kNoBackEntry,
     kNoForwardEntry,
+    kInvalidSession,
 };
 
 struct TabOperationResult {
@@ -110,6 +131,9 @@ class GOLDENDICT_EXPORTS DesktopFacade {
     virtual std::optional<ArticleUrl> ResolveArticleUrl(
         const std::string& url) const = 0;
     virtual ArticleTabsState GetArticleTabsState() const = 0;
+    virtual ArticleTabSession ExportArticleTabSession() const = 0;
+    virtual TabOperationResult RestoreArticleTabSession(
+        const ArticleTabSession& session) = 0;
     virtual TabOperationResult OpenArticleTab(
         const TabNavigationState& navigation, TabOpenPolicy open_policy,
         TabActivationPolicy activation_policy) = 0;

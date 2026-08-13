@@ -10,48 +10,13 @@
 #include "../article/article_composer.h"
 #include "../article/internal_url.h"
 #include "../dictionary/dictionary_backend.h"
-#include "../foundation/utf8.h"
+#include "article_tab_session.h"
 #include "goldendict/core/application.h"
 
 namespace goldendict::core {
 namespace {
 
 constexpr char kUntitledTabTitle[] = "(untitled)";
-
-bool IsBoundedText(const std::string& text) {
-    return text.size() <= kMaximumLookupTextBytes &&
-           text.find('\0') == std::string::npos &&
-           foundation::IsValidUtf8(text);
-}
-
-bool IsValidNavigation(const TabNavigationState& state) {
-    if (!IsBoundedText(state.query) || !IsBoundedText(state.title) ||
-        !IsBoundedText(state.internal_url) ||
-        !IsBoundedText(state.source_dictionary_id) ||
-        !IsBoundedText(state.source_article_id) ||
-        !IsBoundedText(state.target_article_id) ||
-        !IsBoundedText(state.target_anchor)) {
-        return false;
-    }
-    switch (state.kind) {
-        case TabNavigationKind::kEmpty:
-            return state.group_id == 0U && state.query.empty() &&
-                   state.internal_url.empty() &&
-                   state.source_dictionary_id.empty() &&
-                   state.source_article_id.empty() &&
-                   state.target_article_id.empty() &&
-                   state.target_anchor.empty();
-        case TabNavigationKind::kLookup:
-            return !state.query.empty() && state.internal_url.empty() &&
-                   state.source_dictionary_id.empty() &&
-                   state.source_article_id.empty() &&
-                   state.target_article_id.empty() &&
-                   state.target_anchor.empty();
-        case TabNavigationKind::kInternalLink:
-            return !state.query.empty() && !state.internal_url.empty();
-    }
-    return false;
-}
 
 bool HasSameNavigationIdentity(const TabNavigationState& left,
                                const TabNavigationState& right) {
@@ -129,10 +94,37 @@ class DesktopFacadeImpl final : public DesktopFacade {
         return state;
     }
 
+    ArticleTabSession ExportArticleTabSession() const override {
+        ArticleTabSession session;
+        session.active_tab_id = active_tab_id_;
+        session.tabs.reserve(tabs_.size());
+        for (const auto& tab : tabs_) {
+            session.tabs.push_back({tab.id, tab.history, tab.history_index});
+        }
+        return session;
+    }
+
+    TabOperationResult RestoreArticleTabSession(
+        const ArticleTabSession& session) override {
+        ArticleTabId next_tab_id = 0U;
+        if (!application::ValidateArticleTabSession(session, &next_tab_id)) {
+            return {TabOperationError::kInvalidSession, 0U};
+        }
+        std::vector<TabRecord> restored;
+        restored.reserve(session.tabs.size());
+        for (const auto& tab : session.tabs) {
+            restored.push_back({tab.id, tab.history, tab.history_cursor});
+        }
+        tabs_ = std::move(restored);
+        active_tab_id_ = session.active_tab_id;
+        next_tab_id_ = next_tab_id;
+        return {TabOperationError::kNone, active_tab_id_};
+    }
+
     TabOperationResult OpenArticleTab(
         const TabNavigationState& navigation, TabOpenPolicy open_policy,
         TabActivationPolicy activation_policy) override {
-        if (!IsValidNavigation(navigation)) {
+        if (!application::IsValidTabNavigation(navigation)) {
             return {TabOperationError::kInvalidNavigation, 0U};
         }
         if (open_policy == TabOpenPolicy::kReuseExisting) {

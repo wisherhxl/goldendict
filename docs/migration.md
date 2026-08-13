@@ -341,6 +341,15 @@ middle-click open a background tab, while Shift-click opens a foreground tab.
 Session persistence, migration, placement preferences, and configurable
 foreground/background policy remain separate Phase 8 work.
 
+The first tab-persistence increment adds a complete transport-neutral core
+session DTO and optional canonical current-configuration records. Export and
+atomic restore preserve ordered stable IDs, the active tab, every bounded
+navigation history and cursor, group/internal-link identity, and a
+deterministic collision-free next ID. Older current files retain the existing
+single empty tab. Application startup/save wiring and restart smoke coverage
+remain the next tab-persistence increment; tab-opening preferences, geometry,
+and matching legacy migration remain a later bounded increment.
+
 The first Phase 8 state-migration increment imports dictionary paths and named
 sound directories from a bounded legacy XML configuration when no current
 configuration exists. The core owns parsing and atomic persistence; the legacy
