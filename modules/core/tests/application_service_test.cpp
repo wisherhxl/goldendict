@@ -38,6 +38,9 @@ class ApplicationServiceTest : public QObject {
    private slots:
     void MissingConfigurationIsACleanProfile();
     void ConfigurationRoundTripsEscapedPaths();
+    void ConfigurationRoundTripsDictionaryGroups();
+    void ConfigurationRejectsGroupBoundsAndDuplicatesAtomically();
+    void ConfigurationRejectsMalformedGroups();
     void MigratesLegacyPathsWithoutTouchingTheSource();
     void CurrentConfigurationTakesPrecedenceOverLegacy();
     void RejectsMalformedLegacyWithoutCreatingCurrent();
@@ -80,6 +83,7 @@ void ApplicationServiceTest::MissingConfigurationIsACleanProfile() {
 
     QVERIFY(configuration.dictionary_paths.empty());
     QVERIFY(configuration.index_directory.empty());
+    QVERIFY(configuration.dictionary_groups.empty());
 }
 
 void ApplicationServiceTest::ConfigurationRoundTripsEscapedPaths() {
@@ -103,6 +107,89 @@ void ApplicationServiceTest::ConfigurationRoundTripsEscapedPaths() {
              expected.sound_directories.front().path);
     QCOMPARE(actual.sound_directories.front().name,
              expected.sound_directories.front().name);
+}
+
+void ApplicationServiceTest::ConfigurationRoundTripsDictionaryGroups() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration expected;
+    expected.dictionary_groups = {{7U,
+                                   "English | French",
+                                   "flags/Europe & Americas.svg",
+                                   {"stardict:alpha|edition", "dictd:beta"}},
+                                  {42U, "Reference", "", {"zim:encyclopedia"}}};
+
+    SaveConfiguration(path.string(), expected);
+
+    QCOMPARE(LoadConfiguration(path.string()).dictionary_groups,
+             expected.dictionary_groups);
+}
+
+void ApplicationServiceTest::
+    ConfigurationRejectsGroupBoundsAndDuplicatesAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration original;
+    original.dictionary_groups = {{1U, "Original", "", {"dictionary-a"}}};
+    SaveConfiguration(path.string(), original);
+
+    CoreConfiguration duplicate_group_ids;
+    duplicate_group_ids.dictionary_groups = {
+        {2U, "First", "", {"dictionary-a"}},
+        {2U, "Second", "", {"dictionary-b"}}};
+    QVERIFY_EXCEPTION_THROWN(
+        SaveConfiguration(path.string(), duplicate_group_ids),
+        std::runtime_error);
+    QCOMPARE(LoadConfiguration(path.string()).dictionary_groups,
+             original.dictionary_groups);
+    QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+
+    CoreConfiguration duplicate_dictionary_ids;
+    duplicate_dictionary_ids.dictionary_groups = {
+        {3U, "Duplicates", "", {"same", "same"}}};
+    QVERIFY_EXCEPTION_THROWN(
+        SaveConfiguration(path.string(), duplicate_dictionary_ids),
+        std::runtime_error);
+
+    CoreConfiguration too_many_groups;
+    too_many_groups.dictionary_groups.reserve(257U);
+    for (std::uint32_t id = 1U; id <= 257U; ++id) {
+        too_many_groups.dictionary_groups.push_back({id, "Bounded", "", {}});
+    }
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), too_many_groups),
+                             std::runtime_error);
+
+    CoreConfiguration too_many_members;
+    DictionaryGroupConfiguration group{4U, "Bounded", "", {}};
+    group.dictionary_ids.reserve(257U);
+    for (std::size_t index = 0U; index < 257U; ++index) {
+        group.dictionary_ids.push_back("dictionary-" + std::to_string(index));
+    }
+    too_many_members.dictionary_groups.push_back(std::move(group));
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), too_many_members),
+                             std::runtime_error);
+    QCOMPARE(LoadConfiguration(path.string()).dictionary_groups,
+             original.dictionary_groups);
+}
+
+void ApplicationServiceTest::ConfigurationRejectsMalformedGroups() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\nindex_directory=\n"
+                          "dictionary_group=not-an-id|Name|\n");
+    QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                             std::runtime_error);
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\nindex_directory=\n"
+                          "dictionary_group=9|Name|Icon|duplicate|duplicate\n");
+    QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                             std::runtime_error);
 }
 
 void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {

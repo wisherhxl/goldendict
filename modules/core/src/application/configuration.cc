@@ -4,11 +4,14 @@
 
 #include <algorithm>
 #include <cctype>
+#include <charconv>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
 #include <string_view>
 #include <system_error>
+#include <unordered_set>
+#include <utility>
 
 namespace goldendict::core {
 namespace {
@@ -17,6 +20,9 @@ constexpr std::string_view kHeader = "goldendict-core-config-v1\n";
 constexpr std::size_t kMaximumConfigurationBytes = 1024U * 1024U;
 constexpr std::size_t kMaximumDictionaryPaths = 256U;
 constexpr std::size_t kMaximumSoundDirectories = 256U;
+constexpr std::size_t kMaximumDictionaryGroups = 256U;
+constexpr std::size_t kMaximumDictionariesPerGroup = 256U;
+constexpr std::size_t kMaximumGroupValueBytes = 4096U;
 
 bool IsUnescaped(unsigned char character) {
     return std::isalnum(character) != 0 || character == '-' ||
@@ -79,6 +85,10 @@ void Validate(const CoreConfiguration& configuration) {
         throw std::runtime_error(
             "Configuration has too many sound directories");
     }
+    if (configuration.dictionary_groups.size() > kMaximumDictionaryGroups) {
+        throw std::runtime_error(
+            "Configuration has too many dictionary groups");
+    }
     const auto has_nul = [](const std::string& value) {
         return value.find('\0') != std::string::npos;
     };
@@ -98,6 +108,33 @@ void Validate(const CoreConfiguration& configuration) {
                                has_nul(directory.name);
                     })) {
         throw std::runtime_error("Configuration values cannot contain NUL");
+    }
+
+    std::unordered_set<std::uint32_t> group_ids;
+    for (const auto& group : configuration.dictionary_groups) {
+        if (group.id == 0U || !group_ids.insert(group.id).second) {
+            throw std::runtime_error(
+                "Dictionary group IDs must be unique and nonzero");
+        }
+        if (group.name.empty() || group.name.size() > kMaximumGroupValueBytes ||
+            group.icon.size() > kMaximumGroupValueBytes ||
+            has_nul(group.name) || has_nul(group.icon)) {
+            throw std::runtime_error("Dictionary group metadata is invalid");
+        }
+        if (group.dictionary_ids.size() > kMaximumDictionariesPerGroup) {
+            throw std::runtime_error(
+                "Dictionary group has too many dictionaries");
+        }
+        std::unordered_set<std::string> dictionary_ids;
+        for (const auto& dictionary_id : group.dictionary_ids) {
+            if (dictionary_id.empty() ||
+                dictionary_id.size() > kMaximumGroupValueBytes ||
+                has_nul(dictionary_id) ||
+                !dictionary_ids.insert(dictionary_id).second) {
+                throw std::runtime_error(
+                    "Dictionary group dictionary IDs must be unique and valid");
+            }
+        }
     }
 }
 
@@ -141,6 +178,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         constexpr std::string_view kIndex = "index_directory=";
         constexpr std::string_view kDictionary = "dictionary_path=";
         constexpr std::string_view kSoundDirectory = "sound_directory=";
+        constexpr std::string_view kDictionaryGroup = "dictionary_group=";
         if (line.substr(0, kIndex.size()) == kIndex) {
             if (has_index_directory) {
                 throw std::runtime_error("Duplicate index directory");
@@ -159,6 +197,39 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
             configuration.sound_directories.push_back(
                 {Decode(value.substr(0U, separator)),
                  Decode(value.substr(separator + 1U))});
+        } else if (line.substr(0, kDictionaryGroup.size()) ==
+                   kDictionaryGroup) {
+            const auto value = line.substr(kDictionaryGroup.size());
+            std::vector<std::string_view> fields;
+            std::size_t field_position = 0U;
+            while (field_position <= value.size()) {
+                const auto separator = value.find('|', field_position);
+                fields.push_back(value.substr(
+                    field_position, separator == std::string_view::npos
+                                        ? value.size() - field_position
+                                        : separator - field_position));
+                if (separator == std::string_view::npos) {
+                    break;
+                }
+                field_position = separator + 1U;
+            }
+            if (fields.size() < 3U) {
+                throw std::runtime_error("Malformed dictionary group field");
+            }
+            DictionaryGroupConfiguration group;
+            const auto id_text = fields.front();
+            const auto conversion = std::from_chars(
+                id_text.data(), id_text.data() + id_text.size(), group.id, 10);
+            if (conversion.ec != std::errc() ||
+                conversion.ptr != id_text.data() + id_text.size()) {
+                throw std::runtime_error("Dictionary group ID is invalid");
+            }
+            group.name = Decode(fields[1U]);
+            group.icon = Decode(fields[2U]);
+            for (std::size_t index = 3U; index < fields.size(); ++index) {
+                group.dictionary_ids.push_back(Decode(fields[index]));
+            }
+            configuration.dictionary_groups.push_back(std::move(group));
         } else if (!line.empty()) {
             throw std::runtime_error("Unknown configuration field");
         }
@@ -180,6 +251,14 @@ void SaveConfiguration(const std::string& configuration_path,
     for (const auto& directory : configuration.sound_directories) {
         contents += "sound_directory=" + Encode(directory.path) + "|" +
                     Encode(directory.name) + "\n";
+    }
+    for (const auto& group : configuration.dictionary_groups) {
+        contents += "dictionary_group=" + std::to_string(group.id) + "|" +
+                    Encode(group.name) + "|" + Encode(group.icon);
+        for (const auto& dictionary_id : group.dictionary_ids) {
+            contents += "|" + Encode(dictionary_id);
+        }
+        contents += "\n";
     }
     if (contents.size() > kMaximumConfigurationBytes) {
         throw std::runtime_error("Configuration exceeds the size limit");

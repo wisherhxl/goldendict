@@ -3,6 +3,7 @@
 #ifndef GOLDENDICT_CORE_APPLICATION_H_
 #define GOLDENDICT_CORE_APPLICATION_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -26,10 +27,27 @@ struct SoundDirectoryConfiguration {
     }
 };
 
+struct DictionaryGroupConfiguration {
+    std::uint32_t id = 0U;
+    std::string name;
+    std::string icon;
+    std::vector<std::string> dictionary_ids;
+
+    bool operator==(const DictionaryGroupConfiguration& other) const noexcept {
+        return id == other.id && name == other.name && icon == other.icon &&
+               dictionary_ids == other.dictionary_ids;
+    }
+
+    bool operator!=(const DictionaryGroupConfiguration& other) const noexcept {
+        return !(*this == other);
+    }
+};
+
 struct CoreConfiguration {
     std::vector<std::string> dictionary_paths;
     std::string index_directory;
     std::vector<SoundDirectoryConfiguration> sound_directories;
+    std::vector<DictionaryGroupConfiguration> dictionary_groups;
 };
 
 // Missing files load as an empty clean-profile configuration. Malformed files

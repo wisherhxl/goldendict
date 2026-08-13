@@ -79,7 +79,11 @@ does not choose HTTP, gRPC, JSON, or another future service transport.
 Consumers inject a `CoreConfiguration` containing dictionary roots and the
 generated-index directory. `LoadConfiguration` treats a missing file as a
 clean profile, while `SaveConfiguration` persists the same bounded,
-versioned schema. `CreateDictionaryService` is the headless composition entry
+versioned schema. The current schema also stores ordered dictionary groups as
+transport-neutral IDs, names, optional icon references, and ordered stable
+dictionary IDs. Group counts, membership counts, value sizes, and duplicate
+IDs are validated in the core before an atomic replacement.
+`CreateDictionaryService` is the headless composition entry
 point and `CreateDesktopFacade` is the presentation-facing entry point. Both
 compose private format adapters inside `goldendict_core`; neither exposes a
 StarDict type. Synchronous lookup is available for simple headless consumers,

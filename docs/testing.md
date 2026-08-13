@@ -104,6 +104,12 @@ configuration always wins, rejects entity declarations and malformed input,
 persists the new format atomically, and proves that the legacy source remains
 unchanged after both success and failure.
 
+`application_service_test` also verifies the current dictionary-group model:
+empty older configurations remain compatible, nontrivial ordered groups round
+trip, group and membership bounds plus duplicate IDs are rejected
+deterministically, malformed fields fail to load, and a rejected save leaves
+the previous configuration unchanged without a temporary file.
+
 `history_store_test` verifies the first user-history migration slice: strict
 bounded UTF-8/group-aware current-format round trips, bounded import of the
 legacy line format, entry-limit truncation, current-state precedence, atomic
