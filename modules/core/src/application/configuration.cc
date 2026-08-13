@@ -32,6 +32,7 @@ constexpr std::size_t kMaximumDictionariesPerGroup = 256U;
 constexpr std::size_t kMaximumGroupValueBytes = 4096U;
 constexpr std::size_t kMaximumEncodedGroupIconBytes = 64U * 1024U;
 constexpr std::size_t kMaximumPreferenceStringBytes = 4096U;
+constexpr std::size_t kMaximumMainWindowGeometryBytes = 64U * 1024U;
 constexpr std::uint32_t kKnownScanPopupModifierMask = 0x03ffU;
 
 std::string Encode(std::string_view value);
@@ -132,6 +133,8 @@ void SetPreference(ApplicationPreferences& preferences, std::string_view name,
     STRING_PREFERENCE("proxy_host", proxy_host)
     STRING_PREFERENCE("full_text_disabled_types", full_text_disabled_types)
     BOOL_PREFERENCE("hide_menubar", hide_menubar)
+    BOOL_PREFERENCE("open_new_tabs_after_current", open_new_tabs_after_current)
+    BOOL_PREFERENCE("open_new_tabs_in_background", open_new_tabs_in_background)
     BOOL_PREFERENCE("enable_tray_icon", enable_tray_icon)
     BOOL_PREFERENCE("start_to_tray", start_to_tray)
     BOOL_PREFERENCE("close_to_tray", close_to_tray)
@@ -348,6 +351,10 @@ void Validate(const CoreConfiguration& configuration) {
             *configuration.article_tab_session)) {
         throw std::runtime_error("Article tab session is invalid");
     }
+    if (configuration.main_window_geometry.size() >
+        kMaximumMainWindowGeometryBytes) {
+        throw std::runtime_error("Main-window geometry is too large");
+    }
     const auto has_nul = [](const std::string& value) {
         return value.find('\0') != std::string::npos;
     };
@@ -510,6 +517,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
     std::unordered_set<std::string> preference_names;
     std::unordered_map<ArticleTabId, std::size_t> tab_indexes;
     bool has_article_tab_session = false;
+    bool has_main_window_geometry = false;
     bool has_index_directory = false;
     std::size_t position = kHeader.size();
     while (position < contents.size()) {
@@ -525,11 +533,20 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         constexpr std::string_view kDictionaryGroupMetadata =
             "dictionary_group_metadata=";
         constexpr std::string_view kPreference = "preference=";
+        constexpr std::string_view kMainWindowGeometry =
+            "main_window_geometry=";
         constexpr std::string_view kArticleTabSession = "article_tab_session=";
         constexpr std::string_view kArticleTab = "article_tab=";
         constexpr std::string_view kArticleTabNavigation =
             "article_tab_navigation=";
-        if (line.substr(0, kIndex.size()) == kIndex) {
+        if (line.substr(0, kMainWindowGeometry.size()) == kMainWindowGeometry) {
+            if (has_main_window_geometry) {
+                throw std::runtime_error("Duplicate main-window geometry");
+            }
+            has_main_window_geometry = true;
+            configuration.main_window_geometry =
+                Decode(line.substr(kMainWindowGeometry.size()));
+        } else if (line.substr(0, kIndex.size()) == kIndex) {
             if (has_index_directory) {
                 throw std::runtime_error("Duplicate index directory");
             }
@@ -814,6 +831,10 @@ void SaveConfiguration(const std::string& configuration_path,
             }
         }
     }
+    if (!configuration.main_window_geometry.empty()) {
+        contents += "main_window_geometry=" +
+                    Encode(configuration.main_window_geometry) + "\n";
+    }
     const auto& p = configuration.preferences;
 #define APPEND_STRING(key, member) AppendPreference(contents, key, p.member)
 #define APPEND_BOOL(key, member) \
@@ -824,6 +845,8 @@ void SaveConfiguration(const std::string& configuration_path,
     APPEND_STRING("help_language", help_language);
     APPEND_STRING("display_style", display_style);
     APPEND_STRING("addon_style", addon_style);
+    APPEND_BOOL("open_new_tabs_after_current", open_new_tabs_after_current);
+    APPEND_BOOL("open_new_tabs_in_background", open_new_tabs_in_background);
     APPEND_BOOL("hide_menubar", hide_menubar);
     APPEND_BOOL("enable_tray_icon", enable_tray_icon);
     APPEND_BOOL("start_to_tray", start_to_tray);

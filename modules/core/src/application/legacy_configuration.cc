@@ -31,6 +31,9 @@ constexpr std::size_t kMaximumDictionariesPerGroup = 256U;
 constexpr std::size_t kMaximumGroupValueBytes = 4096U;
 constexpr std::size_t kMaximumEncodedGroupIconBytes = 64U * 1024U;
 constexpr std::size_t kMaximumPreferenceValueBytes = 4096U;
+constexpr std::size_t kMaximumMainWindowGeometryBytes = 64U * 1024U;
+constexpr std::size_t kMaximumEncodedMainWindowGeometryBytes =
+    ((kMaximumMainWindowGeometryBytes + 2U) / 3U) * 4U;
 constexpr std::uint32_t kKnownScanPopupModifierMask = 0x03ffU;
 
 struct ParserDeleter {
@@ -49,6 +52,8 @@ struct LegacyParserState {
     std::unordered_set<std::uint32_t> group_ids;
     std::unordered_set<std::string> preference_keys;
     std::string preference_key;
+    bool reading_main_window_geometry = false;
+    bool has_main_window_geometry = false;
     bool failed = false;
     std::string error;
 };
@@ -113,6 +118,8 @@ bool IsRecognizedPreference(std::string_view key) {
         "helpLanguage",
         "displayStyle",
         "addonStyle",
+        "newTabsOpenAfterCurrentOne",
+        "newTabsOpenInBackground",
         "hideMenubar",
         "enableTrayIcon",
         "startToTray",
@@ -212,6 +219,8 @@ void ApplyPreference(ApplicationPreferences& p, std::string_view key,
     STRING("proxyserver.host", proxy_host)
     STRING("fullTextSearch.disabledTypes", full_text_disabled_types)
     BOOL("hideMenubar", hide_menubar)
+    BOOL("newTabsOpenAfterCurrentOne", open_new_tabs_after_current)
+    BOOL("newTabsOpenInBackground", open_new_tabs_in_background)
     BOOL("enableTrayIcon", enable_tray_icon)
     BOOL("startToTray", start_to_tray)
     BOOL("closeToTray", close_to_tray)
@@ -341,7 +350,7 @@ GroupValue CurrentGroupValue(const LegacyParserState& state) {
 bool IsCanonicalBase64(std::string_view value) {
     if (value.empty())
         return true;
-    if (value.size() > kMaximumEncodedGroupIconBytes || value.size() % 4U != 0U)
+    if (value.size() % 4U != 0U)
         return false;
     const auto decode = [](char character) {
         if (character >= 'A' && character <= 'Z')
@@ -375,6 +384,48 @@ bool IsCanonicalBase64(std::string_view value) {
     return true;
 }
 
+std::string DecodeMainWindowGeometry(std::string_view value) {
+    if (value.empty())
+        return {};
+    if (value.size() > kMaximumEncodedMainWindowGeometryBytes ||
+        value.size() % 4U != 0U || !IsCanonicalBase64(value)) {
+        throw std::runtime_error("invalid main-window geometry");
+    }
+    const auto decode = [](char character) -> unsigned int {
+        if (character >= 'A' && character <= 'Z')
+            return static_cast<unsigned int>(character - 'A');
+        if (character >= 'a' && character <= 'z')
+            return static_cast<unsigned int>(character - 'a' + 26);
+        if (character >= '0' && character <= '9')
+            return static_cast<unsigned int>(character - '0' + 52);
+        return character == '+' ? 62U : 63U;
+    };
+    std::string decoded;
+    decoded.reserve((value.size() / 4U) * 3U);
+    for (std::size_t index = 0U; index < value.size(); index += 4U) {
+        const unsigned int first = decode(value[index]);
+        const unsigned int second = decode(value[index + 1U]);
+        decoded.push_back(static_cast<char>((first << 2U) | (second >> 4U)));
+        if (value[index + 2U] != '=') {
+            const unsigned int third = decode(value[index + 2U]);
+            decoded.push_back(
+                static_cast<char>((second << 4U) | (third >> 2U)));
+            if (value[index + 3U] != '=') {
+                decoded.push_back(static_cast<char>((third << 6U) |
+                                                    decode(value[index + 3U])));
+            }
+        }
+    }
+    if (decoded.size() > kMaximumMainWindowGeometryBytes)
+        throw std::runtime_error("main-window geometry is too large");
+    return decoded;
+}
+
+bool IsMainWindowGeometryElement(const LegacyParserState& state) {
+    return state.elements.size() == 2U && state.elements[0] == "config" &&
+           state.elements[1] == "mainWindowGeometry";
+}
+
 bool IsPathElement(const LegacyParserState& state) {
     return state.elements.size() == 3U && state.elements[0] == "config" &&
            state.elements[1] == "paths" && state.elements[2] == "path";
@@ -399,7 +450,7 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
     auto* state = static_cast<LegacyParserState*>(user_data);
     if (IsPathElement(*state) || IsSoundDirectoryElement(*state) ||
         CurrentGroupValue(*state) != GroupValue::kNone ||
-        !state->preference_key.empty()) {
+        !state->preference_key.empty() || state->reading_main_window_geometry) {
         Fail(state, "Legacy configuration values cannot contain markup");
         return;
     }
@@ -410,6 +461,16 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
     state->elements.emplace_back(name);
     if (state->elements.size() == 1U && state->elements.front() != "config") {
         Fail(state, "Legacy configuration has an invalid root element");
+        return;
+    }
+    if (IsMainWindowGeometryElement(*state)) {
+        if (state->has_main_window_geometry) {
+            Fail(state, "Legacy main-window geometry is duplicated");
+            return;
+        }
+        state->has_main_window_geometry = true;
+        state->reading_main_window_geometry = true;
+        state->value.clear();
         return;
     }
     if (IsPreferenceContainer(*state, name) &&
@@ -492,7 +553,8 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
             } else if (key == "shortcut") {
                 state->group.shortcut = attribute;
             } else if (key == "iconData") {
-                if (!IsCanonicalBase64(attribute)) {
+                if (attribute.size() > kMaximumEncodedGroupIconBytes ||
+                    !IsCanonicalBase64(attribute)) {
                     Fail(state, "Legacy dictionary group icon data is invalid");
                     return;
                 }
@@ -545,11 +607,13 @@ void XMLCALL CharacterData(void* user_data, const XML_Char* value, int length) {
     auto* state = static_cast<LegacyParserState*>(user_data);
     if (!IsPathElement(*state) && !IsSoundDirectoryElement(*state) &&
         CurrentGroupValue(*state) == GroupValue::kNone &&
-        state->preference_key.empty()) {
+        state->preference_key.empty() && !state->reading_main_window_geometry) {
         return;
     }
     const std::size_t maximum =
-        !state->preference_key.empty()
+        state->reading_main_window_geometry
+            ? kMaximumEncodedMainWindowGeometryBytes
+        : !state->preference_key.empty()
             ? kMaximumPreferenceValueBytes
             : (CurrentGroupValue(*state) == GroupValue::kNone
                    ? kMaximumLegacyValueBytes
@@ -564,8 +628,18 @@ void XMLCALL CharacterData(void* user_data, const XML_Char* value, int length) {
 
 void XMLCALL EndElement(void* user_data, const XML_Char*) {
     auto* state = static_cast<LegacyParserState*>(user_data);
-    if (!state->preference_key.empty() &&
-        PreferenceKey(*state) == state->preference_key) {
+    if (state->reading_main_window_geometry &&
+        IsMainWindowGeometryElement(*state)) {
+        try {
+            state->configuration.main_window_geometry =
+                DecodeMainWindowGeometry(state->value);
+        } catch (const std::runtime_error&) {
+            Fail(state, "Legacy main-window geometry is invalid");
+            return;
+        }
+        state->reading_main_window_geometry = false;
+    } else if (!state->preference_key.empty() &&
+               PreferenceKey(*state) == state->preference_key) {
         try {
             ApplyPreference(state->configuration.preferences,
                             state->preference_key, std::move(state->value));

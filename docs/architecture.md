@@ -98,8 +98,12 @@ The private bounded legacy XML importer maps the portable, non-secret subset
 of those preferences into the same DTO. Recognized scalar values use strict
 boolean, enum, numeric, and string conversions; missing values retain current
 defaults, while malformed recognized values abort atomic migration. Proxy
-credentials, tab and layout state, source definitions, and Widgets behavior
-remain excluded and are never persisted by this migration.
+credentials, general layout state, source definitions, and Widgets behavior
+remain excluded. A narrow extension maps only the exact legacy tab-opening
+booleans and opaque `mainWindowGeometry`. Core validates and canonically
+persists these transport-neutral values, bounding decoded geometry at 64 KiB;
+Widgets alone captures and restores it with Qt geometry APIs. Window/dock
+state and legacy article sessions remain excluded.
 `CreateDictionaryService` is the headless composition entry
 point and `CreateDesktopFacade` is the presentation-facing entry point. Both
 compose private format adapters inside `goldendict_core`; neither exposes a
@@ -121,8 +125,10 @@ back/forward commands through the facade, and keeps query/group controls bound
 to the active tab. The composition root restores the configured facade session
 before presentation synchronization, rebuilds each view from only its current
 navigation entry, and atomically saves facade exports after successful
-mutations and on orderly shutdown. Tab placement preferences and persisted-
-session migration remain later application work.
+mutations and on orderly shutdown. New-tab placement is an explicit core
+append/after-active policy; Widgets derives it and default activation from
+core preferences while explicit foreground/background commands and modifier
+overrides retain fixed meanings. Persisted-session migration remains later.
 
 The core persistence foundation also exposes a complete transport-neutral
 session DTO containing each tab's ordered navigation history and cursor. It
@@ -130,8 +136,8 @@ validates and restores that DTO atomically, derives the next stable tab ID
 without collisions, and stores an optional canonical session block in the
 current configuration. Older current configurations retain the single-empty-
 tab default. Application startup/save wiring and restart presentation use this
-contract without adding GUI-owned history. Tab-opening preferences, geometry,
-and legacy layout migration remain separate work.
+contract without adding GUI-owned history. Bounded geometry and tab-opening
+preferences use the same atomic configuration path without adding GUI types.
 
 Built-in local formats are composed behind the same private backend contract.
 StarDict owns its generated index and typed resource adapter. Dictd consumes

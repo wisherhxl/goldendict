@@ -246,11 +246,14 @@ int main(int argc, char* argv[]) {
                              QString::fromLocal8Bit(error.what()));
     }
     MainWindow window;
+    window.SetPreferences(configuration.preferences);
+    window.RestoreMainWindowGeometry(configuration.main_window_geometry);
     window.SetDictionaryGroups(configuration.dictionary_groups);
     window.SetFacade(facade.get());
     const auto persist_article_tab_session = [&]() {
         auto updated = configuration;
         updated.article_tab_session = facade->ExportArticleTabSession();
+        updated.main_window_geometry = window.CaptureMainWindowGeometry();
         try {
             goldendict::core::SaveConfiguration(
                 configuration_path.toStdString(), updated);

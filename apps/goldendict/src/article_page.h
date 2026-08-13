@@ -24,6 +24,7 @@ class ArticlePage final : public QWebEnginePage {
     explicit ArticlePage(QObject* parent = nullptr);
 
     void SetFacade(const goldendict::core::DesktopFacade* facade) noexcept;
+    void SetOpenNewTabsInBackground(bool enabled) noexcept;
 
    signals:
     void LookupRequested(const QString& text, const QString& internal_url,
@@ -38,6 +39,7 @@ class ArticlePage final : public QWebEnginePage {
    private:
     const goldendict::core::DesktopFacade* facade_ = nullptr;
     bool new_window_navigation_pending_ = false;
+    bool open_new_tabs_in_background_ = true;
 };
 
 #endif  // GOLDENDICT_APPS_GOLDENDICT_ARTICLE_PAGE_H_

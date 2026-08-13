@@ -7,6 +7,7 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QByteArray>
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialog>
@@ -253,8 +254,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         StartLookupInTab(goldendict::core::TabOpenPolicy::kNewTab,
                          goldendict::core::TabActivationPolicy::kKeepActive);
     });
-    connect(add_tab_button, &QToolButton::clicked, this,
-            [this]() { CreateEmptyArticleTab(true); });
+    connect(add_tab_button, &QToolButton::clicked, this, [this]() {
+        CreateEmptyArticleTab(!preferences_.open_new_tabs_in_background);
+    });
     connect(add_foreground_tab, &QAction::triggered, this,
             [this]() { CreateEmptyArticleTab(true); });
     connect(add_background_tab, &QAction::triggered, this,
@@ -445,8 +447,18 @@ void MainWindow::RunArticleTabsSmokeCheck(
         return;
     }
     SyncArticleTabs();
+    const QSize default_size = size();
+    const std::string saved_geometry = CaptureMainWindowGeometry();
+    resize(default_size + QSize(37, 29));
+    const bool restored_geometry =
+        RestoreMainWindowGeometry(saved_geometry) && size() == default_size;
+    const QRect before_rejected = geometry();
+    const bool rejected_geometry =
+        !RestoreMainWindowGeometry("not-qt-geometry") &&
+        geometry() == before_rejected;
     bool passed = article_tabs_->count() == 1 &&
-                  facade_->GetArticleTabsState().tabs.size() == 1U;
+                  facade_->GetArticleTabsState().tabs.size() == 1U &&
+                  restored_geometry && rejected_geometry;
     query_->setText(QStringLiteral("application"));
     SelectGroup(0U);
     StartLookup();
@@ -636,6 +648,43 @@ void MainWindow::RunArticleTabsSmokeCheck(
                         replacement.active_tab_id != retained_id &&
                         replacement.tabs.front().navigation.kind ==
                             goldendict::core::TabNavigationKind::kEmpty;
+                    goldendict::core::TabNavigationState empty;
+                    empty.title = "(untitled)";
+                    const goldendict::core::ArticleTabSession placement = {
+                        {{10U, {empty}, 0U},
+                         {20U, {empty}, 0U},
+                         {30U, {empty}, 0U}},
+                        20U};
+                    smoke_passed = smoke_passed &&
+                                   facade_->RestoreArticleTabSession(placement);
+                    SyncArticleTabs();
+                    auto configured = preferences_;
+                    configured.open_new_tabs_after_current = true;
+                    configured.open_new_tabs_in_background = true;
+                    SetPreferences(configured);
+                    auto* add_button = findChild<QToolButton*>(
+                        QStringLiteral("addArticleTabButton"));
+                    if (add_button == nullptr) {
+                        completion(false);
+                        return;
+                    }
+                    add_button->click();
+                    auto configured_state = facade_->GetArticleTabsState();
+                    smoke_passed = smoke_passed &&
+                                   configured_state.tabs.size() == 4U &&
+                                   configured_state.tabs[0].id == 10U &&
+                                   configured_state.tabs[1].id == 20U &&
+                                   configured_state.tabs[3].id == 30U &&
+                                   configured_state.active_tab_id == 20U;
+                    configured.open_new_tabs_in_background = false;
+                    SetPreferences(configured);
+                    add_button->click();
+                    configured_state = facade_->GetArticleTabsState();
+                    smoke_passed = smoke_passed &&
+                                   configured_state.tabs.size() == 5U &&
+                                   configured_state.tabs[1].id == 20U &&
+                                   configured_state.active_tab_id ==
+                                       configured_state.tabs[2].id;
                     completion(smoke_passed);
                 });
             });
@@ -1137,6 +1186,7 @@ QWebEngineView* MainWindow::CreateArticleView(
     view->setProperty("articleTabId", QVariant::fromValue<qulonglong>(tab_id));
     auto* page = new ArticlePage(view);
     page->SetFacade(facade_);
+    page->SetOpenNewTabsInBackground(preferences_.open_new_tabs_in_background);
     view->setPage(page);
     connect(
         page, &ArticlePage::LookupRequested, this,
@@ -1168,7 +1218,8 @@ QWebEngineView* MainWindow::CreateArticleView(
                     ? goldendict::core::TabOpenPolicy::kNewTab
                     : goldendict::core::TabOpenPolicy::kCurrentTab,
                 background ? goldendict::core::TabActivationPolicy::kKeepActive
-                           : goldendict::core::TabActivationPolicy::kActivate);
+                           : goldendict::core::TabActivationPolicy::kActivate,
+                NewTabPlacementPolicy());
             if (!result) {
                 status_->setText(QStringLiteral("Unable to open article tab"));
                 return;
@@ -1306,13 +1357,20 @@ void MainWindow::CreateEmptyArticleTab(bool activate) {
     const auto result = facade_->OpenArticleTab(
         navigation, goldendict::core::TabOpenPolicy::kNewTab,
         activate ? goldendict::core::TabActivationPolicy::kActivate
-                 : goldendict::core::TabActivationPolicy::kKeepActive);
+                 : goldendict::core::TabActivationPolicy::kKeepActive,
+        NewTabPlacementPolicy());
     if (!result) {
         status_->setText(QStringLiteral("Article tab limit reached"));
         return;
     }
     SyncArticleTabs();
     emit ArticleTabSessionMutated();
+}
+
+goldendict::core::TabPlacementPolicy MainWindow::NewTabPlacementPolicy() const {
+    return preferences_.open_new_tabs_after_current
+               ? goldendict::core::TabPlacementPolicy::kAfterActive
+               : goldendict::core::TabPlacementPolicy::kAppend;
 }
 
 void MainWindow::NavigateArticleTab(bool forward) {
@@ -1507,6 +1565,41 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
         tr("%1 dictionary loaded").arg(static_cast<qulonglong>(count)));
     if (facade_ != nullptr)
         RebuildArticleTabs();
+}
+
+void MainWindow::SetPreferences(
+    const goldendict::core::ApplicationPreferences& preferences) {
+    preferences_ = preferences;
+    for (int index = 0; index < article_tabs_->count(); ++index) {
+        auto* view =
+            qobject_cast<QWebEngineView*>(article_tabs_->widget(index));
+        if (view != nullptr) {
+            auto* page = qobject_cast<ArticlePage*>(view->page());
+            if (page != nullptr) {
+                page->SetOpenNewTabsInBackground(
+                    preferences_.open_new_tabs_in_background);
+            }
+        }
+    }
+}
+
+bool MainWindow::RestoreMainWindowGeometry(const std::string& geometry) {
+    if (geometry.empty())
+        return false;
+    const QRect default_geometry = this->geometry();
+    const Qt::WindowStates default_state = windowState();
+    const QByteArray encoded(geometry.data(),
+                             static_cast<qsizetype>(geometry.size()));
+    if (restoreGeometry(encoded))
+        return true;
+    setWindowState(default_state);
+    setGeometry(default_geometry);
+    return false;
+}
+
+std::string MainWindow::CaptureMainWindowGeometry() const {
+    const QByteArray geometry = saveGeometry();
+    return {geometry.constData(), static_cast<std::size_t>(geometry.size())};
 }
 
 void MainWindow::ShowDictionaryBrowser() {
@@ -1721,8 +1814,8 @@ void MainWindow::StartLookupInTab(
     navigation.group_id = selected_group_id_;
     navigation.title = navigation.query;
     navigation.internal_url = internal_url.toStdString();
-    const auto tab_result =
-        facade_->OpenArticleTab(navigation, open_policy, activation);
+    const auto tab_result = facade_->OpenArticleTab(
+        navigation, open_policy, activation, NewTabPlacementPolicy());
     if (!tab_result) {
         status_->setText(QStringLiteral("Unable to update article state"));
         return;

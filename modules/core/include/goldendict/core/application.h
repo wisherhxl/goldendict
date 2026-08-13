@@ -92,6 +92,8 @@ struct ApplicationPreferences {
     std::string help_language;
     std::string display_style;
     std::string addon_style;
+    bool open_new_tabs_after_current = false;
+    bool open_new_tabs_in_background = true;
     bool hide_menubar = false;
     bool enable_tray_icon = true;
     bool start_to_tray = false;
@@ -166,12 +168,13 @@ struct ApplicationPreferences {
     bool operator==(const ApplicationPreferences& other) const noexcept {
         return std::tie(
                    interface_language, help_language, display_style,
-                   addon_style, hide_menubar, enable_tray_icon, start_to_tray,
-                   close_to_tray, auto_start, double_click_translates,
-                   select_word_by_single_click, escape_hides_main_window,
-                   always_on_top, search_in_dock, enable_main_window_hotkey,
-                   main_window_hotkey, enable_clipboard_hotkey,
-                   clipboard_hotkey, enable_scan_popup,
+                   addon_style, open_new_tabs_after_current,
+                   open_new_tabs_in_background, hide_menubar, enable_tray_icon,
+                   start_to_tray, close_to_tray, auto_start,
+                   double_click_translates, select_word_by_single_click,
+                   escape_hides_main_window, always_on_top, search_in_dock,
+                   enable_main_window_hotkey, main_window_hotkey,
+                   enable_clipboard_hotkey, clipboard_hotkey, enable_scan_popup,
                    start_with_scan_popup_on, enable_scan_popup_modifiers,
                    scan_popup_modifiers, scan_popup_alt_mode,
                    scan_popup_alt_mode_seconds, ignore_own_clipboard_changes,
@@ -202,7 +205,9 @@ struct ApplicationPreferences {
                    full_text_disabled_types) ==
                std::tie(
                    other.interface_language, other.help_language,
-                   other.display_style, other.addon_style, other.hide_menubar,
+                   other.display_style, other.addon_style,
+                   other.open_new_tabs_after_current,
+                   other.open_new_tabs_in_background, other.hide_menubar,
                    other.enable_tray_icon, other.start_to_tray,
                    other.close_to_tray, other.auto_start,
                    other.double_click_translates,
@@ -264,6 +269,7 @@ struct CoreConfiguration {
     std::vector<DictionaryGroupConfiguration> dictionary_groups;
     ApplicationPreferences preferences;
     std::optional<ArticleTabSession> article_tab_session;
+    std::string main_window_geometry;
 };
 
 // Missing files load as an empty clean-profile configuration. Malformed files

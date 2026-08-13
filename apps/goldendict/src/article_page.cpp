@@ -14,6 +14,10 @@ void ArticlePage::SetFacade(
     facade_ = facade;
 }
 
+void ArticlePage::SetOpenNewTabsInBackground(bool enabled) noexcept {
+    open_new_tabs_in_background_ = enabled;
+}
+
 QWebEnginePage* ArticlePage::createWindow(WebWindowType type) {
     static_cast<void>(type);
     // Modified article-link clicks must still pass through this page's
@@ -24,9 +28,10 @@ QWebEnginePage* ArticlePage::createWindow(WebWindowType type) {
 
 bool ArticlePage::acceptNavigationRequest(const QUrl& url, NavigationType type,
                                           bool is_main_frame) {
+    const bool requested_new_window = new_window_navigation_pending_;
     const bool requested_by_article_link =
         type == QWebEnginePage::NavigationTypeLinkClicked ||
-        new_window_navigation_pending_;
+        requested_new_window;
     new_window_navigation_pending_ = false;
     if (!requested_by_article_link) {
         return QWebEnginePage::acceptNavigationRequest(url, type,
@@ -44,7 +49,11 @@ bool ArticlePage::acceptNavigationRequest(const QUrl& url, NavigationType type,
         const bool middle_clicked =
             QApplication::mouseButtons().testFlag(Qt::MiddleButton);
         ArticleLinkDisposition disposition =
-            ArticleLinkDisposition::kCurrentTab;
+            requested_new_window
+                ? (open_new_tabs_in_background_
+                       ? ArticleLinkDisposition::kNewBackgroundTab
+                       : ArticleLinkDisposition::kNewForegroundTab)
+                : ArticleLinkDisposition::kCurrentTab;
         if (modifiers.testFlag(Qt::ShiftModifier)) {
             disposition = ArticleLinkDisposition::kNewForegroundTab;
         } else if (middle_clicked || modifiers.testFlag(Qt::ControlModifier)) {

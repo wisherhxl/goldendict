@@ -123,7 +123,8 @@ class DesktopFacadeImpl final : public DesktopFacade {
 
     TabOperationResult OpenArticleTab(
         const TabNavigationState& navigation, TabOpenPolicy open_policy,
-        TabActivationPolicy activation_policy) override {
+        TabActivationPolicy activation_policy,
+        TabPlacementPolicy placement_policy) override {
         if (!application::IsValidTabNavigation(navigation)) {
             return {TabOperationError::kInvalidNavigation, 0U};
         }
@@ -145,8 +146,17 @@ class DesktopFacadeImpl final : public DesktopFacade {
             if (tabs_.size() >= kMaximumArticleTabs) {
                 return {TabOperationError::kTabLimitReached, 0U};
             }
-            tabs_.push_back(CreateTabRecord(navigation));
-            const ArticleTabId id = tabs_.back().id;
+            auto insertion = tabs_.end();
+            if (placement_policy == TabPlacementPolicy::kAfterActive) {
+                insertion = std::find_if(tabs_.begin(), tabs_.end(),
+                                         [this](const TabRecord& tab) {
+                                             return tab.id == active_tab_id_;
+                                         });
+                ++insertion;
+            }
+            const auto created =
+                tabs_.insert(insertion, CreateTabRecord(navigation));
+            const ArticleTabId id = created->id;
             if (activation_policy == TabActivationPolicy::kActivate) {
                 active_tab_id_ = id;
             }

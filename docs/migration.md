@@ -376,6 +376,16 @@ credentials, layout/session state, source definitions, UI, and runtime wiring
 remain excluded. This preference migration unlocks T3; P3 remains independently
 ready from the current-preferences foundation.
 
+The bounded T3c increment adds `open_new_tabs_after_current` (default false)
+and `open_new_tabs_in_background` (default true), migrated from their exact
+legacy XML names. New tabs append or insert after the active core tab; default
+gestures use configured activation while explicit commands and Shift versus
+Ctrl/middle-click overrides remain explicit. It also stores only opaque main-
+window geometry, with strict legacy `mainWindowGeometry` Base64 migration and
+a 64 KiB decoded limit. Widgets alone calls Qt geometry APIs; malformed,
+oversized, empty, or Qt-rejected data preserves the default layout.
+`mainWindowState`, dock state, and legacy article sessions remain excluded.
+
 The following user-state increment adds a transport-neutral core history store
 with bounded group-aware UTF-8 entries and a recoverable legacy line-format
 migration. Current state takes precedence, new state is written atomically,

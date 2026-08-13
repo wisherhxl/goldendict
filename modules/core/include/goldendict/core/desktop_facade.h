@@ -100,6 +100,11 @@ enum class TabActivationPolicy {
     kKeepActive,
 };
 
+enum class TabPlacementPolicy {
+    kAppend,
+    kAfterActive,
+};
+
 enum class TabOperationError {
     kNone,
     kInvalidTabId,
@@ -136,7 +141,8 @@ class GOLDENDICT_EXPORTS DesktopFacade {
         const ArticleTabSession& session) = 0;
     virtual TabOperationResult OpenArticleTab(
         const TabNavigationState& navigation, TabOpenPolicy open_policy,
-        TabActivationPolicy activation_policy) = 0;
+        TabActivationPolicy activation_policy,
+        TabPlacementPolicy placement_policy = TabPlacementPolicy::kAppend) = 0;
     virtual TabOperationResult ActivateArticleTab(ArticleTabId tab_id) = 0;
     virtual TabOperationResult CloseArticleTab(ArticleTabId tab_id) = 0;
     virtual TabOperationResult CloseOtherArticleTabs(ArticleTabId tab_id) = 0;

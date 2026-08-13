@@ -43,6 +43,7 @@ class ApplicationServiceTest : public QObject {
     void ConfigurationRejectsMalformedArticleTabSessionsAtomically();
     void ApplicationPreferencesCompareByValue();
     void ConfigurationRoundTripsPreferencesDeterministically();
+    void ConfigurationRoundTripsBoundedMainWindowGeometry();
     void ConfigurationRejectsMalformedPreferencesAtomically();
     void ConfigurationRejectsGroupBoundsAndDuplicatesAtomically();
     void ConfigurationRejectsMalformedGroups();
@@ -259,6 +260,9 @@ void ApplicationServiceTest::ApplicationPreferencesCompareByValue() {
     QVERIFY(!(first == second));
 
     first.interface_language = second.interface_language;
+    second.open_new_tabs_after_current = true;
+    QVERIFY(first != second);
+    first.open_new_tabs_after_current = true;
     second.full_text_search_mode = FullTextSearchMode::kWildcard;
     QVERIFY(first != second);
 }
@@ -272,6 +276,8 @@ void ApplicationServiceTest::
     auto& preferences = expected.preferences;
     preferences.interface_language = "zh_CN";
     preferences.display_style = "dark | high contrast";
+    preferences.open_new_tabs_after_current = true;
+    preferences.open_new_tabs_in_background = false;
     preferences.enable_tray_icon = false;
     preferences.main_window_hotkey = "Alt+Space";
     preferences.scan_popup_modifiers = 0x021U;
@@ -302,6 +308,8 @@ void ApplicationServiceTest::
     QCOMPARE(actual.preferences.interface_language,
              preferences.interface_language);
     QCOMPARE(actual.preferences.display_style, preferences.display_style);
+    QCOMPARE(actual.preferences.open_new_tabs_after_current, true);
+    QCOMPARE(actual.preferences.open_new_tabs_in_background, false);
     QCOMPARE(actual.preferences.enable_tray_icon, preferences.enable_tray_icon);
     QCOMPARE(actual.preferences.scan_popup_modifiers,
              preferences.scan_popup_modifiers);
@@ -333,8 +341,40 @@ void ApplicationServiceTest::
     const auto older = LoadConfiguration(path.string());
     QCOMPARE(older.preferences.interface_language, std::string{});
     QCOMPARE(older.preferences.enable_tray_icon, true);
+    QCOMPARE(older.preferences.open_new_tabs_after_current, false);
+    QCOMPARE(older.preferences.open_new_tabs_in_background, true);
     QCOMPARE(older.preferences.zoom_factor, 1.0);
     QCOMPARE(older.preferences.maximum_history_entries, std::uint32_t{500});
+}
+
+void ApplicationServiceTest::
+    ConfigurationRoundTripsBoundedMainWindowGeometry() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration expected;
+    expected.dictionary_paths = {"/preserved"};
+    expected.main_window_geometry.assign(64U * 1024U, '\0');
+    expected.main_window_geometry[1] = '%';
+    expected.main_window_geometry[2] = '\n';
+
+    SaveConfiguration(path.string(), expected);
+    QCOMPARE(LoadConfiguration(path.string()).main_window_geometry,
+             expected.main_window_geometry);
+
+    const std::string original = ReadFile(path);
+    expected.main_window_geometry.push_back('x');
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), expected),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original);
+    QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\n"
+                          "main_window_geometry=first\n"
+                          "main_window_geometry=second\n");
+    QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                             std::runtime_error);
 }
 
 void ApplicationServiceTest::
@@ -374,6 +414,7 @@ void ApplicationServiceTest::
 
     const std::vector<std::string> malformed = {
         "preference=enable_tray_icon|true\n",
+        "preference=open_new_tabs_in_background|true\n",
         "preference=proxy_type|9\n",
         "preference=full_text_search_mode|3\n",
         std::string("preference=interface_language|bad\xc3\x28\n"),
@@ -522,12 +563,13 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<collapseBigArticles>1</collapseBigArticles>"
         "<articleSizeLimit>4096</articleSizeLimit>"
         "<synonymSearchEnabled>0</synonymSearchEnabled>"
+        "<newTabsOpenAfterCurrentOne>1</newTabsOpenAfterCurrentOne>"
         "<newTabsOpenInBackground>0</newTabsOpenInBackground>"
         "<fullTextSearch><searchMode>2</searchMode><matchCase>1</matchCase>"
         "<maxDistanceBetweenWords>9</maxDistanceBetweenWords>"
         "<disabledTypes>audio|images</disabledTypes>"
         "<dialogGeometry>excluded</dialogGeometry></fullTextSearch>"
-        "</preferences>"
+        "</preferences><mainWindowGeometry>Z2VvbWV0cnk=</mainWindowGeometry>"
         "</config>";
     test::WriteBinaryFile(legacy_path, legacy);
 
@@ -561,6 +603,8 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.help_language, "fr_FR");
     QCOMPARE(preferences.display_style, "dark");
     QCOMPARE(preferences.addon_style, "contrast.css");
+    QCOMPARE(preferences.open_new_tabs_after_current, true);
+    QCOMPARE(preferences.open_new_tabs_in_background, false);
     QCOMPARE(preferences.hide_menubar, true);
     QCOMPARE(preferences.enable_tray_icon, false);
     QCOMPARE(preferences.double_click_translates, false);
@@ -587,6 +631,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.full_text_match_case, true);
     QCOMPARE(preferences.full_text_maximum_word_distance, std::uint32_t{9});
     QCOMPARE(preferences.full_text_disabled_types, "audio|images");
+    QCOMPARE(migrated.main_window_geometry, "geometry");
     QVERIFY(std::filesystem::exists(current_path));
     std::ifstream legacy_input(legacy_path, std::ios::binary);
     const std::string unchanged((std::istreambuf_iterator<char>(legacy_input)),
@@ -597,6 +642,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(round_trip.sound_directories, migrated.sound_directories);
     QCOMPARE(round_trip.dictionary_groups, migrated.dictionary_groups);
     QCOMPARE(round_trip.preferences, migrated.preferences);
+    QCOMPARE(round_trip.main_window_geometry, migrated.main_window_geometry);
 }
 
 void ApplicationServiceTest::MissingLegacyPreferencesRetainCurrentDefaults() {
@@ -607,11 +653,10 @@ void ApplicationServiceTest::MissingLegacyPreferencesRetainCurrentDefaults() {
     const auto current_path = root / "core.conf";
     const std::string legacy =
         "<config><preferences><interfaceLanguage>de_DE</interfaceLanguage>"
-        "<newTabsOpenAfterCurrentOne>1</newTabsOpenAfterCurrentOne>"
         "<proxyserver enabled=\"0\" useSystemProxy=\"0\">"
         "<user>secret-user</user><password>secret-password</password>"
-        "</proxyserver></preferences><mainWindowGeometry>excluded</"
-        "mainWindowGeometry>"
+        "</proxyserver></preferences><mainWindowState>excluded</"
+        "mainWindowState>"
         "</config>";
     test::WriteBinaryFile(legacy_path, legacy);
 
@@ -621,6 +666,7 @@ void ApplicationServiceTest::MissingLegacyPreferencesRetainCurrentDefaults() {
     defaults.interface_language = "de_DE";
 
     QCOMPARE(migrated.preferences, defaults);
+    QVERIFY(migrated.main_window_geometry.empty());
     QCOMPARE(LoadConfiguration(current_path.string()).preferences, defaults);
     QCOMPARE(ReadFile(legacy_path), legacy);
 }
@@ -633,6 +679,7 @@ void ApplicationServiceTest::RejectsMalformedLegacyPreferencesAtomically() {
     const auto current_path = root / "core.conf";
     std::vector<std::string> malformed = {
         "<enableTrayIcon>true</enableTrayIcon>",
+        "<newTabsOpenAfterCurrentOne>true</newTabsOpenAfterCurrentOne>",
         "<zoomFactor>nan</zoomFactor>",
         "<wordsZoomLevel>2x</wordsZoomLevel>",
         "<scanPopupModifiers>65535</scanPopupModifiers>",
@@ -664,6 +711,33 @@ void ApplicationServiceTest::RejectsMalformedLegacyPreferencesAtomically() {
         QVERIFY(!std::filesystem::exists(current_path.string() + ".tmp"));
         QCOMPARE(ReadFile(legacy_path), legacy);
     }
+
+    const std::vector<std::string> malformed_geometry = {
+        "not-base64", "Zg=", "Zh==", "Zg==<nested/>"};
+    for (const auto& geometry : malformed_geometry) {
+        const std::string legacy = "<config><mainWindowGeometry>" + geometry +
+                                   "</mainWindowGeometry></config>";
+        test::WriteBinaryFile(legacy_path, legacy);
+        QVERIFY_EXCEPTION_THROWN(
+            LoadOrMigrateConfiguration(current_path.string(),
+                                       legacy_path.string(), "/cache/indexes"),
+            std::runtime_error);
+        QVERIFY(!std::filesystem::exists(current_path));
+        QVERIFY(!std::filesystem::exists(current_path.string() + ".tmp"));
+        QCOMPARE(ReadFile(legacy_path), legacy);
+    }
+
+    const std::string oversized_geometry(87384U, 'A');
+    const std::string oversized_legacy = "<config><mainWindowGeometry>" +
+                                         oversized_geometry +
+                                         "AAAA</mainWindowGeometry></config>";
+    test::WriteBinaryFile(legacy_path, oversized_legacy);
+    QVERIFY_EXCEPTION_THROWN(
+        LoadOrMigrateConfiguration(current_path.string(), legacy_path.string(),
+                                   "/cache/indexes"),
+        std::runtime_error);
+    QVERIFY(!std::filesystem::exists(current_path));
+    QCOMPARE(ReadFile(legacy_path), oversized_legacy);
 }
 
 void ApplicationServiceTest::CurrentConfigurationTakesPrecedenceOverLegacy() {

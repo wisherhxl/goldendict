@@ -60,6 +60,10 @@ class MainWindow final : public QMainWindow {
     ~MainWindow() override;
 
     void SetFacade(goldendict::core::DesktopFacade* facade);
+    void SetPreferences(
+        const goldendict::core::ApplicationPreferences& preferences);
+    bool RestoreMainWindowGeometry(const std::string& geometry);
+    std::string CaptureMainWindowGeometry() const;
     void SetHistoryWords(const QStringList& words);
     void SetHistoryItems(const std::vector<HistoryViewItem>& items);
     void SetFavoriteItems(const std::vector<FavoriteViewItem>& items);
@@ -138,6 +142,7 @@ class MainWindow final : public QMainWindow {
     void CloseArticleTab(int index);
     void CloseOtherArticleTabs(int index);
     void CreateEmptyArticleTab(bool activate);
+    goldendict::core::TabPlacementPolicy NewTabPlacementPolicy() const;
     void NavigateArticleTab(bool forward);
     void ShowTabContextMenu(const QPoint& position);
     QWebEngineView* CreateArticleView(goldendict::core::ArticleTabId tab_id);
@@ -151,6 +156,7 @@ class MainWindow final : public QMainWindow {
     QList<int> SelectedFavoriteFolderPath() const;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
+    goldendict::core::ApplicationPreferences preferences_;
     QLineEdit* query_ = nullptr;
     QComboBox* group_selector_ = nullptr;
     QPushButton* edit_groups_button_ = nullptr;

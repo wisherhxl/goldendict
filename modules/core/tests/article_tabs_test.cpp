@@ -28,6 +28,7 @@ class ArticleTabsTest : public QObject {
     void CreatesActivatesClosesAndClosesOthersDeterministically();
     void PreservesNavigationAndTruncatesForwardHistory();
     void AppliesReuseAndNewTabPolicies();
+    void PlacesNewTabsAfterActiveOrAtEnd();
     void PreservesInternalLinkState();
     void ExportsAndRestoresCompleteSession();
     void RejectsInvalidSessionsAtomically();
@@ -141,6 +142,40 @@ void ArticleTabsTest::AppliesReuseAndNewTabPolicies() {
     QVERIFY(different_group.tab_id != existing.tab_id);
     QVERIFY(duplicate.tab_id != existing.tab_id);
     QCOMPARE(facade->GetArticleTabsState().tabs.size(), std::size_t{4});
+}
+
+void ArticleTabsTest::PlacesNewTabsAfterActiveOrAtEnd() {
+    auto facade = CreateDesktopFacade({});
+    const ArticleTabId first = facade->GetArticleTabsState().active_tab_id;
+    const auto second = facade->OpenArticleTab(
+        Lookup("second"), TabOpenPolicy::kNewTab,
+        TabActivationPolicy::kKeepActive, TabPlacementPolicy::kAppend);
+    const auto after_first = facade->OpenArticleTab(
+        Lookup("after-first"), TabOpenPolicy::kNewTab,
+        TabActivationPolicy::kKeepActive, TabPlacementPolicy::kAfterActive);
+    QVERIFY(second);
+    QVERIFY(after_first);
+    auto state = facade->GetArticleTabsState();
+    QCOMPARE(state.active_tab_id, first);
+    QCOMPARE(state.tabs[0].id, first);
+    QCOMPARE(state.tabs[1].id, after_first.tab_id);
+    QCOMPARE(state.tabs[2].id, second.tab_id);
+
+    QVERIFY(facade->ActivateArticleTab(after_first.tab_id));
+    const auto activated = facade->OpenArticleTab(
+        Lookup("activated"), TabOpenPolicy::kNewTab,
+        TabActivationPolicy::kActivate, TabPlacementPolicy::kAfterActive);
+    QVERIFY(activated);
+    state = facade->GetArticleTabsState();
+    QCOMPARE(state.active_tab_id, activated.tab_id);
+    QCOMPARE(state.tabs[2].id, activated.tab_id);
+
+    const auto appended = facade->OpenArticleTab(
+        Lookup("appended"), TabOpenPolicy::kNewTab,
+        TabActivationPolicy::kKeepActive, TabPlacementPolicy::kAppend);
+    QVERIFY(appended);
+    QCOMPARE(facade->GetArticleTabsState().tabs.back().id, appended.tab_id);
+    QCOMPARE(facade->GetArticleTabsState().active_tab_id, activated.tab_id);
 }
 
 void ArticleTabsTest::PreservesInternalLinkState() {

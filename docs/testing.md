@@ -130,6 +130,12 @@ Malformed or duplicate recognized values abort without a current or temporary
 file, existing current configuration wins, and the legacy XML remains
 byte-for-byte unchanged after success and failure.
 
+T3c coverage pins both tab-opening defaults, equality, canonical current
+records, older-file compatibility, and exact strict legacy names. Binary
+main-window geometry round-trips through the current store with a 64 KiB
+decoded limit; malformed, duplicate, and oversized current or legacy data is
+rejected atomically while `mainWindowState` remains ignored.
+
 `history_store_test` verifies the first user-history migration slice: strict
 bounded UTF-8/group-aware current-format round trips, bounded import of the
 legacy line format, entry-limit truncation, current-state precedence, atomic
@@ -157,6 +163,8 @@ navigation limits. It also verifies complete session export and atomic restore,
 including ordered histories/cursors, sparse stable IDs, deterministic
 collision-free ID continuation, and atomic rejection of duplicate,
 inconsistent, invalid, overflowing, or over-limit sessions.
+It also verifies append versus after-active placement independently of
+foreground/background activation.
 
 `application_service_test` verifies the optional canonical current-config
 session block, deterministic round trips, older-file compatibility, atomic
@@ -169,6 +177,9 @@ foreground and background lookup tabs, independent rendered/query/group state,
 activation, close/middle-close/close-others and last-tab fallback, current-tab
 and background internal links, facade-backed back/forward restoration and
 forward truncation, and atomic tab/navigation-limit handling.
+It additionally covers configurable default activation, after-current visible
+ordering, valid geometry capture/restore, and deterministic Qt rejection
+fallback.
 
 `goldendict_article_tab_session_restart_smoke` launches the real offscreen
 application twice against one isolated configuration directory. The first run

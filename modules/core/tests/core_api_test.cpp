@@ -95,10 +95,12 @@ class EmptyDesktopFacade final : public DesktopFacade {
 
     TabOperationResult OpenArticleTab(
         const TabNavigationState& navigation, TabOpenPolicy open_policy,
-        TabActivationPolicy activation_policy) override {
+        TabActivationPolicy activation_policy,
+        TabPlacementPolicy placement_policy) override {
         static_cast<void>(navigation);
         static_cast<void>(open_policy);
         static_cast<void>(activation_policy);
+        static_cast<void>(placement_policy);
         return {};
     }
 
