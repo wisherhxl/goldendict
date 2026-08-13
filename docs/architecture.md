@@ -96,6 +96,17 @@ StarDict type. Synchronous lookup is available for simple headless consumers,
 and `StartLookup` returns an owned request with explicit completion and
 cancellation whose lifetime does not depend on the service object.
 
+The desktop facade also owns the in-memory article-tab session. Its public,
+transport-neutral snapshot carries ordered stable tab IDs, the active tab, and
+bounded per-tab navigation state for queries, groups, titles, and internal-link
+context. A session always contains at least one tab; closing the active tab
+selects its next neighbor or the previous final neighbor, and closing the last
+tab creates a fresh untitled tab. Navigation is capped at 100 entries per tab,
+new navigation after going back discards the forward suffix, and the session is
+capped at 32 tabs. These desktop semantics do not change the headless lookup
+contract. Widgets, WebEngine pages, tab placement preferences, and persisted
+session migration remain presentation or later application work.
+
 Built-in local formats are composed behind the same private backend contract.
 StarDict owns its generated index and typed resource adapter. Dictd consumes
 the original `.index` plus `.dict` or `.dict.dz` files directly, including the

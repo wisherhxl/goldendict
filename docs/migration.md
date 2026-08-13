@@ -324,6 +324,14 @@ local rendering gate.
   platform compatibility, and document those differences.
 - Keep UI code dependent only on the `goldendict_core` application facade.
 
+The tab-state foundation adds a bounded transport-neutral article-tab session
+behind the desktop facade. It provides deterministic create, activate, close,
+close-others, reuse, and explicit-new-tab policies plus per-tab back/forward
+state containing query, group, title, and internal-link context. The existing
+main window continues to use one article view and records ordinary lookups in
+the active core tab. Multi-tab widgets, session persistence and migration, and
+tab preferences remain separate Phase 8 increments.
+
 The first Phase 8 state-migration increment imports dictionary paths and named
 sound directories from a bounded legacy XML configuration when no current
 configuration exists. The core owns parsing and atomic persistence; the legacy

@@ -1094,6 +1094,18 @@ void MainWindow::StartLookup() {
     const QString word = query_->text().trimmed();
     query.text = word.toStdString();
     query.group_id = selected_group_id_;
+    goldendict::core::TabNavigationState navigation;
+    navigation.kind = goldendict::core::TabNavigationKind::kLookup;
+    navigation.query = query.text;
+    navigation.group_id = query.group_id;
+    navigation.title = query.text;
+    const auto tab_result = facade_->OpenArticleTab(
+        navigation, goldendict::core::TabOpenPolicy::kCurrentTab,
+        goldendict::core::TabActivationPolicy::kActivate);
+    if (!tab_result) {
+        status_->setText(QStringLiteral("Unable to update article state"));
+        return;
+    }
     emit LookupSubmitted(word, selected_group_id_);
     request_ = facade_->GetDictionaryService().StartLookup(std::move(query));
     status_->setText(QStringLiteral("Looking up..."));

@@ -101,7 +101,7 @@ not authorize dropping a legacy format.
 | --- | --- | --- | --- |
 | Minimal application window | done | Phase 2 | smoke test |
 | Minimal lookup and article view | slice | Phase 4 | vertical-slice workflow |
-| Main tabs and navigation | mapped | Phase 8 | interaction tests |
+| Main tabs and navigation | slice | Phase 8 | bounded transport-neutral tab/session lifecycle, stable IDs, deterministic close fallback, explicit reuse/new-tab policy, and per-tab query/group/internal-link back-forward state; multi-tab widgets, persistence, and preferences remain |
 | Dictionary/group controls | slice | Phase 8 | config round-trip, ordered catalog-resolved lookup/suggestion/article filtering, visible all/configured-group selector, and bounded ordered group/member/metadata/muting editor |
 | Preferences and source editor | mapped | Phase 8 | settings migration tests |
 | History | slice | Phase 8 | bounded UTF-8/group-aware current store, legacy line-format migration, current-state precedence, atomic persistence, visible group selection with missing-group fallback, group-preserving lookup recording and activation, filtering, clear, import, export, and a reusable pane |

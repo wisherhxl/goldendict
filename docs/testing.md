@@ -133,6 +133,13 @@ ordered available and unavailable membership, muted sets, metadata, atomic
 persistence, invalid-save rejection, unrelated-field preservation, and
 deleted-selection fallback.
 
+`article_tabs_test` verifies the bounded transport-neutral desktop tab model:
+initial single-tab compatibility, stable ordered creation and activation,
+deterministic close and close-others fallback, exact reuse versus explicit new
+tabs, per-tab query/group/title/internal-link state, back/forward restoration
+and truncation, and atomic errors for invalid IDs, malformed state, and tab or
+navigation limits.
+
 `favorites_store_test` verifies hierarchical current-format round trips and
 recoverable migration of the legacy favorites XML, including folder ordering,
 expansion state, Unicode headwords, current-state precedence, entity and

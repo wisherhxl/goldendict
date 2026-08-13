@@ -83,6 +83,37 @@ class EmptyDesktopFacade final : public DesktopFacade {
         return std::nullopt;
     }
 
+    ArticleTabsState GetArticleTabsState() const override { return {}; }
+
+    TabOperationResult OpenArticleTab(
+        const TabNavigationState& navigation, TabOpenPolicy open_policy,
+        TabActivationPolicy activation_policy) override {
+        static_cast<void>(navigation);
+        static_cast<void>(open_policy);
+        static_cast<void>(activation_policy);
+        return {};
+    }
+
+    TabOperationResult ActivateArticleTab(ArticleTabId tab_id) override {
+        return {TabOperationError::kNone, tab_id};
+    }
+
+    TabOperationResult CloseArticleTab(ArticleTabId tab_id) override {
+        return {TabOperationError::kNone, tab_id};
+    }
+
+    TabOperationResult CloseOtherArticleTabs(ArticleTabId tab_id) override {
+        return {TabOperationError::kNone, tab_id};
+    }
+
+    TabOperationResult GoBackInArticleTab(ArticleTabId tab_id) override {
+        return {TabOperationError::kNone, tab_id};
+    }
+
+    TabOperationResult GoForwardInArticleTab(ArticleTabId tab_id) override {
+        return {TabOperationError::kNone, tab_id};
+    }
+
    private:
     EmptyDictionaryService service_;
 };
