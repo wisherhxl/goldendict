@@ -61,4 +61,32 @@ bool IsValidUtf8(std::string_view text) noexcept {
     return true;
 }
 
+bool ContainsControlCharacter(std::string_view text) noexcept {
+    std::size_t position = 0;
+    while (position < text.size()) {
+        const auto first = static_cast<std::uint8_t>(text[position]);
+        if (first <= 0x7fU) {
+            if (first <= 0x1fU || first == 0x7fU)
+                return true;
+            ++position;
+            continue;
+        }
+        std::size_t length = (first & 0xe0U) == 0xc0U   ? 2U
+                             : (first & 0xf0U) == 0xe0U ? 3U
+                                                        : 4U;
+        std::uint32_t code_point = first & (length == 2U   ? 0x1fU
+                                            : length == 3U ? 0x0fU
+                                                           : 0x07U);
+        for (std::size_t offset = 1U; offset < length; ++offset) {
+            code_point =
+                (code_point << 6U) |
+                (static_cast<std::uint8_t>(text[position + offset]) & 0x3fU);
+        }
+        if (code_point >= 0x80U && code_point <= 0x9fU)
+            return true;
+        position += length;
+    }
+    return false;
+}
+
 }  // namespace goldendict::core::foundation

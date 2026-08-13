@@ -375,6 +375,15 @@ empty sound paths are rejected. The minimal Qt 6 dialog intentionally omits
 online sources, recursive flags, and sound icons absent from the current core
 model; explicit reorder buttons make ordering deterministic.
 
+The P4a online-source current-persistence foundation adds ordered bounded
+MediaWiki, website, Forvo, and DICT records to the transport-neutral core
+configuration. It canonically stores stable identity, display name, enabled
+intent, and only fields accepted by the Phase 7 adapters. Forvo credentials,
+website iframe and legacy query-encoding settings, runtime composition, UI,
+and network activity remain excluded. Older current files receive fixed safe
+defaults. P4b external-program persistence and the one-shot complete P4c
+legacy source migration remain separately pending.
+
 The current-preferences foundation adds deterministic portable defaults and
 bounded optional preference records to the core-owned current configuration.
 It round-trips locale, appearance, window, hotkey, scan, audio, proxy policy,

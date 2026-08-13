@@ -39,6 +39,8 @@ class ApplicationServiceTest : public QObject {
     void MissingConfigurationIsACleanProfile();
     void ConfigurationRoundTripsEscapedPaths();
     void ConfigurationValidatesLocalSourcePolicyAtomically();
+    void ConfigurationRoundTripsOnlineSourcesDeterministically();
+    void ConfigurationRejectsMalformedOnlineSourcesAtomically();
     void ConfigurationRoundTripsDictionaryGroups();
     void ConfigurationRoundTripsArticleTabSession();
     void ConfigurationRejectsMalformedArticleTabSessionsAtomically();
@@ -100,6 +102,13 @@ void ApplicationServiceTest::MissingConfigurationIsACleanProfile() {
     QVERIFY(configuration.dictionary_paths.empty());
     QVERIFY(configuration.index_directory.empty());
     QVERIFY(configuration.dictionary_groups.empty());
+    QCOMPARE(
+        configuration.forvo_sources,
+        (std::vector<ForvoSourceConfiguration>{{"forvo",
+                                                "Forvo",
+                                                false,
+                                                "https://apifree.forvo.com",
+                                                {"en", "ru"}}}));
 }
 
 void ApplicationServiceTest::ConfigurationRoundTripsEscapedPaths() {
@@ -198,6 +207,179 @@ void ApplicationServiceTest::ConfigurationRoundTripsDictionaryGroups() {
     QCOMPARE(g1.dictionary_groups.front().dictionary_ids,
              (std::vector<std::string>{"unknown-id"}));
     QVERIFY(g1.dictionary_groups.front().favorites_folder.empty());
+}
+
+void ApplicationServiceTest::
+    ConfigurationRoundTripsOnlineSourcesDeterministically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration expected;
+    expected.mediawiki_sources = {
+        {"wiki.en", "English Wiki", true, "https://en.example.test/w"},
+        {"wiki.fr", u8"Français", false, "http://fr.example.test/api.php"}};
+    expected.website_sources = {
+        {"web.search", "Search & Read", true,
+         "https://example.test/find?q=%GDWORD%&lang=en"}};
+    expected.forvo_sources = {
+        {"forvo", "Forvo", true, "https://apifree.forvo.com", {"en", "ru"}}};
+    expected.dict_server_sources = {
+        {"dict.main", "DICT | Main", true, "dict.example.test", 2628U, "*",
+         "prefix"},
+        {"dict.v6", "DICT IPv6", false, "2001:db8::1", 1234U, "wn", "exact"}};
+
+    SaveConfiguration(path.string(), expected);
+    const std::string first = ReadFile(path);
+    const std::string expected_prefix =
+        "goldendict-core-config-v1\n"
+        "index_directory=\n"
+        "mediawiki_source=wiki.en|English%20Wiki|1|https://en.example.test/w\n"
+        "mediawiki_source=wiki.fr|Fran%C3%A7ais|0|http://fr.example.test/"
+        "api.php\n"
+        "website_source=web.search|Search%20%26%20Read|1|"
+        "https://example.test/find%3Fq%3D%25GDWORD%25%26lang%3Den\n"
+        "forvo_sources=1\n"
+        "forvo_source=forvo|Forvo|1|https://apifree.forvo.com|2|en|ru\n"
+        "dict_server_source=dict.main|DICT%20%7C%20Main|1|dict.example.test|"
+        "2628|%2A|prefix\n"
+        "dict_server_source=dict.v6|DICT%20IPv6|0|2001:db8::1|1234|wn|exact\n";
+    QCOMPARE(first.substr(0U, expected_prefix.size()), expected_prefix);
+
+    const auto actual = LoadConfiguration(path.string());
+    QCOMPARE(actual.mediawiki_sources, expected.mediawiki_sources);
+    QCOMPARE(actual.website_sources, expected.website_sources);
+    QCOMPARE(actual.forvo_sources, expected.forvo_sources);
+    QCOMPARE(actual.dict_server_sources, expected.dict_server_sources);
+    SaveConfiguration(path.string(), actual);
+    QCOMPARE(ReadFile(path), first);
+
+    CoreConfiguration explicitly_empty;
+    explicitly_empty.forvo_sources.clear();
+    SaveConfiguration(path.string(), explicitly_empty);
+    const std::string empty_bytes = ReadFile(path);
+    QVERIFY(empty_bytes.find("forvo_sources=0\n") != std::string::npos);
+    QVERIFY(empty_bytes.find("forvo_source=") == std::string::npos);
+    const auto empty_round_trip = LoadConfiguration(path.string());
+    QVERIFY(empty_round_trip.forvo_sources.empty());
+    SaveConfiguration(path.string(), empty_round_trip);
+    QCOMPARE(ReadFile(path), empty_bytes);
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\nindex_directory=\n");
+    const auto older = LoadConfiguration(path.string());
+    QCOMPARE(
+        older.forvo_sources,
+        (std::vector<ForvoSourceConfiguration>{{"forvo",
+                                                "Forvo",
+                                                false,
+                                                "https://apifree.forvo.com",
+                                                {"en", "ru"}}}));
+}
+
+void ApplicationServiceTest::
+    ConfigurationRejectsMalformedOnlineSourcesAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration original;
+    original.dictionary_paths = {"/original"};
+    SaveConfiguration(path.string(), original);
+    const std::string original_bytes = ReadFile(path);
+    const auto rejects_save = [&](const CoreConfiguration& invalid) {
+        QVERIFY_EXCEPTION_THROWN(ValidateConfiguration(invalid),
+                                 std::runtime_error);
+        QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                                 std::runtime_error);
+        QCOMPARE(ReadFile(path), original_bytes);
+        QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+    };
+
+    CoreConfiguration boundary;
+    boundary.mediawiki_sources = {
+        {"a" + std::string(127U, 'z'), std::string(256U, 'n'), false,
+         "https://example.test/" + std::string(4075U, 'x')}};
+    boundary.forvo_sources.front().language_codes.clear();
+    for (char first = 'a'; first < 'e'; ++first) {
+        for (char second = 'a'; second < 'i'; ++second) {
+            boundary.forvo_sources.front().language_codes.push_back(
+                std::string{first, second});
+        }
+    }
+    ValidateConfiguration(boundary);
+
+    CoreConfiguration invalid = original;
+    invalid.mediawiki_sources = {
+        {"same", "Wiki", true, "https://example.test/w"}};
+    invalid.website_sources = {
+        {"same", "Web", false, "https://example.test/%GDWORD%"}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.website_sources = {
+        {"web", "Web", true, "https://example.test/no-marker"}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.mediawiki_sources = {
+        {"wiki", "Wiki\n", true, "https://example.test/w"}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.forvo_sources = {
+        {"forvo", "Forvo", true, "file:///tmp/api", {"en", "en"}}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.dict_server_sources = {{"dict", "DICT", true,
+                                    "https://dict.example.test", 0U, "bad atom",
+                                    "prefix"}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.mediawiki_sources.assign(
+        kMaximumOnlineSources + 1U,
+        {"wiki", "Wiki", false, "https://example.test/w"});
+    rejects_save(invalid);
+    invalid = original;
+    invalid.mediawiki_sources = {
+        {std::string(129U, 'i'), "Wiki", false, "https://example.test/w"}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.mediawiki_sources = {
+        {"wiki", std::string(257U, 'n'), false, "https://example.test/w"}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.website_sources = {
+        {"web", "Web", false,
+         "https://example.test/" + std::string(4076U, 'x') + "%GDWORD%"}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.forvo_sources.front().language_codes.assign(33U, "en");
+    rejects_save(invalid);
+    invalid = original;
+    invalid.mediawiki_sources = {{"wiki", std::string("Control\xc2\x85", 9U),
+                                  false, "https://example.test/w"}};
+    rejects_save(invalid);
+
+    const std::vector<std::string> malformed = {
+        "mediawiki_source=wiki|Wiki|2|https://example.test/w\n",
+        "website_source=web|Web|1|https://example.test/no-marker\n",
+        "forvo_sources=0\nforvo_sources=0\n",
+        "forvo_sources=0\nforvo_source=forvo|Forvo|0|"
+        "https://apifree.forvo.com|2|en|ru\n",
+        "forvo_sources=2\nforvo_source=forvo|Forvo|0|"
+        "https://apifree.forvo.com|2|en|ru\n",
+        "forvo_sources=257\n",
+        "forvo_sources=invalid\n",
+        "forvo_source=forvo|Forvo|0|https://apifree.forvo.com|2|en|ru\n"
+        "forvo_sources=1\n",
+        "forvo_source=forvo|Forvo|0|https://apifree.forvo.com|2|en\n",
+        "forvo_source=forvo|Forvo|0|https://apifree.forvo.com|2|en|en\n",
+        "dict_server_source=dict|DICT|1|dict.example.test|0|%2A|prefix\n",
+        "dict_server_source=dict|DICT|1|dict.example.test|2628|bad%20atom|"
+        "prefix\n",
+        "mediawiki_source=wiki|%C3%28|1|https://example.test/w\n"};
+    for (const auto& field : malformed) {
+        test::WriteBinaryFile(
+            path, "goldendict-core-config-v1\nindex_directory=\n" + field);
+        QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                                 std::runtime_error);
+    }
 }
 
 void ApplicationServiceTest::ConfigurationRoundTripsArticleTabSession() {

@@ -78,11 +78,11 @@ not authorize dropping a legacy format.
 | Inspector/DevTools integration | later | Phase 7 | manual parity check |
 | Bounded HTTP transport | slice | Phase 7 | deterministic local HTTP server |
 | Proxy and authentication | slice | Phase 7 | explicit HTTP proxy and scoped Basic credentials, including cross-origin redirect isolation, verified by local origin/proxy fixtures; system proxy discovery and interactive credential storage remain |
-| MediaWiki sources | slice | Phase 7 | bounded JSON API suggestions/articles with encoded queries, duplicate suppression, transport policy reuse, and deterministic local HTTP fixture; source persistence and UI composition remain |
-| Arbitrary websites | slice | Phase 7 | bounded `%GDWORD%` URL templates, strict UTF-8/Latin-1/Windows-1252 response decoding, and quoted/unquoted relative `href`/`src` resolution verified by local fixtures; persistence, legacy query encodings, resources, and UI composition remain |
-| Forvo | slice | Phase 7 | bounded, strictly encoded XML API lookup with validated pronunciation metadata and bounded typed audio retrieval, verified by a deterministic local API/audio fixture; source persistence, UI composition, and playback remain |
-| DICT servers | slice | Phase 7 | bounded RFC 2229 TCP handshake, MIME negotiation, quoted `MATCH`/`DEFINE`, dot-stuffed definition parsing, timeout/cancellation, and deterministic local protocol fixture; authentication, persistence, and UI composition remain |
-| External programs | slice | Phase 7 | shell-free absolute executable plus argument arrays, bounded `%GDWORD%` substitution or stdin, Unicode decoding, timeout/cancellation, output limits, and deterministic controlled-helper tests; environment/process-tree isolation, persistence, audio execution, and UI composition remain |
+| MediaWiki sources | slice | Phase 7/8 | bounded JSON adapter plus P4a ordered current persistence; UI composition and P4c legacy migration remain |
+| Arbitrary websites | slice | Phase 7/8 | bounded `%GDWORD%` adapter plus P4a ordered current persistence; legacy query encodings, iframe behavior, resources, UI composition, and P4c migration remain |
+| Forvo | slice | Phase 7/8 | bounded pronunciation/audio adapter plus P4a credential-free current persistence with disabled `en,ru` defaults; credentials, UI composition, playback, and P4c migration remain |
+| DICT servers | slice | Phase 7/8 | bounded RFC 2229 adapter plus P4a ordered current persistence; authentication, UI composition, and P4c migration remain |
+| External programs | slice | Phase 7 | shell-free adapter is present; P4b current persistence, environment/process-tree isolation, audio execution, and UI composition remain |
 
 ## Audio And Speech
 

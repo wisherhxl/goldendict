@@ -31,6 +31,10 @@ constexpr std::size_t kMaximumGroupValueBytes = 4096U;
 constexpr std::size_t kMaximumEncodedGroupIconBytes = 64U * 1024U;
 constexpr std::size_t kMaximumPreferenceStringBytes = 4096U;
 constexpr std::size_t kMaximumMainWindowGeometryBytes = 64U * 1024U;
+constexpr std::size_t kMaximumOnlineIdBytes = 128U;
+constexpr std::size_t kMaximumOnlineNameBytes = 256U;
+constexpr std::size_t kMaximumOnlineUrlBytes = 4096U;
+constexpr std::size_t kMaximumForvoLanguages = 32U;
 constexpr std::uint32_t kKnownScanPopupModifierMask = 0x03ffU;
 
 std::string Encode(std::string_view value);
@@ -332,6 +336,203 @@ std::string Decode(std::string_view value) {
     return decoded;
 }
 
+std::vector<std::string_view> SplitFields(std::string_view value) {
+    std::vector<std::string_view> fields;
+    std::size_t start = 0U;
+    while (start <= value.size()) {
+        const auto separator = value.find('|', start);
+        fields.push_back(value.substr(start, separator == std::string_view::npos
+                                                 ? value.size() - start
+                                                 : separator - start));
+        if (separator == std::string_view::npos)
+            break;
+        start = separator + 1U;
+    }
+    return fields;
+}
+
+bool IsValidOnlineId(std::string_view value) {
+    if (value.empty() || value.size() > kMaximumOnlineIdBytes ||
+        !std::isalnum(static_cast<unsigned char>(value.front()))) {
+        return false;
+    }
+    return std::all_of(value.begin(), value.end(), [](unsigned char ch) {
+        return std::isalnum(ch) != 0 || ch == '.' || ch == '_' || ch == '-';
+    });
+}
+
+bool IsValidText(std::string_view value, std::size_t maximum,
+                 bool allow_empty = false) {
+    return (allow_empty || !value.empty()) && value.size() <= maximum &&
+           foundation::IsValidUtf8(value) &&
+           !foundation::ContainsControlCharacter(value);
+}
+
+bool IsValidIpv4(std::string_view value) {
+    unsigned int parts = 0U;
+    std::size_t start = 0U;
+    while (start <= value.size()) {
+        const auto end = value.find('.', start);
+        const auto part = value.substr(start, end == std::string_view::npos
+                                                  ? value.size() - start
+                                                  : end - start);
+        if (part.empty() || part.size() > 3U ||
+            (part.size() > 1U && part.front() == '0'))
+            return false;
+        unsigned int number = 0U;
+        const auto parsed =
+            std::from_chars(part.data(), part.data() + part.size(), number, 10);
+        if (parsed.ec != std::errc() ||
+            parsed.ptr != part.data() + part.size() || number > 255U)
+            return false;
+        ++parts;
+        if (end == std::string_view::npos)
+            break;
+        start = end + 1U;
+    }
+    return parts == 4U;
+}
+
+bool IsValidIpv6(std::string_view value) {
+    if (value.empty() || value.find(":::") != std::string_view::npos)
+        return false;
+    const auto compressed = value.find("::");
+    if (compressed != std::string_view::npos &&
+        value.find("::", compressed + 2U) != std::string_view::npos)
+        return false;
+    unsigned int groups = 0U;
+    std::size_t start = 0U;
+    while (start < value.size()) {
+        if (value[start] == ':') {
+            ++start;
+            continue;
+        }
+        const auto end = value.find(':', start);
+        const auto part = value.substr(start, end == std::string_view::npos
+                                                  ? value.size() - start
+                                                  : end - start);
+        if (part.find('.') != std::string_view::npos) {
+            if (end != std::string_view::npos || !IsValidIpv4(part))
+                return false;
+            groups += 2U;
+        } else {
+            if (part.empty() || part.size() > 4U ||
+                !std::all_of(part.begin(), part.end(), [](unsigned char ch) {
+                    return std::isxdigit(ch) != 0;
+                }))
+                return false;
+            ++groups;
+        }
+        if (end == std::string_view::npos)
+            break;
+        start = end + 1U;
+    }
+    return compressed == std::string_view::npos ? groups == 8U : groups < 8U;
+}
+
+bool IsValidHost(std::string_view host) {
+    if (host.empty() || host.size() > 253U || !foundation::IsValidUtf8(host) ||
+        foundation::ContainsControlCharacter(host) ||
+        std::any_of(host.begin(), host.end(),
+                    [](unsigned char ch) { return std::isspace(ch) != 0; }))
+        return false;
+    if (host.find(':') != std::string_view::npos) {
+        return IsValidIpv6(host);
+    }
+    if (IsValidIpv4(host))
+        return true;
+    if (host.front() == '.' || host.back() == '.')
+        return false;
+    std::size_t start = 0U;
+    while (start < host.size()) {
+        const auto end = host.find('.', start);
+        const auto label = host.substr(start, end == std::string_view::npos
+                                                  ? host.size() - start
+                                                  : end - start);
+        if (label.empty() || label.size() > 63U || label.front() == '-' ||
+            label.back() == '-' ||
+            !std::all_of(label.begin(), label.end(), [](unsigned char ch) {
+                return std::isalnum(ch) != 0 || ch == '-';
+            }))
+            return false;
+        if (end == std::string_view::npos)
+            break;
+        start = end + 1U;
+    }
+    return true;
+}
+
+bool IsValidHttpUrl(std::string_view value, bool allow_query,
+                    bool allow_fragment) {
+    if (!IsValidText(value, kMaximumOnlineUrlBytes))
+        return false;
+    std::size_t authority = 0U;
+    if (value.substr(0U, 7U) == "http://")
+        authority = 7U;
+    else if (value.substr(0U, 8U) == "https://")
+        authority = 8U;
+    else
+        return false;
+    const auto authority_end = value.find_first_of("/?#", authority);
+    const auto authority_value =
+        value.substr(authority, authority_end == std::string_view::npos
+                                    ? value.size() - authority
+                                    : authority_end - authority);
+    if (authority_value.empty() ||
+        authority_value.find('@') != std::string_view::npos)
+        return false;
+    std::string_view host = authority_value;
+    if (host.front() == '[') {
+        const auto close = host.find(']');
+        if (close == std::string_view::npos)
+            return false;
+        const auto suffix = host.substr(close + 1U);
+        if (!suffix.empty() && (suffix.front() != ':' || suffix.size() == 1U ||
+                                !std::all_of(suffix.begin() + 1, suffix.end(),
+                                             [](unsigned char ch) {
+                                                 return std::isdigit(ch) != 0;
+                                             })))
+            return false;
+        if (!suffix.empty()) {
+            unsigned int port = 0U;
+            const auto text = suffix.substr(1U);
+            const auto parsed = std::from_chars(
+                text.data(), text.data() + text.size(), port, 10);
+            if (parsed.ec != std::errc() || port == 0U || port > 65535U)
+                return false;
+        }
+        host = host.substr(1U, close - 1U);
+    } else {
+        const auto colon = host.rfind(':');
+        if (colon != std::string_view::npos) {
+            const auto port = host.substr(colon + 1U);
+            if (port.empty() ||
+                !std::all_of(port.begin(), port.end(), [](unsigned char ch) {
+                    return std::isdigit(ch) != 0;
+                }))
+                return false;
+            unsigned int number = 0U;
+            const auto parsed = std::from_chars(
+                port.data(), port.data() + port.size(), number, 10);
+            if (parsed.ec != std::errc() || number == 0U || number > 65535U)
+                return false;
+            host = host.substr(0U, colon);
+        }
+    }
+    if (!IsValidHost(host))
+        return false;
+    return (allow_query || value.find('?') == std::string_view::npos) &&
+           (allow_fragment || value.find('#') == std::string_view::npos);
+}
+
+bool IsDictAtom(std::string_view value) {
+    return !value.empty() && value.size() <= 128U &&
+           std::all_of(value.begin(), value.end(), [](unsigned char ch) {
+               return std::isalnum(ch) != 0 || ch == '*' || ch == '-' ||
+                      ch == '_' || ch == '.' || ch == '!';
+           });
+}
+
 void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
     if (configuration.dictionary_paths.size() > kMaximumDictionaryPaths) {
         throw std::runtime_error("Configuration has too many dictionary paths");
@@ -339,6 +540,12 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
     if (configuration.sound_directories.size() > kMaximumSoundDirectories) {
         throw std::runtime_error(
             "Configuration has too many sound directories");
+    }
+    if (configuration.mediawiki_sources.size() > kMaximumOnlineSources ||
+        configuration.website_sources.size() > kMaximumOnlineSources ||
+        configuration.forvo_sources.size() > kMaximumOnlineSources ||
+        configuration.dict_server_sources.size() > kMaximumOnlineSources) {
+        throw std::runtime_error("Configuration has too many online sources");
     }
     if (configuration.dictionary_groups.size() > kMaximumDictionaryGroups) {
         throw std::runtime_error(
@@ -372,6 +579,63 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
                                has_nul(directory.name);
                     })) {
         throw std::runtime_error("Configuration values cannot contain NUL");
+    }
+
+    std::unordered_set<std::string> online_ids;
+    const auto validate_identity = [&online_ids](const auto& source) {
+        if (!IsValidOnlineId(source.id) ||
+            !IsValidText(source.name, kMaximumOnlineNameBytes) ||
+            !online_ids.insert(source.id).second) {
+            throw std::runtime_error("Online source identity is invalid");
+        }
+    };
+    for (const auto& source : configuration.mediawiki_sources) {
+        validate_identity(source);
+        if (!IsValidHttpUrl(source.base_url, false, false)) {
+            throw std::runtime_error("MediaWiki source URL is invalid");
+        }
+    }
+    for (const auto& source : configuration.website_sources) {
+        validate_identity(source);
+        if (source.url_template.find("%GDWORD%") == std::string::npos) {
+            throw std::runtime_error("Website source template is invalid");
+        }
+        std::string substituted = source.url_template;
+        for (std::size_t marker = substituted.find("%GDWORD%");
+             marker != std::string::npos;
+             marker = substituted.find("%GDWORD%", marker + 10U)) {
+            substituted.replace(marker, 8U, "validation");
+        }
+        if (!IsValidHttpUrl(substituted, true, true)) {
+            throw std::runtime_error("Website source template is invalid");
+        }
+    }
+    for (const auto& source : configuration.forvo_sources) {
+        validate_identity(source);
+        if (!IsValidHttpUrl(source.api_base_url, true, true) ||
+            source.language_codes.empty() ||
+            source.language_codes.size() > kMaximumForvoLanguages) {
+            throw std::runtime_error("Forvo source configuration is invalid");
+        }
+        std::unordered_set<std::string> languages;
+        for (const auto& language : source.language_codes) {
+            if (language.size() < 2U || language.size() > 16U ||
+                !std::all_of(language.begin(), language.end(),
+                             [](char ch) {
+                                 return (ch >= 'A' && ch <= 'Z') ||
+                                        (ch >= 'a' && ch <= 'z') || ch == '-';
+                             }) ||
+                !languages.insert(language).second) {
+                throw std::runtime_error("Forvo language code is invalid");
+            }
+        }
+    }
+    for (const auto& source : configuration.dict_server_sources) {
+        validate_identity(source);
+        if (!IsValidHost(source.host) || source.port == 0U ||
+            !IsDictAtom(source.database) || !IsDictAtom(source.strategy)) {
+            throw std::runtime_error("DICT server configuration is invalid");
+        }
     }
 
     const auto& preferences = configuration.preferences;
@@ -517,6 +781,8 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
     bool has_article_tab_session = false;
     bool has_main_window_geometry = false;
     bool has_index_directory = false;
+    bool has_forvo_records = false;
+    std::optional<std::size_t> declared_forvo_source_count;
     std::size_t position = kHeader.size();
     while (position < contents.size()) {
         const auto end = contents.find('\n', position);
@@ -527,6 +793,11 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         constexpr std::string_view kIndex = "index_directory=";
         constexpr std::string_view kDictionary = "dictionary_path=";
         constexpr std::string_view kSoundDirectory = "sound_directory=";
+        constexpr std::string_view kMediaWikiSource = "mediawiki_source=";
+        constexpr std::string_view kWebsiteSource = "website_source=";
+        constexpr std::string_view kForvoSources = "forvo_sources=";
+        constexpr std::string_view kForvoSource = "forvo_source=";
+        constexpr std::string_view kDictServerSource = "dict_server_source=";
         constexpr std::string_view kDictionaryGroup = "dictionary_group=";
         constexpr std::string_view kDictionaryGroupMetadata =
             "dictionary_group_metadata=";
@@ -562,6 +833,69 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
             configuration.sound_directories.push_back(
                 {Decode(value.substr(0U, separator)),
                  Decode(value.substr(separator + 1U))});
+        } else if (line.substr(0, kMediaWikiSource.size()) ==
+                   kMediaWikiSource) {
+            const auto fields =
+                SplitFields(line.substr(kMediaWikiSource.size()));
+            if (fields.size() != 4U) {
+                throw std::runtime_error("Malformed MediaWiki source field");
+            }
+            configuration.mediawiki_sources.push_back(
+                {Decode(fields[0]), Decode(fields[1]), ParseBoolean(fields[2]),
+                 Decode(fields[3])});
+        } else if (line.substr(0, kWebsiteSource.size()) == kWebsiteSource) {
+            const auto fields = SplitFields(line.substr(kWebsiteSource.size()));
+            if (fields.size() != 4U) {
+                throw std::runtime_error("Malformed website source field");
+            }
+            configuration.website_sources.push_back(
+                {Decode(fields[0]), Decode(fields[1]), ParseBoolean(fields[2]),
+                 Decode(fields[3])});
+        } else if (line.substr(0, kForvoSources.size()) == kForvoSources) {
+            if (declared_forvo_source_count.has_value() || has_forvo_records) {
+                throw std::runtime_error(
+                    "Duplicate or misplaced Forvo source count");
+            }
+            const auto count =
+                ParseInteger<std::size_t>(line.substr(kForvoSources.size()));
+            if (count > kMaximumOnlineSources) {
+                throw std::runtime_error("Forvo source count is too large");
+            }
+            declared_forvo_source_count = count;
+            configuration.forvo_sources.clear();
+        } else if (line.substr(0, kForvoSource.size()) == kForvoSource) {
+            const auto fields = SplitFields(line.substr(kForvoSource.size()));
+            if (fields.size() < 6U) {
+                throw std::runtime_error("Malformed Forvo source field");
+            }
+            const auto count = ParseInteger<std::size_t>(fields[4]);
+            if (count > kMaximumForvoLanguages || fields.size() != 5U + count) {
+                throw std::runtime_error("Malformed Forvo source field");
+            }
+            if (!has_forvo_records) {
+                configuration.forvo_sources.clear();
+                has_forvo_records = true;
+            }
+            ForvoSourceConfiguration source{Decode(fields[0]),
+                                            Decode(fields[1]),
+                                            ParseBoolean(fields[2]),
+                                            Decode(fields[3]),
+                                            {}};
+            for (std::size_t index = 5U; index < fields.size(); ++index) {
+                source.language_codes.push_back(Decode(fields[index]));
+            }
+            configuration.forvo_sources.push_back(std::move(source));
+        } else if (line.substr(0, kDictServerSource.size()) ==
+                   kDictServerSource) {
+            const auto fields =
+                SplitFields(line.substr(kDictServerSource.size()));
+            if (fields.size() != 7U) {
+                throw std::runtime_error("Malformed DICT server source field");
+            }
+            configuration.dict_server_sources.push_back(
+                {Decode(fields[0]), Decode(fields[1]), ParseBoolean(fields[2]),
+                 Decode(fields[3]), ParseInteger<std::uint16_t>(fields[4]),
+                 Decode(fields[5]), Decode(fields[6])});
         } else if (line.substr(0, kDictionaryGroup.size()) ==
                    kDictionaryGroup) {
             const auto value = line.substr(kDictionaryGroup.size());
@@ -762,6 +1096,10 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         }
         position = end + 1U;
     }
+    if (declared_forvo_source_count.has_value() &&
+        configuration.forvo_sources.size() != *declared_forvo_source_count) {
+        throw std::runtime_error("Forvo source count does not match records");
+    }
     ValidateConfigurationImpl(configuration);
     return configuration;
 }
@@ -778,6 +1116,37 @@ void SaveConfiguration(const std::string& configuration_path,
     for (const auto& directory : configuration.sound_directories) {
         contents += "sound_directory=" + Encode(directory.path) + "|" +
                     Encode(directory.name) + "\n";
+    }
+    for (const auto& source : configuration.mediawiki_sources) {
+        contents += "mediawiki_source=" + Encode(source.id) + "|" +
+                    Encode(source.name) + "|" + (source.enabled ? "1|" : "0|") +
+                    Encode(source.base_url) + "\n";
+    }
+    for (const auto& source : configuration.website_sources) {
+        contents += "website_source=" + Encode(source.id) + "|" +
+                    Encode(source.name) + "|" + (source.enabled ? "1|" : "0|") +
+                    Encode(source.url_template) + "\n";
+    }
+    contents +=
+        "forvo_sources=" + std::to_string(configuration.forvo_sources.size()) +
+        "\n";
+    for (const auto& source : configuration.forvo_sources) {
+        contents += "forvo_source=" + Encode(source.id) + "|" +
+                    Encode(source.name) + "|" + (source.enabled ? "1|" : "0|") +
+                    Encode(source.api_base_url) + "|" +
+                    std::to_string(source.language_codes.size());
+        for (const auto& language : source.language_codes) {
+            contents += "|" + Encode(language);
+        }
+        contents += "\n";
+    }
+    for (const auto& source : configuration.dict_server_sources) {
+        contents += "dict_server_source=" + Encode(source.id) + "|" +
+                    Encode(source.name) + "|" + (source.enabled ? "1|" : "0|") +
+                    Encode(source.host) + "|" +
+                    std::to_string(static_cast<unsigned int>(source.port)) +
+                    "|" + Encode(source.database) + "|" +
+                    Encode(source.strategy) + "\n";
     }
     for (const auto& group : configuration.dictionary_groups) {
         contents += "dictionary_group=" + std::to_string(group.id) + "|" +

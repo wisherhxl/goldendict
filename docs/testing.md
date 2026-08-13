@@ -113,6 +113,17 @@ the previous configuration unchanged without a temporary file.
 The same test pins the public local-source validation seam: both 256-entry
 bounds, empty sound-path and NUL rejection, duplicate and empty-name
 acceptance, exact ordering, and atomic rejected-save behavior.
+`application_service_test` also pins the Phase 8 P4a current online-source
+store. Ordered MediaWiki, website, Forvo, and DICT DTOs round-trip through
+canonical v1 records; older current files receive the disabled ordered
+`en,ru` Forvo default. Bounds, global duplicate IDs, malformed UTF-8 and
+controls, URL/template/host/port/atom rules, duplicate languages, exact output,
+and atomic rejected-save preservation are covered. Credentials, external
+programs, legacy-source migration, composition, UI, and network calls remain
+outside this test and P4a.
+Exact empty and nonempty Forvo collection round trips also pin the canonical
+presence/count marker, malformed or duplicate marker rejection, and the older
+current-file default when the marker and records are both absent.
 `goldendict_source_directories_smoke` exercises offscreen remove, reorder,
 inline edit, and cancel behavior plus invalid-candidate rollback, forced save
 failure, duplicate preservation, successful facade replacement, exact tab

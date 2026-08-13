@@ -8,6 +8,7 @@
 namespace goldendict::core::foundation {
 
 bool IsValidUtf8(std::string_view text) noexcept;
+bool ContainsControlCharacter(std::string_view text) noexcept;
 
 }  // namespace goldendict::core::foundation
 

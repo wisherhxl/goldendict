@@ -94,6 +94,16 @@ core API owns source-list bounds and validation; the composition root restores
 a replacement facade, atomically saves the candidate, and only then rebinds
 Widgets. Presentation code never persists or discovers sources, and failure
 leaves the active facade and unrelated application state unchanged.
+The Phase 8 P4a current-persistence foundation extends that complete candidate
+with ordered, bounded transport-neutral records for MediaWiki, website, Forvo,
+and DICT sources. Stable IDs, names, enabled intent, adapter-compatible URLs,
+templates, languages, hosts, ports, databases, and strategies are persisted;
+credentials, legacy website encodings, and iframe flags are excluded. Runtime
+composition remains pending, as do P4b external-program persistence and the
+one-shot P4c legacy-source migration.
+An explicit bounded Forvo collection-count record distinguishes an older
+current file with no P4a fields from a current file whose Forvo list was
+intentionally emptied; canonical saves always write the count.
 The v1 store also carries a transport-neutral current preferences DTO as
 independently optional named records. Missing records use fixed clean-profile
 defaults, while canonical booleans, enums, finite zoom values, numeric bounds,

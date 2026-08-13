@@ -20,6 +20,7 @@ namespace goldendict::core {
 
 inline constexpr std::size_t kMaximumDictionaryPaths = 256U;
 inline constexpr std::size_t kMaximumSoundDirectories = 256U;
+inline constexpr std::size_t kMaximumOnlineSources = 256U;
 
 struct SoundDirectoryConfiguration {
     std::string path;
@@ -30,6 +31,77 @@ struct SoundDirectoryConfiguration {
     }
 
     bool operator!=(const SoundDirectoryConfiguration& other) const noexcept {
+        return !(*this == other);
+    }
+};
+
+struct MediaWikiSourceConfiguration {
+    std::string id;
+    std::string name;
+    bool enabled = false;
+    std::string base_url;
+
+    bool operator==(const MediaWikiSourceConfiguration& other) const noexcept {
+        return std::tie(id, name, enabled, base_url) ==
+               std::tie(other.id, other.name, other.enabled, other.base_url);
+    }
+
+    bool operator!=(const MediaWikiSourceConfiguration& other) const noexcept {
+        return !(*this == other);
+    }
+};
+
+struct WebsiteSourceConfiguration {
+    std::string id;
+    std::string name;
+    bool enabled = false;
+    std::string url_template;
+
+    bool operator==(const WebsiteSourceConfiguration& other) const noexcept {
+        return std::tie(id, name, enabled, url_template) ==
+               std::tie(other.id, other.name, other.enabled,
+                        other.url_template);
+    }
+
+    bool operator!=(const WebsiteSourceConfiguration& other) const noexcept {
+        return !(*this == other);
+    }
+};
+
+struct ForvoSourceConfiguration {
+    std::string id;
+    std::string name;
+    bool enabled = false;
+    std::string api_base_url;
+    std::vector<std::string> language_codes;
+
+    bool operator==(const ForvoSourceConfiguration& other) const noexcept {
+        return std::tie(id, name, enabled, api_base_url, language_codes) ==
+               std::tie(other.id, other.name, other.enabled, other.api_base_url,
+                        other.language_codes);
+    }
+
+    bool operator!=(const ForvoSourceConfiguration& other) const noexcept {
+        return !(*this == other);
+    }
+};
+
+struct DictServerSourceConfiguration {
+    std::string id;
+    std::string name;
+    bool enabled = false;
+    std::string host;
+    std::uint16_t port = 2628U;
+    std::string database = "*";
+    std::string strategy = "prefix";
+
+    bool operator==(const DictServerSourceConfiguration& other) const noexcept {
+        return std::tie(id, name, enabled, host, port, database, strategy) ==
+               std::tie(other.id, other.name, other.enabled, other.host,
+                        other.port, other.database, other.strategy);
+    }
+
+    bool operator!=(const DictServerSourceConfiguration& other) const noexcept {
         return !(*this == other);
     }
 };
@@ -270,6 +342,11 @@ struct CoreConfiguration {
     std::vector<std::string> dictionary_paths;
     std::string index_directory;
     std::vector<SoundDirectoryConfiguration> sound_directories;
+    std::vector<MediaWikiSourceConfiguration> mediawiki_sources;
+    std::vector<WebsiteSourceConfiguration> website_sources;
+    std::vector<ForvoSourceConfiguration> forvo_sources = {
+        {"forvo", "Forvo", false, "https://apifree.forvo.com", {"en", "ru"}}};
+    std::vector<DictServerSourceConfiguration> dict_server_sources;
     std::vector<DictionaryGroupConfiguration> dictionary_groups;
     ApplicationPreferences preferences;
     std::optional<ArticleTabSession> article_tab_session;
