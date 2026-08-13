@@ -82,7 +82,7 @@ not authorize dropping a legacy format.
 | Arbitrary websites | slice | Phase 7/8 | bounded `%GDWORD%` adapter plus P4a ordered current persistence; legacy query encodings, iframe behavior, resources, UI composition, and P4c migration remain |
 | Forvo | slice | Phase 7/8 | bounded pronunciation/audio adapter plus P4a credential-free current persistence with disabled `en,ru` defaults; credentials, UI composition, playback, and P4c migration remain |
 | DICT servers | slice | Phase 7/8 | bounded RFC 2229 adapter plus P4a ordered current persistence; authentication, UI composition, and P4c migration remain |
-| External programs | slice | Phase 7 | shell-free adapter is present; P4b current persistence, environment/process-tree isolation, audio execution, and UI composition remain |
+| External programs | slice | Phase 7/8 | shell-free adapter plus P4b ordered current persistence for plain-text, HTML, and prefix-match programs; P4c legacy migration, environment/process-tree isolation, audio execution, and UI composition remain |
 
 ## Audio And Speech
 

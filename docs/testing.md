@@ -120,10 +120,16 @@ canonical v1 records; older current files receive the disabled ordered
 controls, URL/template/host/port/atom rules, duplicate languages, exact output,
 and atomic rejected-save preservation are covered. Credentials, external
 programs, legacy-source migration, composition, UI, and network calls remain
-outside this test and P4a.
+outside P4a.
 Exact empty and nonempty Forvo collection round trips also pin the canonical
 presence/count marker, malformed or duplicate marker rejection, and the older
 current-file default when the marker and records are both absent.
+The P4b coverage in the same test pins exact ordered external-program parent
+and argument records, explicit empty and older-current behavior, cross-family
+identity uniqueness, adapter-compatible path and template bounds, output-kind
+validation, malformed UTF-8 and controls, orphan and ordering rejection, and
+atomic rejected-save preservation. Legacy migration, composition, UI, and
+process execution remain outside P4b.
 `goldendict_source_directories_smoke` exercises offscreen remove, reorder,
 inline edit, and cancel behavior plus invalid-candidate rollback, forced save
 failure, duplicate preservation, successful facade replacement, exact tab

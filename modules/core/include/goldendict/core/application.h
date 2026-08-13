@@ -21,6 +21,7 @@ namespace goldendict::core {
 inline constexpr std::size_t kMaximumDictionaryPaths = 256U;
 inline constexpr std::size_t kMaximumSoundDirectories = 256U;
 inline constexpr std::size_t kMaximumOnlineSources = 256U;
+inline constexpr std::size_t kMaximumExternalProgramArguments = 256U;
 
 struct SoundDirectoryConfiguration {
     std::string path;
@@ -102,6 +103,37 @@ struct DictServerSourceConfiguration {
     }
 
     bool operator!=(const DictServerSourceConfiguration& other) const noexcept {
+        return !(*this == other);
+    }
+};
+
+enum class ExternalProgramOutputKind : std::uint8_t {
+    kPlainText,
+    kHtml,
+    kPrefixMatch
+};
+
+struct ExternalProgramSourceConfiguration {
+    std::string id;
+    std::string name;
+    bool enabled = false;
+    ExternalProgramOutputKind output_kind =
+        ExternalProgramOutputKind::kPlainText;
+    std::string executable;
+    std::vector<std::string> argument_templates;
+    std::string working_directory;
+
+    bool operator==(
+        const ExternalProgramSourceConfiguration& other) const noexcept {
+        return std::tie(id, name, enabled, output_kind, executable,
+                        argument_templates, working_directory) ==
+               std::tie(other.id, other.name, other.enabled, other.output_kind,
+                        other.executable, other.argument_templates,
+                        other.working_directory);
+    }
+
+    bool operator!=(
+        const ExternalProgramSourceConfiguration& other) const noexcept {
         return !(*this == other);
     }
 };
@@ -347,6 +379,7 @@ struct CoreConfiguration {
     std::vector<ForvoSourceConfiguration> forvo_sources = {
         {"forvo", "Forvo", false, "https://apifree.forvo.com", {"en", "ru"}}};
     std::vector<DictServerSourceConfiguration> dict_server_sources;
+    std::vector<ExternalProgramSourceConfiguration> external_program_sources;
     std::vector<DictionaryGroupConfiguration> dictionary_groups;
     ApplicationPreferences preferences;
     std::optional<ArticleTabSession> article_tab_session;

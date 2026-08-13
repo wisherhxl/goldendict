@@ -99,8 +99,14 @@ with ordered, bounded transport-neutral records for MediaWiki, website, Forvo,
 and DICT sources. Stable IDs, names, enabled intent, adapter-compatible URLs,
 templates, languages, hosts, ports, databases, and strategies are persisted;
 credentials, legacy website encodings, and iframe flags are excluded. Runtime
-composition remains pending, as do P4b external-program persistence and the
-one-shot P4c legacy-source migration.
+composition remains pending, as does the one-shot P4c legacy-source migration.
+The Phase 8 P4b current-persistence increment adds ordered, bounded
+external-program records with stable identity, enabled intent, plain-text,
+HTML, or prefix-match output, an absolute executable, ordered argument
+templates, and an optional absolute working directory. Canonical parent and
+argument counts preserve explicit empty collections and reject orphaned or
+reordered arguments. The model remains shell-free and excludes audio programs,
+icons, environment and process policy, runtime composition, and execution.
 An explicit bounded Forvo collection-count record distinguishes an older
 current file with no P4a fields from a current file whose Forvo list was
 intentionally emptied; canonical saves always write the count.

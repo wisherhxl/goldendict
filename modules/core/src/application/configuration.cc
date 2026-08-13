@@ -35,6 +35,8 @@ constexpr std::size_t kMaximumOnlineIdBytes = 128U;
 constexpr std::size_t kMaximumOnlineNameBytes = 256U;
 constexpr std::size_t kMaximumOnlineUrlBytes = 4096U;
 constexpr std::size_t kMaximumForvoLanguages = 32U;
+constexpr std::size_t kMaximumExternalProgramPathBytes = 4096U;
+constexpr std::size_t kMaximumExternalProgramArgumentBytes = 16U * 1024U;
 constexpr std::uint32_t kKnownScanPopupModifierMask = 0x03ffU;
 
 std::string Encode(std::string_view value);
@@ -533,6 +535,13 @@ bool IsDictAtom(std::string_view value) {
            });
 }
 
+bool IsValidAbsolutePath(std::string_view value, bool allow_empty = false) {
+    if (value.empty())
+        return allow_empty;
+    return IsValidText(value, kMaximumExternalProgramPathBytes) &&
+           std::filesystem::path(value).is_absolute();
+}
+
 void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
     if (configuration.dictionary_paths.size() > kMaximumDictionaryPaths) {
         throw std::runtime_error("Configuration has too many dictionary paths");
@@ -544,7 +553,8 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
     if (configuration.mediawiki_sources.size() > kMaximumOnlineSources ||
         configuration.website_sources.size() > kMaximumOnlineSources ||
         configuration.forvo_sources.size() > kMaximumOnlineSources ||
-        configuration.dict_server_sources.size() > kMaximumOnlineSources) {
+        configuration.dict_server_sources.size() > kMaximumOnlineSources ||
+        configuration.external_program_sources.size() > kMaximumOnlineSources) {
         throw std::runtime_error("Configuration has too many online sources");
     }
     if (configuration.dictionary_groups.size() > kMaximumDictionaryGroups) {
@@ -635,6 +645,26 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         if (!IsValidHost(source.host) || source.port == 0U ||
             !IsDictAtom(source.database) || !IsDictAtom(source.strategy)) {
             throw std::runtime_error("DICT server configuration is invalid");
+        }
+    }
+    for (const auto& source : configuration.external_program_sources) {
+        validate_identity(source);
+        if (static_cast<std::uint8_t>(source.output_kind) >
+                static_cast<std::uint8_t>(
+                    ExternalProgramOutputKind::kPrefixMatch) ||
+            !IsValidAbsolutePath(source.executable) ||
+            !IsValidAbsolutePath(source.working_directory, true) ||
+            source.argument_templates.size() >
+                kMaximumExternalProgramArguments) {
+            throw std::runtime_error(
+                "External program configuration is invalid");
+        }
+        for (const auto& argument : source.argument_templates) {
+            if (!IsValidText(argument, kMaximumExternalProgramArgumentBytes,
+                             true)) {
+                throw std::runtime_error(
+                    "External program argument template is invalid");
+            }
         }
     }
 
@@ -783,6 +813,9 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
     bool has_index_directory = false;
     bool has_forvo_records = false;
     std::optional<std::size_t> declared_forvo_source_count;
+    std::optional<std::size_t> declared_external_program_count;
+    std::optional<std::size_t> current_external_program_index;
+    std::size_t expected_external_program_arguments = 0U;
     std::size_t position = kHeader.size();
     while (position < contents.size()) {
         const auto end = contents.find('\n', position);
@@ -798,6 +831,10 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         constexpr std::string_view kForvoSources = "forvo_sources=";
         constexpr std::string_view kForvoSource = "forvo_source=";
         constexpr std::string_view kDictServerSource = "dict_server_source=";
+        constexpr std::string_view kExternalPrograms = "external_programs=";
+        constexpr std::string_view kExternalProgram = "external_program=";
+        constexpr std::string_view kExternalProgramArgument =
+            "external_program_argument=";
         constexpr std::string_view kDictionaryGroup = "dictionary_group=";
         constexpr std::string_view kDictionaryGroupMetadata =
             "dictionary_group_metadata=";
@@ -808,6 +845,12 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         constexpr std::string_view kArticleTab = "article_tab=";
         constexpr std::string_view kArticleTabNavigation =
             "article_tab_navigation=";
+        if (expected_external_program_arguments != 0U &&
+            line.substr(0, kExternalProgramArgument.size()) !=
+                kExternalProgramArgument) {
+            throw std::runtime_error(
+                "External program arguments must follow their parent");
+        }
         if (line.substr(0, kMainWindowGeometry.size()) == kMainWindowGeometry) {
             if (has_main_window_geometry) {
                 throw std::runtime_error("Duplicate main-window geometry");
@@ -896,6 +939,75 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
                 {Decode(fields[0]), Decode(fields[1]), ParseBoolean(fields[2]),
                  Decode(fields[3]), ParseInteger<std::uint16_t>(fields[4]),
                  Decode(fields[5]), Decode(fields[6])});
+        } else if (line.substr(0, kExternalPrograms.size()) ==
+                   kExternalPrograms) {
+            if (declared_external_program_count.has_value() ||
+                !configuration.external_program_sources.empty()) {
+                throw std::runtime_error(
+                    "Duplicate or misplaced external program count");
+            }
+            const auto count = ParseInteger<std::size_t>(
+                line.substr(kExternalPrograms.size()));
+            if (count > kMaximumOnlineSources) {
+                throw std::runtime_error("External program count is too large");
+            }
+            declared_external_program_count = count;
+        } else if (line.substr(0, kExternalProgram.size()) ==
+                   kExternalProgram) {
+            if (!declared_external_program_count.has_value()) {
+                throw std::runtime_error(
+                    "External program appears without a collection count");
+            }
+            const auto fields =
+                SplitFields(line.substr(kExternalProgram.size()));
+            if (fields.size() != 7U) {
+                throw std::runtime_error("Malformed external program field");
+            }
+            const auto argument_count = ParseInteger<std::size_t>(fields[6]);
+            if (argument_count > kMaximumExternalProgramArguments) {
+                throw std::runtime_error(
+                    "External program argument count is too large");
+            }
+            configuration.external_program_sources.push_back(
+                {Decode(fields[0]),
+                 Decode(fields[1]),
+                 ParseBoolean(fields[2]),
+                 static_cast<ExternalProgramOutputKind>(
+                     ParseInteger<std::uint8_t>(fields[3])),
+                 Decode(fields[4]),
+                 {},
+                 Decode(fields[5])});
+            if (configuration.external_program_sources.size() >
+                *declared_external_program_count) {
+                throw std::runtime_error(
+                    "External program count does not match records");
+            }
+            current_external_program_index =
+                configuration.external_program_sources.size() - 1U;
+            expected_external_program_arguments = argument_count;
+        } else if (line.substr(0, kExternalProgramArgument.size()) ==
+                   kExternalProgramArgument) {
+            if (!current_external_program_index.has_value() ||
+                expected_external_program_arguments == 0U) {
+                throw std::runtime_error("Orphan external program argument");
+            }
+            const auto fields =
+                SplitFields(line.substr(kExternalProgramArgument.size()));
+            if (fields.size() != 3U) {
+                throw std::runtime_error(
+                    "Malformed external program argument field");
+            }
+            auto& source =
+                configuration
+                    .external_program_sources[*current_external_program_index];
+            const auto index = ParseInteger<std::size_t>(fields[1]);
+            if (Decode(fields[0]) != source.id ||
+                index != source.argument_templates.size()) {
+                throw std::runtime_error(
+                    "External program argument order is invalid");
+            }
+            source.argument_templates.push_back(Decode(fields[2]));
+            --expected_external_program_arguments;
         } else if (line.substr(0, kDictionaryGroup.size()) ==
                    kDictionaryGroup) {
             const auto value = line.substr(kDictionaryGroup.size());
@@ -1100,6 +1212,13 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         configuration.forvo_sources.size() != *declared_forvo_source_count) {
         throw std::runtime_error("Forvo source count does not match records");
     }
+    if (expected_external_program_arguments != 0U ||
+        (declared_external_program_count.has_value() &&
+         configuration.external_program_sources.size() !=
+             *declared_external_program_count)) {
+        throw std::runtime_error(
+            "External program count does not match records");
+    }
     ValidateConfigurationImpl(configuration);
     return configuration;
 }
@@ -1147,6 +1266,24 @@ void SaveConfiguration(const std::string& configuration_path,
                     std::to_string(static_cast<unsigned int>(source.port)) +
                     "|" + Encode(source.database) + "|" +
                     Encode(source.strategy) + "\n";
+    }
+    contents += "external_programs=" +
+                std::to_string(configuration.external_program_sources.size()) +
+                "\n";
+    for (const auto& source : configuration.external_program_sources) {
+        contents +=
+            "external_program=" + Encode(source.id) + "|" +
+            Encode(source.name) + "|" + (source.enabled ? "1|" : "0|") +
+            std::to_string(static_cast<unsigned int>(source.output_kind)) +
+            "|" + Encode(source.executable) + "|" +
+            Encode(source.working_directory) + "|" +
+            std::to_string(source.argument_templates.size()) + "\n";
+        for (std::size_t index = 0U; index < source.argument_templates.size();
+             ++index) {
+            contents += "external_program_argument=" + Encode(source.id) + "|" +
+                        std::to_string(index) + "|" +
+                        Encode(source.argument_templates[index]) + "\n";
+        }
     }
     for (const auto& group : configuration.dictionary_groups) {
         contents += "dictionary_group=" + std::to_string(group.id) + "|" +

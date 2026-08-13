@@ -381,8 +381,17 @@ configuration. It canonically stores stable identity, display name, enabled
 intent, and only fields accepted by the Phase 7 adapters. Forvo credentials,
 website iframe and legacy query-encoding settings, runtime composition, UI,
 and network activity remain excluded. Older current files receive fixed safe
-defaults. P4b external-program persistence and the one-shot complete P4c
-legacy source migration remain separately pending.
+defaults. The one-shot complete P4c legacy source migration remains separately
+pending.
+
+The P4b external-program current-persistence increment adds ordered bounded
+shell-free program records with stable identity, enabled intent, plain-text,
+HTML, or prefix-match output, absolute executable paths, ordered argument
+templates, and optional absolute working directories. Canonical collection and
+argument counts distinguish explicit empty state and reject malformed parent or
+argument ordering. Audio programs, icons, environment and process policy,
+runtime composition, UI, and execution remain excluded. The one-shot complete
+P4c legacy source migration remains pending.
 
 The current-preferences foundation adds deterministic portable defaults and
 bounded optional preference records to the core-owned current configuration.

@@ -573,6 +573,14 @@ int main() {
         goldendict::core::CoreConfiguration configuration;
         configuration.dictionary_paths = {dictionary_root.string()};
         configuration.index_directory = (directory.path() / "indexes").string();
+        configuration.external_program_sources = {
+            {"installed-program",
+             "Installed Program",
+             false,
+             goldendict::core::ExternalProgramOutputKind::kPlainText,
+             (directory.path() / "helper").string(),
+             {"%GDWORD%"},
+             directory.path().string()}};
         const auto configuration_path = directory.path() / "core.conf";
         goldendict::core::SaveConfiguration(configuration_path.string(),
                                             configuration);
@@ -580,7 +588,9 @@ int main() {
             goldendict::core::LoadConfiguration(configuration_path.string());
         if (loaded.dictionary_paths != configuration.dictionary_paths ||
             loaded.index_directory != configuration.index_directory ||
-            loaded.sound_directories != configuration.sound_directories) {
+            loaded.sound_directories != configuration.sound_directories ||
+            loaded.external_program_sources !=
+                configuration.external_program_sources) {
             return Fail("configuration round-trip failed");
         }
 

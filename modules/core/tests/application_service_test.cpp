@@ -41,6 +41,8 @@ class ApplicationServiceTest : public QObject {
     void ConfigurationValidatesLocalSourcePolicyAtomically();
     void ConfigurationRoundTripsOnlineSourcesDeterministically();
     void ConfigurationRejectsMalformedOnlineSourcesAtomically();
+    void ConfigurationRoundTripsExternalProgramsDeterministically();
+    void ConfigurationRejectsMalformedExternalProgramsAtomically();
     void ConfigurationRoundTripsDictionaryGroups();
     void ConfigurationRoundTripsArticleTabSession();
     void ConfigurationRejectsMalformedArticleTabSessionsAtomically();
@@ -374,6 +376,276 @@ void ApplicationServiceTest::
         "dict_server_source=dict|DICT|1|dict.example.test|2628|bad%20atom|"
         "prefix\n",
         "mediawiki_source=wiki|%C3%28|1|https://example.test/w\n"};
+    for (const auto& field : malformed) {
+        test::WriteBinaryFile(
+            path, "goldendict-core-config-v1\nindex_directory=\n" + field);
+        QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                                 std::runtime_error);
+    }
+}
+
+void ApplicationServiceTest::
+    ConfigurationRoundTripsExternalProgramsDeterministically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    const std::string root =
+        std::filesystem::current_path().root_path().generic_string();
+    const std::string text_executable = root + "opt/goldendict/helper";
+    const std::string html_executable = root + "usr/bin/html-helper";
+    const std::string prefix_executable = root + "usr/bin/prefix-helper";
+    const std::string working_directory = root + "var/tmp";
+    CoreConfiguration expected;
+    expected.external_program_sources = {
+        {"program.text",
+         "Plain | Text",
+         true,
+         ExternalProgramOutputKind::kPlainText,
+         text_executable,
+         {"--word", "%GDWORD%", ""},
+         working_directory},
+        {"program.html",
+         u8"HTML français",
+         false,
+         ExternalProgramOutputKind::kHtml,
+         html_executable,
+         {"stdin"},
+         ""},
+        {"program.prefix",
+         "Prefix",
+         true,
+         ExternalProgramOutputKind::kPrefixMatch,
+         prefix_executable,
+         {},
+         ""}};
+
+    SaveConfiguration(path.string(), expected);
+    const std::string first = ReadFile(path);
+    const std::string records =
+        "external_programs=3\n"
+        "external_program=program.text|Plain%20%7C%20Text|1|0|" +
+        text_executable + "|" + working_directory + "|3\n" +
+        "external_program_argument=program.text|0|--word\n"
+        "external_program_argument=program.text|1|%25GDWORD%25\n"
+        "external_program_argument=program.text|2|\n"
+        "external_program=program.html|HTML%20fran%C3%A7ais|0|1|" +
+        html_executable + "||1\n" +
+        "external_program_argument=program.html|0|stdin\n"
+        "external_program=program.prefix|Prefix|1|2|" +
+        prefix_executable + "||0\n";
+    QVERIFY(first.find(records) != std::string::npos);
+    const auto actual = LoadConfiguration(path.string());
+    QCOMPARE(actual.external_program_sources,
+             expected.external_program_sources);
+    SaveConfiguration(path.string(), actual);
+    QCOMPARE(ReadFile(path), first);
+
+    CoreConfiguration explicitly_empty;
+    explicitly_empty.external_program_sources.clear();
+    SaveConfiguration(path.string(), explicitly_empty);
+    const std::string empty_bytes = ReadFile(path);
+    QVERIFY(empty_bytes.find("external_programs=0\n") != std::string::npos);
+    QVERIFY(empty_bytes.find("external_program=") == std::string::npos);
+    const auto empty_round_trip = LoadConfiguration(path.string());
+    QVERIFY(empty_round_trip.external_program_sources.empty());
+    SaveConfiguration(path.string(), empty_round_trip);
+    QCOMPARE(ReadFile(path), empty_bytes);
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\nindex_directory=\n");
+    const auto older = LoadConfiguration(path.string());
+    QVERIFY(older.external_program_sources.empty());
+    SaveConfiguration(path.string(), older);
+    QVERIFY(ReadFile(path).find("external_programs=0\n") != std::string::npos);
+}
+
+void ApplicationServiceTest::
+    ConfigurationRejectsMalformedExternalProgramsAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    const std::string root =
+        std::filesystem::current_path().root_path().generic_string();
+    const std::string absolute_helper = root + "bin/helper";
+    CoreConfiguration original;
+    original.dictionary_paths = {"/original"};
+    SaveConfiguration(path.string(), original);
+    const std::string original_bytes = ReadFile(path);
+    const auto rejects_save = [&](const CoreConfiguration& invalid) {
+        QVERIFY_EXCEPTION_THROWN(ValidateConfiguration(invalid),
+                                 std::runtime_error);
+        QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                                 std::runtime_error);
+        QCOMPARE(ReadFile(path), original_bytes);
+        QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+    };
+
+    CoreConfiguration boundary;
+    boundary.external_program_sources = {
+        {"program",
+         std::string(256U, 'n'),
+         false,
+         ExternalProgramOutputKind::kPrefixMatch,
+         root + std::string(4096U - root.size(), 'x'),
+         {std::string(16U * 1024U, 'a'), ""},
+         root + std::string(4096U - root.size(), 'w')}};
+    ValidateConfiguration(boundary);
+    boundary.external_program_sources.clear();
+    for (std::size_t index = 0U; index < kMaximumOnlineSources; ++index) {
+        boundary.external_program_sources.push_back(
+            {"program-" + std::to_string(index),
+             "Program",
+             false,
+             ExternalProgramOutputKind::kPlainText,
+             absolute_helper,
+             {},
+             ""});
+    }
+    ValidateConfiguration(boundary);
+    boundary.external_program_sources = {
+        {"program", "Program", false, ExternalProgramOutputKind::kPlainText,
+         absolute_helper,
+         std::vector<std::string>(kMaximumExternalProgramArguments, "arg"),
+         ""}};
+    ValidateConfiguration(boundary);
+
+    CoreConfiguration invalid = original;
+    invalid.mediawiki_sources = {
+        {"same", "Wiki", false, "https://example.test/w"}};
+    invalid.external_program_sources = {{"same",
+                                         "Program",
+                                         false,
+                                         ExternalProgramOutputKind::kPlainText,
+                                         absolute_helper,
+                                         {},
+                                         ""}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.website_sources = {
+        {"same", "Website", false, "https://example.test/%GDWORD%"}};
+    invalid.external_program_sources = {{"same",
+                                         "Program",
+                                         false,
+                                         ExternalProgramOutputKind::kPlainText,
+                                         absolute_helper,
+                                         {},
+                                         ""}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.forvo_sources.front().id = "same";
+    invalid.external_program_sources = {{"same",
+                                         "Program",
+                                         false,
+                                         ExternalProgramOutputKind::kPlainText,
+                                         absolute_helper,
+                                         {},
+                                         ""}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.dict_server_sources = {
+        {"same", "DICT", false, "dict.example.test"}};
+    invalid.external_program_sources = {{"same",
+                                         "Program",
+                                         false,
+                                         ExternalProgramOutputKind::kPlainText,
+                                         absolute_helper,
+                                         {},
+                                         ""}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.external_program_sources = {{"same",
+                                         "Program One",
+                                         false,
+                                         ExternalProgramOutputKind::kPlainText,
+                                         absolute_helper,
+                                         {},
+                                         ""},
+                                        {"same",
+                                         "Program Two",
+                                         false,
+                                         ExternalProgramOutputKind::kHtml,
+                                         absolute_helper,
+                                         {},
+                                         ""}};
+    rejects_save(invalid);
+    invalid = original;
+    invalid.external_program_sources = {{"program",
+                                         "Program",
+                                         false,
+                                         ExternalProgramOutputKind::kPlainText,
+                                         "relative/helper",
+                                         {},
+                                         ""}};
+    rejects_save(invalid);
+    invalid.external_program_sources.front().executable = absolute_helper;
+    invalid.external_program_sources.front().working_directory = "relative";
+    rejects_save(invalid);
+    invalid.external_program_sources.front().working_directory.clear();
+    invalid.external_program_sources.front().output_kind =
+        static_cast<ExternalProgramOutputKind>(3U);
+    rejects_save(invalid);
+    invalid.external_program_sources.front().output_kind =
+        ExternalProgramOutputKind::kHtml;
+    invalid.external_program_sources.front().argument_templates = {
+        std::string("bad\0argument", 12U)};
+    rejects_save(invalid);
+    invalid.external_program_sources.front().argument_templates = {
+        std::string(16U * 1024U + 1U, 'a')};
+    rejects_save(invalid);
+    invalid.external_program_sources.front().argument_templates = {"bad\n"};
+    rejects_save(invalid);
+    invalid.external_program_sources.front().argument_templates = {
+        std::string(1U, static_cast<char>(0xff))};
+    rejects_save(invalid);
+    invalid.external_program_sources.front().argument_templates.clear();
+    invalid.external_program_sources.front().executable =
+        "/" + std::string(4096U, 'x');
+    rejects_save(invalid);
+    invalid.external_program_sources.front().executable =
+        std::string("/bad\0path", 9U);
+    rejects_save(invalid);
+    invalid.external_program_sources.front().executable =
+        std::string("/bad\xc2\x85");
+    rejects_save(invalid);
+    invalid.external_program_sources.front().executable =
+        std::string("/bad") + static_cast<char>(0xff);
+    rejects_save(invalid);
+    invalid.external_program_sources.assign(
+        kMaximumOnlineSources + 1U, {"program",
+                                     "Program",
+                                     false,
+                                     ExternalProgramOutputKind::kPlainText,
+                                     absolute_helper,
+                                     {},
+                                     ""});
+    rejects_save(invalid);
+
+    const std::vector<std::string> malformed = {
+        "external_programs=0\nexternal_programs=0\n",
+        "external_programs=257\n",
+        "external_programs=invalid\n",
+        "external_program=program|Program|1|0|%2Fbin%2Fhelper||0\n",
+        "external_programs=0\nexternal_program=program|Program|1|0|"
+        "%2Fbin%2Fhelper||0\n",
+        "external_programs=2\nexternal_program=program|Program|1|0|"
+        "%2Fbin%2Fhelper||0\n",
+        "external_programs=1\nexternal_program=program|Program|2|0|"
+        "%2Fbin%2Fhelper||0\n",
+        "external_programs=1\nexternal_program=program|Program|1|3|"
+        "%2Fbin%2Fhelper||0\n",
+        "external_programs=1\nexternal_program=program|Program|1|0|"
+        "%2Fbin%2Fhelper||1\n",
+        "external_programs=1\nexternal_program_argument=program|0|arg\n",
+        "external_programs=1\nexternal_program=program|Program|1|0|"
+        "%2Fbin%2Fhelper||1\nindex_directory=\n",
+        "external_programs=1\nexternal_program=program|Program|1|0|"
+        "%2Fbin%2Fhelper||1\nexternal_program_argument=other|0|arg\n",
+        "external_programs=1\nexternal_program=program|Program|1|0|"
+        "%2Fbin%2Fhelper||1\nexternal_program_argument=program|1|arg\n",
+        "external_programs=1\nexternal_program=program|Program|1|0|"
+        "%2Fbin%2Fhelper||1\nexternal_program_argument=program|0|%C3%28\n",
+        "external_programs=1\nexternal_program=program|Program|1|0|"
+        "relative||0\n"};
     for (const auto& field : malformed) {
         test::WriteBinaryFile(
             path, "goldendict-core-config-v1\nindex_directory=\n" + field);
