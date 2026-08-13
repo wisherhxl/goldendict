@@ -242,12 +242,13 @@ int main(int argc, char* argv[]) {
     MainWindow window;
     window.SetFacade(facade.get());
     const auto refresh_history = [&window, &history]() {
-        QStringList words;
-        words.reserve(static_cast<qsizetype>(history.size()));
+        std::vector<HistoryViewItem> items;
+        items.reserve(history.size());
         for (const auto& entry : history) {
-            words.push_back(QString::fromStdString(entry.word));
+            items.push_back(
+                {QString::fromStdString(entry.word), entry.group_id});
         }
-        window.SetHistoryWords(words);
+        window.SetHistoryItems(items);
     };
     refresh_history();
     const auto refresh_favorites = [&window, &favorites]() {
@@ -262,7 +263,7 @@ int main(int argc, char* argv[]) {
     refresh_favorites();
     QObject::connect(
         &window, &MainWindow::LookupSubmitted, &window,
-        [&](const QString& word) {
+        [&](const QString& word, std::uint32_t group_id) {
             auto updated = history;
             const std::string encoded = word.toStdString();
             updated.erase(std::remove_if(
@@ -273,7 +274,7 @@ int main(int argc, char* argv[]) {
                                                       Qt::CaseInsensitive) == 0;
                               }),
                           updated.end());
-            updated.insert(updated.begin(), {0U, encoded});
+            updated.insert(updated.begin(), {group_id, encoded});
             if (updated.size() > kMaximumHistoryEntries) {
                 updated.resize(kMaximumHistoryEntries);
             }
@@ -323,10 +324,10 @@ int main(int argc, char* argv[]) {
         });
     QObject::connect(
         &window, &MainWindow::ImportHistoryRequested, &window,
-        [&](const QString& path) {
+        [&](const QString& path, std::uint32_t group_id) {
             try {
                 auto imported = goldendict::core::ImportHistoryText(
-                    path.toStdString(), kMaximumHistoryEntries);
+                    path.toStdString(), kMaximumHistoryEntries, group_id);
                 goldendict::core::SaveHistory(history_path.toStdString(),
                                               imported);
                 history = std::move(imported);
@@ -518,7 +519,8 @@ int main(int argc, char* argv[]) {
                     const auto persisted = goldendict::core::LoadHistory(
                         history_path.toStdString());
                     passed = passed && !persisted.empty() &&
-                             persisted.front().word == "history-smoke-entry";
+                             persisted.front().word == "history-smoke-entry" &&
+                             persisted.front().group_id == 7U;
                 } catch (const std::exception&) {
                     passed = false;
                 }

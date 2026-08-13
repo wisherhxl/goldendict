@@ -379,6 +379,15 @@ lines, trims surrounding whitespace, preserves file order, and atomically
 replaces current history only after complete validation. Group-selection
 controls remain later Phase 8 work.
 
+Group-aware lookup resolves a selected nonzero group against the discovered
+core catalog and queries its available dictionaries in configured order.
+Stale member IDs are skipped, duplicate resolved identities are used once, and
+an empty resolved group remains empty. Group zero retains all-dictionary
+behavior; for legacy compatibility, an unknown nonzero group also falls back
+to all dictionaries. The selected group is carried by transport-neutral lookup
+and suggestion requests and is preserved when history entries are recorded and
+activated. Group-selection and editing controls remain separate UI work.
+
 Favorites can be organized without leaving the main window: a new folder is
 created at the root or inside the selected folder, and Add to Favorites targets
 the selected folder (or a selected headword's parent). The composition root

@@ -15,6 +15,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "../article/article_assembler.h"
@@ -195,7 +196,7 @@ bool SuggestionLess(const HeadwordSuggestion& left,
     if (left.headword != right.headword) {
         return left.headword < right.headword;
     }
-    return left.dictionary.id < right.dictionary.id;
+    return false;
 }
 
 std::optional<std::string> ValidateQuery(const LookupQuery& query) {
@@ -524,6 +525,22 @@ class ServiceState final {
                   [](const auto& left, const auto& right) {
                       return left->identity().id < right->identity().id;
                   });
+        for (const auto& group : configuration.dictionary_groups) {
+            std::vector<const dictionary::Backend*> resolved;
+            resolved.reserve(group.dictionary_ids.size());
+            std::unordered_set<std::string> added;
+            for (const auto& id : group.dictionary_ids) {
+                const auto found =
+                    std::find_if(dictionaries_.begin(), dictionaries_.end(),
+                                 [&id](const auto& backend) {
+                                     return backend->identity().id == id;
+                                 });
+                if (found != dictionaries_.end() && added.insert(id).second) {
+                    resolved.push_back(found->get());
+                }
+            }
+            groups_.emplace(group.id, std::move(resolved));
+        }
     }
 
     std::vector<DictionaryIdentity> GetCatalog() const {
@@ -559,7 +576,8 @@ class ServiceState final {
         std::unordered_set<std::string> found;
         const CancellationAdapter signal(cancellation);
         const auto options = MakeOptions(query, &signal);
-        for (const auto& backend : dictionaries_) {
+        const auto backends = BackendsForGroup(query.group_id);
+        for (const auto* backend : backends) {
             const auto& identity = backend->identity();
             if (!requested.empty() && requested.count(identity.id) == 0U) {
                 continue;
@@ -644,7 +662,8 @@ class ServiceState final {
         std::unordered_set<std::string> found;
         const CancellationAdapter signal(cancellation);
         const auto options = MakeOptions(query, &signal);
-        for (const auto& backend : dictionaries_) {
+        const auto backends = BackendsForGroup(query.group_id);
+        for (const auto* backend : backends) {
             const auto& identity = backend->identity();
             if (!requested.empty() && requested.count(identity.id) == 0U) {
                 continue;
@@ -727,7 +746,23 @@ class ServiceState final {
     }
 
    private:
+    std::vector<const dictionary::Backend*> BackendsForGroup(
+        std::uint32_t group_id) const {
+        const auto group = groups_.find(group_id);
+        if (group_id != 0U && group != groups_.end()) {
+            return group->second;
+        }
+        std::vector<const dictionary::Backend*> all;
+        all.reserve(dictionaries_.size());
+        for (const auto& backend : dictionaries_) {
+            all.push_back(backend.get());
+        }
+        return all;
+    }
+
     std::vector<std::unique_ptr<dictionary::Backend>> dictionaries_;
+    std::unordered_map<std::uint32_t, std::vector<const dictionary::Backend*>>
+        groups_;
     std::vector<LookupError> startup_errors_;
 };
 

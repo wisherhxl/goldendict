@@ -202,6 +202,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 if (item == nullptr) {
                     return;
                 }
+                selected_group_id_ = item->data(Qt::UserRole).value<quint32>();
                 query_->setText(item->text());
                 StartLookup();
             });
@@ -368,12 +369,29 @@ void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
     const QString expected = QStringLiteral("history-smoke-entry");
     connect(
         this, &MainWindow::LookupSubmitted, this,
-        [this, expected,
-         completion = std::move(completion)](const QString& submitted) mutable {
-            completion(submitted == expected && history_list_->count() > 0 &&
-                       history_list_->item(0)->text() == expected);
+        [this, expected, completion = std::move(completion)](
+            const QString& submitted, std::uint32_t group_id) mutable {
+            const bool recorded =
+                submitted == expected && group_id == 7U &&
+                history_list_->count() > 0 &&
+                history_list_->item(0)->text() == expected &&
+                history_list_->item(0)->data(Qt::UserRole).value<quint32>() ==
+                    7U;
+            selected_group_id_ = 0U;
+            connect(
+                this, &MainWindow::LookupSubmitted, this,
+                [recorded, completion = std::move(completion)](
+                    const QString& restored, std::uint32_t restored_group) {
+                    completion(recorded &&
+                               restored ==
+                                   QStringLiteral("history-smoke-entry") &&
+                               restored_group == 7U);
+                },
+                Qt::SingleShotConnection);
+            emit history_list_->itemActivated(history_list_->item(0));
         },
         Qt::SingleShotConnection);
+    selected_group_id_ = 7U;
     query_->setText(expected);
     StartLookup();
 }
@@ -390,7 +408,7 @@ void MainWindow::RunHistoryManagementSmokeCheck(
     connect(
         this, &MainWindow::ClearHistoryRequested, this,
         [this, filtered, completion = std::move(completion)]() mutable {
-            completion(filtered && history_words_.isEmpty() &&
+            completion(filtered && history_items_.empty() &&
                        history_list_->count() == 0);
         },
         Qt::SingleShotConnection);
@@ -414,13 +432,14 @@ void MainWindow::RunHistoryImportSmokeCheck(
     connect(
         this, &MainWindow::ImportHistoryRequested, this,
         [this, path, completion = std::move(completion)](
-            const QString& requested_path) mutable {
-            completion(requested_path == path && history_words_.size() == 2 &&
-                       history_words_[0] == QStringLiteral("Alpha") &&
-                       history_words_[1] == QStringLiteral("第二个"));
+            const QString& requested_path, std::uint32_t group_id) mutable {
+            completion(requested_path == path && group_id == 0U &&
+                       history_items_.size() == 2 &&
+                       history_items_[0].word == QStringLiteral("Alpha") &&
+                       history_items_[1].word == QStringLiteral("第二个"));
         },
         Qt::SingleShotConnection);
-    emit ImportHistoryRequested(path);
+    emit ImportHistoryRequested(path, selected_group_id_);
 }
 
 void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
@@ -699,7 +718,7 @@ void MainWindow::RunDictionaryBrowserSmokeCheck(
     auto lookup_passed = std::make_shared<bool>(false);
     connect(
         this, &MainWindow::LookupSubmitted, this,
-        [lookup_passed](const QString& submitted) {
+        [lookup_passed](const QString& submitted, std::uint32_t) {
             *lookup_passed = submitted == QStringLiteral("application");
         },
         Qt::SingleShotConnection);
@@ -759,16 +778,28 @@ void MainWindow::ShowDictionaryBrowser() {
 }
 
 void MainWindow::SetHistoryWords(const QStringList& words) {
-    history_words_ = words;
+    history_items_.clear();
+    history_items_.reserve(static_cast<std::size_t>(words.size()));
+    for (const auto& word : words) {
+        history_items_.push_back({word, 0U});
+    }
+    RefreshHistoryList();
+}
+
+void MainWindow::SetHistoryItems(const std::vector<HistoryViewItem>& items) {
+    history_items_ = items;
     RefreshHistoryList();
 }
 
 void MainWindow::RefreshHistoryList() {
     history_list_->clear();
     const QString filter = history_filter_->text().trimmed();
-    for (const QString& word : history_words_) {
-        if (filter.isEmpty() || word.contains(filter, Qt::CaseInsensitive)) {
-            history_list_->addItem(word);
+    for (const auto& entry : history_items_) {
+        if (filter.isEmpty() ||
+            entry.word.contains(filter, Qt::CaseInsensitive)) {
+            auto* item = new QListWidgetItem(entry.word, history_list_);
+            item->setData(Qt::UserRole,
+                          QVariant::fromValue<quint32>(entry.group_id));
         }
     }
 }
@@ -790,7 +821,7 @@ void MainWindow::ImportHistory() {
         this, QStringLiteral("Import history from file"), QString(),
         QStringLiteral("Text files (*.txt);;All files (*.*)"));
     if (!path.isEmpty()) {
-        emit ImportHistoryRequested(path);
+        emit ImportHistoryRequested(path, selected_group_id_);
     }
 }
 
@@ -862,8 +893,8 @@ bool MainWindow::ExportHistoryToFile(const QString& path) {
     if (file.write(QByteArray::fromHex("efbbbf")) != 3) {
         return false;
     }
-    for (const QString& word : history_words_) {
-        QByteArray line = word.toUtf8();
+    for (const auto& entry : history_items_) {
+        QByteArray line = entry.word.toUtf8();
         line.replace('\n', ' ');
         line.replace('\r', ' ');
         line.push_back('\n');
@@ -931,7 +962,8 @@ void MainWindow::StartLookup() {
     goldendict::core::LookupQuery query;
     const QString word = query_->text().trimmed();
     query.text = word.toStdString();
-    emit LookupSubmitted(word);
+    query.group_id = selected_group_id_;
+    emit LookupSubmitted(word, selected_group_id_);
     request_ = facade_->GetDictionaryService().StartLookup(std::move(query));
     status_->setText(QStringLiteral("Looking up..."));
     lookup_button_->setEnabled(false);

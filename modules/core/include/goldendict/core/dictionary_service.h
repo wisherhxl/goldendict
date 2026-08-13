@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -57,6 +58,7 @@ struct LookupQuery {
     MatchMode match_mode = MatchMode::kExact;
     std::size_t result_limit = 20;
     std::chrono::milliseconds timeout = std::chrono::seconds(5);
+    std::uint32_t group_id = 0U;
 };
 
 struct SuggestionQuery {
@@ -65,6 +67,7 @@ struct SuggestionQuery {
     std::vector<std::string> languages;
     std::size_t result_limit = 20;
     std::chrono::milliseconds timeout = std::chrono::seconds(5);
+    std::uint32_t group_id = 0U;
 };
 
 struct MatchInfo {

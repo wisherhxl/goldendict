@@ -3,6 +3,7 @@
 #ifndef GOLDENDICT_APPS_GOLDENDICT_MAIN_WINDOW_H_
 #define GOLDENDICT_APPS_GOLDENDICT_MAIN_WINDOW_H_
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -36,6 +37,11 @@ struct FavoriteViewItem {
     std::vector<FavoriteViewItem> children;
 };
 
+struct HistoryViewItem {
+    QString word;
+    std::uint32_t group_id = 0U;
+};
+
 class MainWindow final : public QMainWindow {
     Q_OBJECT
 
@@ -45,6 +51,7 @@ class MainWindow final : public QMainWindow {
 
     void SetFacade(goldendict::core::DesktopFacade* facade);
     void SetHistoryWords(const QStringList& words);
+    void SetHistoryItems(const std::vector<HistoryViewItem>& items);
     void SetFavoriteItems(const std::vector<FavoriteViewItem>& items);
     void RunWebEngineSmokeCheck(std::function<void(bool)> completion);
     void RunWebEngineInteractionCheck(std::function<void(bool)> completion);
@@ -63,7 +70,7 @@ class MainWindow final : public QMainWindow {
 
    signals:
     void DictionaryDirectorySelected(const QString& directory);
-    void LookupSubmitted(const QString& word);
+    void LookupSubmitted(const QString& word, std::uint32_t group_id);
     void AddFavoriteRequested(const QString& word,
                               const QList<int>& parent_path);
     void AddFavoriteFolderRequested(const QString& name,
@@ -75,7 +82,7 @@ class MainWindow final : public QMainWindow {
     void ExportFavoritesRequested(const QString& path);
     void RemoveFavoriteRequested(const QList<int>& path);
     void ClearHistoryRequested();
-    void ImportHistoryRequested(const QString& path);
+    void ImportHistoryRequested(const QString& path, std::uint32_t group_id);
 
    private slots:
     void ChooseDictionaryDirectory();
@@ -105,7 +112,8 @@ class MainWindow final : public QMainWindow {
     QLineEdit* query_ = nullptr;
     QLineEdit* history_filter_ = nullptr;
     QListWidget* history_list_ = nullptr;
-    QStringList history_words_;
+    std::vector<HistoryViewItem> history_items_;
+    std::uint32_t selected_group_id_ = 0U;
     QPushButton* clear_history_button_ = nullptr;
     QPushButton* export_history_button_ = nullptr;
     QPushButton* import_history_button_ = nullptr;

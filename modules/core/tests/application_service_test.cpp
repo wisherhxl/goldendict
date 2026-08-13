@@ -50,6 +50,7 @@ class ApplicationServiceTest : public QObject {
     void ReturnsRankedPrefixMatches();
     void ReturnsLightweightHeadwordSuggestions();
     void RanksSuggestionsAcrossDictionaries();
+    void AppliesResolvedDictionaryGroupsConsistently();
     void DiscoversAndQueriesDictdAlongsideStardict();
     void DiscoversSanitizesAndQueriesSdict();
     void DiscoversSanitizesAndQueriesXdxfResources();
@@ -543,6 +544,92 @@ void ApplicationServiceTest::RanksSuggestionsAcrossDictionaries() {
     QCOMPARE(response.suggestions.size(), std::size_t{1});
     QCOMPARE(response.suggestions.front().headword, "Caf\xc3\xa9");
     QCOMPARE(response.suggestions.front().match.mode, MatchMode::kExact);
+}
+
+void ApplicationServiceTest::AppliesResolvedDictionaryGroupsConsistently() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    QVERIFY(std::filesystem::create_directories(root / "first"));
+    QVERIFY(std::filesystem::create_directories(root / "second"));
+    test::WriteStardictFixture(root / "first",
+                               {{"shared", "first group article"}});
+    test::WriteStardictFixture(root / "second",
+                               {{"shared", "second group article"}});
+
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    const auto discovered =
+        CreateDictionaryService(configuration)->GetCatalog();
+    QCOMPARE(discovered.size(), std::size_t{2});
+    const auto first = std::find_if(
+        discovered.begin(), discovered.end(), [](const auto& dictionary) {
+            return dictionary.source.find("/first/") != std::string::npos;
+        });
+    const auto second = std::find_if(
+        discovered.begin(), discovered.end(), [](const auto& dictionary) {
+            return dictionary.source.find("/second/") != std::string::npos;
+        });
+    QVERIFY(first != discovered.end());
+    QVERIFY(second != discovered.end());
+    configuration.dictionary_groups = {
+        {7U, "Ordered", "", {second->id, "stale-id", first->id, second->id}},
+        {8U, "Empty", "", {"stale-id"}}};
+
+    auto facade = CreateDesktopFacade(configuration);
+    auto& service = facade->GetDictionaryService();
+    LookupQuery lookup;
+    lookup.text = "shared";
+    lookup.group_id = 7U;
+    auto lookup_response = service.Lookup(lookup);
+    QVERIFY(lookup_response.errors.empty());
+    QCOMPARE(lookup_response.entries.size(), std::size_t{2});
+    QCOMPARE(lookup_response.entries[0].dictionary.id, second->id);
+    QCOMPARE(lookup_response.entries[1].dictionary.id, first->id);
+    const auto page = facade->ComposeLookupPage(lookup_response);
+    QVERIFY(page.plain_text.find("second group article") <
+            page.plain_text.find("first group article"));
+
+    SuggestionQuery suggestion;
+    suggestion.text = "shared";
+    suggestion.group_id = 7U;
+    const auto suggestion_response = service.Suggest(suggestion);
+    QVERIFY(suggestion_response.errors.empty());
+    QCOMPARE(suggestion_response.suggestions.size(), std::size_t{2});
+    QCOMPARE(suggestion_response.suggestions[0].dictionary.id, second->id);
+    QCOMPARE(suggestion_response.suggestions[1].dictionary.id, first->id);
+
+    lookup.dictionary_ids = {first->id};
+    lookup_response = service.Lookup(lookup);
+    QVERIFY(lookup_response.errors.empty());
+    QCOMPARE(lookup_response.entries.size(), std::size_t{1});
+    QCOMPARE(lookup_response.entries.front().dictionary.id, first->id);
+
+    lookup.dictionary_ids.clear();
+    lookup.group_id = 8U;
+    lookup_response = service.Lookup(lookup);
+    QVERIFY(lookup_response.entries.empty());
+    QVERIFY(lookup_response.errors.empty());
+
+    lookup.group_id = 999U;
+    const auto missing_group = service.Lookup(lookup);
+    QCOMPARE(missing_group.entries.size(), std::size_t{2});
+    lookup.group_id = 0U;
+    const auto all_group = service.Lookup(lookup);
+    QCOMPARE(all_group.entries.size(), std::size_t{2});
+    QCOMPARE(missing_group.entries[0].dictionary.id,
+             all_group.entries[0].dictionary.id);
+    QCOMPARE(missing_group.entries[1].dictionary.id,
+             all_group.entries[1].dictionary.id);
+
+    lookup.group_id = 7U;
+    lookup.result_limit = 1U;
+    QCOMPARE(service.Lookup(lookup).entries.front().dictionary.id, second->id);
+    const CancelledToken cancelled;
+    const auto cancelled_response = service.Lookup(lookup, &cancelled);
+    QVERIFY(cancelled_response.entries.empty());
+    QCOMPARE(cancelled_response.errors.front().code,
+             LookupErrorCode::kCancelled);
 }
 
 void ApplicationServiceTest::DiscoversAndQueriesDictdAlongsideStardict() {
