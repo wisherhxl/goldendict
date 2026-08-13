@@ -7,10 +7,17 @@
 #include <filesystem>
 #include <utility>
 
-namespace goldendict::core::dictionary {
+namespace goldendict::core {
 
-Error::Error(ErrorCode code, std::string message)
+RuntimeSourceError::RuntimeSourceError(RuntimeSourceErrorCode code,
+                                       std::string message)
     : std::runtime_error(std::move(message)), code_(code) {}
+
+RuntimeCancellationSignal::~RuntimeCancellationSignal() = default;
+
+RuntimeDictionarySource::~RuntimeDictionarySource() = default;
+
+namespace dictionary {
 
 void CheckRequest(const RequestOptions& options) {
     if (options.cancellation != nullptr &&
@@ -72,4 +79,5 @@ std::string MediaTypeForResourceId(std::string_view resource_id) {
     return "application/octet-stream";
 }
 
-}  // namespace goldendict::core::dictionary
+}  // namespace dictionary
+}  // namespace goldendict::core

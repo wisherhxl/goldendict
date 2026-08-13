@@ -15,6 +15,7 @@
 #include "goldendict/base/goldendict_def.tp.h"
 #include "goldendict/core/desktop_facade.h"
 #include "goldendict/core/dictionary_service.h"
+#include "goldendict/core/runtime_dictionary_source.h"
 
 namespace goldendict::core {
 
@@ -412,6 +413,13 @@ LoadOrMigrateConfiguration(const std::string& configuration_path,
 
 GOLDENDICT_EXPORTS std::unique_ptr<DictionaryService> CreateDictionaryService(
     const CoreConfiguration& configuration);
+// Generic extension seam: runtime identities need not appear in configuration.
+// Takes ownership only while constructing a complete replacement service.
+// Null, empty-ID, or local/runtime duplicate IDs reject the whole operation.
+// Configuration-derived composers separately validate DTO consistency.
+GOLDENDICT_EXPORTS std::unique_ptr<DictionaryService> CreateDictionaryService(
+    const CoreConfiguration& configuration,
+    std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources);
 GOLDENDICT_EXPORTS std::unique_ptr<DesktopFacade> CreateDesktopFacade(
     const CoreConfiguration& configuration);
 

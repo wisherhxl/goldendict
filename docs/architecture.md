@@ -98,8 +98,22 @@ The Phase 8 P4a current-persistence foundation extends that complete candidate
 with ordered, bounded transport-neutral records for MediaWiki, website, Forvo,
 and DICT sources. Stable IDs, names, enabled intent, adapter-compatible URLs,
 templates, languages, hosts, ports, databases, and strategies are persisted;
-credentials, legacy website encodings, and iframe flags are excluded. Runtime
-composition remains pending, as does the one-shot P4c legacy-source migration.
+credentials, legacy website encodings, and iframe flags are excluded. The P5a.1
+runtime increment adds a transport-neutral core extension contract and composes
+enabled MediaWiki and website records through the optional network module in
+persisted family order after the unchanged local catalog. The existing adapters
+perform transport work while core retains lookup orchestration and article
+sanitization. Forvo, DICT, external-program, credential, and executable wiring
+remain pending.
+The core factory is intentionally a generic extension seam: injected identities
+need not correspond one-to-one with persisted records, allowing deterministic
+derived identities such as future per-language Forvo sources. It atomically
+rejects null sources, empty IDs, and collisions with local or other runtime
+sources. Configuration-derived composers instead validate the complete DTO and
+emit only enabled records. Network wrappers check cancellation and absolute
+deadlines before every operation, include both conditions in adapter cancellation
+polling, and recheck before returning; the adapters' existing bounded transport
+timeout remains the outer fallback between polling opportunities.
 The Phase 8 P4b current-persistence increment adds ordered, bounded
 external-program records with stable identity, enabled intent, plain-text,
 HTML, or prefix-match output, an absolute executable, ordered argument

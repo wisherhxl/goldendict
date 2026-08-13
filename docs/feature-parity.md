@@ -78,8 +78,8 @@ not authorize dropping a legacy format.
 | Inspector/DevTools integration | later | Phase 7 | manual parity check |
 | Bounded HTTP transport | slice | Phase 7 | deterministic local HTTP server |
 | Proxy and authentication | slice | Phase 7 | explicit HTTP proxy and scoped Basic credentials, including cross-origin redirect isolation, verified by local origin/proxy fixtures; system proxy discovery and interactive credential storage remain |
-| MediaWiki sources | slice | Phase 7/8 | bounded JSON adapter, ordered current persistence, and strict ordered legacy migration; UI composition remains |
-| Arbitrary websites | slice | Phase 7/8 | bounded `%GDWORD%` adapter plus ordered current and non-iframe legacy persistence; legacy query encodings, iframe behavior, resources, and UI composition remain |
+| MediaWiki sources | slice | Phase 7/8 | bounded JSON adapter, ordered current/legacy persistence, and enabled runtime catalog composition through the core extension contract; application wiring remains |
+| Arbitrary websites | slice | Phase 7/8 | bounded `%GDWORD%` adapter, ordered current/non-iframe legacy persistence, and enabled runtime catalog composition; legacy encodings, iframe behavior, resources, and application wiring remain |
 | Forvo | slice | Phase 7/8 | bounded pronunciation/audio adapter plus credential-free current and legacy persistence with disabled `en,ru` defaults; credentials, UI composition, and playback remain |
 | DICT servers | slice | Phase 7/8 | bounded RFC 2229 adapter plus ordered current and singleton database/strategy legacy persistence; authentication and UI composition remain |
 | External programs | slice | Phase 7/8 | shell-free adapter plus ordered current and absolute non-audio legacy persistence for plain-text, HTML, and prefix-match programs; environment/process-tree isolation, audio execution, and UI composition remain |

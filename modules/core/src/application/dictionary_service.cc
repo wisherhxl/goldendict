@@ -241,7 +241,9 @@ std::optional<std::string> ValidateQuery(const SuggestionQuery& query) {
 
 class ServiceState final {
    public:
-    explicit ServiceState(const CoreConfiguration& configuration) {
+    explicit ServiceState(
+        const CoreConfiguration& configuration,
+        std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources) {
         std::vector<std::filesystem::path> roots;
         roots.reserve(configuration.dictionary_paths.size());
         for (const auto& root : configuration.dictionary_paths) {
@@ -525,6 +527,19 @@ class ServiceState final {
                   [](const auto& left, const auto& right) {
                       return left->identity().id < right->identity().id;
                   });
+        std::unordered_set<std::string> identities;
+        for (const auto& dictionary : dictionaries_) {
+            identities.insert(dictionary->identity().id);
+        }
+        for (auto& source : runtime_sources) {
+            if (source == nullptr || source->identity().id.empty() ||
+                !identities.insert(source->identity().id).second) {
+                throw std::runtime_error(
+                    "Runtime dictionary sources must have unique non-empty "
+                    "IDs");
+            }
+            dictionaries_.push_back(std::move(source));
+        }
         for (const auto& group : configuration.dictionary_groups) {
             std::vector<const dictionary::Backend*> resolved;
             resolved.reserve(group.dictionary_ids.size());
@@ -830,8 +845,11 @@ class LookupRequestImpl final : public LookupRequest {
 
 class DictionaryServiceImpl final : public DictionaryService {
    public:
-    explicit DictionaryServiceImpl(const CoreConfiguration& configuration)
-        : state_(std::make_shared<ServiceState>(configuration)) {}
+    DictionaryServiceImpl(
+        const CoreConfiguration& configuration,
+        std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources)
+        : state_(std::make_shared<ServiceState>(configuration,
+                                                std::move(runtime_sources))) {}
 
     std::vector<DictionaryIdentity> GetCatalog() const override {
         return state_->GetCatalog();
@@ -874,7 +892,14 @@ DictionaryService::~DictionaryService() = default;
 
 std::unique_ptr<DictionaryService> CreateDictionaryService(
     const CoreConfiguration& configuration) {
-    return std::make_unique<DictionaryServiceImpl>(configuration);
+    return CreateDictionaryService(configuration, {});
+}
+
+std::unique_ptr<DictionaryService> CreateDictionaryService(
+    const CoreConfiguration& configuration,
+    std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources) {
+    return std::make_unique<DictionaryServiceImpl>(configuration,
+                                                   std::move(runtime_sources));
 }
 
 }  // namespace goldendict::core

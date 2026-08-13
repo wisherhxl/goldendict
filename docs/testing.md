@@ -140,6 +140,17 @@ programs abort without a current or temporary file and leave the legacy bytes
 unchanged. A current file still takes precedence without parsing malformed
 legacy XML. P4c adds persistence only; P5 composition, network calls, and
 process execution remain separate.
+`runtime_composition_test` pins the P5a.1 extension seam. It verifies exact
+MediaWiki-then-website enabled ordering and configured identities, disabled
+omission without DTO mutation, duplicate runtime-ID rejection before service
+construction, cancellation before transport activity, and loopback HTTP lookup
+through the existing adapters with core-owned HTML sanitization. No public
+network service or credential is used.
+It also covers the intentionally generic unconfigured-identity seam, null and
+empty-ID injection, collisions with local and runtime identities, unchanged DTOs
+after disabled omission, atomic failure without a partially returned service,
+and pre-cancelled/pre-expired behavior for every method on both wrappers.
+Zero result limits are also verified to return without source I/O.
 `goldendict_source_directories_smoke` exercises offscreen remove, reorder,
 inline edit, and cancel behavior plus invalid-candidate rollback, forced save
 failure, duplicate preservation, successful facade replacement, exact tab

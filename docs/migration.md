@@ -405,6 +405,25 @@ shell-dependent, and otherwise invalid commands abort the entire migration;
 icons remain excluded. This closes P4 and unlocks P5 source composition without
 activating adapters, processes, networking, or UI here.
 
+The P5a.1 runtime-composition foundation exports one transport-neutral core
+dictionary-source extension contract and an overload of the existing headless
+service factory that atomically owns supplied runtime sources. The optional
+network module wraps the existing MediaWiki and website adapters, includes only
+enabled records, preserves each persisted family order and stable identity, and
+appends those families after the unchanged local catalog. Core continues to own
+query validation, cancellation, article assembly, sanitization, groups, and
+public result conversion. Loopback tests cover real adapter calls without public
+network access. Forvo credentials and composition, DICT, external programs, and
+application-facade wiring remain separate P5a leaves.
+The generic core seam does not require runtime identities to exist in persisted
+configuration, so later composers may generate deterministic derived identities.
+The P5a.1 network composer owns DTO consistency: it validates the complete
+candidate and emits only enabled configured records. Core atomically rejects
+null sources, empty IDs, and local/runtime identity collisions. Every composed
+method rejects pre-cancelled or pre-expired requests; transport operations also
+poll cancellation and deadline state and recheck it before returning, with the
+existing bounded adapter timeout as the fallback between polling opportunities.
+
 The current-preferences foundation adds deterministic portable defaults and
 bounded optional preference records to the core-owned current configuration.
 It round-trips locale, appearance, window, hotkey, scan, audio, proxy policy,
