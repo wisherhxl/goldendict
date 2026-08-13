@@ -115,6 +115,14 @@ icon metadata. Unknown nonempty dictionary IDs remain stable, while malformed,
 duplicate, or oversized group input leaves the current destination absent and
 the legacy source byte-for-byte unchanged.
 
+`application_service_test` also verifies the current preferences model:
+missing and older current files receive deterministic defaults, nontrivial
+portable preferences round trip with canonical output, and malformed boolean,
+enum, numeric, floating-point, modifier, duplicate, unknown, or over-limit
+records and malformed UTF-8 strings are rejected. DTO value equality and
+inequality are also pinned. Invalid saves preserve the previous configuration
+and leave no temporary file.
+
 `history_store_test` verifies the first user-history migration slice: strict
 bounded UTF-8/group-aware current-format round trips, bounded import of the
 legacy line format, entry-limit truncation, current-state precedence, atomic

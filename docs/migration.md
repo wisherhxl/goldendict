@@ -352,6 +352,13 @@ sources, preferences, and platform-specific legacy location discovery remain
 separately gated migration work; group-aware lookup behavior and group editing
 remain later Phase 8 work.
 
+The current-preferences foundation adds deterministic portable defaults and
+bounded optional preference records to the core-owned current configuration.
+It round-trips locale, appearance, window, hotkey, scan, audio, proxy policy,
+network, zoom, history, favorites, article, and lookup limits without adding
+Widgets dependencies or wiring behavior. Legacy XML preference import remains
+the following Phase 8 migration increment.
+
 The following user-state increment adds a transport-neutral core history store
 with bounded group-aware UTF-8 entries and a recoverable legacy line-format
 migration. Current state takes precedence, new state is written atomically,

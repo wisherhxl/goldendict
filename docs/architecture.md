@@ -89,6 +89,13 @@ counts, membership counts, value sizes, and duplicate IDs are validated in the
 core before an atomic replacement. Bounded legacy XML migration preserves
 group and dictionary order and retains unknown nonempty dictionary IDs without
 catalog resolution.
+The v1 store also carries a transport-neutral current preferences DTO as
+independently optional named records. Missing records use fixed clean-profile
+defaults, while canonical booleans, enums, finite zoom values, numeric bounds,
+modifier masks, and bounded UTF-8 strings are validated before atomic
+replacement.
+Credentials, tab and layout state, source definitions, legacy preference
+migration, and Widgets behavior remain outside this storage foundation.
 `CreateDictionaryService` is the headless composition entry
 point and `CreateDesktopFacade` is the presentation-facing entry point. Both
 compose private format adapters inside `goldendict_core`; neither exposes a

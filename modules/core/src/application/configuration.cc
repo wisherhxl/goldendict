@@ -2,11 +2,16 @@
 
 #include "goldendict/core/application.h"
 
+#include "../foundation/utf8.h"
+
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
+#include <limits>
 #include <stdexcept>
 #include <string_view>
 #include <system_error>
@@ -25,6 +30,204 @@ constexpr std::size_t kMaximumDictionaryGroups = 256U;
 constexpr std::size_t kMaximumDictionariesPerGroup = 256U;
 constexpr std::size_t kMaximumGroupValueBytes = 4096U;
 constexpr std::size_t kMaximumEncodedGroupIconBytes = 64U * 1024U;
+constexpr std::size_t kMaximumPreferenceStringBytes = 4096U;
+constexpr std::uint32_t kKnownScanPopupModifierMask = 0x03ffU;
+
+std::string Encode(std::string_view value);
+
+template <typename Integer>
+Integer ParseInteger(std::string_view value) {
+    Integer parsed{};
+    const auto conversion =
+        std::from_chars(value.data(), value.data() + value.size(), parsed, 10);
+    if (value.empty() || conversion.ec != std::errc() ||
+        conversion.ptr != value.data() + value.size()) {
+        throw std::runtime_error("Invalid numeric preference value");
+    }
+    return parsed;
+}
+
+bool ParseBoolean(std::string_view value) {
+    if (value == "0")
+        return false;
+    if (value == "1")
+        return true;
+    throw std::runtime_error("Invalid boolean preference value");
+}
+
+double ParseDouble(std::string_view value) {
+    double parsed = 0.0;
+    const auto conversion =
+        std::from_chars(value.data(), value.data() + value.size(), parsed,
+                        std::chars_format::general);
+    if (value.empty() || conversion.ec != std::errc() ||
+        conversion.ptr != value.data() + value.size() ||
+        !std::isfinite(parsed)) {
+        throw std::runtime_error("Invalid floating-point preference value");
+    }
+    return parsed;
+}
+
+std::string FormatDouble(double value) {
+    char buffer[64];
+    const auto conversion = std::to_chars(
+        std::begin(buffer), std::end(buffer), value, std::chars_format::general,
+        std::numeric_limits<double>::max_digits10);
+    if (conversion.ec != std::errc()) {
+        throw std::runtime_error("Cannot encode floating-point preference");
+    }
+    return std::string(buffer, conversion.ptr);
+}
+
+template <typename Integer>
+std::string FormatInteger(Integer value) {
+    char buffer[32];
+    const auto conversion =
+        std::to_chars(std::begin(buffer), std::end(buffer), value, 10);
+    if (conversion.ec != std::errc()) {
+        throw std::runtime_error("Cannot encode numeric preference");
+    }
+    return std::string(buffer, conversion.ptr);
+}
+
+void AppendPreference(std::string& contents, std::string_view name,
+                      std::string value) {
+    contents += "preference=" + Encode(name) + "|" + Encode(value) + "\n";
+}
+
+template <typename Enum>
+Enum ParseEnum(std::string_view value, std::uint8_t maximum) {
+    const auto parsed = ParseInteger<std::uint8_t>(value);
+    if (parsed > maximum) {
+        throw std::runtime_error("Invalid enumerated preference value");
+    }
+    return static_cast<Enum>(parsed);
+}
+
+void SetPreference(ApplicationPreferences& preferences, std::string_view name,
+                   std::string value) {
+#define STRING_PREFERENCE(key, member)         \
+    if (name == key) {                         \
+        preferences.member = std::move(value); \
+        return;                                \
+    }
+#define BOOL_PREFERENCE(key, member)              \
+    if (name == key) {                            \
+        preferences.member = ParseBoolean(value); \
+        return;                                   \
+    }
+#define UINT_PREFERENCE(key, member, type)              \
+    if (name == key) {                                  \
+        preferences.member = ParseInteger<type>(value); \
+        return;                                         \
+    }
+    STRING_PREFERENCE("interface_language", interface_language)
+    STRING_PREFERENCE("help_language", help_language)
+    STRING_PREFERENCE("display_style", display_style)
+    STRING_PREFERENCE("addon_style", addon_style)
+    STRING_PREFERENCE("main_window_hotkey", main_window_hotkey)
+    STRING_PREFERENCE("clipboard_hotkey", clipboard_hotkey)
+    STRING_PREFERENCE("audio_playback_program", audio_playback_program)
+    STRING_PREFERENCE("proxy_host", proxy_host)
+    STRING_PREFERENCE("full_text_disabled_types", full_text_disabled_types)
+    BOOL_PREFERENCE("hide_menubar", hide_menubar)
+    BOOL_PREFERENCE("enable_tray_icon", enable_tray_icon)
+    BOOL_PREFERENCE("start_to_tray", start_to_tray)
+    BOOL_PREFERENCE("close_to_tray", close_to_tray)
+    BOOL_PREFERENCE("auto_start", auto_start)
+    BOOL_PREFERENCE("double_click_translates", double_click_translates)
+    BOOL_PREFERENCE("select_word_by_single_click", select_word_by_single_click)
+    BOOL_PREFERENCE("escape_hides_main_window", escape_hides_main_window)
+    BOOL_PREFERENCE("always_on_top", always_on_top)
+    BOOL_PREFERENCE("search_in_dock", search_in_dock)
+    BOOL_PREFERENCE("enable_main_window_hotkey", enable_main_window_hotkey)
+    BOOL_PREFERENCE("enable_clipboard_hotkey", enable_clipboard_hotkey)
+    BOOL_PREFERENCE("enable_scan_popup", enable_scan_popup)
+    BOOL_PREFERENCE("start_with_scan_popup_on", start_with_scan_popup_on)
+    BOOL_PREFERENCE("enable_scan_popup_modifiers", enable_scan_popup_modifiers)
+    BOOL_PREFERENCE("scan_popup_alt_mode", scan_popup_alt_mode)
+    BOOL_PREFERENCE("ignore_own_clipboard_changes",
+                    ignore_own_clipboard_changes)
+    BOOL_PREFERENCE("scan_popup_use_ui_automation",
+                    scan_popup_use_ui_automation)
+    BOOL_PREFERENCE("scan_popup_use_accessibility",
+                    scan_popup_use_accessibility)
+    BOOL_PREFERENCE("scan_popup_use_gd_message", scan_popup_use_gd_message)
+    BOOL_PREFERENCE("scan_to_main_window", scan_to_main_window)
+    BOOL_PREFERENCE("ignore_diacritics", ignore_diacritics)
+    BOOL_PREFERENCE("show_scan_flag", show_scan_flag)
+    BOOL_PREFERENCE("track_clipboard_changes", track_clipboard_changes)
+    BOOL_PREFERENCE("pronounce_on_load_main", pronounce_on_load_main)
+    BOOL_PREFERENCE("pronounce_on_load_popup", pronounce_on_load_popup)
+    BOOL_PREFERENCE("use_internal_player", use_internal_player)
+    BOOL_PREFERENCE("check_for_new_releases", check_for_new_releases)
+    BOOL_PREFERENCE("disallow_content_from_other_sites",
+                    disallow_content_from_other_sites)
+    BOOL_PREFERENCE("enable_web_plugins", enable_web_plugins)
+    BOOL_PREFERENCE("hide_goldendict_header", hide_goldendict_header)
+    BOOL_PREFERENCE("clear_network_cache_on_exit", clear_network_cache_on_exit)
+    BOOL_PREFERENCE("store_history", store_history)
+    BOOL_PREFERENCE("confirm_favorites_deletion", confirm_favorites_deletion)
+    BOOL_PREFERENCE("always_expand_optional_parts",
+                    always_expand_optional_parts)
+    BOOL_PREFERENCE("collapse_large_articles", collapse_large_articles)
+    BOOL_PREFERENCE("limit_input_phrase_length", limit_input_phrase_length)
+    BOOL_PREFERENCE("synonym_search_enabled", synonym_search_enabled)
+    BOOL_PREFERENCE("full_text_search_enabled", full_text_search_enabled)
+    BOOL_PREFERENCE("full_text_match_case", full_text_match_case)
+    BOOL_PREFERENCE("full_text_use_maximum_word_distance",
+                    full_text_use_maximum_word_distance)
+    BOOL_PREFERENCE("full_text_use_maximum_articles",
+                    full_text_use_maximum_articles)
+    BOOL_PREFERENCE("full_text_ignore_word_order", full_text_ignore_word_order)
+    BOOL_PREFERENCE("full_text_ignore_diacritics", full_text_ignore_diacritics)
+    UINT_PREFERENCE("scan_popup_modifiers", scan_popup_modifiers, std::uint32_t)
+    UINT_PREFERENCE("scan_popup_alt_mode_seconds", scan_popup_alt_mode_seconds,
+                    std::uint32_t)
+    UINT_PREFERENCE("proxy_port", proxy_port, std::uint16_t)
+    UINT_PREFERENCE("maximum_network_cache_megabytes",
+                    maximum_network_cache_megabytes, std::uint32_t)
+    UINT_PREFERENCE("words_zoom_level", words_zoom_level, std::int32_t)
+    UINT_PREFERENCE("maximum_history_entries", maximum_history_entries,
+                    std::uint32_t)
+    UINT_PREFERENCE("history_store_interval_seconds",
+                    history_store_interval_seconds, std::uint32_t)
+    UINT_PREFERENCE("favorites_store_interval_seconds",
+                    favorites_store_interval_seconds, std::uint32_t)
+    UINT_PREFERENCE("article_size_limit", article_size_limit, std::uint32_t)
+    UINT_PREFERENCE("input_phrase_length_limit", input_phrase_length_limit,
+                    std::uint32_t)
+    UINT_PREFERENCE("maximum_dictionary_references",
+                    maximum_dictionary_references, std::uint16_t)
+    UINT_PREFERENCE("full_text_maximum_articles_per_dictionary",
+                    full_text_maximum_articles_per_dictionary, std::uint32_t)
+    UINT_PREFERENCE("full_text_maximum_word_distance",
+                    full_text_maximum_word_distance, std::uint32_t)
+    UINT_PREFERENCE("full_text_maximum_dictionary_megabytes",
+                    full_text_maximum_dictionary_megabytes, std::uint32_t)
+#undef STRING_PREFERENCE
+#undef BOOL_PREFERENCE
+#undef UINT_PREFERENCE
+    if (name == "scan_popup_window_mode") {
+        preferences.scan_popup_window_mode =
+            ParseEnum<ScanPopupWindowMode>(value, 2U);
+    } else if (name == "audio_backend") {
+        preferences.audio_backend = ParseEnum<AudioBackend>(value, 2U);
+    } else if (name == "proxy_mode") {
+        preferences.proxy_mode = ParseEnum<ProxyMode>(value, 2U);
+    } else if (name == "proxy_type") {
+        preferences.proxy_type = ParseEnum<ProxyType>(value, 2U);
+    } else if (name == "full_text_search_mode") {
+        preferences.full_text_search_mode =
+            ParseEnum<FullTextSearchMode>(value, 2U);
+    } else if (name == "zoom_factor") {
+        preferences.zoom_factor = ParseDouble(value);
+    } else if (name == "help_zoom_factor") {
+        preferences.help_zoom_factor = ParseDouble(value);
+    } else {
+        throw std::runtime_error("Unknown preference field");
+    }
+}
 
 bool IsCanonicalBase64(std::string_view value) {
     if (value.empty()) {
@@ -160,6 +363,63 @@ void Validate(const CoreConfiguration& configuration) {
         throw std::runtime_error("Configuration values cannot contain NUL");
     }
 
+    const auto& preferences = configuration.preferences;
+    const std::string* preference_strings[] = {
+        &preferences.interface_language,
+        &preferences.help_language,
+        &preferences.display_style,
+        &preferences.addon_style,
+        &preferences.main_window_hotkey,
+        &preferences.clipboard_hotkey,
+        &preferences.audio_playback_program,
+        &preferences.proxy_host,
+        &preferences.full_text_disabled_types,
+    };
+    for (const auto* value : preference_strings) {
+        if (value->size() > kMaximumPreferenceStringBytes || has_nul(*value) ||
+            !foundation::IsValidUtf8(*value)) {
+            throw std::runtime_error("Preference string is invalid");
+        }
+    }
+    if ((preferences.scan_popup_modifiers & ~kKnownScanPopupModifierMask) !=
+            0U ||
+        preferences.scan_popup_alt_mode_seconds == 0U ||
+        preferences.scan_popup_alt_mode_seconds > 60U ||
+        static_cast<std::uint8_t>(preferences.scan_popup_window_mode) > 2U ||
+        static_cast<std::uint8_t>(preferences.audio_backend) > 2U ||
+        static_cast<std::uint8_t>(preferences.proxy_mode) > 2U ||
+        static_cast<std::uint8_t>(preferences.proxy_type) > 2U) {
+        throw std::runtime_error("Enumerated preference is invalid");
+    }
+    if (preferences.proxy_mode == ProxyMode::kManual &&
+        (preferences.proxy_host.empty() || preferences.proxy_port == 0U)) {
+        throw std::runtime_error("Manual proxy requires a host and port");
+    }
+    if (!std::isfinite(preferences.zoom_factor) ||
+        preferences.zoom_factor < 0.25 || preferences.zoom_factor > 5.0 ||
+        !std::isfinite(preferences.help_zoom_factor) ||
+        preferences.help_zoom_factor < 0.25 ||
+        preferences.help_zoom_factor > 5.0 ||
+        preferences.words_zoom_level < -10 ||
+        preferences.words_zoom_level > 10 ||
+        preferences.maximum_network_cache_megabytes > 10240U ||
+        preferences.maximum_history_entries > 1000000U ||
+        preferences.history_store_interval_seconds > 86400U ||
+        preferences.favorites_store_interval_seconds > 86400U ||
+        preferences.article_size_limit == 0U ||
+        preferences.article_size_limit > 1000000U ||
+        preferences.input_phrase_length_limit == 0U ||
+        preferences.input_phrase_length_limit > 1000000U ||
+        preferences.maximum_dictionary_references == 0U ||
+        preferences.maximum_dictionary_references > 1000U ||
+        static_cast<std::uint8_t>(preferences.full_text_search_mode) > 2U ||
+        preferences.full_text_maximum_articles_per_dictionary == 0U ||
+        preferences.full_text_maximum_articles_per_dictionary > 100000U ||
+        preferences.full_text_maximum_word_distance > 1000U ||
+        preferences.full_text_maximum_dictionary_megabytes > 1048576U) {
+        throw std::runtime_error("Numeric preference is outside its bounds");
+    }
+
     std::unordered_set<std::uint32_t> group_ids;
     for (const auto& group : configuration.dictionary_groups) {
         if (group.id == 0U || !group_ids.insert(group.id).second) {
@@ -241,6 +501,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
     CoreConfiguration configuration;
     std::unordered_map<std::uint32_t, std::size_t> group_indexes;
     std::unordered_set<std::uint32_t> group_metadata_ids;
+    std::unordered_set<std::string> preference_names;
     bool has_index_directory = false;
     std::size_t position = kHeader.size();
     while (position < contents.size()) {
@@ -255,6 +516,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         constexpr std::string_view kDictionaryGroup = "dictionary_group=";
         constexpr std::string_view kDictionaryGroupMetadata =
             "dictionary_group_metadata=";
+        constexpr std::string_view kPreference = "preference=";
         if (line.substr(0, kIndex.size()) == kIndex) {
             if (has_index_directory) {
                 throw std::runtime_error("Duplicate index directory");
@@ -382,6 +644,19 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
                 group.popup_muted_dictionary_ids.push_back(
                     Decode(fields[index]));
             }
+        } else if (line.substr(0, kPreference.size()) == kPreference) {
+            const auto value = line.substr(kPreference.size());
+            const auto separator = value.find('|');
+            if (separator == std::string_view::npos ||
+                value.find('|', separator + 1U) != std::string_view::npos) {
+                throw std::runtime_error("Malformed preference field");
+            }
+            std::string name = Decode(value.substr(0U, separator));
+            if (name.empty() || !preference_names.insert(name).second) {
+                throw std::runtime_error("Duplicate or empty preference field");
+            }
+            SetPreference(configuration.preferences, name,
+                          Decode(value.substr(separator + 1U)));
         } else if (!line.empty()) {
             throw std::runtime_error("Unknown configuration field");
         }
@@ -431,6 +706,107 @@ void SaveConfiguration(const std::string& configuration_path,
             contents += "\n";
         }
     }
+    const auto& p = configuration.preferences;
+#define APPEND_STRING(key, member) AppendPreference(contents, key, p.member)
+#define APPEND_BOOL(key, member) \
+    AppendPreference(contents, key, p.member ? "1" : "0")
+#define APPEND_NUMBER(key, member) \
+    AppendPreference(contents, key, FormatInteger(p.member))
+    APPEND_STRING("interface_language", interface_language);
+    APPEND_STRING("help_language", help_language);
+    APPEND_STRING("display_style", display_style);
+    APPEND_STRING("addon_style", addon_style);
+    APPEND_BOOL("hide_menubar", hide_menubar);
+    APPEND_BOOL("enable_tray_icon", enable_tray_icon);
+    APPEND_BOOL("start_to_tray", start_to_tray);
+    APPEND_BOOL("close_to_tray", close_to_tray);
+    APPEND_BOOL("auto_start", auto_start);
+    APPEND_BOOL("double_click_translates", double_click_translates);
+    APPEND_BOOL("select_word_by_single_click", select_word_by_single_click);
+    APPEND_BOOL("escape_hides_main_window", escape_hides_main_window);
+    APPEND_BOOL("always_on_top", always_on_top);
+    APPEND_BOOL("search_in_dock", search_in_dock);
+    APPEND_BOOL("enable_main_window_hotkey", enable_main_window_hotkey);
+    APPEND_STRING("main_window_hotkey", main_window_hotkey);
+    APPEND_BOOL("enable_clipboard_hotkey", enable_clipboard_hotkey);
+    APPEND_STRING("clipboard_hotkey", clipboard_hotkey);
+    APPEND_BOOL("enable_scan_popup", enable_scan_popup);
+    APPEND_BOOL("start_with_scan_popup_on", start_with_scan_popup_on);
+    APPEND_BOOL("enable_scan_popup_modifiers", enable_scan_popup_modifiers);
+    APPEND_NUMBER("scan_popup_modifiers", scan_popup_modifiers);
+    APPEND_BOOL("scan_popup_alt_mode", scan_popup_alt_mode);
+    APPEND_NUMBER("scan_popup_alt_mode_seconds", scan_popup_alt_mode_seconds);
+    APPEND_BOOL("ignore_own_clipboard_changes", ignore_own_clipboard_changes);
+    APPEND_BOOL("scan_popup_use_ui_automation", scan_popup_use_ui_automation);
+    APPEND_BOOL("scan_popup_use_accessibility", scan_popup_use_accessibility);
+    APPEND_BOOL("scan_popup_use_gd_message", scan_popup_use_gd_message);
+    APPEND_BOOL("scan_to_main_window", scan_to_main_window);
+    APPEND_BOOL("ignore_diacritics", ignore_diacritics);
+    APPEND_BOOL("show_scan_flag", show_scan_flag);
+    APPEND_BOOL("track_clipboard_changes", track_clipboard_changes);
+    AppendPreference(
+        contents, "scan_popup_window_mode",
+        FormatInteger(static_cast<std::uint8_t>(p.scan_popup_window_mode)));
+    APPEND_BOOL("pronounce_on_load_main", pronounce_on_load_main);
+    APPEND_BOOL("pronounce_on_load_popup", pronounce_on_load_popup);
+    APPEND_BOOL("use_internal_player", use_internal_player);
+    AppendPreference(contents, "audio_backend",
+                     FormatInteger(static_cast<std::uint8_t>(p.audio_backend)));
+    APPEND_STRING("audio_playback_program", audio_playback_program);
+    AppendPreference(contents, "proxy_mode",
+                     FormatInteger(static_cast<std::uint8_t>(p.proxy_mode)));
+    AppendPreference(contents, "proxy_type",
+                     FormatInteger(static_cast<std::uint8_t>(p.proxy_type)));
+    APPEND_STRING("proxy_host", proxy_host);
+    APPEND_NUMBER("proxy_port", proxy_port);
+    APPEND_BOOL("check_for_new_releases", check_for_new_releases);
+    APPEND_BOOL("disallow_content_from_other_sites",
+                disallow_content_from_other_sites);
+    APPEND_BOOL("enable_web_plugins", enable_web_plugins);
+    APPEND_BOOL("hide_goldendict_header", hide_goldendict_header);
+    APPEND_NUMBER("maximum_network_cache_megabytes",
+                  maximum_network_cache_megabytes);
+    APPEND_BOOL("clear_network_cache_on_exit", clear_network_cache_on_exit);
+    AppendPreference(contents, "zoom_factor", FormatDouble(p.zoom_factor));
+    AppendPreference(contents, "help_zoom_factor",
+                     FormatDouble(p.help_zoom_factor));
+    APPEND_NUMBER("words_zoom_level", words_zoom_level);
+    APPEND_NUMBER("maximum_history_entries", maximum_history_entries);
+    APPEND_BOOL("store_history", store_history);
+    APPEND_NUMBER("history_store_interval_seconds",
+                  history_store_interval_seconds);
+    APPEND_NUMBER("favorites_store_interval_seconds",
+                  favorites_store_interval_seconds);
+    APPEND_BOOL("confirm_favorites_deletion", confirm_favorites_deletion);
+    APPEND_BOOL("always_expand_optional_parts", always_expand_optional_parts);
+    APPEND_BOOL("collapse_large_articles", collapse_large_articles);
+    APPEND_NUMBER("article_size_limit", article_size_limit);
+    APPEND_BOOL("limit_input_phrase_length", limit_input_phrase_length);
+    APPEND_NUMBER("input_phrase_length_limit", input_phrase_length_limit);
+    APPEND_NUMBER("maximum_dictionary_references",
+                  maximum_dictionary_references);
+    APPEND_BOOL("synonym_search_enabled", synonym_search_enabled);
+    APPEND_BOOL("full_text_search_enabled", full_text_search_enabled);
+    AppendPreference(
+        contents, "full_text_search_mode",
+        FormatInteger(static_cast<std::uint8_t>(p.full_text_search_mode)));
+    APPEND_BOOL("full_text_match_case", full_text_match_case);
+    APPEND_NUMBER("full_text_maximum_articles_per_dictionary",
+                  full_text_maximum_articles_per_dictionary);
+    APPEND_NUMBER("full_text_maximum_word_distance",
+                  full_text_maximum_word_distance);
+    APPEND_BOOL("full_text_use_maximum_word_distance",
+                full_text_use_maximum_word_distance);
+    APPEND_BOOL("full_text_use_maximum_articles",
+                full_text_use_maximum_articles);
+    APPEND_BOOL("full_text_ignore_word_order", full_text_ignore_word_order);
+    APPEND_BOOL("full_text_ignore_diacritics", full_text_ignore_diacritics);
+    APPEND_NUMBER("full_text_maximum_dictionary_megabytes",
+                  full_text_maximum_dictionary_megabytes);
+    APPEND_STRING("full_text_disabled_types", full_text_disabled_types);
+#undef APPEND_STRING
+#undef APPEND_BOOL
+#undef APPEND_NUMBER
     if (contents.size() > kMaximumConfigurationBytes) {
         throw std::runtime_error("Configuration exceeds the size limit");
     }

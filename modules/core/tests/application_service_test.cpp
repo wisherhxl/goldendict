@@ -39,6 +39,9 @@ class ApplicationServiceTest : public QObject {
     void MissingConfigurationIsACleanProfile();
     void ConfigurationRoundTripsEscapedPaths();
     void ConfigurationRoundTripsDictionaryGroups();
+    void ApplicationPreferencesCompareByValue();
+    void ConfigurationRoundTripsPreferencesDeterministically();
+    void ConfigurationRejectsMalformedPreferencesAtomically();
     void ConfigurationRejectsGroupBoundsAndDuplicatesAtomically();
     void ConfigurationRejectsMalformedGroups();
     void MigratesLegacyPathsWithoutTouchingTheSource();
@@ -73,6 +76,12 @@ class ApplicationServiceTest : public QObject {
 
 std::filesystem::path TemporaryPath(const QTemporaryDir& directory) {
     return std::filesystem::path(directory.path().toStdString());
+}
+
+std::string ReadFile(const std::filesystem::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    return {std::istreambuf_iterator<char>(input),
+            std::istreambuf_iterator<char>()};
 }
 
 void ApplicationServiceTest::MissingConfigurationIsACleanProfile() {
@@ -139,6 +148,148 @@ void ApplicationServiceTest::ConfigurationRoundTripsDictionaryGroups() {
     QCOMPARE(g1.dictionary_groups.front().dictionary_ids,
              (std::vector<std::string>{"unknown-id"}));
     QVERIFY(g1.dictionary_groups.front().favorites_folder.empty());
+}
+
+void ApplicationServiceTest::ApplicationPreferencesCompareByValue() {
+    ApplicationPreferences first;
+    ApplicationPreferences second;
+
+    QVERIFY(first == second);
+    QVERIFY(!(first != second));
+
+    second.interface_language = "fr_FR";
+    QVERIFY(first != second);
+    QVERIFY(!(first == second));
+
+    first.interface_language = second.interface_language;
+    second.full_text_search_mode = FullTextSearchMode::kWildcard;
+    QVERIFY(first != second);
+}
+
+void ApplicationServiceTest::
+    ConfigurationRoundTripsPreferencesDeterministically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration expected;
+    auto& preferences = expected.preferences;
+    preferences.interface_language = "zh_CN";
+    preferences.display_style = "dark | high contrast";
+    preferences.enable_tray_icon = false;
+    preferences.main_window_hotkey = "Alt+Space";
+    preferences.scan_popup_modifiers = 0x021U;
+    preferences.scan_popup_alt_mode_seconds = 12U;
+    preferences.scan_popup_window_mode = ScanPopupWindowMode::kTool;
+    preferences.audio_backend = AudioBackend::kQtMultimedia;
+    preferences.proxy_mode = ProxyMode::kManual;
+    preferences.proxy_type = ProxyType::kHttpConnect;
+    preferences.proxy_host = "proxy.example";
+    preferences.proxy_port = 8443U;
+    preferences.maximum_network_cache_megabytes = 256U;
+    preferences.zoom_factor = 1.375;
+    preferences.help_zoom_factor = 0.75;
+    preferences.words_zoom_level = -2;
+    preferences.maximum_history_entries = 1234U;
+    preferences.collapse_large_articles = true;
+    preferences.article_size_limit = 4096U;
+    preferences.synonym_search_enabled = false;
+    preferences.full_text_search_mode = FullTextSearchMode::kRegularExpression;
+    preferences.full_text_match_case = true;
+    preferences.full_text_maximum_word_distance = 9U;
+    preferences.full_text_disabled_types = "audio|images";
+
+    SaveConfiguration(path.string(), expected);
+    const std::string first = ReadFile(path);
+    const auto actual = LoadConfiguration(path.string());
+
+    QCOMPARE(actual.preferences.interface_language,
+             preferences.interface_language);
+    QCOMPARE(actual.preferences.display_style, preferences.display_style);
+    QCOMPARE(actual.preferences.enable_tray_icon, preferences.enable_tray_icon);
+    QCOMPARE(actual.preferences.scan_popup_modifiers,
+             preferences.scan_popup_modifiers);
+    QCOMPARE(actual.preferences.scan_popup_window_mode,
+             preferences.scan_popup_window_mode);
+    QCOMPARE(actual.preferences.audio_backend, preferences.audio_backend);
+    QCOMPARE(actual.preferences.proxy_mode, preferences.proxy_mode);
+    QCOMPARE(actual.preferences.proxy_type, preferences.proxy_type);
+    QCOMPARE(actual.preferences.proxy_host, preferences.proxy_host);
+    QCOMPARE(actual.preferences.proxy_port, preferences.proxy_port);
+    QCOMPARE(actual.preferences.zoom_factor, preferences.zoom_factor);
+    QCOMPARE(actual.preferences.words_zoom_level, preferences.words_zoom_level);
+    QCOMPARE(actual.preferences.article_size_limit,
+             preferences.article_size_limit);
+    QCOMPARE(actual.preferences.synonym_search_enabled,
+             preferences.synonym_search_enabled);
+    QCOMPARE(actual.preferences.full_text_search_mode,
+             preferences.full_text_search_mode);
+    QCOMPARE(actual.preferences.full_text_match_case,
+             preferences.full_text_match_case);
+    QCOMPARE(actual.preferences.full_text_disabled_types,
+             preferences.full_text_disabled_types);
+
+    SaveConfiguration(path.string(), actual);
+    QCOMPARE(ReadFile(path), first);
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\nindex_directory=\n");
+    const auto older = LoadConfiguration(path.string());
+    QCOMPARE(older.preferences.interface_language, std::string{});
+    QCOMPARE(older.preferences.enable_tray_icon, true);
+    QCOMPARE(older.preferences.zoom_factor, 1.0);
+    QCOMPARE(older.preferences.maximum_history_entries, std::uint32_t{500});
+}
+
+void ApplicationServiceTest::
+    ConfigurationRejectsMalformedPreferencesAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration original;
+    original.dictionary_paths = {"/original"};
+    SaveConfiguration(path.string(), original);
+    const std::string original_bytes = ReadFile(path);
+
+    CoreConfiguration invalid = original;
+    invalid.preferences.proxy_mode = ProxyMode::kManual;
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+    QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+
+    invalid = original;
+    invalid.preferences.interface_language.assign(4097U, 'x');
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+
+    invalid = original;
+    invalid.preferences.interface_language = std::string("bad\xc3\x28", 5U);
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+
+    invalid = original;
+    invalid.preferences.zoom_factor = 5.01;
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+
+    const std::vector<std::string> malformed = {
+        "preference=enable_tray_icon|true\n",
+        "preference=proxy_type|9\n",
+        "preference=full_text_search_mode|3\n",
+        std::string("preference=interface_language|bad\xc3\x28\n"),
+        "preference=zoom_factor|nan\n",
+        "preference=scan_popup_modifiers|65535\n",
+        "preference=unknown_future_key|1\n",
+        "preference=store_history|1\npreference=store_history|0\n",
+    };
+    for (const auto& field : malformed) {
+        test::WriteBinaryFile(path, "goldendict-core-config-v1\n" + field);
+        QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                                 std::runtime_error);
+    }
 }
 
 void ApplicationServiceTest::
