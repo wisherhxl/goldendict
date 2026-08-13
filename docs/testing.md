@@ -123,6 +123,13 @@ records and malformed UTF-8 strings are rejected. DTO value equality and
 inequality are also pinned. Invalid saves preserve the previous configuration
 and leave no temporary file.
 
+The same test now pins bounded legacy preference migration: representative
+portable values map exactly into the current DTO, absent values retain current
+defaults, and excluded credentials plus tab/layout fields are ignored.
+Malformed or duplicate recognized values abort without a current or temporary
+file, existing current configuration wins, and the legacy XML remains
+byte-for-byte unchanged after success and failure.
+
 `history_store_test` verifies the first user-history migration slice: strict
 bounded UTF-8/group-aware current-format round trips, bounded import of the
 legacy line format, entry-limit truncation, current-state precedence, atomic

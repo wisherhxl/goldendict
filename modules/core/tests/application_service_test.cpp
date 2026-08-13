@@ -45,6 +45,8 @@ class ApplicationServiceTest : public QObject {
     void ConfigurationRejectsGroupBoundsAndDuplicatesAtomically();
     void ConfigurationRejectsMalformedGroups();
     void MigratesLegacyPathsWithoutTouchingTheSource();
+    void MissingLegacyPreferencesRetainCurrentDefaults();
+    void RejectsMalformedLegacyPreferencesAtomically();
     void CurrentConfigurationTakesPrecedenceOverLegacy();
     void RejectsMalformedLegacyWithoutCreatingCurrent();
     void RejectsMalformedConfiguration();
@@ -401,7 +403,36 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "</mutedDictionaries></group>"
         "<group id=\"8\" name=\"Reference\">"
         "<dictionary>reference-id</dictionary></group></groups>"
-        "<preferences><zoomFactor>1.5</zoomFactor></preferences>"
+        "<preferences>"
+        "<interfaceLanguage>zh_CN</interfaceLanguage>"
+        "<helpLanguage>fr_FR</helpLanguage>"
+        "<displayStyle>dark</displayStyle><addonStyle>contrast.css</addonStyle>"
+        "<hideMenubar>1</hideMenubar><enableTrayIcon>0</enableTrayIcon>"
+        "<doubleClickTranslates>0</doubleClickTranslates>"
+        "<enableMainWindowHotkey>1</enableMainWindowHotkey>"
+        "<mainWindowHotkey>Alt+Space</mainWindowHotkey>"
+        "<scanPopupModifiers>33</scanPopupModifiers>"
+        "<scanPopupAltModeSecs>12</scanPopupAltModeSecs>"
+        "<scanPopupUnpinnedWindowFlags>2</scanPopupUnpinnedWindowFlags>"
+        "<internalPlayerBackend>Qt Multimedia</internalPlayerBackend>"
+        "<audioPlaybackProgram>mpv --no-video</audioPlaybackProgram>"
+        "<proxyserver enabled=\"1\" useSystemProxy=\"0\">"
+        "<type>1</type><host>proxy.example</host><port>8443</port>"
+        "<user>ignored-user</user><password>ignored-secret</password>"
+        "</proxyserver>"
+        "<maxNetworkCacheSize>256</maxNetworkCacheSize>"
+        "<zoomFactor>1.375</zoomFactor><helpZoomFactor>0.75</helpZoomFactor>"
+        "<wordsZoomLevel>-2</wordsZoomLevel>"
+        "<maxStringsInHistory>1234</maxStringsInHistory>"
+        "<collapseBigArticles>1</collapseBigArticles>"
+        "<articleSizeLimit>4096</articleSizeLimit>"
+        "<synonymSearchEnabled>0</synonymSearchEnabled>"
+        "<newTabsOpenInBackground>0</newTabsOpenInBackground>"
+        "<fullTextSearch><searchMode>2</searchMode><matchCase>1</matchCase>"
+        "<maxDistanceBetweenWords>9</maxDistanceBetweenWords>"
+        "<disabledTypes>audio|images</disabledTypes>"
+        "<dialogGeometry>excluded</dialogGeometry></fullTextSearch>"
+        "</preferences>"
         "</config>";
     test::WriteBinaryFile(legacy_path, legacy);
 
@@ -430,6 +461,37 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(migrated.dictionary_groups[0].shortcut, "Ctrl+1");
     QCOMPARE(migrated.dictionary_groups[0].encoded_icon_data, "aWNvbg==");
     QCOMPARE(migrated.dictionary_groups[1].id, std::uint32_t{8});
+    const auto& preferences = migrated.preferences;
+    QCOMPARE(preferences.interface_language, "zh_CN");
+    QCOMPARE(preferences.help_language, "fr_FR");
+    QCOMPARE(preferences.display_style, "dark");
+    QCOMPARE(preferences.addon_style, "contrast.css");
+    QCOMPARE(preferences.hide_menubar, true);
+    QCOMPARE(preferences.enable_tray_icon, false);
+    QCOMPARE(preferences.double_click_translates, false);
+    QCOMPARE(preferences.main_window_hotkey, "Alt+Space");
+    QCOMPARE(preferences.scan_popup_modifiers, std::uint32_t{33});
+    QCOMPARE(preferences.scan_popup_alt_mode_seconds, std::uint32_t{12});
+    QCOMPARE(preferences.scan_popup_window_mode, ScanPopupWindowMode::kTool);
+    QCOMPARE(preferences.audio_backend, AudioBackend::kQtMultimedia);
+    QCOMPARE(preferences.audio_playback_program, "mpv --no-video");
+    QCOMPARE(preferences.proxy_mode, ProxyMode::kManual);
+    QCOMPARE(preferences.proxy_type, ProxyType::kHttpConnect);
+    QCOMPARE(preferences.proxy_host, "proxy.example");
+    QCOMPARE(preferences.proxy_port, std::uint16_t{8443});
+    QCOMPARE(preferences.maximum_network_cache_megabytes, std::uint32_t{256});
+    QCOMPARE(preferences.zoom_factor, 1.375);
+    QCOMPARE(preferences.help_zoom_factor, 0.75);
+    QCOMPARE(preferences.words_zoom_level, std::int32_t{-2});
+    QCOMPARE(preferences.maximum_history_entries, std::uint32_t{1234});
+    QCOMPARE(preferences.collapse_large_articles, true);
+    QCOMPARE(preferences.article_size_limit, std::uint32_t{4096});
+    QCOMPARE(preferences.synonym_search_enabled, false);
+    QCOMPARE(preferences.full_text_search_mode,
+             FullTextSearchMode::kRegularExpression);
+    QCOMPARE(preferences.full_text_match_case, true);
+    QCOMPARE(preferences.full_text_maximum_word_distance, std::uint32_t{9});
+    QCOMPARE(preferences.full_text_disabled_types, "audio|images");
     QVERIFY(std::filesystem::exists(current_path));
     std::ifstream legacy_input(legacy_path, std::ios::binary);
     const std::string unchanged((std::istreambuf_iterator<char>(legacy_input)),
@@ -439,6 +501,74 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(round_trip.dictionary_paths, migrated.dictionary_paths);
     QCOMPARE(round_trip.sound_directories, migrated.sound_directories);
     QCOMPARE(round_trip.dictionary_groups, migrated.dictionary_groups);
+    QCOMPARE(round_trip.preferences, migrated.preferences);
+}
+
+void ApplicationServiceTest::MissingLegacyPreferencesRetainCurrentDefaults() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto legacy_path = root / "config";
+    const auto current_path = root / "core.conf";
+    const std::string legacy =
+        "<config><preferences><interfaceLanguage>de_DE</interfaceLanguage>"
+        "<newTabsOpenAfterCurrentOne>1</newTabsOpenAfterCurrentOne>"
+        "<proxyserver enabled=\"0\" useSystemProxy=\"0\">"
+        "<user>secret-user</user><password>secret-password</password>"
+        "</proxyserver></preferences><mainWindowGeometry>excluded</"
+        "mainWindowGeometry>"
+        "</config>";
+    test::WriteBinaryFile(legacy_path, legacy);
+
+    const auto migrated = LoadOrMigrateConfiguration(
+        current_path.string(), legacy_path.string(), "/cache/indexes");
+    ApplicationPreferences defaults;
+    defaults.interface_language = "de_DE";
+
+    QCOMPARE(migrated.preferences, defaults);
+    QCOMPARE(LoadConfiguration(current_path.string()).preferences, defaults);
+    QCOMPARE(ReadFile(legacy_path), legacy);
+}
+
+void ApplicationServiceTest::RejectsMalformedLegacyPreferencesAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto legacy_path = root / "config";
+    const auto current_path = root / "core.conf";
+    std::vector<std::string> malformed = {
+        "<enableTrayIcon>true</enableTrayIcon>",
+        "<zoomFactor>nan</zoomFactor>",
+        "<wordsZoomLevel>2x</wordsZoomLevel>",
+        "<scanPopupModifiers>65535</scanPopupModifiers>",
+        "<scanPopupUnpinnedWindowFlags>3</scanPopupUnpinnedWindowFlags>",
+        "<internalPlayerBackend>unknown</internalPlayerBackend>",
+        "<articleSizeLimit>0</articleSizeLimit>",
+        "<interfaceLanguage><nested/></interfaceLanguage>",
+        "<storeHistory>1</storeHistory><storeHistory>0</storeHistory>",
+        "<proxyserver enabled=\"yes\" useSystemProxy=\"0\"/>",
+        "<proxyserver useSystemProxy=\"0\"/>",
+        "<proxyserver enabled=\"1\"/>",
+        "<proxyserver enabled=\"0\" useSystemProxy=\"0\"/>"
+        "<proxyserver enabled=\"1\" useSystemProxy=\"0\"/>",
+        "<proxyserver enabled=\"1\" useSystemProxy=\"0\"><type>9</type>"
+        "<host>proxy</host><port>80</port></proxyserver>",
+        "<fullTextSearch><searchMode>3</searchMode></fullTextSearch>",
+    };
+    malformed.push_back("<interfaceLanguage>" + std::string(4097U, 'x') +
+                        "</interfaceLanguage>");
+    for (const auto& preference : malformed) {
+        const std::string legacy =
+            "<config><preferences>" + preference + "</preferences></config>";
+        test::WriteBinaryFile(legacy_path, legacy);
+        QVERIFY_EXCEPTION_THROWN(
+            LoadOrMigrateConfiguration(current_path.string(),
+                                       legacy_path.string(), "/cache/indexes"),
+            std::runtime_error);
+        QVERIFY(!std::filesystem::exists(current_path));
+        QVERIFY(!std::filesystem::exists(current_path.string() + ".tmp"));
+        QCOMPARE(ReadFile(legacy_path), legacy);
+    }
 }
 
 void ApplicationServiceTest::CurrentConfigurationTakesPrecedenceOverLegacy() {
@@ -452,6 +582,7 @@ void ApplicationServiceTest::CurrentConfigurationTakesPrecedenceOverLegacy() {
     current.dictionary_paths = {"/current"};
     current.index_directory = "/current/indexes";
     current.dictionary_groups = {{3U, "Current", "", {"current-id"}}};
+    current.preferences.interface_language = "current-language";
     SaveConfiguration(current_path.string(), current);
 
     const auto loaded = LoadOrMigrateConfiguration(
@@ -460,6 +591,8 @@ void ApplicationServiceTest::CurrentConfigurationTakesPrecedenceOverLegacy() {
     QCOMPARE(loaded.dictionary_paths, current.dictionary_paths);
     QCOMPARE(loaded.index_directory, current.index_directory);
     QCOMPARE(loaded.dictionary_groups, current.dictionary_groups);
+    QCOMPARE(loaded.preferences, current.preferences);
+    QCOMPARE(ReadFile(legacy_path), "<not-config>");
 }
 
 void ApplicationServiceTest::RejectsMalformedLegacyWithoutCreatingCurrent() {

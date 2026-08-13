@@ -94,8 +94,12 @@ independently optional named records. Missing records use fixed clean-profile
 defaults, while canonical booleans, enums, finite zoom values, numeric bounds,
 modifier masks, and bounded UTF-8 strings are validated before atomic
 replacement.
-Credentials, tab and layout state, source definitions, legacy preference
-migration, and Widgets behavior remain outside this storage foundation.
+The private bounded legacy XML importer maps the portable, non-secret subset
+of those preferences into the same DTO. Recognized scalar values use strict
+boolean, enum, numeric, and string conversions; missing values retain current
+defaults, while malformed recognized values abort atomic migration. Proxy
+credentials, tab and layout state, source definitions, and Widgets behavior
+remain excluded and are never persisted by this migration.
 `CreateDictionaryService` is the headless composition entry
 point and `CreateDesktopFacade` is the presentation-facing entry point. Both
 compose private format adapters inside `goldendict_core`; neither exposes a

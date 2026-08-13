@@ -356,8 +356,13 @@ The current-preferences foundation adds deterministic portable defaults and
 bounded optional preference records to the core-owned current configuration.
 It round-trips locale, appearance, window, hotkey, scan, audio, proxy policy,
 network, zoom, history, favorites, article, and lookup limits without adding
-Widgets dependencies or wiring behavior. Legacy XML preference import remains
-the following Phase 8 migration increment.
+Widgets dependencies or wiring behavior. The following bounded migration
+increment imports the matching portable, non-secret legacy XML preferences
+with strict conversions and current-default fallback. Existing current state
+still wins, persistence is atomic, and the legacy source remains immutable;
+credentials, layout/session state, source definitions, UI, and runtime wiring
+remain excluded. This preference migration unlocks T3; P3 remains independently
+ready from the current-preferences foundation.
 
 The following user-state increment adds a transport-neutral core history store
 with bounded group-aware UTF-8 entries and a recoverable legacy line-format
