@@ -241,6 +241,7 @@ int main(int argc, char* argv[]) {
     }
     MainWindow window;
     window.SetFacade(facade.get());
+    window.SetDictionaryGroups(configuration.dictionary_groups);
     const auto refresh_history = [&window, &history]() {
         std::vector<HistoryViewItem> items;
         items.reserve(history.size());
@@ -500,6 +501,28 @@ int main(int argc, char* argv[]) {
                                  QString::fromLocal8Bit(error.what()));
                          }
                      });
+    QObject::connect(&window, &MainWindow::DictionaryGroupsEdited, &window,
+                     [&]() {
+                         auto updated = configuration;
+                         updated.dictionary_groups = window.DictionaryGroups();
+                         try {
+                             auto replacement =
+                                 goldendict::core::CreateDesktopFacade(updated);
+                             goldendict::core::SaveConfiguration(
+                                 configuration_path.toStdString(), updated);
+                             window.SetFacade(replacement.get());
+                             facade = std::move(replacement);
+                             configuration = std::move(updated);
+                             window.SetDictionaryGroups(
+                                 configuration.dictionary_groups);
+                         } catch (const std::exception& error) {
+                             window.SetDictionaryGroups(
+                                 configuration.dictionary_groups);
+                             QMessageBox::warning(
+                                 &window, QStringLiteral("Dictionary Groups"),
+                                 QString::fromLocal8Bit(error.what()));
+                         }
+                     });
     window.show();
 
     if (HasArgument(argc, argv, QStringLiteral("--webengine-smoke"))) {
@@ -527,6 +550,46 @@ int main(int argc, char* argv[]) {
                 app.exit(passed ? 0 : 1);
             });
         });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--dictionary-groups-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window,
+            [&app, &configuration, &configuration_path, &window]() {
+                window.RunDictionaryGroupsSmokeCheck(
+                    [&app, &configuration, &configuration_path](bool passed) {
+                        try {
+                            const auto persisted =
+                                goldendict::core::LoadConfiguration(
+                                    configuration_path.toStdString());
+                            passed = passed &&
+                                     persisted.dictionary_groups.size() == 1U &&
+                                     persisted.dictionary_groups.front().id == 7U &&
+                                     persisted.dictionary_paths ==
+                                         configuration.dictionary_paths &&
+                                     persisted.index_directory ==
+                                         configuration.index_directory &&
+                                     persisted.sound_directories ==
+                                         configuration.sound_directories;
+                            auto invalid = persisted;
+                            invalid.dictionary_groups.front().name.clear();
+                            try {
+                                goldendict::core::SaveConfiguration(
+                                    configuration_path.toStdString(), invalid);
+                                passed = false;
+                            } catch (const std::exception&) {
+                            }
+                            passed = passed &&
+                                     goldendict::core::LoadConfiguration(
+                                         configuration_path.toStdString())
+                                             .dictionary_groups ==
+                                         persisted.dictionary_groups;
+                        } catch (const std::exception&) {
+                            passed = false;
+                        }
+                        app.exit(passed ? 0 : 1);
+                    });
+            });
     } else if (HasArgument(argc, argv, QStringLiteral("--favorites-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(0, &window, [&app, &favorites_path, &window]() {

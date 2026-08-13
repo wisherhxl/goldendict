@@ -388,6 +388,15 @@ to all dictionaries. The selected group is carried by transport-neutral lookup
 and suggestion requests and is preserved when history entries are recorded and
 activated. Group-selection and editing controls remain separate UI work.
 
+The dictionary-group presentation increment adds a visible all-dictionaries
+selector followed by configured groups, including configured icons and
+shortcuts. Selection persists across ordinary lookups and history activation;
+a deleted or missing selection deterministically falls back to group zero. A
+bounded Qt Widgets editor manages ordered groups and catalog membership,
+muted and popup-muted membership, icons, favorites folders, and shortcuts.
+The composition root applies the edited collection through existing core
+validation and atomic persistence while preserving unrelated configuration.
+
 Favorites can be organized without leaving the main window: a new folder is
 created at the root or inside the selected folder, and Add to Favorites targets
 the selected folder (or a selected headword's parent). The composition root

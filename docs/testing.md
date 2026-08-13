@@ -126,6 +126,13 @@ isolated configuration directory. It submits a lookup through the window,
 checks that the history dock is refreshed, and reloads the atomically persisted
 entry through the public core history API.
 
+`goldendict_dictionary_groups_smoke` uses the checked-in Dictd fixture through
+the application composition path. It covers all/configured selection,
+group-aware lookup and history restoration, create/rename/reorder/delete,
+ordered available and unavailable membership, muted sets, metadata, atomic
+persistence, invalid-save rejection, unrelated-field preservation, and
+deleted-selection fallback.
+
 `favorites_store_test` verifies hierarchical current-format round trips and
 recoverable migration of the legacy favorites XML, including folder ordering,
 expansion state, Unicode headwords, current-state precedence, entity and

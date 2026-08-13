@@ -12,6 +12,8 @@
 #include <QMainWindow>
 #include <QStringList>
 
+#include "goldendict/core/application.h"
+
 class ArticlePage;
 class ArticleSchemeHandler;
 class DictionaryBrowser;
@@ -20,9 +22,11 @@ class QLabel;
 class QLineEdit;
 class QListWidget;
 class QPushButton;
+class QComboBox;
 class QTimer;
 class QTreeWidget;
 class QWebEngineView;
+class QShortcut;
 
 namespace goldendict::core {
 class DesktopFacade;
@@ -53,6 +57,11 @@ class MainWindow final : public QMainWindow {
     void SetHistoryWords(const QStringList& words);
     void SetHistoryItems(const std::vector<HistoryViewItem>& items);
     void SetFavoriteItems(const std::vector<FavoriteViewItem>& items);
+    void SetDictionaryGroups(
+        const std::vector<goldendict::core::DictionaryGroupConfiguration>&
+            groups);
+    const std::vector<goldendict::core::DictionaryGroupConfiguration>&
+    DictionaryGroups() const noexcept;
     void RunWebEngineSmokeCheck(std::function<void(bool)> completion);
     void RunWebEngineInteractionCheck(std::function<void(bool)> completion);
     void RunHistorySmokeCheck(std::function<void(bool)> completion);
@@ -67,6 +76,7 @@ class MainWindow final : public QMainWindow {
     void RunDictionaryBrowserSmokeCheck(std::function<void(bool)> completion);
     void RunDictionaryBrowserExportSmokeCheck(
         const QString& path, std::function<void(bool)> completion);
+    void RunDictionaryGroupsSmokeCheck(std::function<void(bool)> completion);
 
    signals:
     void DictionaryDirectorySelected(const QString& directory);
@@ -83,6 +93,7 @@ class MainWindow final : public QMainWindow {
     void RemoveFavoriteRequested(const QList<int>& path);
     void ClearHistoryRequested();
     void ImportHistoryRequested(const QString& path, std::uint32_t group_id);
+    void DictionaryGroupsEdited();
 
    private slots:
     void ChooseDictionaryDirectory();
@@ -100,16 +111,23 @@ class MainWindow final : public QMainWindow {
     void RenameFavorite();
     void ImportFavorites();
     void ExportFavorites();
+    void EditDictionaryGroups();
 
    private:
     void ShowMessage(const QString& title, const QString& message);
     void RefreshHistoryList();
+    void SelectGroup(std::uint32_t group_id);
+    void RefreshGroupSelector();
     bool ExportHistoryToFile(const QString& path);
     QList<int> SelectedFavoriteFolderPath() const;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
     std::unique_ptr<goldendict::core::LookupRequest> request_;
     QLineEdit* query_ = nullptr;
+    QComboBox* group_selector_ = nullptr;
+    QPushButton* edit_groups_button_ = nullptr;
+    std::vector<goldendict::core::DictionaryGroupConfiguration> groups_;
+    std::vector<QShortcut*> group_shortcuts_;
     QLineEdit* history_filter_ = nullptr;
     QListWidget* history_list_ = nullptr;
     std::vector<HistoryViewItem> history_items_;

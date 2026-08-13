@@ -6,19 +6,24 @@
 #include <exception>
 
 #include <QAction>
+#include <QComboBox>
 #include <QDesktopServices>
+#include <QDialog>
 #include <QDockWidget>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QInputDialog>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QPixmap>
 #include <QPushButton>
 #include <QSaveFile>
+#include <QShortcut>
 #include <QTimer>
 #include <QToolBar>
 #include <QTreeWidget>
@@ -33,6 +38,7 @@
 #include "article_scheme_handler.h"
 #include "dictionary_browser.h"
 #include "goldendict/core/desktop_facade.h"
+#include "group_editor.h"
 
 namespace {
 
@@ -53,10 +59,20 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     auto* controls = new QHBoxLayout();
     auto* directory_button =
         new QPushButton(QStringLiteral("Dictionary Folder..."), central);
+    group_selector_ = new QComboBox(central);
+    group_selector_->setObjectName(QStringLiteral("groupSelector"));
+    group_selector_->setToolTip(
+        QStringLiteral("Choose a dictionary group (Alt+G)"));
+    group_selector_->setMaxVisibleItems(30);
+    edit_groups_button_ =
+        new QPushButton(QStringLiteral("Edit Groups..."), central);
+    edit_groups_button_->setObjectName(QStringLiteral("editGroupsButton"));
     query_ = new QLineEdit(central);
     query_->setPlaceholderText(QStringLiteral("Enter a word"));
     lookup_button_ = new QPushButton(QStringLiteral("Lookup"), central);
     controls->addWidget(directory_button);
+    controls->addWidget(group_selector_);
+    controls->addWidget(edit_groups_button_);
     controls->addWidget(query_, 1);
     controls->addWidget(lookup_button_);
     layout->addLayout(controls);
@@ -187,6 +203,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     connect(directory_button, &QPushButton::clicked, this,
             &MainWindow::ChooseDictionaryDirectory);
+    connect(group_selector_, &QComboBox::currentIndexChanged, this,
+            [this](int index) {
+                if (index >= 0) {
+                    selected_group_id_ =
+                        group_selector_->itemData(index).toUInt();
+                }
+            });
+    connect(edit_groups_button_, &QPushButton::clicked, this,
+            &MainWindow::EditDictionaryGroups);
     connect(lookup_button_, &QPushButton::clicked, this,
             &MainWindow::StartLookup);
     connect(query_, &QLineEdit::returnPressed, this, &MainWindow::StartLookup);
@@ -202,7 +227,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 if (item == nullptr) {
                     return;
                 }
-                selected_group_id_ = item->data(Qt::UserRole).value<quint32>();
+                SelectGroup(item->data(Qt::UserRole).value<quint32>());
                 query_->setText(item->text());
                 StartLookup();
             });
@@ -367,6 +392,7 @@ void MainWindow::RunWebEngineInteractionCheck(
 
 void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
     const QString expected = QStringLiteral("history-smoke-entry");
+    SetDictionaryGroups({{7U, "History Smoke Group", "", {}}});
     connect(
         this, &MainWindow::LookupSubmitted, this,
         [this, expected, completion = std::move(completion)](
@@ -377,7 +403,7 @@ void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
                 history_list_->item(0)->text() == expected &&
                 history_list_->item(0)->data(Qt::UserRole).value<quint32>() ==
                     7U;
-            selected_group_id_ = 0U;
+            SelectGroup(0U);
             connect(
                 this, &MainWindow::LookupSubmitted, this,
                 [recorded, completion = std::move(completion)](
@@ -391,7 +417,7 @@ void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
             emit history_list_->itemActivated(history_list_->item(0));
         },
         Qt::SingleShotConnection);
-    selected_group_id_ = 7U;
+    SelectGroup(7U);
     query_->setText(expected);
     StartLookup();
 }
@@ -744,6 +770,111 @@ void MainWindow::RunDictionaryBrowserExportSmokeCheck(
 MainWindow::~MainWindow() {
     QWebEngineProfile::defaultProfile()->removeUrlSchemeHandler(
         scheme_handler_);
+}
+
+void MainWindow::SetDictionaryGroups(
+    const std::vector<goldendict::core::DictionaryGroupConfiguration>& groups) {
+    groups_ = groups;
+    RefreshGroupSelector();
+}
+
+const std::vector<goldendict::core::DictionaryGroupConfiguration>&
+MainWindow::DictionaryGroups() const noexcept {
+    return groups_;
+}
+
+void MainWindow::SelectGroup(std::uint32_t group_id) {
+    for (int index = 0; index < group_selector_->count(); ++index) {
+        if (group_selector_->itemData(index).toUInt() == group_id) {
+            group_selector_->setCurrentIndex(index);
+            selected_group_id_ = group_id;
+            return;
+        }
+    }
+    group_selector_->setCurrentIndex(0);
+    selected_group_id_ = 0U;
+}
+
+void MainWindow::RefreshGroupSelector() {
+    const std::uint32_t previous = selected_group_id_;
+    for (auto* shortcut : group_shortcuts_)
+        delete shortcut;
+    group_shortcuts_.clear();
+    group_selector_->clear();
+    group_selector_->addItem(QStringLiteral("All Dictionaries"),
+                             QVariant::fromValue<quint32>(0U));
+    for (const auto& group : groups_) {
+        QIcon icon;
+        if (!group.encoded_icon_data.empty()) {
+            const QByteArray bytes = QByteArray::fromBase64(
+                QByteArray::fromStdString(group.encoded_icon_data));
+            QPixmap pixmap;
+            if (pixmap.loadFromData(bytes))
+                icon = QIcon(pixmap);
+        }
+        group_selector_->addItem(icon, QString::fromStdString(group.name),
+                                 QVariant::fromValue<quint32>(group.id));
+        const QKeySequence sequence(QString::fromStdString(group.shortcut));
+        if (!sequence.isEmpty()) {
+            auto* shortcut = new QShortcut(sequence, this);
+            const std::uint32_t id = group.id;
+            connect(shortcut, &QShortcut::activated, this,
+                    [this, id]() { SelectGroup(id); });
+            group_shortcuts_.push_back(shortcut);
+        }
+    }
+    SelectGroup(previous);
+}
+
+void MainWindow::EditDictionaryGroups() {
+    std::vector<goldendict::core::DictionaryIdentity> catalog;
+    if (facade_ != nullptr) {
+        catalog = facade_->GetDictionaryService().GetCatalog();
+    }
+    GroupEditor editor(groups_, std::move(catalog), this);
+    if (editor.exec() != QDialog::Accepted)
+        return;
+    groups_ = editor.Groups();
+    emit DictionaryGroupsEdited();
+}
+
+void MainWindow::RunDictionaryGroupsSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (facade_ == nullptr ||
+        facade_->GetDictionaryService().GetCatalog().empty()) {
+        completion(false);
+        return;
+    }
+    const auto catalog = facade_->GetDictionaryService().GetCatalog();
+    const std::string first_id = catalog.front().id;
+    GroupEditor editor({}, catalog, this);
+    const bool edited = editor.RunSmokeEdits();
+    groups_ = editor.Groups();
+    emit DictionaryGroupsEdited();
+    const bool saved = edited && groups_.size() == 1U &&
+                       groups_.front().id == 7U &&
+                       groups_.front().dictionary_ids.size() == 2U &&
+                       groups_.front().muted_dictionary_ids ==
+                           std::vector<std::string>{first_id} &&
+                       groups_.front().popup_muted_dictionary_ids ==
+                           std::vector<std::string>{"unavailable-id"} &&
+                       group_selector_->count() == 2;
+    SetHistoryItems({{QStringLiteral("missing"), 999U}});
+    emit history_list_->itemActivated(history_list_->item(0));
+    const bool fallback = selected_group_id_ == 0U;
+    SetHistoryItems({{QStringLiteral("application"), 7U}});
+    emit history_list_->itemActivated(history_list_->item(0));
+    const bool restored = selected_group_id_ == 7U;
+    auto lookup_group = std::make_shared<std::uint32_t>(0U);
+    connect(
+        this, &MainWindow::LookupSubmitted, this,
+        [lookup_group](const QString&, std::uint32_t group_id) {
+            *lookup_group = group_id;
+        },
+        Qt::SingleShotConnection);
+    query_->setText(QStringLiteral("application"));
+    StartLookup();
+    completion(saved && restored && fallback && *lookup_group == 7U);
 }
 
 void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {

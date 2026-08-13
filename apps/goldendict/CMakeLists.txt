@@ -25,6 +25,14 @@ set_tests_properties(goldendict_history_smoke PROPERTIES
     "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-test-home/cache"
   TIMEOUT 20)
 
+add_test(NAME goldendict_dictionary_groups_smoke
+  COMMAND $<TARGET_FILE:goldendict> --dictionary-groups-smoke
+    --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
+set_tests_properties(goldendict_dictionary_groups_smoke PROPERTIES
+  ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-groups-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-groups-test-home/cache"
+  TIMEOUT 20)
+
 add_test(NAME goldendict_favorites_smoke
   COMMAND $<TARGET_FILE:goldendict> --favorites-smoke)
 set_tests_properties(goldendict_favorites_smoke PROPERTIES

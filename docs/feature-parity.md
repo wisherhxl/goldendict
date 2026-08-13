@@ -102,9 +102,9 @@ not authorize dropping a legacy format.
 | Minimal application window | done | Phase 2 | smoke test |
 | Minimal lookup and article view | slice | Phase 4 | vertical-slice workflow |
 | Main tabs and navigation | mapped | Phase 8 | interaction tests |
-| Dictionary/group controls | slice | Phase 8 | config round-trip plus ordered catalog-resolved lookup, suggestion, and article filtering; selector/editor UI remains |
+| Dictionary/group controls | slice | Phase 8 | config round-trip, ordered catalog-resolved lookup/suggestion/article filtering, visible all/configured-group selector, and bounded ordered group/member/metadata/muting editor |
 | Preferences and source editor | mapped | Phase 8 | settings migration tests |
-| History | slice | Phase 8 | bounded UTF-8/group-aware current store, legacy line-format migration, current-state precedence, atomic persistence, group-preserving application lookup recording and activation, case-insensitive live filtering, clear action, bounded UTF-8 text import, atomic text export, and a reusable history pane; group-selection UI remains |
+| History | slice | Phase 8 | bounded UTF-8/group-aware current store, legacy line-format migration, current-state precedence, atomic persistence, visible group selection with missing-group fallback, group-preserving lookup recording and activation, filtering, clear, import, export, and a reusable pane |
 | Favorites | slice | Phase 8 | bounded hierarchical current store, strict legacy XML migration, current-state precedence, atomic persistence, reusable tree pane, root/selected-folder add, nested folder creation, item/folder rename, sibling reordering, move-to-root and removal, re-lookup, and bounded legacy-compatible XML import/export; arbitrary cross-folder move remains |
 | Dictionary info/headword browser | slice | Phase 8 | facade-backed catalog identity/source display, backend-owned article/headword counts for all migrated local formats, plain-text descriptions for metadata-bearing Aard/MDict/SLOB/ZIM dictionaries, copy-source/open-containing-folder actions, bounded per-dictionary prefix suggestions, lookup activation, atomic displayed-headword export, and fixture-backed UI smokes; remaining format descriptions, unbounded full-list export, and advanced filtering remain |
 | Scan popup | mapped | Phase 9 | X11 and Wayland behavior |
