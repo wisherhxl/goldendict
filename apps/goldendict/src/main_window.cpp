@@ -436,6 +436,15 @@ void MainWindow::RunArticleTabsSmokeCheck(
         completion(false);
         return;
     }
+    goldendict::core::TabNavigationState initial_navigation;
+    initial_navigation.title = "(untitled)";
+    const goldendict::core::ArticleTabSession initial_session = {
+        {{1U, {initial_navigation}, 0U}}, 1U};
+    if (!facade_->RestoreArticleTabSession(initial_session)) {
+        completion(false);
+        return;
+    }
+    SyncArticleTabs();
     bool passed = article_tabs_->count() == 1 &&
                   facade_->GetArticleTabsState().tabs.size() == 1U;
     query_->setText(QStringLiteral("application"));
@@ -633,6 +642,91 @@ void MainWindow::RunArticleTabsSmokeCheck(
         });
     };
     QTimer::singleShot(10, this, *poll);
+}
+
+void MainWindow::RunArticleTabSessionRestartSmokeCheck(
+    bool prepare, std::function<void(bool)> completion) {
+    if (facade_ == nullptr ||
+        facade_->GetDictionaryService().GetCatalog().empty()) {
+        completion(false);
+        return;
+    }
+    goldendict::core::TabNavigationState empty;
+    empty.title = "(untitled)";
+    goldendict::core::TabNavigationState lookup;
+    lookup.kind = goldendict::core::TabNavigationKind::kLookup;
+    lookup.query = "application";
+    lookup.group_id = 7U;
+    lookup.title = "application";
+    goldendict::core::TabNavigationState link;
+    link.kind = goldendict::core::TabNavigationKind::kInternalLink;
+    link.query = "apple";
+    link.group_id = 7U;
+    link.title = "apple link";
+    link.internal_url = "goldendict://lookup/apple";
+    link.source_dictionary_id = "fixture-source";
+    link.source_article_id = "source-article";
+    link.target_article_id = "target-article";
+    link.target_anchor = "target-anchor";
+    goldendict::core::TabNavigationState active_link = link;
+    active_link.query = "application";
+    active_link.group_id = 9U;
+    active_link.title = "application link";
+    active_link.internal_url = "goldendict://lookup/application";
+    active_link.target_article_id = "active-target";
+    const goldendict::core::ArticleTabSession expected = {
+        {{7U, {empty, lookup, link}, 1U}, {42U, {link, active_link}, 1U}}, 42U};
+    if (prepare) {
+        const auto restored = facade_->RestoreArticleTabSession(expected);
+        if (!restored) {
+            completion(false);
+            return;
+        }
+        RebuildArticleTabs();
+        emit ArticleTabSessionMutated();
+        completion(true);
+        return;
+    }
+    bool passed = facade_->ExportArticleTabSession() == expected &&
+                  article_tabs_->count() == 2 && TabIdAt(0) == 7U &&
+                  TabIdAt(1) == 42U &&
+                  TabIdAt(article_tabs_->currentIndex()) == 42U;
+    auto poll = std::make_shared<std::function<void()>>();
+    *poll = [this, passed, completion = std::move(completion), poll]() mutable {
+        FinishLookup();
+        if (!requests_.empty()) {
+            QTimer::singleShot(10, this, *poll);
+            return;
+        }
+        auto* first = ArticleView(7U);
+        auto* second = ArticleView(42U);
+        if (first == nullptr || second == nullptr) {
+            completion(false);
+            return;
+        }
+        first->page()->toPlainText([this, second, passed,
+                                    completion = std::move(completion)](
+                                       const QString& first_text) mutable {
+            second->page()->toPlainText(
+                [this, passed, first_text, completion = std::move(completion)](
+                    const QString& second_text) mutable {
+                    goldendict::core::TabNavigationState next;
+                    next.title = "(untitled)";
+                    const auto opened = facade_->OpenArticleTab(
+                        next, goldendict::core::TabOpenPolicy::kNewTab,
+                        goldendict::core::TabActivationPolicy::kActivate);
+                    bool ok = passed && first_text.contains("A program") &&
+                              second_text.contains("A program") && opened &&
+                              opened.tab_id == 43U;
+                    if (opened) {
+                        SyncArticleTabs();
+                        emit ArticleTabSessionMutated();
+                    }
+                    completion(ok);
+                });
+        });
+    };
+    QTimer::singleShot(250, this, *poll);
 }
 
 void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
@@ -1080,6 +1174,7 @@ QWebEngineView* MainWindow::CreateArticleView(
                 return;
             }
             SyncArticleTabs();
+            emit ArticleTabSessionMutated();
             StartNavigationLookup(result.tab_id, navigation, true);
         });
     connect(page, &ArticlePage::ExternalUrlRequested, this,
@@ -1159,12 +1254,27 @@ void MainWindow::SyncArticleTabs() {
     UpdateNavigationActions();
 }
 
+void MainWindow::RebuildArticleTabs() {
+    if (facade_ == nullptr)
+        return;
+    SyncArticleTabs();
+    const auto state = facade_->GetArticleTabsState();
+    for (const auto& tab : state.tabs) {
+        if (tab.navigation.kind !=
+            goldendict::core::TabNavigationKind::kEmpty) {
+            StartNavigationLookup(tab.id, tab.navigation, false);
+        }
+    }
+}
+
 void MainWindow::ActivateArticleTab(int index) {
     if (facade_ == nullptr || index < 0)
         return;
     const auto id = TabIdAt(index);
-    if (id != 0U && facade_->ActivateArticleTab(id))
+    if (id != 0U && facade_->ActivateArticleTab(id)) {
         SyncArticleTabs();
+        emit ArticleTabSessionMutated();
+    }
 }
 
 void MainWindow::CloseArticleTab(int index) {
@@ -1176,13 +1286,16 @@ void MainWindow::CloseArticleTab(int index) {
         return;
     }
     SyncArticleTabs();
+    emit ArticleTabSessionMutated();
 }
 
 void MainWindow::CloseOtherArticleTabs(int index) {
     if (facade_ == nullptr || index < 0)
         return;
-    if (facade_->CloseOtherArticleTabs(TabIdAt(index)))
+    if (facade_->CloseOtherArticleTabs(TabIdAt(index))) {
         SyncArticleTabs();
+        emit ArticleTabSessionMutated();
+    }
 }
 
 void MainWindow::CreateEmptyArticleTab(bool activate) {
@@ -1199,6 +1312,7 @@ void MainWindow::CreateEmptyArticleTab(bool activate) {
         return;
     }
     SyncArticleTabs();
+    emit ArticleTabSessionMutated();
 }
 
 void MainWindow::NavigateArticleTab(bool forward) {
@@ -1214,6 +1328,7 @@ void MainWindow::NavigateArticleTab(bool forward) {
         std::find_if(state.tabs.begin(), state.tabs.end(),
                      [id](const auto& item) { return item.id == id; });
     SyncArticleTabs();
+    emit ArticleTabSessionMutated();
     if (tab != state.tabs.end() &&
         tab->navigation.kind != goldendict::core::TabNavigationKind::kEmpty) {
         StartNavigationLookup(id, tab->navigation, false);
@@ -1391,7 +1506,7 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     status_->setText(
         tr("%1 dictionary loaded").arg(static_cast<qulonglong>(count)));
     if (facade_ != nullptr)
-        SyncArticleTabs();
+        RebuildArticleTabs();
 }
 
 void MainWindow::ShowDictionaryBrowser() {
@@ -1613,6 +1728,7 @@ void MainWindow::StartLookupInTab(
         return;
     }
     SyncArticleTabs();
+    emit ArticleTabSessionMutated();
     StartNavigationLookup(tab_result.tab_id, navigation, true);
 }
 

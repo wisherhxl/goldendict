@@ -221,6 +221,12 @@ int main(int argc, char* argv[]) {
     }
 
     auto facade = goldendict::core::CreateDesktopFacade(configuration);
+    if (configuration.article_tab_session.has_value() &&
+        !facade->RestoreArticleTabSession(*configuration.article_tab_session)) {
+        QMessageBox::warning(
+            nullptr, QStringLiteral("GoldenDict"),
+            QStringLiteral("Unable to restore the saved article tab session"));
+    }
     constexpr std::size_t kMaximumHistoryEntries = 500U;
     std::vector<goldendict::core::HistoryEntry> history;
     try {
@@ -240,8 +246,24 @@ int main(int argc, char* argv[]) {
                              QString::fromLocal8Bit(error.what()));
     }
     MainWindow window;
-    window.SetFacade(facade.get());
     window.SetDictionaryGroups(configuration.dictionary_groups);
+    window.SetFacade(facade.get());
+    const auto persist_article_tab_session = [&]() {
+        auto updated = configuration;
+        updated.article_tab_session = facade->ExportArticleTabSession();
+        try {
+            goldendict::core::SaveConfiguration(
+                configuration_path.toStdString(), updated);
+            configuration = std::move(updated);
+        } catch (const std::exception& error) {
+            QMessageBox::warning(&window, QStringLiteral("GoldenDict"),
+                                 QString::fromLocal8Bit(error.what()));
+        }
+    };
+    QObject::connect(&window, &MainWindow::ArticleTabSessionMutated, &window,
+                     persist_article_tab_session);
+    QObject::connect(&app, &QApplication::aboutToQuit, &window,
+                     persist_article_tab_session);
     const auto refresh_history = [&window, &history]() {
         std::vector<HistoryViewItem> items;
         items.reserve(history.size());
@@ -483,46 +505,58 @@ int main(int argc, char* argv[]) {
                                  QString::fromLocal8Bit(error.what()));
                          }
                      });
-    QObject::connect(&window, &MainWindow::DictionaryDirectorySelected, &window,
-                     [&](const QString& directory) {
-                         auto updated = configuration;
-                         updated.dictionary_paths = {directory.toStdString()};
-                         try {
-                             auto replacement =
-                                 goldendict::core::CreateDesktopFacade(updated);
-                             goldendict::core::SaveConfiguration(
-                                 configuration_path.toStdString(), updated);
-                             window.SetFacade(replacement.get());
-                             facade = std::move(replacement);
-                             configuration = std::move(updated);
-                         } catch (const std::exception& error) {
-                             QMessageBox::warning(
-                                 &window, QStringLiteral("GoldenDict"),
-                                 QString::fromLocal8Bit(error.what()));
-                         }
-                     });
-    QObject::connect(&window, &MainWindow::DictionaryGroupsEdited, &window,
-                     [&]() {
-                         auto updated = configuration;
-                         updated.dictionary_groups = window.DictionaryGroups();
-                         try {
-                             auto replacement =
-                                 goldendict::core::CreateDesktopFacade(updated);
-                             goldendict::core::SaveConfiguration(
-                                 configuration_path.toStdString(), updated);
-                             window.SetFacade(replacement.get());
-                             facade = std::move(replacement);
-                             configuration = std::move(updated);
-                             window.SetDictionaryGroups(
-                                 configuration.dictionary_groups);
-                         } catch (const std::exception& error) {
-                             window.SetDictionaryGroups(
-                                 configuration.dictionary_groups);
-                             QMessageBox::warning(
-                                 &window, QStringLiteral("Dictionary Groups"),
-                                 QString::fromLocal8Bit(error.what()));
-                         }
-                     });
+    QObject::connect(
+        &window, &MainWindow::DictionaryDirectorySelected, &window,
+        [&](const QString& directory) {
+            auto updated = configuration;
+            updated.dictionary_paths = {directory.toStdString()};
+            updated.article_tab_session = facade->ExportArticleTabSession();
+            try {
+                auto replacement =
+                    goldendict::core::CreateDesktopFacade(updated);
+                if (!replacement->RestoreArticleTabSession(
+                        *updated.article_tab_session)) {
+                    throw std::runtime_error(
+                        "Unable to restore the article tab "
+                        "session");
+                }
+                goldendict::core::SaveConfiguration(
+                    configuration_path.toStdString(), updated);
+                window.SetFacade(replacement.get());
+                facade = std::move(replacement);
+                configuration = std::move(updated);
+            } catch (const std::exception& error) {
+                QMessageBox::warning(&window, QStringLiteral("GoldenDict"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+        });
+    QObject::connect(
+        &window, &MainWindow::DictionaryGroupsEdited, &window, [&]() {
+            auto updated = configuration;
+            updated.dictionary_groups = window.DictionaryGroups();
+            updated.article_tab_session = facade->ExportArticleTabSession();
+            try {
+                auto replacement =
+                    goldendict::core::CreateDesktopFacade(updated);
+                if (!replacement->RestoreArticleTabSession(
+                        *updated.article_tab_session)) {
+                    throw std::runtime_error(
+                        "Unable to restore the article tab "
+                        "session");
+                }
+                goldendict::core::SaveConfiguration(
+                    configuration_path.toStdString(), updated);
+                window.SetDictionaryGroups(updated.dictionary_groups);
+                window.SetFacade(replacement.get());
+                facade = std::move(replacement);
+                configuration = std::move(updated);
+            } catch (const std::exception& error) {
+                window.SetDictionaryGroups(configuration.dictionary_groups);
+                QMessageBox::warning(&window,
+                                     QStringLiteral("Dictionary Groups"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+        });
     window.show();
 
     if (HasArgument(argc, argv, QStringLiteral("--webengine-smoke"))) {
@@ -540,6 +574,22 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(0, &window, [&app, &window]() {
             window.RunArticleTabsSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--article-tab-session-restart-prepare"))) {
+        QTimer::singleShot(15000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunArticleTabSessionRestartSmokeCheck(
+                true, [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--article-tab-session-restart-verify"))) {
+        QTimer::singleShot(15000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunArticleTabSessionRestartSmokeCheck(
+                false, [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
     } else if (HasArgument(argc, argv, QStringLiteral("--history-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });

@@ -118,16 +118,20 @@ capped at 32 tabs. These desktop semantics do not change the headless lookup
 contract. The Qt Widgets presentation mirrors that ordered state with a
 visible tab bar and one retained WebEngine view per open tab, routes tab and
 back/forward commands through the facade, and keeps query/group controls bound
-to the active tab. Application session wiring, tab placement preferences, and
-persisted-session migration remain later application work.
+to the active tab. The composition root restores the configured facade session
+before presentation synchronization, rebuilds each view from only its current
+navigation entry, and atomically saves facade exports after successful
+mutations and on orderly shutdown. Tab placement preferences and persisted-
+session migration remain later application work.
 
 The core persistence foundation also exposes a complete transport-neutral
 session DTO containing each tab's ordered navigation history and cursor. It
 validates and restores that DTO atomically, derives the next stable tab ID
 without collisions, and stores an optional canonical session block in the
 current configuration. Older current configurations retain the single-empty-
-tab default. Application startup/save wiring, restart presentation, tab-opening
-preferences, geometry, and legacy layout migration remain separate work.
+tab default. Application startup/save wiring and restart presentation use this
+contract without adding GUI-owned history. Tab-opening preferences, geometry,
+and legacy layout migration remain separate work.
 
 Built-in local formats are composed behind the same private backend contract.
 StarDict owns its generated index and typed resource adapter. Dictd consumes

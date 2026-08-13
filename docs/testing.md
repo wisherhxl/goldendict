@@ -170,6 +170,13 @@ activation, close/middle-close/close-others and last-tab fallback, current-tab
 and background internal links, facade-backed back/forward restoration and
 forward truncation, and atomic tab/navigation-limit handling.
 
+`goldendict_article_tab_session_restart_smoke` launches the real offscreen
+application twice against one isolated configuration directory. The first run
+persists a facade-owned session on mutation and orderly shutdown; the second
+verifies tab order, active identity, complete histories and cursors,
+group/internal-link identity, current-entry rendering without duplicate
+history, and collision-free next-ID continuation.
+
 `favorites_store_test` verifies hierarchical current-format round trips and
 recoverable migration of the legacy favorites XML, including folder ordering,
 expansion state, Unicode headwords, current-state precedence, entity and

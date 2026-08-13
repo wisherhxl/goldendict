@@ -26,6 +26,15 @@ set_tests_properties(goldendict_article_tabs_smoke PROPERTIES
     "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-tabs-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-tabs-test-home/cache"
   TIMEOUT 20)
 
+add_test(NAME goldendict_article_tab_session_restart_smoke
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DDICTIONARY_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-tab-session-restart-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/article_tab_session_restart.cmake)
+set_tests_properties(goldendict_article_tab_session_restart_smoke PROPERTIES
+  TIMEOUT 40)
+
 add_test(NAME goldendict_history_smoke
   COMMAND $<TARGET_FILE:goldendict> --history-smoke)
 set_tests_properties(goldendict_history_smoke PROPERTIES

@@ -84,6 +84,8 @@ class MainWindow final : public QMainWindow {
         const QString& path, std::function<void(bool)> completion);
     void RunDictionaryGroupsSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabsSmokeCheck(std::function<void(bool)> completion);
+    void RunArticleTabSessionRestartSmokeCheck(
+        bool prepare, std::function<void(bool)> completion);
 
    signals:
     void DictionaryDirectorySelected(const QString& directory);
@@ -101,6 +103,7 @@ class MainWindow final : public QMainWindow {
     void ClearHistoryRequested();
     void ImportHistoryRequested(const QString& path, std::uint32_t group_id);
     void DictionaryGroupsEdited();
+    void ArticleTabSessionMutated();
 
    private slots:
     void ChooseDictionaryDirectory();
@@ -130,6 +133,7 @@ class MainWindow final : public QMainWindow {
         const goldendict::core::TabNavigationState& navigation,
         bool record_history);
     void SyncArticleTabs();
+    void RebuildArticleTabs();
     void ActivateArticleTab(int index);
     void CloseArticleTab(int index);
     void CloseOtherArticleTabs(int index);
