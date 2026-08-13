@@ -38,6 +38,7 @@ class ApplicationServiceTest : public QObject {
    private slots:
     void MissingConfigurationIsACleanProfile();
     void ConfigurationRoundTripsEscapedPaths();
+    void ConfigurationValidatesLocalSourcePolicyAtomically();
     void ConfigurationRoundTripsDictionaryGroups();
     void ConfigurationRoundTripsArticleTabSession();
     void ConfigurationRejectsMalformedArticleTabSessionsAtomically();
@@ -122,6 +123,50 @@ void ApplicationServiceTest::ConfigurationRoundTripsEscapedPaths() {
              expected.sound_directories.front().path);
     QCOMPARE(actual.sound_directories.front().name,
              expected.sound_directories.front().name);
+}
+
+void ApplicationServiceTest::
+    ConfigurationValidatesLocalSourcePolicyAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration original;
+    original.dictionary_paths = {"/original"};
+    SaveConfiguration(path.string(), original);
+    const std::string original_bytes = ReadFile(path);
+
+    CoreConfiguration boundary;
+    boundary.dictionary_paths.assign(kMaximumDictionaryPaths, "/duplicate");
+    boundary.sound_directories.assign(kMaximumSoundDirectories,
+                                      {"/duplicate-sound", ""});
+    ValidateConfiguration(boundary);
+    SaveConfiguration(path.string(), boundary);
+    const auto round_trip = LoadConfiguration(path.string());
+    QCOMPARE(round_trip.dictionary_paths, boundary.dictionary_paths);
+    QCOMPARE(round_trip.sound_directories, boundary.sound_directories);
+
+    SaveConfiguration(path.string(), original);
+    const auto rejects_atomically = [&](const CoreConfiguration& invalid) {
+        QVERIFY_EXCEPTION_THROWN(ValidateConfiguration(invalid),
+                                 std::runtime_error);
+        QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                                 std::runtime_error);
+        QCOMPARE(ReadFile(path), original_bytes);
+        QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+    };
+    auto invalid = original;
+    invalid.dictionary_paths.assign(kMaximumDictionaryPaths + 1U, "/too-many");
+    rejects_atomically(invalid);
+    invalid = original;
+    invalid.sound_directories.assign(kMaximumSoundDirectories + 1U,
+                                     {"/too-many", "sound"});
+    rejects_atomically(invalid);
+    invalid = original;
+    invalid.sound_directories = {{"", "empty path"}};
+    rejects_atomically(invalid);
+    invalid = original;
+    invalid.dictionary_paths = {std::string("bad\0path", 8U)};
+    rejects_atomically(invalid);
 }
 
 void ApplicationServiceTest::ConfigurationRoundTripsDictionaryGroups() {

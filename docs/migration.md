@@ -364,6 +364,17 @@ sources, preferences, and platform-specific legacy location discovery remain
 separately gated migration work; group-aware lookup behavior and group editing
 remain later Phase 8 work.
 
+The P3 local-source editor replaces the single-folder bootstrap chooser with
+one bounded dialog for ordered dictionary paths and named sound directories.
+Widgets provide add, remove, and explicit reorder controls, while the core
+owns validation and atomic persistence. The composition root saves a complete
+candidate before swapping facades and restores the exact article session, so
+groups, preferences, geometry, history, favorites, and unrelated configuration
+survive success and failure. Duplicates and empty sound names remain accepted;
+empty sound paths are rejected. The minimal Qt 6 dialog intentionally omits
+online sources, recursive flags, and sound icons absent from the current core
+model; explicit reorder buttons make ordering deterministic.
+
 The current-preferences foundation adds deterministic portable defaults and
 bounded optional preference records to the core-owned current configuration.
 It round-trips locale, appearance, window, hotkey, scan, audio, proxy policy,

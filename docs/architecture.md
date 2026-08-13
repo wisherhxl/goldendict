@@ -89,6 +89,11 @@ counts, membership counts, value sizes, and duplicate IDs are validated in the
 core before an atomic replacement. Bounded legacy XML migration preserves
 group and dictionary order and retains unknown nonempty dictionary IDs without
 catalog resolution.
+Local source edits use one complete `CoreConfiguration` candidate. The public
+core API owns source-list bounds and validation; the composition root restores
+a replacement facade, atomically saves the candidate, and only then rebinds
+Widgets. Presentation code never persists or discovers sources, and failure
+leaves the active facade and unrelated application state unchanged.
 The v1 store also carries a transport-neutral current preferences DTO as
 independently optional named records. Missing records use fixed clean-profile
 defaults, while canonical booleans, enums, finite zoom values, numeric bounds,

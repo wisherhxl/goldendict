@@ -70,6 +70,10 @@ class MainWindow final : public QMainWindow {
     void SetDictionaryGroups(
         const std::vector<goldendict::core::DictionaryGroupConfiguration>&
             groups);
+    void SetSourceDirectories(
+        const std::vector<std::string>& dictionary_paths,
+        const std::vector<goldendict::core::SoundDirectoryConfiguration>&
+            sound_directories);
     const std::vector<goldendict::core::DictionaryGroupConfiguration>&
     DictionaryGroups() const noexcept;
     void RunWebEngineSmokeCheck(std::function<void(bool)> completion);
@@ -87,12 +91,16 @@ class MainWindow final : public QMainWindow {
     void RunDictionaryBrowserExportSmokeCheck(
         const QString& path, std::function<void(bool)> completion);
     void RunDictionaryGroupsSmokeCheck(std::function<void(bool)> completion);
+    void RunSourceDirectoriesSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabsSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabSessionRestartSmokeCheck(
         bool prepare, std::function<void(bool)> completion);
 
    signals:
-    void DictionaryDirectorySelected(const QString& directory);
+    void SourceDirectoriesEdited(
+        const std::vector<std::string>& dictionary_paths,
+        const std::vector<goldendict::core::SoundDirectoryConfiguration>&
+            sound_directories);
     void LookupSubmitted(const QString& word, std::uint32_t group_id);
     void AddFavoriteRequested(const QString& word,
                               const QList<int>& parent_path);
@@ -110,7 +118,7 @@ class MainWindow final : public QMainWindow {
     void ArticleTabSessionMutated();
 
    private slots:
-    void ChooseDictionaryDirectory();
+    void EditSourceDirectories();
     void StartLookup();
     void FinishLookup();
     void FindInArticle(bool backwards = false);
@@ -156,6 +164,9 @@ class MainWindow final : public QMainWindow {
     QList<int> SelectedFavoriteFolderPath() const;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
+    std::vector<std::string> dictionary_paths_;
+    std::vector<goldendict::core::SoundDirectoryConfiguration>
+        sound_directories_;
     goldendict::core::ApplicationPreferences preferences_;
     QLineEdit* query_ = nullptr;
     QComboBox* group_selector_ = nullptr;

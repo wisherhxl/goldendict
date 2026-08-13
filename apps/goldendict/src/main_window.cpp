@@ -47,6 +47,7 @@
 #include "dictionary_browser.h"
 #include "goldendict/core/desktop_facade.h"
 #include "group_editor.h"
+#include "source_directories_dialog.h"
 
 namespace {
 
@@ -66,7 +67,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     auto* layout = new QVBoxLayout(central);
     auto* controls = new QHBoxLayout();
     auto* directory_button =
-        new QPushButton(QStringLiteral("Dictionary Folder..."), central);
+        new QPushButton(QStringLiteral("Dictionary Sources..."), central);
     group_selector_ = new QComboBox(central);
     group_selector_->setObjectName(QStringLiteral("groupSelector"));
     group_selector_->setToolTip(
@@ -234,7 +235,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     completion_timer_->setInterval(15);
 
     connect(directory_button, &QPushButton::clicked, this,
-            &MainWindow::ChooseDictionaryDirectory);
+            &MainWindow::EditSourceDirectories);
     connect(group_selector_, &QComboBox::currentIndexChanged, this,
             [this](int index) {
                 if (index >= 0) {
@@ -1440,6 +1441,14 @@ void MainWindow::SetDictionaryGroups(
     RefreshGroupSelector();
 }
 
+void MainWindow::SetSourceDirectories(
+    const std::vector<std::string>& dictionary_paths,
+    const std::vector<goldendict::core::SoundDirectoryConfiguration>&
+        sound_directories) {
+    dictionary_paths_ = dictionary_paths;
+    sound_directories_ = sound_directories;
+}
+
 const std::vector<goldendict::core::DictionaryGroupConfiguration>&
 MainWindow::DictionaryGroups() const noexcept {
     return groups_;
@@ -1785,12 +1794,59 @@ void MainWindow::RunWebEngineSmokeCheck(std::function<void(bool)> completion) {
                        "</body></html>"));
 }
 
-void MainWindow::ChooseDictionaryDirectory() {
-    const QString directory = QFileDialog::getExistingDirectory(
-        this, QStringLiteral("Choose Dictionary Folder"));
-    if (!directory.isEmpty()) {
-        emit DictionaryDirectorySelected(directory);
+void MainWindow::RunSourceDirectoriesSmokeCheck(
+    std::function<void(bool)> completion) {
+    const std::vector<std::string> paths = {"/one", "/two", "/three"};
+    const std::vector<goldendict::core::SoundDirectoryConfiguration> sounds = {
+        {"/sound-one", "One"}, {"/sound-two", "Two"}};
+    SourceDirectoriesDialog dialog(paths, sounds, this);
+    auto* path_list =
+        dialog.findChild<QListWidget*>(QStringLiteral("dictionaryPathList"));
+    auto* path_up =
+        dialog.findChild<QPushButton*>(QStringLiteral("moveDictionaryPathUp"));
+    auto* path_remove =
+        dialog.findChild<QPushButton*>(QStringLiteral("removeDictionaryPath"));
+    auto* sound_list =
+        dialog.findChild<QTreeWidget*>(QStringLiteral("soundDirectoryList"));
+    auto* sound_up =
+        dialog.findChild<QPushButton*>(QStringLiteral("moveSoundDirectoryUp"));
+    bool passed = path_list != nullptr && path_up != nullptr &&
+                  path_remove != nullptr && sound_list != nullptr &&
+                  sound_up != nullptr;
+    if (passed) {
+        path_list->setCurrentRow(2);
+        path_up->click();
+        path_list->setCurrentRow(0);
+        path_remove->click();
+        sound_list->setCurrentItem(sound_list->topLevelItem(1));
+        sound_up->click();
+        sound_list->topLevelItem(0)->setText(1, QStringLiteral("Edited"));
+        passed =
+            dialog.DictionaryPaths() ==
+                (std::vector<std::string>{"/three", "/two"}) &&
+            dialog.SoundDirectories() ==
+                (std::vector<goldendict::core::SoundDirectoryConfiguration>{
+                    {"/sound-two", "Edited"}, {"/sound-one", "One"}});
     }
+    SourceDirectoriesDialog cancelled(paths, sounds, this);
+    cancelled.reject();
+    passed = passed && cancelled.result() == QDialog::Rejected &&
+             cancelled.DictionaryPaths() == paths &&
+             cancelled.SoundDirectories() == sounds;
+    completion(passed);
+}
+
+void MainWindow::EditSourceDirectories() {
+    SourceDirectoriesDialog dialog(dictionary_paths_, sound_directories_, this);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    const auto dictionary_paths = dialog.DictionaryPaths();
+    const auto sound_directories = dialog.SoundDirectories();
+    if (dictionary_paths == dictionary_paths_ &&
+        sound_directories == sound_directories_) {
+        return;
+    }
+    emit SourceDirectoriesEdited(dictionary_paths, sound_directories);
 }
 
 void MainWindow::StartLookup() {

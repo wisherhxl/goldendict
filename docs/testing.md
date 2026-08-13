@@ -109,6 +109,14 @@ empty older configurations remain compatible, nontrivial ordered groups round
 trip, group and membership bounds plus duplicate IDs are rejected
 deterministically, malformed fields fail to load, and a rejected save leaves
 the previous configuration unchanged without a temporary file.
+
+The same test pins the public local-source validation seam: both 256-entry
+bounds, empty sound-path and NUL rejection, duplicate and empty-name
+acceptance, exact ordering, and atomic rejected-save behavior.
+`goldendict_source_directories_smoke` exercises offscreen remove, reorder,
+inline edit, and cancel behavior plus invalid-candidate rollback, forced save
+failure, duplicate preservation, successful facade replacement, exact tab
+session restoration, and unrelated configuration preservation.
 It also imports ordered legacy groups with favorites folders, shortcuts,
 separate muted-ID collections, external icons, and canonical Base64 embedded
 icon metadata. Unknown nonempty dictionary IDs remain stable, while malformed,

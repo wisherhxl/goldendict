@@ -3,6 +3,7 @@
 #ifndef GOLDENDICT_CORE_APPLICATION_H_
 #define GOLDENDICT_CORE_APPLICATION_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -16,6 +17,9 @@
 #include "goldendict/core/dictionary_service.h"
 
 namespace goldendict::core {
+
+inline constexpr std::size_t kMaximumDictionaryPaths = 256U;
+inline constexpr std::size_t kMaximumSoundDirectories = 256U;
 
 struct SoundDirectoryConfiguration {
     std::string path;
@@ -276,6 +280,11 @@ struct CoreConfiguration {
 // and I/O failures throw std::runtime_error.
 GOLDENDICT_EXPORTS CoreConfiguration
 LoadConfiguration(const std::string& configuration_path);
+// Validates a complete candidate without performing discovery or I/O.
+// Invalid candidates throw std::runtime_error with the same policy used by
+// LoadConfiguration and SaveConfiguration.
+GOLDENDICT_EXPORTS void ValidateConfiguration(
+    const CoreConfiguration& configuration);
 GOLDENDICT_EXPORTS void SaveConfiguration(
     const std::string& configuration_path,
     const CoreConfiguration& configuration);

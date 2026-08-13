@@ -249,6 +249,8 @@ int main(int argc, char* argv[]) {
     window.SetPreferences(configuration.preferences);
     window.RestoreMainWindowGeometry(configuration.main_window_geometry);
     window.SetDictionaryGroups(configuration.dictionary_groups);
+    window.SetSourceDirectories(configuration.dictionary_paths,
+                                configuration.sound_directories);
     window.SetFacade(facade.get());
     const auto persist_article_tab_session = [&]() {
         auto updated = configuration;
@@ -508,13 +510,21 @@ int main(int argc, char* argv[]) {
                                  QString::fromLocal8Bit(error.what()));
                          }
                      });
-    QObject::connect(
-        &window, &MainWindow::DictionaryDirectorySelected, &window,
-        [&](const QString& directory) {
+    const auto apply_source_directories =
+        [&](const std::vector<std::string>& dictionary_paths,
+            const std::vector<goldendict::core::SoundDirectoryConfiguration>&
+                sound_directories,
+            bool show_error) {
+            if (dictionary_paths == configuration.dictionary_paths &&
+                sound_directories == configuration.sound_directories) {
+                return true;
+            }
             auto updated = configuration;
-            updated.dictionary_paths = {directory.toStdString()};
+            updated.dictionary_paths = dictionary_paths;
+            updated.sound_directories = sound_directories;
             updated.article_tab_session = facade->ExportArticleTabSession();
             try {
+                goldendict::core::ValidateConfiguration(updated);
                 auto replacement =
                     goldendict::core::CreateDesktopFacade(updated);
                 if (!replacement->RestoreArticleTabSession(
@@ -525,13 +535,26 @@ int main(int argc, char* argv[]) {
                 }
                 goldendict::core::SaveConfiguration(
                     configuration_path.toStdString(), updated);
+                window.SetSourceDirectories(updated.dictionary_paths,
+                                            updated.sound_directories);
                 window.SetFacade(replacement.get());
                 facade = std::move(replacement);
                 configuration = std::move(updated);
+                return true;
             } catch (const std::exception& error) {
-                QMessageBox::warning(&window, QStringLiteral("GoldenDict"),
-                                     QString::fromLocal8Bit(error.what()));
+                if (show_error) {
+                    QMessageBox::warning(&window, QStringLiteral("GoldenDict"),
+                                         QString::fromLocal8Bit(error.what()));
+                }
+                return false;
             }
+        };
+    QObject::connect(
+        &window, &MainWindow::SourceDirectoriesEdited, &window,
+        [&](const std::vector<std::string>& dictionary_paths,
+            const std::vector<goldendict::core::SoundDirectoryConfiguration>&
+                sound_directories) {
+            apply_source_directories(dictionary_paths, sound_directories, true);
         });
     QObject::connect(
         &window, &MainWindow::DictionaryGroupsEdited, &window, [&]() {
@@ -648,6 +671,102 @@ int main(int argc, char* argv[]) {
                             passed = false;
                         }
                         app.exit(passed ? 0 : 1);
+                    });
+            });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--source-directories-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window,
+            [&app, &configuration, &configuration_path, &facade,
+             &apply_source_directories, &window]() {
+                bool passed = true;
+                try {
+                    configuration.dictionary_groups = {
+                        {7U, "Preserved", "", {"unavailable"}}};
+                    configuration.preferences.interface_language = "en_US";
+                    configuration.main_window_geometry = "opaque-geometry";
+                    configuration.article_tab_session =
+                        facade->ExportArticleTabSession();
+                    goldendict::core::SaveConfiguration(
+                        configuration_path.toStdString(), configuration);
+                    const auto original = configuration;
+                    const auto original_session =
+                        facade->ExportArticleTabSession();
+                    const auto same_as_original = [&](const auto& candidate) {
+                        return candidate.dictionary_paths ==
+                                   original.dictionary_paths &&
+                               candidate.index_directory ==
+                                   original.index_directory &&
+                               candidate.sound_directories ==
+                                   original.sound_directories &&
+                               candidate.dictionary_groups ==
+                                   original.dictionary_groups &&
+                               candidate.preferences == original.preferences &&
+                               candidate.article_tab_session ==
+                                   original.article_tab_session &&
+                               candidate.main_window_geometry ==
+                                   original.main_window_geometry;
+                    };
+
+                    passed = apply_source_directories(
+                                 configuration.dictionary_paths,
+                                 configuration.sound_directories, false) &&
+                             same_as_original(configuration);
+
+                    auto invalid_sounds = configuration.sound_directories;
+                    invalid_sounds.push_back({"", "invalid"});
+                    passed =
+                        passed &&
+                        !apply_source_directories(
+                            configuration.dictionary_paths, invalid_sounds,
+                            false) &&
+                        same_as_original(configuration) &&
+                        facade->ExportArticleTabSession() == original_session;
+
+                    const QString temporary_path =
+                        configuration_path + QStringLiteral(".tmp");
+                    QDir().mkpath(temporary_path);
+                    auto failed_paths = configuration.dictionary_paths;
+                    failed_paths.push_back("/save-must-fail");
+                    passed =
+                        passed &&
+                        !apply_source_directories(
+                            failed_paths, configuration.sound_directories,
+                            false) &&
+                        same_as_original(configuration) &&
+                        same_as_original(goldendict::core::LoadConfiguration(
+                            configuration_path.toStdString())) &&
+                        facade->ExportArticleTabSession() == original_session;
+                    QDir(temporary_path).removeRecursively();
+
+                    auto successful_paths = configuration.dictionary_paths;
+                    successful_paths.push_back(successful_paths.front());
+                    auto successful_sounds = configuration.sound_directories;
+                    successful_sounds.push_back(
+                        {configuration.dictionary_paths.front(), ""});
+                    successful_sounds.push_back(successful_sounds.back());
+                    passed = passed &&
+                             apply_source_directories(successful_paths,
+                                                      successful_sounds, false);
+                    const auto persisted = goldendict::core::LoadConfiguration(
+                        configuration_path.toStdString());
+                    passed =
+                        passed &&
+                        persisted.dictionary_paths == successful_paths &&
+                        persisted.sound_directories == successful_sounds &&
+                        persisted.dictionary_groups ==
+                            original.dictionary_groups &&
+                        persisted.preferences == original.preferences &&
+                        persisted.main_window_geometry ==
+                            original.main_window_geometry &&
+                        facade->ExportArticleTabSession() == original_session;
+                } catch (const std::exception&) {
+                    passed = false;
+                }
+                window.RunSourceDirectoriesSmokeCheck(
+                    [&app, passed](bool ui_passed) {
+                        app.exit(passed && ui_passed ? 0 : 1);
                     });
             });
     } else if (HasArgument(argc, argv, QStringLiteral("--favorites-smoke"))) {

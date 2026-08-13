@@ -25,8 +25,6 @@ namespace {
 
 constexpr std::string_view kHeader = "goldendict-core-config-v1\n";
 constexpr std::size_t kMaximumConfigurationBytes = 1024U * 1024U;
-constexpr std::size_t kMaximumDictionaryPaths = 256U;
-constexpr std::size_t kMaximumSoundDirectories = 256U;
 constexpr std::size_t kMaximumDictionaryGroups = 256U;
 constexpr std::size_t kMaximumDictionariesPerGroup = 256U;
 constexpr std::size_t kMaximumGroupValueBytes = 4096U;
@@ -334,7 +332,7 @@ std::string Decode(std::string_view value) {
     return decoded;
 }
 
-void Validate(const CoreConfiguration& configuration) {
+void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
     if (configuration.dictionary_paths.size() > kMaximumDictionaryPaths) {
         throw std::runtime_error("Configuration has too many dictionary paths");
     }
@@ -764,13 +762,13 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         }
         position = end + 1U;
     }
-    Validate(configuration);
+    ValidateConfigurationImpl(configuration);
     return configuration;
 }
 
 void SaveConfiguration(const std::string& configuration_path,
                        const CoreConfiguration& configuration) {
-    Validate(configuration);
+    ValidateConfigurationImpl(configuration);
     std::string contents(kHeader);
     contents +=
         "index_directory=" + Encode(configuration.index_directory) + "\n";
@@ -963,6 +961,10 @@ void SaveConfiguration(const std::string& configuration_path,
         throw std::runtime_error("Cannot replace configuration file: " +
                                  error.message());
     }
+}
+
+void ValidateConfiguration(const CoreConfiguration& configuration) {
+    ValidateConfigurationImpl(configuration);
 }
 
 }  // namespace goldendict::core
