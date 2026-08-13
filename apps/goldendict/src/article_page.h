@@ -7,6 +7,12 @@
 
 class QUrl;
 
+enum class ArticleLinkDisposition {
+    kCurrentTab,
+    kNewForegroundTab,
+    kNewBackgroundTab,
+};
+
 namespace goldendict::core {
 class DesktopFacade;
 }
@@ -20,15 +26,18 @@ class ArticlePage final : public QWebEnginePage {
     void SetFacade(const goldendict::core::DesktopFacade* facade) noexcept;
 
    signals:
-    void LookupRequested(const QString& text);
+    void LookupRequested(const QString& text, const QString& internal_url,
+                         ArticleLinkDisposition disposition);
     void ExternalUrlRequested(const QUrl& url);
 
    protected:
     bool acceptNavigationRequest(const QUrl& url, NavigationType type,
                                  bool is_main_frame) override;
+    QWebEnginePage* createWindow(WebWindowType type) override;
 
    private:
     const goldendict::core::DesktopFacade* facade_ = nullptr;
+    bool new_window_navigation_pending_ = false;
 };
 
 #endif  // GOLDENDICT_APPS_GOLDENDICT_ARTICLE_PAGE_H_

@@ -104,8 +104,11 @@ selects its next neighbor or the previous final neighbor, and closing the last
 tab creates a fresh untitled tab. Navigation is capped at 100 entries per tab,
 new navigation after going back discards the forward suffix, and the session is
 capped at 32 tabs. These desktop semantics do not change the headless lookup
-contract. Widgets, WebEngine pages, tab placement preferences, and persisted
-session migration remain presentation or later application work.
+contract. The Qt Widgets presentation mirrors that ordered state with a
+visible tab bar and one retained WebEngine view per open tab, routes tab and
+back/forward commands through the facade, and keeps query/group controls bound
+to the active tab. Tab placement preferences and persisted session migration
+remain later application work.
 
 Built-in local formats are composed behind the same private backend contract.
 StarDict owns its generated index and typed resource adapter. Dictd consumes

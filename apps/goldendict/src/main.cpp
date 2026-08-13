@@ -534,6 +534,13 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         window.RunWebEngineInteractionCheck(
             [&app](bool passed) { app.exit(passed ? 0 : 1); });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--article-tabs-smoke"))) {
+        QTimer::singleShot(15000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunArticleTabsSmokeCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
     } else if (HasArgument(argc, argv, QStringLiteral("--history-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(0, &window, [&app, &history_path, &window]() {

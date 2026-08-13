@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -13,6 +14,7 @@
 #include <QStringList>
 
 #include "goldendict/core/application.h"
+#include "goldendict/core/desktop_facade.h"
 
 class ArticlePage;
 class ArticleSchemeHandler;
@@ -22,8 +24,12 @@ class QLabel;
 class QLineEdit;
 class QListWidget;
 class QPushButton;
+class QPoint;
 class QComboBox;
+class QEvent;
+class QTabWidget;
 class QTimer;
+class QToolButton;
 class QTreeWidget;
 class QWebEngineView;
 class QShortcut;
@@ -77,6 +83,7 @@ class MainWindow final : public QMainWindow {
     void RunDictionaryBrowserExportSmokeCheck(
         const QString& path, std::function<void(bool)> completion);
     void RunDictionaryGroupsSmokeCheck(std::function<void(bool)> completion);
+    void RunArticleTabsSmokeCheck(std::function<void(bool)> completion);
 
    signals:
     void DictionaryDirectorySelected(const QString& directory);
@@ -114,6 +121,24 @@ class MainWindow final : public QMainWindow {
     void EditDictionaryGroups();
 
    private:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+    void StartLookupInTab(goldendict::core::TabOpenPolicy open_policy,
+                          goldendict::core::TabActivationPolicy activation,
+                          const QString& internal_url = {});
+    void StartNavigationLookup(
+        goldendict::core::ArticleTabId tab_id,
+        const goldendict::core::TabNavigationState& navigation,
+        bool record_history);
+    void SyncArticleTabs();
+    void ActivateArticleTab(int index);
+    void CloseArticleTab(int index);
+    void CloseOtherArticleTabs(int index);
+    void CreateEmptyArticleTab(bool activate);
+    void NavigateArticleTab(bool forward);
+    void ShowTabContextMenu(const QPoint& position);
+    QWebEngineView* CreateArticleView(goldendict::core::ArticleTabId tab_id);
+    QWebEngineView* ArticleView(goldendict::core::ArticleTabId tab_id) const;
+    goldendict::core::ArticleTabId TabIdAt(int index) const;
     void ShowMessage(const QString& title, const QString& message);
     void RefreshHistoryList();
     void SelectGroup(std::uint32_t group_id);
@@ -122,7 +147,6 @@ class MainWindow final : public QMainWindow {
     QList<int> SelectedFavoriteFolderPath() const;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
-    std::unique_ptr<goldendict::core::LookupRequest> request_;
     QLineEdit* query_ = nullptr;
     QComboBox* group_selector_ = nullptr;
     QPushButton* edit_groups_button_ = nullptr;
@@ -146,8 +170,9 @@ class MainWindow final : public QMainWindow {
     QAction* export_favorites_action_ = nullptr;
     QAction* remove_favorite_action_ = nullptr;
     QAction* dictionary_browser_action_ = nullptr;
-    QPushButton* lookup_button_ = nullptr;
+    QToolButton* lookup_button_ = nullptr;
     QLabel* status_ = nullptr;
+    QTabWidget* article_tabs_ = nullptr;
     QWebEngineView* article_view_ = nullptr;
     ArticlePage* article_page_ = nullptr;
     ArticleSchemeHandler* scheme_handler_ = nullptr;
@@ -156,6 +181,9 @@ class MainWindow final : public QMainWindow {
     QAction* back_action_ = nullptr;
     QAction* forward_action_ = nullptr;
     QTimer* completion_timer_ = nullptr;
+    std::map<goldendict::core::ArticleTabId,
+             std::unique_ptr<goldendict::core::LookupRequest>>
+        requests_;
     DictionaryBrowser* dictionary_browser_ = nullptr;
 };
 

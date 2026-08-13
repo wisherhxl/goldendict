@@ -6,6 +6,7 @@
 #include <exception>
 
 #include <QAction>
+#include <QApplication>
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialog>
@@ -20,12 +21,18 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMenu>
+#include <QMouseEvent>
 #include <QPixmap>
 #include <QPushButton>
 #include <QSaveFile>
 #include <QShortcut>
+#include <QSignalBlocker>
+#include <QTabBar>
+#include <QTabWidget>
 #include <QTimer>
 #include <QToolBar>
+#include <QToolButton>
 #include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QWebEngineFindTextResult>
@@ -69,7 +76,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     edit_groups_button_->setObjectName(QStringLiteral("editGroupsButton"));
     query_ = new QLineEdit(central);
     query_->setPlaceholderText(QStringLiteral("Enter a word"));
-    lookup_button_ = new QPushButton(QStringLiteral("Lookup"), central);
+    lookup_button_ = new QToolButton(central);
+    lookup_button_->setText(QStringLiteral("Lookup"));
+    lookup_button_->setPopupMode(QToolButton::MenuButtonPopup);
+    auto* lookup_menu = new QMenu(lookup_button_);
+    auto* lookup_new_tab =
+        lookup_menu->addAction(QStringLiteral("Lookup in New Tab"));
+    auto* lookup_background_tab =
+        lookup_menu->addAction(QStringLiteral("Lookup in Background Tab"));
+    lookup_button_->setMenu(lookup_menu);
     controls->addWidget(directory_button);
     controls->addWidget(group_selector_);
     controls->addWidget(edit_groups_button_);
@@ -79,10 +94,26 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     status_ = new QLabel(QStringLiteral("No dictionary configured"), central);
     layout->addWidget(status_);
-    article_view_ = new QWebEngineView(central);
-    article_page_ = new ArticlePage(article_view_);
-    article_view_->setPage(article_page_);
-    layout->addWidget(article_view_, 1);
+    article_tabs_ = new QTabWidget(central);
+    article_tabs_->setObjectName(QStringLiteral("articleTabs"));
+    article_tabs_->setTabsClosable(true);
+    article_tabs_->setDocumentMode(true);
+    article_tabs_->setMovable(false);
+    article_tabs_->tabBar()->installEventFilter(this);
+    article_tabs_->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
+    auto* add_tab_button = new QToolButton(article_tabs_);
+    add_tab_button->setObjectName(QStringLiteral("addArticleTabButton"));
+    add_tab_button->setText(QStringLiteral("+"));
+    add_tab_button->setToolTip(QStringLiteral("New Tab"));
+    auto* add_tab_menu = new QMenu(add_tab_button);
+    auto* add_foreground_tab =
+        add_tab_menu->addAction(QStringLiteral("New Tab"));
+    auto* add_background_tab =
+        add_tab_menu->addAction(QStringLiteral("New Background Tab"));
+    add_tab_button->setMenu(add_tab_menu);
+    add_tab_button->setPopupMode(QToolButton::MenuButtonPopup);
+    article_tabs_->setCornerWidget(add_tab_button, Qt::TopLeftCorner);
+    layout->addWidget(article_tabs_, 1);
 
     auto* history_dock = new QDockWidget(QStringLiteral("History"), this);
     history_dock->setObjectName(QStringLiteral("historyDock"));
@@ -212,16 +243,31 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             });
     connect(edit_groups_button_, &QPushButton::clicked, this,
             &MainWindow::EditDictionaryGroups);
-    connect(lookup_button_, &QPushButton::clicked, this,
+    connect(lookup_button_, &QToolButton::clicked, this,
             &MainWindow::StartLookup);
+    connect(lookup_new_tab, &QAction::triggered, this, [this]() {
+        StartLookupInTab(goldendict::core::TabOpenPolicy::kNewTab,
+                         goldendict::core::TabActivationPolicy::kActivate);
+    });
+    connect(lookup_background_tab, &QAction::triggered, this, [this]() {
+        StartLookupInTab(goldendict::core::TabOpenPolicy::kNewTab,
+                         goldendict::core::TabActivationPolicy::kKeepActive);
+    });
+    connect(add_tab_button, &QToolButton::clicked, this,
+            [this]() { CreateEmptyArticleTab(true); });
+    connect(add_foreground_tab, &QAction::triggered, this,
+            [this]() { CreateEmptyArticleTab(true); });
+    connect(add_background_tab, &QAction::triggered, this,
+            [this]() { CreateEmptyArticleTab(false); });
+    connect(article_tabs_, &QTabWidget::currentChanged, this,
+            &MainWindow::ActivateArticleTab);
+    connect(article_tabs_, &QTabWidget::tabCloseRequested, this,
+            &MainWindow::CloseArticleTab);
+    connect(article_tabs_->tabBar(), &QWidget::customContextMenuRequested, this,
+            &MainWindow::ShowTabContextMenu);
     connect(query_, &QLineEdit::returnPressed, this, &MainWindow::StartLookup);
     connect(completion_timer_, &QTimer::timeout, this,
             &MainWindow::FinishLookup);
-    connect(article_page_, &ArticlePage::LookupRequested, this,
-            [this](const QString& text) {
-                query_->setText(text);
-                StartLookup();
-            });
     connect(history_list_, &QListWidget::itemActivated, this,
             [this](const QListWidgetItem* item) {
                 if (item == nullptr) {
@@ -302,16 +348,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     });
     connect(dictionary_browser_action_, &QAction::triggered, this,
             &MainWindow::ShowDictionaryBrowser);
-    connect(article_page_, &ArticlePage::ExternalUrlRequested, this,
-            [](const QUrl& url) { QDesktopServices::openUrl(url); });
-    connect(back_action_, &QAction::triggered, article_view_,
-            &QWebEngineView::back);
-    connect(forward_action_, &QAction::triggered, article_view_,
-            &QWebEngineView::forward);
-    connect(reload_action, &QAction::triggered, article_view_,
-            &QWebEngineView::reload);
-    connect(article_view_, &QWebEngineView::urlChanged, this,
-            &MainWindow::UpdateNavigationActions);
+    connect(back_action_, &QAction::triggered, this,
+            [this]() { NavigateArticleTab(false); });
+    connect(forward_action_, &QAction::triggered, this,
+            [this]() { NavigateArticleTab(true); });
+    connect(reload_action, &QAction::triggered, this, [this]() {
+        if (article_view_ != nullptr)
+            article_view_->reload();
+    });
     connect(article_search_, &QLineEdit::returnPressed, this,
             [this]() { FindInArticle(false); });
     connect(article_search_, &QLineEdit::textChanged, this,
@@ -331,15 +375,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             [this]() { article_view_->setZoomFactor(1.0); });
     connect(zoom_in_action, &QAction::triggered, this,
             [this]() { ZoomArticle(0.1); });
-    connect(copy_action, &QAction::triggered, article_page_,
-            [this]() { article_page_->triggerAction(QWebEnginePage::Copy); });
+    connect(copy_action, &QAction::triggered, this, [this]() {
+        if (article_page_ != nullptr)
+            article_page_->triggerAction(QWebEnginePage::Copy);
+    });
     connect(save_action, &QAction::triggered, this, &MainWindow::SaveArticle);
     connect(print_action, &QAction::triggered, this, &MainWindow::PrintArticle);
-    connect(article_view_, &QWebEngineView::pdfPrintingFinished, this,
-            [this](const QString&, bool success) {
-                status_->setText(success ? QStringLiteral("PDF saved")
-                                         : QStringLiteral("PDF save failed"));
-            });
     auto* find_action = new QAction(this);
     find_action->setShortcut(QKeySequence::Find);
     find_action->setShortcutContext(Qt::WindowShortcut);
@@ -347,8 +388,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(find_action, &QAction::triggered, article_search_,
             qOverload<>(&QLineEdit::setFocus));
     UpdateNavigationActions();
-    ShowMessage(QStringLiteral("GoldenDict"),
-                QStringLiteral("Choose a dictionary folder to begin."));
 }
 
 void MainWindow::RunWebEngineInteractionCheck(
@@ -388,6 +427,212 @@ void MainWindow::RunWebEngineInteractionCheck(
         Qt::SingleShotConnection);
     article_view_->setHtml(QStringLiteral(
         "<!doctype html><html><body><p>needle</p><p>needle</p></body></html>"));
+}
+
+void MainWindow::RunArticleTabsSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (facade_ == nullptr ||
+        facade_->GetDictionaryService().GetCatalog().empty()) {
+        completion(false);
+        return;
+    }
+    bool passed = article_tabs_->count() == 1 &&
+                  facade_->GetArticleTabsState().tabs.size() == 1U;
+    query_->setText(QStringLiteral("application"));
+    SelectGroup(0U);
+    StartLookup();
+    query_->setText(QStringLiteral("apple"));
+    StartLookupInTab(goldendict::core::TabOpenPolicy::kNewTab,
+                     goldendict::core::TabActivationPolicy::kActivate);
+    query_->setText(QStringLiteral("application"));
+    StartLookupInTab(goldendict::core::TabOpenPolicy::kNewTab,
+                     goldendict::core::TabActivationPolicy::kKeepActive);
+
+    auto poll = std::make_shared<std::function<void()>>();
+    auto rendered = std::make_shared<bool>(false);
+    *poll = [this, passed, completion = std::move(completion), poll,
+             rendered]() mutable {
+        FinishLookup();
+        if (!requests_.empty()) {
+            QTimer::singleShot(10, this, *poll);
+            return;
+        }
+        if (!*rendered) {
+            *rendered = true;
+            QTimer::singleShot(250, this, *poll);
+            return;
+        }
+        auto state = facade_->GetArticleTabsState();
+        bool ok = passed && state.tabs.size() == 3U &&
+                  article_tabs_->count() == 3 &&
+                  state.tabs[0].navigation.query == "application" &&
+                  state.tabs[1].navigation.query == "apple" &&
+                  state.tabs[2].navigation.query == "application" &&
+                  state.active_tab_id == state.tabs[1].id;
+        auto* first = ArticleView(state.tabs[0].id);
+        auto* second = ArticleView(state.tabs[1].id);
+        auto* third = ArticleView(state.tabs[2].id);
+        if (first == nullptr || second == nullptr || third == nullptr) {
+            completion(false);
+            return;
+        }
+        first->page()->toPlainText([this, second, third, ok,
+                                    completion = std::move(completion)](
+                                       const QString& first_text) mutable {
+            second->page()->toPlainText([this, third, ok, first_text,
+                                         completion = std::move(completion)](
+                                            const QString&
+                                                second_text) mutable {
+                third->page()->toPlainText([this, ok, first_text, second_text,
+                                            completion = std::move(completion)](
+                                               const QString&
+                                                   third_text) mutable {
+                    bool smoke_passed = ok &&
+                                        first_text.contains("A program") &&
+                                        second_text.contains("A fruit") &&
+                                        third_text.contains("A program");
+                    auto current_state = facade_->GetArticleTabsState();
+                    facade_->ActivateArticleTab(current_state.tabs[0].id);
+                    SyncArticleTabs();
+                    smoke_passed = smoke_passed &&
+                                   query_->text() == "application" &&
+                                   selected_group_id_ == 0U;
+                    NavigateArticleTab(false);
+                    current_state = facade_->GetArticleTabsState();
+                    smoke_passed =
+                        smoke_passed &&
+                        current_state.tabs[0].navigation.kind ==
+                            goldendict::core::TabNavigationKind::kEmpty;
+                    NavigateArticleTab(true);
+                    current_state = facade_->GetArticleTabsState();
+                    smoke_passed =
+                        smoke_passed &&
+                        current_state.tabs[0].navigation.query == "application";
+                    NavigateArticleTab(false);
+                    query_->setText(QStringLiteral("apple"));
+                    StartLookup();
+                    current_state = facade_->GetArticleTabsState();
+                    smoke_passed =
+                        smoke_passed && !current_state.tabs[0].can_go_forward;
+
+                    article_page_->LookupRequested(
+                        QStringLiteral("application"),
+                        QStringLiteral("goldendict://lookup/application"),
+                        ArticleLinkDisposition::kCurrentTab);
+                    current_state = facade_->GetArticleTabsState();
+                    smoke_passed =
+                        smoke_passed && current_state.tabs.size() == 3U &&
+                        current_state.tabs.front().navigation.kind ==
+                            goldendict::core::TabNavigationKind::kInternalLink;
+                    article_page_->LookupRequested(
+                        QStringLiteral("application"),
+                        QStringLiteral("goldendict://lookup/application"),
+                        ArticleLinkDisposition::kNewBackgroundTab);
+                    current_state = facade_->GetArticleTabsState();
+                    smoke_passed = smoke_passed &&
+                                   current_state.tabs.size() == 4U &&
+                                   current_state.tabs.back().navigation.kind ==
+                                       goldendict::core::TabNavigationKind::
+                                           kInternalLink &&
+                                   current_state.active_tab_id ==
+                                       current_state.tabs.front().id;
+
+                    const int before_middle = article_tabs_->count();
+                    const int middle_index = before_middle - 1;
+                    const QPoint middle_position =
+                        article_tabs_->tabBar()->tabRect(middle_index).center();
+                    QMouseEvent middle_event(
+                        QEvent::MouseButtonPress, middle_position,
+                        middle_position,
+                        article_tabs_->tabBar()->mapToGlobal(middle_position),
+                        Qt::MiddleButton, Qt::MiddleButton, {});
+                    QApplication::sendEvent(article_tabs_->tabBar(),
+                                            &middle_event);
+                    smoke_passed = smoke_passed &&
+                                   article_tabs_->count() == before_middle - 1;
+
+                    current_state = facade_->GetArticleTabsState();
+                    const auto expected_fallback = current_state.tabs[1].id;
+                    CloseArticleTab(article_tabs_->currentIndex());
+                    current_state = facade_->GetArticleTabsState();
+                    smoke_passed =
+                        smoke_passed &&
+                        current_state.active_tab_id == expected_fallback;
+
+                    while (current_state.tabs.size() <
+                           goldendict::core::kMaximumArticleTabs) {
+                        goldendict::core::TabNavigationState extra;
+                        extra.kind =
+                            goldendict::core::TabNavigationKind::kLookup;
+                        extra.query = "limit-" +
+                                      std::to_string(current_state.tabs.size());
+                        extra.title = extra.query;
+                        if (!facade_->OpenArticleTab(
+                                extra, goldendict::core::TabOpenPolicy::kNewTab,
+                                goldendict::core::TabActivationPolicy::
+                                    kKeepActive)) {
+                            smoke_passed = false;
+                            break;
+                        }
+                        current_state = facade_->GetArticleTabsState();
+                    }
+                    goldendict::core::TabNavigationState overflow;
+                    overflow.kind =
+                        goldendict::core::TabNavigationKind::kLookup;
+                    overflow.query = "overflow";
+                    overflow.title = overflow.query;
+                    smoke_passed =
+                        smoke_passed &&
+                        facade_->OpenArticleTab(
+                                   overflow,
+                                   goldendict::core::TabOpenPolicy::kNewTab,
+                                   goldendict::core::TabActivationPolicy::
+                                       kKeepActive)
+                                .error == goldendict::core::TabOperationError::
+                                              kTabLimitReached;
+
+                    CloseOtherArticleTabs(article_tabs_->currentIndex());
+                    smoke_passed = smoke_passed && article_tabs_->count() == 1;
+                    goldendict::core::TabOperationError navigation_error =
+                        goldendict::core::TabOperationError::kNone;
+                    for (std::size_t index = 0;
+                         index <=
+                         goldendict::core::kMaximumTabNavigationEntries;
+                         ++index) {
+                        goldendict::core::TabNavigationState bounded;
+                        bounded.kind =
+                            goldendict::core::TabNavigationKind::kLookup;
+                        bounded.query = "navigation-" + std::to_string(index);
+                        bounded.title = bounded.query;
+                        const auto result = facade_->OpenArticleTab(
+                            bounded,
+                            goldendict::core::TabOpenPolicy::kCurrentTab,
+                            goldendict::core::TabActivationPolicy::kActivate);
+                        if (!result) {
+                            navigation_error = result.error;
+                            break;
+                        }
+                    }
+                    smoke_passed = smoke_passed &&
+                                   navigation_error ==
+                                       goldendict::core::TabOperationError::
+                                           kNavigationLimitReached;
+                    SyncArticleTabs();
+                    const auto retained_id =
+                        facade_->GetArticleTabsState().active_tab_id;
+                    CloseArticleTab(article_tabs_->currentIndex());
+                    const auto replacement = facade_->GetArticleTabsState();
+                    smoke_passed =
+                        smoke_passed && replacement.tabs.size() == 1U &&
+                        replacement.active_tab_id != retained_id &&
+                        replacement.tabs.front().navigation.kind ==
+                            goldendict::core::TabNavigationKind::kEmpty;
+                    completion(smoke_passed);
+                });
+            });
+        });
+    };
+    QTimer::singleShot(10, this, *poll);
 }
 
 void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
@@ -768,8 +1013,252 @@ void MainWindow::RunDictionaryBrowserExportSmokeCheck(
 }
 
 MainWindow::~MainWindow() {
+    for (auto& [id, request] : requests_) {
+        static_cast<void>(id);
+        request->Cancel();
+    }
     QWebEngineProfile::defaultProfile()->removeUrlSchemeHandler(
         scheme_handler_);
+}
+
+goldendict::core::ArticleTabId MainWindow::TabIdAt(int index) const {
+    if (index < 0 || index >= article_tabs_->count())
+        return 0U;
+    return article_tabs_->widget(index)->property("articleTabId").toULongLong();
+}
+
+QWebEngineView* MainWindow::ArticleView(
+    goldendict::core::ArticleTabId tab_id) const {
+    for (int index = 0; index < article_tabs_->count(); ++index) {
+        if (TabIdAt(index) == tab_id) {
+            return qobject_cast<QWebEngineView*>(article_tabs_->widget(index));
+        }
+    }
+    return nullptr;
+}
+
+QWebEngineView* MainWindow::CreateArticleView(
+    goldendict::core::ArticleTabId tab_id) {
+    auto* view = new QWebEngineView(article_tabs_);
+    view->setProperty("articleTabId", QVariant::fromValue<qulonglong>(tab_id));
+    auto* page = new ArticlePage(view);
+    page->SetFacade(facade_);
+    view->setPage(page);
+    connect(
+        page, &ArticlePage::LookupRequested, this,
+        [this, tab_id](const QString& text, const QString& internal_url,
+                       ArticleLinkDisposition disposition) {
+            if (facade_ == nullptr)
+                return;
+            std::uint32_t group_id = 0U;
+            const auto state = facade_->GetArticleTabsState();
+            const auto found = std::find_if(
+                state.tabs.begin(), state.tabs.end(),
+                [tab_id](const auto& tab) { return tab.id == tab_id; });
+            if (found != state.tabs.end())
+                group_id = found->navigation.group_id;
+            goldendict::core::TabNavigationState navigation;
+            navigation.kind =
+                goldendict::core::TabNavigationKind::kInternalLink;
+            navigation.query = text.toStdString();
+            navigation.group_id = group_id;
+            navigation.title = navigation.query;
+            navigation.internal_url = internal_url.toStdString();
+            const bool foreground =
+                disposition == ArticleLinkDisposition::kNewForegroundTab;
+            const bool background =
+                disposition == ArticleLinkDisposition::kNewBackgroundTab;
+            const auto result = facade_->OpenArticleTab(
+                navigation,
+                foreground || background
+                    ? goldendict::core::TabOpenPolicy::kNewTab
+                    : goldendict::core::TabOpenPolicy::kCurrentTab,
+                background ? goldendict::core::TabActivationPolicy::kKeepActive
+                           : goldendict::core::TabActivationPolicy::kActivate);
+            if (!result) {
+                status_->setText(QStringLiteral("Unable to open article tab"));
+                return;
+            }
+            SyncArticleTabs();
+            StartNavigationLookup(result.tab_id, navigation, true);
+        });
+    connect(page, &ArticlePage::ExternalUrlRequested, this,
+            [](const QUrl& url) { QDesktopServices::openUrl(url); });
+    connect(view, &QWebEngineView::urlChanged, this,
+            &MainWindow::UpdateNavigationActions);
+    connect(view, &QWebEngineView::pdfPrintingFinished, this,
+            [this, tab_id](const QString&, bool success) {
+                if (TabIdAt(article_tabs_->currentIndex()) == tab_id) {
+                    status_->setText(success
+                                         ? QStringLiteral("PDF saved")
+                                         : QStringLiteral("PDF save failed"));
+                }
+            });
+    view->setHtml(QStringLiteral(
+        "<!doctype html><html><body><h1>GoldenDict</h1>"
+        "<p>Choose a dictionary folder to begin.</p></body></html>"));
+    return view;
+}
+
+void MainWindow::SyncArticleTabs() {
+    if (facade_ == nullptr)
+        return;
+    const auto state = facade_->GetArticleTabsState();
+    const QSignalBlocker blocker(article_tabs_);
+    for (int index = article_tabs_->count() - 1; index >= 0; --index) {
+        const auto id = TabIdAt(index);
+        const bool retained =
+            std::any_of(state.tabs.begin(), state.tabs.end(),
+                        [id](const auto& tab) { return tab.id == id; });
+        if (!retained) {
+            if (auto request = requests_.find(id); request != requests_.end()) {
+                request->second->Cancel();
+                requests_.erase(request);
+            }
+            QWidget* widget = article_tabs_->widget(index);
+            article_tabs_->removeTab(index);
+            widget->deleteLater();
+        }
+    }
+    for (std::size_t desired = 0; desired < state.tabs.size(); ++desired) {
+        const auto& tab = state.tabs[desired];
+        auto* view = ArticleView(tab.id);
+        if (view == nullptr) {
+            view = CreateArticleView(tab.id);
+            article_tabs_->insertTab(
+                static_cast<int>(desired), view,
+                QString::fromStdString(tab.navigation.title));
+        }
+        const int current = article_tabs_->indexOf(view);
+        if (current != static_cast<int>(desired)) {
+            article_tabs_->removeTab(current);
+            article_tabs_->insertTab(
+                static_cast<int>(desired), view,
+                QString::fromStdString(tab.navigation.title));
+        }
+        article_tabs_->setTabText(
+            static_cast<int>(desired),
+            QString::fromStdString(tab.navigation.title).replace('&', "&&"));
+    }
+    const auto active = std::find_if(
+        state.tabs.begin(), state.tabs.end(),
+        [&](const auto& tab) { return tab.id == state.active_tab_id; });
+    if (active == state.tabs.end())
+        return;
+    auto* active_view = ArticleView(active->id);
+    article_tabs_->setCurrentWidget(active_view);
+    article_view_ = active_view;
+    article_page_ = qobject_cast<ArticlePage*>(active_view->page());
+    query_->setText(QString::fromStdString(active->navigation.query));
+    SelectGroup(active->navigation.group_id);
+    setWindowTitle(
+        active->navigation.kind == goldendict::core::TabNavigationKind::kEmpty
+            ? QStringLiteral("GoldenDict")
+            : QStringLiteral("%1 — GoldenDict")
+                  .arg(QString::fromStdString(active->navigation.title)));
+    UpdateNavigationActions();
+}
+
+void MainWindow::ActivateArticleTab(int index) {
+    if (facade_ == nullptr || index < 0)
+        return;
+    const auto id = TabIdAt(index);
+    if (id != 0U && facade_->ActivateArticleTab(id))
+        SyncArticleTabs();
+}
+
+void MainWindow::CloseArticleTab(int index) {
+    if (facade_ == nullptr || index < 0)
+        return;
+    const auto id = TabIdAt(index);
+    if (!facade_->CloseArticleTab(id)) {
+        status_->setText(QStringLiteral("Unable to close article tab"));
+        return;
+    }
+    SyncArticleTabs();
+}
+
+void MainWindow::CloseOtherArticleTabs(int index) {
+    if (facade_ == nullptr || index < 0)
+        return;
+    if (facade_->CloseOtherArticleTabs(TabIdAt(index)))
+        SyncArticleTabs();
+}
+
+void MainWindow::CreateEmptyArticleTab(bool activate) {
+    if (facade_ == nullptr)
+        return;
+    goldendict::core::TabNavigationState navigation;
+    navigation.title = "(untitled)";
+    const auto result = facade_->OpenArticleTab(
+        navigation, goldendict::core::TabOpenPolicy::kNewTab,
+        activate ? goldendict::core::TabActivationPolicy::kActivate
+                 : goldendict::core::TabActivationPolicy::kKeepActive);
+    if (!result) {
+        status_->setText(QStringLiteral("Article tab limit reached"));
+        return;
+    }
+    SyncArticleTabs();
+}
+
+void MainWindow::NavigateArticleTab(bool forward) {
+    if (facade_ == nullptr)
+        return;
+    const auto id = TabIdAt(article_tabs_->currentIndex());
+    const auto result = forward ? facade_->GoForwardInArticleTab(id)
+                                : facade_->GoBackInArticleTab(id);
+    if (!result)
+        return;
+    const auto state = facade_->GetArticleTabsState();
+    const auto tab =
+        std::find_if(state.tabs.begin(), state.tabs.end(),
+                     [id](const auto& item) { return item.id == id; });
+    SyncArticleTabs();
+    if (tab != state.tabs.end() &&
+        tab->navigation.kind != goldendict::core::TabNavigationKind::kEmpty) {
+        StartNavigationLookup(id, tab->navigation, false);
+    } else {
+        if (auto request = requests_.find(id); request != requests_.end()) {
+            request->second->Cancel();
+            requests_.erase(request);
+        }
+        if (auto* view = ArticleView(id); view != nullptr) {
+            view->setHtml(QStringLiteral(
+                "<!doctype html><html><body><h1>GoldenDict</h1>"
+                "<p>Choose a dictionary folder to begin.</p></body></html>"));
+        }
+    }
+}
+
+void MainWindow::ShowTabContextMenu(const QPoint& position) {
+    const int index = article_tabs_->tabBar()->tabAt(position);
+    if (index < 0)
+        return;
+    QMenu menu(this);
+    auto* close = menu.addAction(QStringLiteral("Close Tab"));
+    auto* close_others = menu.addAction(QStringLiteral("Close Other Tabs"));
+    close_others->setEnabled(article_tabs_->count() > 1);
+    QAction* selected =
+        menu.exec(article_tabs_->tabBar()->mapToGlobal(position));
+    if (selected == close)
+        CloseArticleTab(index);
+    if (selected == close_others)
+        CloseOtherArticleTabs(index);
+}
+
+bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == article_tabs_->tabBar() &&
+        event->type() == QEvent::MouseButtonPress) {
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        if (mouse->button() == Qt::MiddleButton) {
+            const int index =
+                article_tabs_->tabBar()->tabAt(mouse->position().toPoint());
+            if (index >= 0)
+                CloseArticleTab(index);
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
 }
 
 void MainWindow::SetDictionaryGroups(
@@ -879,9 +1368,19 @@ void MainWindow::RunDictionaryGroupsSmokeCheck(
 
 void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     completion_timer_->stop();
-    request_.reset();
+    for (auto& [id, request] : requests_) {
+        static_cast<void>(id);
+        request->Cancel();
+    }
+    requests_.clear();
+    while (article_tabs_->count() > 0) {
+        QWidget* widget = article_tabs_->widget(0);
+        article_tabs_->removeTab(0);
+        delete widget;
+    }
+    article_view_ = nullptr;
+    article_page_ = nullptr;
     facade_ = facade;
-    article_page_->SetFacade(facade);
     scheme_handler_->SetFacade(facade);
     if (dictionary_browser_ != nullptr) {
         dictionary_browser_->SetFacade(facade);
@@ -891,6 +1390,8 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
                            : facade->GetDictionaryService().GetCatalog().size();
     status_->setText(
         tr("%1 dictionary loaded").arg(static_cast<qulonglong>(count)));
+    if (facade_ != nullptr)
+        SyncArticleTabs();
 }
 
 void MainWindow::ShowDictionaryBrowser() {
@@ -1085,71 +1586,134 @@ void MainWindow::ChooseDictionaryDirectory() {
 }
 
 void MainWindow::StartLookup() {
+    StartLookupInTab(goldendict::core::TabOpenPolicy::kCurrentTab,
+                     goldendict::core::TabActivationPolicy::kActivate);
+}
+
+void MainWindow::StartLookupInTab(
+    goldendict::core::TabOpenPolicy open_policy,
+    goldendict::core::TabActivationPolicy activation,
+    const QString& internal_url) {
     if (facade_ == nullptr || query_->text().trimmed().isEmpty()) {
         return;
     }
-    completion_timer_->stop();
-    request_.reset();
-    goldendict::core::LookupQuery query;
     const QString word = query_->text().trimmed();
-    query.text = word.toStdString();
-    query.group_id = selected_group_id_;
     goldendict::core::TabNavigationState navigation;
-    navigation.kind = goldendict::core::TabNavigationKind::kLookup;
-    navigation.query = query.text;
-    navigation.group_id = query.group_id;
-    navigation.title = query.text;
-    const auto tab_result = facade_->OpenArticleTab(
-        navigation, goldendict::core::TabOpenPolicy::kCurrentTab,
-        goldendict::core::TabActivationPolicy::kActivate);
+    navigation.kind = internal_url.isEmpty()
+                          ? goldendict::core::TabNavigationKind::kLookup
+                          : goldendict::core::TabNavigationKind::kInternalLink;
+    navigation.query = word.toStdString();
+    navigation.group_id = selected_group_id_;
+    navigation.title = navigation.query;
+    navigation.internal_url = internal_url.toStdString();
+    const auto tab_result =
+        facade_->OpenArticleTab(navigation, open_policy, activation);
     if (!tab_result) {
         status_->setText(QStringLiteral("Unable to update article state"));
         return;
     }
-    emit LookupSubmitted(word, selected_group_id_);
-    request_ = facade_->GetDictionaryService().StartLookup(std::move(query));
-    status_->setText(QStringLiteral("Looking up..."));
-    lookup_button_->setEnabled(false);
+    SyncArticleTabs();
+    StartNavigationLookup(tab_result.tab_id, navigation, true);
+}
+
+void MainWindow::StartNavigationLookup(
+    goldendict::core::ArticleTabId tab_id,
+    const goldendict::core::TabNavigationState& navigation,
+    bool record_history) {
+    if (facade_ == nullptr || navigation.query.empty())
+        return;
+    if (auto existing = requests_.find(tab_id); existing != requests_.end()) {
+        existing->second->Cancel();
+        requests_.erase(existing);
+    }
+    goldendict::core::LookupQuery query;
+    query.text = navigation.query;
+    query.group_id = navigation.group_id;
+    if (record_history) {
+        emit LookupSubmitted(QString::fromStdString(navigation.query),
+                             navigation.group_id);
+    }
+    requests_[tab_id] =
+        facade_->GetDictionaryService().StartLookup(std::move(query));
+    if (TabIdAt(article_tabs_->currentIndex()) == tab_id) {
+        status_->setText(QStringLiteral("Looking up..."));
+        lookup_button_->setEnabled(false);
+    }
     completion_timer_->start();
 }
 
 void MainWindow::FinishLookup() {
-    if (request_ == nullptr || !request_->IsFinished()) {
-        return;
+    std::vector<goldendict::core::ArticleTabId> finished;
+    for (const auto& [id, request] : requests_) {
+        if (request->IsFinished())
+            finished.push_back(id);
     }
-    completion_timer_->stop();
-    lookup_button_->setEnabled(true);
-    try {
-        const auto response = request_->Await();
-        request_.reset();
-        if (!response.entries.empty()) {
-            const auto article = facade_->ComposeLookupPage(response);
-            if (article.sanitized_html.has_value()) {
-                article_view_->setHtml(QString::fromUtf8(
-                    article.sanitized_html->data(),
-                    static_cast<qsizetype>(article.sanitized_html->size())));
-            } else {
-                ShowMessage(query_->text(),
-                            QString::fromStdString(article.plain_text));
-            }
-            status_->setText(
-                tr("%1 result(s)")
-                    .arg(static_cast<qulonglong>(response.entries.size())));
-        } else if (!response.errors.empty()) {
-            ShowMessage(
-                QStringLiteral("Lookup failed"),
-                QString::fromStdString(response.errors.front().message));
-            status_->setText(QStringLiteral("Lookup failed"));
-        } else {
-            ShowMessage(query_->text(), QStringLiteral("No result found."));
-            status_->setText(QStringLiteral("No result"));
+    for (const auto id : finished) {
+        auto request = std::move(requests_.at(id));
+        requests_.erase(id);
+        auto* view = ArticleView(id);
+        if (view == nullptr)
+            continue;
+        const bool active = TabIdAt(article_tabs_->currentIndex()) == id;
+        QString navigation_title;
+        const auto tabs_state = facade_->GetArticleTabsState();
+        const auto tab_state =
+            std::find_if(tabs_state.tabs.begin(), tabs_state.tabs.end(),
+                         [id](const auto& tab) { return tab.id == id; });
+        if (tab_state != tabs_state.tabs.end()) {
+            navigation_title =
+                QString::fromStdString(tab_state->navigation.title);
         }
-    } catch (const std::exception& error) {
-        request_.reset();
-        ShowMessage(QStringLiteral("Lookup failed"),
-                    QString::fromLocal8Bit(error.what()));
-        status_->setText(QStringLiteral("Lookup failed"));
+        try {
+            const auto response = request->Await();
+            if (!response.entries.empty()) {
+                const auto article = facade_->ComposeLookupPage(response);
+                if (article.sanitized_html.has_value()) {
+                    view->setHtml(
+                        QString::fromUtf8(article.sanitized_html->data(),
+                                          static_cast<qsizetype>(
+                                              article.sanitized_html->size())));
+                } else {
+                    view->setHtml(QStringLiteral("<!doctype "
+                                                 "html><html><body><h1>%1</"
+                                                 "h1><p>%2</p></body></html>")
+                                      .arg(EscapeHtml(navigation_title),
+                                           EscapeHtml(QString::fromStdString(
+                                               article.plain_text))));
+                }
+                if (active)
+                    status_->setText(tr("%1 result(s)")
+                                         .arg(static_cast<qulonglong>(
+                                             response.entries.size())));
+            } else if (!response.errors.empty()) {
+                view->setHtml(
+                    QStringLiteral("<!doctype html><html><body><h1>Lookup "
+                                   "failed</h1><p>%1</p></body></html>")
+                        .arg(EscapeHtml(QString::fromStdString(
+                            response.errors.front().message))));
+                if (active)
+                    status_->setText(QStringLiteral("Lookup failed"));
+            } else {
+                view->setHtml(QStringLiteral(
+                                  "<!doctype html><html><body><h1>%1</h1><p>No "
+                                  "result found.</p></body></html>")
+                                  .arg(EscapeHtml(navigation_title)));
+                if (active)
+                    status_->setText(QStringLiteral("No result"));
+            }
+        } catch (const std::exception& error) {
+            view->setHtml(
+                QStringLiteral("<!doctype html><html><body><h1>Lookup "
+                               "failed</h1><p>%1</p></body></html>")
+                    .arg(EscapeHtml(QString::fromLocal8Bit(error.what()))));
+            if (active)
+                status_->setText(QStringLiteral("Lookup failed"));
+        }
     }
+    if (requests_.empty())
+        completion_timer_->stop();
+    const auto active_id = TabIdAt(article_tabs_->currentIndex());
+    lookup_button_->setEnabled(requests_.find(active_id) == requests_.end());
 }
 
 void MainWindow::FindInArticle(bool backwards) {
@@ -1212,8 +1776,20 @@ void MainWindow::SaveArticle() {
 }
 
 void MainWindow::UpdateNavigationActions() {
-    back_action_->setEnabled(article_view_->history()->canGoBack());
-    forward_action_->setEnabled(article_view_->history()->canGoForward());
+    bool can_back = false;
+    bool can_forward = false;
+    if (facade_ != nullptr) {
+        const auto state = facade_->GetArticleTabsState();
+        const auto found = std::find_if(
+            state.tabs.begin(), state.tabs.end(),
+            [&](const auto& tab) { return tab.id == state.active_tab_id; });
+        if (found != state.tabs.end()) {
+            can_back = found->can_go_back;
+            can_forward = found->can_go_forward;
+        }
+    }
+    back_action_->setEnabled(can_back);
+    forward_action_->setEnabled(can_forward);
 }
 
 void MainWindow::ZoomArticle(double delta) {

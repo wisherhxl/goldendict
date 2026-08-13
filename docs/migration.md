@@ -332,6 +332,15 @@ main window continues to use one article view and records ordinary lookups in
 the active core tab. Multi-tab widgets, session persistence and migration, and
 tab preferences remain separate Phase 8 increments.
 
+The multi-tab presentation increment mirrors that session with visible Qt
+Widgets tabs and retained per-tab WebEngine views. It supports foreground and
+background creation, activation, close and close-others commands, middle-click
+close, independent rendered/query/group state, and facade-backed back/forward
+restoration. Ordinary internal links reuse the active tab; Ctrl-click and
+middle-click open a background tab, while Shift-click opens a foreground tab.
+Session persistence, migration, placement preferences, and configurable
+foreground/background policy remain separate Phase 8 work.
+
 The first Phase 8 state-migration increment imports dictionary paths and named
 sound directories from a bounded legacy XML configuration when no current
 configuration exists. The core owns parsing and atomic persistence; the legacy

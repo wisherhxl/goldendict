@@ -140,6 +140,13 @@ tabs, per-tab query/group/title/internal-link state, back/forward restoration
 and truncation, and atomic errors for invalid IDs, malformed state, and tab or
 navigation limits.
 
+`goldendict_article_tabs_smoke` uses the checked-in Dictd fixture with the real
+offscreen Qt Widgets/WebEngine presentation. It verifies single-tab startup,
+foreground and background lookup tabs, independent rendered/query/group state,
+activation, close/middle-close/close-others and last-tab fallback, current-tab
+and background internal links, facade-backed back/forward restoration and
+forward truncation, and atomic tab/navigation-limit handling.
+
 `favorites_store_test` verifies hierarchical current-format round trips and
 recoverable migration of the legacy favorites XML, including folder ordering,
 expansion state, Unicode headwords, current-state precedence, entity and

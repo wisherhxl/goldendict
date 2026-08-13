@@ -2,6 +2,7 @@
 
 #include "article_page.h"
 
+#include <QApplication>
 #include <QUrl>
 
 #include "goldendict/core/desktop_facade.h"
@@ -13,9 +14,21 @@ void ArticlePage::SetFacade(
     facade_ = facade;
 }
 
+QWebEnginePage* ArticlePage::createWindow(WebWindowType type) {
+    static_cast<void>(type);
+    // Modified article-link clicks must still pass through this page's
+    // navigation policy so they can become application tab commands.
+    new_window_navigation_pending_ = true;
+    return this;
+}
+
 bool ArticlePage::acceptNavigationRequest(const QUrl& url, NavigationType type,
                                           bool is_main_frame) {
-    if (type != QWebEnginePage::NavigationTypeLinkClicked) {
+    const bool requested_by_article_link =
+        type == QWebEnginePage::NavigationTypeLinkClicked ||
+        new_window_navigation_pending_;
+    new_window_navigation_pending_ = false;
+    if (!requested_by_article_link) {
         return QWebEnginePage::acceptNavigationRequest(url, type,
                                                        is_main_frame);
     }
@@ -26,7 +39,19 @@ bool ArticlePage::acceptNavigationRequest(const QUrl& url, NavigationType type,
         facade_->ResolveArticleUrl(url.toString().toStdString());
     if (resolved.has_value() &&
         resolved->kind == goldendict::core::ArticleUrlKind::kLookup) {
-        emit LookupRequested(QString::fromStdString(resolved->lookup_text));
+        const Qt::KeyboardModifiers modifiers =
+            QApplication::keyboardModifiers();
+        const bool middle_clicked =
+            QApplication::mouseButtons().testFlag(Qt::MiddleButton);
+        ArticleLinkDisposition disposition =
+            ArticleLinkDisposition::kCurrentTab;
+        if (modifiers.testFlag(Qt::ShiftModifier)) {
+            disposition = ArticleLinkDisposition::kNewForegroundTab;
+        } else if (middle_clicked || modifiers.testFlag(Qt::ControlModifier)) {
+            disposition = ArticleLinkDisposition::kNewBackgroundTab;
+        }
+        emit LookupRequested(QString::fromStdString(resolved->lookup_text),
+                             url.toString(), disposition);
     } else if (!resolved.has_value() &&
                (url.scheme() == QStringLiteral("http") ||
                 url.scheme() == QStringLiteral("https") ||
