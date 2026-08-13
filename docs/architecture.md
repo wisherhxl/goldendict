@@ -81,8 +81,14 @@ generated-index directory. `LoadConfiguration` treats a missing file as a
 clean profile, while `SaveConfiguration` persists the same bounded,
 versioned schema. The current schema also stores ordered dictionary groups as
 transport-neutral IDs, names, optional icon references, and ordered stable
-dictionary IDs. Group counts, membership counts, value sizes, and duplicate
-IDs are validated in the core before an atomic replacement.
+dictionary IDs. Optional v1 metadata records add favorites folders, shortcut
+strings, separately bounded muted-ID collections, and canonical Base64 icon
+metadata without changing the original group record; files written before the
+extension therefore remain readable with empty metadata defaults. Group
+counts, membership counts, value sizes, and duplicate IDs are validated in the
+core before an atomic replacement. Bounded legacy XML migration preserves
+group and dictionary order and retains unknown nonempty dictionary IDs without
+catalog resolution.
 `CreateDictionaryService` is the headless composition entry
 point and `CreateDesktopFacade` is the presentation-facing entry point. Both
 compose private format adapters inside `goldendict_core`; neither exposes a

@@ -109,6 +109,11 @@ empty older configurations remain compatible, nontrivial ordered groups round
 trip, group and membership bounds plus duplicate IDs are rejected
 deterministically, malformed fields fail to load, and a rejected save leaves
 the previous configuration unchanged without a temporary file.
+It also imports ordered legacy groups with favorites folders, shortcuts,
+separate muted-ID collections, external icons, and canonical Base64 embedded
+icon metadata. Unknown nonempty dictionary IDs remain stable, while malformed,
+duplicate, or oversized group input leaves the current destination absent and
+the legacy source byte-for-byte unchanged.
 
 `history_store_test` verifies the first user-history migration slice: strict
 bounded UTF-8/group-aware current-format round trips, bounded import of the

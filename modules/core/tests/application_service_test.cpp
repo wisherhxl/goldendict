@@ -117,13 +117,27 @@ void ApplicationServiceTest::ConfigurationRoundTripsDictionaryGroups() {
     expected.dictionary_groups = {{7U,
                                    "English | French",
                                    "flags/Europe & Americas.svg",
-                                   {"stardict:alpha|edition", "dictd:beta"}},
+                                   {"stardict:alpha|edition", "dictd:beta"},
+                                   {"dictd:beta"},
+                                   {"unknown:popup"},
+                                   "Languages/English",
+                                   "Ctrl+1",
+                                   "aWNvbg=="},
                                   {42U, "Reference", "", {"zim:encyclopedia"}}};
 
     SaveConfiguration(path.string(), expected);
 
     QCOMPARE(LoadConfiguration(path.string()).dictionary_groups,
              expected.dictionary_groups);
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\nindex_directory=\n"
+                          "dictionary_group=9|G1-compatible||unknown-id\n");
+    const auto g1 = LoadConfiguration(path.string());
+    QCOMPARE(g1.dictionary_groups.size(), std::size_t{1});
+    QCOMPARE(g1.dictionary_groups.front().dictionary_ids,
+             (std::vector<std::string>{"unknown-id"}));
+    QVERIFY(g1.dictionary_groups.front().favorites_folder.empty());
 }
 
 void ApplicationServiceTest::
@@ -170,8 +184,19 @@ void ApplicationServiceTest::
     too_many_members.dictionary_groups.push_back(std::move(group));
     QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), too_many_members),
                              std::runtime_error);
+
+    CoreConfiguration icon_boundary;
+    DictionaryGroupConfiguration bounded_icon{5U, "Icon", "", {}};
+    bounded_icon.encoded_icon_data.assign(64U * 1024U, 'A');
+    icon_boundary.dictionary_groups.push_back(bounded_icon);
+    SaveConfiguration(path.string(), icon_boundary);
     QCOMPARE(LoadConfiguration(path.string()).dictionary_groups,
-             original.dictionary_groups);
+             icon_boundary.dictionary_groups);
+    icon_boundary.dictionary_groups.front().encoded_icon_data.append(4U, 'A');
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), icon_boundary),
+                             std::runtime_error);
+    QCOMPARE(LoadConfiguration(path.string()).dictionary_groups,
+             (std::vector<DictionaryGroupConfiguration>{bounded_icon}));
 }
 
 void ApplicationServiceTest::ConfigurationRejectsMalformedGroups() {
@@ -190,6 +215,13 @@ void ApplicationServiceTest::ConfigurationRejectsMalformedGroups() {
                           "dictionary_group=9|Name|Icon|duplicate|duplicate\n");
     QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
                              std::runtime_error);
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\nindex_directory=\n"
+                          "dictionary_group=9|Name|\n"
+                          "dictionary_group_metadata=9|||not-base64|0|0\n");
+    QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                             std::runtime_error);
 }
 
 void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
@@ -206,7 +238,18 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "</paths><sounddirs>"
         "<sounddir name=\"Spoken &amp; examples\" icon=\"ignored.png\">"
         "/audio/words</sounddir>"
-        "</sounddirs><preferences><zoomFactor>1.5</zoomFactor></preferences>"
+        "</sounddirs><groups nextId=\"9\">"
+        "<group id=\"7\" name=\"English &amp; French\" "
+        "icon=\"flags/world.svg\" iconData=\"aWNvbg==\" "
+        "favoritesFolder=\"Languages/English\" shortcut=\"Ctrl+1\">"
+        "<dictionary name=\"Known name\">known-id</dictionary>"
+        "<dictionary name=\"Recovery hint only\">unknown-id</dictionary>"
+        "<mutedDictionaries><mutedDictionary>known-id</mutedDictionary>"
+        "<popupMutedDictionary>unknown-id</popupMutedDictionary>"
+        "</mutedDictionaries></group>"
+        "<group id=\"8\" name=\"Reference\">"
+        "<dictionary>reference-id</dictionary></group></groups>"
+        "<preferences><zoomFactor>1.5</zoomFactor></preferences>"
         "</config>";
     test::WriteBinaryFile(legacy_path, legacy);
 
@@ -220,6 +263,21 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(migrated.sound_directories.size(), std::size_t{1});
     QCOMPARE(migrated.sound_directories.front().path, "/audio/words");
     QCOMPARE(migrated.sound_directories.front().name, "Spoken & examples");
+    QCOMPARE(migrated.dictionary_groups.size(), std::size_t{2});
+    QCOMPARE(migrated.dictionary_groups[0].id, std::uint32_t{7});
+    QCOMPARE(migrated.dictionary_groups[0].name, "English & French");
+    QCOMPARE(migrated.dictionary_groups[0].icon, "flags/world.svg");
+    QCOMPARE(migrated.dictionary_groups[0].dictionary_ids,
+             (std::vector<std::string>{"known-id", "unknown-id"}));
+    QCOMPARE(migrated.dictionary_groups[0].muted_dictionary_ids,
+             (std::vector<std::string>{"known-id"}));
+    QCOMPARE(migrated.dictionary_groups[0].popup_muted_dictionary_ids,
+             (std::vector<std::string>{"unknown-id"}));
+    QCOMPARE(migrated.dictionary_groups[0].favorites_folder,
+             "Languages/English");
+    QCOMPARE(migrated.dictionary_groups[0].shortcut, "Ctrl+1");
+    QCOMPARE(migrated.dictionary_groups[0].encoded_icon_data, "aWNvbg==");
+    QCOMPARE(migrated.dictionary_groups[1].id, std::uint32_t{8});
     QVERIFY(std::filesystem::exists(current_path));
     std::ifstream legacy_input(legacy_path, std::ios::binary);
     const std::string unchanged((std::istreambuf_iterator<char>(legacy_input)),
@@ -228,6 +286,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     const auto round_trip = LoadConfiguration(current_path.string());
     QCOMPARE(round_trip.dictionary_paths, migrated.dictionary_paths);
     QCOMPARE(round_trip.sound_directories, migrated.sound_directories);
+    QCOMPARE(round_trip.dictionary_groups, migrated.dictionary_groups);
 }
 
 void ApplicationServiceTest::CurrentConfigurationTakesPrecedenceOverLegacy() {
@@ -240,6 +299,7 @@ void ApplicationServiceTest::CurrentConfigurationTakesPrecedenceOverLegacy() {
     CoreConfiguration current;
     current.dictionary_paths = {"/current"};
     current.index_directory = "/current/indexes";
+    current.dictionary_groups = {{3U, "Current", "", {"current-id"}}};
     SaveConfiguration(current_path.string(), current);
 
     const auto loaded = LoadOrMigrateConfiguration(
@@ -247,6 +307,7 @@ void ApplicationServiceTest::CurrentConfigurationTakesPrecedenceOverLegacy() {
 
     QCOMPARE(loaded.dictionary_paths, current.dictionary_paths);
     QCOMPARE(loaded.index_directory, current.index_directory);
+    QCOMPARE(loaded.dictionary_groups, current.dictionary_groups);
 }
 
 void ApplicationServiceTest::RejectsMalformedLegacyWithoutCreatingCurrent() {
@@ -266,6 +327,44 @@ void ApplicationServiceTest::RejectsMalformedLegacyWithoutCreatingCurrent() {
         std::runtime_error);
     QVERIFY(!std::filesystem::exists(current_path));
     QVERIFY(std::filesystem::exists(legacy_path));
+    std::ifstream legacy_input(legacy_path, std::ios::binary);
+    const std::string unchanged((std::istreambuf_iterator<char>(legacy_input)),
+                                std::istreambuf_iterator<char>());
+    QCOMPARE(unchanged,
+             "<!DOCTYPE config [<!ENTITY unsafe 'expanded'>]>"
+             "<config><paths><path>&unsafe;</path></paths></config>");
+
+    test::WriteBinaryFile(
+        legacy_path,
+        "<config><groups><group id=\"1\" name=\"First\">"
+        "<dictionary>same</dictionary><dictionary>same</dictionary>"
+        "</group></groups></config>");
+    QVERIFY_EXCEPTION_THROWN(
+        LoadOrMigrateConfiguration(current_path.string(), legacy_path.string(),
+                                   "/cache/indexes"),
+        std::runtime_error);
+    QVERIFY(!std::filesystem::exists(current_path));
+
+    test::WriteBinaryFile(
+        legacy_path,
+        "<config><groups><group id=\"1\" name=\"First\"/>"
+        "<group id=\"1\" name=\"Duplicate\"/></groups></config>");
+    QVERIFY_EXCEPTION_THROWN(
+        LoadOrMigrateConfiguration(current_path.string(), legacy_path.string(),
+                                   "/cache/indexes"),
+        std::runtime_error);
+    QVERIFY(!std::filesystem::exists(current_path));
+
+    const std::string oversized_icon_data(64U * 1024U + 4U, 'A');
+    test::WriteBinaryFile(
+        legacy_path,
+        "<config><groups><group id=\"1\" name=\"Icon\" iconData=\"" +
+            oversized_icon_data + "\"/></groups></config>");
+    QVERIFY_EXCEPTION_THROWN(
+        LoadOrMigrateConfiguration(current_path.string(), legacy_path.string(),
+                                   "/cache/indexes"),
+        std::runtime_error);
+    QVERIFY(!std::filesystem::exists(current_path));
 }
 
 void ApplicationServiceTest::RejectsMalformedConfiguration() {

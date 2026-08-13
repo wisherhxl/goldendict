@@ -328,9 +328,12 @@ The first Phase 8 state-migration increment imports dictionary paths and named
 sound directories from a bounded legacy XML configuration when no current
 configuration exists. The core owns parsing and atomic persistence; the legacy
 file is never modified, a current configuration always takes precedence, and
-malformed input leaves no partial replacement. Groups, online sources,
-preferences, history, favorites, and platform-specific legacy location
-discovery remain separately gated migration work.
+malformed input leaves no partial replacement. A subsequent bounded slice
+imports ordered dictionary groups and their stable transport-neutral metadata,
+retaining unknown nonempty dictionary IDs without catalog resolution. Online
+sources, preferences, and platform-specific legacy location discovery remain
+separately gated migration work; group-aware lookup behavior and group editing
+remain later Phase 8 work.
 
 The following user-state increment adds a transport-neutral core history store
 with bounded group-aware UTF-8 entries and a recoverable legacy line-format

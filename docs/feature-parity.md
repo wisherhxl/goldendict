@@ -29,7 +29,7 @@
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |
 | Minimal configuration load/persist | slice | Phase 4 | clean-profile round-trip |
-| Legacy configuration migration | slice | Phase 8 | bounded XML import of dictionary and sound-directory paths, current-config precedence, atomic new-format persistence, and untouched legacy source fixtures; groups, sources, preferences, and platform-specific legacy location discovery remain |
+| Legacy configuration migration | slice | Phase 8 | bounded XML import of dictionary and sound-directory paths plus ordered dictionary groups and stable metadata, current-config precedence, atomic new-format persistence, and untouched legacy source fixtures; sources, preferences, and platform-specific legacy location discovery remain |
 | Dictionary path discovery | slice | Phase 4 | temporary-directory tests |
 | Dictionary identity and index lifecycle | slice | Phase 4 | deterministic index tests |
 | Async word/article/resource requests | slice | Phase 4 | completion/cancel/error tests |

@@ -4,6 +4,8 @@
 
 #include <expat.h>
 
+#include <algorithm>
+#include <charconv>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -12,6 +14,7 @@
 #include <string_view>
 #include <system_error>
 #include <type_traits>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -22,6 +25,10 @@ constexpr std::size_t kMaximumLegacyConfigurationBytes = 1024U * 1024U;
 constexpr std::size_t kMaximumLegacyValueBytes = 64U * 1024U;
 constexpr std::size_t kMaximumXmlDepth = 64U;
 constexpr std::size_t kMaximumImportedPaths = 256U;
+constexpr std::size_t kMaximumDictionaryGroups = 256U;
+constexpr std::size_t kMaximumDictionariesPerGroup = 256U;
+constexpr std::size_t kMaximumGroupValueBytes = 4096U;
+constexpr std::size_t kMaximumEncodedGroupIconBytes = 64U * 1024U;
 
 struct ParserDeleter {
     void operator()(XML_Parser parser) const noexcept {
@@ -35,9 +42,74 @@ struct LegacyParserState {
     std::vector<std::string> elements;
     std::string value;
     std::string sound_name;
+    DictionaryGroupConfiguration group;
+    std::unordered_set<std::uint32_t> group_ids;
     bool failed = false;
     std::string error;
 };
+
+bool IsGroupElement(const LegacyParserState& state) {
+    return state.elements.size() == 3U && state.elements[0] == "config" &&
+           state.elements[1] == "groups" && state.elements[2] == "group";
+}
+
+enum class GroupValue { kNone, kDictionary, kMuted, kPopupMuted };
+
+GroupValue CurrentGroupValue(const LegacyParserState& state) {
+    if (state.elements.size() == 4U && state.elements[0] == "config" &&
+        state.elements[1] == "groups" && state.elements[2] == "group" &&
+        state.elements[3] == "dictionary") {
+        return GroupValue::kDictionary;
+    }
+    if (state.elements.size() == 5U && state.elements[0] == "config" &&
+        state.elements[1] == "groups" && state.elements[2] == "group" &&
+        state.elements[3] == "mutedDictionaries") {
+        if (state.elements[4] == "mutedDictionary") {
+            return GroupValue::kMuted;
+        }
+        if (state.elements[4] == "popupMutedDictionary") {
+            return GroupValue::kPopupMuted;
+        }
+    }
+    return GroupValue::kNone;
+}
+
+bool IsCanonicalBase64(std::string_view value) {
+    if (value.empty())
+        return true;
+    if (value.size() > kMaximumEncodedGroupIconBytes || value.size() % 4U != 0U)
+        return false;
+    const auto decode = [](char character) {
+        if (character >= 'A' && character <= 'Z')
+            return character - 'A';
+        if (character >= 'a' && character <= 'z')
+            return character - 'a' + 26;
+        if (character >= '0' && character <= '9')
+            return character - '0' + 52;
+        if (character == '+')
+            return 62;
+        if (character == '/')
+            return 63;
+        return -1;
+    };
+    std::size_t padding = value.back() == '=' ? 1U : 0U;
+    if (padding == 1U && value[value.size() - 2U] == '=')
+        padding = 2U;
+    for (std::size_t index = 0U; index < value.size() - padding; ++index) {
+        if (decode(value[index]) < 0)
+            return false;
+    }
+    for (std::size_t index = value.size() - padding; index < value.size();
+         ++index) {
+        if (value[index] != '=')
+            return false;
+    }
+    if (padding == 1U && (decode(value[value.size() - 2U]) & 3) != 0)
+        return false;
+    if (padding == 2U && (decode(value[value.size() - 3U]) & 15) != 0)
+        return false;
+    return true;
+}
 
 bool IsPathElement(const LegacyParserState& state) {
     return state.elements.size() == 3U && state.elements[0] == "config" &&
@@ -61,8 +133,9 @@ void Fail(LegacyParserState* state, std::string message) {
 void XMLCALL StartElement(void* user_data, const XML_Char* name,
                           const XML_Char** attributes) {
     auto* state = static_cast<LegacyParserState*>(user_data);
-    if (IsPathElement(*state) || IsSoundDirectoryElement(*state)) {
-        Fail(state, "Legacy configuration paths cannot contain markup");
+    if (IsPathElement(*state) || IsSoundDirectoryElement(*state) ||
+        CurrentGroupValue(*state) != GroupValue::kNone) {
+        Fail(state, "Legacy configuration values cannot contain markup");
         return;
     }
     if (state->elements.size() == kMaximumXmlDepth) {
@@ -74,7 +147,63 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
         Fail(state, "Legacy configuration has an invalid root element");
         return;
     }
-    if (!IsPathElement(*state) && !IsSoundDirectoryElement(*state)) {
+    if (IsGroupElement(*state)) {
+        if (state->configuration.dictionary_groups.size() ==
+            kMaximumDictionaryGroups) {
+            Fail(state, "Legacy configuration has too many dictionary groups");
+            return;
+        }
+        state->group = {};
+        bool has_id = false;
+        for (std::size_t index = 0U; attributes[index] != nullptr;
+             index += 2U) {
+            const std::string_view key(attributes[index]);
+            const std::string_view attribute(attributes[index + 1U]);
+            if (attribute.size() > kMaximumGroupValueBytes &&
+                key != "iconData") {
+                Fail(state, "Legacy dictionary group metadata is too large");
+                return;
+            }
+            if (key == "id") {
+                has_id = true;
+                const auto conversion = std::from_chars(
+                    attribute.data(), attribute.data() + attribute.size(),
+                    state->group.id, 10);
+                if (conversion.ec != std::errc() ||
+                    conversion.ptr != attribute.data() + attribute.size() ||
+                    state->group.id == 0U) {
+                    Fail(state, "Legacy dictionary group ID is invalid");
+                    return;
+                }
+            } else if (key == "name") {
+                state->group.name = attribute;
+            } else if (key == "icon") {
+                state->group.icon = attribute;
+            } else if (key == "favoritesFolder") {
+                state->group.favorites_folder = attribute;
+            } else if (key == "shortcut") {
+                state->group.shortcut = attribute;
+            } else if (key == "iconData") {
+                if (!IsCanonicalBase64(attribute)) {
+                    Fail(state, "Legacy dictionary group icon data is invalid");
+                    return;
+                }
+                state->group.encoded_icon_data = attribute;
+            }
+        }
+        if (!has_id || state->group.name.empty() ||
+            !state->group_ids.insert(state->group.id).second) {
+            Fail(state, "Legacy dictionary group identity is invalid");
+            return;
+        }
+        return;
+    }
+    if (CurrentGroupValue(*state) != GroupValue::kNone) {
+        state->value.clear();
+        return;
+    }
+    if (!IsPathElement(*state) && !IsSoundDirectoryElement(*state) &&
+        CurrentGroupValue(*state) == GroupValue::kNone) {
         return;
     }
     state->value.clear();
@@ -96,11 +225,15 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
 
 void XMLCALL CharacterData(void* user_data, const XML_Char* value, int length) {
     auto* state = static_cast<LegacyParserState*>(user_data);
-    if (!IsPathElement(*state) && !IsSoundDirectoryElement(*state)) {
+    if (!IsPathElement(*state) && !IsSoundDirectoryElement(*state) &&
+        CurrentGroupValue(*state) == GroupValue::kNone) {
         return;
     }
-    if (length < 0 || state->value.size() + static_cast<std::size_t>(length) >
-                          kMaximumLegacyValueBytes) {
+    const std::size_t maximum = CurrentGroupValue(*state) == GroupValue::kNone
+                                    ? kMaximumLegacyValueBytes
+                                    : kMaximumGroupValueBytes;
+    if (length < 0 ||
+        state->value.size() + static_cast<std::size_t>(length) > maximum) {
         Fail(state, "Legacy configuration value is too large");
         return;
     }
@@ -133,6 +266,30 @@ void XMLCALL EndElement(void* user_data, const XML_Char*) {
         }
         state->configuration.sound_directories.push_back(
             {std::move(state->value), std::move(state->sound_name)});
+    } else if (CurrentGroupValue(*state) != GroupValue::kNone) {
+        if (state->value.empty()) {
+            Fail(state, "Legacy dictionary group reference is empty");
+            return;
+        }
+        auto* destination = &state->group.dictionary_ids;
+        if (CurrentGroupValue(*state) == GroupValue::kMuted) {
+            destination = &state->group.muted_dictionary_ids;
+        } else if (CurrentGroupValue(*state) == GroupValue::kPopupMuted) {
+            destination = &state->group.popup_muted_dictionary_ids;
+        }
+        if (destination->size() == kMaximumDictionariesPerGroup) {
+            Fail(state, "Legacy dictionary group has too many references");
+            return;
+        }
+        if (std::find(destination->begin(), destination->end(), state->value) !=
+            destination->end()) {
+            Fail(state, "Legacy dictionary group has duplicate references");
+            return;
+        }
+        destination->push_back(std::move(state->value));
+    } else if (IsGroupElement(*state)) {
+        state->configuration.dictionary_groups.push_back(
+            std::move(state->group));
     }
     state->elements.pop_back();
 }

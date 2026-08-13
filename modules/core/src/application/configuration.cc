@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <system_error>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -23,6 +24,55 @@ constexpr std::size_t kMaximumSoundDirectories = 256U;
 constexpr std::size_t kMaximumDictionaryGroups = 256U;
 constexpr std::size_t kMaximumDictionariesPerGroup = 256U;
 constexpr std::size_t kMaximumGroupValueBytes = 4096U;
+constexpr std::size_t kMaximumEncodedGroupIconBytes = 64U * 1024U;
+
+bool IsCanonicalBase64(std::string_view value) {
+    if (value.empty()) {
+        return true;
+    }
+    if (value.size() > kMaximumEncodedGroupIconBytes ||
+        value.size() % 4U != 0U) {
+        return false;
+    }
+    std::size_t padding = 0U;
+    if (value.back() == '=') {
+        padding = 1U;
+        if (value.size() >= 2U && value[value.size() - 2U] == '=') {
+            padding = 2U;
+        }
+    }
+    const auto base64_value = [](char character) {
+        if (character >= 'A' && character <= 'Z')
+            return character - 'A';
+        if (character >= 'a' && character <= 'z')
+            return character - 'a' + 26;
+        if (character >= '0' && character <= '9')
+            return character - '0' + 52;
+        if (character == '+')
+            return 62;
+        if (character == '/')
+            return 63;
+        return -1;
+    };
+    for (std::size_t index = 0U; index < value.size() - padding; ++index) {
+        if (base64_value(value[index]) < 0) {
+            return false;
+        }
+    }
+    for (std::size_t index = value.size() - padding; index < value.size();
+         ++index) {
+        if (value[index] != '=') {
+            return false;
+        }
+    }
+    if (padding == 1U && (base64_value(value[value.size() - 2U]) & 0x03) != 0) {
+        return false;
+    }
+    if (padding == 2U && (base64_value(value[value.size() - 3U]) & 0x0f) != 0) {
+        return false;
+    }
+    return true;
+}
 
 bool IsUnescaped(unsigned char character) {
     return std::isalnum(character) != 0 || character == '-' ||
@@ -118,7 +168,13 @@ void Validate(const CoreConfiguration& configuration) {
         }
         if (group.name.empty() || group.name.size() > kMaximumGroupValueBytes ||
             group.icon.size() > kMaximumGroupValueBytes ||
+            group.favorites_folder.size() > kMaximumGroupValueBytes ||
+            group.shortcut.size() > kMaximumGroupValueBytes ||
             has_nul(group.name) || has_nul(group.icon)) {
+            throw std::runtime_error("Dictionary group metadata is invalid");
+        }
+        if (has_nul(group.favorites_folder) || has_nul(group.shortcut) ||
+            !IsCanonicalBase64(group.encoded_icon_data)) {
             throw std::runtime_error("Dictionary group metadata is invalid");
         }
         if (group.dictionary_ids.size() > kMaximumDictionariesPerGroup) {
@@ -135,6 +191,22 @@ void Validate(const CoreConfiguration& configuration) {
                     "Dictionary group dictionary IDs must be unique and valid");
             }
         }
+        const auto validate_muted = [&has_nul](const auto& values) {
+            if (values.size() > kMaximumDictionariesPerGroup) {
+                throw std::runtime_error(
+                    "Dictionary group has too many muted dictionaries");
+            }
+            std::unordered_set<std::string> unique;
+            for (const auto& value : values) {
+                if (value.empty() || value.size() > kMaximumGroupValueBytes ||
+                    has_nul(value) || !unique.insert(value).second) {
+                    throw std::runtime_error(
+                        "Dictionary group muted IDs must be unique and valid");
+                }
+            }
+        };
+        validate_muted(group.muted_dictionary_ids);
+        validate_muted(group.popup_muted_dictionary_ids);
     }
 }
 
@@ -167,6 +239,8 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
     }
 
     CoreConfiguration configuration;
+    std::unordered_map<std::uint32_t, std::size_t> group_indexes;
+    std::unordered_set<std::uint32_t> group_metadata_ids;
     bool has_index_directory = false;
     std::size_t position = kHeader.size();
     while (position < contents.size()) {
@@ -179,6 +253,8 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         constexpr std::string_view kDictionary = "dictionary_path=";
         constexpr std::string_view kSoundDirectory = "sound_directory=";
         constexpr std::string_view kDictionaryGroup = "dictionary_group=";
+        constexpr std::string_view kDictionaryGroupMetadata =
+            "dictionary_group_metadata=";
         if (line.substr(0, kIndex.size()) == kIndex) {
             if (has_index_directory) {
                 throw std::runtime_error("Duplicate index directory");
@@ -230,6 +306,82 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
                 group.dictionary_ids.push_back(Decode(fields[index]));
             }
             configuration.dictionary_groups.push_back(std::move(group));
+            const auto& stored = configuration.dictionary_groups.back();
+            if (!group_indexes
+                     .emplace(stored.id,
+                              configuration.dictionary_groups.size() - 1U)
+                     .second) {
+                throw std::runtime_error("Duplicate dictionary group ID");
+            }
+        } else if (line.substr(0, kDictionaryGroupMetadata.size()) ==
+                   kDictionaryGroupMetadata) {
+            const auto value = line.substr(kDictionaryGroupMetadata.size());
+            std::vector<std::string_view> fields;
+            std::size_t start = 0U;
+            while (start <= value.size()) {
+                const auto separator = value.find('|', start);
+                fields.push_back(
+                    value.substr(start, separator == std::string_view::npos
+                                            ? value.size() - start
+                                            : separator - start));
+                if (separator == std::string_view::npos) {
+                    break;
+                }
+                start = separator + 1U;
+            }
+            if (fields.size() < 6U) {
+                throw std::runtime_error(
+                    "Malformed dictionary group metadata field");
+            }
+            std::uint32_t id = 0U;
+            const auto id_conversion = std::from_chars(
+                fields[0].data(), fields[0].data() + fields[0].size(), id, 10);
+            std::size_t muted_count = 0U;
+            const auto muted_conversion = std::from_chars(
+                fields[4].data(), fields[4].data() + fields[4].size(),
+                muted_count, 10);
+            if (id_conversion.ec != std::errc() ||
+                id_conversion.ptr != fields[0].data() + fields[0].size() ||
+                muted_conversion.ec != std::errc() ||
+                muted_conversion.ptr != fields[4].data() + fields[4].size() ||
+                muted_count > kMaximumDictionariesPerGroup ||
+                5U + muted_count >= fields.size()) {
+                throw std::runtime_error(
+                    "Malformed dictionary group metadata field");
+            }
+            const std::size_t popup_count_index = 5U + muted_count;
+            std::size_t popup_count = 0U;
+            const auto popup_conversion =
+                std::from_chars(fields[popup_count_index].data(),
+                                fields[popup_count_index].data() +
+                                    fields[popup_count_index].size(),
+                                popup_count, 10);
+            if (popup_conversion.ec != std::errc() ||
+                popup_conversion.ptr != fields[popup_count_index].data() +
+                                            fields[popup_count_index].size() ||
+                popup_count > kMaximumDictionariesPerGroup ||
+                popup_count_index + 1U + popup_count != fields.size()) {
+                throw std::runtime_error(
+                    "Malformed dictionary group metadata field");
+            }
+            const auto found = group_indexes.find(id);
+            if (found == group_indexes.end() ||
+                !group_metadata_ids.insert(id).second) {
+                throw std::runtime_error(
+                    "Dictionary group metadata must reference one group");
+            }
+            auto& group = configuration.dictionary_groups[found->second];
+            group.favorites_folder = Decode(fields[1]);
+            group.shortcut = Decode(fields[2]);
+            group.encoded_icon_data = Decode(fields[3]);
+            for (std::size_t index = 5U; index < popup_count_index; ++index) {
+                group.muted_dictionary_ids.push_back(Decode(fields[index]));
+            }
+            for (std::size_t index = popup_count_index + 1U;
+                 index < fields.size(); ++index) {
+                group.popup_muted_dictionary_ids.push_back(
+                    Decode(fields[index]));
+            }
         } else if (!line.empty()) {
             throw std::runtime_error("Unknown configuration field");
         }
@@ -259,6 +411,25 @@ void SaveConfiguration(const std::string& configuration_path,
             contents += "|" + Encode(dictionary_id);
         }
         contents += "\n";
+        if (!group.favorites_folder.empty() || !group.shortcut.empty() ||
+            !group.encoded_icon_data.empty() ||
+            !group.muted_dictionary_ids.empty() ||
+            !group.popup_muted_dictionary_ids.empty()) {
+            contents +=
+                "dictionary_group_metadata=" + std::to_string(group.id) + "|" +
+                Encode(group.favorites_folder) + "|" + Encode(group.shortcut) +
+                "|" + Encode(group.encoded_icon_data) + "|" +
+                std::to_string(group.muted_dictionary_ids.size());
+            for (const auto& id : group.muted_dictionary_ids) {
+                contents += "|" + Encode(id);
+            }
+            contents +=
+                "|" + std::to_string(group.popup_muted_dictionary_ids.size());
+            for (const auto& id : group.popup_muted_dictionary_ids) {
+                contents += "|" + Encode(id);
+            }
+            contents += "\n";
+        }
     }
     if (contents.size() > kMaximumConfigurationBytes) {
         throw std::runtime_error("Configuration exceeds the size limit");
