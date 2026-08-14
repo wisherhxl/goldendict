@@ -567,10 +567,19 @@ The bounded R3a.2 leaf extends that ordinal mechanism to Aard, BGL, Dictd,
 DSL, EPWING, GLS, MDict, SDict, SLOB, XDXF, and ZIM. Enumeration uses each
 backend's immutable natural article-key records, including indexed aliases,
 expanded DSL headwords, MDict link keys, and ZIM redirect titles. It excludes
-metadata-only values, resource keys, and synthetic article text. LSA, sound
-directories, and ZIP sounds remain R3a.3.
-Unsupported local and runtime sources fail before source I/O. R3b export UI
-and file writing remain blocked until the required format leaves are complete.
+metadata-only values, resource keys, and synthetic article text.
+Unsupported local and runtime sources fail before source I/O.
+
+The bounded R3a.3 leaf applies the same mechanism to LSA, configured sound
+directories, and ZIP sound dictionaries. It enumerates the already validated
+immutable record names: LSA strips a case-insensitive terminal `.wav`, sound
+directories use the basename without its supported audio extension, and ZIP
+sounds retain safe member directories while stripping the supported audio
+extension and its preceding trailing spaces. Exact derived-name collisions are
+deduplicated while case variants remain distinct. Enumeration does not revisit
+the filesystem, read audio resources, decode LSA Vorbis data, or decompress ZIP
+members. Runtime sources remain unsupported. R3b export UI and file writing
+remain a separate leaf.
 
 The history-management increment adds case-insensitive live filtering to the
 reusable history pane and an explicit clear action. Clearing remains a

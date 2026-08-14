@@ -26,6 +26,11 @@ void ZipSoundsReaderTest::ReadsStoredAndDeflatedAudioMembers() {
     QCOMPARE(reader.Resource("nested/second.ogg"),
              std::string("OggSfixture-ogg"));
     QVERIFY(reader.Resource("ignored.txt").empty());
+    const auto page = reader.EnumerateHeadwords(0U, 10U, 1024U);
+    QCOMPARE(page.first,
+             (std::vector<std::string>{" spaced", "Apple", "apple", "duplicate",
+                                       "example", "nested/second"}));
+    QVERIFY(page.second);
 }
 
 void ZipSoundsReaderTest::RejectsCorruptMemberChecksums() {
@@ -39,6 +44,9 @@ void ZipSoundsReaderTest::RejectsCorruptMemberChecksums() {
     QCOMPARE(file.write("X", 1), 1);
     file.close();
     const auto reader = Reader::Open(path);
+    QCOMPARE(reader.EnumerateHeadwords(0U, 10U, 1024U).first,
+             (std::vector<std::string>{" spaced", "Apple", "apple", "duplicate",
+                                       "example", "nested/second"}));
     QVERIFY_EXCEPTION_THROWN(reader.Resource("example.wav"), Error);
 }
 }  // namespace goldendict::core::formats::zipsounds

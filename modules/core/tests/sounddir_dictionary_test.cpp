@@ -18,6 +18,17 @@ void SoundDirDictionaryTest::ExposesConfiguredIdentityAndTypedAudio() {
     const auto dictionary =
         Dictionary::Open("sounds-fixture", root, "Fixture sounds");
     QCOMPARE(dictionary.identity().name, std::string("Fixture sounds"));
+    QVERIFY(dictionary.identity().supports_headword_enumeration);
+    dictionary::RequestOptions enumeration_options;
+    enumeration_options.result_limit = 3U;
+    const auto first = dictionary.EnumerateHeadwords(0U, enumeration_options);
+    const auto second = dictionary.EnumerateHeadwords(3U, enumeration_options);
+    QCOMPARE(first.headwords,
+             (std::vector<std::string>{".hidden", "Apple", "apple"}));
+    QVERIFY(!first.complete);
+    QCOMPARE(second.headwords,
+             (std::vector<std::string>{"duplicate", "example", "second"}));
+    QVERIFY(second.complete);
     const auto articles = dictionary.LookupPrefix("sec");
     QCOMPARE(articles.size(), 1U);
     QVERIFY(articles.front().data.find("audio/ogg") != std::string::npos);

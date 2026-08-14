@@ -2317,6 +2317,14 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesLsaAudio() {
     const auto response = service->Lookup(query);
     QCOMPARE(catalog.size(), std::size_t{1});
     QVERIFY(catalog.front().id.rfind("lsa-", 0) == 0U);
+    QVERIFY(catalog.front().supports_headword_enumeration);
+    HeadwordEnumerationQuery enumeration_query;
+    enumeration_query.dictionary_id = catalog.front().id;
+    const auto enumeration = service->EnumerateHeadwords(enumeration_query);
+    QVERIFY(!enumeration.error.has_value());
+    QCOMPARE(enumeration.headwords,
+             (std::vector<std::string>{"Apple", "apple", "duplicate", "example",
+                                       "second"}));
     QCOMPARE(response.entries.size(), std::size_t{1});
     const auto& entry = response.entries.front();
     QVERIFY(entry.article.sanitized_html->find("<audio controls") !=
@@ -2340,6 +2348,14 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesZipSoundsAudio() {
     const auto response = service->Lookup(query);
     QCOMPARE(catalog.size(), std::size_t{1});
     QVERIFY(catalog.front().id.rfind("zipsounds-", 0) == 0U);
+    QVERIFY(catalog.front().supports_headword_enumeration);
+    HeadwordEnumerationQuery enumeration_query;
+    enumeration_query.dictionary_id = catalog.front().id;
+    const auto enumeration = service->EnumerateHeadwords(enumeration_query);
+    QVERIFY(!enumeration.error.has_value());
+    QCOMPARE(enumeration.headwords,
+             (std::vector<std::string>{" spaced", "Apple", "apple", "duplicate",
+                                       "example", "nested/second"}));
     QCOMPARE(response.entries.size(), std::size_t{1});
     const auto& entry = response.entries.front();
     QVERIFY(entry.article.sanitized_html->find("type=\"audio/ogg\"") !=
@@ -2365,6 +2381,14 @@ void ApplicationServiceTest::QueriesExplicitlyConfiguredSoundDirectory() {
     QCOMPARE(catalog.size(), std::size_t{1});
     QVERIFY(catalog.front().id.rfind("sounddir-", 0) == 0U);
     QCOMPARE(catalog.front().name, "Fixture sounds");
+    QVERIFY(catalog.front().supports_headword_enumeration);
+    HeadwordEnumerationQuery enumeration_query;
+    enumeration_query.dictionary_id = catalog.front().id;
+    const auto enumeration = service->EnumerateHeadwords(enumeration_query);
+    QVERIFY(!enumeration.error.has_value());
+    QCOMPARE(enumeration.headwords,
+             (std::vector<std::string>{".hidden", "Apple", "apple", "duplicate",
+                                       "example", "second"}));
     QCOMPARE(response.entries.size(), std::size_t{1});
     QCOMPARE(response.entries.front().resources.size(), std::size_t{1});
     QCOMPARE(

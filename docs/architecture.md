@@ -335,14 +335,18 @@ size, an opaque cursor, a deadline, and cancellation. Cursors carry a checked
 version, service-snapshot identity, dictionary digest, and unique ordinal, so
 malformed or stale continuation cannot silently restart. Supported backends
 return exact-unique source strings in the pinned legacy case-sensitive UTF-16
-code-unit order. StarDict and the article-oriented Aard, BGL, Dictd, DSL,
-EPWING, GLS, MDict, SDict, SLOB, XDXF, and ZIM backends share a lazily
-published four-byte ordinal index over their immutable natural records.
+code-unit order. StarDict, the article-oriented Aard, BGL, Dictd, DSL, EPWING,
+GLS, MDict, SDict, SLOB, XDXF, and ZIM backends, and the LSA, sound-directory,
+and ZIP-sound backends share a lazily published four-byte ordinal index over
+their immutable natural records.
 Construction is bounded by each validated source index and checks
 cancellation/deadline, while subsequent pages are direct ranges. Format-owned
-aliases and redirect keys are included; metadata, resources, and synthesized
-article text are not. Runtime sources and local formats without an explicit
-enumeration adapter report unsupported without performing source work.
+aliases, redirect keys, and validated derived audio names are included;
+metadata, resource identifiers, resource bytes, and synthesized article text
+are not. Audio enumeration never rewalks directories, reads resource files, or
+decompresses archive members. Runtime sources and local formats without an
+explicit enumeration adapter report unsupported without performing source
+work.
 Prefix ranking is core behavior: canonical exact matches come first, followed
 by shorter canonical candidates with deterministic scores. Neither the GUI nor
 a future AI transport reimplements folding, ranking, limits, cancellation, or

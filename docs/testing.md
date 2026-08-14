@@ -87,7 +87,9 @@ raw-deflated audio entries. They verify recursive `.zips` discovery, folded
 lookup and suggestions, safe nested member names, bounded decompression,
 CRC-32 rejection, typed audio resources, and sanitized HTML5 playback. The
 application service test verifies discovery, article assembly, MIME typing,
-and resource retrieval through the format-neutral facade.
+and resource retrieval through the format-neutral facade. Dictionary and
+reader tests also verify bounded exact-unique enumeration of safe derived
+member paths without extracting or checksum-validating audio members.
 
 `sounddir_reader_test` and `sounddir_dictionary_test` generate nested regular
 audio files under an explicitly configured root. They verify filename-based
@@ -95,7 +97,9 @@ headwords, recursive indexing without treating unrelated files as entries,
 folded lookup and suggestions, configured identity, bounded confined resource
 reads, MIME typing, and empty-directory rejection. Configuration and
 application-service tests verify path/name persistence and end-to-end HTML5
-playback resource retrieval.
+playback resource retrieval. Enumeration coverage pins basename-only derived
+headwords, exact collision handling, hidden-file inclusion, symlink exclusion,
+and reuse of the open-time index without a filesystem rewalk.
 
 `application_service_test` also pins the first legacy configuration migration
 slice. It imports dictionary paths and named sound directories from bounded
@@ -116,10 +120,12 @@ acceptance, exact ordering, and atomic rejected-save behavior.
 The same service test verifies the single-dictionary enumeration contract:
 legacy-compatible unique ordering, bounded continuation, cursor integrity and
 snapshot binding, cancellation, and deterministic unsupported results.
-Dictionary tests for StarDict and the 11 R3a.2 article formats pin capability
-publication and extraction from natural records, including aliases, redirects,
-and reserved Dictd entries. The installed headless consumer pins the unchanged
-exported DTO and virtual API.
+Dictionary tests for StarDict, the 11 R3a.2 article formats, and the three
+R3a.3 audio formats pin capability publication and extraction from natural
+records, including aliases, redirects, reserved Dictd entries, and derived
+audio names. LSA coverage pins case-insensitive `.wav` removal without Vorbis
+decoding. The installed headless consumer pins the unchanged exported DTO and
+virtual API, including sound-directory enumeration.
 `application_service_test` also pins the Phase 8 P4a current online-source
 store. Ordered MediaWiki, website, Forvo, and DICT DTOs round-trip through
 canonical v1 records; older current files receive the disabled ordered

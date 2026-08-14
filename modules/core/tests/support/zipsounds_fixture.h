@@ -55,7 +55,13 @@ inline std::filesystem::path WriteZipSoundsFixture(
     std::filesystem::create_directories(directory);
     std::vector<detail::Entry> entries = {
         {"example.wav", "RIFFfixture-wave", {}, 0U},
+        {"Apple.WAV", "RIFFfixture-case", {}, 0U},
+        {"apple.wav", "RIFFfixture-case-lower", {}, 0U},
         {"nested/second.ogg", "OggSfixture-ogg", {}, 8U},
+        {"duplicate.ogg", "OggSfixture-duplicate", {}, 0U},
+        {"duplicate.MP3", "ID3fixture-duplicate", {}, 0U},
+        {" spaced .OGG   ", "OggSfixture-spaced", {}, 0U},
+        {"../secret.wav", "RIFFunsafe", {}, 0U},
         {"ignored.txt", "not audio", {}, 0U}};
     std::string archive;
     for (auto& entry : entries) {

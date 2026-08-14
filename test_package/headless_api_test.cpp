@@ -986,13 +986,21 @@ int main() {
         auto sound_service =
             goldendict::core::CreateDictionaryService(sound_configuration);
         const auto sound_catalog = sound_service->GetCatalog();
+        goldendict::core::HeadwordEnumerationQuery sound_enumeration_query;
+        sound_enumeration_query.dictionary_id = sound_catalog.front().id;
+        sound_enumeration_query.page_size = 1U;
+        const auto sound_enumeration =
+            sound_service->EnumerateHeadwords(sound_enumeration_query);
         query = {};
         query.text = "SPOKEN";
         const auto sound_response = sound_service->Lookup(query);
         if (sound_catalog.size() != 1U ||
             sound_catalog.front().id.rfind("sounddir-", 0) != 0U ||
             sound_catalog.front().name != "Installed sounds" ||
-            !sound_response.errors.empty() ||
+            !sound_catalog.front().supports_headword_enumeration ||
+            sound_enumeration.error.has_value() ||
+            sound_enumeration.headwords != std::vector<std::string>{"spoken"} ||
+            !sound_enumeration.complete || !sound_response.errors.empty() ||
             sound_response.entries.size() != 1U ||
             sound_response.entries.front().resources.size() != 1U ||
             sound_service

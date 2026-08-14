@@ -17,6 +17,16 @@ void LsaDictionaryTest::ExposesAudioArticlesSuggestionsAndWavResources() {
         std::filesystem::path(temporary.path().toStdString()));
     const auto dictionary = Dictionary::Open("lsa-fixture", path);
     QCOMPARE(dictionary.identity().name, std::string("fixture"));
+    QVERIFY(dictionary.identity().supports_headword_enumeration);
+    dictionary::RequestOptions enumeration_options;
+    enumeration_options.result_limit = 3U;
+    const auto first = dictionary.EnumerateHeadwords(0U, enumeration_options);
+    const auto second = dictionary.EnumerateHeadwords(3U, enumeration_options);
+    QCOMPARE(first.headwords,
+             (std::vector<std::string>{"Apple", "apple", "duplicate"}));
+    QVERIFY(!first.complete);
+    QCOMPARE(second.headwords, (std::vector<std::string>{"example", "second"}));
+    QVERIFY(second.complete);
     const auto articles = dictionary.LookupPrefix("ex");
     QCOMPARE(articles.size(), 1U);
     QVERIFY(articles.front().data.find("audio/wav") != std::string::npos);

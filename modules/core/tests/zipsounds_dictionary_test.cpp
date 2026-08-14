@@ -17,6 +17,17 @@ void ZipSoundsDictionaryTest::ExposesAudioArticlesSuggestionsAndResources() {
         std::filesystem::path(temporary.path().toStdString()));
     const auto dictionary = Dictionary::Open("zips-fixture", path);
     QCOMPARE(dictionary.identity().name, std::string("fixture"));
+    QVERIFY(dictionary.identity().supports_headword_enumeration);
+    dictionary::RequestOptions enumeration_options;
+    enumeration_options.result_limit = 3U;
+    const auto first = dictionary.EnumerateHeadwords(0U, enumeration_options);
+    const auto second = dictionary.EnumerateHeadwords(3U, enumeration_options);
+    QCOMPARE(first.headwords,
+             (std::vector<std::string>{" spaced", "Apple", "apple"}));
+    QVERIFY(!first.complete);
+    QCOMPARE(second.headwords, (std::vector<std::string>{"duplicate", "example",
+                                                         "nested/second"}));
+    QVERIFY(second.complete);
     const auto articles = dictionary.LookupPrefix("nested/s");
     QCOMPARE(articles.size(), 1U);
     QVERIFY(articles.front().data.find("audio/ogg") != std::string::npos);

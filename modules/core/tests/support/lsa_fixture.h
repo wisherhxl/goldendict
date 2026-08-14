@@ -92,13 +92,33 @@ inline std::filesystem::path WriteLsaFixture(
         "L\0"
         "9\0S\0A\0\xff",
         9U);
-    LsaLe32(2U, &archive);
+    LsaLe32(6U, &archive);
     LsaAppendName("example.wav", &archive);
     archive.push_back(static_cast<char>(0xff));
     LsaLe32(16U, &archive);
     LsaAppendName("second.WAV", &archive);
     archive.append("\0\xff", 2U);
+    LsaLe32(0U, &archive);
+    archive.push_back(static_cast<char>(0xff));
     LsaLe32(16U, &archive);
+    LsaAppendName("duplicate.WaV", &archive);
+    archive.append("\0\xff", 2U);
+    LsaLe32(0U, &archive);
+    archive.push_back(static_cast<char>(0xff));
+    LsaLe32(16U, &archive);
+    LsaAppendName("duplicate.wav", &archive);
+    archive.append("\0\xff", 2U);
+    LsaLe32(0U, &archive);
+    archive.push_back(static_cast<char>(0xff));
+    LsaLe32(16U, &archive);
+    LsaAppendName("Apple.wav", &archive);
+    archive.append("\0\xff", 2U);
+    LsaLe32(0U, &archive);
+    archive.push_back(static_cast<char>(0xff));
+    LsaLe32(16U, &archive);
+    LsaAppendName("apple.WAV", &archive);
+    archive.append("\0\xff", 2U);
+    LsaLe32(0U, &archive);
     archive.push_back(static_cast<char>(0xff));
     LsaLe32(16U, &archive);
     archive += LsaVorbis();

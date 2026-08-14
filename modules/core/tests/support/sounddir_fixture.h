@@ -19,6 +19,11 @@ inline void WriteFile(const std::filesystem::path& path,
 inline std::filesystem::path WriteSoundDirectoryFixture(
     const std::filesystem::path& root) {
     WriteFile(root / "example.wav", "RIFFfixture-wave");
+    WriteFile(root / "Apple.WAV", "RIFFfixture-case");
+    WriteFile(root / "apple.mp3", "ID3fixture-case-lower");
+    WriteFile(root / "duplicate.ogg", "OggSfixture-duplicate");
+    WriteFile(root / "other" / "duplicate.mp3", "ID3fixture-duplicate");
+    WriteFile(root / ".hidden.OGG", "OggShidden");
     WriteFile(root / "nested" / "second.ogg", "OggSfixture-ogg");
     WriteFile(root / "ignored.txt", "not audio");
     return root;

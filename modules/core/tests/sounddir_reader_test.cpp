@@ -14,8 +14,14 @@ class SoundDirReaderTest final : public QObject {
 void SoundDirReaderTest::RecursivelyIndexesAndLoadsAudioFiles() {
     QTemporaryDir temporary;
     QVERIFY(temporary.isValid());
-    const auto root = test::WriteSoundDirectoryFixture(
-        std::filesystem::path(temporary.path().toStdString()));
+    const auto temporary_root =
+        std::filesystem::path(temporary.path().toStdString());
+    const auto root =
+        test::WriteSoundDirectoryFixture(temporary_root / "sounds");
+    test::WriteFile(temporary_root / "outside.wav", "RIFFoutside");
+    std::error_code symlink_error;
+    std::filesystem::create_symlink(temporary_root / "outside.wav",
+                                    root / "linked.wav", symlink_error);
     const auto reader = Reader::Open(root, "Fixture sounds");
     QCOMPARE(reader.metadata().name, std::string("Fixture sounds"));
     QCOMPARE(reader.LookupExact("EXAMPLE").front().headword,
@@ -26,6 +32,12 @@ void SoundDirReaderTest::RecursivelyIndexesAndLoadsAudioFiles() {
     QCOMPARE(reader.Resource("nested/second.ogg"),
              std::string("OggSfixture-ogg"));
     QVERIFY(reader.Resource("../secret.wav").empty());
+    test::WriteFile(root / "added.wav", "RIFFadded-after-open");
+    const auto page = reader.EnumerateHeadwords(0U, 10U, 1024U);
+    QCOMPARE(page.first,
+             (std::vector<std::string>{".hidden", "Apple", "apple", "duplicate",
+                                       "example", "second"}));
+    QVERIFY(page.second);
 }
 
 void SoundDirReaderTest::RejectsEmptyConfiguredDirectories() {

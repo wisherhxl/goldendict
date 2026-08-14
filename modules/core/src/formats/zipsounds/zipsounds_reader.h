@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "../../dictionary/ordered_headword_index.h"
 
 namespace goldendict::core::formats::zipsounds {
 enum class ErrorCode { kMissingFile, kInvalidDictionary };
@@ -59,6 +60,9 @@ class Reader final {
         std::string_view prefix,
         std::size_t limit = std::numeric_limits<std::size_t>::max(),
         const std::function<void()>& checkpoint = {}) const;
+    std::pair<std::vector<std::string>, bool> EnumerateHeadwords(
+        std::size_t offset, std::size_t result_limit, std::size_t byte_limit,
+        const std::function<void()>& checkpoint = {}) const;
     std::string Resource(std::string_view id) const;
 
    private:
@@ -80,6 +84,7 @@ class Reader final {
     Metadata metadata_;
     std::string file_;
     std::vector<Record> records_;
+    dictionary::OrderedHeadwordIndex enumeration_index_;
 };
 }  // namespace goldendict::core::formats::zipsounds
 #endif
