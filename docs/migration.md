@@ -648,6 +648,18 @@ toolbar-only because the legacy menu has no removal entry. Qt main-window
 state remains at private version 7. The Help branch and final legacy state
 import remain separate leaves.
 
+The final independent Phase 8 menu leaf adds the pinned `menu_Help` identity
+after Favorites. It exposes only the supported legacy Homepage, Configuration
+Folder, and About actions in their relative order and roles. Homepage dispatch
+accepts only the fixed credential-free `https://goldendict.org/` target;
+Configuration Folder uses the already-resolved current profile directory; and
+About reads the CMake-synchronized application version, runtime Qt version,
+and shipped GPL license identity. Widgets owns validation, desktop dispatch,
+dialog presentation, and private deterministic seams. The F1 reference action
+is absent because no current help collection is shipped, and Forum is absent
+because no working HTTPS target is verified. No session, layout, persistence,
+public API, installed boundary, or network-fetch behavior changes.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,

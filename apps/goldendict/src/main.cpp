@@ -191,6 +191,8 @@ int main(int argc, char* argv[]) {
     RegisterArticleScheme();
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("GoldenDict"));
+    QApplication::setApplicationVersion(
+        QStringLiteral(GOLDENDICT_APPLICATION_VERSION));
     QApplication::setOrganizationName(QStringLiteral("GoldenDict"));
 
     const QString standard_configuration_directory =
@@ -312,7 +314,7 @@ int main(int argc, char* argv[]) {
         QMessageBox::warning(nullptr, QStringLiteral("GoldenDict favorites"),
                              QString::fromLocal8Bit(error.what()));
     }
-    MainWindow window;
+    MainWindow window(configuration_directory);
     window.SetPreferences(configuration.preferences);
     window.RestoreMainWindowGeometry(configuration.main_window_geometry);
     window.RestoreMainWindowState(configuration.main_window_state);
@@ -851,6 +853,12 @@ int main(int argc, char* argv[]) {
                         .filePath(QStringLiteral("favorites-menu-export.xml")),
                     [&app](bool passed) { app.exit(passed ? 0 : 1); });
             });
+    } else if (HasArgument(argc, argv, QStringLiteral("--help-menu-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunHelpMenuSmokeCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
     } else if (HasArgument(argc, argv, QStringLiteral("--webengine-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         window.RunWebEngineSmokeCheck(

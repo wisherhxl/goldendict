@@ -2,6 +2,8 @@
 
 ti_add_qt_app(goldendict MODULES core network
   EXTRAS ${qt_link} ${qt_print_support_link})
+target_compile_definitions(goldendict PRIVATE
+  GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}")
 
 ti_add_executable(legacy_configuration_location_test
   tests/legacy_configuration_location_test.cpp
@@ -55,6 +57,13 @@ add_test(NAME goldendict_favorites_menu_smoke
 set_tests_properties(goldendict_favorites_menu_smoke PROPERTIES
   ENVIRONMENT
     "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-menu-test-home/cache"
+  TIMEOUT 20)
+
+add_test(NAME goldendict_help_menu_smoke
+  COMMAND $<TARGET_FILE:goldendict> --help-menu-smoke)
+set_tests_properties(goldendict_help_menu_smoke PROPERTIES
+  ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_webengine_smoke

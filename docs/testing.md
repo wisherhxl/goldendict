@@ -334,6 +334,16 @@ unchanged query, central article usability, and private state version. The
 unsupported legacy plain-list export and a menu-only removal proxy are
 explicitly absent; existing Favorites management, transfer, move, and core
 store tests remain authoritative for persistence and validation semantics.
+`goldendict_help_menu_smoke` pins the unique trailing `menu_Help`, supported
+legacy action identities, relative order, separators, roles, empty shortcuts,
+and single dispatch. Its private dispatcher captures the exact HTTPS homepage
+and current configuration-directory targets without opening them, and rejects
+HTTP, credential-bearing, unrelated-path, JavaScript, and unapproved HTTPS
+targets. The smoke inspects and safely closes the parent-owned modal About
+dialog, verifies build/runtime product, version, Qt, and license content, and
+confirms unchanged central, article-tab, query, and private layout state. The
+unsupported offline reference, F1 shortcut, Forum, About Qt, and updater
+surfaces are explicitly absent.
 `goldendict_file_menu_smoke` pins the unique leading `menuFile`, exact supported
 legacy identities, order, separators, roles, shortcuts, and single shortcut
 ownership. It verifies exact action reuse by the tab control, article toolbar,

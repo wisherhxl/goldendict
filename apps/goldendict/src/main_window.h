@@ -73,7 +73,8 @@ class MainWindow final : public QMainWindow {
         const std::vector<
             goldendict::core::ExternalProgramSourceConfiguration>&)>;
     using HistoryExportCallback = std::function<QString(const QString&)>;
-    explicit MainWindow(QWidget* parent = nullptr);
+    explicit MainWindow(const QString& configuration_directory,
+                        QWidget* parent = nullptr);
     ~MainWindow() override;
 
     void SetFacade(goldendict::core::DesktopFacade* facade);
@@ -141,6 +142,7 @@ class MainWindow final : public QMainWindow {
                                std::function<void(bool)> completion);
     void RunEditMenuSmokeCheck(std::function<void(bool)> completion);
     void RunSearchMenuSmokeCheck(std::function<void(bool)> completion);
+    void RunHelpMenuSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabSessionRestartSmokeCheck(
         bool prepare, std::function<void(bool)> completion);
 
@@ -243,6 +245,8 @@ class MainWindow final : public QMainWindow {
     QList<QList<int>> ExpandedFavoriteFolderPaths() const;
     void ApplyDefaultPaneLayout();
     bool HasUsableMainWindowLayout() const;
+    bool DispatchSafeExternalUrl(const QUrl& url);
+    void ShowAboutDialog();
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
     std::vector<std::string> dictionary_paths_;
@@ -317,6 +321,11 @@ class MainWindow final : public QMainWindow {
     QAction* quit_action_ = nullptr;
     QAction* dictionaries_action_ = nullptr;
     QAction* search_in_page_action_ = nullptr;
+    QAction* visit_homepage_action_ = nullptr;
+    QAction* open_config_folder_action_ = nullptr;
+    QAction* about_action_ = nullptr;
+    QString configuration_directory_;
+    std::function<bool(const QUrl&)> external_url_dispatcher_;
     QTimer* completion_timer_ = nullptr;
     std::map<goldendict::core::ArticleTabId,
              std::unique_ptr<goldendict::core::LookupRequest>>

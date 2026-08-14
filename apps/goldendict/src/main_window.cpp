@@ -91,7 +91,11 @@ QString EscapeHtml(QString text) {
 
 }  // namespace
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
+MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
+    : QMainWindow(parent),
+      configuration_directory_(QDir::cleanPath(configuration_directory)),
+      external_url_dispatcher_(
+          [](const QUrl& url) { return QDesktopServices::openUrl(url); }) {
     setWindowTitle(QStringLiteral("GoldenDict"));
     resize(960, 640);
 
@@ -435,6 +439,25 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     add_favorite_action_->setMenuRole(QAction::TextHeuristicRole);
     favorites_menu->addAction(add_favorite_action_);
     UpdateFavoritesActions();
+    auto* help_menu = app_menu_bar->addMenu(QStringLiteral("&Help"));
+    help_menu->setObjectName(QStringLiteral("menu_Help"));
+    visit_homepage_action_ = new QAction(QStringLiteral("&Homepage"), this);
+    visit_homepage_action_->setObjectName(QStringLiteral("visitHomepage"));
+    visit_homepage_action_->setMenuRole(QAction::NoRole);
+    help_menu->addAction(visit_homepage_action_);
+    help_menu->addSeparator();
+    open_config_folder_action_ =
+        new QAction(QStringLiteral("&Configuration Folder"), this);
+    open_config_folder_action_->setObjectName(
+        QStringLiteral("openConfigFolder"));
+    open_config_folder_action_->setMenuRole(QAction::NoRole);
+    help_menu->addAction(open_config_folder_action_);
+    help_menu->addSeparator();
+    about_action_ = new QAction(QStringLiteral("&About"), this);
+    about_action_->setObjectName(QStringLiteral("about"));
+    about_action_->setToolTip(QStringLiteral("About GoldenDict"));
+    about_action_->setMenuRole(QAction::AboutRole);
+    help_menu->addAction(about_action_);
     setCentralWidget(central);
 
     scheme_handler_ = new ArticleSchemeHandler(this);
@@ -649,6 +672,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         article_search_->setFocus();
         article_search_->selectAll();
     });
+    connect(visit_homepage_action_, &QAction::triggered, this, [this]() {
+        DispatchSafeExternalUrl(
+            QUrl(QStringLiteral("https://goldendict.org/")));
+    });
+    connect(open_config_folder_action_, &QAction::triggered, this, [this]() {
+        DispatchSafeExternalUrl(QUrl::fromLocalFile(configuration_directory_));
+    });
+    connect(about_action_, &QAction::triggered, this,
+            &MainWindow::ShowAboutDialog);
     suggestion_worker_ = std::make_unique<SuggestionWorker>(
         [this](goldendict::core::ArticleTabId tab_id, std::uint64_t generation,
                goldendict::core::SuggestionResponse response) {
@@ -661,6 +693,183 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         });
     UpdateNavigationActions();
     UpdateFileActions();
+}
+
+bool MainWindow::DispatchSafeExternalUrl(const QUrl& url) {
+    const QUrl homepage(QStringLiteral("https://goldendict.org/"));
+    const bool is_homepage =
+        url == homepage && url.scheme() == QStringLiteral("https") &&
+        url.host() == QStringLiteral("goldendict.org") &&
+        url.userName().isEmpty() && url.password().isEmpty() &&
+        url.port() == -1 && url.query().isEmpty() && url.fragment().isEmpty();
+    const bool is_configuration_directory =
+        !configuration_directory_.isEmpty() &&
+        QDir::isAbsolutePath(configuration_directory_) &&
+        url == QUrl::fromLocalFile(configuration_directory_);
+    if ((!is_homepage && !is_configuration_directory) ||
+        !external_url_dispatcher_) {
+        return false;
+    }
+    return external_url_dispatcher_(url);
+}
+
+void MainWindow::ShowAboutDialog() {
+    QDialog dialog(this);
+    dialog.setObjectName(QStringLiteral("aboutDialog"));
+    dialog.setWindowTitle(QStringLiteral("About GoldenDict"));
+    dialog.setWindowModality(Qt::WindowModal);
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* product = new QLabel(QStringLiteral("GoldenDict"), &dialog);
+    product->setObjectName(QStringLiteral("aboutProduct"));
+    layout->addWidget(product);
+    auto* version = new QLabel(
+        QStringLiteral("Version %1").arg(QApplication::applicationVersion()),
+        &dialog);
+    version->setObjectName(QStringLiteral("aboutVersion"));
+    layout->addWidget(version);
+    auto* qt_version = new QLabel(
+        QStringLiteral("Built with Qt %1").arg(QString::fromLatin1(qVersion())),
+        &dialog);
+    qt_version->setObjectName(QStringLiteral("aboutQtVersion"));
+    layout->addWidget(qt_version);
+    auto* license =
+        new QLabel(QStringLiteral("Licensed under GPL-3.0-or-later"), &dialog);
+    license->setObjectName(QStringLiteral("aboutLicense"));
+    layout->addWidget(license);
+    auto* buttons =
+        new QDialogButtonBox(QDialogButtonBox::Ok, Qt::Horizontal, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    layout->addWidget(buttons);
+    dialog.exec();
+}
+
+void MainWindow::RunHelpMenuSmokeCheck(std::function<void(bool)> completion) {
+    auto* help_menu = findChild<QMenu*>(QStringLiteral("menu_Help"));
+    if (help_menu == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto actions = help_menu->actions();
+    bool passed =
+        menuBar()->actions().size() == 7 &&
+        menuBar()->actions().back()->menu() == help_menu &&
+        findChildren<QMenu*>(QStringLiteral("menu_Help")).size() == 1 &&
+        help_menu->title() == QStringLiteral("&Help") && actions.size() == 5 &&
+        actions[0] == visit_homepage_action_ && actions[1]->isSeparator() &&
+        actions[2] == open_config_folder_action_ && actions[3]->isSeparator() &&
+        actions[4] == about_action_ &&
+        visit_homepage_action_->text() == QStringLiteral("&Homepage") &&
+        visit_homepage_action_->menuRole() == QAction::NoRole &&
+        visit_homepage_action_->shortcut().isEmpty() &&
+        visit_homepage_action_->isEnabled() &&
+        open_config_folder_action_->text() ==
+            QStringLiteral("&Configuration Folder") &&
+        open_config_folder_action_->menuRole() == QAction::NoRole &&
+        open_config_folder_action_->shortcut().isEmpty() &&
+        open_config_folder_action_->isEnabled() &&
+        about_action_->text() == QStringLiteral("&About") &&
+        about_action_->menuRole() == QAction::AboutRole &&
+        about_action_->shortcut().isEmpty() && about_action_->isEnabled() &&
+        findChildren<QAction*>(QStringLiteral("visitHomepage")).size() == 1 &&
+        findChildren<QAction*>(QStringLiteral("openConfigFolder")).size() ==
+            1 &&
+        findChildren<QAction*>(QStringLiteral("about")).size() == 1 &&
+        findChildren<QAction*>(QStringLiteral("showReference")).isEmpty() &&
+        findChildren<QAction*>(QStringLiteral("visitForum")).isEmpty();
+
+    const auto all_actions = findChildren<QAction*>();
+    passed = passed &&
+             std::count_if(all_actions.cbegin(), all_actions.cend(),
+                           [](const QAction* action) {
+                               return action->menuRole() == QAction::AboutRole;
+                           }) == 1 &&
+             std::none_of(all_actions.cbegin(), all_actions.cend(),
+                          [](const QAction* action) {
+                              return action->shortcuts().contains(
+                                  QKeySequence(Qt::Key_F1));
+                          });
+
+    const std::string initial_layout = CaptureMainWindowState();
+    const QString initial_query = query_->text();
+    const int initial_tab_count = article_tabs_->count();
+    const int initial_tab_index = article_tabs_->currentIndex();
+    QList<QUrl> dispatched_urls;
+    external_url_dispatcher_ = [&dispatched_urls](const QUrl& url) {
+        dispatched_urls.push_back(url);
+        return true;
+    };
+    int homepage_triggers = 0;
+    int folder_triggers = 0;
+    const auto homepage_connection = connect(
+        visit_homepage_action_, &QAction::triggered, this,
+        [&homepage_triggers]() { ++homepage_triggers; }, Qt::DirectConnection);
+    const auto folder_connection = connect(
+        open_config_folder_action_, &QAction::triggered, this,
+        [&folder_triggers]() { ++folder_triggers; }, Qt::DirectConnection);
+    visit_homepage_action_->trigger();
+    open_config_folder_action_->trigger();
+    disconnect(homepage_connection);
+    disconnect(folder_connection);
+    passed = passed && homepage_triggers == 1 && folder_triggers == 1 &&
+             dispatched_urls ==
+                 QList<QUrl>{QUrl(QStringLiteral("https://goldendict.org/")),
+                             QUrl::fromLocalFile(configuration_directory_)};
+    const qsizetype safe_dispatch_count = dispatched_urls.size();
+    for (const QUrl& unsafe :
+         {QUrl(QStringLiteral("http://goldendict.org/")),
+          QUrl(QStringLiteral("https://user@goldendict.org/")),
+          QUrl(QStringLiteral("https://goldendict.org/forum/")),
+          QUrl(QStringLiteral("javascript:alert(1)")),
+          QUrl::fromLocalFile(QDir(configuration_directory_)
+                                  .filePath(QStringLiteral("other")))}) {
+        passed = passed && !DispatchSafeExternalUrl(unsafe);
+    }
+    passed = passed && dispatched_urls.size() == safe_dispatch_count;
+
+    QTimer::singleShot(0, this, [this, &passed]() {
+        auto* dialog = findChild<QDialog*>(QStringLiteral("aboutDialog"));
+        auto* product =
+            dialog == nullptr
+                ? nullptr
+                : dialog->findChild<QLabel*>(QStringLiteral("aboutProduct"));
+        auto* version =
+            dialog == nullptr
+                ? nullptr
+                : dialog->findChild<QLabel*>(QStringLiteral("aboutVersion"));
+        auto* qt_version =
+            dialog == nullptr
+                ? nullptr
+                : dialog->findChild<QLabel*>(QStringLiteral("aboutQtVersion"));
+        auto* license =
+            dialog == nullptr
+                ? nullptr
+                : dialog->findChild<QLabel*>(QStringLiteral("aboutLicense"));
+        passed =
+            passed && dialog != nullptr && dialog->parentWidget() == this &&
+            dialog->isModal() && product != nullptr &&
+            product->text() == QStringLiteral("GoldenDict") &&
+            version != nullptr &&
+            version->text() == QStringLiteral("Version %1")
+                                   .arg(QApplication::applicationVersion()) &&
+            qt_version != nullptr &&
+            qt_version->text() == QStringLiteral("Built with Qt %1")
+                                      .arg(QString::fromLatin1(qVersion())) &&
+            license != nullptr &&
+            license->text() ==
+                QStringLiteral("Licensed under GPL-3.0-or-later");
+        if (dialog != nullptr)
+            dialog->reject();
+    });
+    about_action_->trigger();
+    external_url_dispatcher_ = [](const QUrl& url) {
+        return QDesktopServices::openUrl(url);
+    };
+    passed = passed && initial_layout == CaptureMainWindowState() &&
+             query_->text() == initial_query &&
+             article_tabs_->count() == initial_tab_count &&
+             article_tabs_->currentIndex() == initial_tab_index &&
+             centralWidget() != nullptr && centralWidget()->isEnabled();
+    completion(passed);
 }
 
 void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
@@ -699,7 +908,7 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
         app_menu_bar == menuBar() &&
         findChildren<QMenuBar*>(QStringLiteral("menubar")).size() == 1 &&
         findChildren<QMenu*>(QStringLiteral("menuView")).size() == 1 &&
-        app_menu_bar->actions().size() == 6 &&
+        app_menu_bar->actions().size() == 7 &&
         app_menu_bar->actions()[1]->menu() == view_menu &&
         view_menu->title() == QStringLiteral("&View") &&
         actions.size() == expected_actions.size();
@@ -792,7 +1001,7 @@ void MainWindow::RunHistoryMenuSmokeCheck(
     }
     const auto actions = history_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 6 &&
+        menuBar()->actions().size() == 7 &&
         menuBar()->actions()[4]->menu() == history_menu &&
         history_menu->title() == QStringLiteral("H&istory") &&
         actions.size() == 5 && actions[0] == history_dock->toggleViewAction() &&
@@ -894,7 +1103,7 @@ void MainWindow::RunFavoritesMenuSmokeCheck(
     const auto actions = favorites_menu->actions();
     bool passed =
         findChildren<QMenu*>(QStringLiteral("menuFavorites")).size() == 1 &&
-        menuBar()->actions().size() == 6 &&
+        menuBar()->actions().size() == 7 &&
         menuBar()->actions()[5]->menu() == favorites_menu &&
         favorites_menu->title() == QStringLiteral("Favo&rites") &&
         actions.size() == 5 &&
@@ -1114,7 +1323,7 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
 
     const auto actions = edit_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 6 &&
+        menuBar()->actions().size() == 7 &&
         menuBar()->actions()[0]->menu()->objectName() ==
             QStringLiteral("menuFile") &&
         menuBar()->actions()[1]->menu()->objectName() ==
@@ -1249,7 +1458,7 @@ void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
     const auto actions = search_menu->actions();
     const auto all_actions = findChildren<QAction*>();
     auto passed = std::make_shared<bool>(
-        menuBar()->actions().size() == 6 &&
+        menuBar()->actions().size() == 7 &&
         menuBar()->actions()[0]->menu()->objectName() ==
             QStringLiteral("menuFile") &&
         menuBar()->actions()[1]->menu()->objectName() ==
@@ -1424,7 +1633,7 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
 
     const auto actions = file_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 6 &&
+        menuBar()->actions().size() == 7 &&
         menuBar()->actions()[0]->menu() == file_menu &&
         menuBar()->actions()[1]->menu()->objectName() ==
             QStringLiteral("menuView") &&

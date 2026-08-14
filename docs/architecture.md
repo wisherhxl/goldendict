@@ -252,6 +252,14 @@ continue to own selected-folder targeting, validation, atomic persistence and
 transfer, and failure preservation. Selected-tree removal remains on its
 existing canonical action, while the unsupported legacy plain-list export is
 omitted instead of being recreated in Widgets.
+The Help branch remains entirely in Widgets. It exposes the fixed HTTPS
+project homepage, the composition root's resolved current configuration
+directory, and a modal About dialog populated from build/runtime product,
+version, Qt, and shipped license metadata. A private validated desktop-service
+dispatcher prevents arbitrary or credential-bearing navigation and permits
+deterministic tests. Offline reference help and the legacy forum entry remain
+absent because the current distribution ships no help collection and has no
+verified HTTPS forum target.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,
