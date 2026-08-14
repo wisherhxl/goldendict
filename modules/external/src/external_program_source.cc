@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "external_program_source.h"
+#include "goldendict/external/external_program_source.h"
 
 #include <QByteArray>
 #include <QElapsedTimer>

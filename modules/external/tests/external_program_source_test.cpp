@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-#include "../src/external_program_source.h"
+#include "goldendict/external/external_program_source.h"
 
 namespace goldendict::external {
 namespace {

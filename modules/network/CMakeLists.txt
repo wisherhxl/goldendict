@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set(the_description "GoldenDict optional network integrations")
+set(TIGER_MODULE_TYPE STATIC)
 
 ti_define_module(network
   INTERNAL
   REQUIRED PUBLIC MODULES core
+  REQUIRED PRIVATE MODULES external
   REQUIRED PRIVATE EXTRAS Qt6::Network
 )
 
@@ -17,7 +19,10 @@ if(TARGET runtime_composition_test)
     src/runtime_composition.cc
     src/website_source.cc
   )
-  target_link_libraries(runtime_composition_test PRIVATE Qt6::Network)
+  target_link_libraries(runtime_composition_test PRIVATE
+    goldendict_external
+    Qt6::Network
+  )
 endif()
 
 if(TARGET http_client_test)

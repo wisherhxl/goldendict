@@ -2,6 +2,7 @@
 
 #include <QtTest>
 
+#include <QFile>
 #include <QSemaphore>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -18,8 +19,8 @@
 #include <vector>
 
 #include "../../core/tests/support/stardict_fixture.h"
-#include "../src/runtime_composition.h"
 #include "goldendict/core/application.h"
+#include "goldendict/network/runtime_composition.h"
 
 namespace goldendict::network {
 namespace {
@@ -83,6 +84,47 @@ class RuntimeFixture final : public QObject {
 
    private:
     QTcpServer server_;
+};
+
+class ExternalProgramFixture final {
+   public:
+    ExternalProgramFixture() {
+        if (!directory_.isValid()) {
+            qFatal("Could not create external program fixture directory");
+        }
+        path_ = directory_.filePath("runtime-helper.sh");
+        QFile file(path_);
+        if (!file.open(QIODevice::WriteOnly) ||
+            file.write(
+                "#!/bin/sh\n"
+                "case \"$1\" in\n"
+                "  argv) printf '%s' \"$2\" ;;\n"
+                "  stdin) cat ;;\n"
+                "  html) printf '<p>safe<script>bad()</script></p>' ;;\n"
+                "  pwd) pwd ;;\n"
+                "  prefix) printf 'Alpha\\r\\n\\r\\nAlpine\\nAlbatross\\r' ;;\n"
+                "  invalid) printf '\\377' ;;\n"
+                "  fail) exit 7 ;;\n"
+                "  slow) sleep 2 ;;\n"
+                "esac\n") < 0) {
+            qFatal("Could not write external program fixture");
+        }
+        file.close();
+        auto permissions = file.permissions();
+        permissions |= QFileDevice::ExeOwner | QFileDevice::ExeGroup |
+                       QFileDevice::ExeOther;
+        if (!file.setPermissions(permissions)) {
+            qFatal("Could not make external program fixture executable");
+        }
+    }
+
+    std::string Path() const { return path_.toStdString(); }
+
+    std::string Directory() const { return directory_.path().toStdString(); }
+
+   private:
+    QTemporaryDir directory_;
+    QString path_;
 };
 
 class Cancelled final : public goldendict::core::RuntimeCancellationSignal {
@@ -252,6 +294,10 @@ class RuntimeCompositionTest : public QObject {
     void ReportsMissingCredentialAndRejectsInvalidInjection();
     void ReusesForvoAdapterForLookupAndResources();
     void ReusesDictAdapterForLookupSuggestionsAndResources();
+    void ComposesExternalProgramsAfterNetworkFamilies();
+    void MapsExternalProgramOutputWithoutAShell();
+    void TranslatesExternalProgramRequestFailures();
+    void ComposesCompleteApplicationFacadeAtomically();
 };
 
 void RuntimeCompositionTest::PreservesEnabledFamilyOrderAndIdentity() {
@@ -553,6 +599,236 @@ void RuntimeCompositionTest::
     QCOMPARE(source.LookupPrefix("Alpha").size(), std::size_t{1});
     QCOMPARE(source.SuggestPrefix("Al"), std::vector<std::string>({"Alpha"}));
     QVERIFY(!source.GetResource("unused").has_value());
+}
+
+void RuntimeCompositionTest::ComposesExternalProgramsAfterNetworkFamilies() {
+    goldendict::core::CoreConfiguration configuration;
+    configuration.mediawiki_sources = {
+        {"wiki", "Wiki", true, "https://example.test/wiki"}};
+    configuration.website_sources = {
+        {"site", "Site", true, "https://example.test/?q=%GDWORD%"}};
+    configuration.forvo_sources = {
+        {"forvo", "Forvo", true, "https://example.test", {"en"}}};
+    configuration.dict_server_sources = {
+        {"dict", "DICT", true, "127.0.0.1", 2628U, "*", "prefix"}};
+    configuration.external_program_sources = {
+        {"program.first",
+         "Program First",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPlainText,
+         "/definitely/missing/first",
+         {"%GDWORD%"},
+         ""},
+        {"program.disabled",
+         "Program Disabled",
+         false,
+         goldendict::core::ExternalProgramOutputKind::kHtml,
+         "/definitely/missing/disabled",
+         {},
+         ""},
+        {"program.second",
+         "Program Second",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPrefixMatch,
+         "/definitely/missing/second",
+         {},
+         ""}};
+    const auto original = configuration;
+
+    auto composition =
+        ComposeConfiguredRuntimeSources(configuration, {{"forvo", "secret"}});
+    QCOMPARE(composition.sources.size(), std::size_t{6});
+    QCOMPARE(composition.sources[0]->identity().id, std::string("wiki"));
+    QCOMPARE(composition.sources[1]->identity().id, std::string("site"));
+    QCOMPARE(composition.sources[2]->identity().id,
+             std::string("forvo:5:forvo:656e"));
+    QCOMPARE(composition.sources[3]->identity().id, std::string("dict"));
+    QCOMPARE(composition.sources[4]->identity().id,
+             std::string("program.first"));
+    QCOMPARE(composition.sources[4]->identity().name,
+             std::string("Program First"));
+    QCOMPARE(composition.sources[4]->identity().source,
+             std::string("/definitely/missing/first"));
+    QCOMPARE(composition.sources[5]->identity().id,
+             std::string("program.second"));
+    QCOMPARE(configuration.external_program_sources,
+             original.external_program_sources);
+}
+
+void RuntimeCompositionTest::MapsExternalProgramOutputWithoutAShell() {
+    ExternalProgramFixture fixture;
+    goldendict::core::CoreConfiguration configuration;
+    configuration.external_program_sources = {
+        {"text",
+         "Text",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPlainText,
+         fixture.Path(),
+         {"argv", "prefix:%GDWORD%:%GDWORD%:suffix"},
+         ""},
+        {"stdin",
+         "Stdin",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPlainText,
+         fixture.Path(),
+         {"stdin"},
+         ""},
+        {"html",
+         "HTML",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kHtml,
+         fixture.Path(),
+         {"html"},
+         ""},
+        {"prefix",
+         "Prefix",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPrefixMatch,
+         fixture.Path(),
+         {"prefix"},
+         ""},
+        {"working",
+         "Working",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPlainText,
+         fixture.Path(),
+         {"pwd", "%GDWORD%"},
+         fixture.Directory()}};
+    auto composition = ComposeConfiguredRuntimeSources(configuration);
+    QCOMPARE(composition.sources.size(), std::size_t{5});
+
+    const std::string literal = "A&B;$(touch should-not-run)";
+    const auto text = composition.sources[0]->LookupExact(literal);
+    QCOMPARE(text.size(), std::size_t{1});
+    QCOMPARE(text.front().format, std::string("text"));
+    QCOMPARE(text.front().data,
+             std::string("prefix:") + literal + ":" + literal + ":suffix");
+    QCOMPARE(composition.sources[1]->LookupPrefix("héllo").front().data,
+             std::string("héllo"));
+    QCOMPARE(composition.sources[2]->LookupExact("word").front().format,
+             std::string("html"));
+
+    goldendict::core::RuntimeRequestOptions options;
+    options.result_limit = 2U;
+    QCOMPARE(composition.sources[3]->SuggestPrefix("Al", options),
+             std::vector<std::string>({"Alpha", "Alpine"}));
+    QVERIFY(composition.sources[3]->LookupExact("Al").empty());
+    QVERIFY(composition.sources[3]->LookupPrefix("Al").empty());
+    QVERIFY(composition.sources[0]->SuggestPrefix("Al").empty());
+    QVERIFY(!composition.sources[0]->GetResource("unused").has_value());
+    auto working = composition.sources[4]->LookupExact("word").front().data;
+    while (!working.empty() &&
+           (working.back() == '\n' || working.back() == '\r')) {
+        working.pop_back();
+    }
+    QCOMPARE(working, fixture.Directory());
+
+    auto application = ComposeConfiguredApplication(configuration);
+    goldendict::core::LookupQuery query;
+    query.text = "word";
+    query.dictionary_ids = {"html"};
+    const auto response =
+        application.facade->GetDictionaryService().Lookup(query);
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    QVERIFY(response.entries.front().article.sanitized_html.has_value());
+    QVERIFY(response.entries.front().article.sanitized_html->find("<script") ==
+            std::string::npos);
+}
+
+void RuntimeCompositionTest::TranslatesExternalProgramRequestFailures() {
+    ExternalProgramFixture fixture;
+    goldendict::core::CoreConfiguration configuration;
+    configuration.external_program_sources = {
+        {"missing",
+         "Missing",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPlainText,
+         "/definitely/missing/goldendict-runtime-helper",
+         {},
+         ""},
+        {"invalid",
+         "Invalid",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPlainText,
+         fixture.Path(),
+         {"invalid"},
+         ""},
+        {"fail",
+         "Fail",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPlainText,
+         fixture.Path(),
+         {"fail"},
+         ""},
+        {"slow",
+         "Slow",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPlainText,
+         fixture.Path(),
+         {"slow"},
+         ""}};
+    auto composition = ComposeConfiguredRuntimeSources(configuration);
+
+    VerifyRequestError(goldendict::core::RuntimeSourceErrorCode::kUnavailable,
+                       [&]() { composition.sources[0]->LookupExact("word"); });
+    VerifyRequestError(goldendict::core::RuntimeSourceErrorCode::kInvalidData,
+                       [&]() { composition.sources[1]->LookupExact("word"); });
+    VerifyRequestError(goldendict::core::RuntimeSourceErrorCode::kUnavailable,
+                       [&]() { composition.sources[2]->LookupExact("word"); });
+    goldendict::core::RuntimeRequestOptions deadline;
+    deadline.deadline =
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+    VerifyRequestError(
+        goldendict::core::RuntimeSourceErrorCode::kDeadlineExceeded,
+        [&]() { composition.sources[3]->LookupExact("word", deadline); });
+
+    Cancelled cancelled;
+    goldendict::core::RuntimeRequestOptions cancelled_options;
+    cancelled_options.cancellation = &cancelled;
+    VerifyAllMethodsReject(
+        *composition.sources[0], cancelled_options,
+        goldendict::core::RuntimeSourceErrorCode::kCancelled);
+    goldendict::core::RuntimeRequestOptions zero;
+    zero.result_limit = 0U;
+    QVERIFY(composition.sources[0]->LookupExact("word", zero).empty());
+    QVERIFY(composition.sources[0]->LookupPrefix("word", zero).empty());
+    QVERIFY(composition.sources[0]->SuggestPrefix("word", zero).empty());
+}
+
+void RuntimeCompositionTest::ComposesCompleteApplicationFacadeAtomically() {
+    ExternalProgramFixture fixture;
+    goldendict::core::CoreConfiguration configuration;
+    configuration.external_program_sources = {
+        {"program",
+         "Program",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPlainText,
+         fixture.Path(),
+         {"stdin"},
+         ""}};
+    auto active = ComposeConfiguredApplication(configuration);
+    QCOMPARE(active.facade->GetDictionaryService().GetCatalog().size(),
+             std::size_t{1});
+    const auto session = active.facade->ExportArticleTabSession();
+
+    auto invalid = configuration;
+    invalid.external_program_sources.push_back(
+        {"program",
+         "Duplicate",
+         true,
+         goldendict::core::ExternalProgramOutputKind::kPlainText,
+         fixture.Path(),
+         {"stdin"},
+         ""});
+    QVERIFY_EXCEPTION_THROWN(ComposeConfiguredApplication(invalid),
+                             std::runtime_error);
+    QCOMPARE(active.facade->GetDictionaryService().GetCatalog().front().id,
+             std::string("program"));
+    QCOMPARE(active.facade->ExportArticleTabSession(), session);
+
+    auto replacement = ComposeConfiguredApplication(configuration);
+    QVERIFY(replacement.facade->RestoreArticleTabSession(session));
+    QCOMPARE(replacement.facade->ExportArticleTabSession(), session);
 }
 
 }  // namespace goldendict::network

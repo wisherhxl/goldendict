@@ -107,8 +107,13 @@ sanitization. P5a.2 adds ordered Forvo-language children and DICT sources to the
 same internal composer. Forvo credentials enter only through an in-memory map
 keyed by configured source ID; missing values produce source-ID-only diagnostics
 without changing persisted enabled intent. Child identities are deterministic
-and retain the configured source ID as provenance. External-program and
-executable wiring remain pending.
+and retain the configured source ID as provenance. P5a.3 appends configured
+external programs after DICT through the existing shell-free process adapter.
+The internal composer returns only a completely constructed desktop facade and
+recoverable source-ID-only diagnostics. Startup and configuration replacement
+therefore share one local-plus-runtime composition path, and Widgets are rebound
+only after candidate construction, session restoration, and atomic persistence
+succeed.
 The core factory is intentionally a generic extension seam: injected identities
 need not correspond one-to-one with persisted records, allowing deterministic
 derived identities such as future per-language Forvo sources. It atomically
@@ -117,7 +122,10 @@ sources. Configuration-derived composers instead validate the complete DTO and
 emit only enabled records. Network wrappers check cancellation and absolute
 deadlines before every operation, include both conditions in adapter cancellation
 polling, and recheck before returning; the adapters' existing bounded transport
-timeout remains the outer fallback between polling opportunities.
+or process timeout remains the outer fallback between polling opportunities.
+External plain-text and HTML results pass through core's normal untrusted article
+policy, prefix-match stdout is interpreted as bounded nonempty Unicode lines,
+and external sources do not expose resources.
 The Phase 8 P4b current-persistence increment adds ordered, bounded
 external-program records with stable identity, enabled intent, plain-text,
 HTML, or prefix-match output, an absolute executable, ordered argument

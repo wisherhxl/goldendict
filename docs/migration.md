@@ -413,8 +413,7 @@ enabled records, preserves each persisted family order and stable identity, and
 appends those families after the unchanged local catalog. Core continues to own
 query validation, cancellation, article assembly, sanitization, groups, and
 public result conversion. Loopback tests cover real adapter calls without public
-network access. External programs and application-facade wiring remain separate
-P5a leaves.
+network access.
 The generic core seam does not require runtime identities to exist in persisted
 configuration, so later composers may generate deterministic derived identities.
 The P5a.1 network composer owns DTO consistency: it validates the complete
@@ -432,8 +431,18 @@ unknown, non-Forvo, or identity-colliding input fails before a result is returne
 Persisted Forvo family and language order is preserved through deterministic
 length-framed child identities that retain configured-source provenance. Forvo
 lookup exposes audio through typed resources, DICT exposes definitions and
-suggestions, and both preserve the P5a.1 request contract. External-program
-composition remains the P5a.3 dependency.
+suggestions, and both preserve the P5a.1 request contract.
+
+P5a.3 appends enabled external programs after DICT in persisted order and closes
+the application composition path. Programs retain configured identity and run
+the P4b absolute executable plus ordered argument templates directly, without a
+shell. Plain-text and HTML output becomes an untrusted article; prefix-match
+output becomes bounded ordered line suggestions; programs expose no resources.
+All wrappers honor zero limits, cancellation, absolute deadlines, bounded
+process output, and translated runtime errors. The composition root now builds
+the complete local-plus-runtime facade, restores its session, atomically saves
+the candidate, and only then rebinds presentation objects. Any construction,
+restore, or save failure preserves the active facade and configuration.
 
 The current-preferences foundation adds deterministic portable defaults and
 bounded optional preference records to the core-owned current configuration.

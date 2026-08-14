@@ -156,6 +156,12 @@ configured-source provenance, redacted missing-credential diagnostics, secret
 non-disclosure, and atomic malformed/inconsistent credential rejection. Local
 HTTP and DICT fixtures exercise Forvo lookup/audio resources and DICT
 definitions/suggestions without public network access.
+P5a.3 coverage adds exact external-program family ordering and identity,
+disabled omission, literal argv and UTF-8 stdin input without a shell,
+plain-text/HTML article mapping and sanitization, bounded line-oriented prefix
+suggestions, empty resource behavior, and runtime error translation. It also
+pins complete desktop-facade composition, tab-session restoration, and failure
+preservation of an already active facade.
 `goldendict_source_directories_smoke` exercises offscreen remove, reorder,
 inline edit, and cancel behavior plus invalid-candidate rollback, forced save
 failure, duplicate preservation, successful facade replacement, exact tab

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set(the_description "GoldenDict controlled external program integrations")
+set(TIGER_MODULE_TYPE STATIC)
 
 ti_define_module(external
   INTERNAL

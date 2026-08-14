@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "runtime_composition.h"
+#include "goldendict/network/runtime_composition.h"
 
 #include <QByteArray>
 #include <QStringDecoder>
@@ -17,6 +17,7 @@
 
 #include "dict_server_source.h"
 #include "forvo_source.h"
+#include "goldendict/external/external_program_source.h"
 #include "mediawiki_source.h"
 #include "website_source.h"
 
@@ -30,6 +31,8 @@ using goldendict::core::RuntimeDictionarySource;
 using goldendict::core::RuntimeRequestOptions;
 using goldendict::core::RuntimeSourceError;
 using goldendict::core::RuntimeSourceErrorCode;
+using goldendict::external::ExternalProgramError;
+using goldendict::external::ExternalProgramErrorCode;
 
 void CheckRequest(const RuntimeRequestOptions& options) {
     if (options.cancellation != nullptr &&
@@ -185,6 +188,58 @@ std::function<bool()> StopRequested(const RuntimeRequestOptions& options) {
             break;
     }
     throw RuntimeSourceError(code, error.what());
+}
+
+[[noreturn]] void TranslateExternalProgramError(
+    const ExternalProgramError& error, const RuntimeRequestOptions& options) {
+    if (std::chrono::steady_clock::now() >= options.deadline) {
+        throw RuntimeSourceError(
+            RuntimeSourceErrorCode::kDeadlineExceeded,
+            "External program request deadline was exceeded");
+    }
+    RuntimeSourceErrorCode code = RuntimeSourceErrorCode::kUnavailable;
+    switch (error.code()) {
+        case ExternalProgramErrorCode::kCancelled:
+            code = RuntimeSourceErrorCode::kCancelled;
+            break;
+        case ExternalProgramErrorCode::kDeadlineExceeded:
+            code = RuntimeSourceErrorCode::kDeadlineExceeded;
+            break;
+        case ExternalProgramErrorCode::kInvalidConfiguration:
+        case ExternalProgramErrorCode::kInvalidRequest:
+        case ExternalProgramErrorCode::kInvalidOutput:
+            code = RuntimeSourceErrorCode::kInvalidData;
+            break;
+        case ExternalProgramErrorCode::kOutputTooLarge:
+        case ExternalProgramErrorCode::kFailedToStart:
+        case ExternalProgramErrorCode::kCrashed:
+        case ExternalProgramErrorCode::kNonZeroExit:
+            break;
+    }
+    throw RuntimeSourceError(code, error.what());
+}
+
+std::vector<std::string> ParsePrefixMatches(std::string output,
+                                            std::size_t result_limit) {
+    std::vector<std::string> matches;
+    std::size_t begin = 0U;
+    while (begin < output.size() && matches.size() < result_limit) {
+        const std::size_t end = output.find_first_of("\r\n", begin);
+        const std::size_t length =
+            end == std::string::npos ? output.size() - begin : end - begin;
+        if (length != 0U) {
+            matches.push_back(output.substr(begin, length));
+        }
+        if (end == std::string::npos) {
+            break;
+        }
+        begin = end + 1U;
+        if (output[end] == '\r' && begin < output.size() &&
+            output[begin] == '\n') {
+            ++begin;
+        }
+    }
+    return matches;
 }
 
 class MediaWikiRuntimeSource final : public RuntimeDictionarySource {
@@ -479,6 +534,89 @@ class DictRuntimeSource final : public RuntimeDictionarySource {
     DictServerSource source_;
 };
 
+class ExternalProgramRuntimeSource final : public RuntimeDictionarySource {
+   public:
+    explicit ExternalProgramRuntimeSource(
+        const goldendict::core::ExternalProgramSourceConfiguration&
+            configuration)
+        : output_kind_(configuration.output_kind),
+          source_({configuration.executable, configuration.argument_templates,
+                   configuration.working_directory}) {
+        identity_.id = configuration.id;
+        identity_.name = configuration.name;
+        identity_.source = configuration.executable;
+    }
+
+    const RuntimeDictionaryIdentity& identity() const noexcept override {
+        return identity_;
+    }
+
+    std::vector<RuntimeDictionaryArticle> LookupExact(
+        std::string_view headword,
+        const RuntimeRequestOptions& options) const override {
+        return LookupArticle(headword, options);
+    }
+
+    std::vector<RuntimeDictionaryArticle> LookupPrefix(
+        std::string_view prefix,
+        const RuntimeRequestOptions& options) const override {
+        return LookupArticle(prefix, options);
+    }
+
+    std::vector<std::string> SuggestPrefix(
+        std::string_view prefix,
+        const RuntimeRequestOptions& options) const override {
+        CheckRequest(options);
+        if (options.result_limit == 0U ||
+            output_kind_ !=
+                goldendict::core::ExternalProgramOutputKind::kPrefixMatch) {
+            return {};
+        }
+        try {
+            auto result = source_.Run(prefix, StopRequested(options));
+            CheckRequest(options);
+            return ParsePrefixMatches(std::move(result.standard_output),
+                                      options.result_limit);
+        } catch (const ExternalProgramError& error) {
+            TranslateExternalProgramError(error, options);
+        }
+    }
+
+    std::optional<RuntimeDictionaryResource> GetResource(
+        std::string_view, const RuntimeRequestOptions& options) const override {
+        CheckRequest(options);
+        return std::nullopt;
+    }
+
+   private:
+    std::vector<RuntimeDictionaryArticle> LookupArticle(
+        std::string_view headword, const RuntimeRequestOptions& options) const {
+        CheckRequest(options);
+        if (options.result_limit == 0U ||
+            output_kind_ ==
+                goldendict::core::ExternalProgramOutputKind::kPrefixMatch) {
+            return {};
+        }
+        try {
+            auto result = source_.Run(headword, StopRequested(options));
+            CheckRequest(options);
+            const char* format =
+                output_kind_ ==
+                        goldendict::core::ExternalProgramOutputKind::kHtml
+                    ? "html"
+                    : "text";
+            return {{std::string(headword), format,
+                     std::move(result.standard_output)}};
+        } catch (const ExternalProgramError& error) {
+            TranslateExternalProgramError(error, options);
+        }
+    }
+
+    RuntimeDictionaryIdentity identity_;
+    goldendict::core::ExternalProgramOutputKind output_kind_;
+    goldendict::external::ExternalProgramSource source_;
+};
+
 }  // namespace
 
 RuntimeCompositionResult ComposeConfiguredRuntimeSources(
@@ -525,6 +663,11 @@ RuntimeCompositionResult ComposeConfiguredRuntimeSources(
             add_id(source.id);
         }
     }
+    for (const auto& source : configuration.external_program_sources) {
+        if (source.enabled) {
+            add_id(source.id);
+        }
+    }
 
     RuntimeCompositionResult result;
     for (const auto& source : configuration.mediawiki_sources) {
@@ -561,7 +704,23 @@ RuntimeCompositionResult ComposeConfiguredRuntimeSources(
                 std::make_unique<DictRuntimeSource>(source));
         }
     }
+    for (const auto& source : configuration.external_program_sources) {
+        if (source.enabled) {
+            result.sources.push_back(
+                std::make_unique<ExternalProgramRuntimeSource>(source));
+        }
+    }
     return result;
+}
+
+ApplicationCompositionResult ComposeConfiguredApplication(
+    const goldendict::core::CoreConfiguration& configuration,
+    const ForvoCredentialMap& forvo_credentials) {
+    auto runtime =
+        ComposeConfiguredRuntimeSources(configuration, forvo_credentials);
+    auto facade = goldendict::core::CreateDesktopFacade(
+        configuration, std::move(runtime.sources));
+    return {std::move(facade), std::move(runtime.diagnostics)};
 }
 
 }  // namespace goldendict::network

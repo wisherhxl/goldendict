@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QApplication>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QMessageBox>
@@ -18,9 +19,26 @@
 #include "goldendict/core/application.h"
 #include "goldendict/core/favorites_store.h"
 #include "goldendict/core/history_store.h"
+#include "goldendict/network/runtime_composition.h"
 #include "main_window.h"
 
 namespace {
+
+void ReportRuntimeCompositionDiagnostics(
+    const std::vector<goldendict::network::RuntimeCompositionDiagnostic>&
+        diagnostics) {
+    for (const auto& diagnostic : diagnostics) {
+        if (diagnostic.code ==
+            goldendict::network::RuntimeCompositionDiagnosticCode::
+                kMissingForvoCredential) {
+            qWarning().noquote()
+                << QStringLiteral(
+                       "Forvo source '%1' is enabled but has no in-memory "
+                       "credential; the source was not activated")
+                       .arg(QString::fromStdString(diagnostic.source_id));
+        }
+    }
+}
 
 bool HasSmokeArgument(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
@@ -219,8 +237,23 @@ int main(int argc, char* argv[]) {
     if (!command_line_root.isEmpty()) {
         configuration.dictionary_paths = {command_line_root.toStdString()};
     }
+    if (HasArgument(argc, argv, QStringLiteral("--source-directories-smoke"))) {
+        configuration.external_program_sources = {
+            {"smoke.external",
+             "Smoke External",
+             true,
+             goldendict::core::ExternalProgramOutputKind::kPlainText,
+             QCoreApplication::applicationFilePath().toStdString(),
+             {"--smoke", "%GDWORD%"},
+             ""}};
+    }
 
-    auto facade = goldendict::core::CreateDesktopFacade(configuration);
+    auto application_composition =
+        goldendict::network::ComposeConfiguredApplication(configuration);
+    ReportRuntimeCompositionDiagnostics(application_composition.diagnostics);
+    auto facade = std::move(application_composition.facade);
+    auto composition_diagnostics =
+        std::move(application_composition.diagnostics);
     if (configuration.article_tab_session.has_value() &&
         !facade->RestoreArticleTabSession(*configuration.article_tab_session)) {
         QMessageBox::warning(
@@ -526,8 +559,8 @@ int main(int argc, char* argv[]) {
             try {
                 goldendict::core::ValidateConfiguration(updated);
                 auto replacement =
-                    goldendict::core::CreateDesktopFacade(updated);
-                if (!replacement->RestoreArticleTabSession(
+                    goldendict::network::ComposeConfiguredApplication(updated);
+                if (!replacement.facade->RestoreArticleTabSession(
                         *updated.article_tab_session)) {
                     throw std::runtime_error(
                         "Unable to restore the article tab "
@@ -537,8 +570,10 @@ int main(int argc, char* argv[]) {
                     configuration_path.toStdString(), updated);
                 window.SetSourceDirectories(updated.dictionary_paths,
                                             updated.sound_directories);
-                window.SetFacade(replacement.get());
-                facade = std::move(replacement);
+                window.SetFacade(replacement.facade.get());
+                facade = std::move(replacement.facade);
+                composition_diagnostics = std::move(replacement.diagnostics);
+                ReportRuntimeCompositionDiagnostics(composition_diagnostics);
                 configuration = std::move(updated);
                 return true;
             } catch (const std::exception& error) {
@@ -563,8 +598,8 @@ int main(int argc, char* argv[]) {
             updated.article_tab_session = facade->ExportArticleTabSession();
             try {
                 auto replacement =
-                    goldendict::core::CreateDesktopFacade(updated);
-                if (!replacement->RestoreArticleTabSession(
+                    goldendict::network::ComposeConfiguredApplication(updated);
+                if (!replacement.facade->RestoreArticleTabSession(
                         *updated.article_tab_session)) {
                     throw std::runtime_error(
                         "Unable to restore the article tab "
@@ -573,8 +608,10 @@ int main(int argc, char* argv[]) {
                 goldendict::core::SaveConfiguration(
                     configuration_path.toStdString(), updated);
                 window.SetDictionaryGroups(updated.dictionary_groups);
-                window.SetFacade(replacement.get());
-                facade = std::move(replacement);
+                window.SetFacade(replacement.facade.get());
+                facade = std::move(replacement.facade);
+                composition_diagnostics = std::move(replacement.diagnostics);
+                ReportRuntimeCompositionDiagnostics(composition_diagnostics);
                 configuration = std::move(updated);
             } catch (const std::exception& error) {
                 window.SetDictionaryGroups(configuration.dictionary_groups);
@@ -703,6 +740,8 @@ int main(int argc, char* argv[]) {
                                candidate.dictionary_groups ==
                                    original.dictionary_groups &&
                                candidate.preferences == original.preferences &&
+                               candidate.external_program_sources ==
+                                   original.external_program_sources &&
                                candidate.article_tab_session ==
                                    original.article_tab_session &&
                                candidate.main_window_geometry ==
@@ -722,7 +761,9 @@ int main(int argc, char* argv[]) {
                             configuration.dictionary_paths, invalid_sounds,
                             false) &&
                         same_as_original(configuration) &&
-                        facade->ExportArticleTabSession() == original_session;
+                        facade->ExportArticleTabSession() == original_session &&
+                        facade->GetDictionaryService().GetCatalog().back().id ==
+                            "smoke.external";
 
                     const QString temporary_path =
                         configuration_path + QStringLiteral(".tmp");
@@ -737,7 +778,9 @@ int main(int argc, char* argv[]) {
                         same_as_original(configuration) &&
                         same_as_original(goldendict::core::LoadConfiguration(
                             configuration_path.toStdString())) &&
-                        facade->ExportArticleTabSession() == original_session;
+                        facade->ExportArticleTabSession() == original_session &&
+                        facade->GetDictionaryService().GetCatalog().back().id ==
+                            "smoke.external";
                     QDir(temporary_path).removeRecursively();
 
                     auto successful_paths = configuration.dictionary_paths;
@@ -758,9 +801,13 @@ int main(int argc, char* argv[]) {
                         persisted.dictionary_groups ==
                             original.dictionary_groups &&
                         persisted.preferences == original.preferences &&
+                        persisted.external_program_sources ==
+                            original.external_program_sources &&
                         persisted.main_window_geometry ==
                             original.main_window_geometry &&
-                        facade->ExportArticleTabSession() == original_session;
+                        facade->ExportArticleTabSession() == original_session &&
+                        facade->GetDictionaryService().GetCatalog().back().id ==
+                            "smoke.external";
                 } catch (const std::exception&) {
                     passed = false;
                 }

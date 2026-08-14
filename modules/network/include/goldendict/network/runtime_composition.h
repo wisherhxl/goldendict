@@ -30,7 +30,16 @@ struct RuntimeCompositionResult {
     std::vector<RuntimeCompositionDiagnostic> diagnostics;
 };
 
+struct ApplicationCompositionResult {
+    std::unique_ptr<goldendict::core::DesktopFacade> facade;
+    std::vector<RuntimeCompositionDiagnostic> diagnostics;
+};
+
 RuntimeCompositionResult ComposeConfiguredRuntimeSources(
+    const goldendict::core::CoreConfiguration& configuration,
+    const ForvoCredentialMap& forvo_credentials = {});
+
+ApplicationCompositionResult ComposeConfiguredApplication(
     const goldendict::core::CoreConfiguration& configuration,
     const ForvoCredentialMap& forvo_credentials = {});
 

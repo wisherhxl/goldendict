@@ -20,7 +20,7 @@
 | Conan consumer package | done | Phase 2 | `conan create` and `test_package` |
 | GPL product / MIT Tiger boundary | done | Phase 2 | installed/package notices |
 | Public `goldendict_core` library boundary | slice | Phase 4 | shared build, install, and exported CMake target |
-| GUI depends only on application facade | slice | Phase 4 | include-boundary and focused application tests |
+| GUI depends only on application facade | slice | Phase 4 | startup and replacement atomically compose local, online, and shell-free external runtime sources behind the facade; include-boundary and focused application tests |
 | AI-ready headless dictionary API | slice | Phase 4 | structured, bounded, provenance-bearing non-GUI consumer |
 | Debug, runtime bundle, DEB/RPM, CI | mapped | Phase 9 | clean release matrix |
 

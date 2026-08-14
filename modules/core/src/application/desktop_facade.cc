@@ -43,8 +43,11 @@ struct TabRecord {
 
 class DesktopFacadeImpl final : public DesktopFacade {
    public:
-    explicit DesktopFacadeImpl(const CoreConfiguration& configuration)
-        : service_(CreateDictionaryService(configuration)) {
+    DesktopFacadeImpl(
+        const CoreConfiguration& configuration,
+        std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources)
+        : service_(CreateDictionaryService(configuration,
+                                           std::move(runtime_sources))) {
         tabs_.push_back(CreateTabRecord(EmptyNavigation()));
         active_tab_id_ = tabs_.front().id;
     }
@@ -273,7 +276,14 @@ DesktopFacade::~DesktopFacade() = default;
 
 std::unique_ptr<DesktopFacade> CreateDesktopFacade(
     const CoreConfiguration& configuration) {
-    return std::make_unique<DesktopFacadeImpl>(configuration);
+    return CreateDesktopFacade(configuration, {});
+}
+
+std::unique_ptr<DesktopFacade> CreateDesktopFacade(
+    const CoreConfiguration& configuration,
+    std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources) {
+    return std::make_unique<DesktopFacadeImpl>(configuration,
+                                               std::move(runtime_sources));
 }
 
 }  // namespace goldendict::core

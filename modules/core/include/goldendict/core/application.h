@@ -422,6 +422,12 @@ GOLDENDICT_EXPORTS std::unique_ptr<DictionaryService> CreateDictionaryService(
     std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources);
 GOLDENDICT_EXPORTS std::unique_ptr<DesktopFacade> CreateDesktopFacade(
     const CoreConfiguration& configuration);
+// Takes ownership only while constructing a complete replacement facade.
+// Runtime-source validation has the same atomic semantics as the headless
+// service overload above.
+GOLDENDICT_EXPORTS std::unique_ptr<DesktopFacade> CreateDesktopFacade(
+    const CoreConfiguration& configuration,
+    std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources);
 
 }  // namespace goldendict::core
 
