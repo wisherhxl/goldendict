@@ -18,7 +18,7 @@ namespace {
 constexpr std::string_view kHeader = "goldendict-history-v1\n";
 constexpr std::size_t kMaximumHistoryBytes = 1024U * 1024U;
 constexpr std::size_t kMaximumWordBytes = 4096U;
-constexpr std::size_t kMaximumEntryLimit = 10000U;
+constexpr std::size_t kMaximumEntryLimit = 99999U;
 
 bool Exists(const std::string& path) {
     std::error_code error;
@@ -51,7 +51,7 @@ std::string ReadBounded(const std::string& path) {
 }
 
 void ValidateLimit(std::size_t maximum_entries) {
-    if (maximum_entries == 0U || maximum_entries > kMaximumEntryLimit) {
+    if (maximum_entries > kMaximumEntryLimit) {
         throw std::runtime_error("History entry limit is invalid");
     }
 }

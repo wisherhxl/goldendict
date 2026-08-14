@@ -292,14 +292,13 @@ int main(int argc, char* argv[]) {
             nullptr, QStringLiteral("GoldenDict"),
             QStringLiteral("Unable to restore the saved article tab session"));
     }
-    constexpr std::size_t kMaximumHistoryEntries = 500U;
     std::vector<goldendict::core::HistoryEntry> history;
     try {
         goldendict::app::ValidateAutoDiscoveredLegacyHistory(
             configuration_locations, goldendict::app::ProbePath);
         history = goldendict::core::LoadOrMigrateHistory(
             history_path.toStdString(), legacy_history_path.toStdString(),
-            kMaximumHistoryEntries);
+            configuration.preferences.maximum_history_entries);
     } catch (const std::exception& error) {
         QMessageBox::warning(nullptr, QStringLiteral("GoldenDict history"),
                              QString::fromLocal8Bit(error.what()));
@@ -386,6 +385,10 @@ int main(int argc, char* argv[]) {
     QObject::connect(
         &window, &MainWindow::LookupSubmitted, &window,
         [&](const QString& word, std::uint32_t group_id) {
+            if (!configuration.preferences.store_history ||
+                configuration.preferences.maximum_history_entries == 0U) {
+                return;
+            }
             auto updated = history;
             const std::string encoded = word.toStdString();
             updated.erase(std::remove_if(
@@ -397,8 +400,10 @@ int main(int argc, char* argv[]) {
                               }),
                           updated.end());
             updated.insert(updated.begin(), {group_id, encoded});
-            if (updated.size() > kMaximumHistoryEntries) {
-                updated.resize(kMaximumHistoryEntries);
+            if (updated.size() >
+                configuration.preferences.maximum_history_entries) {
+                updated.resize(
+                    configuration.preferences.maximum_history_entries);
             }
             try {
                 goldendict::core::SaveHistory(history_path.toStdString(),
@@ -449,7 +454,9 @@ int main(int argc, char* argv[]) {
         [&](const QString& path, std::uint32_t group_id) {
             try {
                 auto imported = goldendict::core::ImportHistoryText(
-                    path.toStdString(), kMaximumHistoryEntries, group_id);
+                    path.toStdString(),
+                    configuration.preferences.maximum_history_entries,
+                    group_id);
                 goldendict::core::SaveHistory(history_path.toStdString(),
                                               imported);
                 history = std::move(imported);
@@ -801,6 +808,12 @@ int main(int argc, char* argv[]) {
             auto updated = configuration;
             updated.preferences = preferences;
             updated.article_tab_session = facade->ExportArticleTabSession();
+            auto bounded_history = history;
+            if (bounded_history.size() > preferences.maximum_history_entries) {
+                bounded_history.resize(preferences.maximum_history_entries);
+            }
+            const bool history_changed = bounded_history != history;
+            bool history_saved = false;
             try {
                 goldendict::core::ValidateConfiguration(updated);
                 auto replacement =
@@ -810,6 +823,11 @@ int main(int argc, char* argv[]) {
                     throw std::runtime_error(
                         "Unable to restore the article tab session");
                 }
+                if (history_changed) {
+                    goldendict::core::SaveHistory(history_path.toStdString(),
+                                                  bounded_history);
+                    history_saved = true;
+                }
                 goldendict::core::SaveConfiguration(
                     configuration_path.toStdString(), updated);
                 window.SetPreferences(updated.preferences);
@@ -818,8 +836,23 @@ int main(int argc, char* argv[]) {
                 composition_diagnostics = std::move(replacement.diagnostics);
                 ReportRuntimeCompositionDiagnostics(composition_diagnostics);
                 configuration = std::move(updated);
+                if (history_changed) {
+                    history = std::move(bounded_history);
+                    refresh_history();
+                }
                 return QString{};
             } catch (const std::exception& error) {
+                if (history_saved) {
+                    try {
+                        goldendict::core::SaveHistory(
+                            history_path.toStdString(), history);
+                    } catch (const std::exception& rollback_error) {
+                        return QStringLiteral(
+                                   "%1; unable to restore history: %2")
+                            .arg(QString::fromLocal8Bit(error.what()),
+                                 QString::fromLocal8Bit(rollback_error.what()));
+                    }
+                }
                 return QString::fromLocal8Bit(error.what());
             }
         });
@@ -837,6 +870,54 @@ int main(int argc, char* argv[]) {
             window.RunEditMenuSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--history-preferences-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window,
+            [&app, &configuration_directory, &configuration_path, &history,
+             &history_path, &window]() {
+                QDir().mkpath(configuration_directory);
+                history = {{3U, "Newest"}, {2U, "Middle"}, {1U, "Oldest"}};
+                goldendict::core::SaveHistory(history_path.toStdString(),
+                                              history);
+                window.SetHistoryItems({{QStringLiteral("Newest"), 3U},
+                                        {QStringLiteral("Middle"), 2U},
+                                        {QStringLiteral("Oldest"), 1U}});
+                const QString import_path =
+                    QDir(configuration_directory)
+                        .filePath(QStringLiteral("history-preferences.txt"));
+                QFile import_file(import_path);
+                const QByteArray contents(
+                    "Imported one\nImported two\nIgnored\n");
+                const bool prepared =
+                    import_file.open(QIODevice::WriteOnly) &&
+                    import_file.write(contents) == contents.size();
+                import_file.close();
+                window.RunHistoryPreferencesSmokeCheck(
+                    import_path, [&app, &configuration_path, &history_path,
+                                  prepared](bool passed) {
+                        try {
+                            const auto persisted_history =
+                                goldendict::core::LoadHistory(
+                                    history_path.toStdString(), 1U);
+                            const auto persisted_configuration =
+                                goldendict::core::LoadConfiguration(
+                                    configuration_path.toStdString());
+                            passed =
+                                passed && prepared &&
+                                persisted_history.size() == 1U &&
+                                persisted_history.front().word == "Recorded" &&
+                                persisted_configuration.preferences
+                                    .store_history &&
+                                persisted_configuration.preferences
+                                        .maximum_history_entries == 1U;
+                        } catch (...) {
+                            passed = false;
+                        }
+                        app.exit(passed ? 0 : 1);
+                    });
+            });
     } else if (HasArgument(argc, argv, QStringLiteral("--file-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(

@@ -119,6 +119,13 @@ Widgets constructs a complete preferences candidate; the composition root
 validates, recomposes, restores the complete session, atomically persists, and
 then replaces runtime state. Runtime-unbacked legacy preference groups are not
 shown as inert controls.
+The following General/History leaf exposes the existing `store_history` and
+`maximum_history_entries` fields with the pinned defaults and `0..99999`
+range. The composition root owns recording, bounded replacement imports,
+newest-first trimming, persistence, session restoration, and facade
+replacement; the dialog only edits a complete candidate. Disabling recording
+preserves existing entries, while lowering the maximum persists the trimmed
+history before live state is swapped.
 The Phase 8 P4a current-persistence foundation extends that complete candidate
 with ordered, bounded transport-neutral records for MediaWiki, website, Forvo,
 and DICT sources. Stable IDs, names, enabled intent, adapter-compatible URLs,

@@ -712,7 +712,7 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         preferences.words_zoom_level < -10 ||
         preferences.words_zoom_level > 10 ||
         preferences.maximum_network_cache_megabytes > 10240U ||
-        preferences.maximum_history_entries > 1000000U ||
+        preferences.maximum_history_entries > 99999U ||
         preferences.history_store_interval_seconds > 86400U ||
         preferences.favorites_store_interval_seconds > 86400U ||
         preferences.article_size_limit == 0U ||

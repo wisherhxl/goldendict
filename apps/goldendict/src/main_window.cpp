@@ -45,6 +45,7 @@
 #include <QShortcut>
 #include <QSignalBlocker>
 #include <QSizePolicy>
+#include <QSpinBox>
 #include <QTabBar>
 #include <QTabWidget>
 #include <QTimer>
@@ -1476,56 +1477,77 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
     preferences_apply_callback_ = [](const auto&) {
         return QStringLiteral("forced preferences failure");
     };
-    preferences_dialog_executor_ =
-        [&passed, &preference_dialogs](PreferencesDialog& dialog) {
-            ++preference_dialogs;
-            auto* background = dialog.findChild<QCheckBox*>(
-                QStringLiteral("newTabsOpenInBackground"));
-            auto* buttons = dialog.findChild<QDialogButtonBox*>(
-                QStringLiteral("preferencesButtonBox"));
-            passed = passed && background != nullptr && buttons != nullptr;
-            if (background != nullptr)
-                background->setChecked(!background->isChecked());
-            if (buttons != nullptr)
-                buttons->button(QDialogButtonBox::Ok)->click();
-            auto* error = dialog.findChild<QLabel*>(
-                QStringLiteral("preferencesValidationError"));
-            passed = passed && dialog.result() != QDialog::Accepted &&
-                     error != nullptr && !error->isHidden();
-            dialog.reject();
-            return dialog.result();
-        };
+    preferences_dialog_executor_ = [&passed, &preference_dialogs](
+                                       PreferencesDialog& dialog) {
+        ++preference_dialogs;
+        auto* background = dialog.findChild<QCheckBox*>(
+            QStringLiteral("newTabsOpenInBackground"));
+        auto* store_history =
+            dialog.findChild<QCheckBox*>(QStringLiteral("storeHistory"));
+        auto* maximum_history =
+            dialog.findChild<QSpinBox*>(QStringLiteral("historyMaxSizeField"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && background != nullptr && store_history != nullptr &&
+                 maximum_history != nullptr &&
+                 maximum_history->minimum() == 0 &&
+                 maximum_history->maximum() == 99999 &&
+                 maximum_history->isEnabled() && buttons != nullptr;
+        if (background != nullptr)
+            background->setChecked(!background->isChecked());
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        auto* error = dialog.findChild<QLabel*>(
+            QStringLiteral("preferencesValidationError"));
+        passed = passed && dialog.result() != QDialog::Accepted &&
+                 error != nullptr && !error->isHidden();
+        dialog.reject();
+        return dialog.result();
+    };
     preferences_action_->trigger();
     passed = passed && preference_triggers == 2 && preference_dialogs == 2 &&
              preferences_ == initial_preferences;
 
     preferences_apply_callback_ = original_preferences_callback;
-    preferences_dialog_executor_ =
-        [&passed, &preference_dialogs](PreferencesDialog& dialog) {
-            ++preference_dialogs;
-            auto* background = dialog.findChild<QCheckBox*>(
-                QStringLiteral("newTabsOpenInBackground"));
-            auto* after_current = dialog.findChild<QCheckBox*>(
-                QStringLiteral("newTabsOpenAfterCurrentOne"));
-            auto* buttons = dialog.findChild<QDialogButtonBox*>(
-                QStringLiteral("preferencesButtonBox"));
-            passed = passed && background != nullptr &&
-                     after_current != nullptr && buttons != nullptr;
-            if (background != nullptr)
-                background->setChecked(!background->isChecked());
-            if (after_current != nullptr)
-                after_current->setChecked(!after_current->isChecked());
-            if (buttons != nullptr)
-                buttons->button(QDialogButtonBox::Ok)->click();
-            passed = passed && dialog.result() == QDialog::Accepted;
-            return dialog.result();
-        };
+    preferences_dialog_executor_ = [&passed, &preference_dialogs](
+                                       PreferencesDialog& dialog) {
+        ++preference_dialogs;
+        auto* background = dialog.findChild<QCheckBox*>(
+            QStringLiteral("newTabsOpenInBackground"));
+        auto* after_current = dialog.findChild<QCheckBox*>(
+            QStringLiteral("newTabsOpenAfterCurrentOne"));
+        auto* store_history =
+            dialog.findChild<QCheckBox*>(QStringLiteral("storeHistory"));
+        auto* maximum_history =
+            dialog.findChild<QSpinBox*>(QStringLiteral("historyMaxSizeField"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && background != nullptr && after_current != nullptr &&
+                 store_history != nullptr && maximum_history != nullptr &&
+                 buttons != nullptr;
+        if (background != nullptr)
+            background->setChecked(!background->isChecked());
+        if (after_current != nullptr)
+            after_current->setChecked(!after_current->isChecked());
+        if (store_history != nullptr)
+            store_history->setChecked(false);
+        if (maximum_history != nullptr) {
+            passed = passed && maximum_history->isEnabled();
+            maximum_history->setValue(0);
+        }
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        passed = passed && dialog.result() == QDialog::Accepted;
+        return dialog.result();
+    };
     preferences_action_->trigger();
     auto expected_preferences = initial_preferences;
     expected_preferences.open_new_tabs_in_background =
         !expected_preferences.open_new_tabs_in_background;
     expected_preferences.open_new_tabs_after_current =
         !expected_preferences.open_new_tabs_after_current;
+    expected_preferences.store_history = false;
+    expected_preferences.maximum_history_entries = 0U;
     passed = passed && preference_triggers == 3 && preference_dialogs == 3 &&
              preferences_ == expected_preferences &&
              facade_->ExportArticleTabSession() == initial_session;
@@ -1544,6 +1566,65 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
              centralWidget() != nullptr && article_tabs_->isVisible() &&
              article_tabs_->size().width() > 0 &&
              article_tabs_->size().height() > 0 && kMainWindowStateVersion == 7;
+    completion(passed);
+}
+
+void MainWindow::RunHistoryPreferencesSmokeCheck(
+    const QString& import_path, std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || history_list_ == nullptr ||
+        facade_ == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial_session = facade_->ExportArticleTabSession();
+    bool passed = history_list_->count() == 3;
+    const auto apply_history_preferences = [this, &passed](bool store,
+                                                           int maximum) {
+        preferences_dialog_executor_ = [&passed, store,
+                                        maximum](PreferencesDialog& dialog) {
+            auto* store_history =
+                dialog.findChild<QCheckBox*>(QStringLiteral("storeHistory"));
+            auto* maximum_history = dialog.findChild<QSpinBox*>(
+                QStringLiteral("historyMaxSizeField"));
+            auto* buttons = dialog.findChild<QDialogButtonBox*>(
+                QStringLiteral("preferencesButtonBox"));
+            passed = passed && store_history != nullptr &&
+                     maximum_history != nullptr && buttons != nullptr;
+            if (store_history != nullptr)
+                store_history->setChecked(store);
+            if (maximum_history != nullptr)
+                maximum_history->setValue(maximum);
+            if (buttons != nullptr)
+                buttons->button(QDialogButtonBox::Ok)->click();
+            passed = passed && dialog.result() == QDialog::Accepted;
+            return dialog.result();
+        };
+        preferences_action_->trigger();
+        preferences_dialog_executor_ = {};
+    };
+
+    apply_history_preferences(false, 2);
+    passed = passed && !preferences_.store_history &&
+             preferences_.maximum_history_entries == 2U &&
+             history_list_->count() == 2 &&
+             history_list_->item(0)->text() == QStringLiteral("Newest") &&
+             history_list_->item(1)->text() == QStringLiteral("Middle");
+    emit LookupSubmitted(QStringLiteral("Not recorded"), 9U);
+    passed = passed && history_list_->count() == 2 &&
+             history_list_->item(0)->text() == QStringLiteral("Newest");
+
+    emit ImportHistoryRequested(import_path, 7U);
+    passed = passed && history_list_->count() == 2 &&
+             history_list_->item(0)->text() == QStringLiteral("Imported one") &&
+             history_list_->item(1)->text() == QStringLiteral("Imported two");
+
+    apply_history_preferences(true, 1);
+    emit LookupSubmitted(QStringLiteral("Recorded"), 11U);
+    passed = passed && preferences_.store_history &&
+             preferences_.maximum_history_entries == 1U &&
+             history_list_->count() == 1 &&
+             history_list_->item(0)->text() == QStringLiteral("Recorded") &&
+             facade_->ExportArticleTabSession() == initial_session;
     completion(passed);
 }
 

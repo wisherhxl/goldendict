@@ -1016,6 +1016,12 @@ void ApplicationServiceTest::
                              std::runtime_error);
     QCOMPARE(ReadFile(path), original_bytes);
 
+    invalid = original;
+    invalid.preferences.maximum_history_entries = 100000U;
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+
     const std::vector<std::string> malformed = {
         "preference=enable_tray_icon|true\n",
         "preference=open_new_tabs_in_background|true\n",

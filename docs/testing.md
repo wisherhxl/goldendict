@@ -365,6 +365,14 @@ General/Tabs controls. It verifies cancel/no mutation, reentrant exclusion,
 failed apply preservation, successful complete-candidate submission, and
 continued session/layout usability; existing core configuration tests remain
 the source of truth for validation and atomic replacement semantics.
+The General/History extension adds exact offscreen checks for the legacy
+checkbox and always-enabled `0..99999` spin box, cancel/failure preservation,
+and successful complete-candidate application.
+`goldendict_history_preferences_smoke` verifies newest-first trimming, disabled
+future recording, bounded replacement import while recording is disabled,
+re-enabled recording, persisted history/configuration, and an unchanged article
+session. `history_store_test` pins zero, legacy-maximum, and out-of-range import
+limits; configuration tests reject values above the exposed maximum atomically.
 `goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
 History and its sole backed legacy `searchInPageAction`, including exact text,
 role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and

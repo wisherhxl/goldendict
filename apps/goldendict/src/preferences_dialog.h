@@ -12,6 +12,7 @@
 
 class QCheckBox;
 class QLabel;
+class QSpinBox;
 
 class PreferencesDialog final : public QDialog {
     Q_OBJECT
@@ -31,6 +32,8 @@ class PreferencesDialog final : public QDialog {
     ApplyCallback apply_callback_;
     QCheckBox* open_after_current_ = nullptr;
     QCheckBox* open_in_background_ = nullptr;
+    QCheckBox* store_history_ = nullptr;
+    QSpinBox* maximum_history_entries_ = nullptr;
     QLabel* validation_error_ = nullptr;
 };
 

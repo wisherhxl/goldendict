@@ -24,6 +24,7 @@ class HistoryStoreTest : public QObject {
     void RejectsMalformedHistoryWithoutPartialMigration();
     void RejectsTruncatedOversizedAndInvalidUtf8LegacyHistory();
     void ImportsBoundedUtf8Text();
+    void SupportsLegacyZeroAndMaximumLimits();
     void RejectsInvalidTextImport();
 };
 
@@ -128,6 +129,19 @@ void HistoryStoreTest::ImportsBoundedUtf8Text() {
 
     QCOMPARE(ImportHistoryText(path.string(), 2U, 7U),
              (std::vector<HistoryEntry>{{7U, "first"}, {7U, "第二个"}}));
+}
+
+void HistoryStoreTest::SupportsLegacyZeroAndMaximumLimits() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = Path(directory, "history.txt");
+    Write(path, "first\nsecond\n");
+
+    QVERIFY(ImportHistoryText(path.string(), 0U, 7U).empty());
+    QCOMPARE(ImportHistoryText(path.string(), 99999U, 7U).size(),
+             std::size_t{2});
+    QVERIFY_EXCEPTION_THROWN(ImportHistoryText(path.string(), 100000U, 7U),
+                             std::runtime_error);
 }
 
 void HistoryStoreTest::RejectsInvalidTextImport() {

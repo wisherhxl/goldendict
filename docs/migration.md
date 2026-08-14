@@ -637,6 +637,18 @@ history, favorites, and advanced behavior remain independent Phase 8 leaves
 because their current runtime application contracts are absent; Phase 8
 acceptance remains blocked on explicitly approved backed subsets for them.
 
+The next independent Preferences leaf extends General with the pinned History
+group: `Store history` defaults on and `Maximum history size` defaults to 500
+within the legacy `0..99999` range. Disabling storage affects only ordinary
+future lookups; explicit import still replaces history and is bounded by the
+configured maximum. Lowering the maximum immediately removes oldest entries,
+including clearing retained history at zero. Validation, recomposition,
+complete-session restoration, atomic file replacement, rollback on a later
+configuration-save failure, and final facade/presentation replacement remain
+composition-root responsibilities. Cancel and failures preserve prior state.
+Appearance, tray, hotkeys, scan popup, audio, network/proxy, full-text search,
+favorites, and advanced Preferences remain separate Phase 8 leaves.
+
 The next independent Phase 8 menu leaf adds the pinned `menuSearch` identity
 between Edit and History. It exposes only the existing in-article
 `searchInPageAction`, with its legacy text, role, and Ctrl+F shortcut, and
