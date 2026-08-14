@@ -183,6 +183,16 @@ Qt state-version transition accepts the immediately preceding current Qt 6
 dock identities and rewrites them on the next save; it does not accept or
 interpret legacy version-1 state. Search, results, navigation, and dictionary
 shell objects remain prerequisites for legacy opaque-state migration.
+The next shell increment recomposes the existing group selector, query editor,
+lookup split-button, and facade-backed Back/Forward actions into a visible
+legacy-compatible `navToolbar`. Widgets own its top-area default, top/bottom
+movement, control order, focus chain, and query-focus shortcuts; lookup,
+selection, tab targeting, and navigation semantics remain unchanged. The
+private Qt state version advances and transactionally accepts both the
+immediately preceding Qt 6 layout and the older dock-identity transition,
+without accepting legacy version-1 bytes. The article toolbar, dictionary bar,
+results pane, menus, and unsupported navigation actions remain independent
+shell leaves.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,

@@ -37,6 +37,7 @@
 #include <QScreen>
 #include <QShortcut>
 #include <QSignalBlocker>
+#include <QSizePolicy>
 #include <QTabBar>
 #include <QTabWidget>
 #include <QTimer>
@@ -61,8 +62,9 @@
 
 namespace {
 
-constexpr int kMainWindowStateVersion = 3;
-constexpr int kPreviousMainWindowStateVersion = 2;
+constexpr int kMainWindowStateVersion = 4;
+constexpr int kPreviousMainWindowStateVersion = 3;
+constexpr int kOlderMainWindowStateVersion = 2;
 constexpr qsizetype kMaximumMainWindowStateBytes = 64 * 1024;
 constexpr auto kHistoryPaneName = "historyPane";
 constexpr auto kFavoritesPaneName = "favoritesPane";
@@ -95,8 +97,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         new QPushButton(QStringLiteral("Edit Groups..."), central);
     edit_groups_button_->setObjectName(QStringLiteral("editGroupsButton"));
     query_ = new QLineEdit(central);
+    query_->setObjectName(QStringLiteral("translateLine"));
     query_->setPlaceholderText(QStringLiteral("Enter a word"));
+    query_->setMinimumWidth(200);
     lookup_button_ = new QToolButton(central);
+    lookup_button_->setObjectName(QStringLiteral("lookupButton"));
     lookup_button_->setText(QStringLiteral("Lookup"));
     lookup_button_->setPopupMode(QToolButton::MenuButtonPopup);
     auto* lookup_menu = new QMenu(lookup_button_);
@@ -106,10 +111,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         lookup_menu->addAction(QStringLiteral("Lookup in Background Tab"));
     lookup_button_->setMenu(lookup_menu);
     controls->addWidget(directory_button);
-    controls->addWidget(group_selector_);
     controls->addWidget(edit_groups_button_);
-    controls->addWidget(query_, 1);
-    controls->addWidget(lookup_button_);
+    controls->addStretch();
     layout->addLayout(controls);
 
     status_ = new QLabel(QStringLiteral("No dictionary configured"), central);
@@ -183,12 +186,47 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     favorites_dock->setWidget(favorites_tree_);
     ApplyDefaultPaneLayout();
 
+    auto* nav_toolbar = addToolBar(QStringLiteral("&Navigation"));
+    nav_toolbar->setObjectName(QStringLiteral("navToolbar"));
+    nav_toolbar->setAllowedAreas(Qt::TopToolBarArea | Qt::BottomToolBarArea);
+    back_action_ = nav_toolbar->addAction(QStringLiteral("Back"));
+    back_action_->setShortcut(QKeySequence::Back);
+    nav_toolbar->widgetForAction(back_action_)
+        ->setObjectName(QStringLiteral("backButton"));
+    forward_action_ = nav_toolbar->addAction(QStringLiteral("Forward"));
+    forward_action_->setShortcut(QKeySequence::Forward);
+    nav_toolbar->widgetForAction(forward_action_)
+        ->setObjectName(QStringLiteral("forwardButton"));
+    auto* lookup_controls = new QWidget(nav_toolbar);
+    auto* lookup_layout = new QHBoxLayout(lookup_controls);
+    lookup_layout->setContentsMargins(0, 0, 0, 0);
+    lookup_layout->setSpacing(0);
+    group_selector_->setParent(lookup_controls);
+    query_->setParent(lookup_controls);
+    lookup_button_->setParent(lookup_controls);
+    group_selector_->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    lookup_layout->addWidget(group_selector_);
+    lookup_layout->addWidget(query_, 1);
+    lookup_layout->addWidget(lookup_button_);
+    lookup_controls->setSizePolicy(QSizePolicy::Expanding,
+                                   QSizePolicy::Preferred);
+    nav_toolbar->addWidget(lookup_controls);
+    setTabOrder(group_selector_, query_);
+    setTabOrder(query_, lookup_button_);
+
+    auto* focus_query_action = new QAction(this);
+    focus_query_action->setShortcuts({QKeySequence(QStringLiteral("Alt+D")),
+                                      QKeySequence(QStringLiteral("Ctrl+L"))});
+    focus_query_action->setShortcutContext(Qt::WindowShortcut);
+    addAction(focus_query_action);
+    connect(focus_query_action, &QAction::triggered, query_, [this]() {
+        query_->setFocus();
+        query_->selectAll();
+    });
+
     auto* article_toolbar = addToolBar(QStringLiteral("Article"));
     article_toolbar->setObjectName(QStringLiteral("articleToolbar"));
-    back_action_ = article_toolbar->addAction(QStringLiteral("Back"));
-    back_action_->setShortcut(QKeySequence::Back);
-    forward_action_ = article_toolbar->addAction(QStringLiteral("Forward"));
-    forward_action_->setShortcut(QKeySequence::Forward);
+    insertToolBar(article_toolbar, nav_toolbar);
     auto* reload_action = article_toolbar->addAction(QStringLiteral("Reload"));
     reload_action->setShortcut(QKeySequence::Refresh);
     article_toolbar->addSeparator();
@@ -643,12 +681,60 @@ void MainWindow::RunArticleTabsSmokeCheck(
         findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     auto* article_toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
+    auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
+    auto* back_button = findChild<QWidget*>(QStringLiteral("backButton"));
+    auto* forward_button = findChild<QWidget*>(QStringLiteral("forwardButton"));
     if (history_dock == nullptr || favorites_dock == nullptr ||
-        article_toolbar == nullptr) {
+        article_toolbar == nullptr || nav_toolbar == nullptr ||
+        back_button == nullptr || forward_button == nullptr) {
         completion(false);
         return;
     }
     ApplyDefaultPaneLayout();
+    const auto nav_actions = nav_toolbar->actions();
+    const auto top_level_toolbars =
+        findChildren<QToolBar*>(QString(), Qt::FindDirectChildrenOnly);
+    const bool toolbar_order =
+        top_level_toolbars.indexOf(nav_toolbar) >= 0 &&
+        top_level_toolbars.indexOf(article_toolbar) >= 0 &&
+        top_level_toolbars.indexOf(nav_toolbar) <
+            top_level_toolbars.indexOf(article_toolbar);
+    const bool default_navigation_toolbar =
+        findChildren<QToolBar*>(QStringLiteral("navToolbar")).size() == 1 &&
+        toolBarArea(nav_toolbar) == Qt::TopToolBarArea &&
+        toolBarArea(article_toolbar) == Qt::TopToolBarArea && toolbar_order &&
+        nav_toolbar->isVisible() && nav_toolbar->isMovable() &&
+        nav_toolbar->isFloatable() &&
+        nav_toolbar->allowedAreas() ==
+            (Qt::TopToolBarArea | Qt::BottomToolBarArea) &&
+        nav_actions.size() == 3 && nav_actions[0] == back_action_ &&
+        nav_actions[1] == forward_action_ &&
+        nav_toolbar->widgetForAction(nav_actions[0]) == back_button &&
+        nav_toolbar->widgetForAction(nav_actions[1]) == forward_button &&
+        group_selector_->parentWidget() == query_->parentWidget() &&
+        query_->parentWidget() == lookup_button_->parentWidget() &&
+        query_->parentWidget()->parentWidget() == nav_toolbar &&
+        group_selector_->objectName() == QStringLiteral("groupSelector") &&
+        query_->objectName() == QStringLiteral("translateLine") &&
+        lookup_button_->objectName() == QStringLiteral("lookupButton") &&
+        query_->minimumWidth() >= 200 &&
+        group_selector_->nextInFocusChain() == query_ &&
+        query_->nextInFocusChain() == lookup_button_;
+    query_->setText(QStringLiteral("focus selection"));
+    bool focus_shortcuts = false;
+    for (auto* action : actions()) {
+        if (action->shortcuts().contains(
+                QKeySequence(QStringLiteral("Ctrl+L")))) {
+            action->trigger();
+            QApplication::processEvents();
+            focus_shortcuts = query_->focusPolicy() != Qt::NoFocus &&
+                              query_->selectedText() == query_->text() &&
+                              action->shortcuts().contains(
+                                  QKeySequence(QStringLiteral("Alt+D")));
+            break;
+        }
+    }
+    query_->clear();
     const bool default_shell =
         findChildren<QDockWidget*>(QString::fromLatin1(kHistoryPaneName))
                 .size() == 1 &&
@@ -677,17 +763,24 @@ void MainWindow::RunArticleTabsSmokeCheck(
                                 history_dock->isVisible() &&
                                 favorites_dock->isVisible();
     const std::string default_state = CaptureMainWindowState();
+    nav_toolbar->setObjectName(
+        QStringLiteral("preNavigationToolbarPlaceholder"));
+    const QByteArray previous_current_state =
+        saveState(kPreviousMainWindowStateVersion);
+    nav_toolbar->setObjectName(QStringLiteral("navToolbar"));
     history_dock->setObjectName(QString::fromLatin1(kPreviousHistoryDockName));
     favorites_dock->setObjectName(
         QString::fromLatin1(kPreviousFavoritesDockName));
-    const QByteArray previous_current_state =
-        saveState(kPreviousMainWindowStateVersion);
+    const QByteArray older_current_state =
+        saveState(kOlderMainWindowStateVersion);
     history_dock->setObjectName(QString::fromLatin1(kHistoryPaneName));
     favorites_dock->setObjectName(QString::fromLatin1(kFavoritesPaneName));
     addDockWidget(Qt::BottomDockWidgetArea, history_dock);
     addDockWidget(Qt::RightDockWidgetArea, favorites_dock);
     addToolBar(Qt::BottomToolBarArea, article_toolbar);
+    addToolBar(Qt::BottomToolBarArea, nav_toolbar);
     favorites_dock->hide();
+    nav_toolbar->hide();
     const std::string changed_state = CaptureMainWindowState();
     const bool reset_state = RestoreMainWindowState(default_state);
     const bool restored_state =
@@ -695,14 +788,24 @@ void MainWindow::RunArticleTabsSmokeCheck(
         dockWidgetArea(history_dock) == Qt::BottomDockWidgetArea &&
         dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
         toolBarArea(article_toolbar) == Qt::BottomToolBarArea &&
-        !favorites_dock->isVisible();
+        toolBarArea(nav_toolbar) == Qt::BottomToolBarArea &&
+        !favorites_dock->isVisible() && !nav_toolbar->isVisible();
     const bool restored_previous_current_state =
         RestoreMainWindowState(
             {previous_current_state.constData(),
              static_cast<std::size_t>(previous_current_state.size())}) &&
         dockWidgetArea(history_dock) == Qt::RightDockWidgetArea &&
         dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
-        history_dock->isVisible() && favorites_dock->isVisible();
+        history_dock->isVisible() && favorites_dock->isVisible() &&
+        toolBarArea(nav_toolbar) == Qt::TopToolBarArea;
+    const bool restored_older_current_state =
+        RestoreMainWindowState(
+            {older_current_state.constData(),
+             static_cast<std::size_t>(older_current_state.size())}) &&
+        dockWidgetArea(history_dock) == Qt::RightDockWidgetArea &&
+        dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
+        history_dock->isVisible() && favorites_dock->isVisible() &&
+        toolBarArea(nav_toolbar) == Qt::TopToolBarArea;
     const std::string before_bad_state = CaptureMainWindowState();
     const QByteArray incompatible_state = saveState(1);
     const bool rejected_state =
@@ -725,18 +828,21 @@ void MainWindow::RunArticleTabsSmokeCheck(
         topology_restored ? HasUsableMainWindowLayout()
                           : CaptureMainWindowState() == before_unreachable;
     const bool final_default = RestoreMainWindowState(default_state);
-    bool passed = article_tabs_->count() == 1 &&
-                  facade_->GetArticleTabsState().tabs.size() == 1U &&
-                  restored_geometry && rejected_geometry && default_shell &&
-                  toggle_actions && reset_state && restored_state &&
-                  restored_previous_current_state && rejected_state &&
-                  topology_safe && final_default;
+    bool passed =
+        article_tabs_->count() == 1 &&
+        facade_->GetArticleTabsState().tabs.size() == 1U && restored_geometry &&
+        rejected_geometry && default_shell && default_navigation_toolbar &&
+        focus_shortcuts && toggle_actions && reset_state && restored_state &&
+        restored_previous_current_state && rejected_state &&
+        restored_older_current_state && topology_safe && final_default;
     if (!passed) {
         qWarning() << "shell state check failed" << restored_geometry
                    << rejected_geometry << default_shell << toggle_actions
+                   << default_navigation_toolbar << focus_shortcuts
                    << reset_state << restored_state
                    << restored_previous_current_state << rejected_state
-                   << topology_safe << final_default;
+                   << restored_older_current_state << topology_safe
+                   << final_default;
     }
     query_->setText(QStringLiteral("application"));
     SelectGroup(0U);
@@ -1010,8 +1116,9 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
         findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     auto* article_toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
+    auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
     if (history_dock == nullptr || favorites_dock == nullptr ||
-        article_toolbar == nullptr) {
+        article_toolbar == nullptr || nav_toolbar == nullptr) {
         completion(false);
         return;
     }
@@ -1025,6 +1132,7 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
         addDockWidget(Qt::BottomDockWidgetArea, history_dock);
         addDockWidget(Qt::RightDockWidgetArea, favorites_dock);
         addToolBar(Qt::BottomToolBarArea, article_toolbar);
+        addToolBar(Qt::BottomToolBarArea, nav_toolbar);
         favorites_dock->hide();
         emit ArticleTabSessionMutated();
         completion(true);
@@ -1037,7 +1145,8 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
                   dockWidgetArea(history_dock) == Qt::BottomDockWidgetArea &&
                   dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
                   toolBarArea(article_toolbar) == Qt::BottomToolBarArea &&
-                  !favorites_dock->isVisible();
+                  toolBarArea(nav_toolbar) == Qt::BottomToolBarArea &&
+                  nav_toolbar->isVisible() && !favorites_dock->isVisible();
     auto poll = std::make_shared<std::function<void()>>();
     *poll = [this, passed, completion = std::move(completion), poll]() mutable {
         FinishLookup();
@@ -2078,16 +2187,26 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
+    auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
+    if (nav_toolbar != nullptr)
+        addToolBar(Qt::TopToolBarArea, nav_toolbar);
+    if (restoreState(encoded, kPreviousMainWindowStateVersion) &&
+        HasUsableMainWindowLayout()) {
+        return true;
+    }
+    restoreState(previous, kMainWindowStateVersion);
     auto* history =
         findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
     auto* favorites =
         findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     if (history != nullptr && favorites != nullptr) {
+        if (nav_toolbar != nullptr)
+            addToolBar(Qt::TopToolBarArea, nav_toolbar);
         history->setObjectName(QString::fromLatin1(kPreviousHistoryDockName));
         favorites->setObjectName(
             QString::fromLatin1(kPreviousFavoritesDockName));
         const bool restored_previous =
-            restoreState(encoded, kPreviousMainWindowStateVersion);
+            restoreState(encoded, kOlderMainWindowStateVersion);
         history->setObjectName(QString::fromLatin1(kHistoryPaneName));
         favorites->setObjectName(QString::fromLatin1(kFavoritesPaneName));
         const bool previous_usable = HasUsableMainWindowLayout();
@@ -2124,9 +2243,12 @@ bool MainWindow::HasUsableMainWindowLayout() const {
         findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
     const auto* favorites =
         findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
-    const auto* toolbar =
+    const auto* article_toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
-    if (history == nullptr || favorites == nullptr || toolbar == nullptr ||
+    const auto* nav_toolbar =
+        findChild<QToolBar*>(QStringLiteral("navToolbar"));
+    if (history == nullptr || favorites == nullptr ||
+        article_toolbar == nullptr || nav_toolbar == nullptr ||
         centralWidget() == nullptr || article_tabs_ == nullptr ||
         article_tabs_->isHidden()) {
         return false;
@@ -2144,7 +2266,7 @@ bool MainWindow::HasUsableMainWindowLayout() const {
         return false;
     };
     return intersects_screen(history) && intersects_screen(favorites) &&
-           intersects_screen(toolbar);
+           intersects_screen(article_toolbar) && intersects_screen(nav_toolbar);
 }
 
 void MainWindow::ShowDictionaryBrowser() {

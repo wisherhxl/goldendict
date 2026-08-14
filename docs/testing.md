@@ -301,6 +301,13 @@ non-tabification, real child widgets, toggle actions, and usable central article
 content. They also verify transactional restoration of state captured by the
 immediately preceding current Qt 6 dock identities without admitting pinned
 legacy version-1 state.
+They also pin the unique `navToolbar` identity, top-area default and ordering,
+top/bottom movement policy, Back/Forward/group/query/lookup control order and
+parentage, focus chain, minimum query usability, Alt+D/Ctrl+L focus behavior,
+and backed lookup/navigation workflows. State coverage includes the new
+version round trip, the immediately preceding Qt 6 layout, the older dock-name
+transition, malformed and unreachable rollback, and two-start toolbar
+placement and visibility without admitting legacy version-1 bytes.
 
 `goldendict_article_context_menu_smoke` verifies the application-private menu
 model without opening a real popup. It covers resolved internal links,

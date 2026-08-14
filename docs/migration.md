@@ -520,6 +520,17 @@ while transactionally accepting the immediately preceding `favoritesDock` and
 Search and results panes, navigation and dictionary toolbars, menus, and final
 legacy state import remain separate unlabelled Phase 8 leaves.
 
+The following unlabelled Phase 8 shell increment adds the pinned `navToolbar`
+hierarchy for the existing Back, Forward, group, query, and lookup controls.
+It preserves their real facade-backed workflows, deterministic order, usable
+expanding query input, and Alt+D/Ctrl+L query focus while constraining movement
+to the legacy-compatible top and bottom areas. The private current Qt state
+version advances transactionally through the immediately preceding layout and
+the older dock-identity transition; version-1 legacy bytes remain excluded.
+Results navigation, `dictionaryBar`, menus, pronunciation, scan controls, the
+remaining article toolbar audit, and final legacy state import remain separate
+unlabelled Phase 8 leaves.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,
