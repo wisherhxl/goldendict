@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <QApplication>
+#include <QCheckBox>
 #include <QClipboard>
 #include <QComboBox>
 #include <QDesktopServices>
@@ -76,6 +77,27 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
     source_actions->addStretch(1);
     layout->addLayout(source_actions);
 
+    auto* filter_controls = new QHBoxLayout();
+    filter_mode_ = new QComboBox(this);
+    filter_mode_->setObjectName(QStringLiteral("headwordFilterMode"));
+    filter_mode_->addItem(
+        QStringLiteral("Prefix"),
+        static_cast<int>(goldendict::core::HeadwordFilterMode::kPrefix));
+    filter_mode_->addItem(
+        QStringLiteral("Wildcards"),
+        static_cast<int>(goldendict::core::HeadwordFilterMode::kWildcard));
+    filter_mode_->addItem(
+        QStringLiteral("Regular expression"),
+        static_cast<int>(
+            goldendict::core::HeadwordFilterMode::kRegularExpression));
+    match_case_ = new QCheckBox(QStringLiteral("Match case"), this);
+    match_case_->setObjectName(QStringLiteral("headwordMatchCase"));
+    match_case_->setEnabled(false);
+    filter_controls->addWidget(filter_mode_);
+    filter_controls->addWidget(match_case_);
+    filter_controls->addStretch(1);
+    layout->addLayout(filter_controls);
+
     prefix_ = new QLineEdit(this);
     prefix_->setObjectName(QStringLiteral("headwordPrefix"));
     prefix_->setPlaceholderText(QStringLiteral("Enter a headword prefix"));
@@ -101,6 +123,22 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
                 RefreshHeadwords();
             });
     connect(prefix_, &QLineEdit::textChanged, this,
+            &DictionaryBrowser::RefreshHeadwords);
+    connect(filter_mode_, qOverload<int>(&QComboBox::currentIndexChanged), this,
+            [this]() {
+                const auto mode =
+                    static_cast<goldendict::core::HeadwordFilterMode>(
+                        filter_mode_->currentData().toInt());
+                match_case_->setEnabled(
+                    mode != goldendict::core::HeadwordFilterMode::kPrefix);
+                prefix_->setPlaceholderText(
+                    mode == goldendict::core::HeadwordFilterMode::kPrefix
+                        ? QStringLiteral("Enter a headword prefix")
+                        : QStringLiteral(
+                              "Enter a pattern with a leading literal prefix"));
+                RefreshHeadwords();
+            });
+    connect(match_case_, &QCheckBox::toggled, this,
             &DictionaryBrowser::RefreshHeadwords);
     connect(headwords_, &QListWidget::itemActivated, this,
             [this](const QListWidgetItem* item) {
@@ -166,7 +204,7 @@ void DictionaryBrowser::RunSmokeCheck(const QString& expected_dictionary,
     prefix_->setText(prefix);
     QTimer::singleShot(
         0, this,
-        [this, expected_dictionary, expected_headword,
+        [this, expected_dictionary, prefix, expected_headword,
          completion = std::move(completion)]() mutable {
             const auto matches =
                 headwords_->findItems(expected_headword, Qt::MatchFixedString);
@@ -184,8 +222,30 @@ void DictionaryBrowser::RunSmokeCheck(const QString& expected_dictionary,
                 completion(false);
                 return;
             }
-            emit HeadwordSelected(matches.front()->text());
-            completion(true);
+            headwords_->setCurrentItem(matches.front());
+            filter_mode_->setCurrentIndex(1);
+            prefix_->setText(QStringLiteral("app*"));
+            const bool wildcard_passed =
+                match_case_->isEnabled() && headwords_->count() == 2 &&
+                headwords_->currentItem() != nullptr &&
+                headwords_->currentItem()->text() == expected_headword;
+            filter_mode_->setCurrentIndex(2);
+            prefix_->setText(QStringLiteral("app(?:le|lication)"));
+            const bool regex_passed = headwords_->count() == 2;
+            prefix_->setText(QStringLiteral("app("));
+            const bool invalid_passed = headwords_->count() == 0 &&
+                                        !export_headwords_->isEnabled() &&
+                                        !result_status_->text().isEmpty();
+            filter_mode_->setCurrentIndex(0);
+            prefix_->setText(prefix);
+            const auto restored =
+                headwords_->findItems(expected_headword, Qt::MatchFixedString);
+            if (restored.size() != 1) {
+                completion(false);
+                return;
+            }
+            emit HeadwordSelected(restored.front()->text());
+            completion(wildcard_passed && regex_passed && invalid_passed);
         });
 }
 
@@ -236,17 +296,27 @@ QString DictionaryBrowser::CurrentSourceDirectory() const {
 }
 
 void DictionaryBrowser::RefreshHeadwords() {
+    const QString selected_headword = headwords_->currentItem() == nullptr
+                                          ? QString()
+                                          : headwords_->currentItem()->text();
     headwords_->clear();
     export_headwords_->setEnabled(false);
     const int index = dictionaries_->currentIndex();
-    const QString prefix = prefix_->text().trimmed();
+    const auto mode = static_cast<goldendict::core::HeadwordFilterMode>(
+        filter_mode_->currentData().toInt());
+    const QString prefix = mode == goldendict::core::HeadwordFilterMode::kPrefix
+                               ? prefix_->text().trimmed()
+                               : prefix_->text();
     if (facade_ == nullptr || index < 0 ||
         static_cast<std::size_t>(index) >= catalog_.size()) {
         result_status_->setText(QStringLiteral("No dictionary selected"));
         return;
     }
     if (prefix.isEmpty()) {
-        result_status_->setText(QStringLiteral("Enter a prefix to browse"));
+        result_status_->setText(
+            mode == goldendict::core::HeadwordFilterMode::kPrefix
+                ? QStringLiteral("Enter a prefix to browse")
+                : QStringLiteral("Enter a pattern to filter"));
         return;
     }
 
@@ -254,6 +324,8 @@ void DictionaryBrowser::RefreshHeadwords() {
     query.text = prefix.toStdString();
     query.dictionary_ids = {catalog_[static_cast<std::size_t>(index)].id};
     query.result_limit = 100U;
+    query.filter_mode = mode;
+    query.match_case = match_case_->isChecked();
     const auto response = facade_->GetDictionaryService().Suggest(query);
     for (const auto& suggestion : response.suggestions) {
         headwords_->addItem(QString::fromStdString(suggestion.headword));
@@ -264,6 +336,13 @@ void DictionaryBrowser::RefreshHeadwords() {
         return;
     }
     export_headwords_->setEnabled(headwords_->count() > 0);
+    if (!selected_headword.isEmpty()) {
+        const auto retained =
+            headwords_->findItems(selected_headword, Qt::MatchFixedString);
+        if (!retained.empty()) {
+            headwords_->setCurrentItem(retained.front());
+        }
+    }
     result_status_->setText(
         tr("%1 headword(s); at most 100 shown")
             .arg(static_cast<qulonglong>(response.suggestions.size())));

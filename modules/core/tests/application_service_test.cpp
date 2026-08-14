@@ -64,6 +64,9 @@ class ApplicationServiceTest : public QObject {
     void ReturnsCanonicalFoldedMatchInformation();
     void ReturnsRankedPrefixMatches();
     void ReturnsLightweightHeadwordSuggestions();
+    void FiltersBoundedHeadwordSuggestionsWithWildcards();
+    void FiltersBoundedHeadwordSuggestionsWithRegularExpressions();
+    void RejectsInvalidOrUnseededHeadwordPatterns();
     void RanksSuggestionsAcrossDictionaries();
     void AppliesResolvedDictionaryGroupsConsistently();
     void DiscoversAndQueriesDictdAlongsideStardict();
@@ -1659,6 +1662,109 @@ void ApplicationServiceTest::ReturnsLightweightHeadwordSuggestions() {
     QCOMPARE(unavailable.errors.size(), std::size_t{1});
     QCOMPARE(unavailable.errors.front().code,
              LookupErrorCode::kDictionaryUnavailable);
+}
+
+void ApplicationServiceTest::FiltersBoundedHeadwordSuggestionsWithWildcards() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteStardictFixture(root, {{"Cafeteria", "long article"},
+                                      {"caf\xc3\xa9 noir", "medium article"},
+                                      {"Caf\xc3\xa9", "exact article"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    SuggestionQuery query;
+    query.text = "caf*noir";
+    query.filter_mode = HeadwordFilterMode::kWildcard;
+    query.result_limit = 100U;
+
+    const auto response = service->Suggest(query);
+
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.suggestions.size(), std::size_t{1});
+    QCOMPARE(response.suggestions.front().headword, "caf\xc3\xa9 noir");
+
+    query.text = "caf?";
+    const auto single_character = service->Suggest(query);
+    QVERIFY(single_character.errors.empty());
+    QCOMPARE(single_character.suggestions.size(), std::size_t{3});
+    QCOMPARE(single_character.suggestions.front().headword, "Caf\xc3\xa9");
+}
+
+void ApplicationServiceTest::
+    FiltersBoundedHeadwordSuggestionsWithRegularExpressions() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteStardictFixture(root, {{"Cafeteria", "long article"},
+                                      {"caf\xc3\xa9 noir", "medium article"},
+                                      {"Caf\xc3\xa9", "exact article"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    SuggestionQuery query;
+    query.text = "^caf(?:eteria|\xc3\xa9)$";
+    query.filter_mode = HeadwordFilterMode::kRegularExpression;
+    query.result_limit = 100U;
+
+    const auto response = service->Suggest(query);
+
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.suggestions.size(), std::size_t{2});
+    QCOMPARE(response.suggestions[0].headword, "Caf\xc3\xa9");
+    QCOMPARE(response.suggestions[1].headword, "Cafeteria");
+
+    query.text = "^caf.*";
+    query.match_case = true;
+    const auto case_sensitive = service->Suggest(query);
+    QVERIFY(case_sensitive.errors.empty());
+    QCOMPARE(case_sensitive.suggestions.size(), std::size_t{1});
+    QCOMPARE(case_sensitive.suggestions.front().headword, "caf\xc3\xa9 noir");
+}
+
+void ApplicationServiceTest::RejectsInvalidOrUnseededHeadwordPatterns() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteStardictFixture(root, {{"example", "article"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    SuggestionQuery query;
+    query.text = ".*ample";
+    query.filter_mode = HeadwordFilterMode::kRegularExpression;
+
+    const auto unseeded = service->Suggest(query);
+    QVERIFY(unseeded.suggestions.empty());
+    QCOMPARE(unseeded.errors.size(), std::size_t{1});
+    QCOMPARE(unseeded.errors.front().code, LookupErrorCode::kInvalidQuery);
+
+    query.text = "example(";
+    const auto invalid = service->Suggest(query);
+    QVERIFY(invalid.suggestions.empty());
+    QCOMPARE(invalid.errors.size(), std::size_t{1});
+    QCOMPARE(invalid.errors.front().code, LookupErrorCode::kInvalidQuery);
+
+    query.filter_mode = HeadwordFilterMode::kWildcard;
+    query.text = "*ample";
+    const auto wildcard = service->Suggest(query);
+    QVERIFY(wildcard.suggestions.empty());
+    QCOMPARE(wildcard.errors.size(), std::size_t{1});
+    QCOMPARE(wildcard.errors.front().code, LookupErrorCode::kInvalidQuery);
+
+    query.text = std::string(kMaximumHeadwordPatternBytes + 1U, 'a');
+    const auto oversized = service->Suggest(query);
+    QVERIFY(oversized.suggestions.empty());
+    QCOMPARE(oversized.errors.size(), std::size_t{1});
+    QCOMPARE(oversized.errors.front().code, LookupErrorCode::kInvalidQuery);
+
+    query.text = "example*";
+    query.filter_mode = static_cast<HeadwordFilterMode>(99);
+    const auto invalid_mode = service->Suggest(query);
+    QVERIFY(invalid_mode.suggestions.empty());
+    QCOMPARE(invalid_mode.errors.size(), std::size_t{1});
+    QCOMPARE(invalid_mode.errors.front().code, LookupErrorCode::kInvalidQuery);
 }
 
 void ApplicationServiceTest::RanksSuggestionsAcrossDictionaries() {

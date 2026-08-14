@@ -18,6 +18,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+
 #include "../article/article_assembler.h"
 #include "../dictionary/dictionary_backend.h"
 #include "../formats/aard/aard_dictionary.h"
@@ -67,6 +70,192 @@ class CancellationAdapter final : public dictionary::CancellationSignal {
 
    private:
     const CancellationToken* token_;
+};
+
+constexpr std::uint32_t kRegexMatchLimit = 10000U;
+constexpr std::uint32_t kRegexDepthLimit = 100U;
+constexpr std::uint32_t kRegexHeapLimitKiB = 256U;
+
+std::optional<std::string> WildcardPrefix(std::string_view pattern) {
+    std::string prefix;
+    bool escaped = false;
+    for (const char character : pattern) {
+        if (escaped) {
+            if (character == '*' || character == '?' || character == '[' ||
+                character == ']' || character == '\\') {
+                prefix.push_back(character);
+            } else {
+                prefix.push_back('\\');
+                prefix.push_back(character);
+            }
+            escaped = false;
+            continue;
+        }
+        if (character == '\\') {
+            escaped = true;
+            continue;
+        }
+        if (character == '*' || character == '?' || character == '[') {
+            break;
+        }
+        prefix.push_back(character);
+    }
+    if (escaped) {
+        prefix.push_back('\\');
+    }
+    return prefix.empty() ? std::nullopt
+                          : std::optional<std::string>(std::move(prefix));
+}
+
+std::optional<std::string> RegexPrefix(std::string_view pattern) {
+    std::string prefix;
+    std::size_t index = !pattern.empty() && pattern.front() == '^' ? 1U : 0U;
+    while (index < pattern.size()) {
+        const char character = pattern[index++];
+        if (character == '\\') {
+            if (index >= pattern.size()) {
+                break;
+            }
+            const char escaped = pattern[index++];
+            if (escaped == '.' || escaped == '^' || escaped == '$' ||
+                escaped == '*' || escaped == '+' || escaped == '?' ||
+                escaped == '(' || escaped == ')' || escaped == '[' ||
+                escaped == ']' || escaped == '{' || escaped == '}' ||
+                escaped == '|' || escaped == '\\') {
+                prefix.push_back(escaped);
+                continue;
+            }
+            break;
+        }
+        if (character == '.' || character == '^' || character == '$' ||
+            character == '*' || character == '+' || character == '?' ||
+            character == '(' || character == '[' || character == '{' ||
+            character == '|') {
+            break;
+        }
+        prefix.push_back(character);
+    }
+    return prefix.empty() ? std::nullopt
+                          : std::optional<std::string>(std::move(prefix));
+}
+
+std::string WildcardToRegex(std::string_view wildcard) {
+    std::string regex;
+    bool escaped = false;
+    for (std::size_t index = 0U; index < wildcard.size(); ++index) {
+        const char character = wildcard[index];
+        if (escaped) {
+            if (character == '*' || character == '?' || character == '[' ||
+                character == ']' || character == '\\') {
+                regex.push_back('\\');
+                regex.push_back(character);
+            } else {
+                regex.append("\\\\");
+                regex.push_back(character);
+            }
+            escaped = false;
+            continue;
+        }
+        if (character == '\\') {
+            escaped = true;
+        } else if (character == '*') {
+            regex.append(".*");
+        } else if (character == '?') {
+            regex.push_back('.');
+        } else if (character == '[') {
+            const auto closing = wildcard.find(']', index + 1U);
+            if (closing == std::string_view::npos) {
+                regex.append("\\[");
+            } else {
+                regex.push_back('[');
+                ++index;
+                if (index < closing && wildcard[index] == '!') {
+                    regex.push_back('^');
+                    ++index;
+                }
+                for (; index < closing; ++index) {
+                    regex.push_back(wildcard[index]);
+                }
+                regex.push_back(']');
+            }
+        } else {
+            if (character == '.' || character == '^' || character == '$' ||
+                character == '+' || character == '(' || character == ')' ||
+                character == '{' || character == '}' || character == '|') {
+                regex.push_back('\\');
+            }
+            regex.push_back(character);
+        }
+    }
+    if (escaped) {
+        regex.append("\\\\");
+    }
+    return regex;
+}
+
+class CompiledHeadwordPattern final {
+   public:
+    CompiledHeadwordPattern(std::string pattern, bool match_case) {
+        int error_code = 0;
+        PCRE2_SIZE error_offset = 0U;
+        const std::uint32_t options =
+            PCRE2_UTF | PCRE2_UCP | (match_case ? 0U : PCRE2_CASELESS);
+        code_.reset(pcre2_compile(reinterpret_cast<PCRE2_SPTR>(pattern.data()),
+                                  pattern.size(), options, &error_code,
+                                  &error_offset, nullptr));
+        if (code_ == nullptr) {
+            PCRE2_UCHAR message[128] = {};
+            pcre2_get_error_message(error_code, message, sizeof(message));
+            error_ = "Invalid pattern at byte " +
+                     std::to_string(static_cast<std::size_t>(error_offset)) +
+                     ": " + reinterpret_cast<const char*>(message);
+            return;
+        }
+        context_.reset(pcre2_match_context_create(nullptr));
+        if (context_ == nullptr ||
+            pcre2_set_match_limit(context_.get(), kRegexMatchLimit) != 0 ||
+            pcre2_set_depth_limit(context_.get(), kRegexDepthLimit) != 0 ||
+            pcre2_set_heap_limit(context_.get(), kRegexHeapLimitKiB) != 0) {
+            error_ = "Could not initialize bounded regular expression matching";
+        }
+    }
+
+    const std::string& error() const noexcept { return error_; }
+
+    bool Matches(std::string_view subject, std::string* error) const {
+        if (subject.size() > kMaximumLookupTextBytes) {
+            *error = "Headword exceeds the regular-expression subject bound";
+            return false;
+        }
+        using MatchData =
+            std::unique_ptr<pcre2_match_data, decltype(&pcre2_match_data_free)>;
+        MatchData data(
+            pcre2_match_data_create_from_pattern(code_.get(), nullptr),
+            &pcre2_match_data_free);
+        if (data == nullptr) {
+            *error = "Could not allocate bounded regular expression state";
+            return false;
+        }
+        const int result = pcre2_match(
+            code_.get(), reinterpret_cast<PCRE2_SPTR>(subject.data()),
+            subject.size(), 0U, 0U, data.get(), context_.get());
+        if (result >= 0) {
+            return true;
+        }
+        if (result == PCRE2_ERROR_NOMATCH) {
+            return false;
+        }
+        *error = "Regular expression exceeded its resource limits";
+        return false;
+    }
+
+   private:
+    using Code = std::unique_ptr<pcre2_code, decltype(&pcre2_code_free)>;
+    using Context = std::unique_ptr<pcre2_match_context,
+                                    decltype(&pcre2_match_context_free)>;
+    Code code_{nullptr, &pcre2_code_free};
+    Context context_{nullptr, &pcre2_match_context_free};
+    std::string error_;
 };
 
 std::string StableId(std::string_view format,
@@ -227,6 +416,15 @@ std::optional<std::string> ValidateQuery(const SuggestionQuery& query) {
         query.text.find('\0') != std::string::npos ||
         !foundation::IsValidUtf8(query.text)) {
         return "Suggestion text exceeds the UTF-8 input bounds";
+    }
+    if (query.filter_mode != HeadwordFilterMode::kPrefix &&
+        query.text.size() > kMaximumHeadwordPatternBytes) {
+        return "Headword pattern exceeds the 256-byte input bound";
+    }
+    if (query.filter_mode != HeadwordFilterMode::kPrefix &&
+        query.filter_mode != HeadwordFilterMode::kWildcard &&
+        query.filter_mode != HeadwordFilterMode::kRegularExpression) {
+        return "Headword filter mode is invalid";
     }
     if (query.dictionary_ids.size() > kMaximumLookupDictionaryFilters ||
         HasInvalidFilter(query.dictionary_ids)) {
@@ -670,7 +868,33 @@ class ServiceState final {
                 {LookupErrorCode::kInvalidQuery, {}, *validation_error});
             return response;
         }
-        const std::string folded_query = foundation::FoldForLookup(query.text);
+        std::string seed = query.text;
+        std::optional<CompiledHeadwordPattern> pattern;
+        if (query.filter_mode != HeadwordFilterMode::kPrefix) {
+            const auto extracted =
+                query.filter_mode == HeadwordFilterMode::kWildcard
+                    ? WildcardPrefix(query.text)
+                    : RegexPrefix(query.text);
+            if (!extracted.has_value()) {
+                response.errors.push_back(
+                    {LookupErrorCode::kInvalidQuery,
+                     {},
+                     "Wildcard and regular-expression filters require a "
+                     "leading literal prefix"});
+                return response;
+            }
+            seed = *extracted;
+            pattern.emplace(query.filter_mode == HeadwordFilterMode::kWildcard
+                                ? WildcardToRegex(query.text)
+                                : query.text,
+                            query.match_case);
+            if (!pattern->error().empty()) {
+                response.errors.push_back(
+                    {LookupErrorCode::kInvalidQuery, {}, pattern->error()});
+                return response;
+            }
+        }
+        const std::string folded_query = foundation::FoldForLookup(seed);
         response.errors = startup_errors_;
         const std::unordered_set<std::string> requested(
             query.dictionary_ids.begin(), query.dictionary_ids.end());
@@ -695,8 +919,26 @@ class ServiceState final {
             backend_options.result_limit = options.result_limit;
             try {
                 const auto headwords =
-                    backend->SuggestPrefix(query.text, backend_options);
+                    backend->SuggestPrefix(seed, backend_options);
                 for (const auto& headword : headwords) {
+                    if (pattern.has_value()) {
+                        dictionary::CheckRequest(backend_options);
+                        std::string pattern_error;
+                        const bool matches =
+                            pattern->Matches(headword, &pattern_error);
+                        dictionary::CheckRequest(backend_options);
+                        if (!matches) {
+                            if (!pattern_error.empty()) {
+                                response.suggestions.clear();
+                                response.errors.push_back(
+                                    {LookupErrorCode::kInvalidQuery,
+                                     {},
+                                     std::move(pattern_error)});
+                                return response;
+                            }
+                            continue;
+                        }
+                    }
                     const std::string folded_headword =
                         foundation::FoldForLookup(headword);
                     const bool exact = folded_headword == folded_query;

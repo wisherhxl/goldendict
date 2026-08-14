@@ -20,6 +20,13 @@ inline constexpr std::size_t kMaximumLookupDictionaryFilters = 100U;
 inline constexpr std::size_t kMaximumLookupLanguageFilters = 32U;
 inline constexpr std::size_t kMaximumLookupFilterBytes = 256U;
 inline constexpr std::size_t kMaximumLookupResults = 100U;
+inline constexpr std::size_t kMaximumHeadwordPatternBytes = 256U;
+
+enum class HeadwordFilterMode {
+    kPrefix,
+    kWildcard,
+    kRegularExpression,
+};
 
 enum class MatchMode {
     kExact,
@@ -68,6 +75,8 @@ struct SuggestionQuery {
     std::size_t result_limit = 20;
     std::chrono::milliseconds timeout = std::chrono::seconds(5);
     std::uint32_t group_id = 0U;
+    HeadwordFilterMode filter_mode = HeadwordFilterMode::kPrefix;
+    bool match_case = false;
 };
 
 struct MatchInfo {

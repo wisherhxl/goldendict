@@ -521,6 +521,18 @@ its containing folder through desktop services. Descriptions for formats
 without equivalent metadata, unbounded full-list export, and wildcard and
 regular-expression filtering remain later Phase 8 parity work.
 
+The bounded R2 residual adds wildcard and PCRE2-compatible regular-expression
+filter modes to the dictionary browser. Advanced patterns must begin with a
+non-empty literal prefix: core uses that prefix to obtain at most 100 existing
+lightweight suggestions and applies Unicode-aware matching without enumerating
+the dictionary. Wildcards support `*`, `?`, `[abc]`, `[!abc]`, and backslash
+escaping; regular expressions use PCRE2 syntax. Matching is case-insensitive by
+default with an explicit case-sensitive option. Patterns are limited to 256
+UTF-8 bytes, and PCRE2 match, depth, and heap limits bound each candidate.
+Invalid, unseeded, or resource-exhausting patterns return no partial results.
+Plain prefix browsing, result ordering, dictionary identity, lookup activation,
+and displayed-headword export remain unchanged.
+
 The history-management increment adds case-insensitive live filtering to the
 reusable history pane and an explicit clear action. Clearing remains a
 composition-root command: it atomically persists an empty bounded history

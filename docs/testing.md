@@ -306,7 +306,11 @@ opens the real dictionary browser offscreen, verifies catalog identity and
 source provenance plus backend-owned article/headword counts, performs a
 dictionary-filtered prefix query, verifies the copy-source action and the
 availability of the containing-folder action, and confirms that activating the
-returned headword enters the normal lookup path.
+returned headword enters the normal lookup path. It also exercises wildcard
+and regular-expression modes, retained current-headword selection, and
+deterministic invalid-pattern clearing. Core service tests pin leading-literal
+requirements, Unicode and case behavior, ordering, invalid-pattern errors, and
+the existing 100-candidate bound.
 
 `goldendict_dictionary_browser_export_smoke` uses the same fixture and real
 dialog to export the displayed prefix results, then verifies the compatibility
