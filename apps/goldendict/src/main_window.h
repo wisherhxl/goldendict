@@ -39,6 +39,7 @@ class QPrinter;
 class QShortcut;
 class FavoritesTreeWidget;
 class SuggestionWorker;
+class SourceDirectoriesDialog;
 
 namespace goldendict::core {
 class DesktopFacade;
@@ -136,6 +137,7 @@ class MainWindow final : public QMainWindow {
                                   std::function<void(bool)> completion);
     void RunFileMenuSmokeCheck(const QString& path,
                                std::function<void(bool)> completion);
+    void RunEditMenuSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabSessionRestartSmokeCheck(
         bool prepare, std::function<void(bool)> completion);
 
@@ -250,7 +252,10 @@ class MainWindow final : public QMainWindow {
     std::vector<goldendict::core::ExternalProgramSourceConfiguration>
         external_program_sources_;
     SourceApplyCallback source_apply_callback_;
+    std::function<int(SourceDirectoriesDialog&)> source_dialog_executor_;
+    bool source_configuration_busy_ = false;
     goldendict::core::ApplicationPreferences preferences_;
+    QPushButton* dictionary_sources_button_ = nullptr;
     QLineEdit* query_ = nullptr;
     QComboBox* group_selector_ = nullptr;
     QPushButton* edit_groups_button_ = nullptr;
@@ -302,6 +307,7 @@ class MainWindow final : public QMainWindow {
     QAction* print_action_ = nullptr;
     QAction* save_article_action_ = nullptr;
     QAction* quit_action_ = nullptr;
+    QAction* dictionaries_action_ = nullptr;
     QTimer* completion_timer_ = nullptr;
     std::map<goldendict::core::ArticleTabId,
              std::unique_ptr<goldendict::core::LookupRequest>>

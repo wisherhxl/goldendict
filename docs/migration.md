@@ -612,6 +612,17 @@ facade and composition root retain tab/session mutation and orderly-shutdown
 persistence. Qt main-window state remains at private version 7. The other menu
 branches and final legacy state import remain separate leaves.
 
+The following independent Phase 8 menu leaf adds the pinned `menu_Edit`
+identity between View and History. It exposes only the backed `dictionaries`
+action, retaining the legacy text, F3 shortcut, and no-role behavior while
+sharing one action path with the existing source-configuration button.
+Widgets owns modal and busy presentation; the existing complete-candidate
+application path continues to own validation, session restoration, atomic
+persistence, failure preservation, and facade replacement. The pinned
+`preferences` action remains absent because Preferences UI is not implemented.
+Qt main-window state remains at private version 7. The other menu branches and
+final legacy state import remain separate leaves.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,

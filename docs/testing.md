@@ -332,6 +332,15 @@ failure preservation; unchanged facade session on cancelled or failed commands;
 usable central content; and unchanged private Qt state version 7. Page setup, rescan,
 close-to-tray, and toolbar-only PDF export are intentionally absent from the
 menu because they do not form supported pinned File-menu entries.
+`goldendict_edit_menu_smoke` pins the unique `menu_Edit` between View and
+History and the sole supported legacy `dictionaries` identity, text, F3
+shortcut, role, and separator-free order. It verifies exact QAction reuse by
+the source button and menu, unique shortcut ownership, single dispatch, modal
+busy/reentrant exclusion, cancellation and application-failure preservation,
+successful acceptance, unchanged facade session and private Qt state, and
+continued central usability. The unsupported Preferences action is explicitly
+absent; existing source-directory and core configuration tests remain the
+source of truth for validation and atomic replacement semantics.
 They also pin the unique `navToolbar` identity, top-area default and ordering,
 top/bottom movement policy, Back/Forward/group/query/lookup control order and
 parentage, focus chain, minimum query usability, Alt+D/Ctrl+L focus behavior,

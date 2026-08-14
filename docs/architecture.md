@@ -108,6 +108,12 @@ collect absolute paths. Widgets do not test-run programs, compose command
 lines, or add environment policy. The existing core validation and
 composition-root transaction continue to own acceptance, shell-free runtime
 construction, session restoration, persistence, and facade replacement.
+The Phase 8 Edit-menu leaf exposes that same source-configuration workflow
+through one canonical Widgets-owned `dictionaries` action shared with the
+existing source button. Widgets owns modal and busy presentation; validation,
+session restoration, atomic persistence, and facade replacement remain in the
+existing application/core path. The unimplemented Preferences UI is not
+represented by a placeholder action.
 The Phase 8 P4a current-persistence foundation extends that complete candidate
 with ordered, bounded transport-neutral records for MediaWiki, website, Forvo,
 and DICT sources. Stable IDs, names, enabled intent, adapter-compatible URLs,

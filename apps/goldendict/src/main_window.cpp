@@ -96,8 +96,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     auto* central = new QWidget(this);
     auto* layout = new QVBoxLayout(central);
     auto* controls = new QHBoxLayout();
-    auto* directory_button =
+    dictionary_sources_button_ =
         new QPushButton(QStringLiteral("Dictionary Sources..."), central);
+    dictionary_sources_button_->setObjectName(
+        QStringLiteral("dictionarySourcesButton"));
     group_selector_ = new QComboBox(central);
     group_selector_->setObjectName(QStringLiteral("groupSelector"));
     group_selector_->setToolTip(
@@ -120,7 +122,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     auto* lookup_background_tab =
         lookup_menu->addAction(QStringLiteral("Lookup in Background Tab"));
     lookup_button_->setMenu(lookup_menu);
-    controls->addWidget(directory_button);
+    controls->addWidget(dictionary_sources_button_);
     controls->addWidget(edit_groups_button_);
     controls->addStretch();
     layout->addLayout(controls);
@@ -376,6 +378,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     view_menu->addSeparator();
     view_menu->addAction(dictionary_bar_->toggleViewAction());
     view_menu->addAction(nav_toolbar->toggleViewAction());
+    auto* edit_menu = app_menu_bar->addMenu(QStringLiteral("&Edit"));
+    edit_menu->setObjectName(QStringLiteral("menu_Edit"));
+    dictionaries_action_ =
+        new QAction(QStringLiteral("&Dictionaries..."), this);
+    dictionaries_action_->setObjectName(QStringLiteral("dictionaries"));
+    dictionaries_action_->setShortcut(QKeySequence(Qt::Key_F3));
+    dictionaries_action_->setMenuRole(QAction::NoRole);
+    edit_menu->addAction(dictionaries_action_);
+    dictionary_sources_button_->addAction(dictionaries_action_);
     auto* history_menu = app_menu_bar->addMenu(QStringLiteral("H&istory"));
     history_menu->setObjectName(QStringLiteral("menuHistory"));
     history_menu->addAction(history_dock->toggleViewAction());
@@ -401,7 +412,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     completion_timer_ = new QTimer(this);
     completion_timer_->setInterval(15);
 
-    connect(directory_button, &QPushButton::clicked, this,
+    connect(dictionary_sources_button_, &QPushButton::clicked,
+            dictionaries_action_, &QAction::trigger);
+    connect(dictionaries_action_, &QAction::enabledChanged,
+            dictionary_sources_button_, &QWidget::setEnabled);
+    connect(dictionaries_action_, &QAction::triggered, this,
             &MainWindow::EditSourceDirectories);
     connect(group_selector_, &QComboBox::currentIndexChanged, this,
             [this](int index) {
@@ -640,7 +655,7 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
         app_menu_bar == menuBar() &&
         findChildren<QMenuBar*>(QStringLiteral("menubar")).size() == 1 &&
         findChildren<QMenu*>(QStringLiteral("menuView")).size() == 1 &&
-        app_menu_bar->actions().size() == 3 &&
+        app_menu_bar->actions().size() == 4 &&
         app_menu_bar->actions()[1]->menu() == view_menu &&
         view_menu->title() == QStringLiteral("&View") &&
         actions.size() == expected_actions.size();
@@ -733,8 +748,8 @@ void MainWindow::RunHistoryMenuSmokeCheck(
     }
     const auto actions = history_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 3 &&
-        menuBar()->actions()[2]->menu() == history_menu &&
+        menuBar()->actions().size() == 4 &&
+        menuBar()->actions()[3]->menu() == history_menu &&
         history_menu->title() == QStringLiteral("H&istory") &&
         actions.size() == 5 && actions[0] == history_dock->toggleViewAction() &&
         actions[1] == export_history_action_ &&
@@ -820,6 +835,137 @@ void MainWindow::RunHistoryMenuSmokeCheck(
     completion(passed);
 }
 
+void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
+    auto* edit_menu = findChild<QMenu*>(QStringLiteral("menu_Edit"));
+    if (edit_menu == nullptr || dictionary_sources_button_ == nullptr ||
+        dictionaries_action_ == nullptr || facade_ == nullptr) {
+        completion(false);
+        return;
+    }
+
+    const auto actions = edit_menu->actions();
+    bool passed =
+        menuBar()->actions().size() == 4 &&
+        menuBar()->actions()[0]->menu()->objectName() ==
+            QStringLiteral("menuFile") &&
+        menuBar()->actions()[1]->menu()->objectName() ==
+            QStringLiteral("menuView") &&
+        menuBar()->actions()[2]->menu() == edit_menu &&
+        menuBar()->actions()[3]->menu()->objectName() ==
+            QStringLiteral("menuHistory") &&
+        findChildren<QMenu*>(QStringLiteral("menu_Edit")).size() == 1 &&
+        edit_menu->title() == QStringLiteral("&Edit") && actions.size() == 1 &&
+        actions[0] == dictionaries_action_ &&
+        dictionaries_action_->objectName() == QStringLiteral("dictionaries") &&
+        dictionaries_action_->text() == QStringLiteral("&Dictionaries...") &&
+        dictionaries_action_->shortcut() == QKeySequence(Qt::Key_F3) &&
+        dictionaries_action_->menuRole() == QAction::NoRole &&
+        dictionary_sources_button_->actions().size() == 1 &&
+        dictionary_sources_button_->actions().front() == dictionaries_action_ &&
+        findChildren<QAction*>(QStringLiteral("preferences")).empty();
+
+    const auto all_actions = findChildren<QAction*>();
+    passed = passed && std::count_if(all_actions.cbegin(), all_actions.cend(),
+                                     [](const QAction* action) {
+                                         return action->shortcuts().contains(
+                                             QKeySequence(Qt::Key_F3));
+                                     }) == 1;
+
+    const auto initial_paths = dictionary_paths_;
+    const auto initial_sounds = sound_directories_;
+    const auto initial_wikis = mediawiki_sources_;
+    const auto initial_websites = website_sources_;
+    const auto initial_forvo = forvo_sources_;
+    const auto initial_dicts = dict_server_sources_;
+    const auto initial_programs = external_program_sources_;
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const std::string initial_state = CaptureMainWindowState();
+    int triggers = 0;
+    int dialogs = 0;
+    const auto trigger_connection = connect(
+        dictionaries_action_, &QAction::triggered, this,
+        [&triggers]() { ++triggers; }, Qt::DirectConnection);
+
+    source_dialog_executor_ = [this, &dialogs,
+                               &passed](SourceDirectoriesDialog& dialog) {
+        ++dialogs;
+        passed = passed && source_configuration_busy_ &&
+                 !dictionaries_action_->isEnabled() &&
+                 !dictionary_sources_button_->isEnabled();
+        dictionaries_action_->trigger();
+        dialog.reject();
+        return dialog.result();
+    };
+    dictionary_sources_button_->click();
+    passed = passed && triggers == 1 && dialogs == 1 &&
+             dictionaries_action_->isEnabled() &&
+             dictionary_sources_button_->isEnabled() &&
+             !source_configuration_busy_;
+
+    const auto original_apply_callback = source_apply_callback_;
+    source_apply_callback_ = [](const auto&, const auto&, const auto&,
+                                const auto&, const auto&, const auto&,
+                                const auto&) {
+        return QStringLiteral("forced edit menu apply failure");
+    };
+    source_dialog_executor_ = [&dialogs,
+                               &passed](SourceDirectoriesDialog& dialog) {
+        ++dialogs;
+        auto* buttons = dialog.findChild<QDialogButtonBox*>();
+        passed = passed && buttons != nullptr;
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Apply)->click();
+        auto* error =
+            dialog.findChild<QLabel*>(QStringLiteral("sourceValidationError"));
+        passed = passed && dialog.result() != QDialog::Accepted &&
+                 error != nullptr && !error->isHidden();
+        dialog.reject();
+        return dialog.result();
+    };
+    dictionaries_action_->trigger();
+    passed = passed && triggers == 2 && dialogs == 2 &&
+             dictionaries_action_->isEnabled() &&
+             dictionary_sources_button_->isEnabled();
+
+    source_apply_callback_ = [](const auto&, const auto&, const auto&,
+                                const auto&, const auto&, const auto&,
+                                const auto&) {
+        return QString{};
+    };
+    source_dialog_executor_ = [&dialogs,
+                               &passed](SourceDirectoriesDialog& dialog) {
+        ++dialogs;
+        auto* buttons = dialog.findChild<QDialogButtonBox*>();
+        passed = passed && buttons != nullptr;
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Apply)->click();
+        passed = passed && dialog.result() == QDialog::Accepted;
+        return dialog.result();
+    };
+    dictionaries_action_->trigger();
+    passed = passed && triggers == 3 && dialogs == 3 &&
+             dictionaries_action_->isEnabled() &&
+             dictionary_sources_button_->isEnabled() &&
+             !source_configuration_busy_;
+
+    source_dialog_executor_ = {};
+    source_apply_callback_ = original_apply_callback;
+    disconnect(trigger_connection);
+    passed = passed && dictionary_paths_ == initial_paths &&
+             sound_directories_ == initial_sounds &&
+             mediawiki_sources_ == initial_wikis &&
+             website_sources_ == initial_websites &&
+             forvo_sources_ == initial_forvo &&
+             dict_server_sources_ == initial_dicts &&
+             external_program_sources_ == initial_programs &&
+             facade_->ExportArticleTabSession() == initial_session &&
+             CaptureMainWindowState() == initial_state &&
+             centralWidget() != nullptr && article_tabs_->isVisible() &&
+             article_tabs_->size().width() > 0 &&
+             article_tabs_->size().height() > 0 && kMainWindowStateVersion == 7;
+    completion(passed);
+}
+
 void MainWindow::RunFileMenuSmokeCheck(const QString& path,
                                        std::function<void(bool)> completion) {
     auto* file_menu = findChild<QMenu*>(QStringLiteral("menuFile"));
@@ -836,11 +982,13 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
 
     const auto actions = file_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 3 &&
+        menuBar()->actions().size() == 4 &&
         menuBar()->actions()[0]->menu() == file_menu &&
         menuBar()->actions()[1]->menu()->objectName() ==
             QStringLiteral("menuView") &&
         menuBar()->actions()[2]->menu()->objectName() ==
+            QStringLiteral("menu_Edit") &&
+        menuBar()->actions()[3]->menu()->objectName() ==
             QStringLiteral("menuHistory") &&
         findChildren<QMenu*>(QStringLiteral("menuFile")).size() == 1 &&
         file_menu->title() == QStringLiteral("&File") && actions.size() == 8 &&
@@ -4075,11 +4223,26 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
 }
 
 void MainWindow::EditSourceDirectories() {
-    SourceDirectoriesDialog dialog(
-        dictionary_paths_, sound_directories_, mediawiki_sources_,
-        website_sources_, forvo_sources_, dict_server_sources_,
-        external_program_sources_, source_apply_callback_, this);
-    dialog.exec();
+    if (source_configuration_busy_)
+        return;
+    source_configuration_busy_ = true;
+    dictionaries_action_->setEnabled(false);
+    try {
+        SourceDirectoriesDialog dialog(
+            dictionary_paths_, sound_directories_, mediawiki_sources_,
+            website_sources_, forvo_sources_, dict_server_sources_,
+            external_program_sources_, source_apply_callback_, this);
+        if (source_dialog_executor_)
+            source_dialog_executor_(dialog);
+        else
+            dialog.exec();
+    } catch (...) {
+        source_configuration_busy_ = false;
+        dictionaries_action_->setEnabled(true);
+        throw;
+    }
+    source_configuration_busy_ = false;
+    dictionaries_action_->setEnabled(true);
 }
 
 void MainWindow::StartLookup() {
