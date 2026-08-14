@@ -508,7 +508,7 @@ usable layout on rejection. The pinned legacy `mainWindowState` is not replayed:
 its search, results, favorites, and history panes plus navigation and dictionary
 toolbars do not match the current widget hierarchy, so partial opaque replay
 would be incompatible rather than parity. Legacy-compatible shell layout and
-state migration remain later unlabelled Phase 8 work.
+the final opaque-state acceptance audit remained later Phase 8 work.
 
 The next unlabelled Phase 8 shell increment aligns the already-functional
 favorites and history docks with the pinned legacy `favoritesPane` and
@@ -517,8 +517,8 @@ vertical split on the right, with favorites above history and usable article
 content retained in the center. The private current Qt state version advances
 while transactionally accepting the immediately preceding `favoritesDock` and
 `historyDock` state; legacy version-1 `mainWindowState` remains excluded.
-Search and results panes, navigation and dictionary toolbars, menus, and final
-legacy state import remain separate unlabelled Phase 8 leaves.
+Search and results panes, navigation and dictionary toolbars, menus, and the
+opaque-state acceptance audit remained separate Phase 8 leaves.
 
 The following unlabelled Phase 8 shell increment adds the pinned `navToolbar`
 hierarchy for the existing Back, Forward, group, query, and lookup controls.
@@ -528,8 +528,8 @@ to the legacy-compatible top and bottom areas. The private current Qt state
 version advances transactionally through the immediately preceding layout and
 the older dock-identity transition; version-1 legacy bytes remain excluded.
 Results navigation, `dictionaryBar`, menus, pronunciation, scan controls, the
-remaining article toolbar audit, and final legacy state import remain separate
-unlabelled Phase 8 leaves.
+remaining article toolbar audit, and the opaque-state acceptance audit remained
+separate unlabelled Phase 8 leaves.
 
 The following unlabelled Phase 8 shell increment adds the pinned `dictsPane`
 results-navigation hierarchy for completed bounded lookups. Its ordered
@@ -540,8 +540,8 @@ cannot leak stale rows into the active pane. The pane is visible above the
 completed favorites/history hierarchy on the right by default. The private Qt
 state version advances while transactionally accepting the three immediately
 preceding Qt 6 layouts; legacy version 1 remains excluded. The prefix/suggestion
-`searchPane`, `dictionaryBar`, menus, and legacy opaque state migration remain
-separate leaves.
+`searchPane`, `dictionaryBar`, menus, and the opaque-state acceptance audit
+remained separate leaves.
 
 The next unlabelled Phase 8 shell increment adds the pinned `searchPane` and
 `wordList` identities as a visible left-side prefix-suggestion pane. A single
@@ -553,7 +553,7 @@ activate the existing lookup/tab/history workflow. The private Qt state version
 advances while transactionally accepting versions 5, 4, 3, and 2 and seeding
 the absent pane at its deterministic default; version 1 remains excluded.
 Full-text and compound/expression search, `dictionaryBar`, menus, complete shell
-auditing, and legacy opaque state migration remain separate leaves.
+auditing, and the opaque-state acceptance audit remained separate leaves.
 
 The following Phase 8 dictionary-participation prerequisite makes the existing
 bounded lookup and suggestion dictionary-ID filters explicit when their lists
@@ -574,8 +574,8 @@ the active tab's work while background requests retain their submitted
 snapshot; all-off completes through the existing empty-filter contract. The
 private Qt state version advances to 7 and transactionally accepts versions
 6 through 2 while seeding only the absent toolbar default; version 1 remains
-excluded. Menus, persistent group/source editing, and legacy opaque state
-import remain separate leaves.
+excluded. Menus, persistent group/source editing, and the opaque-state
+acceptance audit remained separate leaves.
 
 The next unlabelled Phase 8 menu leaf adds the pinned `menubar` and `menuView`
 identities for the already-complete shell. The View menu reuses the exact
@@ -585,8 +585,8 @@ visibility and checked state plus the legacy pane shortcuts and relative
 ordering. It adds no proxy actions or unsupported entries. Qt main-window
 state remains at private version 7 because menus do not alter the saved
 dock/toolbar hierarchy. File, Edit, Search, History, Favorites, and Help menus,
-View styling and always-on-top controls, and final legacy state import remain
-separate leaves.
+View styling and always-on-top controls, and the opaque-state acceptance audit
+remained separate leaves.
 
 The following unlabelled Phase 8 menu leaf adds the pinned `menuHistory`
 identity after View. It reuses the exact `historyPane` toggle action and exposes
@@ -595,8 +595,8 @@ pinned action identities and separator. Pane buttons and menu entries share one
 action path; empty and in-progress state cannot diverge between them. Widgets
 continues to own native file dialogs while application composition owns the
 compatibility text export and atomic destination replacement. Qt main-window
-state remains at private version 7. The other menu branches and final legacy
-state import remain separate leaves.
+state remains at private version 7. The other menu branches and the opaque-state
+acceptance audit remained separate leaves.
 
 The next independent Phase 8 menu leaf adds the pinned `menuFile` before View
 and History. It reuses the existing preference-backed new-tab, print-preview,
@@ -610,7 +610,7 @@ existing PDF export remains toolbar-only because it has no pinned File-menu
 entry. Widgets owns native dialogs and presentation busy state, while the
 facade and composition root retain tab/session mutation and orderly-shutdown
 persistence. Qt main-window state remains at private version 7. The other menu
-branches and final legacy state import remain separate leaves.
+branches and the opaque-state acceptance audit remained separate leaves.
 
 The following independent Phase 8 menu leaf adds the pinned `menu_Edit`
 identity between View and History. It exposes only the backed `dictionaries`
@@ -621,7 +621,7 @@ application path continues to own validation, session restoration, atomic
 persistence, failure preservation, and facade replacement. The pinned
 `preferences` action remains absent because Preferences UI is not implemented.
 Qt main-window state remains at private version 7. The other menu branches and
-final legacy state import remain separate leaves.
+the opaque-state acceptance audit remained separate leaves.
 
 The next independent Phase 8 menu leaf adds the pinned `menuSearch` identity
 between Edit and History. It exposes only the existing in-article
@@ -631,8 +631,8 @@ retains per-tab query and match presentation and rejects stale WebEngine find
 completions without changing facade navigation or session state. The pinned
 full-text action is absent because no full-text workflow is backed; compound,
 scan, and global-search placeholders are likewise excluded. Qt main-window
-state remains at private version 7. The remaining menu branches and final
-legacy state import remain separate leaves.
+state remains at private version 7. The remaining menu branches and the
+opaque-state acceptance audit remained separate leaves.
 
 The following independent Phase 8 menu leaf adds the pinned `menuFavorites`
 identity after History. It reuses the exact `favoritesPane` toggle and the
@@ -645,8 +645,8 @@ selected-folder targeting, validation, atomic persistence and transfer, and
 failure preservation. The pinned plain-list export is absent because no
 authoritative Qt 6 implementation exists, and selected-item removal remains
 toolbar-only because the legacy menu has no removal entry. Qt main-window
-state remains at private version 7. The Help branch and final legacy state
-import remain separate leaves.
+state remains at private version 7. The Help branch and the opaque-state
+acceptance audit remained separate leaves.
 
 The final independent Phase 8 menu leaf adds the pinned `menu_Help` identity
 after Favorites. It exposes only the supported legacy Homepage, Configuration
@@ -659,6 +659,19 @@ dialog presentation, and private deterministic seams. The F1 reference action
 is absent because no current help collection is shipped, and Forum is absent
 because no working HTTPS target is verified. No session, layout, persistence,
 public API, installed boundary, or network-fetch behavior changes.
+
+The final Phase 8 legacy opaque-main-window-state acceptance audit closes
+without importing version-1 bytes. Bounded legacy `mainWindowGeometry`
+migration remains supported, but the pinned repository contains no authentic
+legacy `mainWindowState` artifact and does not pin an exact Qt runtime whose
+opaque `QMainWindow::saveState(1)` representation can be proven compatible
+with Qt 6. Windows-specific normal/maximized rectangles and their explicit
+window-mode behavior are likewise excluded by the available evidence.
+Inventing, translating, or opportunistically replaying those undocumented
+bytes would risk accepting an incompatible layout. Current Qt 6 state versions
+2 through 7 remain bounded and transactionally supported, with rollback on
+malformed, incompatible, oversized, or unusable input and semantic defaults
+for shell objects absent from older current versions.
 
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit

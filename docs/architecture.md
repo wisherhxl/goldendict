@@ -180,15 +180,21 @@ window state. Core owns its 64 KiB persistence limit without interpreting Qt
 bytes. Widgets captures and transactionally restores a current-only version,
 checks restored floating docks and toolbars against available screens, and
 rolls back on malformed, incompatible, or unusable state. Legacy version-1
-state remains excluded because its main-window object hierarchy is not yet
-represented by the Qt 6 shell.
+state is intentionally excluded: the pinned legacy repository contains no
+authentic opaque-state artifact and does not pin an exact Qt runtime whose
+binary compatibility with Qt 6 could be established. Windows-only legacy
+normal/maximized rectangles and their explicit window-mode behavior are also
+excluded; only the separately bounded legacy `mainWindowGeometry` is migrated.
+Current Qt 6 state versions 2 through 7 remain transactionally supported with
+rollback and semantic defaults for shell objects absent from an older version.
 The first legacy-compatible shell increment gives the existing, fully backed
 favorites and history docks their pinned `favoritesPane` and `historyPane`
 identities and deterministic visible right-side vertical defaults. A private
 Qt state-version transition accepts the immediately preceding current Qt 6
 dock identities and rewrites them on the next save; it does not accept or
 interpret legacy version-1 state. Search, results, navigation, and dictionary
-shell objects remain prerequisites for legacy opaque-state migration.
+shell objects were prerequisites for the completed opaque-state acceptance
+audit, not evidence that version-1 bytes could be migrated safely.
 The next shell increment recomposes the existing group selector, query editor,
 lookup split-button, and facade-backed Back/Forward actions into a visible
 legacy-compatible `navToolbar`. Widgets own its top-area default, top/bottom
