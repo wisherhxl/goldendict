@@ -29,7 +29,7 @@
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |
 | Minimal configuration load/persist | slice | Phase 4 | clean-profile round-trip |
-| Legacy configuration migration | slice | Phase 8 | bounded one-shot XML import covers paths, groups, portable preferences, exact tab-opening preferences, opaque 64 KiB main-window geometry, all P4-supported online/external sources, and exact portable/Linux/Windows/macOS legacy configuration discovery; current precedence, deterministic no-fallback selection, atomic persistence, strict representability, secret exclusion, and untouched legacy sources are pinned; the pinned legacy application has no persisted article-session format; general layout/window state and companion history/favorites discovery remain |
+| Legacy configuration migration | slice | Phase 8 | bounded one-shot XML import covers paths, groups, portable preferences, exact tab-opening preferences, opaque 64 KiB main-window geometry, all P4-supported online/external sources, exact portable/Linux/Windows/macOS legacy profile selection, and platform-specific history/favorites companion discovery; independent current precedence, deterministic no-fallback selection, per-destination atomic persistence, strict representability, secret exclusion, and untouched legacy sources are pinned; the pinned legacy application has no persisted article-session format; general layout/window state remains |
 | Dictionary path discovery | slice | Phase 4 | temporary-directory tests |
 | Dictionary identity and index lifecycle | slice | Phase 4 | deterministic index tests |
 | Async word/article/resource requests | slice | Phase 4 | completion/cancel/error tests |

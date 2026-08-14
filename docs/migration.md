@@ -522,8 +522,20 @@ directory gate is preserved exactly, so a selected missing, unreadable,
 malformed, or unsafe candidate never falls through to another profile.
 Existing current state wins before the legacy path is inspected, portable
 current configuration is stored beside the portable source, and discovered
-legacy files remain read-only. Platform-specific history and favorites
-discovery remains a separate fresh Phase 8 leaf.
+legacy files remain read-only.
+
+The Phase 8 R6d companion increment reuses that one selected legacy profile
+for the exact lowercase `history` and `favorites` files. Portable, Windows,
+and macOS companions remain beside the selected legacy `config`; Linux/Unix
+favorites does likewise, while Linux/Unix history preserves the pinned XDG
+split by using profile-local `history` when it exists and otherwise selecting
+`goldendict/history` below the generic data root. Current `history-v1` and
+`favorites-v1` files live beside the resolved `core.conf` and take precedence
+independently. Missing, malformed, unreadable, oversized, symlink, directory,
+or special companion inputs never trigger another profile search. Each valid
+companion migrates through its existing bounded core parser and its own atomic
+destination transaction, so either companion may succeed without changing the
+other or either legacy source.
 
 The following user-state increment adds a transport-neutral core history store
 with bounded group-aware UTF-8 entries and a recoverable legacy line-format

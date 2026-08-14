@@ -65,6 +65,32 @@ std::filesystem::path NonPortableLegacyProfileDirectory(
     throw std::runtime_error("Unsupported desktop platform");
 }
 
+bool IsMissing(const std::filesystem::path& path, const PathProbe& probe) {
+    return probe(path) == PathKind::kMissing;
+}
+
+void ValidateSelectedFile(const std::filesystem::path& current_path,
+                          const std::filesystem::path& legacy_path,
+                          const char* description, const PathProbe& probe) {
+    if (legacy_path.empty() || !IsMissing(current_path, probe)) {
+        return;
+    }
+    switch (probe(legacy_path)) {
+        case PathKind::kMissing:
+        case PathKind::kRegularFile:
+            return;
+        case PathKind::kSymlink:
+            throw std::runtime_error(
+                std::string("Legacy ") + description +
+                " file must not be a symlink: " + legacy_path.string());
+        case PathKind::kDirectory:
+        case PathKind::kOther:
+            throw std::runtime_error(
+                std::string("Legacy ") + description +
+                " path is not a regular file: " + legacy_path.string());
+    }
+}
+
 }  // namespace
 
 ConfigurationLocations ResolveConfigurationLocations(
@@ -84,42 +110,72 @@ ConfigurationLocations ResolveConfigurationLocations(
     }
     const auto current_directory =
         portable ? portable_directory : environment.current_config_directory;
-    const auto current_configuration_path = current_directory / "core.conf";
-    if (probe(current_configuration_path) != PathKind::kMissing) {
-        return {current_configuration_path, {}, portable};
+    ConfigurationLocations locations;
+    locations.portable = portable;
+    locations.current_configuration_path = current_directory / "core.conf";
+    locations.current_history_path = current_directory / "history-v1";
+    locations.current_favorites_path = current_directory / "favorites-v1";
+
+    const bool needs_configuration =
+        IsMissing(locations.current_configuration_path, probe);
+    const bool needs_history = IsMissing(locations.current_history_path, probe);
+    const bool needs_favorites =
+        IsMissing(locations.current_favorites_path, probe);
+    if (!needs_configuration && !needs_history && !needs_favorites) {
+        return locations;
     }
+
     const auto legacy_directory =
         portable ? portable_directory
                  : NonPortableLegacyProfileDirectory(environment, probe);
-    return {current_configuration_path, legacy_directory / "config", portable};
+    if (needs_configuration) {
+        locations.legacy_configuration_path = legacy_directory / "config";
+    }
+    if (needs_favorites) {
+        locations.legacy_favorites_path = legacy_directory / "favorites";
+    }
+    if (needs_history) {
+        const auto profile_history = legacy_directory / "history";
+        if (portable || environment.platform != DesktopPlatform::kLinuxUnix ||
+            !IsMissing(profile_history, probe)) {
+            locations.legacy_history_path = profile_history;
+        } else {
+            RequireBasePath(environment.generic_data_directory,
+                            "Generic data directory");
+            locations.legacy_history_path =
+                environment.generic_data_directory / "goldendict" / "history";
+        }
+    }
+    return locations;
 }
 
-void ValidateAutoDiscoveredLegacyConfiguration(
-    const ConfigurationLocations& locations, const PathProbe& probe) {
+static void RequireProbe(const PathProbe& probe) {
     if (!probe) {
         throw std::invalid_argument(
             "Legacy configuration path probe is missing");
     }
-    if (locations.legacy_configuration_path.empty()) {
-        return;
-    }
-    if (probe(locations.current_configuration_path) != PathKind::kMissing) {
-        return;
-    }
-    switch (probe(locations.legacy_configuration_path)) {
-        case PathKind::kMissing:
-        case PathKind::kRegularFile:
-            return;
-        case PathKind::kSymlink:
-            throw std::runtime_error(
-                "Legacy configuration file must not be a symlink: " +
-                locations.legacy_configuration_path.string());
-        case PathKind::kDirectory:
-        case PathKind::kOther:
-            throw std::runtime_error(
-                "Legacy configuration path is not a regular file: " +
-                locations.legacy_configuration_path.string());
-    }
+}
+
+void ValidateAutoDiscoveredLegacyConfiguration(
+    const ConfigurationLocations& locations, const PathProbe& probe) {
+    RequireProbe(probe);
+    ValidateSelectedFile(locations.current_configuration_path,
+                         locations.legacy_configuration_path, "configuration",
+                         probe);
+}
+
+void ValidateAutoDiscoveredLegacyHistory(
+    const ConfigurationLocations& locations, const PathProbe& probe) {
+    RequireProbe(probe);
+    ValidateSelectedFile(locations.current_history_path,
+                         locations.legacy_history_path, "history", probe);
+}
+
+void ValidateAutoDiscoveredLegacyFavorites(
+    const ConfigurationLocations& locations, const PathProbe& probe) {
+    RequireProbe(probe);
+    ValidateSelectedFile(locations.current_favorites_path,
+                         locations.legacy_favorites_path, "favorites", probe);
 }
 
 PathKind ProbePath(const std::filesystem::path& path) {

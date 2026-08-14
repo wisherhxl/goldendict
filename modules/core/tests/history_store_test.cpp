@@ -22,6 +22,7 @@ class HistoryStoreTest : public QObject {
     void MigratesBoundedLegacyHistoryWithoutChangingIt();
     void CurrentHistoryTakesPrecedence();
     void RejectsMalformedHistoryWithoutPartialMigration();
+    void RejectsTruncatedOversizedAndInvalidUtf8LegacyHistory();
     void ImportsBoundedUtf8Text();
     void RejectsInvalidTextImport();
 };
@@ -96,7 +97,27 @@ void HistoryStoreTest::RejectsMalformedHistoryWithoutPartialMigration() {
         LoadOrMigrateHistory(current.string(), legacy.string()),
         std::runtime_error);
     QVERIFY(!std::filesystem::exists(current));
+    QVERIFY(!std::filesystem::exists(current.string() + ".tmp"));
     QVERIFY(std::filesystem::exists(legacy));
+}
+
+void HistoryStoreTest::RejectsTruncatedOversizedAndInvalidUtf8LegacyHistory() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto current = Path(directory, "history-v1");
+    const auto legacy = Path(directory, "history");
+    const auto reject = [&](std::string_view contents) {
+        Write(legacy, contents);
+        QVERIFY_EXCEPTION_THROWN(
+            LoadOrMigrateHistory(current.string(), legacy.string()),
+            std::runtime_error);
+        QVERIFY(!std::filesystem::exists(current));
+        QVERIFY(!std::filesystem::exists(current.string() + ".tmp"));
+    };
+
+    reject("1 unterminated");
+    reject(std::string("1 invalid\xFF\n", 11U));
+    reject(std::string(1024U * 1024U + 1U, 'x'));
 }
 
 void HistoryStoreTest::ImportsBoundedUtf8Text() {

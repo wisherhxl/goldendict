@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QStandardPaths>
 #include <QString>
@@ -195,12 +196,15 @@ int main(int argc, char* argv[]) {
         QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
     const QString current_configuration_directory =
         QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    const QString generic_data_directory =
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
     const goldendict::app::LegacyConfigurationEnvironment location_environment{
         CurrentDesktopPlatform(),
         QDir::homePath().toStdString(),
         standard_configuration_directory.toStdString(),
         QCoreApplication::applicationDirPath().toStdString(),
         qEnvironmentVariable("APPDATA").toStdString(),
+        generic_data_directory.toStdString(),
         current_configuration_directory.toStdString()};
     goldendict::app::ConfigurationLocations configuration_locations;
     try {
@@ -218,15 +222,16 @@ int main(int argc, char* argv[]) {
         configuration_locations.current_configuration_path.string());
     const QString legacy_configuration_path = QString::fromStdString(
         configuration_locations.legacy_configuration_path.string());
-    const QString configuration_directory = current_configuration_directory;
-    const QString history_path =
-        QDir(configuration_directory).filePath(QStringLiteral("history-v1"));
-    const QString legacy_history_path =
-        QDir(configuration_directory).filePath(QStringLiteral("history"));
-    const QString favorites_path =
-        QDir(configuration_directory).filePath(QStringLiteral("favorites-v1"));
-    const QString legacy_favorites_path =
-        QDir(configuration_directory).filePath(QStringLiteral("favorites"));
+    const QString configuration_directory =
+        QFileInfo(configuration_path).absolutePath();
+    const QString history_path = QString::fromStdString(
+        configuration_locations.current_history_path.string());
+    const QString legacy_history_path = QString::fromStdString(
+        configuration_locations.legacy_history_path.string());
+    const QString favorites_path = QString::fromStdString(
+        configuration_locations.current_favorites_path.string());
+    const QString legacy_favorites_path = QString::fromStdString(
+        configuration_locations.legacy_favorites_path.string());
     const std::string default_index_directory =
         QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
             .filePath(QStringLiteral("indexes"))
@@ -286,6 +291,8 @@ int main(int argc, char* argv[]) {
     constexpr std::size_t kMaximumHistoryEntries = 500U;
     std::vector<goldendict::core::HistoryEntry> history;
     try {
+        goldendict::app::ValidateAutoDiscoveredLegacyHistory(
+            configuration_locations, goldendict::app::ProbePath);
         history = goldendict::core::LoadOrMigrateHistory(
             history_path.toStdString(), legacy_history_path.toStdString(),
             kMaximumHistoryEntries);
@@ -295,6 +302,8 @@ int main(int argc, char* argv[]) {
     }
     goldendict::core::Favorites favorites;
     try {
+        goldendict::app::ValidateAutoDiscoveredLegacyFavorites(
+            configuration_locations, goldendict::app::ProbePath);
         favorites = goldendict::core::LoadOrMigrateFavorites(
             favorites_path.toStdString(), legacy_favorites_path.toStdString());
     } catch (const std::exception& error) {

@@ -232,6 +232,16 @@ candidate handling, malformed-input atomic failure, one-time idempotent
 migration, and byte-for-byte source immutability. The test never reads or
 writes the executing user's real configuration locations.
 
+R6d coverage extends the same injected resolver to exact lowercase `history`
+and `favorites` companions and current `history-v1`/`favorites-v1`
+destinations. It pins portable and platform paths, the Linux profile-history
+then generic-data fallback, independent current precedence, no unselected
+profile probes, unsafe candidate rejection, independent success and failure,
+temporary cleanup, repeated-startup idempotency, and byte-for-byte legacy
+source immutability. Focused store cases also reject truncated, invalid-UTF-8,
+malformed, entity-bearing, and oversized inputs without creating a partial
+destination.
+
 `history_store_test` verifies the first user-history migration slice: strict
 bounded UTF-8/group-aware current-format round trips, bounded import of the
 legacy line format, entry-limit truncation, current-state precedence, atomic

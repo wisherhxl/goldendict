@@ -178,6 +178,12 @@ Current state is checked first; final symlinks and non-regular selected sources
 are rejected, and no lower-priority profile is tried after selection. This
 keeps platform APIs and environment lookup outside the reusable core while the
 bounded parser, validation, and persistence remain core-owned.
+The same private adapter derives current history and favorites beside the
+resolved current configuration and discovers their exact lowercase legacy
+companions from that single profile. Linux history alone retains the pinned
+profile-local-then-XDG-data rule. History and favorites precedence, validation,
+and atomic migration are independent per destination; startup only composes
+the resolved paths and reports each failure separately.
 `CreateDictionaryService` is the headless composition entry
 point and `CreateDesktopFacade` is the presentation-facing entry point. Both
 compose private format adapters inside `goldendict_core`; neither exposes a

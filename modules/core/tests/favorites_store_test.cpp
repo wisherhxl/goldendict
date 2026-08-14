@@ -22,6 +22,7 @@ class FavoritesStoreTest : public QObject {
     void CurrentFavoritesTakePrecedence();
     void RejectsMalformedLegacyWithoutPartialMigration();
     void RejectsLegacyEntityDeclarations();
+    void RejectsOversizedAndInvalidUtf8LegacyFavorites();
     void ImportsAndExportsCompatibilityXml();
     void MovesItemsAcrossArbitraryFolders();
     void ReordersUsingPreMoveInsertionBoundaries();
@@ -114,6 +115,7 @@ void FavoritesStoreTest::RejectsMalformedLegacyWithoutPartialMigration() {
         LoadOrMigrateFavorites(current.string(), legacy.string()),
         std::runtime_error);
     QVERIFY(!std::filesystem::exists(current));
+    QVERIFY(!std::filesystem::exists(current.string() + ".tmp"));
     QVERIFY(std::filesystem::exists(legacy));
 }
 
@@ -130,6 +132,24 @@ void FavoritesStoreTest::RejectsLegacyEntityDeclarations() {
         LoadOrMigrateFavorites(current.string(), legacy.string()),
         std::runtime_error);
     QVERIFY(!std::filesystem::exists(current));
+}
+
+void FavoritesStoreTest::RejectsOversizedAndInvalidUtf8LegacyFavorites() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto current = Path(directory, "favorites-v1");
+    const auto legacy = Path(directory, "favorites");
+    const auto reject = [&](std::string_view contents) {
+        Write(legacy, contents);
+        QVERIFY_EXCEPTION_THROWN(
+            LoadOrMigrateFavorites(current.string(), legacy.string()),
+            std::runtime_error);
+        QVERIFY(!std::filesystem::exists(current));
+        QVERIFY(!std::filesystem::exists(current.string() + ".tmp"));
+    };
+
+    reject(std::string("<root><headword>invalid\xFF</headword></root>", 42U));
+    reject(std::string(1024U * 1024U + 1U, 'x'));
 }
 
 void FavoritesStoreTest::ImportsAndExportsCompatibilityXml() {
