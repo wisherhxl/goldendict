@@ -164,7 +164,11 @@ remain excluded. A narrow extension maps only the exact legacy tab-opening
 booleans and opaque `mainWindowGeometry`. Core validates and canonically
 persists these transport-neutral values, bounding decoded geometry at 64 KiB;
 Widgets alone captures and restores it with Qt geometry APIs. Window/dock
-state and legacy article sessions remain excluded.
+state remains excluded. The pinned legacy application has no persisted article
+session: its configuration contains no tab or navigation records, startup
+always creates a fresh welcome tab, and per-view history and scroll data exist
+only in memory. Consequently there is no legacy article-session format or
+migration input; current-format session persistence remains unchanged.
 `CreateDictionaryService` is the headless composition entry
 point and `CreateDesktopFacade` is the presentation-facing entry point. Both
 compose private format adapters inside `goldendict_core`; neither exposes a
@@ -189,7 +193,9 @@ navigation entry, and atomically saves facade exports after successful
 mutations and on orderly shutdown. New-tab placement is an explicit core
 append/after-active policy; Widgets derives it and default activation from
 core preferences while explicit foreground/background commands and modifier
-overrides retain fixed meanings. Persisted-session migration remains later.
+overrides retain fixed meanings. The pinned legacy application did not persist
+sessions, so no legacy-session migration layer follows this current-format
+contract.
 
 The core persistence foundation also exposes a complete transport-neutral
 session DTO containing each tab's ordered navigation history and cursor. It

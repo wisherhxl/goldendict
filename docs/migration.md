@@ -498,7 +498,19 @@ Ctrl/middle-click overrides remain explicit. It also stores only opaque main-
 window geometry, with strict legacy `mainWindowGeometry` Base64 migration and
 a 64 KiB decoded limit. Widgets alone calls Qt geometry APIs; malformed,
 oversized, empty, or Qt-rejected data preserves the default layout.
-`mainWindowState`, dock state, and legacy article sessions remain excluded.
+`mainWindowState` and dock state remain excluded.
+
+The Phase 8 R6b legacy article-session audit closes without a parser or import
+surface. At pinned legacy commit
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,
+active-article, navigation-history, dictionary-binding, or scroll-position
+records. Startup creates one fresh tab and shows the welcome article, while
+shutdown saves configuration, history, and favorites but not article views;
+per-view navigation and scroll state are memory-only. There is therefore no
+legacy session source format, version, discovery trigger, or accepted unit to
+migrate. A first migrated startup keeps the current deterministic no-session
+fallback, and later startups use the already-bounded atomic current-format
+session store. Inventing a legacy representation would not be parity work.
 
 The following user-state increment adds a transport-neutral core history store
 with bounded group-aware UTF-8 entries and a recoverable legacy line-format

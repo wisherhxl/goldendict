@@ -287,6 +287,14 @@ verifies tab order, active identity, complete histories and cursors,
 group/internal-link identity, current-entry rendering without duplicate
 history, and collision-free next-ID continuation.
 
+The Phase 8 R6b legacy article-session audit requires no migration fixture or
+parser test. The pinned legacy configuration and save path contain no persisted
+tab, article, navigation-history, or scroll-state representation; legacy
+startup instead creates a fresh welcome tab. Existing configuration migration
+tests continue to pin current-state precedence, atomic replacement, malformed
+input rejection, and source immutability, while the current-session tests above
+cover the only persisted article-session format.
+
 `favorites_store_test` verifies hierarchical current-format round trips and
 recoverable migration of the legacy favorites XML, including folder ordering,
 expansion state, Unicode headwords, current-state precedence, entity and

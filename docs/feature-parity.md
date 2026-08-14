@@ -29,7 +29,7 @@
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |
 | Minimal configuration load/persist | slice | Phase 4 | clean-profile round-trip |
-| Legacy configuration migration | slice | Phase 8 | bounded one-shot XML import covers paths, groups, portable preferences, exact tab-opening preferences, opaque 64 KiB main-window geometry, and all P4-supported online/external sources; current precedence, atomic persistence, strict representability, secret exclusion, and untouched legacy sources are pinned; general layout/window state, sessions, and platform-specific discovery remain |
+| Legacy configuration migration | slice | Phase 8 | bounded one-shot XML import covers paths, groups, portable preferences, exact tab-opening preferences, opaque 64 KiB main-window geometry, and all P4-supported online/external sources; current precedence, atomic persistence, strict representability, secret exclusion, and untouched legacy sources are pinned; the pinned legacy application has no persisted article-session format; general layout/window state and platform-specific discovery remain |
 | Dictionary path discovery | slice | Phase 4 | temporary-directory tests |
 | Dictionary identity and index lifecycle | slice | Phase 4 | deterministic index tests |
 | Async word/article/resource requests | slice | Phase 4 | completion/cancel/error tests |
@@ -101,7 +101,7 @@ not authorize dropping a legacy format.
 | --- | --- | --- | --- |
 | Minimal application window | done | Phase 2 | smoke test |
 | Minimal lookup and article view | slice | Phase 4 | vertical-slice workflow |
-| Main tabs and navigation | slice | Phase 8 | bounded lifecycle and persisted session, visible retained WebEngine tabs, configurable append/after-current placement and default activation with explicit overrides, deterministic close behavior, synchronized state, and facade-backed navigation; legacy article-session migration remains |
+| Main tabs and navigation | slice | Phase 8 | bounded lifecycle and current-format persisted session, visible retained WebEngine tabs, configurable append/after-current placement and default activation with explicit overrides, deterministic close behavior, synchronized state, and facade-backed navigation; the pinned legacy application has no persisted article-session format to migrate |
 | Dictionary/group controls | slice | Phase 8 | config round-trip, ordered catalog-resolved lookup/suggestion/article filtering, visible all/configured-group selector, and bounded ordered group/member/metadata/muting editor |
 | Preferences and source editor | slice | Phase 8 | core-owned bounded defaults and portable migration plus one bounded ordered editor for local directories, MediaWiki, website, Forvo, DICT, and shell-free external-program sources with atomic validation, save, and facade recomposition; credentials, recursive-path/icon fields, and preferences UI remain |
 | History | slice | Phase 8 | bounded UTF-8/group-aware current store, legacy line-format migration, current-state precedence, atomic persistence, visible group selection with missing-group fallback, group-preserving lookup recording and activation, filtering, clear, import, export, and a reusable pane |
