@@ -193,6 +193,13 @@ immediately preceding Qt 6 layout and the older dock-identity transition,
 without accepting legacy version-1 bytes. The article toolbar, dictionary bar,
 results pane, menus, and unsupported navigation actions remain independent
 shell leaves.
+The results-navigation shell increment adds the legacy-compatible `dictsPane`
+without extending the facade: Widgets retain an ordered per-tab projection of
+each completed bounded `LookupResponse`, render only real dictionary
+identities, and navigate by the matching composed-section order. Replacement,
+cancellation, failure, tab closure, and facade rebinding clear presentation
+state before it can become stale. Prefix suggestions, full-text results, and
+dictionary browsing remain independent workflows.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,

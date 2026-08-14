@@ -531,6 +531,18 @@ Results navigation, `dictionaryBar`, menus, pronunciation, scan controls, the
 remaining article toolbar audit, and final legacy state import remain separate
 unlabelled Phase 8 leaves.
 
+The following unlabelled Phase 8 shell increment adds the pinned `dictsPane`
+results-navigation hierarchy for completed bounded lookups. Its ordered
+`dictsList` mirrors the active article tab's real dictionary results and scrolls
+keyboard- or mouse-activated rows to the corresponding composed article
+section. Empty, failed, cancelled, superseded, background, and closed-tab state
+cannot leak stale rows into the active pane. The pane is visible above the
+completed favorites/history hierarchy on the right by default. The private Qt
+state version advances while transactionally accepting the three immediately
+preceding Qt 6 layouts; legacy version 1 remains excluded. The prefix/suggestion
+`searchPane`, `dictionaryBar`, menus, and legacy opaque state migration remain
+separate leaves.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,

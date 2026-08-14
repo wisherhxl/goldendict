@@ -203,6 +203,8 @@ class MainWindow final : public QMainWindow {
     void RefreshHistoryList();
     void SelectGroup(std::uint32_t group_id);
     void RefreshGroupSelector();
+    void RefreshResultsNavigation();
+    void NavigateToSelectedResult();
     bool ExportHistoryToFile(const QString& path);
     QList<int> SelectedFavoriteFolderPath() const;
     QList<QList<int>> ExpandedFavoriteFolderPaths() const;
@@ -236,6 +238,7 @@ class MainWindow final : public QMainWindow {
     QPushButton* export_history_button_ = nullptr;
     QPushButton* import_history_button_ = nullptr;
     FavoritesTreeWidget* favorites_tree_ = nullptr;
+    QListWidget* results_list_ = nullptr;
     QAction* add_favorite_action_ = nullptr;
     QAction* add_favorite_folder_action_ = nullptr;
     QAction* rename_favorite_action_ = nullptr;
@@ -260,6 +263,9 @@ class MainWindow final : public QMainWindow {
     std::map<goldendict::core::ArticleTabId,
              std::unique_ptr<goldendict::core::LookupRequest>>
         requests_;
+    std::map<goldendict::core::ArticleTabId,
+             std::vector<goldendict::core::DictionaryIdentity>>
+        lookup_results_;
     DictionaryBrowser* dictionary_browser_ = nullptr;
     std::unique_ptr<QPrinter> printer_;
     bool print_in_progress_ = false;

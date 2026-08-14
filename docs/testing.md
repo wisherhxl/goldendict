@@ -308,6 +308,13 @@ and backed lookup/navigation workflows. State coverage includes the new
 version round trip, the immediately preceding Qt 6 layout, the older dock-name
 transition, malformed and unreachable rollback, and two-start toolbar
 placement and visibility without admitting legacy version-1 bytes.
+The same smoke pins the unique visible right-side `dictsPane` and `dictsList`,
+its default order above favorites/history, lookup-response row identity and
+active-tab isolation, keyboard and mouse activation, focus traversal,
+stale-row clearing, and usable central content. State coverage advances through
+the three immediately preceding private Qt 6 versions, and the two-start smoke
+preserves results-pane placement and visibility while legacy version 1 remains
+rejected.
 
 `goldendict_article_context_menu_smoke` verifies the application-private menu
 model without opening a real popup. It covers resolved internal links,
