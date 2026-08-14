@@ -23,8 +23,13 @@ constexpr std::string_view kDocumentPrefix =
     ".gd-dictionary-result{border-top:1px solid #aaa;margin-top:1.25rem;"
     "padding-top:.5rem}"
     ".gd-dictionary-result:first-child{border-top:0;margin-top:0}"
-    ".gd-dictionary-result>h2{font-size:1rem;margin:.25rem 0 .75rem}"
+    ".gd-dictionary-result h2{font-size:1rem;margin:.25rem 0 .75rem}"
+    ".gd-collapsed-article>summary{cursor:pointer;list-style-position:outside}"
+    ".gd-collapsed-article>summary>h2{display:inline}"
     ".gd-article{margin-bottom:.75rem}"
+    "@media "
+    "print{.gd-collapsed-article:not([open])>:not(summary){display:block!"
+    "important}}"
     "@media(prefers-color-scheme:dark){a{color:#8bc4ff}}"
     "</style></head><body>";
 constexpr std::string_view kDocumentSuffix = "</body></html>";

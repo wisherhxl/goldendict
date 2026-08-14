@@ -382,6 +382,17 @@ unchanged article session and layout. Core configuration tests cover the
 default, current round trip, strict legacy boolean migration, and value
 comparison; existing favorites and menu smokes retain atomic failure,
 selection/expansion, transfer, ordering, and canonical-action coverage.
+The General/Articles extension pins the exact backed checkbox, tooltips,
+`1..100000` spin-box range, 50-symbol step, 2000-symbol default, dependent
+enabled state, and the absence of unrelated appearance controls.
+`goldendict_articles_preferences_smoke` verifies cancellation, forced apply
+failure, successful complete-candidate persistence, unchanged article session
+and layout, and facade replacement under isolated offscreen Chromium. Core
+article-composer tests pin the strict threshold, multi-result-only collapse,
+single-result exemption, trusted wrapper markup, print expansion rule,
+sanitized content preservation, ordering, and size bound. Existing WebEngine,
+search, context-menu, print/export, session, and configuration suites cover
+the preserved surrounding behavior.
 `goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
 History and its sole backed legacy `searchInPageAction`, including exact text,
 role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and

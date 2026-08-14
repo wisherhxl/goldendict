@@ -1747,6 +1747,109 @@ void MainWindow::RunFavoritesPreferencesSmokeCheck(
     completion(passed);
 }
 
+void MainWindow::RunArticlesPreferencesSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || facade_ == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial_preferences = preferences_;
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const std::string initial_state = CaptureMainWindowState();
+    bool passed = true;
+
+    preferences_dialog_executor_ = [&passed, initial_preferences](
+                                       PreferencesDialog& dialog) {
+        auto* group = dialog.findChild<QGroupBox*>(
+            QStringLiteral("preferencesArticlesGroup"));
+        auto* collapse =
+            dialog.findChild<QCheckBox*>(QStringLiteral("collapseBigArticles"));
+        auto* limit =
+            dialog.findChild<QSpinBox*>(QStringLiteral("articleSizeLimit"));
+        auto* label =
+            dialog.findChild<QLabel*>(QStringLiteral("articleSizeLimitLabel"));
+        passed =
+            passed && group != nullptr && collapse != nullptr &&
+            limit != nullptr && label != nullptr &&
+            group->title() == QStringLiteral("Articles") &&
+            collapse->text() == QStringLiteral("Collapse articles more than") &&
+            collapse->toolTip() ==
+                QStringLiteral(
+                    "Select this option to automatic collapse big articles") &&
+            collapse->isChecked() ==
+                initial_preferences.collapse_large_articles &&
+            limit->minimum() == 1 && limit->maximum() == 100000 &&
+            limit->singleStep() == 50 &&
+            limit->value() ==
+                static_cast<int>(initial_preferences.article_size_limit) &&
+            limit->isEnabled() == initial_preferences.collapse_large_articles &&
+            label->text() == QStringLiteral("symbols") &&
+            dialog.findChild<QWidget*>(QStringLiteral("displayStyle")) ==
+                nullptr;
+        collapse->setChecked(true);
+        limit->setValue(3450);
+        passed = passed && limit->isEnabled();
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences &&
+             facade_->ExportArticleTabSession() == initial_session;
+
+    const auto original_callback = preferences_apply_callback_;
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("forced article preferences failure");
+    };
+    preferences_dialog_executor_ = [&passed](PreferencesDialog& dialog) {
+        auto* collapse =
+            dialog.findChild<QCheckBox*>(QStringLiteral("collapseBigArticles"));
+        auto* limit =
+            dialog.findChild<QSpinBox*>(QStringLiteral("articleSizeLimit"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && collapse != nullptr && limit != nullptr &&
+                 buttons != nullptr;
+        collapse->setChecked(true);
+        limit->setValue(3450);
+        buttons->button(QDialogButtonBox::Ok)->click();
+        auto* error = dialog.findChild<QLabel*>(
+            QStringLiteral("preferencesValidationError"));
+        passed = passed && dialog.result() != QDialog::Accepted &&
+                 error != nullptr && !error->isHidden();
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences &&
+             facade_->ExportArticleTabSession() == initial_session;
+
+    preferences_apply_callback_ = original_callback;
+    preferences_dialog_executor_ = [&passed](PreferencesDialog& dialog) {
+        auto* collapse =
+            dialog.findChild<QCheckBox*>(QStringLiteral("collapseBigArticles"));
+        auto* limit =
+            dialog.findChild<QSpinBox*>(QStringLiteral("articleSizeLimit"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && collapse != nullptr && limit != nullptr &&
+                 buttons != nullptr;
+        collapse->setChecked(true);
+        limit->setValue(3450);
+        buttons->button(QDialogButtonBox::Ok)->click();
+        passed = passed && dialog.result() == QDialog::Accepted;
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    preferences_dialog_executor_ = {};
+    preferences_apply_callback_ = original_callback;
+    passed = passed && preferences_.collapse_large_articles &&
+             preferences_.article_size_limit == 3450U &&
+             facade_->ExportArticleTabSession() == initial_session &&
+             CaptureMainWindowState() == initial_state &&
+             centralWidget() != nullptr && article_tabs_->isVisible();
+    completion(passed);
+}
+
 void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
     auto* search_menu = findChild<QMenu*>(QStringLiteral("menuSearch"));
     if (search_menu == nullptr || search_in_page_action_ == nullptr ||
@@ -3631,6 +3734,55 @@ ArticleView* MainWindow::CreateArticleView(
             [](const QUrl& url) { QDesktopServices::openUrl(url); });
     connect(view, &QWebEngineView::urlChanged, this,
             &MainWindow::UpdateNavigationActions);
+    connect(view, &QWebEngineView::loadFinished, this,
+            [this, tab_id, view](bool success) {
+                const auto scroll =
+                    pending_article_scroll_restorations_.find(tab_id);
+                if (scroll != pending_article_scroll_restorations_.end()) {
+                    const QPointF position = scroll->second;
+                    pending_article_scroll_restorations_.erase(scroll);
+                    if (!success) {
+                        return;
+                    }
+                    view->page()->runJavaScript(
+                        QStringLiteral("window.scrollTo(%1,%2)")
+                            .arg(position.x(), 0, 'f', 0)
+                            .arg(position.y(), 0, 'f', 0));
+                    const auto search =
+                        article_search_presentations_.find(tab_id);
+                    if (search != article_search_presentations_.end() &&
+                        !search->second.query.isEmpty()) {
+                        const QString query = search->second.query;
+                        const std::uint64_t generation =
+                            ++search->second.generation;
+                        view->findText(
+                            query, {},
+                            [this, tab_id, view, query, generation](
+                                const QWebEngineFindTextResult& result) {
+                                const auto current =
+                                    article_search_presentations_.find(tab_id);
+                                if (current ==
+                                        article_search_presentations_.end() ||
+                                    current->second.generation != generation ||
+                                    current->second.query != query ||
+                                    ArticleViewForTab(tab_id) != view) {
+                                    return;
+                                }
+                                current->second.status =
+                                    result.numberOfMatches() == 0
+                                        ? QStringLiteral("No matches")
+                                        : tr("%1 of %2")
+                                              .arg(result.activeMatch())
+                                              .arg(result.numberOfMatches());
+                                if (TabIdAt(article_tabs_->currentIndex()) ==
+                                    tab_id) {
+                                    article_search_status_->setText(
+                                        current->second.status);
+                                }
+                            });
+                    }
+                }
+            });
     connect(view, &QWebEngineView::pdfPrintingFinished, this,
             [this, tab_id](const QString&, bool success) {
                 if (TabIdAt(article_tabs_->currentIndex()) == tab_id) {
@@ -4369,6 +4521,15 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     requests_.clear();
     lookup_results_.clear();
     RefreshResultsNavigation();
+    pending_article_scroll_restorations_.clear();
+    for (int index = 0; index < article_tabs_->count(); ++index) {
+        const auto tab_id = TabIdAt(index);
+        auto* view = qobject_cast<ArticleView*>(article_tabs_->widget(index));
+        if (tab_id != 0U && view != nullptr) {
+            pending_article_scroll_restorations_[tab_id] =
+                view->page()->scrollPosition();
+        }
+    }
     while (article_tabs_->count() > 0) {
         QWidget* widget = article_tabs_->widget(0);
         article_tabs_->removeTab(0);

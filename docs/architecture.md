@@ -133,6 +133,14 @@ and all application state untouched, while acceptance continues through the
 existing atomic favorites-save path. The legacy save-interval control remains
 absent because current favorites mutations are persisted immediately and no
 compatible delayed-save runtime contract exists.
+The following General/Articles leaf passes the existing collapse flag and
+validated symbol limit into private core article-composition policy. Core wraps
+only qualifying multi-dictionary sections in trusted, script-free collapsible
+markup after dictionary payload sanitization; single-result pages remain
+expanded and print media exposes complete content. The public facade and
+configuration format remain unchanged. Successful preference recomposition
+restores the complete facade session and replays current pages, while Widgets
+retains presentation-only scroll and in-page search state by stable tab ID.
 The Phase 8 P4a current-persistence foundation extends that complete candidate
 with ordered, bounded transport-neutral records for MediaWiki, website, Forvo,
 and DICT sources. Stable IDs, names, enabled intent, adapter-compatible URLs,

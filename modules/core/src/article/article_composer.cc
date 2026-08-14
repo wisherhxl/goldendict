@@ -2,6 +2,7 @@
 
 #include "article_composer.h"
 
+#include <algorithm>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
@@ -47,18 +48,38 @@ std::string Escape(std::string_view value) {
     return escaped;
 }
 
+std::size_t Utf8CodePointCount(std::string_view text) noexcept {
+    return static_cast<std::size_t>(std::count_if(
+        text.begin(), text.end(),
+        [](unsigned char byte) { return (byte & 0xC0U) != 0x80U; }));
+}
+
 }  // namespace
 
-ArticleContent ComposeLookupPage(const LookupResponse& response) {
+ArticleContent ComposeLookupPage(const LookupResponse& response,
+                                 const ArticleCompositionOptions& options) {
     ArticleContent page;
     std::string html = NewDocument();
+    const bool may_collapse =
+        options.collapse_large_articles && response.entries.size() > 1U;
     for (const auto& entry : response.entries) {
         const std::string label = entry.dictionary.name.empty()
                                       ? entry.dictionary.id
                                       : entry.dictionary.name;
-        AppendBounded("<section class=\"gd-dictionary-result\"><h2>", &html);
+        const bool collapse =
+            may_collapse && Utf8CodePointCount(entry.article.plain_text) >
+                                options.article_size_limit;
+        AppendBounded("<section class=\"gd-dictionary-result\">", &html);
+        if (collapse) {
+            AppendBounded("<details class=\"gd-collapsed-article\"><summary>",
+                          &html);
+        }
+        AppendBounded("<h2>", &html);
         AppendBounded(Escape(label), &html);
         AppendBounded("</h2>", &html);
+        if (collapse) {
+            AppendBounded("</summary>", &html);
+        }
         const std::string_view body =
             entry.article.sanitized_html.has_value()
                 ? ExtractDocumentBody(*entry.article.sanitized_html)
@@ -69,6 +90,9 @@ ArticleContent ComposeLookupPage(const LookupResponse& response) {
             AppendBounded("<p>", &html);
             AppendBounded(Escape(entry.article.plain_text), &html);
             AppendBounded("</p>", &html);
+        }
+        if (collapse) {
+            AppendBounded("</details>", &html);
         }
         AppendBounded("</section>", &html);
 

@@ -47,7 +47,9 @@ class DesktopFacadeImpl final : public DesktopFacade {
         const CoreConfiguration& configuration,
         std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources)
         : service_(CreateDictionaryService(configuration,
-                                           std::move(runtime_sources))) {
+                                           std::move(runtime_sources))),
+          article_options_{configuration.preferences.collapse_large_articles,
+                           configuration.preferences.article_size_limit} {
         tabs_.push_back(CreateTabRecord(EmptyNavigation()));
         active_tab_id_ = tabs_.front().id;
     }
@@ -68,7 +70,7 @@ class DesktopFacadeImpl final : public DesktopFacade {
 
     ArticleContent ComposeLookupPage(
         const LookupResponse& response) const override {
-        return article::ComposeLookupPage(response);
+        return article::ComposeLookupPage(response, article_options_);
     }
 
     std::optional<ArticleUrl> ResolveArticleUrl(
@@ -271,6 +273,7 @@ class DesktopFacadeImpl final : public DesktopFacade {
     }
 
     std::unique_ptr<DictionaryService> service_;
+    article::ArticleCompositionOptions article_options_;
     std::vector<TabRecord> tabs_;
     ArticleTabId active_tab_id_ = 0U;
     ArticleTabId next_tab_id_ = 1U;

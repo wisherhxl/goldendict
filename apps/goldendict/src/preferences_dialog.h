@@ -35,6 +35,8 @@ class PreferencesDialog final : public QDialog {
     QCheckBox* store_history_ = nullptr;
     QSpinBox* maximum_history_entries_ = nullptr;
     QCheckBox* confirm_favorites_deletion_ = nullptr;
+    QCheckBox* collapse_large_articles_ = nullptr;
+    QSpinBox* article_size_limit_ = nullptr;
     QLabel* validation_error_ = nullptr;
 };
 

@@ -661,6 +661,20 @@ because the current model has no delayed-save contract. Appearance, tray,
 hotkeys, scan popup, audio, network/proxy, article, full-text search, and
 advanced Preferences remain separate Phase 8 leaves.
 
+The following independent Preferences leaf extends General with the backed
+Articles controls. `Collapse articles more than` defaults off and enables a
+`1..100000` symbol limit that defaults to 2000 and advances by 50; the lower
+bound follows the current validated configuration contract rather than the
+legacy widget's ineffective zero value. Core composition collapses only
+multi-dictionary results whose sanitized plain text is strictly longer than
+the limit, while a sole dictionary result stays expanded. Applying the policy
+recomposes the runtime and immediately replays current non-empty tabs after
+complete-session restoration. Widgets restores per-tab scroll and in-page
+search presentation after each replay; cancel and failures leave the existing
+facade and presentation unchanged. Appearance, optional-parts, input-filter,
+diacritic, synonym, audio, network/proxy, full-text-search, and advanced
+Preferences remain separate Phase 8 leaves.
+
 The next independent Phase 8 menu leaf adds the pinned `menuSearch` identity
 between Edit and History. It exposes only the existing in-article
 `searchInPageAction`, with its legacy text, role, and Ctrl+F shortcut, and

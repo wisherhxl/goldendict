@@ -11,6 +11,7 @@
 
 #include <QList>
 #include <QMainWindow>
+#include <QPointF>
 #include <QStringList>
 
 #include "goldendict/core/application.h"
@@ -128,6 +129,7 @@ class MainWindow final : public QMainWindow {
                                          std::function<void(bool)> completion);
     void RunFavoritesPreferencesSmokeCheck(
         std::function<void(bool)> completion);
+    void RunArticlesPreferencesSmokeCheck(std::function<void(bool)> completion);
     void RunFavoritesSmokeCheck(std::function<void(bool)> completion);
     void RunFavoritesCrossFolderMoveSmokeCheck(
         std::function<void(bool)> completion);
@@ -357,6 +359,8 @@ class MainWindow final : public QMainWindow {
 
     std::map<goldendict::core::ArticleTabId, ArticleSearchPresentation>
         article_search_presentations_;
+    std::map<goldendict::core::ArticleTabId, QPointF>
+        pending_article_scroll_restorations_;
 
     struct SuggestionPresentation {
         QString query;

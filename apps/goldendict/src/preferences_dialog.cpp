@@ -92,6 +92,36 @@ PreferencesDialog::PreferencesDialog(
         preferences.confirm_favorites_deletion);
     favorites_layout->addWidget(confirm_favorites_deletion_);
     general_layout->addWidget(favorites_group);
+
+    auto* articles_group =
+        new QGroupBox(QStringLiteral("Articles"), general_page);
+    articles_group->setObjectName(QStringLiteral("preferencesArticlesGroup"));
+    auto* articles_layout = new QHBoxLayout(articles_group);
+    collapse_large_articles_ = new QCheckBox(
+        QStringLiteral("Collapse articles more than"), articles_group);
+    collapse_large_articles_->setObjectName(
+        QStringLiteral("collapseBigArticles"));
+    collapse_large_articles_->setToolTip(QStringLiteral(
+        "Select this option to automatic collapse big articles"));
+    collapse_large_articles_->setChecked(preferences.collapse_large_articles);
+    article_size_limit_ = new QSpinBox(articles_group);
+    article_size_limit_->setObjectName(QStringLiteral("articleSizeLimit"));
+    article_size_limit_->setToolTip(
+        QStringLiteral("Articles longer than this size will be collapsed"));
+    article_size_limit_->setRange(1, 100000);
+    article_size_limit_->setSingleStep(50);
+    article_size_limit_->setValue(
+        static_cast<int>(preferences.article_size_limit));
+    article_size_limit_->setEnabled(preferences.collapse_large_articles);
+    connect(collapse_large_articles_, &QCheckBox::toggled, article_size_limit_,
+            &QSpinBox::setEnabled);
+    auto* symbols = new QLabel(QStringLiteral("symbols"), articles_group);
+    symbols->setObjectName(QStringLiteral("articleSizeLimitLabel"));
+    articles_layout->addWidget(collapse_large_articles_);
+    articles_layout->addWidget(article_size_limit_);
+    articles_layout->addWidget(symbols);
+    articles_layout->addStretch();
+    general_layout->addWidget(articles_group);
     general_layout->addStretch();
     tabs->addTab(general_page, QStringLiteral("General"));
     layout->addWidget(tabs);
@@ -122,6 +152,9 @@ void PreferencesDialog::Apply() {
         static_cast<std::uint32_t>(maximum_history_entries_->value());
     candidate.confirm_favorites_deletion =
         confirm_favorites_deletion_->isChecked();
+    candidate.collapse_large_articles = collapse_large_articles_->isChecked();
+    candidate.article_size_limit =
+        static_cast<std::uint32_t>(article_size_limit_->value());
     const QString error = apply_callback_(candidate);
     if (!error.isEmpty()) {
         validation_error_->setText(error);

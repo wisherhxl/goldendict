@@ -133,6 +133,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesZipSoundsAudio();
     void QueriesExplicitlyConfiguredSoundDirectory();
     void CompletesAnOwnedAsynchronousLookup();
+    void AppliesArticlePreferencesBehindTheDesktopFacade();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
     void RejectsUnboundedOrMalformedQueries();
@@ -2644,6 +2645,31 @@ void ApplicationServiceTest::CompletesAnOwnedAsynchronousLookup() {
     QCOMPARE(response.errors.size(), std::size_t{0});
     QCOMPARE(response.entries.size(), std::size_t{1});
     QCOMPARE(response.entries.front().match.normalized_headword, "example");
+}
+
+void ApplicationServiceTest::AppliesArticlePreferencesBehindTheDesktopFacade() {
+    CoreConfiguration configuration;
+    configuration.preferences.collapse_large_articles = true;
+    configuration.preferences.article_size_limit = 3U;
+    auto facade = CreateDesktopFacade(configuration);
+    LookupResponse response;
+    DictionaryEntry large;
+    large.dictionary.name = "Large";
+    large.article.plain_text = "four";
+    DictionaryEntry small;
+    small.dictionary.name = "Small";
+    small.article.plain_text = "two";
+    response.entries = {std::move(large), std::move(small)};
+
+    const auto page = facade->ComposeLookupPage(response);
+
+    QVERIFY(page.sanitized_html.has_value());
+    QVERIFY(page.sanitized_html->find(
+                "<details class=\"gd-collapsed-article\"><summary><h2>Large") !=
+            std::string::npos);
+    QVERIFY(page.sanitized_html->find(
+                "<details class=\"gd-collapsed-article\"><summary><h2>Small") ==
+            std::string::npos);
 }
 
 void ApplicationServiceTest::ResolvesTypedArticleUrlsBehindTheDesktopFacade() {

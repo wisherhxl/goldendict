@@ -7,7 +7,14 @@
 
 namespace goldendict::core::article {
 
-ArticleContent ComposeLookupPage(const LookupResponse& response);
+struct ArticleCompositionOptions {
+    bool collapse_large_articles = false;
+    std::uint32_t article_size_limit = 2000U;
+};
+
+ArticleContent ComposeLookupPage(
+    const LookupResponse& response,
+    const ArticleCompositionOptions& options = ArticleCompositionOptions{});
 
 }  // namespace goldendict::core::article
 
