@@ -11,6 +11,8 @@ ti_define_module(network
 if(TARGET runtime_composition_test)
   target_sources(runtime_composition_test PRIVATE
     src/http_client.cc
+    src/dict_server_source.cc
+    src/forvo_source.cc
     src/mediawiki_source.cc
     src/runtime_composition.cc
     src/website_source.cc

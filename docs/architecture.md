@@ -103,8 +103,12 @@ runtime increment adds a transport-neutral core extension contract and composes
 enabled MediaWiki and website records through the optional network module in
 persisted family order after the unchanged local catalog. The existing adapters
 perform transport work while core retains lookup orchestration and article
-sanitization. Forvo, DICT, external-program, credential, and executable wiring
-remain pending.
+sanitization. P5a.2 adds ordered Forvo-language children and DICT sources to the
+same internal composer. Forvo credentials enter only through an in-memory map
+keyed by configured source ID; missing values produce source-ID-only diagnostics
+without changing persisted enabled intent. Child identities are deterministic
+and retain the configured source ID as provenance. External-program and
+executable wiring remain pending.
 The core factory is intentionally a generic extension seam: injected identities
 need not correspond one-to-one with persisted records, allowing deterministic
 derived identities such as future per-language Forvo sources. It atomically

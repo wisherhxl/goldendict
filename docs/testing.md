@@ -151,6 +151,11 @@ empty-ID injection, collisions with local and runtime identities, unchanged DTOs
 after disabled omission, atomic failure without a partially returned service,
 and pre-cancelled/pre-expired behavior for every method on both wrappers.
 Zero result limits are also verified to return without source I/O.
+P5a.2 coverage adds four-family ordering, Forvo language-child identities and
+configured-source provenance, redacted missing-credential diagnostics, secret
+non-disclosure, and atomic malformed/inconsistent credential rejection. Local
+HTTP and DICT fixtures exercise Forvo lookup/audio resources and DICT
+definitions/suggestions without public network access.
 `goldendict_source_directories_smoke` exercises offscreen remove, reorder,
 inline edit, and cancel behavior plus invalid-candidate rollback, forced save
 failure, duplicate preservation, successful facade replacement, exact tab

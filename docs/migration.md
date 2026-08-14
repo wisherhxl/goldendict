@@ -413,8 +413,8 @@ enabled records, preserves each persisted family order and stable identity, and
 appends those families after the unchanged local catalog. Core continues to own
 query validation, cancellation, article assembly, sanitization, groups, and
 public result conversion. Loopback tests cover real adapter calls without public
-network access. Forvo credentials and composition, DICT, external programs, and
-application-facade wiring remain separate P5a leaves.
+network access. External programs and application-facade wiring remain separate
+P5a leaves.
 The generic core seam does not require runtime identities to exist in persisted
 configuration, so later composers may generate deterministic derived identities.
 The P5a.1 network composer owns DTO consistency: it validates the complete
@@ -423,6 +423,17 @@ null sources, empty IDs, and local/runtime identity collisions. Every composed
 method rejects pre-cancelled or pre-expired requests; transport operations also
 poll cancellation and deadline state and recheck it before returning, with the
 existing bounded adapter timeout as the fallback between polling opportunities.
+
+P5a.2 composes the existing Forvo and DICT adapters after MediaWiki and websites.
+Forvo credentials are supplied only by an explicit in-memory configured-source-ID
+map and never enter persistence, logs, identities, diagnostics, or errors.
+Missing credentials are recoverable source-ID-only diagnostics; malformed,
+unknown, non-Forvo, or identity-colliding input fails before a result is returned.
+Persisted Forvo family and language order is preserved through deterministic
+length-framed child identities that retain configured-source provenance. Forvo
+lookup exposes audio through typed resources, DICT exposes definitions and
+suggestions, and both preserve the P5a.1 request contract. External-program
+composition remains the P5a.3 dependency.
 
 The current-preferences foundation adds deterministic portable defaults and
 bounded optional preference records to the core-owned current configuration.
