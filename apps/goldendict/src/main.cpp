@@ -20,6 +20,7 @@
 #include "goldendict/core/favorites_store.h"
 #include "goldendict/core/history_store.h"
 #include "goldendict/network/runtime_composition.h"
+#include "legacy_configuration_location.h"
 #include "main_window.h"
 
 namespace {
@@ -168,6 +169,16 @@ void RegisterArticleScheme() {
     QWebEngineUrlScheme::registerScheme(scheme);
 }
 
+goldendict::app::DesktopPlatform CurrentDesktopPlatform() {
+#if defined(Q_OS_WIN)
+    return goldendict::app::DesktopPlatform::kWindows;
+#elif defined(Q_OS_MACOS)
+    return goldendict::app::DesktopPlatform::kMacOS;
+#else
+    return goldendict::app::DesktopPlatform::kLinuxUnix;
+#endif
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -180,12 +191,34 @@ int main(int argc, char* argv[]) {
     QApplication::setApplicationName(QStringLiteral("GoldenDict"));
     QApplication::setOrganizationName(QStringLiteral("GoldenDict"));
 
-    const QString configuration_directory =
+    const QString standard_configuration_directory =
+        QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
+    const QString current_configuration_directory =
         QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-    const QString configuration_path =
-        QDir(configuration_directory).filePath(QStringLiteral("core.conf"));
-    const QString legacy_configuration_path =
-        QDir(configuration_directory).filePath(QStringLiteral("config"));
+    const goldendict::app::LegacyConfigurationEnvironment location_environment{
+        CurrentDesktopPlatform(),
+        QDir::homePath().toStdString(),
+        standard_configuration_directory.toStdString(),
+        QCoreApplication::applicationDirPath().toStdString(),
+        qEnvironmentVariable("APPDATA").toStdString(),
+        current_configuration_directory.toStdString()};
+    goldendict::app::ConfigurationLocations configuration_locations;
+    try {
+        configuration_locations =
+            goldendict::app::ResolveConfigurationLocations(
+                location_environment, goldendict::app::ProbePath);
+        goldendict::app::ValidateAutoDiscoveredLegacyConfiguration(
+            configuration_locations, goldendict::app::ProbePath);
+    } catch (const std::exception& error) {
+        QMessageBox::warning(nullptr, QStringLiteral("GoldenDict"),
+                             QString::fromLocal8Bit(error.what()));
+        return 1;
+    }
+    const QString configuration_path = QString::fromStdString(
+        configuration_locations.current_configuration_path.string());
+    const QString legacy_configuration_path = QString::fromStdString(
+        configuration_locations.legacy_configuration_path.string());
+    const QString configuration_directory = current_configuration_directory;
     const QString history_path =
         QDir(configuration_directory).filePath(QStringLiteral("history-v1"));
     const QString legacy_history_path =

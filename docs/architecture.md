@@ -169,6 +169,15 @@ session: its configuration contains no tab or navigation records, startup
 always creates a fresh welcome tab, and per-view history and scroll data exist
 only in memory. Consequently there is no legacy article-session format or
 migration input; current-format session persistence remains unchanged.
+The application composition layer also owns a private, non-Widgets adapter for
+legacy configuration locations. It converts Qt's runtime paths and platform
+into an injected value object, then applies the pinned portable, Linux/Unix,
+Windows, or macOS directory rule without scanning profile roots. The selected
+exact `config` path is passed to the unchanged core migration transaction.
+Current state is checked first; final symlinks and non-regular selected sources
+are rejected, and no lower-priority profile is tried after selection. This
+keeps platform APIs and environment lookup outside the reusable core while the
+bounded parser, validation, and persistence remain core-owned.
 `CreateDictionaryService` is the headless composition entry
 point and `CreateDesktopFacade` is the presentation-facing entry point. Both
 compose private format adapters inside `goldendict_core`; neither exposes a

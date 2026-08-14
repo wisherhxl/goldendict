@@ -3,6 +3,16 @@
 ti_add_qt_app(goldendict MODULES core network
   EXTRAS ${qt_link} ${qt_print_support_link})
 
+ti_add_executable(legacy_configuration_location_test
+  tests/legacy_configuration_location_test.cpp
+  src/legacy_configuration_location.cpp)
+ti_target_include_modules_recurse(legacy_configuration_location_test
+  goldendict_core)
+ti_target_link_libraries(legacy_configuration_location_test
+  goldendict_core ${QT_NAMESPACE}::Test)
+add_test(NAME legacy_configuration_location_test
+  COMMAND legacy_configuration_location_test)
+
 add_test(NAME goldendict_smoke COMMAND $<TARGET_FILE:goldendict> --smoke)
 
 add_test(NAME goldendict_webengine_smoke

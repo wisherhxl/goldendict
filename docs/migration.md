@@ -372,9 +372,8 @@ file is never modified, a current configuration always takes precedence, and
 malformed input leaves no partial replacement. A subsequent bounded slice
 imports ordered dictionary groups and their stable transport-neutral metadata,
 retaining unknown nonempty dictionary IDs without catalog resolution. Online
-sources, preferences, and platform-specific legacy location discovery remain
-separately gated migration work; group-aware lookup behavior and group editing
-remain later Phase 8 work.
+sources and preferences remain separately gated migration work; group-aware
+lookup behavior and group editing remain later Phase 8 work.
 
 The P3 local-source editor replaces the single-folder bootstrap chooser with
 one bounded dialog for ordered dictionary paths and named sound directories.
@@ -511,6 +510,20 @@ legacy session source format, version, discovery trigger, or accepted unit to
 migrate. A first migrated startup keeps the current deterministic no-session
 fallback, and later startups use the already-bounded atomic current-format
 session store. Inventing a legacy representation would not be parity work.
+
+The Phase 8 R6c application increment discovers the pinned legacy
+configuration location without moving parsing policy into Widgets. Portable
+mode exclusively selects `portable/config` beside the executable. Otherwise,
+Linux/Unix selects `~/.goldendict/config` when the old directory exists and
+falls back to the XDG configuration root's `goldendict/config`; Windows first
+recognizes `~/Application Data/GoldenDict/config` and otherwise uses roaming
+`APPDATA/GoldenDict/config`; macOS uses `~/.goldendict/config`. The legacy
+directory gate is preserved exactly, so a selected missing, unreadable,
+malformed, or unsafe candidate never falls through to another profile.
+Existing current state wins before the legacy path is inspected, portable
+current configuration is stored beside the portable source, and discovered
+legacy files remain read-only. Platform-specific history and favorites
+discovery remains a separate fresh Phase 8 leaf.
 
 The following user-state increment adds a transport-neutral core history store
 with bounded group-aware UTF-8 entries and a recoverable legacy line-format

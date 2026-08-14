@@ -224,6 +224,14 @@ main-window geometry round-trips through the current store with a 64 KiB
 decoded limit; malformed, duplicate, and oversized current or legacy data is
 rejected atomically while `mainWindowState` remains ignored.
 
+`legacy_configuration_location_test` pins R6c with injected synthetic roots
+for portable, Linux/Unix, Windows, and macOS. It verifies exact names and
+casing, old-directory and portable precedence, no fallback after selection,
+current-state precedence without inspecting legacy state, missing and unsafe
+candidate handling, malformed-input atomic failure, one-time idempotent
+migration, and byte-for-byte source immutability. The test never reads or
+writes the executing user's real configuration locations.
+
 `history_store_test` verifies the first user-history migration slice: strict
 bounded UTF-8/group-aware current-format round trips, bounded import of the
 legacy line format, entry-limit truncation, current-state precedence, atomic
