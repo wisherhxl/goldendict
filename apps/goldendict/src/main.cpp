@@ -238,6 +238,19 @@ int main(int argc, char* argv[]) {
         configuration.dictionary_paths = {command_line_root.toStdString()};
     }
     if (HasArgument(argc, argv, QStringLiteral("--source-directories-smoke"))) {
+        configuration.mediawiki_sources = {
+            {"smoke.wiki", "Smoke Wiki", false, "https://wiki.example.test/w"}};
+        configuration.website_sources = {
+            {"smoke.website", "Smoke Website", false,
+             "https://website.example.test/?q=%GDWORD%"}};
+        configuration.forvo_sources = {{"smoke.forvo",
+                                        "Smoke Forvo",
+                                        false,
+                                        "https://apifree.forvo.com",
+                                        {"en", "ru"}}};
+        configuration.dict_server_sources = {{"smoke.dict", "Smoke DICT", false,
+                                              "dict.example.test", 2628U, "*",
+                                              "prefix"}};
         configuration.external_program_sources = {
             {"smoke.external",
              "Smoke External",
@@ -543,47 +556,89 @@ int main(int argc, char* argv[]) {
                                  QString::fromLocal8Bit(error.what()));
                          }
                      });
+    const auto apply_sources =
+        [&](const std::vector<std::string>& dictionary_paths,
+            const std::vector<goldendict::core::SoundDirectoryConfiguration>&
+                sound_directories,
+            const std::vector<goldendict::core::MediaWikiSourceConfiguration>&
+                mediawiki_sources,
+            const std::vector<goldendict::core::WebsiteSourceConfiguration>&
+                website_sources,
+            const std::vector<goldendict::core::ForvoSourceConfiguration>&
+                forvo_sources,
+            const std::vector<goldendict::core::DictServerSourceConfiguration>&
+                dict_server_sources,
+            bool show_error) -> QString {
+        if (dictionary_paths == configuration.dictionary_paths &&
+            sound_directories == configuration.sound_directories &&
+            mediawiki_sources == configuration.mediawiki_sources &&
+            website_sources == configuration.website_sources &&
+            forvo_sources == configuration.forvo_sources &&
+            dict_server_sources == configuration.dict_server_sources) {
+            return {};
+        }
+        auto updated = configuration;
+        updated.dictionary_paths = dictionary_paths;
+        updated.sound_directories = sound_directories;
+        updated.mediawiki_sources = mediawiki_sources;
+        updated.website_sources = website_sources;
+        updated.forvo_sources = forvo_sources;
+        updated.dict_server_sources = dict_server_sources;
+        updated.article_tab_session = facade->ExportArticleTabSession();
+        try {
+            goldendict::core::ValidateConfiguration(updated);
+            auto replacement =
+                goldendict::network::ComposeConfiguredApplication(updated);
+            if (!replacement.facade->RestoreArticleTabSession(
+                    *updated.article_tab_session)) {
+                throw std::runtime_error(
+                    "Unable to restore the article tab "
+                    "session");
+            }
+            goldendict::core::SaveConfiguration(
+                configuration_path.toStdString(), updated);
+            window.SetSourceDirectories(updated.dictionary_paths,
+                                        updated.sound_directories);
+            window.SetFacade(replacement.facade.get());
+            facade = std::move(replacement.facade);
+            composition_diagnostics = std::move(replacement.diagnostics);
+            ReportRuntimeCompositionDiagnostics(composition_diagnostics);
+            configuration = std::move(updated);
+            window.SetOnlineSources(configuration.mediawiki_sources,
+                                    configuration.website_sources,
+                                    configuration.forvo_sources,
+                                    configuration.dict_server_sources, {});
+            return {};
+        } catch (const std::exception& error) {
+            if (show_error) {
+                QMessageBox::warning(&window, QStringLiteral("GoldenDict"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+            return QString::fromLocal8Bit(error.what());
+        }
+    };
     const auto apply_source_directories =
         [&](const std::vector<std::string>& dictionary_paths,
             const std::vector<goldendict::core::SoundDirectoryConfiguration>&
                 sound_directories,
             bool show_error) {
-            if (dictionary_paths == configuration.dictionary_paths &&
-                sound_directories == configuration.sound_directories) {
-                return true;
-            }
-            auto updated = configuration;
-            updated.dictionary_paths = dictionary_paths;
-            updated.sound_directories = sound_directories;
-            updated.article_tab_session = facade->ExportArticleTabSession();
-            try {
-                goldendict::core::ValidateConfiguration(updated);
-                auto replacement =
-                    goldendict::network::ComposeConfiguredApplication(updated);
-                if (!replacement.facade->RestoreArticleTabSession(
-                        *updated.article_tab_session)) {
-                    throw std::runtime_error(
-                        "Unable to restore the article tab "
-                        "session");
-                }
-                goldendict::core::SaveConfiguration(
-                    configuration_path.toStdString(), updated);
-                window.SetSourceDirectories(updated.dictionary_paths,
-                                            updated.sound_directories);
-                window.SetFacade(replacement.facade.get());
-                facade = std::move(replacement.facade);
-                composition_diagnostics = std::move(replacement.diagnostics);
-                ReportRuntimeCompositionDiagnostics(composition_diagnostics);
-                configuration = std::move(updated);
-                return true;
-            } catch (const std::exception& error) {
-                if (show_error) {
-                    QMessageBox::warning(&window, QStringLiteral("GoldenDict"),
-                                         QString::fromLocal8Bit(error.what()));
-                }
-                return false;
-            }
+            return apply_sources(dictionary_paths, sound_directories,
+                                 configuration.mediawiki_sources,
+                                 configuration.website_sources,
+                                 configuration.forvo_sources,
+                                 configuration.dict_server_sources, show_error)
+                .isEmpty();
         };
+    window.SetOnlineSources(
+        configuration.mediawiki_sources, configuration.website_sources,
+        configuration.forvo_sources, configuration.dict_server_sources,
+        [&](const auto& dictionary_paths, const auto& sound_directories,
+            const auto& mediawiki_sources, const auto& website_sources,
+            const auto& forvo_sources, const auto& dict_server_sources) {
+            return apply_sources(dictionary_paths, sound_directories,
+                                 mediawiki_sources, website_sources,
+                                 forvo_sources, dict_server_sources, false);
+        });
     QObject::connect(
         &window, &MainWindow::SourceDirectoriesEdited, &window,
         [&](const std::vector<std::string>& dictionary_paths,
@@ -674,36 +729,35 @@ int main(int argc, char* argv[]) {
                            QStringLiteral("--dictionary-groups-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(
-            0, &window,
-            [&app, &configuration, &configuration_path, &window]() {
+            0, &window, [&app, &configuration, &configuration_path, &window]() {
                 window.RunDictionaryGroupsSmokeCheck(
                     [&app, &configuration, &configuration_path](bool passed) {
                         try {
                             const auto persisted =
                                 goldendict::core::LoadConfiguration(
                                     configuration_path.toStdString());
-                            passed = passed &&
-                                     persisted.dictionary_groups.size() == 1U &&
-                                     persisted.dictionary_groups.front().id == 7U &&
-                                     persisted.dictionary_paths ==
-                                         configuration.dictionary_paths &&
-                                     persisted.index_directory ==
-                                         configuration.index_directory &&
-                                     persisted.sound_directories ==
-                                         configuration.sound_directories;
+                            passed =
+                                passed &&
+                                persisted.dictionary_groups.size() == 1U &&
+                                persisted.dictionary_groups.front().id == 7U &&
+                                persisted.dictionary_paths ==
+                                    configuration.dictionary_paths &&
+                                persisted.index_directory ==
+                                    configuration.index_directory &&
+                                persisted.sound_directories ==
+                                    configuration.sound_directories;
                             auto invalid = persisted;
                             invalid.dictionary_groups.front().name.clear();
                             try {
                                 goldendict::core::SaveConfiguration(
                                     configuration_path.toStdString(), invalid);
                                 passed = false;
-                            } catch (const std::exception&) {
-                            }
-                            passed = passed &&
-                                     goldendict::core::LoadConfiguration(
-                                         configuration_path.toStdString())
-                                             .dictionary_groups ==
-                                         persisted.dictionary_groups;
+                            } catch (const std::exception&) {}
+                            passed =
+                                passed && goldendict::core::LoadConfiguration(
+                                              configuration_path.toStdString())
+                                                  .dictionary_groups ==
+                                              persisted.dictionary_groups;
                         } catch (const std::exception&) {
                             passed = false;
                         }
@@ -716,7 +770,7 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(
             0, &window,
             [&app, &configuration, &configuration_path, &facade,
-             &apply_source_directories, &window]() {
+             &apply_source_directories, &apply_sources, &window]() {
                 bool passed = true;
                 try {
                     configuration.dictionary_groups = {
@@ -742,6 +796,14 @@ int main(int argc, char* argv[]) {
                                candidate.preferences == original.preferences &&
                                candidate.external_program_sources ==
                                    original.external_program_sources &&
+                               candidate.mediawiki_sources ==
+                                   original.mediawiki_sources &&
+                               candidate.website_sources ==
+                                   original.website_sources &&
+                               candidate.forvo_sources ==
+                                   original.forvo_sources &&
+                               candidate.dict_server_sources ==
+                                   original.dict_server_sources &&
                                candidate.article_tab_session ==
                                    original.article_tab_session &&
                                candidate.main_window_geometry ==
@@ -792,6 +854,18 @@ int main(int argc, char* argv[]) {
                     passed = passed &&
                              apply_source_directories(successful_paths,
                                                       successful_sounds, false);
+                    auto edited_wikis = configuration.mediawiki_sources;
+                    edited_wikis.front().enabled = true;
+                    const std::vector<
+                        goldendict::core::ForvoSourceConfiguration>
+                        empty_forvo;
+                    passed = passed &&
+                             apply_sources(
+                                 configuration.dictionary_paths,
+                                 configuration.sound_directories, edited_wikis,
+                                 configuration.website_sources, empty_forvo,
+                                 configuration.dict_server_sources, false)
+                                 .isEmpty();
                     const auto persisted = goldendict::core::LoadConfiguration(
                         configuration_path.toStdString());
                     passed =
@@ -803,6 +877,8 @@ int main(int argc, char* argv[]) {
                         persisted.preferences == original.preferences &&
                         persisted.external_program_sources ==
                             original.external_program_sources &&
+                        persisted.mediawiki_sources == edited_wikis &&
+                        persisted.forvo_sources.empty() &&
                         persisted.main_window_geometry ==
                             original.main_window_geometry &&
                         facade->ExportArticleTabSession() == original_session &&

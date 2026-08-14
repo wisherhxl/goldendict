@@ -166,6 +166,12 @@ preservation of an already active facade.
 inline edit, and cancel behavior plus invalid-candidate rollback, forced save
 failure, duplicate preservation, successful facade replacement, exact tab
 session restoration, and unrelated configuration preservation.
+It also covers the P5b online-source presentation: hidden stable IDs,
+MediaWiki reorder and enable edits, ordered Forvo language edits, synchronous
+apply-failure feedback, retry, exact empty Forvo persistence, complete-facade
+replacement, and preservation of unrelated configuration and the article
+session. Website and DICT DTO round trips remain pinned by the same atomic
+application path, with no credential field or public network request.
 It also imports ordered legacy groups with favorites folders, shortcuts,
 separate muted-ID collections, external icons, and canonical Base64 embedded
 icon metadata. Unknown nonempty dictionary IDs remain stable, while malformed,

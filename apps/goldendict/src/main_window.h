@@ -56,6 +56,13 @@ class MainWindow final : public QMainWindow {
     Q_OBJECT
 
    public:
+    using SourceApplyCallback = std::function<QString(
+        const std::vector<std::string>&,
+        const std::vector<goldendict::core::SoundDirectoryConfiguration>&,
+        const std::vector<goldendict::core::MediaWikiSourceConfiguration>&,
+        const std::vector<goldendict::core::WebsiteSourceConfiguration>&,
+        const std::vector<goldendict::core::ForvoSourceConfiguration>&,
+        const std::vector<goldendict::core::DictServerSourceConfiguration>&)>;
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
@@ -74,6 +81,16 @@ class MainWindow final : public QMainWindow {
         const std::vector<std::string>& dictionary_paths,
         const std::vector<goldendict::core::SoundDirectoryConfiguration>&
             sound_directories);
+    void SetOnlineSources(
+        const std::vector<goldendict::core::MediaWikiSourceConfiguration>&
+            mediawiki_sources,
+        const std::vector<goldendict::core::WebsiteSourceConfiguration>&
+            website_sources,
+        const std::vector<goldendict::core::ForvoSourceConfiguration>&
+            forvo_sources,
+        const std::vector<goldendict::core::DictServerSourceConfiguration>&
+            dict_server_sources,
+        SourceApplyCallback apply_callback);
     const std::vector<goldendict::core::DictionaryGroupConfiguration>&
     DictionaryGroups() const noexcept;
     void RunWebEngineSmokeCheck(std::function<void(bool)> completion);
@@ -167,6 +184,13 @@ class MainWindow final : public QMainWindow {
     std::vector<std::string> dictionary_paths_;
     std::vector<goldendict::core::SoundDirectoryConfiguration>
         sound_directories_;
+    std::vector<goldendict::core::MediaWikiSourceConfiguration>
+        mediawiki_sources_;
+    std::vector<goldendict::core::WebsiteSourceConfiguration> website_sources_;
+    std::vector<goldendict::core::ForvoSourceConfiguration> forvo_sources_;
+    std::vector<goldendict::core::DictServerSourceConfiguration>
+        dict_server_sources_;
+    SourceApplyCallback source_apply_callback_;
     goldendict::core::ApplicationPreferences preferences_;
     QLineEdit* query_ = nullptr;
     QComboBox* group_selector_ = nullptr;

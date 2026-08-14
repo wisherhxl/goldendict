@@ -11,6 +11,7 @@
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialog>
+#include <QDialogButtonBox>
 #include <QDockWidget>
 #include <QFile>
 #include <QFileDialog>
@@ -1449,6 +1450,24 @@ void MainWindow::SetSourceDirectories(
     sound_directories_ = sound_directories;
 }
 
+void MainWindow::SetOnlineSources(
+    const std::vector<goldendict::core::MediaWikiSourceConfiguration>&
+        mediawiki_sources,
+    const std::vector<goldendict::core::WebsiteSourceConfiguration>&
+        website_sources,
+    const std::vector<goldendict::core::ForvoSourceConfiguration>&
+        forvo_sources,
+    const std::vector<goldendict::core::DictServerSourceConfiguration>&
+        dict_server_sources,
+    SourceApplyCallback apply_callback) {
+    mediawiki_sources_ = mediawiki_sources;
+    website_sources_ = website_sources;
+    forvo_sources_ = forvo_sources;
+    dict_server_sources_ = dict_server_sources;
+    if (apply_callback)
+        source_apply_callback_ = std::move(apply_callback);
+}
+
 const std::vector<goldendict::core::DictionaryGroupConfiguration>&
 MainWindow::DictionaryGroups() const noexcept {
     return groups_;
@@ -1833,20 +1852,95 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
     passed = passed && cancelled.result() == QDialog::Rejected &&
              cancelled.DictionaryPaths() == paths &&
              cancelled.SoundDirectories() == sounds;
+    const std::vector<goldendict::core::MediaWikiSourceConfiguration> wikis = {
+        {"wiki.one", "One", true, "https://one.example/w"},
+        {"wiki.two", "Two", false, "https://two.example/w"}};
+    const std::vector<goldendict::core::WebsiteSourceConfiguration> websites = {
+        {"web.one", "Website", true, "https://website.example/?q=%GDWORD%"}};
+    const std::vector<goldendict::core::ForvoSourceConfiguration> forvo = {
+        {"forvo.one",
+         "Forvo",
+         false,
+         "https://apifree.forvo.com",
+         {"en", "ru"}}};
+    const std::vector<goldendict::core::DictServerSourceConfiguration> dicts = {
+        {"dict.one", "DICT", true, "dict.example", 2628U, "*", "prefix"}};
+    bool reject_once = true;
+    bool callback_received = false;
+    SourceDirectoriesDialog online(
+        paths, sounds, wikis, websites, forvo, dicts,
+        [&](const auto&, const auto&, const auto& edited_wikis,
+            const auto& edited_websites, const auto& edited_forvo,
+            const auto& edited_dicts) {
+            callback_received = edited_wikis.front().id == "wiki.two" &&
+                                edited_wikis.front().enabled &&
+                                edited_websites == websites &&
+                                edited_forvo.front().language_codes ==
+                                    (std::vector<std::string>{"ru", "en"}) &&
+                                edited_dicts == dicts;
+            if (reject_once) {
+                reject_once = false;
+                return QStringLiteral("forced apply failure");
+            }
+            return QString{};
+        },
+        this);
+    auto* wiki_list =
+        online.findChild<QTreeWidget*>(QStringLiteral("mediaWikiList"));
+    auto* wiki_up =
+        online.findChild<QPushButton*>(QStringLiteral("mediaWikiUp"));
+    auto* forvo_list =
+        online.findChild<QTreeWidget*>(QStringLiteral("forvoList"));
+    auto* buttons = online.findChild<QDialogButtonBox*>();
+    passed = passed && wiki_list != nullptr && wiki_up != nullptr &&
+             forvo_list != nullptr && buttons != nullptr;
+    if (passed) {
+        auto* website_list =
+            online.findChild<QTreeWidget*>(QStringLiteral("websiteList"));
+        website_list->topLevelItem(0)->setText(2, QStringLiteral("invalid"));
+        buttons->button(QDialogButtonBox::Apply)->click();
+        auto* error =
+            online.findChild<QLabel*>(QStringLiteral("sourceValidationError"));
+        passed = !callback_received && online.result() != QDialog::Accepted &&
+                 error != nullptr && !error->isHidden();
+        website_list->topLevelItem(0)->setText(
+            2, QStringLiteral("https://website.example/?q=%GDWORD%"));
+        wiki_list->setCurrentItem(wiki_list->topLevelItem(1));
+        wiki_up->click();
+        wiki_list->topLevelItem(0)->setCheckState(0, Qt::Checked);
+        forvo_list->topLevelItem(0)->setText(3, QStringLiteral("ru,en"));
+        buttons->button(QDialogButtonBox::Apply)->click();
+        passed = passed && callback_received &&
+                 online.result() != QDialog::Accepted && error != nullptr &&
+                 !error->isHidden();
+        buttons->button(QDialogButtonBox::Apply)->click();
+        passed = passed && online.result() == QDialog::Accepted;
+    }
+    bool received_empty = false;
+    SourceDirectoriesDialog empty_online(
+        paths, sounds, {}, {}, {}, {},
+        [&](const auto&, const auto&, const auto& empty_wikis,
+            const auto& empty_websites, const auto& empty_forvo,
+            const auto& empty_dicts) {
+            received_empty = empty_wikis.empty() && empty_websites.empty() &&
+                             empty_forvo.empty() && empty_dicts.empty();
+            return QString{};
+        },
+        this);
+    empty_online.findChild<QDialogButtonBox*>()
+        ->button(QDialogButtonBox::Apply)
+        ->click();
+    passed =
+        passed && received_empty && empty_online.result() == QDialog::Accepted;
     completion(passed);
 }
 
 void MainWindow::EditSourceDirectories() {
-    SourceDirectoriesDialog dialog(dictionary_paths_, sound_directories_, this);
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-    const auto dictionary_paths = dialog.DictionaryPaths();
-    const auto sound_directories = dialog.SoundDirectories();
-    if (dictionary_paths == dictionary_paths_ &&
-        sound_directories == sound_directories_) {
-        return;
-    }
-    emit SourceDirectoriesEdited(dictionary_paths, sound_directories);
+    SourceDirectoriesDialog dialog(dictionary_paths_, sound_directories_,
+                                   mediawiki_sources_, website_sources_,
+                                   forvo_sources_, dict_server_sources_,
+                                   source_apply_callback_, this);
+    dialog.exec();
 }
 
 void MainWindow::StartLookup() {

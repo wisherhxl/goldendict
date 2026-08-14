@@ -444,6 +444,16 @@ the complete local-plus-runtime facade, restores its session, atomically saves
 the candidate, and only then rebinds presentation objects. Any construction,
 restore, or save failure preserves the active facade and configuration.
 
+The P5b presentation increment extends the bounded source dialog with ordered
+MediaWiki, website, Forvo, and DICT editors. Widgets stage transport-neutral
+records, retain stable hidden identities, expose enabled intent and explicit
+reordering, and report core validation or application replacement failures
+without closing the dialog. Apply constructs one complete configuration,
+restores the exact article session into a fully composed replacement, saves it
+atomically, and only then rebinds presentation state. Exact empty collections
+are preserved, including the Forvo presence marker. Credentials, external
+program editing, icons, iframe and legacy encoding settings remain excluded.
+
 The current-preferences foundation adds deterministic portable defaults and
 bounded optional preference records to the core-owned current configuration.
 It round-trips locale, appearance, window, hotkey, scan, audio, proxy policy,

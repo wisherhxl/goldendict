@@ -94,6 +94,13 @@ core API owns source-list bounds and validation; the composition root restores
 a replacement facade, atomically saves the candidate, and only then rebinds
 Widgets. Presentation code never persists or discovers sources, and failure
 leaves the active facade and unrelated application state unchanged.
+The P5b source presentation extends the same dialog and complete-candidate
+command to MediaWiki, website, Forvo, and DICT records. Stable source IDs are
+hidden from editing, enabled and ordered intent is staged in Widgets, and core
+validation failures are returned to the open dialog. The composition root
+continues to own construction, session restoration, atomic persistence, and
+the final facade swap; presentation code neither persists configuration nor
+handles Forvo credentials.
 The Phase 8 P4a current-persistence foundation extends that complete candidate
 with ordered, bounded transport-neutral records for MediaWiki, website, Forvo,
 and DICT sources. Stable IDs, names, enabled intent, adapter-compatible URLs,
