@@ -7,6 +7,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <QList>
@@ -206,7 +207,8 @@ class MainWindow final : public QMainWindow {
     bool eventFilter(QObject* watched, QEvent* event) override;
     void StartLookupInTab(goldendict::core::TabOpenPolicy open_policy,
                           goldendict::core::TabActivationPolicy activation,
-                          const QString& internal_url = {});
+                          const QString& internal_url = {},
+                          std::optional<std::uint32_t> group_id = std::nullopt);
     void StartNavigationLookup(
         goldendict::core::ArticleTabId tab_id,
         const goldendict::core::TabNavigationState& navigation,

@@ -4,6 +4,7 @@
 
 #include "../foundation/utf8.h"
 #include "article_tab_session.h"
+#include "input_phrase.h"
 
 #include <algorithm>
 #include <cctype>
@@ -566,6 +567,20 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         !application::ValidateArticleTabSession(
             *configuration.article_tab_session)) {
         throw std::runtime_error("Article tab session is invalid");
+    }
+    if (configuration.article_tab_session.has_value()) {
+        for (const auto& tab : configuration.article_tab_session->tabs) {
+            if (std::any_of(
+                    tab.history.begin(), tab.history.end(),
+                    [&configuration](const TabNavigationState& navigation) {
+                        return !application::IsInputPhraseAccepted(
+                            navigation.query, configuration.preferences);
+                    })) {
+                throw std::runtime_error(
+                    "Article tab session contains an input phrase that "
+                    "exceeds the configured symbol limit");
+            }
+        }
     }
     if (configuration.main_window_geometry.size() >
         kMaximumMainWindowGeometryBytes) {

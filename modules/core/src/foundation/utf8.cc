@@ -2,6 +2,7 @@
 
 #include "utf8.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 
@@ -59,6 +60,12 @@ bool IsValidUtf8(std::string_view text) noexcept {
         position += length;
     }
     return true;
+}
+
+std::size_t Utf8CodePointCount(std::string_view text) noexcept {
+    return static_cast<std::size_t>(std::count_if(
+        text.begin(), text.end(),
+        [](unsigned char byte) { return (byte & 0xc0U) != 0x80U; }));
 }
 
 bool ContainsControlCharacter(std::string_view text) noexcept {

@@ -137,6 +137,7 @@ class ApplicationServiceTest : public QObject {
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void ReportsCancellationAndUnavailableDictionaries();
     void RejectsUnboundedOrMalformedQueries();
+    void RejectsConfiguredInputPhraseLimitsForLookupAndSuggestions();
 };
 
 std::filesystem::path TemporaryPath(const QTemporaryDir& directory) {
@@ -179,6 +180,37 @@ void ApplicationServiceTest::CatalogSanitizesInspectionMetadata() {
     QCOMPARE(catalog.front().description, "Author: Test\n<plain>hidden");
     QCOMPARE(catalog.front().source_language, "en");
     QCOMPARE(catalog.front().target_language, "de");
+}
+
+void ApplicationServiceTest::
+    RejectsConfiguredInputPhraseLimitsForLookupAndSuggestions() {
+    CoreConfiguration configuration;
+    configuration.preferences.limit_input_phrase_length = true;
+    configuration.preferences.input_phrase_length_limit = 2U;
+    const auto service = CreateDictionaryService(configuration);
+
+    LookupQuery lookup;
+    lookup.text = u8"a😀";
+    QVERIFY(service->Lookup(lookup).errors.empty());
+    lookup.text = u8"a😀́";
+    const auto rejected_lookup = service->Lookup(lookup);
+    QCOMPARE(rejected_lookup.errors.size(), std::size_t{1});
+    QCOMPARE(rejected_lookup.errors.front().code,
+             LookupErrorCode::kInvalidQuery);
+    QVERIFY(rejected_lookup.entries.empty());
+    const auto asynchronous = service->StartLookup(lookup)->Await();
+    QCOMPARE(asynchronous.errors.front().code, LookupErrorCode::kInvalidQuery);
+
+    SuggestionQuery suggestion;
+    suggestion.text = u8"😀😀😀";
+    const auto rejected_suggestion = service->Suggest(suggestion);
+    QCOMPARE(rejected_suggestion.errors.front().code,
+             LookupErrorCode::kInvalidQuery);
+    QVERIFY(rejected_suggestion.suggestions.empty());
+
+    configuration.preferences.limit_input_phrase_length = false;
+    const auto unlimited = CreateDictionaryService(configuration);
+    QVERIFY(unlimited->Lookup(lookup).errors.empty());
 }
 
 void ApplicationServiceTest::ConfigurationRoundTripsEscapedPaths() {
@@ -866,6 +898,8 @@ void ApplicationServiceTest::
     preferences.confirm_favorites_deletion = false;
     preferences.collapse_large_articles = true;
     preferences.article_size_limit = 4096U;
+    preferences.limit_input_phrase_length = true;
+    preferences.input_phrase_length_limit = 321U;
     preferences.synonym_search_enabled = false;
     preferences.full_text_search_mode = FullTextSearchMode::kRegularExpression;
     preferences.full_text_match_case = true;
@@ -895,6 +929,8 @@ void ApplicationServiceTest::
     QCOMPARE(actual.preferences.words_zoom_level, preferences.words_zoom_level);
     QCOMPARE(actual.preferences.article_size_limit,
              preferences.article_size_limit);
+    QCOMPARE(actual.preferences.limit_input_phrase_length, true);
+    QCOMPARE(actual.preferences.input_phrase_length_limit, std::uint32_t{321});
     QCOMPARE(actual.preferences.confirm_favorites_deletion, false);
     QCOMPARE(actual.preferences.synonym_search_enabled,
              preferences.synonym_search_enabled);
@@ -918,6 +954,8 @@ void ApplicationServiceTest::
     QCOMPARE(older.preferences.zoom_factor, 1.0);
     QCOMPARE(older.preferences.maximum_history_entries, std::uint32_t{500});
     QCOMPARE(older.preferences.confirm_favorites_deletion, true);
+    QCOMPARE(older.preferences.limit_input_phrase_length, false);
+    QCOMPARE(older.preferences.input_phrase_length_limit, std::uint32_t{1000});
 }
 
 void ApplicationServiceTest::
@@ -1025,6 +1063,21 @@ void ApplicationServiceTest::
 
     invalid = original;
     invalid.preferences.maximum_history_entries = 100000U;
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+
+    invalid = original;
+    invalid.preferences.limit_input_phrase_length = true;
+    invalid.preferences.input_phrase_length_limit = 2U;
+    ArticleTabSession session;
+    session.active_tab_id = 1U;
+    TabNavigationState oversized_navigation;
+    oversized_navigation.kind = TabNavigationKind::kLookup;
+    oversized_navigation.query = u8"😀😀😀";
+    oversized_navigation.title = oversized_navigation.query;
+    session.tabs = {{1U, {oversized_navigation}, 0U}};
+    invalid.article_tab_session = session;
     QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
                              std::runtime_error);
     QCOMPARE(ReadFile(path), original_bytes);

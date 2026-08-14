@@ -32,8 +32,43 @@ class ArticleTabsTest : public QObject {
     void PreservesInternalLinkState();
     void ExportsAndRestoresCompleteSession();
     void RejectsInvalidSessionsAtomically();
+    void RejectsInputPhrasesByUnicodeScalarWithoutMutation();
     void RejectsLimitsAndInvalidOperationsAtomically();
 };
+
+void ArticleTabsTest::RejectsInputPhrasesByUnicodeScalarWithoutMutation() {
+    CoreConfiguration configuration;
+    configuration.preferences.limit_input_phrase_length = true;
+    configuration.preferences.input_phrase_length_limit = 2U;
+    auto facade = CreateDesktopFacade(configuration);
+    const auto initial = facade->ExportArticleTabSession();
+
+    QVERIFY(facade->OpenArticleTab(Lookup(u8"a😀"), TabOpenPolicy::kCurrentTab,
+                                   TabActivationPolicy::kActivate));
+    const auto accepted = facade->ExportArticleTabSession();
+    QCOMPARE(accepted.tabs.front().history.size(), std::size_t{2});
+
+    QCOMPARE(facade
+                 ->OpenArticleTab(Lookup(u8"a😀́"), TabOpenPolicy::kCurrentTab,
+                                  TabActivationPolicy::kActivate)
+                 .error,
+             TabOperationError::kInvalidNavigation);
+    QCOMPARE(facade->ExportArticleTabSession(), accepted);
+
+    QCOMPARE(facade->RestoreArticleTabSession(initial).error,
+             TabOperationError::kNone);
+    auto invalid_session = initial;
+    invalid_session.tabs.front().history = {Lookup(u8"😀😀😀")};
+    QCOMPARE(facade->RestoreArticleTabSession(invalid_session).error,
+             TabOperationError::kInvalidSession);
+    QCOMPARE(facade->ExportArticleTabSession(), initial);
+
+    configuration.preferences.limit_input_phrase_length = false;
+    facade = CreateDesktopFacade(configuration);
+    QVERIFY(facade->OpenArticleTab(Lookup(u8"😀😀😀"),
+                                   TabOpenPolicy::kCurrentTab,
+                                   TabActivationPolicy::kActivate));
+}
 
 void ArticleTabsTest::StartsWithSingleUntitledTab() {
     auto facade = CreateDesktopFacade({});

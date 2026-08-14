@@ -12,6 +12,7 @@
 #include "../dictionary/dictionary_backend.h"
 #include "article_tab_session.h"
 #include "goldendict/core/application.h"
+#include "input_phrase.h"
 
 namespace goldendict::core {
 namespace {
@@ -48,6 +49,7 @@ class DesktopFacadeImpl final : public DesktopFacade {
         std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources)
         : service_(CreateDictionaryService(configuration,
                                            std::move(runtime_sources))),
+          preferences_(configuration.preferences),
           article_options_{configuration.preferences.collapse_large_articles,
                            configuration.preferences.article_size_limit} {
         tabs_.push_back(CreateTabRecord(EmptyNavigation()));
@@ -121,6 +123,15 @@ class DesktopFacadeImpl final : public DesktopFacade {
         if (!application::ValidateArticleTabSession(session, &next_tab_id)) {
             return {TabOperationError::kInvalidSession, 0U};
         }
+        for (const auto& tab : session.tabs) {
+            if (std::any_of(tab.history.begin(), tab.history.end(),
+                            [this](const TabNavigationState& navigation) {
+                                return !application::IsInputPhraseAccepted(
+                                    navigation.query, preferences_);
+                            })) {
+                return {TabOperationError::kInvalidSession, 0U};
+            }
+        }
         std::vector<TabRecord> restored;
         restored.reserve(session.tabs.size());
         for (const auto& tab : session.tabs) {
@@ -137,6 +148,10 @@ class DesktopFacadeImpl final : public DesktopFacade {
         TabActivationPolicy activation_policy,
         TabPlacementPolicy placement_policy) override {
         if (!application::IsValidTabNavigation(navigation)) {
+            return {TabOperationError::kInvalidNavigation, 0U};
+        }
+        if (!application::IsInputPhraseAccepted(navigation.query,
+                                                preferences_)) {
             return {TabOperationError::kInvalidNavigation, 0U};
         }
         if (open_policy == TabOpenPolicy::kReuseExisting) {
@@ -273,6 +288,7 @@ class DesktopFacadeImpl final : public DesktopFacade {
     }
 
     std::unique_ptr<DictionaryService> service_;
+    ApplicationPreferences preferences_;
     article::ArticleCompositionOptions article_options_;
     std::vector<TabRecord> tabs_;
     ArticleTabId active_tab_id_ = 0U;

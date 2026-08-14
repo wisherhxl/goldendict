@@ -538,9 +538,11 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
                 if (item == nullptr) {
                     return;
                 }
-                SelectGroup(item->data(Qt::UserRole).value<quint32>());
                 query_->setText(item->text());
-                StartLookup();
+                StartLookupInTab(
+                    goldendict::core::TabOpenPolicy::kCurrentTab,
+                    goldendict::core::TabActivationPolicy::kActivate, {},
+                    item->data(Qt::UserRole).value<quint32>());
             });
     connect(history_filter_, &QLineEdit::textChanged, this,
             &MainWindow::RefreshHistoryList);
@@ -1493,13 +1495,25 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
             dialog.findChild<QSpinBox*>(QStringLiteral("historyMaxSizeField"));
         auto* confirm_favorites = dialog.findChild<QCheckBox*>(
             QStringLiteral("confirmFavoritesDeletion"));
+        auto* limit_phrase = dialog.findChild<QCheckBox*>(
+            QStringLiteral("limitInputPhraseLength"));
+        auto* phrase_limit = dialog.findChild<QSpinBox*>(
+            QStringLiteral("inputPhraseLengthLimit"));
         auto* buttons = dialog.findChild<QDialogButtonBox*>(
             QStringLiteral("preferencesButtonBox"));
         passed = passed && background != nullptr && store_history != nullptr &&
                  maximum_history != nullptr && confirm_favorites != nullptr &&
+                 limit_phrase != nullptr && phrase_limit != nullptr &&
                  maximum_history->minimum() == 0 &&
                  maximum_history->maximum() == 99999 &&
-                 maximum_history->isEnabled() && buttons != nullptr;
+                 maximum_history->isEnabled() &&
+                 limit_phrase->text() ==
+                     QStringLiteral("Ignore input phrases longer than") &&
+                 phrase_limit->minimum() == 1 &&
+                 phrase_limit->maximum() == 1000000 &&
+                 phrase_limit->singleStep() == 10 &&
+                 phrase_limit->isEnabled() == limit_phrase->isChecked() &&
+                 buttons != nullptr;
         if (background != nullptr)
             background->setChecked(!background->isChecked());
         if (confirm_favorites != nullptr)
@@ -1531,11 +1545,16 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
             dialog.findChild<QSpinBox*>(QStringLiteral("historyMaxSizeField"));
         auto* confirm_favorites = dialog.findChild<QCheckBox*>(
             QStringLiteral("confirmFavoritesDeletion"));
+        auto* limit_phrase = dialog.findChild<QCheckBox*>(
+            QStringLiteral("limitInputPhraseLength"));
+        auto* phrase_limit = dialog.findChild<QSpinBox*>(
+            QStringLiteral("inputPhraseLengthLimit"));
         auto* buttons = dialog.findChild<QDialogButtonBox*>(
             QStringLiteral("preferencesButtonBox"));
         passed = passed && background != nullptr && after_current != nullptr &&
                  store_history != nullptr && maximum_history != nullptr &&
-                 confirm_favorites != nullptr && buttons != nullptr;
+                 confirm_favorites != nullptr && limit_phrase != nullptr &&
+                 phrase_limit != nullptr && buttons != nullptr;
         if (background != nullptr)
             background->setChecked(!background->isChecked());
         if (after_current != nullptr)
@@ -1548,6 +1567,12 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
         }
         if (confirm_favorites != nullptr)
             confirm_favorites->setChecked(false);
+        if (limit_phrase != nullptr)
+            limit_phrase->setChecked(true);
+        if (phrase_limit != nullptr) {
+            passed = passed && phrase_limit->isEnabled();
+            phrase_limit->setValue(2);
+        }
         if (buttons != nullptr)
             buttons->button(QDialogButtonBox::Ok)->click();
         passed = passed && dialog.result() == QDialog::Accepted;
@@ -1562,9 +1587,25 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
     expected_preferences.store_history = false;
     expected_preferences.maximum_history_entries = 0U;
     expected_preferences.confirm_favorites_deletion = false;
+    expected_preferences.limit_input_phrase_length = true;
+    expected_preferences.input_phrase_length_limit = 2U;
     passed = passed && preference_triggers == 3 && preference_dialogs == 3 &&
              preferences_ == expected_preferences &&
              facade_->ExportArticleTabSession() == initial_session;
+    const auto before_rejected_phrase = facade_->ExportArticleTabSession();
+    int rejected_submissions = 0;
+    const auto rejected_submission_connection =
+        connect(this, &MainWindow::LookupSubmitted, this,
+                [&rejected_submissions]() { ++rejected_submissions; });
+    query_->setText(QString::fromUtf8(u8"a😀́"));
+    StartLookup();
+    passed = passed && rejected_submissions == 0 &&
+             facade_->ExportArticleTabSession() == before_rejected_phrase &&
+             status_->text() == QStringLiteral(
+                                    "Input phrase exceeds the configured "
+                                    "2-symbol limit") &&
+             suggestions_list_->count() == 0;
+    disconnect(rejected_submission_connection);
     preferences_dialog_executor_ = {};
     preferences_apply_callback_ = original_preferences_callback;
     disconnect(preference_trigger_connection);
@@ -3837,7 +3878,14 @@ void MainWindow::OpenArticleLink(goldendict::core::ArticleTabId tab_id,
                    : goldendict::core::TabActivationPolicy::kActivate,
         NewTabPlacementPolicy());
     if (!result) {
-        status_->setText(QStringLiteral("Unable to open article tab"));
+        status_->setText(
+            result.error == goldendict::core::TabOperationError::
+                                kInvalidNavigation &&
+                    preferences_.limit_input_phrase_length
+                ? QStringLiteral(
+                      "Input phrase exceeds the configured %1-symbol limit")
+                      .arg(preferences_.input_phrase_length_limit)
+                : QStringLiteral("Unable to open article tab"));
         return;
     }
     SyncArticleTabs();
@@ -3848,8 +3896,8 @@ void MainWindow::OpenArticleLink(goldendict::core::ArticleTabId tab_id,
 void MainWindow::LookupArticleSelection(goldendict::core::ArticleTabId tab_id,
                                         const QString& text,
                                         ArticleLinkDisposition disposition) {
-    if (facade_ == nullptr || text.trimmed().isEmpty() ||
-        text.trimmed().size() >= 60) {
+    const QString phrase = text.trimmed();
+    if (facade_ == nullptr || phrase.isEmpty()) {
         return;
     }
     const auto state = facade_->GetArticleTabsState();
@@ -3873,8 +3921,15 @@ void MainWindow::LookupArticleSelection(goldendict::core::ArticleTabId tab_id,
         background ? goldendict::core::TabActivationPolicy::kKeepActive
                    : goldendict::core::TabActivationPolicy::kActivate,
         NewTabPlacementPolicy());
-    if (!result)
+    if (!result) {
+        if (preferences_.limit_input_phrase_length) {
+            status_->setText(
+                QStringLiteral("Input phrase exceeds the configured "
+                               "%1-symbol limit")
+                    .arg(preferences_.input_phrase_length_limit));
+        }
         return;
+    }
     SyncArticleTabs();
     emit ArticleTabSessionMutated();
     StartNavigationLookup(result.tab_id, navigation, true);
@@ -4812,8 +4867,16 @@ void MainWindow::FinishSuggestionLookup(
     const bool active = TabIdAt(article_tabs_->currentIndex()) == tab_id;
     if (active) {
         RefreshSuggestions();
-        if (!response.errors.empty() && !response.partial)
-            status_->setText(QStringLiteral("Suggestion lookup failed"));
+        if (!response.errors.empty() && !response.partial) {
+            status_->setText(
+                preferences_.limit_input_phrase_length &&
+                        response.errors.front().message ==
+                            "Input phrase exceeds the configured symbol limit"
+                    ? QStringLiteral(
+                          "Input phrase exceeds the configured %1-symbol limit")
+                          .arg(preferences_.input_phrase_length_limit)
+                    : QStringLiteral("Suggestion lookup failed"));
+        }
     }
 }
 
@@ -5462,7 +5525,7 @@ void MainWindow::StartLookup() {
 void MainWindow::StartLookupInTab(
     goldendict::core::TabOpenPolicy open_policy,
     goldendict::core::TabActivationPolicy activation,
-    const QString& internal_url) {
+    const QString& internal_url, std::optional<std::uint32_t> group_id) {
     if (facade_ == nullptr || query_->text().trimmed().isEmpty()) {
         return;
     }
@@ -5472,15 +5535,24 @@ void MainWindow::StartLookupInTab(
                           ? goldendict::core::TabNavigationKind::kLookup
                           : goldendict::core::TabNavigationKind::kInternalLink;
     navigation.query = word.toStdString();
-    navigation.group_id = selected_group_id_;
+    navigation.group_id = group_id.value_or(selected_group_id_);
     navigation.title = navigation.query;
     navigation.internal_url = internal_url.toStdString();
     const auto tab_result = facade_->OpenArticleTab(
         navigation, open_policy, activation, NewTabPlacementPolicy());
     if (!tab_result) {
-        status_->setText(QStringLiteral("Unable to update article state"));
+        status_->setText(
+            tab_result.error == goldendict::core::TabOperationError::
+                                    kInvalidNavigation &&
+                    preferences_.limit_input_phrase_length
+                ? QStringLiteral(
+                      "Input phrase exceeds the configured %1-symbol limit")
+                      .arg(preferences_.input_phrase_length_limit)
+                : QStringLiteral("Unable to update article state"));
         return;
     }
+    if (group_id.has_value())
+        SelectGroup(*group_id);
     SyncArticleTabs();
     emit ArticleTabSessionMutated();
     StartNavigationLookup(tab_result.tab_id, navigation, true);

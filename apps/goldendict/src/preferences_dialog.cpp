@@ -122,6 +122,42 @@ PreferencesDialog::PreferencesDialog(
     articles_layout->addWidget(symbols);
     articles_layout->addStretch();
     general_layout->addWidget(articles_group);
+
+    auto* input_phrase_group =
+        new QGroupBox(QStringLiteral("Input phrase length"), general_page);
+    input_phrase_group->setObjectName(
+        QStringLiteral("preferencesInputPhraseLengthGroup"));
+    auto* input_phrase_layout = new QHBoxLayout(input_phrase_group);
+    limit_input_phrase_length_ = new QCheckBox(
+        QStringLiteral("Ignore input phrases longer than"), input_phrase_group);
+    limit_input_phrase_length_->setObjectName(
+        QStringLiteral("limitInputPhraseLength"));
+    limit_input_phrase_length_->setToolTip(QStringLiteral(
+        "Turn this option on to ignore unreasonably long input text"));
+    limit_input_phrase_length_->setChecked(
+        preferences.limit_input_phrase_length);
+    input_phrase_length_limit_ = new QSpinBox(input_phrase_group);
+    input_phrase_length_limit_->setObjectName(
+        QStringLiteral("inputPhraseLengthLimit"));
+    input_phrase_length_limit_->setToolTip(
+        QStringLiteral("Input phrases longer than this size will be ignored"));
+    input_phrase_length_limit_->setRange(1, 1000000);
+    input_phrase_length_limit_->setSingleStep(10);
+    input_phrase_length_limit_->setValue(
+        static_cast<int>(preferences.input_phrase_length_limit));
+    input_phrase_length_limit_->setEnabled(
+        preferences.limit_input_phrase_length);
+    connect(limit_input_phrase_length_, &QCheckBox::toggled,
+            input_phrase_length_limit_, &QSpinBox::setEnabled);
+    auto* input_phrase_symbols =
+        new QLabel(QStringLiteral("symbols"), input_phrase_group);
+    input_phrase_symbols->setObjectName(
+        QStringLiteral("inputPhraseLengthLimitLabel"));
+    input_phrase_layout->addWidget(limit_input_phrase_length_);
+    input_phrase_layout->addWidget(input_phrase_length_limit_);
+    input_phrase_layout->addWidget(input_phrase_symbols);
+    input_phrase_layout->addStretch();
+    general_layout->addWidget(input_phrase_group);
     general_layout->addStretch();
     tabs->addTab(general_page, QStringLiteral("General"));
     layout->addWidget(tabs);
@@ -155,6 +191,10 @@ void PreferencesDialog::Apply() {
     candidate.collapse_large_articles = collapse_large_articles_->isChecked();
     candidate.article_size_limit =
         static_cast<std::uint32_t>(article_size_limit_->value());
+    candidate.limit_input_phrase_length =
+        limit_input_phrase_length_->isChecked();
+    candidate.input_phrase_length_limit =
+        static_cast<std::uint32_t>(input_phrase_length_limit_->value());
     const QString error = apply_callback_(candidate);
     if (!error.isEmpty()) {
         validation_error_->setText(error);

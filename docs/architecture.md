@@ -141,6 +141,15 @@ expanded and print media exposes complete content. The public facade and
 configuration format remain unchanged. Successful preference recomposition
 restores the complete facade session and replays current pages, while Widgets
 retains presentation-only scroll and in-page search state by stable tab ID.
+The following General/Input phrase length leaf exposes the existing enable flag
+and validated `1..1000000` symbol limit. A private configured application policy
+counts Unicode scalar values in the submitted UTF-8 phrase and rejects, rather
+than truncates, over-limit lookup, suggestion, navigation, and restored-session
+input before backend or tab mutation. Widgets only present the controls and
+non-modal rejection status; group, history, tab/session, result, cancellation,
+deadline, and stale-response behavior remains owned by the existing paths. This
+transport-neutral rule intentionally differs from the pinned Qt 5 implementation,
+which counted UTF-16 code units and exposed a `9999999` widget maximum.
 The Phase 8 P4a current-persistence foundation extends that complete candidate
 with ordered, bounded transport-neutral records for MediaWiki, website, Forvo,
 and DICT sources. Stable IDs, names, enabled intent, adapter-compatible URLs,

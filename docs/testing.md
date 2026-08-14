@@ -393,6 +393,15 @@ single-result exemption, trusted wrapper markup, print expansion rule,
 sanitized content preservation, ordering, and size bound. Existing WebEngine,
 search, context-menu, print/export, session, and configuration suites cover
 the preserved surrounding behavior.
+The General/Input phrase length extension pins the backed checkbox, tooltip,
+`1..1000000` spin-box range, 10-symbol step, 1000-symbol default, dependent
+enabled state, and complete-candidate cancel/failure/success behavior. Core
+application tests cover Unicode scalar counting across ASCII, supplementary
+characters, and combining sequences; exact-boundary, disabled, lookup,
+suggestion, asynchronous, navigation, and atomic session/configuration
+rejection behavior. The offscreen Preferences smoke verifies rejected input
+does not submit history or mutate the article session and reports the
+configured limit while clearing suggestions.
 `goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
 History and its sole backed legacy `searchInPageAction`, including exact text,
 role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and

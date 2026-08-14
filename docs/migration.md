@@ -675,6 +675,19 @@ facade and presentation unchanged. Appearance, optional-parts, input-filter,
 diacritic, synonym, audio, network/proxy, full-text-search, and advanced
 Preferences remain separate Phase 8 leaves.
 
+The following independent Preferences leaf extends General with the backed
+Input phrase length controls. `Ignore input phrases longer than` defaults off
+and enables a `1..1000000` symbol limit that defaults to 1000 and advances by
+10. The configured application/core boundary counts Unicode scalar values and
+rejects over-limit manual, suggestion, history/favorites, article-link,
+selection, restored-session, and dictionary-browser-activated lookups before
+backend or navigation mutation; input is never truncated. Rejection retains
+the entered text, reports the limit non-modally, and preserves group, history,
+tabs/session, results, cancellation/deadline, and stale-response guarantees.
+The current bound and Unicode-scalar rule intentionally replace the pinned
+legacy widget's `9999999` maximum and Qt UTF-16-code-unit count. The next
+independent Preferences leaf is General/Ignore diacritics.
+
 The next independent Phase 8 menu leaf adds the pinned `menuSearch` identity
 between Edit and History. It exposes only the existing in-article
 `searchInPageAction`, with its legacy text, role, and Ctrl+F shortcut, and

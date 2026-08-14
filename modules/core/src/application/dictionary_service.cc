@@ -59,6 +59,7 @@
 #include "../foundation/text_folding.h"
 #include "../foundation/utf8.h"
 #include "goldendict/core/application.h"
+#include "input_phrase.h"
 
 namespace goldendict::core {
 namespace {
@@ -631,7 +632,8 @@ class ServiceState final {
    public:
     explicit ServiceState(
         const CoreConfiguration& configuration,
-        std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources) {
+        std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources)
+        : preferences_(configuration.preferences) {
         std::vector<std::filesystem::path> roots;
         roots.reserve(configuration.dictionary_paths.size());
         for (const auto& root : configuration.dictionary_paths) {
@@ -1116,6 +1118,13 @@ class ServiceState final {
                 {LookupErrorCode::kInvalidQuery, {}, *validation_error});
             return response;
         }
+        if (!application::IsInputPhraseAccepted(query.text, preferences_)) {
+            response.errors.push_back(
+                {LookupErrorCode::kInvalidQuery,
+                 {},
+                 "Input phrase exceeds the configured symbol limit"});
+            return response;
+        }
         if (query.match_mode != MatchMode::kExact &&
             query.match_mode != MatchMode::kPrefix) {
             response.errors.push_back(
@@ -1211,6 +1220,13 @@ class ServiceState final {
             validation_error.has_value()) {
             response.errors.push_back(
                 {LookupErrorCode::kInvalidQuery, {}, *validation_error});
+            return response;
+        }
+        if (!application::IsInputPhraseAccepted(query.text, preferences_)) {
+            response.errors.push_back(
+                {LookupErrorCode::kInvalidQuery,
+                 {},
+                 "Input phrase exceeds the configured symbol limit"});
             return response;
         }
         std::string seed = query.text;
@@ -1365,6 +1381,7 @@ class ServiceState final {
         return all;
     }
 
+    ApplicationPreferences preferences_;
     std::vector<std::unique_ptr<dictionary::Backend>> dictionaries_;
     std::unordered_map<std::uint32_t, std::vector<const dictionary::Backend*>>
         groups_;
