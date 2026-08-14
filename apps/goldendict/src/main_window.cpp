@@ -27,6 +27,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMenu>
+#include <QMenuBar>
 #include <QMetaObject>
 #include <QMouseEvent>
 #include <QPixmap>
@@ -260,7 +261,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     article_toolbar->setObjectName(QStringLiteral("articleToolbar"));
     insertToolBar(article_toolbar, nav_toolbar);
     auto* reload_action = article_toolbar->addAction(QStringLiteral("Reload"));
-    reload_action->setShortcut(QKeySequence::Refresh);
     article_toolbar->addSeparator();
     add_favorite_action_ =
         article_toolbar->addAction(QStringLiteral("Add to Favorites"));
@@ -315,7 +315,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     auto* copy_action = article_toolbar->addAction(QStringLiteral("Copy"));
     copy_action->setShortcut(QKeySequence::Copy);
     auto* save_action = article_toolbar->addAction(QStringLiteral("Save HTML"));
-    save_action->setShortcut(QKeySequence::Save);
+    save_action->setShortcut(QKeySequence(Qt::Key_F2));
     auto* print_action = article_toolbar->addAction(QStringLiteral("Print"));
     print_action->setShortcut(QKeySequence::Print);
     auto* print_preview_action =
@@ -328,6 +328,26 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     dictionary_bar_->setMinimumWidth(0);
     dictionary_bar_->setSizePolicy(QSizePolicy::Ignored,
                                    QSizePolicy::Preferred);
+
+    auto* app_menu_bar = menuBar();
+    app_menu_bar->setObjectName(QStringLiteral("menubar"));
+    auto* view_menu = app_menu_bar->addMenu(QStringLiteral("&View"));
+    view_menu->setObjectName(QStringLiteral("menuView"));
+    search_dock->toggleViewAction()->setShortcut(
+        QKeySequence(Qt::CTRL | Qt::Key_S));
+    results_dock->toggleViewAction()->setShortcut(
+        QKeySequence(Qt::CTRL | Qt::Key_R));
+    favorites_dock->toggleViewAction()->setShortcut(
+        QKeySequence(Qt::CTRL | Qt::Key_I));
+    history_dock->toggleViewAction()->setShortcut(
+        QKeySequence(Qt::CTRL | Qt::Key_H));
+    view_menu->addAction(search_dock->toggleViewAction());
+    view_menu->addAction(results_dock->toggleViewAction());
+    view_menu->addAction(favorites_dock->toggleViewAction());
+    view_menu->addAction(history_dock->toggleViewAction());
+    view_menu->addSeparator();
+    view_menu->addAction(dictionary_bar_->toggleViewAction());
+    view_menu->addAction(nav_toolbar->toggleViewAction());
     setCentralWidget(central);
 
     scheme_handler_ = new ArticleSchemeHandler(this);
@@ -522,6 +542,124 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 });
         });
     UpdateNavigationActions();
+}
+
+void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
+    auto* app_menu_bar = findChild<QMenuBar*>(QStringLiteral("menubar"));
+    auto* view_menu = findChild<QMenu*>(QStringLiteral("menuView"));
+    auto* search_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kSearchPaneName));
+    auto* results_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kResultsPaneName));
+    auto* favorites_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
+    auto* history_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
+    auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
+    auto* dictionary_bar =
+        findChild<QToolBar*>(QStringLiteral("dictionaryBar"));
+    if (app_menu_bar == nullptr || view_menu == nullptr ||
+        search_dock == nullptr || results_dock == nullptr ||
+        favorites_dock == nullptr || history_dock == nullptr ||
+        nav_toolbar == nullptr || dictionary_bar == nullptr) {
+        completion(false);
+        return;
+    }
+
+    const QList<QAction*> expected_actions = {
+        search_dock->toggleViewAction(),
+        results_dock->toggleViewAction(),
+        favorites_dock->toggleViewAction(),
+        history_dock->toggleViewAction(),
+        nullptr,
+        dictionary_bar->toggleViewAction(),
+        nav_toolbar->toggleViewAction(),
+    };
+    const auto actions = view_menu->actions();
+    bool passed =
+        app_menu_bar == menuBar() &&
+        findChildren<QMenuBar*>(QStringLiteral("menubar")).size() == 1 &&
+        findChildren<QMenu*>(QStringLiteral("menuView")).size() == 1 &&
+        app_menu_bar->actions().size() == 1 &&
+        app_menu_bar->actions().front()->menu() == view_menu &&
+        view_menu->title() == QStringLiteral("&View") &&
+        actions.size() == expected_actions.size();
+    for (qsizetype index = 0; passed && index < actions.size(); ++index) {
+        if (expected_actions[index] == nullptr) {
+            passed = actions[index]->isSeparator();
+        } else {
+            QString accessible_text = actions[index]->text();
+            accessible_text.remove('&');
+            passed = actions[index] == expected_actions[index] &&
+                     !actions[index]->isSeparator() &&
+                     actions[index]->isCheckable() &&
+                     actions[index]->isEnabled() &&
+                     actions[index]->menuRole() != QAction::PreferencesRole &&
+                     actions[index]->menuRole() != QAction::AboutRole &&
+                     actions[index]->menuRole() != QAction::QuitRole &&
+                     !accessible_text.trimmed().isEmpty();
+        }
+    }
+    passed = passed &&
+             search_dock->toggleViewAction()->shortcut() ==
+                 QKeySequence(Qt::CTRL | Qt::Key_S) &&
+             results_dock->toggleViewAction()->shortcut() ==
+                 QKeySequence(Qt::CTRL | Qt::Key_R) &&
+             favorites_dock->toggleViewAction()->shortcut() ==
+                 QKeySequence(Qt::CTRL | Qt::Key_I) &&
+             history_dock->toggleViewAction()->shortcut() ==
+                 QKeySequence(Qt::CTRL | Qt::Key_H) &&
+             dictionary_bar->toggleViewAction()->shortcut().isEmpty() &&
+             nav_toolbar->toggleViewAction()->shortcut().isEmpty();
+    const auto all_actions = findChildren<QAction*>();
+    for (const auto& shortcut : {QKeySequence(Qt::CTRL | Qt::Key_S),
+                                 QKeySequence(Qt::CTRL | Qt::Key_R),
+                                 QKeySequence(Qt::CTRL | Qt::Key_I),
+                                 QKeySequence(Qt::CTRL | Qt::Key_H)}) {
+        passed =
+            passed &&
+            std::count_if(all_actions.cbegin(), all_actions.cend(),
+                          [&shortcut](const QAction* action) {
+                              return action->shortcuts().contains(shortcut);
+                          }) == 1;
+    }
+
+    const std::string initial_state = CaptureMainWindowState();
+    const QList<QPair<QWidget*, QAction*>> exposed_widgets = {
+        {search_dock, search_dock->toggleViewAction()},
+        {results_dock, results_dock->toggleViewAction()},
+        {favorites_dock, favorites_dock->toggleViewAction()},
+        {history_dock, history_dock->toggleViewAction()},
+        {dictionary_bar, dictionary_bar->toggleViewAction()},
+        {nav_toolbar, nav_toolbar->toggleViewAction()},
+    };
+    for (const auto& [widget, action] : exposed_widgets) {
+        int toggles = 0;
+        const auto connection = connect(
+            action, &QAction::toggled, this, [&toggles](bool) { ++toggles; },
+            Qt::DirectConnection);
+        passed = passed && widget->isVisible() && action->isChecked();
+        action->trigger();
+        passed = passed && !widget->isVisible() && !action->isChecked() &&
+                 toggles == 1;
+        action->trigger();
+        passed = passed && widget->isVisible() && action->isChecked() &&
+                 toggles == 2;
+        widget->hide();
+        passed = passed && !action->isChecked() && toggles == 3;
+        widget->show();
+        passed = passed && action->isChecked() && toggles == 4;
+        disconnect(connection);
+    }
+    passed = passed && CaptureMainWindowState() == initial_state &&
+             centralWidget() != nullptr && article_tabs_ != nullptr &&
+             article_tabs_->isVisible() && article_tabs_->size().width() > 0 &&
+             article_tabs_->size().height() > 0 && kMainWindowStateVersion == 7;
+    if (!passed) {
+        qWarning() << "view menu smoke check failed" << actions.size()
+                   << app_menu_bar->actions().size();
+    }
+    completion(passed);
 }
 
 void MainWindow::RunWebEngineInteractionCheck(

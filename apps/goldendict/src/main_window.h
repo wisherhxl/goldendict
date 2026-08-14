@@ -129,6 +129,7 @@ class MainWindow final : public QMainWindow {
     void RunArticleTabsSmokeCheck(std::function<void(bool)> completion);
     void RunSuggestionPaneSmokeCheck(std::function<void(bool)> completion);
     void RunDictionaryBarSmokeCheck(std::function<void(bool)> completion);
+    void RunViewMenuSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabSessionRestartSmokeCheck(
         bool prepare, std::function<void(bool)> completion);
 

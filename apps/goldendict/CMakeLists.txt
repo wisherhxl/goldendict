@@ -15,6 +15,13 @@ add_test(NAME legacy_configuration_location_test
 
 add_test(NAME goldendict_smoke COMMAND $<TARGET_FILE:goldendict> --smoke)
 
+add_test(NAME goldendict_view_menu_smoke
+  COMMAND $<TARGET_FILE:goldendict> --view-menu-smoke)
+set_tests_properties(goldendict_view_menu_smoke PROPERTIES
+  ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/view-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/view-menu-test-home/cache"
+  TIMEOUT 20)
+
 add_test(NAME goldendict_webengine_smoke
   COMMAND $<TARGET_FILE:goldendict> --webengine-smoke)
 set_tests_properties(goldendict_webengine_smoke PROPERTIES

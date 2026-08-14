@@ -771,7 +771,13 @@ int main(int argc, char* argv[]) {
         });
     window.show();
 
-    if (HasArgument(argc, argv, QStringLiteral("--webengine-smoke"))) {
+    if (HasArgument(argc, argv, QStringLiteral("--view-menu-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunViewMenuSmokeCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
+    } else if (HasArgument(argc, argv, QStringLiteral("--webengine-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         window.RunWebEngineSmokeCheck(
             [&app](bool passed) { app.exit(passed ? 0 : 1); });

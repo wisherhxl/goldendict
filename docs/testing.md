@@ -341,6 +341,13 @@ content, rollback safety, and continued version-1 rejection. Existing
 `application_service_test` cases remain the source of truth for Unicode/case
 folding, group ordering, cancellation, partial errors, and bounded limits.
 
+`goldendict_view_menu_smoke` pins the unique `menubar` and `menuView`, exact
+action order and separator placement, direct reuse of all four dock and both
+toolbar toggle actions, legacy pane shortcuts, accessible action text, and
+single checked/visibility transitions from both action and widget changes. It
+also verifies that a complete toggle round trip preserves private Qt state
+version 7 and the usable central article shell.
+
 `goldendict_article_context_menu_smoke` verifies the application-private menu
 model without opening a real popup. It covers resolved internal links,
 allowlisted external links, rejected schemes, bounded exact selections, image

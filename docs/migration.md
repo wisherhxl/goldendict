@@ -577,6 +577,17 @@ private Qt state version advances to 7 and transactionally accepts versions
 excluded. Menus, persistent group/source editing, and legacy opaque state
 import remain separate leaves.
 
+The next unlabelled Phase 8 menu leaf adds the pinned `menubar` and `menuView`
+identities for the already-complete shell. The View menu reuses the exact
+`toggleViewAction()` instances for `searchPane`, `dictsPane`, `favoritesPane`,
+`historyPane`, `dictionaryBar`, and `navToolbar`, retaining their synchronized
+visibility and checked state plus the legacy pane shortcuts and relative
+ordering. It adds no proxy actions or unsupported entries. Qt main-window
+state remains at private version 7 because menus do not alter the saved
+dock/toolbar hierarchy. File, Edit, Search, History, Favorites, and Help menus,
+View styling and always-on-top controls, and final legacy state import remain
+separate leaves.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,

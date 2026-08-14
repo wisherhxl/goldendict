@@ -221,6 +221,11 @@ it into both request DTOs only while visible. A change cancels and replaces
 only active-tab work; background requests keep their immutable submitted
 filter. Qt layout persistence records the toolbar hierarchy and visibility at
 private version 7, never its participation set.
+The first menu leaf exposes the completed shell through a legacy-compatible
+Widgets-owned View menu. It reuses the four dock and two toolbar toggle actions
+directly, so visibility, checked state, shortcuts, and Qt ownership cannot
+diverge. Menus are not part of `QMainWindow::saveState`; private state version 7
+and all core/application interfaces remain unchanged.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,
