@@ -4,6 +4,7 @@
 
 #include <expat.h>
 
+#include <algorithm>
 #include <cctype>
 #include <cstdint>
 #include <filesystem>
@@ -89,6 +90,61 @@ void ValidateItems(const Favorites& items, std::size_t depth,
             ValidateItems(item.children, depth + 1U, total);
         }
     }
+}
+
+const Favorites* ContainerAtPath(const Favorites& favorites,
+                                 const FavoritePath& path) {
+    const auto* items = &favorites;
+    for (const std::size_t index : path) {
+        if (index >= items->size()) {
+            return nullptr;
+        }
+        const auto& item = (*items)[index];
+        if (item.kind != FavoriteItemKind::kFolder) {
+            return nullptr;
+        }
+        items = &item.children;
+    }
+    return items;
+}
+
+Favorites* MutableContainerAtPath(Favorites* favorites,
+                                  const FavoritePath& path) {
+    auto* items = favorites;
+    for (const std::size_t index : path) {
+        auto& item = (*items)[index];
+        items = &item.children;
+    }
+    return items;
+}
+
+FavoriteItem* MutableItemAtPath(Favorites* favorites,
+                                const FavoritePath& path) {
+    if (path.empty()) {
+        return nullptr;
+    }
+    FavoritePath parent_path = path;
+    const std::size_t index = parent_path.back();
+    parent_path.pop_back();
+    if (ContainerAtPath(*favorites, parent_path) == nullptr) {
+        return nullptr;
+    }
+    auto* items = MutableContainerAtPath(favorites, parent_path);
+    return index < items->size() ? &(*items)[index] : nullptr;
+}
+
+void CollapseFolders(Favorites* favorites) {
+    for (auto& item : *favorites) {
+        if (item.kind == FavoriteItemKind::kFolder) {
+            item.expanded = false;
+            CollapseFolders(&item.children);
+        }
+    }
+}
+
+bool IsPathPrefix(const FavoritePath& prefix, const FavoritePath& path) {
+    return prefix.size() <= path.size() &&
+           std::equal(prefix.begin(), prefix.end(), path.begin());
 }
 
 void AppendUint32(std::string* output, std::uint32_t value) {
@@ -454,6 +510,110 @@ void SaveFavorites(const std::string& favorites_path,
         throw std::runtime_error("Favorites exceed the size limit");
     }
     WriteAtomically(favorites_path, contents);
+}
+
+FavoriteMoveResult MoveFavorite(const std::string& favorites_path,
+                                const Favorites& favorites,
+                                const FavoritePath& source_path,
+                                const FavoritePath& destination_path,
+                                std::size_t destination_index,
+                                const std::vector<FavoritePath>& expanded_paths,
+                                bool replace_expansion_state) {
+    FavoriteMoveResult result;
+    result.favorites = favorites;
+    if (source_path.empty()) {
+        return result;
+    }
+
+    FavoritePath source_parent_path = source_path;
+    const std::size_t source_index = source_parent_path.back();
+    source_parent_path.pop_back();
+    const Favorites* source = ContainerAtPath(favorites, source_parent_path);
+    if (source == nullptr || source_index >= source->size()) {
+        return result;
+    }
+    const Favorites* destination = ContainerAtPath(favorites, destination_path);
+    if (destination == nullptr || destination_index > destination->size()) {
+        result.status = FavoriteMoveStatus::kInvalidDestination;
+        return result;
+    }
+
+    const FavoriteItem& item = (*source)[source_index];
+    if (item.kind == FavoriteItemKind::kFolder &&
+        IsPathPrefix(source_path, destination_path)) {
+        result.status = FavoriteMoveStatus::kCycle;
+        return result;
+    }
+    for (std::size_t index = 0; index < destination->size(); ++index) {
+        if (source_parent_path == destination_path && index == source_index) {
+            continue;
+        }
+        const auto& sibling = (*destination)[index];
+        if (sibling.kind == item.kind && sibling.text == item.text) {
+            result.status = FavoriteMoveStatus::kDuplicate;
+            return result;
+        }
+    }
+    if (source_parent_path == destination_path &&
+        (destination_index == source_index ||
+         destination_index == source_index + 1U)) {
+        result.status = FavoriteMoveStatus::kNoOp;
+        result.moved_path = source_path;
+        return result;
+    }
+
+    if (replace_expansion_state) {
+        CollapseFolders(&result.favorites);
+        for (const auto& expanded_path : expanded_paths) {
+            auto* expanded =
+                MutableItemAtPath(&result.favorites, expanded_path);
+            if (expanded == nullptr ||
+                expanded->kind != FavoriteItemKind::kFolder) {
+                result.status = FavoriteMoveStatus::kInvalidState;
+                result.favorites = favorites;
+                return result;
+            }
+            expanded->expanded = true;
+        }
+    }
+
+    auto* mutable_source =
+        MutableContainerAtPath(&result.favorites, source_parent_path);
+    FavoriteItem moved = std::move((*mutable_source)[source_index]);
+    mutable_source->erase(mutable_source->begin() +
+                          static_cast<std::ptrdiff_t>(source_index));
+
+    FavoritePath adjusted_destination_path = destination_path;
+    if (adjusted_destination_path.size() > source_parent_path.size() &&
+        std::equal(source_parent_path.begin(), source_parent_path.end(),
+                   adjusted_destination_path.begin()) &&
+        adjusted_destination_path[source_parent_path.size()] > source_index) {
+        --adjusted_destination_path[source_parent_path.size()];
+    }
+    std::size_t adjusted_index = destination_index;
+    if (source_parent_path == destination_path &&
+        source_index < destination_index) {
+        --adjusted_index;
+    }
+    auto* mutable_destination =
+        MutableContainerAtPath(&result.favorites, adjusted_destination_path);
+    mutable_destination->insert(mutable_destination->begin() +
+                                    static_cast<std::ptrdiff_t>(adjusted_index),
+                                std::move(moved));
+
+    std::size_t total = 0U;
+    try {
+        ValidateItems(result.favorites, 0U, &total);
+    } catch (const std::runtime_error&) {
+        result.status = FavoriteMoveStatus::kInvalidState;
+        result.favorites = favorites;
+        return result;
+    }
+    SaveFavorites(favorites_path, result.favorites);
+    result.status = FavoriteMoveStatus::kMoved;
+    result.moved_path = adjusted_destination_path;
+    result.moved_path.push_back(adjusted_index);
+    return result;
 }
 
 Favorites ImportFavoritesXml(const std::string& import_path) {

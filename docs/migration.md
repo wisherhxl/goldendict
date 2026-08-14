@@ -561,6 +561,15 @@ root. The pane imports and atomically exports the bounded legacy-compatible
 UTF-8 XML tree; import replaces current state only after complete XML
 validation and successful current-format persistence.
 
+The bounded R1 residual adds arbitrary drag-and-drop moves for one favorite
+headword or complete folder subtree. Core validates source and destination
+paths, exact insertion ordering, duplicate siblings, stale paths, and cycles,
+then atomically persists the complete candidate before Widgets refresh. Drops
+onto folders insert first, drops between siblings preserve the indicated
+position, and successful refreshes retain the moved selection and folder
+expansion state. The current and legacy-compatible file formats are unchanged;
+copy and multi-selection behavior remain outside this increment.
+
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.
 - Provide a compatible migration path for legacy configuration, dictionary

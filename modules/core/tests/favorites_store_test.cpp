@@ -23,6 +23,10 @@ class FavoritesStoreTest : public QObject {
     void RejectsMalformedLegacyWithoutPartialMigration();
     void RejectsLegacyEntityDeclarations();
     void ImportsAndExportsCompatibilityXml();
+    void MovesItemsAcrossArbitraryFolders();
+    void ReordersUsingPreMoveInsertionBoundaries();
+    void RejectsInvalidMovesWithoutWriting();
+    void PersistenceFailureDoesNotReplaceDestination();
 };
 
 std::filesystem::path Path(const QTemporaryDir& directory, const char* name) {
@@ -153,6 +157,121 @@ void FavoritesStoreTest::ImportsAndExportsCompatibilityXml() {
     QVERIFY_EXCEPTION_THROWN(ExportFavoritesXml(path.string(), invalid),
                              std::runtime_error);
     QCOMPARE(Read(path), "sentinel");
+}
+
+void FavoritesStoreTest::MovesItemsAcrossArbitraryFolders() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = Path(directory, "favorites-v1");
+    const Favorites original = {
+        {FavoriteItemKind::kFolder,
+         "Source",
+         true,
+         {{FavoriteItemKind::kHeadword, "first", false, {}},
+          {FavoriteItemKind::kFolder,
+           "Subtree",
+           true,
+           {{FavoriteItemKind::kHeadword, "nested", false, {}}}}}},
+        {FavoriteItemKind::kFolder,
+         "Destination",
+         false,
+         {{FavoriteItemKind::kHeadword, "existing", false, {}}}},
+        {FavoriteItemKind::kHeadword, "root", false, {}}};
+    SaveFavorites(path.string(), original);
+
+    auto moved = MoveFavorite(path.string(), original, {0U, 0U}, {1U}, 0U);
+    QCOMPARE(moved.status, FavoriteMoveStatus::kMoved);
+    QCOMPARE(moved.moved_path, (FavoritePath{1U, 0U}));
+    QCOMPARE(moved.favorites[1].children[0].text, "first");
+    QCOMPARE(moved.favorites[1].children[1].text, "existing");
+    QCOMPARE(moved.favorites[0].expanded, true);
+    QCOMPARE(moved.favorites[1].expanded, false);
+    QCOMPARE(LoadFavorites(path.string()), moved.favorites);
+
+    moved = MoveFavorite(path.string(), moved.favorites, {0U, 0U}, {}, 3U);
+    QCOMPARE(moved.status, FavoriteMoveStatus::kMoved);
+    QCOMPARE(moved.moved_path, (FavoritePath{3U}));
+    QCOMPARE(moved.favorites[3].text, "Subtree");
+    QCOMPARE(moved.favorites[3].children[0].text, "nested");
+    QCOMPARE(moved.favorites[3].expanded, true);
+    QCOMPARE(LoadFavorites(path.string()), moved.favorites);
+}
+
+void FavoritesStoreTest::ReordersUsingPreMoveInsertionBoundaries() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = Path(directory, "favorites-v1");
+    const Favorites original = {{FavoriteItemKind::kHeadword, "a", false, {}},
+                                {FavoriteItemKind::kHeadword, "b", false, {}},
+                                {FavoriteItemKind::kHeadword, "c", false, {}}};
+    SaveFavorites(path.string(), original);
+
+    auto moved = MoveFavorite(path.string(), original, {0U}, {}, 3U);
+    QCOMPARE(moved.status, FavoriteMoveStatus::kMoved);
+    QCOMPARE(moved.moved_path, (FavoritePath{2U}));
+    QCOMPARE(moved.favorites[0].text, "b");
+    QCOMPARE(moved.favorites[1].text, "c");
+    QCOMPARE(moved.favorites[2].text, "a");
+
+    moved = MoveFavorite(path.string(), moved.favorites, {2U}, {}, 0U);
+    QCOMPARE(moved.status, FavoriteMoveStatus::kMoved);
+    QCOMPARE(moved.favorites, original);
+
+    const auto before = Read(path);
+    const auto no_op = MoveFavorite(path.string(), original, {1U}, {}, 2U);
+    QCOMPARE(no_op.status, FavoriteMoveStatus::kNoOp);
+    QCOMPARE(no_op.moved_path, (FavoritePath{1U}));
+    QCOMPARE(Read(path), before);
+}
+
+void FavoritesStoreTest::RejectsInvalidMovesWithoutWriting() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = Path(directory, "favorites-v1");
+    const Favorites original = {
+        {FavoriteItemKind::kFolder,
+         "Folder",
+         true,
+         {{FavoriteItemKind::kFolder, "Child", false, {}},
+          {FavoriteItemKind::kHeadword, "duplicate", false, {}}}},
+        {FavoriteItemKind::kFolder,
+         "Target",
+         false,
+         {{FavoriteItemKind::kHeadword, "duplicate", false, {}}}},
+        {FavoriteItemKind::kHeadword, "word", false, {}}};
+    SaveFavorites(path.string(), original);
+    const auto before = Read(path);
+    const auto reject = [&](const FavoritePath& source,
+                            const FavoritePath& destination, std::size_t index,
+                            FavoriteMoveStatus expected) {
+        const auto result =
+            MoveFavorite(path.string(), original, source, destination, index);
+        QCOMPARE(result.status, expected);
+        QCOMPARE(result.favorites, original);
+        QCOMPARE(Read(path), before);
+    };
+
+    reject({}, {}, 0U, FavoriteMoveStatus::kInvalidSource);
+    reject({9U}, {}, 0U, FavoriteMoveStatus::kInvalidSource);
+    reject({2U}, {9U}, 0U, FavoriteMoveStatus::kInvalidDestination);
+    reject({0U}, {2U}, 0U, FavoriteMoveStatus::kInvalidDestination);
+    reject({2U}, {}, 4U, FavoriteMoveStatus::kInvalidDestination);
+    reject({0U}, {0U}, 0U, FavoriteMoveStatus::kCycle);
+    reject({0U}, {0U, 0U}, 0U, FavoriteMoveStatus::kCycle);
+    reject({0U, 1U}, {1U}, 1U, FavoriteMoveStatus::kDuplicate);
+}
+
+void FavoritesStoreTest::PersistenceFailureDoesNotReplaceDestination() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const Favorites original = {
+        {FavoriteItemKind::kHeadword, "first", false, {}},
+        {FavoriteItemKind::kHeadword, "second", false, {}}};
+
+    QVERIFY_EXCEPTION_THROWN(
+        MoveFavorite(directory.path().toStdString(), original, {0U}, {}, 2U),
+        std::runtime_error);
+    QVERIFY(std::filesystem::is_directory(directory.path().toStdString()));
 }
 
 }  // namespace

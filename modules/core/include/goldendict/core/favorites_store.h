@@ -3,6 +3,7 @@
 #ifndef GOLDENDICT_CORE_FAVORITES_STORE_H_
 #define GOLDENDICT_CORE_FAVORITES_STORE_H_
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -25,10 +26,42 @@ struct FavoriteItem {
 };
 
 using Favorites = std::vector<FavoriteItem>;
+using FavoritePath = std::vector<std::size_t>;
+
+enum class FavoriteMoveStatus {
+    kMoved,
+    kNoOp,
+    kInvalidSource,
+    kInvalidDestination,
+    kCycle,
+    kDuplicate,
+    kInvalidState,
+};
+
+struct FavoriteMoveResult {
+    FavoriteMoveStatus status = FavoriteMoveStatus::kInvalidSource;
+    Favorites favorites;
+    FavoritePath moved_path;
+
+    bool changed() const noexcept {
+        return status == FavoriteMoveStatus::kMoved;
+    }
+};
 
 GOLDENDICT_EXPORTS Favorites LoadFavorites(const std::string& favorites_path);
 GOLDENDICT_EXPORTS void SaveFavorites(const std::string& favorites_path,
                                       const Favorites& favorites);
+
+// Moves one headword or complete folder subtree to a folder (or the root for
+// an empty destination path). The insertion index is a boundary in the
+// destination before source removal. A changed candidate is atomically saved
+// before it is returned; rejected and no-op moves never write.
+GOLDENDICT_EXPORTS FavoriteMoveResult MoveFavorite(
+    const std::string& favorites_path, const Favorites& favorites,
+    const FavoritePath& source_path, const FavoritePath& destination_path,
+    std::size_t destination_index,
+    const std::vector<FavoritePath>& expanded_paths = {},
+    bool replace_expansion_state = false);
 
 // Imports/exports the bounded legacy-compatible UTF-8 XML tree. Export uses
 // atomic replacement and import validates the complete document before

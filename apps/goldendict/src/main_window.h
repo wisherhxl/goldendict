@@ -30,9 +30,9 @@ class QEvent;
 class QTabWidget;
 class QTimer;
 class QToolButton;
-class QTreeWidget;
 class QWebEngineView;
 class QShortcut;
+class FavoritesTreeWidget;
 
 namespace goldendict::core {
 class DesktopFacade;
@@ -75,7 +75,8 @@ class MainWindow final : public QMainWindow {
     std::string CaptureMainWindowGeometry() const;
     void SetHistoryWords(const QStringList& words);
     void SetHistoryItems(const std::vector<HistoryViewItem>& items);
-    void SetFavoriteItems(const std::vector<FavoriteViewItem>& items);
+    void SetFavoriteItems(const std::vector<FavoriteViewItem>& items,
+                          const QList<int>& current_path = {});
     void SetDictionaryGroups(
         const std::vector<goldendict::core::DictionaryGroupConfiguration>&
             groups);
@@ -106,6 +107,8 @@ class MainWindow final : public QMainWindow {
     void RunHistoryImportSmokeCheck(const QString& path,
                                     std::function<void(bool)> completion);
     void RunFavoritesSmokeCheck(std::function<void(bool)> completion);
+    void RunFavoritesCrossFolderMoveSmokeCheck(
+        std::function<void(bool)> completion);
     void RunFavoritesTransferSmokeCheck(const QString& path,
                                         std::function<void(bool)> completion);
     void RunDictionaryBrowserSmokeCheck(std::function<void(bool)> completion);
@@ -130,6 +133,9 @@ class MainWindow final : public QMainWindow {
     void RenameFavoriteRequested(const QList<int>& path, const QString& name);
     void MoveFavoriteRequested(const QList<int>& path, int offset);
     void MoveFavoriteToRootRequested(const QList<int>& path);
+    void MoveFavoriteAcrossFoldersRequested(
+        const QList<int>& source_path, const QList<int>& destination_path,
+        int destination_index, const QList<QList<int>>& expanded_paths);
     void ImportFavoritesRequested(const QString& path);
     void ExportFavoritesRequested(const QString& path);
     void RemoveFavoriteRequested(const QList<int>& path);
@@ -183,6 +189,7 @@ class MainWindow final : public QMainWindow {
     void RefreshGroupSelector();
     bool ExportHistoryToFile(const QString& path);
     QList<int> SelectedFavoriteFolderPath() const;
+    QList<QList<int>> ExpandedFavoriteFolderPaths() const;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
     std::vector<std::string> dictionary_paths_;
@@ -210,7 +217,7 @@ class MainWindow final : public QMainWindow {
     QPushButton* clear_history_button_ = nullptr;
     QPushButton* export_history_button_ = nullptr;
     QPushButton* import_history_button_ = nullptr;
-    QTreeWidget* favorites_tree_ = nullptr;
+    FavoritesTreeWidget* favorites_tree_ = nullptr;
     QAction* add_favorite_action_ = nullptr;
     QAction* add_favorite_folder_action_ = nullptr;
     QAction* rename_favorite_action_ = nullptr;

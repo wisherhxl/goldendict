@@ -146,39 +146,16 @@ bool RenameFavoriteAtPath(goldendict::core::Favorites* favorites,
     return true;
 }
 
-bool MoveFavoriteAtPath(goldendict::core::Favorites* favorites,
-                        const QList<int>& path, int offset) {
-    if (path.empty() || (offset != -1 && offset != 1)) {
-        return false;
+bool MakeFavoritePath(const QList<int>& path,
+                      goldendict::core::FavoritePath* converted) {
+    converted->clear();
+    converted->reserve(static_cast<std::size_t>(path.size()));
+    for (const int index : path) {
+        if (index < 0) {
+            return false;
+        }
+        converted->push_back(static_cast<std::size_t>(index));
     }
-    auto parent_path = path;
-    const int index = parent_path.takeLast();
-    auto* items = FavoriteContainerAtPath(favorites, parent_path);
-    const int destination = index + offset;
-    if (items == nullptr || index < 0 || destination < 0 ||
-        static_cast<std::size_t>(index) >= items->size() ||
-        static_cast<std::size_t>(destination) >= items->size()) {
-        return false;
-    }
-    std::iter_swap(items->begin() + index, items->begin() + destination);
-    return true;
-}
-
-bool MoveFavoriteToRoot(goldendict::core::Favorites* favorites,
-                        const QList<int>& path) {
-    if (favorites == nullptr || path.size() < 2) {
-        return false;
-    }
-    auto parent_path = path;
-    const int index = parent_path.takeLast();
-    auto* source = FavoriteContainerAtPath(favorites, parent_path);
-    if (source == nullptr || index < 0 ||
-        static_cast<std::size_t>(index) >= source->size()) {
-        return false;
-    }
-    auto item = std::move((*source)[static_cast<std::size_t>(index)]);
-    source->erase(source->begin() + index);
-    favorites->push_back(std::move(item));
     return true;
 }
 
@@ -325,15 +302,16 @@ int main(int argc, char* argv[]) {
         window.SetHistoryItems(items);
     };
     refresh_history();
-    const auto refresh_favorites = [&window, &favorites]() {
-        std::vector<FavoriteViewItem> items;
-        items.reserve(favorites.size());
-        for (std::size_t index = 0; index < favorites.size(); ++index) {
-            items.push_back(MakeFavoriteViewItem(favorites[index],
-                                                 {static_cast<int>(index)}));
-        }
-        window.SetFavoriteItems(items);
-    };
+    const auto refresh_favorites =
+        [&window, &favorites](const QList<int>& current_path = {}) {
+            std::vector<FavoriteViewItem> items;
+            items.reserve(favorites.size());
+            for (std::size_t index = 0; index < favorites.size(); ++index) {
+                items.push_back(MakeFavoriteViewItem(
+                    favorites[index], {static_cast<int>(index)}));
+            }
+            window.SetFavoriteItems(items, current_path);
+        };
     refresh_favorites();
     QObject::connect(
         &window, &MainWindow::LookupSubmitted, &window,
@@ -490,44 +468,104 @@ int main(int argc, char* argv[]) {
                                      QString::fromLocal8Bit(error.what()));
             }
         });
-    QObject::connect(&window, &MainWindow::MoveFavoriteRequested, &window,
-                     [&](const QList<int>& path, int offset) {
-                         auto updated = favorites;
-                         if (!MoveFavoriteAtPath(&updated, path, offset)) {
-                             refresh_favorites();
-                             return;
-                         }
-                         try {
-                             goldendict::core::SaveFavorites(
-                                 favorites_path.toStdString(), updated);
-                             favorites = std::move(updated);
-                             refresh_favorites();
-                         } catch (const std::exception& error) {
-                             QMessageBox::warning(
-                                 &window,
-                                 QStringLiteral("GoldenDict favorites"),
-                                 QString::fromLocal8Bit(error.what()));
-                         }
-                     });
-    QObject::connect(&window, &MainWindow::MoveFavoriteToRootRequested, &window,
-                     [&](const QList<int>& path) {
-                         auto updated = favorites;
-                         if (!MoveFavoriteToRoot(&updated, path)) {
-                             refresh_favorites();
-                             return;
-                         }
-                         try {
-                             goldendict::core::SaveFavorites(
-                                 favorites_path.toStdString(), updated);
-                             favorites = std::move(updated);
-                             refresh_favorites();
-                         } catch (const std::exception& error) {
-                             QMessageBox::warning(
-                                 &window,
-                                 QStringLiteral("GoldenDict favorites"),
-                                 QString::fromLocal8Bit(error.what()));
-                         }
-                     });
+    QObject::connect(
+        &window, &MainWindow::MoveFavoriteRequested, &window,
+        [&](const QList<int>& path, int offset) {
+            if (path.empty() || (offset != -1 && offset != 1)) {
+                return;
+            }
+            auto parent_path = path;
+            const int source_index = parent_path.takeLast();
+            const int destination_index =
+                offset < 0 ? source_index - 1 : source_index + 2;
+            goldendict::core::FavoritePath source;
+            goldendict::core::FavoritePath destination;
+            if (destination_index < 0 || !MakeFavoritePath(path, &source) ||
+                !MakeFavoritePath(parent_path, &destination)) {
+                return;
+            }
+            try {
+                auto result = goldendict::core::MoveFavorite(
+                    favorites_path.toStdString(), favorites, source,
+                    destination, static_cast<std::size_t>(destination_index));
+                if (result.changed()) {
+                    favorites = std::move(result.favorites);
+                    QList<int> moved_path;
+                    for (const auto index : result.moved_path) {
+                        moved_path.push_back(static_cast<int>(index));
+                    }
+                    refresh_favorites(moved_path);
+                }
+            } catch (const std::exception& error) {
+                QMessageBox::warning(&window,
+                                     QStringLiteral("GoldenDict favorites"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+        });
+    QObject::connect(
+        &window, &MainWindow::MoveFavoriteToRootRequested, &window,
+        [&](const QList<int>& path) {
+            goldendict::core::FavoritePath source;
+            if (path.size() < 2 || !MakeFavoritePath(path, &source)) {
+                return;
+            }
+            try {
+                auto result = goldendict::core::MoveFavorite(
+                    favorites_path.toStdString(), favorites, source, {},
+                    favorites.size());
+                if (result.changed()) {
+                    favorites = std::move(result.favorites);
+                    QList<int> moved_path;
+                    for (const auto index : result.moved_path) {
+                        moved_path.push_back(static_cast<int>(index));
+                    }
+                    refresh_favorites(moved_path);
+                }
+            } catch (const std::exception& error) {
+                QMessageBox::warning(&window,
+                                     QStringLiteral("GoldenDict favorites"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+        });
+    QObject::connect(
+        &window, &MainWindow::MoveFavoriteAcrossFoldersRequested, &window,
+        [&](const QList<int>& source_path, const QList<int>& destination_path,
+            int destination_index, const QList<QList<int>>& expanded_paths) {
+            goldendict::core::FavoritePath source;
+            goldendict::core::FavoritePath destination;
+            std::vector<goldendict::core::FavoritePath> expanded;
+            if (destination_index < 0 ||
+                !MakeFavoritePath(source_path, &source) ||
+                !MakeFavoritePath(destination_path, &destination)) {
+                return;
+            }
+            expanded.reserve(static_cast<std::size_t>(expanded_paths.size()));
+            for (const auto& path : expanded_paths) {
+                goldendict::core::FavoritePath converted;
+                if (!MakeFavoritePath(path, &converted)) {
+                    return;
+                }
+                expanded.push_back(std::move(converted));
+            }
+            try {
+                auto result = goldendict::core::MoveFavorite(
+                    favorites_path.toStdString(), favorites, source,
+                    destination, static_cast<std::size_t>(destination_index),
+                    expanded, true);
+                if (result.changed()) {
+                    favorites = std::move(result.favorites);
+                    QList<int> moved_path;
+                    for (const auto index : result.moved_path) {
+                        moved_path.push_back(static_cast<int>(index));
+                    }
+                    refresh_favorites(moved_path);
+                }
+            } catch (const std::exception& error) {
+                QMessageBox::warning(&window,
+                                     QStringLiteral("GoldenDict favorites"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+        });
     QObject::connect(
         &window, &MainWindow::ImportFavoritesRequested, &window,
         [&](const QString& path) {
@@ -955,6 +993,30 @@ int main(int argc, char* argv[]) {
                         app.exit(passed ? 0 : 1);
                     });
             });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--favorites-cross-folder-move-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &favorites_path, &window]() {
+            window.RunFavoritesCrossFolderMoveSmokeCheck(
+                [&app, &favorites_path](bool passed) {
+                    try {
+                        const auto persisted = goldendict::core::LoadFavorites(
+                            favorites_path.toStdString());
+                        passed = passed && persisted.size() == 3U &&
+                                 persisted[0].text == "Source" &&
+                                 persisted[0].children.empty() &&
+                                 persisted[1].text == "Target" &&
+                                 persisted[1].children.size() == 1U &&
+                                 persisted[1].children[0].text == "Subtree" &&
+                                 persisted[1].children[0].children.empty() &&
+                                 persisted[2].text == "nested-entry";
+                    } catch (const std::exception&) {
+                        passed = false;
+                    }
+                    app.exit(passed ? 0 : 1);
+                });
+        });
     } else if (HasArgument(argc, argv,
                            QStringLiteral("--dictionary-browser-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });

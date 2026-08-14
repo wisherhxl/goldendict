@@ -46,6 +46,7 @@
 #include "article_page.h"
 #include "article_scheme_handler.h"
 #include "dictionary_browser.h"
+#include "favorites_tree_widget.h"
 #include "goldendict/core/desktop_facade.h"
 #include "group_editor.h"
 #include "source_directories_dialog.h"
@@ -153,9 +154,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     auto* favorites_dock = new QDockWidget(QStringLiteral("Favorites"), this);
     favorites_dock->setObjectName(QStringLiteral("favoritesDock"));
-    favorites_tree_ = new QTreeWidget(favorites_dock);
+    favorites_tree_ = new FavoritesTreeWidget(favorites_dock);
     favorites_tree_->setObjectName(QStringLiteral("favoritesTree"));
     favorites_tree_->setHeaderHidden(true);
+    favorites_tree_->SetMoveRequest([this](const QList<int>& source_path,
+                                           const QList<int>& destination_path,
+                                           int destination_index) {
+        emit MoveFavoriteAcrossFoldersRequested(source_path, destination_path,
+                                                destination_index,
+                                                ExpandedFavoriteFolderPaths());
+    });
     favorites_dock->setWidget(favorites_tree_);
     addDockWidget(Qt::LeftDockWidgetArea, favorites_dock);
     tabifyDockWidget(history_dock, favorites_dock);
@@ -1070,6 +1078,71 @@ void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
     emit AddFavoriteFolderRequested(QStringLiteral("Smoke Folder"), {});
 }
 
+void MainWindow::RunFavoritesCrossFolderMoveSmokeCheck(
+    std::function<void(bool)> completion) {
+    while (favorites_tree_->topLevelItemCount() > 0) {
+        emit RemoveFavoriteRequested(
+            {favorites_tree_->topLevelItemCount() - 1});
+    }
+    const int initial_count = favorites_tree_->topLevelItemCount();
+    emit AddFavoriteFolderRequested(QStringLiteral("Source"), {});
+    emit AddFavoriteFolderRequested(QStringLiteral("Target"), {});
+    emit AddFavoriteFolderRequested(QStringLiteral("Subtree"), {initial_count});
+    emit AddFavoriteRequested(QStringLiteral("nested-entry"),
+                              {initial_count, 0});
+
+    auto* source = favorites_tree_->topLevelItem(initial_count);
+    auto* target = favorites_tree_->topLevelItem(initial_count + 1);
+    if (source == nullptr || target == nullptr || source->childCount() != 1) {
+        completion(false);
+        return;
+    }
+    source->setExpanded(true);
+    source->child(0)->setExpanded(true);
+    connect(
+        this, &MainWindow::MoveFavoriteAcrossFoldersRequested, this,
+        [this, initial_count, completion = std::move(completion)](
+            const QList<int>&, const QList<int>&, int,
+            const QList<QList<int>>&) mutable {
+            auto* refreshed_target =
+                favorites_tree_->topLevelItem(initial_count + 1);
+            const bool subtree_moved =
+                refreshed_target != nullptr &&
+                refreshed_target->childCount() == 1 &&
+                refreshed_target->child(0)->text(0) ==
+                    QStringLiteral("Subtree") &&
+                refreshed_target->child(0)->isExpanded() &&
+                favorites_tree_->currentItem() == refreshed_target->child(0);
+            if (!subtree_moved) {
+                completion(false);
+                return;
+            }
+            connect(
+                this, &MainWindow::MoveFavoriteAcrossFoldersRequested, this,
+                [this, initial_count, completion = std::move(completion)](
+                    const QList<int>&, const QList<int>&, int,
+                    const QList<QList<int>>&) mutable {
+                    auto* root_word =
+                        favorites_tree_->topLevelItem(initial_count + 2);
+                    completion(root_word != nullptr &&
+                               root_word->text(0) ==
+                                   QStringLiteral("nested-entry") &&
+                               favorites_tree_->currentItem() == root_word &&
+                               favorites_tree_->topLevelItem(initial_count + 1)
+                                       ->child(0)
+                                       ->childCount() == 0);
+                },
+                Qt::SingleShotConnection);
+            emit MoveFavoriteAcrossFoldersRequested(
+                {initial_count + 1, 0, 0}, {}, initial_count + 2,
+                ExpandedFavoriteFolderPaths());
+        },
+        Qt::SingleShotConnection);
+    emit MoveFavoriteAcrossFoldersRequested({initial_count, 0},
+                                            {initial_count + 1}, 0,
+                                            ExpandedFavoriteFolderPaths());
+}
+
 void MainWindow::RunFavoritesTransferSmokeCheck(
     const QString& path, std::function<void(bool)> completion) {
     const int initial_count = favorites_tree_->topLevelItemCount();
@@ -1756,6 +1829,24 @@ QList<int> MainWindow::SelectedFavoriteFolderPath() const {
                : item->data(0, Qt::UserRole + 1).value<QList<int>>();
 }
 
+QList<QList<int>> MainWindow::ExpandedFavoriteFolderPaths() const {
+    QList<QList<int>> paths;
+    const auto collect = [&](const auto& self,
+                             const QTreeWidgetItem* item) -> void {
+        if (item->data(0, Qt::UserRole).toBool() && item->isExpanded()) {
+            paths.push_back(
+                item->data(0, Qt::UserRole + 1).value<QList<int>>());
+        }
+        for (int index = 0; index < item->childCount(); ++index) {
+            self(self, item->child(index));
+        }
+    };
+    for (int index = 0; index < favorites_tree_->topLevelItemCount(); ++index) {
+        collect(collect, favorites_tree_->topLevelItem(index));
+    }
+    return paths;
+}
+
 bool MainWindow::ExportHistoryToFile(const QString& path) {
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly)) {
@@ -1776,7 +1867,10 @@ bool MainWindow::ExportHistoryToFile(const QString& path) {
     return file.commit();
 }
 
-void MainWindow::SetFavoriteItems(const std::vector<FavoriteViewItem>& items) {
+void MainWindow::SetFavoriteItems(const std::vector<FavoriteViewItem>& items,
+                                  const QList<int>& current_path) {
+    const bool restore_focus = favorites_tree_->hasFocus();
+    QTreeWidgetItem* restored_current = nullptr;
     const auto append = [&](const auto& self, QTreeWidgetItem* parent,
                             const FavoriteViewItem& item) -> void {
         auto* tree_item = parent == nullptr
@@ -1785,6 +1879,9 @@ void MainWindow::SetFavoriteItems(const std::vector<FavoriteViewItem>& items) {
         tree_item->setText(0, item.text);
         tree_item->setData(0, Qt::UserRole, item.folder);
         tree_item->setData(0, Qt::UserRole + 1, QVariant::fromValue(item.path));
+        if (item.path == current_path) {
+            restored_current = tree_item;
+        }
         for (const auto& child : item.children) {
             self(self, tree_item, child);
         }
@@ -1793,6 +1890,14 @@ void MainWindow::SetFavoriteItems(const std::vector<FavoriteViewItem>& items) {
     favorites_tree_->clear();
     for (const auto& item : items) {
         append(append, nullptr, item);
+    }
+    if (restored_current != nullptr) {
+        favorites_tree_->setCurrentItem(restored_current);
+        restored_current->setSelected(true);
+        favorites_tree_->scrollToItem(restored_current);
+    }
+    if (restore_focus) {
+        favorites_tree_->setFocus();
     }
 }
 

@@ -278,6 +278,17 @@ do not replace an existing destination.
 application command, removes it, imports the generated XML, checks the restored
 tree, and reloads the atomically persisted replacement through the core API.
 
+`favorites_store_test` also verifies arbitrary headword and subtree moves
+between nested folders and root, exact pre-removal insertion boundaries,
+no-op behavior, expansion and unrelated-order preservation, and rejection of
+stale paths, invalid destinations, cycles, duplicate siblings, and root moves
+without modifying the persisted file.
+
+`goldendict_favorites_cross_folder_move_smoke` moves a selected expanded
+subtree between arbitrary folders and then moves its headword to root through
+the presentation command, verifying current selection, expansion, order, and
+the atomically reloaded tree.
+
 `goldendict_history_export_smoke` exports a history containing ordinary and
 embedded-newline headwords, then verifies the compatibility UTF-8 BOM,
 one-headword-per-line sanitization, and exact file contents in an isolated

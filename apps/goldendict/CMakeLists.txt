@@ -72,6 +72,13 @@ set_tests_properties(goldendict_favorites_transfer_smoke PROPERTIES
     "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-transfer-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-transfer-test-home/cache"
   TIMEOUT 20)
 
+add_test(NAME goldendict_favorites_cross_folder_move_smoke
+  COMMAND $<TARGET_FILE:goldendict> --favorites-cross-folder-move-smoke)
+set_tests_properties(goldendict_favorites_cross_folder_move_smoke PROPERTIES
+  ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-cross-folder-move-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-cross-folder-move-test-home/cache"
+  TIMEOUT 20)
+
 add_test(NAME goldendict_dictionary_browser_smoke
   COMMAND $<TARGET_FILE:goldendict> --dictionary-browser-smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
