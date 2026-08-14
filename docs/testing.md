@@ -252,6 +252,17 @@ It additionally covers configurable default activation, after-current visible
 ordering, valid geometry capture/restore, and deterministic Qt rejection
 fallback.
 
+`goldendict_article_context_menu_smoke` verifies the application-private menu
+model without opening a real popup. It covers resolved internal links,
+allowlisted external links, rejected schemes, bounded exact selections, image
+contexts, clipboard output, and action dispatch from a captured context.
+
+`goldendict_system_print_smoke` injects print-dialog, preview, availability,
+and renderer fakes. It verifies cancellation, accepted printing, preview paint,
+asynchronous success/failure reporting, and the absence of real system dialogs
+in automated runs; existing WebEngine interaction coverage continues to pin
+HTML and PDF export behavior.
+
 `goldendict_article_tab_session_restart_smoke` launches the real offscreen
 application twice against one isolated configuration directory. The first run
 persists a facade-owned session on mutation and orderly shutdown; the second

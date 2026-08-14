@@ -8,7 +8,9 @@
 #include <QAction>
 #include <QApplication>
 #include <QByteArray>
+#include <QClipboard>
 #include <QComboBox>
+#include <QDebug>
 #include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -26,6 +28,10 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPixmap>
+#include <QPointer>
+#include <QPrintDialog>
+#include <QPrintPreviewDialog>
+#include <QPrinter>
 #include <QPushButton>
 #include <QSaveFile>
 #include <QShortcut>
@@ -45,6 +51,7 @@
 
 #include "article_page.h"
 #include "article_scheme_handler.h"
+#include "article_view.h"
 #include "dictionary_browser.h"
 #include "favorites_tree_widget.h"
 #include "goldendict/core/desktop_facade.h"
@@ -232,9 +239,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     copy_action->setShortcut(QKeySequence::Copy);
     auto* save_action = article_toolbar->addAction(QStringLiteral("Save HTML"));
     save_action->setShortcut(QKeySequence::Save);
-    auto* print_action =
-        article_toolbar->addAction(QStringLiteral("Print PDF"));
+    auto* print_action = article_toolbar->addAction(QStringLiteral("Print"));
     print_action->setShortcut(QKeySequence::Print);
+    auto* print_preview_action =
+        article_toolbar->addAction(QStringLiteral("Print Preview"));
+    auto* print_pdf_action =
+        article_toolbar->addAction(QStringLiteral("Print PDF"));
     setCentralWidget(central);
 
     scheme_handler_ = new ArticleSchemeHandler(this);
@@ -393,6 +403,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     });
     connect(save_action, &QAction::triggered, this, &MainWindow::SaveArticle);
     connect(print_action, &QAction::triggered, this, &MainWindow::PrintArticle);
+    connect(print_preview_action, &QAction::triggered, this,
+            &MainWindow::PreviewArticle);
+    connect(print_pdf_action, &QAction::triggered, this,
+            &MainWindow::SaveArticleAsPdf);
     auto* find_action = new QAction(this);
     find_action->setShortcut(QKeySequence::Find);
     find_action->setShortcutContext(Qt::WindowShortcut);
@@ -439,6 +453,156 @@ void MainWindow::RunWebEngineInteractionCheck(
         Qt::SingleShotConnection);
     article_view_->setHtml(QStringLiteral(
         "<!doctype html><html><body><p>needle</p><p>needle</p></body></html>"));
+}
+
+void MainWindow::RunArticleContextMenuCheck(
+    std::function<void(bool)> completion) {
+    ArticleView view;
+    view.SetFacade(facade_);
+    const ArticleContext internal{
+        QStringLiteral(" selected "),
+        QUrl(QStringLiteral("goldendict://lookup/linked%20word")), true};
+    const auto internal_actions = view.AvailableContextActions(internal);
+    const ArticleContext external{
+        {}, QUrl(QStringLiteral("https://example.test/article")), false};
+    const auto external_actions = view.AvailableContextActions(external);
+    const ArticleContext rejected{QString(60, QLatin1Char('x')),
+                                  QUrl(QStringLiteral("file:///tmp/untrusted")),
+                                  false};
+    const auto rejected_actions = view.AvailableContextActions(rejected);
+    const auto credential_actions = view.AvailableContextActions(ArticleContext{
+        {},
+        QUrl(QStringLiteral("https://user:secret@example.test/article")),
+        false});
+    QString selection;
+    QUrl link;
+    connect(&view, &ArticleView::SelectionLookupRequested, this,
+            [&selection](const QString& text, ArticleLinkDisposition) {
+                selection = text;
+            });
+    connect(&view, &ArticleView::LinkRequested, this,
+            [&link](const QUrl& url, ArticleLinkDisposition) { link = url; });
+    view.TriggerContextActionForTest(ArticleContextAction::kLookupSelection,
+                                     internal);
+    view.TriggerContextActionForTest(ArticleContextAction::kOpenLink, internal);
+    view.TriggerContextActionForTest(ArticleContextAction::kCopyLink, external);
+    const bool link_copied =
+        QApplication::clipboard()->text() == external.link_url.toString();
+    const auto session_before_copy = facade_->ExportArticleTabSession();
+    article_view_->TriggerContextActionForTest(
+        ArticleContextAction::kCopyAsText,
+        ArticleContext{QStringLiteral("clipboard selection"), {}, false});
+    const bool copy_preserved_session =
+        facade_->ExportArticleTabSession() == session_before_copy;
+    const auto state_before_navigation = facade_->GetArticleTabsState();
+    const auto original_tab_id = state_before_navigation.active_tab_id;
+    const auto original_tab = std::find_if(state_before_navigation.tabs.begin(),
+                                           state_before_navigation.tabs.end(),
+                                           [original_tab_id](const auto& tab) {
+                                               return tab.id == original_tab_id;
+                                           });
+    const std::uint32_t original_group =
+        original_tab == state_before_navigation.tabs.end()
+            ? 0U
+            : original_tab->navigation.group_id;
+    article_view_->TriggerContextActionForTest(
+        ArticleContextAction::kLookupSelectionInNewTab, internal);
+    const auto navigation_state = facade_->GetArticleTabsState();
+    const bool navigation_preserved_origin =
+        navigation_state.tabs.size() ==
+            state_before_navigation.tabs.size() + 1U &&
+        navigation_state.active_tab_id == original_tab_id &&
+        navigation_state.tabs.back().navigation.query == " selected " &&
+        navigation_state.tabs.back().navigation.group_id == original_group;
+    const bool restored = static_cast<bool>(
+        facade_->RestoreArticleTabSession(session_before_copy));
+    SyncArticleTabs();
+    emit ArticleTabSessionMutated();
+    const bool passed =
+        internal_actions ==
+            QList<ArticleContextAction>{
+                ArticleContextAction::kOpenLink,
+                ArticleContextAction::kOpenLinkInNewTab,
+                ArticleContextAction::kLookupSelection,
+                ArticleContextAction::kLookupSelectionInNewTab,
+                ArticleContextAction::kSendSelectionToInput,
+                ArticleContextAction::kCopy,
+                ArticleContextAction::kCopyAsText,
+                ArticleContextAction::kCopyImage} &&
+        external_actions ==
+            QList<ArticleContextAction>{ArticleContextAction::kOpenExternalLink,
+                                        ArticleContextAction::kCopyLink,
+                                        ArticleContextAction::kSelectAll} &&
+        rejected_actions ==
+            QList<ArticleContextAction>{ArticleContextAction::kCopy,
+                                        ArticleContextAction::kCopyAsText} &&
+        credential_actions ==
+            QList<ArticleContextAction>{ArticleContextAction::kSelectAll} &&
+        selection == internal.selected_text && link == internal.link_url &&
+        link_copied && copy_preserved_session && navigation_preserved_origin &&
+        restored;
+    if (!passed) {
+        qWarning() << "context menu smoke mismatch" << internal_actions.size()
+                   << external_actions.size() << rejected_actions.size()
+                   << credential_actions.size() << selection << link
+                   << QApplication::clipboard()->text();
+    }
+    completion(passed);
+}
+
+void MainWindow::RunSystemPrintCheck(std::function<void(bool)> completion) {
+    int dialog_calls = 0;
+    int dispatch_calls = 0;
+    int preview_calls = 0;
+    const auto session_before = facade_->ExportArticleTabSession();
+    printer_available_ = []() {
+        return false;
+    };
+    print_dialog_executor_ = [&dialog_calls](QPrinter*) {
+        ++dialog_calls;
+        return false;
+    };
+    print_dispatcher_ = [&dispatch_calls](ArticleView*, QPrinter*) {
+        ++dispatch_calls;
+    };
+    PrintArticle();
+    const bool unavailable_safe =
+        dialog_calls == 0 && dispatch_calls == 0 &&
+        status_->text() == QStringLiteral("No printer is available");
+    printer_available_ = []() {
+        return true;
+    };
+    PrintArticle();
+    const bool cancellation_safe = dialog_calls == 1 && dispatch_calls == 0;
+    print_dialog_executor_ = [&dialog_calls](QPrinter*) {
+        ++dialog_calls;
+        return true;
+    };
+    PrintArticle();
+    const bool accepted =
+        dialog_calls == 2 && dispatch_calls == 1 && print_in_progress_;
+    PrintArticle();
+    const bool overlap_rejected = dialog_calls == 2 && dispatch_calls == 1;
+    emit article_view_->printFinished(true);
+    print_preview_executor_ =
+        [&preview_calls](QPrinter*, const std::function<void()>& paint) {
+            ++preview_calls;
+            paint();
+        };
+    PreviewArticle();
+    const bool preview =
+        preview_calls == 1 && dispatch_calls == 2 && print_in_progress_;
+    emit article_view_->printFinished(false);
+    const bool failure_reported =
+        status_->text() == QStringLiteral("Printing failed");
+    printer_available_ = {};
+    print_dialog_executor_ = {};
+    print_preview_executor_ = {};
+    print_dispatcher_ = {};
+    completion(unavailable_safe && cancellation_safe && accepted &&
+               overlap_rejected && preview && failure_reported &&
+               !print_in_progress_ &&
+               facade_->ExportArticleTabSession() == session_before);
 }
 
 void MainWindow::RunArticleTabsSmokeCheck(
@@ -500,9 +664,9 @@ void MainWindow::RunArticleTabsSmokeCheck(
                   state.tabs[1].navigation.query == "apple" &&
                   state.tabs[2].navigation.query == "application" &&
                   state.active_tab_id == state.tabs[1].id;
-        auto* first = ArticleView(state.tabs[0].id);
-        auto* second = ArticleView(state.tabs[1].id);
-        auto* third = ArticleView(state.tabs[2].id);
+        auto* first = ArticleViewForTab(state.tabs[0].id);
+        auto* second = ArticleViewForTab(state.tabs[1].id);
+        auto* third = ArticleViewForTab(state.tabs[2].id);
         if (first == nullptr || second == nullptr || third == nullptr) {
             completion(false);
             return;
@@ -757,8 +921,8 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
             QTimer::singleShot(10, this, *poll);
             return;
         }
-        auto* first = ArticleView(7U);
-        auto* second = ArticleView(42U);
+        auto* first = ArticleViewForTab(7U);
+        auto* second = ArticleViewForTab(42U);
         if (first == nullptr || second == nullptr) {
             completion(false);
             return;
@@ -1245,65 +1409,54 @@ goldendict::core::ArticleTabId MainWindow::TabIdAt(int index) const {
     return article_tabs_->widget(index)->property("articleTabId").toULongLong();
 }
 
-QWebEngineView* MainWindow::ArticleView(
+ArticleView* MainWindow::ArticleViewForTab(
     goldendict::core::ArticleTabId tab_id) const {
     for (int index = 0; index < article_tabs_->count(); ++index) {
         if (TabIdAt(index) == tab_id) {
-            return qobject_cast<QWebEngineView*>(article_tabs_->widget(index));
+            return qobject_cast<ArticleView*>(article_tabs_->widget(index));
         }
     }
     return nullptr;
 }
 
-QWebEngineView* MainWindow::CreateArticleView(
+ArticleView* MainWindow::CreateArticleView(
     goldendict::core::ArticleTabId tab_id) {
-    auto* view = new QWebEngineView(article_tabs_);
+    auto* view = new ArticleView(article_tabs_);
+    view->SetFacade(facade_);
     view->setProperty("articleTabId", QVariant::fromValue<qulonglong>(tab_id));
     auto* page = new ArticlePage(view);
     page->SetFacade(facade_);
     page->SetOpenNewTabsInBackground(preferences_.open_new_tabs_in_background);
     view->setPage(page);
-    connect(
-        page, &ArticlePage::LookupRequested, this,
-        [this, tab_id](const QString& text, const QString& internal_url,
-                       ArticleLinkDisposition disposition) {
-            if (facade_ == nullptr)
-                return;
-            std::uint32_t group_id = 0U;
-            const auto state = facade_->GetArticleTabsState();
-            const auto found = std::find_if(
-                state.tabs.begin(), state.tabs.end(),
-                [tab_id](const auto& tab) { return tab.id == tab_id; });
-            if (found != state.tabs.end())
-                group_id = found->navigation.group_id;
-            goldendict::core::TabNavigationState navigation;
-            navigation.kind =
-                goldendict::core::TabNavigationKind::kInternalLink;
-            navigation.query = text.toStdString();
-            navigation.group_id = group_id;
-            navigation.title = navigation.query;
-            navigation.internal_url = internal_url.toStdString();
-            const bool foreground =
-                disposition == ArticleLinkDisposition::kNewForegroundTab;
-            const bool background =
-                disposition == ArticleLinkDisposition::kNewBackgroundTab;
-            const auto result = facade_->OpenArticleTab(
-                navigation,
-                foreground || background
-                    ? goldendict::core::TabOpenPolicy::kNewTab
-                    : goldendict::core::TabOpenPolicy::kCurrentTab,
-                background ? goldendict::core::TabActivationPolicy::kKeepActive
-                           : goldendict::core::TabActivationPolicy::kActivate,
-                NewTabPlacementPolicy());
-            if (!result) {
-                status_->setText(QStringLiteral("Unable to open article tab"));
-                return;
-            }
-            SyncArticleTabs();
-            emit ArticleTabSessionMutated();
-            StartNavigationLookup(result.tab_id, navigation, true);
-        });
+    connect(page, &ArticlePage::LookupRequested, this,
+            [this, tab_id](const QString& text, const QString& internal_url,
+                           ArticleLinkDisposition disposition) {
+                static_cast<void>(text);
+                OpenArticleLink(tab_id, QUrl(internal_url), disposition);
+            });
     connect(page, &ArticlePage::ExternalUrlRequested, this,
+            [](const QUrl& url) { QDesktopServices::openUrl(url); });
+    connect(
+        view, &ArticleView::LinkRequested, this,
+        [this, tab_id](const QUrl& url, ArticleLinkDisposition disposition) {
+            if (disposition == ArticleLinkDisposition::kNewForegroundTab &&
+                preferences_.open_new_tabs_in_background) {
+                disposition = ArticleLinkDisposition::kNewBackgroundTab;
+            }
+            OpenArticleLink(tab_id, url, disposition);
+        });
+    connect(view, &ArticleView::SelectionLookupRequested, this,
+            [this, tab_id](const QString& text,
+                           ArticleLinkDisposition disposition) {
+                if (disposition == ArticleLinkDisposition::kNewForegroundTab &&
+                    preferences_.open_new_tabs_in_background) {
+                    disposition = ArticleLinkDisposition::kNewBackgroundTab;
+                }
+                LookupArticleSelection(tab_id, text, disposition);
+            });
+    connect(view, &ArticleView::SelectionToInputRequested, this,
+            [this](const QString& text) { query_->setText(text); });
+    connect(view, &ArticleView::ExternalUrlRequested, this,
             [](const QUrl& url) { QDesktopServices::openUrl(url); });
     connect(view, &QWebEngineView::urlChanged, this,
             &MainWindow::UpdateNavigationActions);
@@ -1315,10 +1468,92 @@ QWebEngineView* MainWindow::CreateArticleView(
                                          : QStringLiteral("PDF save failed"));
                 }
             });
+    connect(view, &QWebEngineView::printFinished, this, [this](bool success) {
+        print_in_progress_ = false;
+        status_->setText(success ? QStringLiteral("Article printed")
+                                 : QStringLiteral("Printing failed"));
+    });
     view->setHtml(QStringLiteral(
         "<!doctype html><html><body><h1>GoldenDict</h1>"
         "<p>Choose a dictionary folder to begin.</p></body></html>"));
     return view;
+}
+
+void MainWindow::OpenArticleLink(goldendict::core::ArticleTabId tab_id,
+                                 const QUrl& url,
+                                 ArticleLinkDisposition disposition) {
+    if (facade_ == nullptr)
+        return;
+    const auto resolved =
+        facade_->ResolveArticleUrl(url.toEncoded().toStdString());
+    if (!resolved.has_value() ||
+        resolved->kind != goldendict::core::ArticleUrlKind::kLookup) {
+        return;
+    }
+    const auto state = facade_->GetArticleTabsState();
+    const auto found =
+        std::find_if(state.tabs.begin(), state.tabs.end(),
+                     [tab_id](const auto& tab) { return tab.id == tab_id; });
+    if (found == state.tabs.end())
+        return;
+    goldendict::core::TabNavigationState navigation;
+    navigation.kind = goldendict::core::TabNavigationKind::kInternalLink;
+    navigation.query = resolved->lookup_text;
+    navigation.group_id = found->navigation.group_id;
+    navigation.title = navigation.query;
+    navigation.internal_url = url.toEncoded().toStdString();
+    const bool new_tab = disposition != ArticleLinkDisposition::kCurrentTab;
+    const bool background =
+        disposition == ArticleLinkDisposition::kNewBackgroundTab;
+    const auto result = facade_->OpenArticleTab(
+        navigation,
+        new_tab ? goldendict::core::TabOpenPolicy::kNewTab
+                : goldendict::core::TabOpenPolicy::kCurrentTab,
+        background ? goldendict::core::TabActivationPolicy::kKeepActive
+                   : goldendict::core::TabActivationPolicy::kActivate,
+        NewTabPlacementPolicy());
+    if (!result) {
+        status_->setText(QStringLiteral("Unable to open article tab"));
+        return;
+    }
+    SyncArticleTabs();
+    emit ArticleTabSessionMutated();
+    StartNavigationLookup(result.tab_id, navigation, true);
+}
+
+void MainWindow::LookupArticleSelection(goldendict::core::ArticleTabId tab_id,
+                                        const QString& text,
+                                        ArticleLinkDisposition disposition) {
+    if (facade_ == nullptr || text.trimmed().isEmpty() ||
+        text.trimmed().size() >= 60) {
+        return;
+    }
+    const auto state = facade_->GetArticleTabsState();
+    const auto found =
+        std::find_if(state.tabs.begin(), state.tabs.end(),
+                     [tab_id](const auto& tab) { return tab.id == tab_id; });
+    if (found == state.tabs.end())
+        return;
+    goldendict::core::TabNavigationState navigation;
+    navigation.kind = goldendict::core::TabNavigationKind::kLookup;
+    navigation.query = text.toStdString();
+    navigation.group_id = found->navigation.group_id;
+    navigation.title = navigation.query;
+    const bool new_tab = disposition != ArticleLinkDisposition::kCurrentTab;
+    const bool background =
+        disposition == ArticleLinkDisposition::kNewBackgroundTab;
+    const auto result = facade_->OpenArticleTab(
+        navigation,
+        new_tab ? goldendict::core::TabOpenPolicy::kNewTab
+                : goldendict::core::TabOpenPolicy::kCurrentTab,
+        background ? goldendict::core::TabActivationPolicy::kKeepActive
+                   : goldendict::core::TabActivationPolicy::kActivate,
+        NewTabPlacementPolicy());
+    if (!result)
+        return;
+    SyncArticleTabs();
+    emit ArticleTabSessionMutated();
+    StartNavigationLookup(result.tab_id, navigation, true);
 }
 
 void MainWindow::SyncArticleTabs() {
@@ -1343,7 +1578,7 @@ void MainWindow::SyncArticleTabs() {
     }
     for (std::size_t desired = 0; desired < state.tabs.size(); ++desired) {
         const auto& tab = state.tabs[desired];
-        auto* view = ArticleView(tab.id);
+        auto* view = ArticleViewForTab(tab.id);
         if (view == nullptr) {
             view = CreateArticleView(tab.id);
             article_tabs_->insertTab(
@@ -1366,7 +1601,7 @@ void MainWindow::SyncArticleTabs() {
         [&](const auto& tab) { return tab.id == state.active_tab_id; });
     if (active == state.tabs.end())
         return;
-    auto* active_view = ArticleView(active->id);
+    auto* active_view = ArticleViewForTab(active->id);
     article_tabs_->setCurrentWidget(active_view);
     article_view_ = active_view;
     article_page_ = qobject_cast<ArticlePage*>(active_view->page());
@@ -1470,7 +1705,7 @@ void MainWindow::NavigateArticleTab(bool forward) {
             request->second->Cancel();
             requests_.erase(request);
         }
-        if (auto* view = ArticleView(id); view != nullptr) {
+        if (auto* view = ArticleViewForTab(id); view != nullptr) {
             view->setHtml(QStringLiteral(
                 "<!doctype html><html><body><h1>GoldenDict</h1>"
                 "<p>Choose a dictionary folder to begin.</p></body></html>"));
@@ -2181,7 +2416,7 @@ void MainWindow::FinishLookup() {
     for (const auto id : finished) {
         auto request = std::move(requests_.at(id));
         requests_.erase(id);
-        auto* view = ArticleView(id);
+        auto* view = ArticleViewForTab(id);
         if (view == nullptr)
             continue;
         const bool active = TabIdAt(article_tabs_->currentIndex()) == id;
@@ -2269,7 +2504,7 @@ void MainWindow::FindInArticle(bool backwards) {
         });
 }
 
-void MainWindow::PrintArticle() {
+void MainWindow::SaveArticleAsPdf() {
     const QString file_name = QFileDialog::getSaveFileName(
         this, QStringLiteral("Save Article as PDF"), QString(),
         QStringLiteral("PDF files (*.pdf)"));
@@ -2282,6 +2517,70 @@ void MainWindow::PrintArticle() {
             : file_name + QStringLiteral(".pdf");
     status_->setText(QStringLiteral("Saving PDF..."));
     article_view_->printToPdf(path);
+}
+
+void MainWindow::PrintArticle() {
+    if (article_view_ == nullptr || print_in_progress_)
+        return;
+    if (printer_ == nullptr)
+        printer_ = std::make_unique<QPrinter>(QPrinter::HighResolution);
+    const bool available =
+        printer_available_ ? printer_available_() : printer_->isValid();
+    if (!available) {
+        status_->setText(QStringLiteral("No printer is available"));
+        return;
+    }
+    const QPointer<ArticleView> captured_view(article_view_);
+    const bool accepted =
+        print_dialog_executor_
+            ? print_dialog_executor_(printer_.get())
+            : [this]() {
+                  QPrintDialog dialog(printer_.get(), this);
+                  dialog.setWindowTitle(QStringLiteral("Print Article"));
+                  return dialog.exec() == QDialog::Accepted;
+              }();
+    if (!accepted)
+        return;
+    if (!captured_view.isNull())
+        StartPrinterRender(captured_view.data(), printer_.get());
+}
+
+void MainWindow::PreviewArticle() {
+    if (article_view_ == nullptr || print_in_progress_)
+        return;
+    if (printer_ == nullptr)
+        printer_ = std::make_unique<QPrinter>(QPrinter::HighResolution);
+    const bool available =
+        printer_available_ ? printer_available_() : printer_->isValid();
+    if (!available) {
+        status_->setText(QStringLiteral("No printer is available"));
+        return;
+    }
+    const QPointer<ArticleView> captured_view(article_view_);
+    const auto paint = [this, captured_view]() {
+        if (!captured_view.isNull())
+            StartPrinterRender(captured_view.data(), printer_.get());
+    };
+    if (print_preview_executor_) {
+        print_preview_executor_(printer_.get(), paint);
+        return;
+    }
+    QPrintPreviewDialog dialog(printer_.get(), this);
+    connect(&dialog, &QPrintPreviewDialog::paintRequested, this,
+            [paint](QPrinter*) { paint(); });
+    dialog.exec();
+}
+
+void MainWindow::StartPrinterRender(ArticleView* view, QPrinter* printer) {
+    if (view == nullptr || printer == nullptr || print_in_progress_)
+        return;
+    print_in_progress_ = true;
+    status_->setText(QStringLiteral("Printing..."));
+    if (print_dispatcher_) {
+        print_dispatcher_(view, printer);
+    } else {
+        view->print(printer);
+    }
 }
 
 void MainWindow::SaveArticle() {

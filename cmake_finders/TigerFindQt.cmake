@@ -11,9 +11,11 @@ set(qt_modules
 )
 
 find_package(Qt6 6.11.1 REQUIRED COMPONENTS ${qt_modules})
+find_package(Qt6 6.11.1 REQUIRED COMPONENTS PrintSupport)
 set(QT_MAJOR 6)
 set(QT_NAMESPACE Qt6)
 set(QT_DIR ${Qt6_DIR})
+set(qt_print_support_link "${QT_NAMESPACE}::PrintSupport")
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)

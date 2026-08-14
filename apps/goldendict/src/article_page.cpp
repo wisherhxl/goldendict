@@ -41,7 +41,7 @@ bool ArticlePage::acceptNavigationRequest(const QUrl& url, NavigationType type,
         return false;
     }
     const auto resolved =
-        facade_->ResolveArticleUrl(url.toString().toStdString());
+        facade_->ResolveArticleUrl(url.toEncoded().toStdString());
     if (resolved.has_value() &&
         resolved->kind == goldendict::core::ArticleUrlKind::kLookup) {
         const Qt::KeyboardModifiers modifiers =
@@ -60,7 +60,7 @@ bool ArticlePage::acceptNavigationRequest(const QUrl& url, NavigationType type,
             disposition = ArticleLinkDisposition::kNewBackgroundTab;
         }
         emit LookupRequested(QString::fromStdString(resolved->lookup_text),
-                             url.toString(), disposition);
+                             QString::fromLatin1(url.toEncoded()), disposition);
     } else if (!resolved.has_value() &&
                (url.scheme() == QStringLiteral("http") ||
                 url.scheme() == QStringLiteral("https") ||

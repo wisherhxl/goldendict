@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-ti_add_qt_app(goldendict MODULES core network EXTRAS ${qt_link})
+ti_add_qt_app(goldendict MODULES core network
+  EXTRAS ${qt_link} ${qt_print_support_link})
 
 add_test(NAME goldendict_smoke COMMAND $<TARGET_FILE:goldendict> --smoke)
 
@@ -16,6 +17,20 @@ add_test(NAME goldendict_webengine_interaction_smoke
 set_tests_properties(goldendict_webengine_interaction_smoke PROPERTIES
   ENVIRONMENT
     "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-home/cache"
+  TIMEOUT 20)
+
+add_test(NAME goldendict_article_context_menu_smoke
+  COMMAND $<TARGET_FILE:goldendict> --article-context-menu-smoke)
+set_tests_properties(goldendict_article_context_menu_smoke PROPERTIES
+  ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-context-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-context-menu-test-home/cache"
+  TIMEOUT 20)
+
+add_test(NAME goldendict_system_print_smoke
+  COMMAND $<TARGET_FILE:goldendict> --system-print-smoke)
+set_tests_properties(goldendict_system_print_smoke PROPERTIES
+  ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/system-print-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/system-print-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_article_tabs_smoke

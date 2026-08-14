@@ -17,7 +17,9 @@
 #include "goldendict/core/desktop_facade.h"
 
 class ArticlePage;
+class ArticleView;
 class ArticleSchemeHandler;
+enum class ArticleLinkDisposition;
 class DictionaryBrowser;
 class QAction;
 class QLabel;
@@ -30,7 +32,9 @@ class QEvent;
 class QTabWidget;
 class QTimer;
 class QToolButton;
+class QUrl;
 class QWebEngineView;
+class QPrinter;
 class QShortcut;
 class FavoritesTreeWidget;
 
@@ -100,6 +104,8 @@ class MainWindow final : public QMainWindow {
     DictionaryGroups() const noexcept;
     void RunWebEngineSmokeCheck(std::function<void(bool)> completion);
     void RunWebEngineInteractionCheck(std::function<void(bool)> completion);
+    void RunArticleContextMenuCheck(std::function<void(bool)> completion);
+    void RunSystemPrintCheck(std::function<void(bool)> completion);
     void RunHistorySmokeCheck(std::function<void(bool)> completion);
     void RunHistoryManagementSmokeCheck(std::function<void(bool)> completion);
     void RunHistoryExportSmokeCheck(const QString& path,
@@ -150,6 +156,8 @@ class MainWindow final : public QMainWindow {
     void FinishLookup();
     void FindInArticle(bool backwards = false);
     void PrintArticle();
+    void PreviewArticle();
+    void SaveArticleAsPdf();
     void SaveArticle();
     void UpdateNavigationActions();
     void ZoomArticle(double delta);
@@ -179,9 +187,15 @@ class MainWindow final : public QMainWindow {
     void CreateEmptyArticleTab(bool activate);
     goldendict::core::TabPlacementPolicy NewTabPlacementPolicy() const;
     void NavigateArticleTab(bool forward);
+    void OpenArticleLink(goldendict::core::ArticleTabId tab_id, const QUrl& url,
+                         ArticleLinkDisposition disposition);
+    void LookupArticleSelection(goldendict::core::ArticleTabId tab_id,
+                                const QString& text,
+                                ArticleLinkDisposition disposition);
+    void StartPrinterRender(ArticleView* view, QPrinter* printer);
     void ShowTabContextMenu(const QPoint& position);
-    QWebEngineView* CreateArticleView(goldendict::core::ArticleTabId tab_id);
-    QWebEngineView* ArticleView(goldendict::core::ArticleTabId tab_id) const;
+    ArticleView* CreateArticleView(goldendict::core::ArticleTabId tab_id);
+    ArticleView* ArticleViewForTab(goldendict::core::ArticleTabId tab_id) const;
     goldendict::core::ArticleTabId TabIdAt(int index) const;
     void ShowMessage(const QString& title, const QString& message);
     void RefreshHistoryList();
@@ -231,7 +245,7 @@ class MainWindow final : public QMainWindow {
     QToolButton* lookup_button_ = nullptr;
     QLabel* status_ = nullptr;
     QTabWidget* article_tabs_ = nullptr;
-    QWebEngineView* article_view_ = nullptr;
+    ArticleView* article_view_ = nullptr;
     ArticlePage* article_page_ = nullptr;
     ArticleSchemeHandler* scheme_handler_ = nullptr;
     QLineEdit* article_search_ = nullptr;
@@ -243,6 +257,13 @@ class MainWindow final : public QMainWindow {
              std::unique_ptr<goldendict::core::LookupRequest>>
         requests_;
     DictionaryBrowser* dictionary_browser_ = nullptr;
+    std::unique_ptr<QPrinter> printer_;
+    bool print_in_progress_ = false;
+    std::function<bool(QPrinter*)> print_dialog_executor_;
+    std::function<void(QPrinter*, const std::function<void()>&)>
+        print_preview_executor_;
+    std::function<void(ArticleView*, QPrinter*)> print_dispatcher_;
+    std::function<bool()> printer_available_;
 };
 
 #endif  // GOLDENDICT_APPS_GOLDENDICT_MAIN_WINDOW_H_

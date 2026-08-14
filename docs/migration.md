@@ -289,6 +289,18 @@ also verifies serialized HTML and a real Chromium-generated PDF payload.
 Advanced context-menu customization and system print-dialog integration remain
 later Phase 8 parity work.
 
+The bounded Phase 8 R4 residual adds a custom article context menu for
+facade-resolved lookup links, allowlisted external links, short selection
+lookup, input-line transfer, native/plain-text copy, image copy, and select-all.
+The menu snapshots its originating tab and routes navigation through the
+existing tab contracts; it does not add resource saving, inspector access,
+article scripts, or per-dictionary context navigation. Credential-bearing and
+unsupported external targets receive no menu action. Printing uses Qt
+PrintSupport's platform print dialog where available and provides a
+cross-platform preview while retaining the separate asynchronous PDF and HTML
+exports. Cancelled, unavailable, overlapping, and failed print paths do not
+mutate article or session state.
+
 The article composition increment combines every returned dictionary entry in
 one bounded inert document, retaining per-dictionary headings and the resource
 URLs already emitted by the core assemblers. Composition remains inside the

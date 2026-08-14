@@ -74,7 +74,7 @@ not authorize dropping a legacy format.
 | Qt WebEngine rendering of local article | slice | Phase 4 | documented rendering smoke |
 | Embedded images/styles/resources | slice | Phase 4 | generated fixture resources |
 | Navigation, links, search, zoom | slice | Phase 7/8 | WebEngine integration tests |
-| Context menus, copy, print, save | slice | Phase 7/8 | manual and automated checks |
+| Context menus, copy, print, save | slice | Phase 7/8 | bounded safe link/selection/image menu, native/system print dialog and preview, retained HTML/PDF export, and offscreen injected-dialog checks; resource saving and article TOC remain |
 | Inspector/DevTools integration | later | Phase 7 | manual parity check |
 | Bounded HTTP transport | slice | Phase 7 | deterministic local HTTP server |
 | Proxy and authentication | slice | Phase 7 | explicit HTTP proxy and scoped Basic credentials, including cross-origin redirect isolation, verified by local origin/proxy fixtures; system proxy discovery and interactive credential storage remain |
