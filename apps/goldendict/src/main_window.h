@@ -31,6 +31,7 @@ class QComboBox;
 class QEvent;
 class QTabWidget;
 class QTimer;
+class QToolBar;
 class QToolButton;
 class QUrl;
 class QWebEngineView;
@@ -127,6 +128,7 @@ class MainWindow final : public QMainWindow {
     void RunSourceDirectoriesSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabsSmokeCheck(std::function<void(bool)> completion);
     void RunSuggestionPaneSmokeCheck(std::function<void(bool)> completion);
+    void RunDictionaryBarSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabSessionRestartSmokeCheck(
         bool prepare, std::function<void(bool)> completion);
 
@@ -205,6 +207,12 @@ class MainWindow final : public QMainWindow {
     void RefreshHistoryList();
     void SelectGroup(std::uint32_t group_id);
     void RefreshGroupSelector();
+    void RefreshDictionaryBar();
+    void ApplyDictionaryParticipation();
+    std::vector<std::string> ParticipatingDictionaryIds(
+        std::uint32_t group_id) const;
+    void ApplyDictionaryFilter(goldendict::core::LookupQuery* query) const;
+    void ApplyDictionaryFilter(goldendict::core::SuggestionQuery* query) const;
     void RefreshResultsNavigation();
     void RefreshSuggestions();
     void StartSuggestionLookup();
@@ -260,6 +268,10 @@ class MainWindow final : public QMainWindow {
     QAction* remove_favorite_action_ = nullptr;
     QAction* dictionary_browser_action_ = nullptr;
     QToolButton* lookup_button_ = nullptr;
+    QToolBar* dictionary_bar_ = nullptr;
+    std::map<std::uint32_t, std::vector<std::string>> participating_ids_;
+    std::map<std::uint32_t, std::vector<std::string>> dictionary_members_;
+    std::map<std::uint32_t, std::vector<std::string>> solo_restore_ids_;
     QLabel* status_ = nullptr;
     QTabWidget* article_tabs_ = nullptr;
     ArticleView* article_view_ = nullptr;
@@ -291,6 +303,7 @@ class MainWindow final : public QMainWindow {
     DictionaryBrowser* dictionary_browser_ = nullptr;
     std::unique_ptr<QPrinter> printer_;
     bool print_in_progress_ = false;
+    bool restoring_main_window_state_ = false;
     std::function<bool(QPrinter*)> print_dialog_executor_;
     std::function<void(QPrinter*, const std::function<void()>&)>
         print_preview_executor_;

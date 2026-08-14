@@ -252,7 +252,8 @@ int main(int argc, char* argv[]) {
     if (!command_line_root.isEmpty()) {
         configuration.dictionary_paths = {command_line_root.toStdString()};
     }
-    if (HasArgument(argc, argv, QStringLiteral("--source-directories-smoke"))) {
+    if (HasArgument(argc, argv, QStringLiteral("--source-directories-smoke")) ||
+        HasArgument(argc, argv, QStringLiteral("--dictionary-bar-smoke"))) {
         configuration.mediawiki_sources = {
             {"smoke.wiki", "Smoke Wiki", false, "https://wiki.example.test/w"}};
         configuration.website_sources = {
@@ -805,6 +806,12 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(15000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(0, &window, [&app, &window]() {
             window.RunSuggestionPaneSmokeCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--dictionary-bar-smoke"))) {
+        QTimer::singleShot(0, &window, [&window, &app]() {
+            window.RunDictionaryBarSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
     } else if (HasArgument(

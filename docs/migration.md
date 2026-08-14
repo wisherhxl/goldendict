@@ -565,6 +565,18 @@ source mutation, or presentation-owned lookup semantics. Toolbar hierarchy,
 local participation state, Qt layout-state integration, and action exposure
 remain the dependent unlabelled Phase 8 leaf.
 
+The dependent unlabelled Phase 8 Widgets leaf adds the legacy-compatible
+`dictionaryBar` as a real catalog-backed toolbar. Ordered, per-group check
+state is ephemeral for one application run, is seeded from existing group
+muting metadata without rewriting it, and becomes an explicit lookup and
+suggestion filter only while the toolbar is visible. Active changes replace
+the active tab's work while background requests retain their submitted
+snapshot; all-off completes through the existing empty-filter contract. The
+private Qt state version advances to 7 and transactionally accepts versions
+6 through 2 while seeding only the absent toolbar default; version 1 remains
+excluded. Menus, persistent group/source editing, and legacy opaque state
+import remain separate leaves.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,

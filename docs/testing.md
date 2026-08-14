@@ -120,6 +120,14 @@ intersection, catalog order, duplicate normalization, missing-ID diagnostics,
 and cancellation behavior. The installed headless consumer compiles and runs
 the active-empty contract through the exported request DTOs.
 
+`goldendict_dictionary_bar_smoke` pins the Widgets projection of that contract:
+the real `dictionaryBar` identity, catalog/group ordering, accessible text-only
+actions, group-scoped ephemeral checks, imported muting baselines, all-off
+lookup and suggestions, hidden-toolbar fallback, and catalog-backed action
+identity. The existing article-tabs smoke additionally pins active/background
+request isolation and the private version-7 round trip plus transactional
+version 6 through 2 compatibility and version-1 rejection.
+
 The same test pins the public local-source validation seam: both 256-entry
 bounds, empty sound-path and NUL rejection, duplicate and empty-name
 acceptance, exact ordering, and atomic rejected-save behavior.

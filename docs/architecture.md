@@ -215,6 +215,12 @@ owns validation, group intersection, catalog ordering, unavailable-identity
 errors, bounds, and cancellation. A later Widgets `dictionaryBar` may therefore
 own only ephemeral presentation state and must not rewrite persisted group
 membership, group muting metadata, or source enabled intent.
+The resulting Widgets toolbar keeps that state per group for one main-window
+lifetime, reconciles it against catalog and membership refreshes, and projects
+it into both request DTOs only while visible. A change cancels and replaces
+only active-tab work; background requests keep their immutable submitted
+filter. Qt layout persistence records the toolbar hierarchy and visibility at
+private version 7, never its participation set.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,

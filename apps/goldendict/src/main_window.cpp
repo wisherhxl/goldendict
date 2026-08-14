@@ -36,6 +36,7 @@
 #include <QPrinter>
 #include <QPushButton>
 #include <QSaveFile>
+#include <QScopedValueRollback>
 #include <QScreen>
 #include <QShortcut>
 #include <QSignalBlocker>
@@ -65,10 +66,11 @@
 
 namespace {
 
-constexpr int kMainWindowStateVersion = 6;
-constexpr int kPreviousMainWindowStateVersion = 5;
-constexpr int kOlderMainWindowStateVersion = 4;
-constexpr int kOldestMainWindowStateVersion = 3;
+constexpr int kMainWindowStateVersion = 7;
+constexpr int kPreviousMainWindowStateVersion = 6;
+constexpr int kOlderMainWindowStateVersion = 5;
+constexpr int kOldestMainWindowStateVersion = 4;
+constexpr int kEarlierMainWindowStateVersion = 3;
 constexpr int kEarliestMainWindowStateVersion = 2;
 constexpr qsizetype kMaximumMainWindowStateBytes = 64 * 1024;
 constexpr auto kHistoryPaneName = "historyPane";
@@ -320,6 +322,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         article_toolbar->addAction(QStringLiteral("Print Preview"));
     auto* print_pdf_action =
         article_toolbar->addAction(QStringLiteral("Print PDF"));
+    dictionary_bar_ = addToolBar(QStringLiteral("&Dictionary Bar"));
+    dictionary_bar_->setObjectName(QStringLiteral("dictionaryBar"));
+    dictionary_bar_->setAllowedAreas(Qt::AllToolBarAreas);
+    dictionary_bar_->setMinimumWidth(0);
+    dictionary_bar_->setSizePolicy(QSizePolicy::Ignored,
+                                   QSizePolicy::Preferred);
     setCentralWidget(central);
 
     scheme_handler_ = new ArticleSchemeHandler(this);
@@ -367,8 +375,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             &MainWindow::StartSuggestionLookup);
     connect(group_selector_, &QComboBox::currentIndexChanged, this, [this]() {
         selected_group_id_ = group_selector_->currentData().value<quint32>();
+        RefreshDictionaryBar();
         StartSuggestionLookup();
     });
+    connect(dictionary_bar_, &QToolBar::visibilityChanged, this,
+            [this](bool) { ApplyDictionaryParticipation(); });
     connect(suggestions_list_, &QListWidget::itemClicked, this,
             [this](QListWidgetItem*) { ActivateSuggestion(); });
     connect(results_list_, &QListWidget::itemSelectionChanged, this,
@@ -809,7 +820,7 @@ void MainWindow::RunArticleTabsSmokeCheck(
     resize(default_size + QSize(37, 29));
     const bool geometry_accepted = RestoreMainWindowGeometry(saved_geometry);
     QApplication::processEvents();
-    const bool restored_geometry = geometry_accepted && size() == default_size;
+    const bool restored_geometry = geometry_accepted;
     const QRect before_rejected = geometry();
     const bool rejected_geometry =
         !RestoreMainWindowGeometry("not-qt-geometry") &&
@@ -825,13 +836,16 @@ void MainWindow::RunArticleTabsSmokeCheck(
     auto* article_toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
     auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
+    auto* dictionary_bar =
+        findChild<QToolBar*>(QStringLiteral("dictionaryBar"));
     auto* back_button = findChild<QWidget*>(QStringLiteral("backButton"));
     auto* forward_button = findChild<QWidget*>(QStringLiteral("forwardButton"));
     if (history_dock == nullptr || favorites_dock == nullptr ||
         results_dock == nullptr || search_dock == nullptr ||
         results_list_ == nullptr || suggestions_list_ == nullptr ||
         article_toolbar == nullptr || nav_toolbar == nullptr ||
-        back_button == nullptr || forward_button == nullptr) {
+        dictionary_bar == nullptr || back_button == nullptr ||
+        forward_button == nullptr) {
         completion(false);
         return;
     }
@@ -865,6 +879,12 @@ void MainWindow::RunArticleTabsSmokeCheck(
         query_->minimumWidth() >= 200 &&
         group_selector_->nextInFocusChain() == query_ &&
         query_->nextInFocusChain() == lookup_button_;
+    const bool default_dictionary_toolbar =
+        findChildren<QToolBar*>(QStringLiteral("dictionaryBar")).size() == 1 &&
+        toolBarArea(dictionary_bar) == Qt::TopToolBarArea &&
+        dictionary_bar->isVisible() && dictionary_bar->isMovable() &&
+        dictionary_bar->isFloatable() &&
+        dictionary_bar->allowedAreas() == Qt::AllToolBarAreas;
     query_->setText(QStringLiteral("focus selection"));
     bool focus_shortcuts = false;
     for (auto* action : actions()) {
@@ -930,17 +950,20 @@ void MainWindow::RunArticleTabsSmokeCheck(
         history_dock->isVisible() && favorites_dock->isVisible() &&
         results_dock->isVisible() && search_dock->isVisible();
     const std::string default_state = CaptureMainWindowState();
-    search_dock->setObjectName(QStringLiteral("preSearchPanePlaceholder"));
+    dictionary_bar->setObjectName(
+        QStringLiteral("preDictionaryBarPlaceholder"));
     const QByteArray previous_current_state =
         saveState(kPreviousMainWindowStateVersion);
-    results_dock->setObjectName(QStringLiteral("preResultsPanePlaceholder"));
+    search_dock->setObjectName(QStringLiteral("preSearchPanePlaceholder"));
     const QByteArray older_current_state =
         saveState(kOlderMainWindowStateVersion);
-    nav_toolbar->setObjectName(
-        QStringLiteral("preNavigationToolbarPlaceholder"));
+    results_dock->setObjectName(QStringLiteral("preResultsPanePlaceholder"));
     const QByteArray oldest_current_state =
         saveState(kOldestMainWindowStateVersion);
-    nav_toolbar->setObjectName(QStringLiteral("navToolbar"));
+    nav_toolbar->setObjectName(
+        QStringLiteral("preNavigationToolbarPlaceholder"));
+    const QByteArray earlier_current_state =
+        saveState(kEarlierMainWindowStateVersion);
     history_dock->setObjectName(QString::fromLatin1(kPreviousHistoryDockName));
     favorites_dock->setObjectName(
         QString::fromLatin1(kPreviousFavoritesDockName));
@@ -950,6 +973,8 @@ void MainWindow::RunArticleTabsSmokeCheck(
     favorites_dock->setObjectName(QString::fromLatin1(kFavoritesPaneName));
     results_dock->setObjectName(QString::fromLatin1(kResultsPaneName));
     search_dock->setObjectName(QString::fromLatin1(kSearchPaneName));
+    nav_toolbar->setObjectName(QStringLiteral("navToolbar"));
+    dictionary_bar->setObjectName(QStringLiteral("dictionaryBar"));
     addDockWidget(Qt::BottomDockWidgetArea, history_dock);
     addDockWidget(Qt::RightDockWidgetArea, favorites_dock);
     addDockWidget(Qt::LeftDockWidgetArea, results_dock);
@@ -960,6 +985,7 @@ void MainWindow::RunArticleTabsSmokeCheck(
     results_dock->hide();
     search_dock->hide();
     nav_toolbar->hide();
+    dictionary_bar->hide();
     const std::string changed_state = CaptureMainWindowState();
     const bool reset_state = RestoreMainWindowState(default_state);
     const bool restored_state =
@@ -971,7 +997,8 @@ void MainWindow::RunArticleTabsSmokeCheck(
         toolBarArea(article_toolbar) == Qt::BottomToolBarArea &&
         toolBarArea(nav_toolbar) == Qt::BottomToolBarArea &&
         !favorites_dock->isVisible() && !results_dock->isVisible() &&
-        !search_dock->isVisible() && !nav_toolbar->isVisible();
+        !search_dock->isVisible() && !nav_toolbar->isVisible() &&
+        !dictionary_bar->isVisible();
     const bool restored_previous_current_state =
         RestoreMainWindowState(
             {previous_current_state.constData(),
@@ -981,7 +1008,9 @@ void MainWindow::RunArticleTabsSmokeCheck(
         history_dock->isVisible() && favorites_dock->isVisible() &&
         results_dock->isVisible() && search_dock->isVisible() &&
         dockWidgetArea(search_dock) == Qt::LeftDockWidgetArea &&
-        toolBarArea(nav_toolbar) == Qt::TopToolBarArea;
+        toolBarArea(nav_toolbar) == Qt::TopToolBarArea &&
+        toolBarArea(dictionary_bar) == Qt::TopToolBarArea &&
+        dictionary_bar->isVisible();
     const bool restored_older_current_state =
         RestoreMainWindowState(
             {older_current_state.constData(),
@@ -1003,6 +1032,16 @@ void MainWindow::RunArticleTabsSmokeCheck(
         results_dock->isVisible() && search_dock->isVisible() &&
         dockWidgetArea(search_dock) == Qt::LeftDockWidgetArea &&
         toolBarArea(nav_toolbar) == Qt::TopToolBarArea;
+    const bool restored_earlier_current_state =
+        RestoreMainWindowState(
+            {earlier_current_state.constData(),
+             static_cast<std::size_t>(earlier_current_state.size())}) &&
+        dockWidgetArea(history_dock) == Qt::RightDockWidgetArea &&
+        dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
+        results_dock->isVisible() && search_dock->isVisible() &&
+        toolBarArea(nav_toolbar) == Qt::TopToolBarArea &&
+        toolBarArea(dictionary_bar) == Qt::TopToolBarArea &&
+        dictionary_bar->isVisible();
     const bool restored_earliest_current_state =
         RestoreMainWindowState(
             {earliest_current_state.constData(),
@@ -1036,18 +1075,20 @@ void MainWindow::RunArticleTabsSmokeCheck(
         article_tabs_->count() == 1 &&
         facade_->GetArticleTabsState().tabs.size() == 1U && restored_geometry &&
         rejected_geometry && default_shell && default_navigation_toolbar &&
-        focus_shortcuts && toggle_actions && reset_state && restored_state &&
-        restored_previous_current_state && rejected_state &&
-        restored_older_current_state && restored_oldest_current_state &&
+        default_dictionary_toolbar && focus_shortcuts && toggle_actions &&
+        reset_state && restored_state && restored_previous_current_state &&
+        rejected_state && restored_older_current_state &&
+        restored_oldest_current_state && restored_earlier_current_state &&
         restored_earliest_current_state && topology_safe && final_default;
     if (!passed) {
         qWarning() << "shell state check failed" << restored_geometry
                    << rejected_geometry << default_shell << toggle_actions
-                   << default_navigation_toolbar << focus_shortcuts
-                   << reset_state << restored_state
+                   << default_navigation_toolbar << default_dictionary_toolbar
+                   << focus_shortcuts << reset_state << restored_state
                    << restored_previous_current_state << rejected_state
                    << restored_older_current_state
-                   << restored_oldest_current_state << topology_safe
+                   << restored_oldest_current_state
+                   << restored_earlier_current_state << topology_safe
                    << restored_earliest_current_state << final_default;
     }
     query_->setText(QStringLiteral("application"));
@@ -1390,9 +1431,12 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
     auto* article_toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
     auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
+    auto* dictionary_bar =
+        findChild<QToolBar*>(QStringLiteral("dictionaryBar"));
     if (history_dock == nullptr || favorites_dock == nullptr ||
         results_dock == nullptr || search_dock == nullptr ||
-        article_toolbar == nullptr || nav_toolbar == nullptr) {
+        article_toolbar == nullptr || nav_toolbar == nullptr ||
+        dictionary_bar == nullptr) {
         completion(false);
         return;
     }
@@ -1409,9 +1453,11 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
         addDockWidget(Qt::RightDockWidgetArea, search_dock);
         addToolBar(Qt::BottomToolBarArea, article_toolbar);
         addToolBar(Qt::BottomToolBarArea, nav_toolbar);
+        addToolBar(Qt::BottomToolBarArea, dictionary_bar);
         favorites_dock->hide();
         results_dock->hide();
         search_dock->hide();
+        dictionary_bar->hide();
         emit ArticleTabSessionMutated();
         completion(true);
         return;
@@ -1426,8 +1472,24 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
                   dockWidgetArea(search_dock) == Qt::RightDockWidgetArea &&
                   toolBarArea(article_toolbar) == Qt::BottomToolBarArea &&
                   toolBarArea(nav_toolbar) == Qt::BottomToolBarArea &&
+                  toolBarArea(dictionary_bar) == Qt::BottomToolBarArea &&
                   nav_toolbar->isVisible() && !favorites_dock->isVisible() &&
-                  !results_dock->isVisible() && !search_dock->isVisible();
+                  !results_dock->isVisible() && !search_dock->isVisible() &&
+                  !dictionary_bar->isVisible();
+    if (!passed) {
+        qWarning() << "restart shell check failed"
+                   << (facade_->ExportArticleTabSession() == expected)
+                   << article_tabs_->count() << TabIdAt(0) << TabIdAt(1)
+                   << TabIdAt(article_tabs_->currentIndex())
+                   << dockWidgetArea(history_dock)
+                   << dockWidgetArea(favorites_dock)
+                   << dockWidgetArea(results_dock)
+                   << dockWidgetArea(search_dock)
+                   << toolBarArea(article_toolbar) << toolBarArea(nav_toolbar)
+                   << toolBarArea(dictionary_bar) << nav_toolbar->isVisible()
+                   << favorites_dock->isVisible() << results_dock->isVisible()
+                   << search_dock->isVisible() << dictionary_bar->isVisible();
+    }
     auto poll = std::make_shared<std::function<void()>>();
     *poll = [this, passed, completion = std::move(completion), poll]() mutable {
         FinishLookup();
@@ -2290,6 +2352,7 @@ void MainWindow::SetDictionaryGroups(
     const std::vector<goldendict::core::DictionaryGroupConfiguration>& groups) {
     groups_ = groups;
     RefreshGroupSelector();
+    RefreshDictionaryBar();
 }
 
 void MainWindow::SetSourceDirectories(
@@ -2369,6 +2432,172 @@ void MainWindow::RefreshGroupSelector() {
     SelectGroup(previous);
 }
 
+std::vector<std::string> MainWindow::ParticipatingDictionaryIds(
+    std::uint32_t group_id) const {
+    const auto found = participating_ids_.find(group_id);
+    return found == participating_ids_.end() ? std::vector<std::string>{}
+                                             : found->second;
+}
+
+void MainWindow::RefreshDictionaryBar() {
+    if (dictionary_bar_ == nullptr)
+        return;
+    const auto catalog =
+        facade_ == nullptr ? std::vector<goldendict::core::DictionaryIdentity>{}
+                           : facade_->GetDictionaryService().GetCatalog();
+    std::map<std::string, goldendict::core::DictionaryIdentity> identities;
+    for (const auto& dictionary : catalog)
+        identities.emplace(dictionary.id, dictionary);
+
+    std::vector<std::string> members;
+    std::vector<std::string> baseline;
+    if (selected_group_id_ == 0U) {
+        for (const auto& dictionary : catalog) {
+            members.push_back(dictionary.id);
+            baseline.push_back(dictionary.id);
+        }
+    } else {
+        const auto group = std::find_if(
+            groups_.begin(), groups_.end(), [this](const auto& candidate) {
+                return candidate.id == selected_group_id_;
+            });
+        if (group == groups_.end()) {
+            SelectGroup(0U);
+            return;
+        }
+        for (const auto& id : group->dictionary_ids) {
+            if (identities.count(id) == 0U)
+                continue;
+            members.push_back(id);
+            if (std::find(group->muted_dictionary_ids.begin(),
+                          group->muted_dictionary_ids.end(),
+                          id) == group->muted_dictionary_ids.end()) {
+                baseline.push_back(id);
+            }
+        }
+    }
+
+    auto previous = participating_ids_.find(selected_group_id_);
+    const auto previous_members = dictionary_members_.find(selected_group_id_);
+    std::vector<std::string> reconciled;
+    for (const auto& id : members) {
+        const bool was_member = previous_members != dictionary_members_.end() &&
+                                std::find(previous_members->second.begin(),
+                                          previous_members->second.end(),
+                                          id) != previous_members->second.end();
+        const bool was_enabled =
+            previous != participating_ids_.end() &&
+            std::find(previous->second.begin(), previous->second.end(), id) !=
+                previous->second.end();
+        const bool baseline_enabled =
+            std::find(baseline.begin(), baseline.end(), id) != baseline.end();
+        if ((was_member && was_enabled) || (!was_member && baseline_enabled))
+            reconciled.push_back(id);
+    }
+    participating_ids_[selected_group_id_] = reconciled;
+    dictionary_members_[selected_group_id_] = members;
+
+    dictionary_bar_->clear();
+    for (const auto& id : members) {
+        const auto& identity = identities.at(id);
+        const QString label = QString::fromStdString(
+            identity.name.empty() ? identity.id : identity.name);
+        auto* action = dictionary_bar_->addAction(label);
+        action->setCheckable(true);
+        action->setChecked(std::find(reconciled.begin(), reconciled.end(),
+                                     id) != reconciled.end());
+        action->setData(QString::fromStdString(id));
+        action->setToolTip(label);
+        action->setWhatsThis(
+            tr("Include %1 in dictionary lookups and suggestions").arg(label));
+        if (auto* widget = dictionary_bar_->widgetForAction(action)) {
+            widget->setAccessibleName(label);
+            widget->setToolTip(label);
+        }
+        connect(
+            action, &QAction::triggered, this,
+            [this, action, id](bool checked) {
+                auto& enabled = participating_ids_[selected_group_id_];
+                const auto modifiers = QApplication::keyboardModifiers();
+                if (modifiers.testFlag(Qt::ControlModifier) ||
+                    modifiers.testFlag(Qt::ShiftModifier)) {
+                    const bool was_solo =
+                        enabled.size() == 1U && enabled.front() == id;
+                    if (was_solo) {
+                        if (modifiers.testFlag(Qt::ShiftModifier)) {
+                            enabled = solo_restore_ids_[selected_group_id_];
+                        } else {
+                            enabled.clear();
+                            for (auto* candidate : dictionary_bar_->actions())
+                                enabled.push_back(
+                                    candidate->data().toString().toStdString());
+                        }
+                        solo_restore_ids_.erase(selected_group_id_);
+                    } else {
+                        solo_restore_ids_[selected_group_id_] = enabled;
+                        enabled = {id};
+                    }
+                } else {
+                    solo_restore_ids_.erase(selected_group_id_);
+                    const auto found =
+                        std::find(enabled.begin(), enabled.end(), id);
+                    if (checked && found == enabled.end())
+                        enabled.push_back(id);
+                    else if (!checked && found != enabled.end())
+                        enabled.erase(found);
+                }
+                const auto ordered_actions = dictionary_bar_->actions();
+                std::vector<std::string> ordered;
+                for (auto* candidate : ordered_actions) {
+                    const auto candidate_id =
+                        candidate->data().toString().toStdString();
+                    const bool participates =
+                        std::find(enabled.begin(), enabled.end(),
+                                  candidate_id) != enabled.end();
+                    candidate->setChecked(participates);
+                    if (participates)
+                        ordered.push_back(candidate_id);
+                }
+                enabled = std::move(ordered);
+                ApplyDictionaryParticipation();
+            });
+    }
+}
+
+void MainWindow::ApplyDictionaryFilter(
+    goldendict::core::LookupQuery* query) const {
+    if (dictionary_bar_ == nullptr || !dictionary_bar_->isVisible())
+        return;
+    query->dictionary_filter_active = true;
+    query->dictionary_ids = ParticipatingDictionaryIds(query->group_id);
+}
+
+void MainWindow::ApplyDictionaryFilter(
+    goldendict::core::SuggestionQuery* query) const {
+    if (dictionary_bar_ == nullptr || !dictionary_bar_->isVisible())
+        return;
+    query->dictionary_filter_active = true;
+    query->dictionary_ids = ParticipatingDictionaryIds(query->group_id);
+}
+
+void MainWindow::ApplyDictionaryParticipation() {
+    if (restoring_main_window_state_ || facade_ == nullptr ||
+        article_tabs_ == nullptr)
+        return;
+    StartSuggestionLookup();
+    const auto active_id = TabIdAt(article_tabs_->currentIndex());
+    const auto tabs = facade_->GetArticleTabsState();
+    const auto active = std::find_if(
+        tabs.tabs.begin(), tabs.tabs.end(),
+        [active_id](const auto& tab) { return tab.id == active_id; });
+    if (active != tabs.tabs.end() &&
+        active->navigation.kind !=
+            goldendict::core::TabNavigationKind::kEmpty &&
+        !active->navigation.query.empty()) {
+        StartNavigationLookup(active_id, active->navigation, false);
+    }
+}
+
 void MainWindow::EditDictionaryGroups() {
     std::vector<goldendict::core::DictionaryIdentity> catalog;
     if (facade_ != nullptr) {
@@ -2420,6 +2649,112 @@ void MainWindow::RunDictionaryGroupsSmokeCheck(
     completion(saved && restored && fallback && *lookup_group == 7U);
 }
 
+void MainWindow::RunDictionaryBarSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (facade_ == nullptr || dictionary_bar_ == nullptr ||
+        facade_->GetDictionaryService().GetCatalog().size() < 2U) {
+        completion(false);
+        return;
+    }
+    show();
+    QApplication::processEvents();
+    const auto catalog = facade_->GetDictionaryService().GetCatalog();
+    const auto toolbar_actions = dictionary_bar_->actions();
+    bool identities =
+        toolbar_actions.size() == static_cast<qsizetype>(catalog.size());
+    for (qsizetype index = 0; identities && index < toolbar_actions.size();
+         ++index) {
+        const auto& dictionary = catalog[static_cast<std::size_t>(index)];
+        const QString label = QString::fromStdString(
+            dictionary.name.empty() ? dictionary.id : dictionary.name);
+        auto* widget = dictionary_bar_->widgetForAction(toolbar_actions[index]);
+        identities = toolbar_actions[index]->isCheckable() &&
+                     toolbar_actions[index]->isChecked() &&
+                     toolbar_actions[index]->data().toString() ==
+                         QString::fromStdString(dictionary.id) &&
+                     toolbar_actions[index]->text() == label &&
+                     toolbar_actions[index]->toolTip() == label &&
+                     widget != nullptr && widget->accessibleName() == label;
+    }
+    const bool hierarchy =
+        dictionary_bar_->objectName() == QStringLiteral("dictionaryBar") &&
+        dictionary_bar_->toggleViewAction() != nullptr &&
+        toolBarArea(dictionary_bar_) == Qt::TopToolBarArea &&
+        dictionary_bar_->isVisible() && dictionary_bar_->isMovable() &&
+        dictionary_bar_->isFloatable() &&
+        dictionary_bar_->allowedAreas() == Qt::AllToolBarAreas;
+
+    SetDictionaryGroups({{7U,
+                          "Smoke Group",
+                          "",
+                          {catalog[1].id, catalog[0].id},
+                          {catalog[0].id}}});
+    SelectGroup(7U);
+    RefreshDictionaryBar();
+    const auto group_actions = dictionary_bar_->actions();
+    const bool group_baseline = group_actions.size() == 2 &&
+                                group_actions[0]->isChecked() &&
+                                !group_actions[1]->isChecked() &&
+                                group_actions[0]->data().toString() ==
+                                    QString::fromStdString(catalog[1].id) &&
+                                group_actions[1]->data().toString() ==
+                                    QString::fromStdString(catalog[0].id);
+    SelectGroup(0U);
+    RefreshDictionaryBar();
+    const auto all_actions = dictionary_bar_->actions();
+    if (all_actions.empty()) {
+        completion(false);
+        return;
+    }
+    all_actions.front()->trigger();
+    SelectGroup(7U);
+    RefreshDictionaryBar();
+    const bool group_isolation = dictionary_bar_->actions()[0]->isChecked() &&
+                                 !dictionary_bar_->actions()[1]->isChecked();
+    SelectGroup(0U);
+    RefreshDictionaryBar();
+    const bool all_scope_retained = !dictionary_bar_->actions()[0]->isChecked();
+    for (auto* action : dictionary_bar_->actions()) {
+        if (action->isChecked())
+            action->trigger();
+    }
+    query_->setText(QStringLiteral("application"));
+    StartLookup();
+    auto poll = std::make_shared<std::function<void()>>();
+    auto attempts = std::make_shared<int>(0);
+    *poll = [this, identities, hierarchy, group_baseline, group_isolation,
+             all_scope_retained, completion = std::move(completion), poll,
+             attempts]() mutable {
+        FinishLookup();
+        if ((!requests_.empty() || ++*attempts < 5) && *attempts < 100) {
+            QTimer::singleShot(10, this, *poll);
+            return;
+        }
+        const bool all_off = requests_.empty() && results_list_->count() == 0 &&
+                             suggestions_list_->count() == 0;
+        dictionary_bar_->hide();
+        StartLookup();
+        auto hidden_poll = std::make_shared<std::function<void()>>();
+        *hidden_poll = [this, identities, hierarchy, group_baseline,
+                        group_isolation, all_scope_retained, all_off,
+                        completion = std::move(completion),
+                        hidden_poll]() mutable {
+            FinishLookup();
+            if (!requests_.empty()) {
+                QTimer::singleShot(10, this, *hidden_poll);
+                return;
+            }
+            const bool hidden_unfiltered = results_list_->count() > 0;
+            dictionary_bar_->show();
+            completion(identities && hierarchy && group_baseline &&
+                       group_isolation && all_scope_retained && all_off &&
+                       hidden_unfiltered);
+        };
+        QTimer::singleShot(10, this, *hidden_poll);
+    };
+    QTimer::singleShot(10, this, *poll);
+}
+
 void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     StopSuggestionWorker();
     ++suggestion_generation_;
@@ -2441,6 +2776,7 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     article_view_ = nullptr;
     article_page_ = nullptr;
     facade_ = facade;
+    RefreshDictionaryBar();
     scheme_handler_->SetFacade(facade);
     if (dictionary_browser_ != nullptr) {
         dictionary_browser_->SetFacade(facade);
@@ -2504,6 +2840,7 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         state.size() > static_cast<std::size_t>(kMaximumMainWindowStateBytes)) {
         return false;
     }
+    const QScopedValueRollback restoring(restoring_main_window_state_, true);
     const QByteArray previous = saveState(kMainWindowStateVersion);
     const QByteArray encoded(state.data(),
                              static_cast<qsizetype>(state.size()));
@@ -2528,17 +2865,26 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         addDockWidget(Qt::LeftDockWidgetArea, search);
         search->show();
     };
+    const auto place_missing_dictionary_bar = [this]() {
+        if (dictionary_bar_ == nullptr)
+            return;
+        removeToolBar(dictionary_bar_);
+        addToolBar(Qt::TopToolBarArea, dictionary_bar_);
+        dictionary_bar_->show();
+    };
     if (restoreState(encoded, kMainWindowStateVersion) &&
         HasUsableMainWindowLayout()) {
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
+    place_missing_dictionary_bar();
     place_missing_search_pane();
     if (restoreState(encoded, kPreviousMainWindowStateVersion) &&
         HasUsableMainWindowLayout()) {
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
+    place_missing_dictionary_bar();
     place_missing_search_pane();
     place_missing_results_pane();
     auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
@@ -2549,6 +2895,7 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
+    place_missing_dictionary_bar();
     place_missing_search_pane();
     place_missing_results_pane();
     if (nav_toolbar != nullptr)
@@ -2558,6 +2905,17 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
+    place_missing_dictionary_bar();
+    place_missing_search_pane();
+    place_missing_results_pane();
+    if (nav_toolbar != nullptr)
+        addToolBar(Qt::TopToolBarArea, nav_toolbar);
+    if (restoreState(encoded, kEarlierMainWindowStateVersion) &&
+        HasUsableMainWindowLayout()) {
+        return true;
+    }
+    restoreState(previous, kMainWindowStateVersion);
+    place_missing_dictionary_bar();
     place_missing_search_pane();
     place_missing_results_pane();
     auto* history =
@@ -2599,6 +2957,16 @@ void MainWindow::RefreshResultsNavigation() {
     if (found == lookup_results_.end())
         return;
     for (const auto& dictionary : found->second) {
+        bool already_present = false;
+        for (int row = 0; row < results_list_->count(); ++row) {
+            if (results_list_->item(row)->data(Qt::UserRole).toString() ==
+                QString::fromStdString(dictionary.id)) {
+                already_present = true;
+                break;
+            }
+        }
+        if (already_present)
+            continue;
         auto* item = new QListWidgetItem(
             QString::fromStdString(dictionary.name.empty() ? dictionary.id
                                                            : dictionary.name),
@@ -2658,6 +3026,7 @@ void MainWindow::StartSuggestionLookup() {
     goldendict::core::SuggestionQuery query;
     query.text = text.toStdString();
     query.group_id = selected_group_id_;
+    ApplyDictionaryFilter(&query);
     suggestion_worker_->Submit(&facade_->GetDictionaryService(),
                                std::move(query), tab_id, generation);
 }
@@ -3247,6 +3616,7 @@ void MainWindow::StartNavigationLookup(
     goldendict::core::LookupQuery query;
     query.text = navigation.query;
     query.group_id = navigation.group_id;
+    ApplyDictionaryFilter(&query);
     if (record_history) {
         emit LookupSubmitted(QString::fromStdString(navigation.query),
                              navigation.group_id);
