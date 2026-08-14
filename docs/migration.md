@@ -588,6 +588,16 @@ dock/toolbar hierarchy. File, Edit, Search, History, Favorites, and Help menus,
 View styling and always-on-top controls, and final legacy state import remain
 separate leaves.
 
+The following unlabelled Phase 8 menu leaf adds the pinned `menuHistory`
+identity after View. It reuses the exact `historyPane` toggle action and exposes
+the existing export, import, and clear workflows in legacy order with their
+pinned action identities and separator. Pane buttons and menu entries share one
+action path; empty and in-progress state cannot diverge between them. Widgets
+continues to own native file dialogs while application composition owns the
+compatibility text export and atomic destination replacement. Qt main-window
+state remains at private version 7. The other menu branches and final legacy
+state import remain separate leaves.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,

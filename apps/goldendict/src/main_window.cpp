@@ -341,6 +341,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         QKeySequence(Qt::CTRL | Qt::Key_I));
     history_dock->toggleViewAction()->setShortcut(
         QKeySequence(Qt::CTRL | Qt::Key_H));
+    history_dock->toggleViewAction()->setObjectName(
+        QStringLiteral("showHideHistory"));
+    history_dock->toggleViewAction()->setMenuRole(QAction::NoRole);
     view_menu->addAction(search_dock->toggleViewAction());
     view_menu->addAction(results_dock->toggleViewAction());
     view_menu->addAction(favorites_dock->toggleViewAction());
@@ -348,6 +351,23 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     view_menu->addSeparator();
     view_menu->addAction(dictionary_bar_->toggleViewAction());
     view_menu->addAction(nav_toolbar->toggleViewAction());
+    auto* history_menu = app_menu_bar->addMenu(QStringLiteral("H&istory"));
+    history_menu->setObjectName(QStringLiteral("menuHistory"));
+    history_menu->addAction(history_dock->toggleViewAction());
+    export_history_action_ = new QAction(QStringLiteral("&Export"), this);
+    export_history_action_->setObjectName(QStringLiteral("exportHistory"));
+    export_history_action_->setMenuRole(QAction::NoRole);
+    history_menu->addAction(export_history_action_);
+    import_history_action_ = new QAction(QStringLiteral("&Import"), this);
+    import_history_action_->setObjectName(QStringLiteral("importHistory"));
+    import_history_action_->setMenuRole(QAction::NoRole);
+    history_menu->addAction(import_history_action_);
+    history_menu->addSeparator();
+    clear_history_action_ = new QAction(QStringLiteral("&Clear"), this);
+    clear_history_action_->setObjectName(QStringLiteral("clearHistory"));
+    clear_history_action_->setMenuRole(QAction::NoRole);
+    history_menu->addAction(clear_history_action_);
+    UpdateHistoryActions();
     setCentralWidget(central);
 
     scheme_handler_ = new ArticleSchemeHandler(this);
@@ -419,11 +439,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             });
     connect(history_filter_, &QLineEdit::textChanged, this,
             &MainWindow::RefreshHistoryList);
-    connect(clear_history_button_, &QPushButton::clicked, this,
-            &MainWindow::ClearHistoryRequested);
-    connect(export_history_button_, &QPushButton::clicked, this,
+    connect(clear_history_button_, &QPushButton::clicked, clear_history_action_,
+            &QAction::trigger);
+    connect(export_history_button_, &QPushButton::clicked,
+            export_history_action_, &QAction::trigger);
+    connect(import_history_button_, &QPushButton::clicked,
+            import_history_action_, &QAction::trigger);
+    connect(clear_history_action_, &QAction::triggered, this,
+            &MainWindow::ClearHistory);
+    connect(export_history_action_, &QAction::triggered, this,
             &MainWindow::ExportHistory);
-    connect(import_history_button_, &QPushButton::clicked, this,
+    connect(import_history_action_, &QAction::triggered, this,
             &MainWindow::ImportHistory);
     connect(favorites_tree_, &QTreeWidget::itemActivated, this,
             [this](QTreeWidgetItem* item, int) {
@@ -580,7 +606,7 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
         app_menu_bar == menuBar() &&
         findChildren<QMenuBar*>(QStringLiteral("menubar")).size() == 1 &&
         findChildren<QMenu*>(QStringLiteral("menuView")).size() == 1 &&
-        app_menu_bar->actions().size() == 1 &&
+        app_menu_bar->actions().size() == 2 &&
         app_menu_bar->actions().front()->menu() == view_menu &&
         view_menu->title() == QStringLiteral("&View") &&
         actions.size() == expected_actions.size();
@@ -659,6 +685,104 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
         qWarning() << "view menu smoke check failed" << actions.size()
                    << app_menu_bar->actions().size();
     }
+    completion(passed);
+}
+
+void MainWindow::RunHistoryMenuSmokeCheck(
+    const QString& path, std::function<void(bool)> completion) {
+    auto* history_menu = findChild<QMenu*>(QStringLiteral("menuHistory"));
+    auto* history_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
+    if (history_menu == nullptr || history_dock == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto actions = history_menu->actions();
+    bool passed =
+        menuBar()->actions().size() == 2 &&
+        menuBar()->actions()[1]->menu() == history_menu &&
+        history_menu->title() == QStringLiteral("H&istory") &&
+        actions.size() == 5 && actions[0] == history_dock->toggleViewAction() &&
+        actions[1] == export_history_action_ &&
+        actions[2] == import_history_action_ && actions[3]->isSeparator() &&
+        actions[4] == clear_history_action_ &&
+        actions[0]->objectName() == QStringLiteral("showHideHistory") &&
+        actions[1]->objectName() == QStringLiteral("exportHistory") &&
+        actions[2]->objectName() == QStringLiteral("importHistory") &&
+        actions[4]->objectName() == QStringLiteral("clearHistory") &&
+        actions[0]->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_H) &&
+        actions[1]->shortcut().isEmpty() && actions[2]->shortcut().isEmpty() &&
+        actions[4]->shortcut().isEmpty();
+    for (const auto* action :
+         {actions[0], actions[1], actions[2], actions[4]}) {
+        passed = passed && action->menuRole() == QAction::NoRole;
+    }
+
+    SetDictionaryGroups({{7U, "History Menu Group", "", {}}});
+    SelectGroup(7U);
+    passed = passed && export_history_action_->isEnabled() &&
+             import_history_action_->isEnabled() &&
+             clear_history_action_->isEnabled();
+    const std::string state = CaptureMainWindowState();
+    actions[0]->trigger();
+    actions[0]->trigger();
+    passed = passed && history_dock->isVisible() && actions[0]->isChecked() &&
+             CaptureMainWindowState() == state;
+
+    int export_triggers = 0;
+    const auto export_connection = connect(
+        export_history_action_, &QAction::triggered, this,
+        [&export_triggers]() { ++export_triggers; }, Qt::DirectConnection);
+    history_export_path_provider_ = [path]() {
+        return path;
+    };
+    export_history_button_->click();
+    QFile exported(path);
+    const bool export_opened = exported.open(QIODevice::ReadOnly);
+    passed =
+        passed && export_triggers == 1 && export_opened &&
+        exported.readAll() == QByteArray::fromHex("efbbbf") + "Alpha\nBeta\n";
+    disconnect(export_connection);
+
+    int import_requests = 0;
+    const auto import_connection = connect(
+        this, &MainWindow::ImportHistoryRequested, this,
+        [&import_requests, &path](const QString& requested,
+                                  std::uint32_t group_id) {
+            if (requested == path && group_id == 7U) {
+                ++import_requests;
+            }
+        },
+        Qt::DirectConnection);
+    history_import_path_provider_ = [path]() {
+        return path;
+    };
+    import_history_action_->trigger();
+    passed = passed && import_requests == 1 && history_items_.size() == 2 &&
+             history_items_[0].group_id == 7U;
+    history_import_path_provider_ = []() {
+        return QString();
+    };
+    import_history_button_->click();
+    passed = passed && import_requests == 1;
+    disconnect(import_connection);
+
+    history_command_busy_ = true;
+    UpdateHistoryActions();
+    passed = passed && !export_history_action_->isEnabled() &&
+             !import_history_action_->isEnabled() &&
+             !clear_history_action_->isEnabled();
+    history_command_busy_ = false;
+    UpdateHistoryActions();
+    clear_history_action_->trigger();
+    passed = passed && history_items_.empty() &&
+             !export_history_action_->isEnabled() &&
+             import_history_action_->isEnabled() &&
+             !clear_history_action_->isEnabled() &&
+             centralWidget() != nullptr && article_tabs_->isVisible() &&
+             kMainWindowStateVersion == 7;
+    history_export_path_provider_ = {};
+    history_import_path_provider_ = {};
     completion(passed);
 }
 
@@ -1719,14 +1843,11 @@ void MainWindow::RunHistoryManagementSmokeCheck(
 
 void MainWindow::RunHistoryExportSmokeCheck(
     const QString& path, std::function<void(bool)> completion) {
-    SetHistoryWords(
-        {QStringLiteral("Alpha"), QStringLiteral("line\nbreak\rentry")});
-    const bool exported = ExportHistoryToFile(path);
+    const QString error = history_export_callback_(path);
     QFile file(path);
     const bool opened = file.open(QIODevice::ReadOnly);
-    const QByteArray expected =
-        QByteArray::fromHex("efbbbf") + "Alpha\nline break entry\n";
-    completion(exported && opened && file.readAll() == expected);
+    const QByteArray expected = QByteArray::fromHex("efbbbf") + "Alpha\nBeta\n";
+    completion(error.isEmpty() && opened && file.readAll() == expected);
 }
 
 void MainWindow::RunHistoryImportSmokeCheck(
@@ -2522,6 +2643,10 @@ void MainWindow::SetOnlineSources(
         source_apply_callback_ = std::move(apply_callback);
 }
 
+void MainWindow::SetHistoryExportCallback(HistoryExportCallback callback) {
+    history_export_callback_ = std::move(callback);
+}
+
 const std::vector<goldendict::core::DictionaryGroupConfiguration>&
 MainWindow::DictionaryGroups() const noexcept {
     return groups_;
@@ -3314,11 +3439,13 @@ void MainWindow::SetHistoryWords(const QStringList& words) {
         history_items_.push_back({word, 0U});
     }
     RefreshHistoryList();
+    UpdateHistoryActions();
 }
 
 void MainWindow::SetHistoryItems(const std::vector<HistoryViewItem>& items) {
     history_items_ = items;
     RefreshHistoryList();
+    UpdateHistoryActions();
 }
 
 void MainWindow::RefreshHistoryList() {
@@ -3334,25 +3461,69 @@ void MainWindow::RefreshHistoryList() {
     }
 }
 
+void MainWindow::UpdateHistoryActions() {
+    const bool idle = !history_command_busy_;
+    const bool has_history = !history_items_.empty();
+    import_history_action_->setEnabled(idle);
+    export_history_action_->setEnabled(idle && has_history);
+    clear_history_action_->setEnabled(idle && has_history);
+    import_history_button_->setEnabled(import_history_action_->isEnabled());
+    export_history_button_->setEnabled(export_history_action_->isEnabled());
+    clear_history_button_->setEnabled(clear_history_action_->isEnabled());
+}
+
 void MainWindow::ExportHistory() {
-    const QString path = QFileDialog::getSaveFileName(
-        this, QStringLiteral("Export history to file"), QString(),
-        QStringLiteral("Text files (*.txt);;All files (*.*)"));
+    if (history_command_busy_) {
+        return;
+    }
+    const QString path =
+        history_export_path_provider_
+            ? history_export_path_provider_()
+            : QFileDialog::getSaveFileName(
+                  this, QStringLiteral("Export history to file"), QString(),
+                  QStringLiteral("Text files (*.txt);;All files (*.*)"));
     if (path.isEmpty()) {
         return;
     }
-    status_->setText(ExportHistoryToFile(path)
-                         ? QStringLiteral("History export complete")
-                         : QStringLiteral("History export failed"));
+    history_command_busy_ = true;
+    UpdateHistoryActions();
+    const QString error = history_export_callback_
+                              ? history_export_callback_(path)
+                              : QStringLiteral("History export is unavailable");
+    history_command_busy_ = false;
+    UpdateHistoryActions();
+    status_->setText(error.isEmpty() ? QStringLiteral("History export complete")
+                                     : QStringLiteral("History export failed"));
 }
 
 void MainWindow::ImportHistory() {
-    const QString path = QFileDialog::getOpenFileName(
-        this, QStringLiteral("Import history from file"), QString(),
-        QStringLiteral("Text files (*.txt);;All files (*.*)"));
-    if (!path.isEmpty()) {
-        emit ImportHistoryRequested(path, selected_group_id_);
+    if (history_command_busy_) {
+        return;
     }
+    const QString path =
+        history_import_path_provider_
+            ? history_import_path_provider_()
+            : QFileDialog::getOpenFileName(
+                  this, QStringLiteral("Import history from file"), QString(),
+                  QStringLiteral("Text files (*.txt);;All files (*.*)"));
+    if (!path.isEmpty()) {
+        history_command_busy_ = true;
+        UpdateHistoryActions();
+        emit ImportHistoryRequested(path, selected_group_id_);
+        history_command_busy_ = false;
+        UpdateHistoryActions();
+    }
+}
+
+void MainWindow::ClearHistory() {
+    if (history_command_busy_ || history_items_.empty()) {
+        return;
+    }
+    history_command_busy_ = true;
+    UpdateHistoryActions();
+    emit ClearHistoryRequested();
+    history_command_busy_ = false;
+    UpdateHistoryActions();
 }
 
 void MainWindow::CreateFavoriteFolder() {
@@ -3431,26 +3602,6 @@ QList<QList<int>> MainWindow::ExpandedFavoriteFolderPaths() const {
         collect(collect, favorites_tree_->topLevelItem(index));
     }
     return paths;
-}
-
-bool MainWindow::ExportHistoryToFile(const QString& path) {
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly)) {
-        return false;
-    }
-    if (file.write(QByteArray::fromHex("efbbbf")) != 3) {
-        return false;
-    }
-    for (const auto& entry : history_items_) {
-        QByteArray line = entry.word.toUtf8();
-        line.replace('\n', ' ');
-        line.replace('\r', ' ');
-        line.push_back('\n');
-        if (file.write(line) != line.size()) {
-            return false;
-        }
-    }
-    return file.commit();
 }
 
 void MainWindow::SetFavoriteItems(const std::vector<FavoriteViewItem>& items,

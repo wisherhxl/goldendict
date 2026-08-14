@@ -315,6 +315,14 @@ non-tabification, real child widgets, toggle actions, and usable central article
 content. They also verify transactional restoration of state captured by the
 immediately preceding current Qt 6 dock identities without admitting pinned
 legacy version-1 state.
+`goldendict_history_menu_smoke` pins the unique `menuHistory` placement and
+legacy action identities, order, separator, roles, shortcuts, and exact reuse
+of the `historyPane` toggle action. Injected import/export paths exercise the
+same actions used by the pane buttons, selected-group import, cancellation,
+single dispatch, empty/nonempty/busy enablement, pane synchronization, atomic
+compatibility export, unchanged private state version, and usable central
+content. Existing history management, import, export, activation, and core
+store tests continue to cover persisted success and failure semantics.
 They also pin the unique `navToolbar` identity, top-area default and ordering,
 top/bottom movement policy, Back/Forward/group/query/lookup control order and
 parentage, focus chain, minimum query usability, Alt+D/Ctrl+L focus behavior,

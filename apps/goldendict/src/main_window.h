@@ -71,6 +71,7 @@ class MainWindow final : public QMainWindow {
         const std::vector<goldendict::core::DictServerSourceConfiguration>&,
         const std::vector<
             goldendict::core::ExternalProgramSourceConfiguration>&)>;
+    using HistoryExportCallback = std::function<QString(const QString&)>;
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
@@ -104,6 +105,7 @@ class MainWindow final : public QMainWindow {
         const std::vector<goldendict::core::ExternalProgramSourceConfiguration>&
             external_program_sources,
         SourceApplyCallback apply_callback);
+    void SetHistoryExportCallback(HistoryExportCallback callback);
     const std::vector<goldendict::core::DictionaryGroupConfiguration>&
     DictionaryGroups() const noexcept;
     void RunWebEngineSmokeCheck(std::function<void(bool)> completion);
@@ -130,6 +132,8 @@ class MainWindow final : public QMainWindow {
     void RunSuggestionPaneSmokeCheck(std::function<void(bool)> completion);
     void RunDictionaryBarSmokeCheck(std::function<void(bool)> completion);
     void RunViewMenuSmokeCheck(std::function<void(bool)> completion);
+    void RunHistoryMenuSmokeCheck(const QString& path,
+                                  std::function<void(bool)> completion);
     void RunArticleTabSessionRestartSmokeCheck(
         bool prepare, std::function<void(bool)> completion);
 
@@ -171,6 +175,7 @@ class MainWindow final : public QMainWindow {
     void ShowDictionaryBrowser();
     void ExportHistory();
     void ImportHistory();
+    void ClearHistory();
     void CreateFavoriteFolder();
     void RenameFavorite();
     void ImportFavorites();
@@ -206,6 +211,7 @@ class MainWindow final : public QMainWindow {
     goldendict::core::ArticleTabId TabIdAt(int index) const;
     void ShowMessage(const QString& title, const QString& message);
     void RefreshHistoryList();
+    void UpdateHistoryActions();
     void SelectGroup(std::uint32_t group_id);
     void RefreshGroupSelector();
     void RefreshDictionaryBar();
@@ -223,7 +229,6 @@ class MainWindow final : public QMainWindow {
     void ActivateSuggestion();
     void StopSuggestionWorker();
     void NavigateToSelectedResult();
-    bool ExportHistoryToFile(const QString& path);
     QList<int> SelectedFavoriteFolderPath() const;
     QList<QList<int>> ExpandedFavoriteFolderPaths() const;
     void ApplyDefaultPaneLayout();
@@ -255,6 +260,13 @@ class MainWindow final : public QMainWindow {
     QPushButton* clear_history_button_ = nullptr;
     QPushButton* export_history_button_ = nullptr;
     QPushButton* import_history_button_ = nullptr;
+    QAction* clear_history_action_ = nullptr;
+    QAction* export_history_action_ = nullptr;
+    QAction* import_history_action_ = nullptr;
+    HistoryExportCallback history_export_callback_;
+    std::function<QString()> history_export_path_provider_;
+    std::function<QString()> history_import_path_provider_;
+    bool history_command_busy_ = false;
     FavoritesTreeWidget* favorites_tree_ = nullptr;
     QListWidget* results_list_ = nullptr;
     QListWidget* suggestions_list_ = nullptr;

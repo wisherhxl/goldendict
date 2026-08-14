@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QSaveFile>
 #include <QStandardPaths>
 #include <QString>
 #include <QStringList>
@@ -346,6 +347,28 @@ int main(int argc, char* argv[]) {
         }
         window.SetHistoryItems(items);
     };
+    window.SetHistoryExportCallback([&history](const QString& path) {
+        QSaveFile file(path);
+        if (!file.open(QIODevice::WriteOnly)) {
+            return file.errorString();
+        }
+        if (file.write(QByteArray::fromHex("efbbbf")) != 3) {
+            return file.errorString();
+        }
+        for (const auto& entry : history) {
+            QByteArray line = QString::fromStdString(entry.word).toUtf8();
+            line.replace('\n', ' ');
+            line.replace('\r', ' ');
+            line.push_back('\n');
+            if (file.write(line) != line.size()) {
+                return file.errorString();
+            }
+        }
+        if (!file.commit()) {
+            return file.errorString();
+        }
+        return QString();
+    });
     refresh_history();
     const auto refresh_favorites =
         [&window, &favorites](const QList<int>& current_path = {}) {
@@ -777,6 +800,24 @@ int main(int argc, char* argv[]) {
             window.RunViewMenuSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--history-menu-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window,
+            [&app, &configuration_directory, &history, &history_path,
+             &window]() {
+                QDir().mkpath(configuration_directory);
+                history = {{7U, "Alpha"}, {7U, "Beta"}};
+                goldendict::core::SaveHistory(history_path.toStdString(),
+                                              history);
+                window.SetHistoryItems({{QStringLiteral("Alpha"), 7U},
+                                        {QStringLiteral("Beta"), 7U}});
+                window.RunHistoryMenuSmokeCheck(
+                    QDir(configuration_directory)
+                        .filePath(QStringLiteral("history-menu-export.txt")),
+                    [&app](bool passed) { app.exit(passed ? 0 : 1); });
+            });
     } else if (HasArgument(argc, argv, QStringLiteral("--webengine-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         window.RunWebEngineSmokeCheck(
@@ -1141,8 +1182,15 @@ int main(int argc, char* argv[]) {
                            QStringLiteral("--history-export-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(
-            0, &window, [&app, &configuration_directory, &window]() {
+            0, &window,
+            [&app, &configuration_directory, &history, &history_path,
+             &window]() {
                 QDir().mkpath(configuration_directory);
+                history = {{0U, "Alpha"}, {0U, "Beta"}};
+                goldendict::core::SaveHistory(history_path.toStdString(),
+                                              history);
+                window.SetHistoryItems({{QStringLiteral("Alpha"), 0U},
+                                        {QStringLiteral("Beta"), 0U}});
                 window.RunHistoryExportSmokeCheck(
                     QDir(configuration_directory)
                         .filePath(QStringLiteral("history-export-smoke.txt")),
