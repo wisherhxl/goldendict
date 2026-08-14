@@ -323,6 +323,15 @@ single dispatch, empty/nonempty/busy enablement, pane synchronization, atomic
 compatibility export, unchanged private state version, and usable central
 content. Existing history management, import, export, activation, and core
 store tests continue to cover persisted success and failure semantics.
+`goldendict_file_menu_smoke` pins the unique leading `menuFile`, exact supported
+legacy identities, order, separators, roles, shortcuts, and single shortcut
+ownership. It verifies exact action reuse by the tab control, article toolbar,
+and menu; preference-backed new-tab and orderly-quit dispatch; print
+cancellation, failure, and busy exclusion; HTML-save cancellation and atomic
+failure preservation; unchanged facade session on cancelled or failed commands;
+usable central content; and unchanged private Qt state version 7. Page setup, rescan,
+close-to-tray, and toolbar-only PDF export are intentionally absent from the
+menu because they do not form supported pinned File-menu entries.
 They also pin the unique `navToolbar` identity, top-area default and ordering,
 top/bottom movement policy, Back/Forward/group/query/lookup control order and
 parentage, focus chain, minimum query usability, Alt+D/Ctrl+L focus behavior,

@@ -598,6 +598,20 @@ compatibility text export and atomic destination replacement. Qt main-window
 state remains at private version 7. The other menu branches and final legacy
 state import remain separate leaves.
 
+The next independent Phase 8 menu leaf adds the pinned `menuFile` before View
+and History. It reuses the existing preference-backed new-tab, print-preview,
+print, and atomic HTML-save actions, adds orderly application quit, and retains
+the legacy identities, supported relative order, separators, roles, and
+shortcuts.
+The tab corner control and article toolbar dispatch through those same action
+instances. Page setup, file rescanning, and close-to-tray remain absent because
+the current Qt 6 application has no backed implementation for them; the
+existing PDF export remains toolbar-only because it has no pinned File-menu
+entry. Widgets owns native dialogs and presentation busy state, while the
+facade and composition root retain tab/session mutation and orderly-shutdown
+persistence. Qt main-window state remains at private version 7. The other menu
+branches and final legacy state import remain separate leaves.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,

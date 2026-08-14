@@ -139,8 +139,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     add_tab_button->setText(QStringLiteral("+"));
     add_tab_button->setToolTip(QStringLiteral("New Tab"));
     auto* add_tab_menu = new QMenu(add_tab_button);
-    auto* add_foreground_tab =
-        add_tab_menu->addAction(QStringLiteral("New Tab"));
+    new_tab_action_ = new QAction(QStringLiteral("&New Tab"), this);
+    new_tab_action_->setObjectName(QStringLiteral("newTab"));
+    new_tab_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
+    new_tab_action_->setShortcutContext(Qt::WidgetShortcut);
+    new_tab_action_->setMenuRole(QAction::NoRole);
+    add_tab_menu->addAction(new_tab_action_);
     auto* add_background_tab =
         add_tab_menu->addAction(QStringLiteral("New Background Tab"));
     add_tab_button->setMenu(add_tab_menu);
@@ -314,12 +318,19 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     article_toolbar->addSeparator();
     auto* copy_action = article_toolbar->addAction(QStringLiteral("Copy"));
     copy_action->setShortcut(QKeySequence::Copy);
-    auto* save_action = article_toolbar->addAction(QStringLiteral("Save HTML"));
-    save_action->setShortcut(QKeySequence(Qt::Key_F2));
-    auto* print_action = article_toolbar->addAction(QStringLiteral("Print"));
-    print_action->setShortcut(QKeySequence::Print);
-    auto* print_preview_action =
-        article_toolbar->addAction(QStringLiteral("Print Preview"));
+    save_article_action_ =
+        article_toolbar->addAction(QStringLiteral("&Save Article"));
+    save_article_action_->setObjectName(QStringLiteral("saveArticle"));
+    save_article_action_->setShortcut(QKeySequence(Qt::Key_F2));
+    save_article_action_->setMenuRole(QAction::NoRole);
+    print_action_ = article_toolbar->addAction(QStringLiteral("&Print"));
+    print_action_->setObjectName(QStringLiteral("print"));
+    print_action_->setShortcut(QKeySequence::Print);
+    print_action_->setMenuRole(QAction::NoRole);
+    print_preview_action_ =
+        article_toolbar->addAction(QStringLiteral("Print Pre&view"));
+    print_preview_action_->setObjectName(QStringLiteral("printPreview"));
+    print_preview_action_->setMenuRole(QAction::NoRole);
     auto* print_pdf_action =
         article_toolbar->addAction(QStringLiteral("Print PDF"));
     dictionary_bar_ = addToolBar(QStringLiteral("&Dictionary Bar"));
@@ -331,6 +342,20 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     auto* app_menu_bar = menuBar();
     app_menu_bar->setObjectName(QStringLiteral("menubar"));
+    auto* file_menu = app_menu_bar->addMenu(QStringLiteral("&File"));
+    file_menu->setObjectName(QStringLiteral("menuFile"));
+    file_menu->addAction(new_tab_action_);
+    file_menu->addSeparator();
+    file_menu->addAction(print_preview_action_);
+    file_menu->addAction(print_action_);
+    file_menu->addSeparator();
+    file_menu->addAction(save_article_action_);
+    file_menu->addSeparator();
+    quit_action_ = new QAction(QStringLiteral("&Quit"), this);
+    quit_action_->setObjectName(QStringLiteral("quit"));
+    quit_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q));
+    quit_action_->setMenuRole(QAction::QuitRole);
+    file_menu->addAction(quit_action_);
     auto* view_menu = app_menu_bar->addMenu(QStringLiteral("&View"));
     view_menu->setObjectName(QStringLiteral("menuView"));
     search_dock->toggleViewAction()->setShortcut(
@@ -397,11 +422,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         StartLookupInTab(goldendict::core::TabOpenPolicy::kNewTab,
                          goldendict::core::TabActivationPolicy::kKeepActive);
     });
-    connect(add_tab_button, &QToolButton::clicked, this, [this]() {
+    connect(add_tab_button, &QToolButton::clicked, new_tab_action_,
+            &QAction::trigger);
+    connect(new_tab_action_, &QAction::triggered, this, [this]() {
         CreateEmptyArticleTab(!preferences_.open_new_tabs_in_background);
     });
-    connect(add_foreground_tab, &QAction::triggered, this,
-            [this]() { CreateEmptyArticleTab(true); });
     connect(add_background_tab, &QAction::triggered, this,
             [this]() { CreateEmptyArticleTab(false); });
     connect(article_tabs_, &QTabWidget::currentChanged, this,
@@ -545,10 +570,18 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         if (article_page_ != nullptr)
             article_page_->triggerAction(QWebEnginePage::Copy);
     });
-    connect(save_action, &QAction::triggered, this, &MainWindow::SaveArticle);
-    connect(print_action, &QAction::triggered, this, &MainWindow::PrintArticle);
-    connect(print_preview_action, &QAction::triggered, this,
+    connect(save_article_action_, &QAction::triggered, this,
+            &MainWindow::SaveArticle);
+    connect(print_action_, &QAction::triggered, this,
+            &MainWindow::PrintArticle);
+    connect(print_preview_action_, &QAction::triggered, this,
             &MainWindow::PreviewArticle);
+    connect(quit_action_, &QAction::triggered, this, [this]() {
+        if (quit_dispatcher_)
+            quit_dispatcher_();
+        else
+            QApplication::quit();
+    });
     connect(print_pdf_action, &QAction::triggered, this,
             &MainWindow::SaveArticleAsPdf);
     auto* find_action = new QAction(this);
@@ -568,6 +601,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 });
         });
     UpdateNavigationActions();
+    UpdateFileActions();
 }
 
 void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
@@ -606,8 +640,8 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
         app_menu_bar == menuBar() &&
         findChildren<QMenuBar*>(QStringLiteral("menubar")).size() == 1 &&
         findChildren<QMenu*>(QStringLiteral("menuView")).size() == 1 &&
-        app_menu_bar->actions().size() == 2 &&
-        app_menu_bar->actions().front()->menu() == view_menu &&
+        app_menu_bar->actions().size() == 3 &&
+        app_menu_bar->actions()[1]->menu() == view_menu &&
         view_menu->title() == QStringLiteral("&View") &&
         actions.size() == expected_actions.size();
     for (qsizetype index = 0; passed && index < actions.size(); ++index) {
@@ -699,8 +733,8 @@ void MainWindow::RunHistoryMenuSmokeCheck(
     }
     const auto actions = history_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 2 &&
-        menuBar()->actions()[1]->menu() == history_menu &&
+        menuBar()->actions().size() == 3 &&
+        menuBar()->actions()[2]->menu() == history_menu &&
         history_menu->title() == QStringLiteral("H&istory") &&
         actions.size() == 5 && actions[0] == history_dock->toggleViewAction() &&
         actions[1] == export_history_action_ &&
@@ -784,6 +818,201 @@ void MainWindow::RunHistoryMenuSmokeCheck(
     history_export_path_provider_ = {};
     history_import_path_provider_ = {};
     completion(passed);
+}
+
+void MainWindow::RunFileMenuSmokeCheck(const QString& path,
+                                       std::function<void(bool)> completion) {
+    auto* file_menu = findChild<QMenu*>(QStringLiteral("menuFile"));
+    auto* article_toolbar =
+        findChild<QToolBar*>(QStringLiteral("articleToolbar"));
+    auto* add_tab_button =
+        findChild<QToolButton*>(QStringLiteral("addArticleTabButton"));
+    if (file_menu == nullptr || article_toolbar == nullptr ||
+        add_tab_button == nullptr || add_tab_button->menu() == nullptr ||
+        facade_ == nullptr || article_view_ == nullptr) {
+        completion(false);
+        return;
+    }
+
+    const auto actions = file_menu->actions();
+    bool passed =
+        menuBar()->actions().size() == 3 &&
+        menuBar()->actions()[0]->menu() == file_menu &&
+        menuBar()->actions()[1]->menu()->objectName() ==
+            QStringLiteral("menuView") &&
+        menuBar()->actions()[2]->menu()->objectName() ==
+            QStringLiteral("menuHistory") &&
+        findChildren<QMenu*>(QStringLiteral("menuFile")).size() == 1 &&
+        file_menu->title() == QStringLiteral("&File") && actions.size() == 8 &&
+        actions[0] == new_tab_action_ && actions[1]->isSeparator() &&
+        actions[2] == print_preview_action_ && actions[3] == print_action_ &&
+        actions[4]->isSeparator() && actions[5] == save_article_action_ &&
+        actions[6]->isSeparator() && actions[7] == quit_action_ &&
+        new_tab_action_->objectName() == QStringLiteral("newTab") &&
+        print_preview_action_->objectName() == QStringLiteral("printPreview") &&
+        print_action_->objectName() == QStringLiteral("print") &&
+        save_article_action_->objectName() == QStringLiteral("saveArticle") &&
+        quit_action_->objectName() == QStringLiteral("quit") &&
+        new_tab_action_->text() == QStringLiteral("&New Tab") &&
+        print_preview_action_->text() == QStringLiteral("Print Pre&view") &&
+        print_action_->text() == QStringLiteral("&Print") &&
+        save_article_action_->text() == QStringLiteral("&Save Article") &&
+        quit_action_->text() == QStringLiteral("&Quit") &&
+        new_tab_action_->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_T) &&
+        new_tab_action_->shortcutContext() == Qt::WidgetShortcut &&
+        print_preview_action_->shortcut().isEmpty() &&
+        print_action_->shortcut() == QKeySequence::Print &&
+        save_article_action_->shortcut() == QKeySequence(Qt::Key_F2) &&
+        quit_action_->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_Q) &&
+        new_tab_action_->menuRole() == QAction::NoRole &&
+        print_preview_action_->menuRole() == QAction::NoRole &&
+        print_action_->menuRole() == QAction::NoRole &&
+        save_article_action_->menuRole() == QAction::NoRole &&
+        quit_action_->menuRole() == QAction::QuitRole &&
+        article_toolbar->actions().contains(print_preview_action_) &&
+        article_toolbar->actions().contains(print_action_) &&
+        article_toolbar->actions().contains(save_article_action_) &&
+        add_tab_button->menu()->actions().contains(new_tab_action_);
+
+    const auto all_actions = findChildren<QAction*>();
+    for (const auto& shortcut :
+         {QKeySequence(Qt::CTRL | Qt::Key_T), QKeySequence(QKeySequence::Print),
+          QKeySequence(Qt::Key_F2), QKeySequence(Qt::CTRL | Qt::Key_Q)}) {
+        passed =
+            passed &&
+            std::count_if(all_actions.cbegin(), all_actions.cend(),
+                          [&shortcut](const QAction* action) {
+                              return action->shortcuts().contains(shortcut);
+                          }) == 1;
+    }
+
+    int new_tab_triggers = 0;
+    const auto new_tab_connection = connect(
+        new_tab_action_, &QAction::triggered, this,
+        [&new_tab_triggers]() { ++new_tab_triggers; }, Qt::DirectConnection);
+    const int tab_count = article_tabs_->count();
+    add_tab_button->click();
+    passed = passed && new_tab_triggers == 1 &&
+             article_tabs_->count() == tab_count + 1;
+    disconnect(new_tab_connection);
+    const auto session = facade_->ExportArticleTabSession();
+    const std::string window_state = CaptureMainWindowState();
+
+    int print_triggers = 0;
+    int preview_triggers = 0;
+    int print_dialogs = 0;
+    int print_dispatches = 0;
+    const auto print_connection = connect(
+        print_action_, &QAction::triggered, this,
+        [&print_triggers]() { ++print_triggers; }, Qt::DirectConnection);
+    const auto preview_connection = connect(
+        print_preview_action_, &QAction::triggered, this,
+        [&preview_triggers]() { ++preview_triggers; }, Qt::DirectConnection);
+    printer_available_ = []() {
+        return true;
+    };
+    print_dialog_executor_ = [&print_dialogs](QPrinter*) {
+        ++print_dialogs;
+        return false;
+    };
+    print_dispatcher_ = [&print_dispatches](ArticleView*, QPrinter*) {
+        ++print_dispatches;
+    };
+    print_action_->trigger();
+    passed = passed && print_triggers == 1 && print_dialogs == 1 &&
+             print_dispatches == 0 && print_action_->isEnabled() &&
+             print_preview_action_->isEnabled();
+    print_dialog_executor_ = [&print_dialogs](QPrinter*) {
+        ++print_dialogs;
+        return true;
+    };
+    print_action_->trigger();
+    passed = passed && print_triggers == 2 && print_dialogs == 2 &&
+             print_dispatches == 1 && !print_action_->isEnabled() &&
+             !print_preview_action_->isEnabled();
+    print_preview_action_->trigger();
+    passed = passed && preview_triggers == 0 && print_dispatches == 1;
+    emit article_view_->printFinished(false);
+    print_preview_executor_ =
+        [&print_dispatches](QPrinter*, const std::function<void()>& paint) {
+            static_cast<void>(print_dispatches);
+            paint();
+        };
+    print_preview_action_->trigger();
+    passed = passed && preview_triggers == 1 && print_dispatches == 2 &&
+             !print_action_->isEnabled() && !print_preview_action_->isEnabled();
+    emit article_view_->printFinished(true);
+    disconnect(print_connection);
+    disconnect(preview_connection);
+    printer_available_ = {};
+    print_dialog_executor_ = {};
+    print_preview_executor_ = {};
+    print_dispatcher_ = {};
+
+    int quit_triggers = 0;
+    int quit_dispatches = 0;
+    const auto quit_connection = connect(
+        quit_action_, &QAction::triggered, this,
+        [&quit_triggers]() { ++quit_triggers; }, Qt::DirectConnection);
+    quit_dispatcher_ = [&quit_dispatches]() {
+        ++quit_dispatches;
+    };
+    quit_action_->trigger();
+    passed = passed && quit_triggers == 1 && quit_dispatches == 1;
+    disconnect(quit_connection);
+    quit_dispatcher_ = {};
+
+    QFile destination(path);
+    passed = passed && destination.open(QIODevice::WriteOnly) &&
+             destination.write("original") == 8;
+    destination.close();
+    int save_triggers = 0;
+    auto save_writes = std::make_shared<int>(0);
+    const auto save_connection = connect(
+        save_article_action_, &QAction::triggered, this,
+        [&save_triggers]() { ++save_triggers; }, Qt::DirectConnection);
+    save_article_path_provider_ = []() {
+        return QString();
+    };
+    save_article_action_->trigger();
+    passed = passed && save_triggers == 1 && !save_in_progress_;
+    save_article_path_provider_ = [path]() {
+        return path;
+    };
+    article_save_writer_ = [save_writes](const QString&, const QString&) {
+        ++*save_writes;
+        return false;
+    };
+    save_article_action_->trigger();
+    passed = passed && save_triggers == 2 && save_in_progress_ &&
+             !save_article_action_->isEnabled();
+
+    auto poll = std::make_shared<std::function<void(int)>>();
+    *poll = [this, path, completion = std::move(completion), poll,
+             save_connection, save_writes, passed, session,
+             window_state](int remaining) mutable {
+        if (save_in_progress_ && remaining > 0) {
+            QTimer::singleShot(10, this,
+                               [poll, remaining]() { (*poll)(remaining - 1); });
+            return;
+        }
+        QFile preserved(path);
+        const bool opened = preserved.open(QIODevice::ReadOnly);
+        bool final_passed =
+            passed && !save_in_progress_ && *save_writes == 1 && opened &&
+            preserved.readAll() == "original" &&
+            status_->text() == QStringLiteral("HTML save failed") &&
+            facade_->ExportArticleTabSession() == session &&
+            CaptureMainWindowState() == window_state &&
+            centralWidget() != nullptr && article_tabs_->isVisible() &&
+            article_tabs_->size().width() > 0 &&
+            article_tabs_->size().height() > 0 && kMainWindowStateVersion == 7;
+        disconnect(save_connection);
+        save_article_path_provider_ = {};
+        article_save_writer_ = {};
+        completion(final_passed);
+    };
+    QTimer::singleShot(0, this, [poll]() { (*poll)(100); });
 }
 
 void MainWindow::RunWebEngineInteractionCheck(
@@ -2306,6 +2535,7 @@ ArticleView* MainWindow::CreateArticleView(
             });
     connect(view, &QWebEngineView::printFinished, this, [this](bool success) {
         print_in_progress_ = false;
+        UpdateFileActions();
         status_->setText(success ? QStringLiteral("Article printed")
                                  : QStringLiteral("Printing failed"));
     });
@@ -3061,6 +3291,7 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
         });
     if (facade_ != nullptr)
         RebuildArticleTabs();
+    UpdateFileActions();
 }
 
 void MainWindow::SetPreferences(
@@ -4094,6 +4325,7 @@ void MainWindow::StartPrinterRender(ArticleView* view, QPrinter* printer) {
     if (view == nullptr || printer == nullptr || print_in_progress_)
         return;
     print_in_progress_ = true;
+    UpdateFileActions();
     status_->setText(QStringLiteral("Printing..."));
     if (print_dispatcher_) {
         print_dispatcher_(view, printer);
@@ -4103,24 +4335,48 @@ void MainWindow::StartPrinterRender(ArticleView* view, QPrinter* printer) {
 }
 
 void MainWindow::SaveArticle() {
-    const QString file_name = QFileDialog::getSaveFileName(
-        this, QStringLiteral("Save Article as HTML"), QString(),
-        QStringLiteral("HTML files (*.html *.htm)"));
+    if (article_view_ == nullptr || save_in_progress_)
+        return;
+    const QString file_name =
+        save_article_path_provider_
+            ? save_article_path_provider_()
+            : QFileDialog::getSaveFileName(
+                  this, QStringLiteral("Save Article as HTML"), QString(),
+                  QStringLiteral("HTML files (*.html *.htm)"));
     if (file_name.isEmpty()) {
         return;
     }
     const QString path = QFileInfo(file_name).suffix().isEmpty()
                              ? file_name + QStringLiteral(".html")
                              : file_name;
+    save_in_progress_ = true;
+    UpdateFileActions();
     article_view_->page()->toHtml([this, path](const QString& html) {
-        QSaveFile file(path);
-        if (!file.open(QIODevice::WriteOnly) ||
-            file.write(html.toUtf8()) == -1 || !file.commit()) {
+        const bool saved = article_save_writer_
+                               ? article_save_writer_(path, html)
+                               : [&path, &html]() {
+                                     QSaveFile file(path);
+                                     return file.open(QIODevice::WriteOnly) &&
+                                            file.write(html.toUtf8()) != -1 &&
+                                            file.commit();
+                                 }();
+        save_in_progress_ = false;
+        UpdateFileActions();
+        if (!saved) {
             status_->setText(QStringLiteral("HTML save failed"));
             return;
         }
         status_->setText(QStringLiteral("HTML saved"));
     });
+}
+
+void MainWindow::UpdateFileActions() {
+    const bool has_article = facade_ != nullptr && article_view_ != nullptr;
+    new_tab_action_->setEnabled(facade_ != nullptr);
+    save_article_action_->setEnabled(has_article && !save_in_progress_);
+    print_action_->setEnabled(has_article && !print_in_progress_);
+    print_preview_action_->setEnabled(has_article && !print_in_progress_);
+    quit_action_->setEnabled(true);
 }
 
 void MainWindow::UpdateNavigationActions() {

@@ -134,6 +134,8 @@ class MainWindow final : public QMainWindow {
     void RunViewMenuSmokeCheck(std::function<void(bool)> completion);
     void RunHistoryMenuSmokeCheck(const QString& path,
                                   std::function<void(bool)> completion);
+    void RunFileMenuSmokeCheck(const QString& path,
+                               std::function<void(bool)> completion);
     void RunArticleTabSessionRestartSmokeCheck(
         bool prepare, std::function<void(bool)> completion);
 
@@ -205,6 +207,7 @@ class MainWindow final : public QMainWindow {
                                 const QString& text,
                                 ArticleLinkDisposition disposition);
     void StartPrinterRender(ArticleView* view, QPrinter* printer);
+    void UpdateFileActions();
     void ShowTabContextMenu(const QPoint& position);
     ArticleView* CreateArticleView(goldendict::core::ArticleTabId tab_id);
     ArticleView* ArticleViewForTab(goldendict::core::ArticleTabId tab_id) const;
@@ -294,6 +297,11 @@ class MainWindow final : public QMainWindow {
     QLabel* article_search_status_ = nullptr;
     QAction* back_action_ = nullptr;
     QAction* forward_action_ = nullptr;
+    QAction* new_tab_action_ = nullptr;
+    QAction* print_preview_action_ = nullptr;
+    QAction* print_action_ = nullptr;
+    QAction* save_article_action_ = nullptr;
+    QAction* quit_action_ = nullptr;
     QTimer* completion_timer_ = nullptr;
     std::map<goldendict::core::ArticleTabId,
              std::unique_ptr<goldendict::core::LookupRequest>>
@@ -322,6 +330,10 @@ class MainWindow final : public QMainWindow {
         print_preview_executor_;
     std::function<void(ArticleView*, QPrinter*)> print_dispatcher_;
     std::function<bool()> printer_available_;
+    std::function<QString()> save_article_path_provider_;
+    std::function<bool(const QString&, const QString&)> article_save_writer_;
+    std::function<void()> quit_dispatcher_;
+    bool save_in_progress_ = false;
 };
 
 #endif  // GOLDENDICT_APPS_GOLDENDICT_MAIN_WINDOW_H_

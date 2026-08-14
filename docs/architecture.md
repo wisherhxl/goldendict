@@ -226,6 +226,13 @@ Widgets-owned View menu. It reuses the four dock and two toolbar toggle actions
 directly, so visibility, checked state, shortcuts, and Qt ownership cannot
 diverge. Menus are not part of `QMainWindow::saveState`; private state version 7
 and all core/application interfaces remain unchanged.
+The History branch similarly reuses its pane toggle and existing transfer and
+clear actions. The File branch reuses the already-backed tab, print, preview,
+and atomic HTML-save actions across the menu and existing controls, and routes
+quit through the application's orderly shutdown path. Widgets continues to own
+dialogs and action availability; facade-owned session mutation and the
+composition root's persistence remain unchanged. Unsupported legacy page
+setup, rescan, and tray commands are not represented by placeholders.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,

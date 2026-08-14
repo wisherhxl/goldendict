@@ -794,7 +794,17 @@ int main(int argc, char* argv[]) {
         });
     window.show();
 
-    if (HasArgument(argc, argv, QStringLiteral("--view-menu-smoke"))) {
+    if (HasArgument(argc, argv, QStringLiteral("--file-menu-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window, [&app, &configuration_directory, &window]() {
+                QDir().mkpath(configuration_directory);
+                window.RunFileMenuSmokeCheck(
+                    QDir(configuration_directory)
+                        .filePath(QStringLiteral("file-menu-article.html")),
+                    [&app](bool passed) { app.exit(passed ? 0 : 1); });
+            });
+    } else if (HasArgument(argc, argv, QStringLiteral("--view-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(0, &window, [&app, &window]() {
             window.RunViewMenuSmokeCheck(
