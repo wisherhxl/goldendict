@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#ifndef GOLDENDICT_APPS_GOLDENDICT_PREFERENCES_DIALOG_H_
+#define GOLDENDICT_APPS_GOLDENDICT_PREFERENCES_DIALOG_H_
+
+#include <functional>
+
+#include <QDialog>
+#include <QString>
+
+#include "goldendict/core/application.h"
+
+class QCheckBox;
+class QLabel;
+
+class PreferencesDialog final : public QDialog {
+    Q_OBJECT
+
+   public:
+    using ApplyCallback =
+        std::function<QString(const goldendict::core::ApplicationPreferences&)>;
+
+    PreferencesDialog(
+        const goldendict::core::ApplicationPreferences& preferences,
+        ApplyCallback apply_callback, QWidget* parent = nullptr);
+
+   private:
+    void Apply();
+
+    goldendict::core::ApplicationPreferences preferences_;
+    ApplyCallback apply_callback_;
+    QCheckBox* open_after_current_ = nullptr;
+    QCheckBox* open_in_background_ = nullptr;
+    QLabel* validation_error_ = nullptr;
+};
+
+#endif  // GOLDENDICT_APPS_GOLDENDICT_PREFERENCES_DIALOG_H_

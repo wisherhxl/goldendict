@@ -8,6 +8,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QByteArray>
+#include <QCheckBox>
 #include <QClipboard>
 #include <QComboBox>
 #include <QDebug>
@@ -64,6 +65,7 @@
 #include "favorites_tree_widget.h"
 #include "goldendict/core/desktop_facade.h"
 #include "group_editor.h"
+#include "preferences_dialog.h"
 #include "source_directories_dialog.h"
 #include "suggestion_worker.h"
 
@@ -393,6 +395,11 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     dictionaries_action_->setMenuRole(QAction::NoRole);
     edit_menu->addAction(dictionaries_action_);
     dictionary_sources_button_->addAction(dictionaries_action_);
+    preferences_action_ = new QAction(QStringLiteral("&Preferences..."), this);
+    preferences_action_->setObjectName(QStringLiteral("preferences"));
+    preferences_action_->setShortcut(QKeySequence(Qt::Key_F4));
+    preferences_action_->setMenuRole(QAction::PreferencesRole);
+    edit_menu->addAction(preferences_action_);
     auto* search_menu = app_menu_bar->addMenu(QStringLiteral("Search"));
     search_menu->setObjectName(QStringLiteral("menuSearch"));
     search_in_page_action_ =
@@ -472,6 +479,8 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
             dictionary_sources_button_, &QWidget::setEnabled);
     connect(dictionaries_action_, &QAction::triggered, this,
             &MainWindow::EditSourceDirectories);
+    connect(preferences_action_, &QAction::triggered, this,
+            &MainWindow::EditPreferences);
     connect(group_selector_, &QComboBox::currentIndexChanged, this,
             [this](int index) {
                 if (index >= 0) {
@@ -1316,7 +1325,8 @@ void MainWindow::RunFavoritesMenuSmokeCheck(
 void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
     auto* edit_menu = findChild<QMenu*>(QStringLiteral("menu_Edit"));
     if (edit_menu == nullptr || dictionary_sources_button_ == nullptr ||
-        dictionaries_action_ == nullptr || facade_ == nullptr) {
+        dictionaries_action_ == nullptr || preferences_action_ == nullptr ||
+        facade_ == nullptr) {
         completion(false);
         return;
     }
@@ -1334,7 +1344,7 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
         menuBar()->actions()[4]->menu()->objectName() ==
             QStringLiteral("menuHistory") &&
         findChildren<QMenu*>(QStringLiteral("menu_Edit")).size() == 1 &&
-        edit_menu->title() == QStringLiteral("&Edit") && actions.size() == 1 &&
+        edit_menu->title() == QStringLiteral("&Edit") && actions.size() == 2 &&
         actions[0] == dictionaries_action_ &&
         dictionaries_action_->objectName() == QStringLiteral("dictionaries") &&
         dictionaries_action_->text() == QStringLiteral("&Dictionaries...") &&
@@ -1342,13 +1352,22 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
         dictionaries_action_->menuRole() == QAction::NoRole &&
         dictionary_sources_button_->actions().size() == 1 &&
         dictionary_sources_button_->actions().front() == dictionaries_action_ &&
-        findChildren<QAction*>(QStringLiteral("preferences")).empty();
+        actions[1] == preferences_action_ &&
+        preferences_action_->objectName() == QStringLiteral("preferences") &&
+        preferences_action_->text() == QStringLiteral("&Preferences...") &&
+        preferences_action_->shortcut() == QKeySequence(Qt::Key_F4) &&
+        preferences_action_->menuRole() == QAction::PreferencesRole;
 
     const auto all_actions = findChildren<QAction*>();
     passed = passed && std::count_if(all_actions.cbegin(), all_actions.cend(),
                                      [](const QAction* action) {
                                          return action->shortcuts().contains(
                                              QKeySequence(Qt::Key_F3));
+                                     }) == 1;
+    passed = passed && std::count_if(all_actions.cbegin(), all_actions.cend(),
+                                     [](const QAction* action) {
+                                         return action->shortcuts().contains(
+                                             QKeySequence(Qt::Key_F4));
                                      }) == 1;
 
     const auto initial_paths = dictionary_paths_;
@@ -1431,6 +1450,88 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
     source_dialog_executor_ = {};
     source_apply_callback_ = original_apply_callback;
     disconnect(trigger_connection);
+
+    const auto initial_preferences = preferences_;
+    int preference_triggers = 0;
+    int preference_dialogs = 0;
+    const auto preference_trigger_connection = connect(
+        preferences_action_, &QAction::triggered, this,
+        [&preference_triggers]() { ++preference_triggers; },
+        Qt::DirectConnection);
+    preferences_dialog_executor_ =
+        [this, &passed, &preference_dialogs](PreferencesDialog& dialog) {
+            ++preference_dialogs;
+            passed = passed && preferences_busy_ &&
+                     !preferences_action_->isEnabled();
+            preferences_action_->trigger();
+            dialog.reject();
+            return dialog.result();
+        };
+    preferences_action_->trigger();
+    passed = passed && preference_triggers == 1 && preference_dialogs == 1 &&
+             preferences_ == initial_preferences &&
+             preferences_action_->isEnabled() && !preferences_busy_;
+
+    const auto original_preferences_callback = preferences_apply_callback_;
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("forced preferences failure");
+    };
+    preferences_dialog_executor_ =
+        [&passed, &preference_dialogs](PreferencesDialog& dialog) {
+            ++preference_dialogs;
+            auto* background = dialog.findChild<QCheckBox*>(
+                QStringLiteral("newTabsOpenInBackground"));
+            auto* buttons = dialog.findChild<QDialogButtonBox*>(
+                QStringLiteral("preferencesButtonBox"));
+            passed = passed && background != nullptr && buttons != nullptr;
+            if (background != nullptr)
+                background->setChecked(!background->isChecked());
+            if (buttons != nullptr)
+                buttons->button(QDialogButtonBox::Ok)->click();
+            auto* error = dialog.findChild<QLabel*>(
+                QStringLiteral("preferencesValidationError"));
+            passed = passed && dialog.result() != QDialog::Accepted &&
+                     error != nullptr && !error->isHidden();
+            dialog.reject();
+            return dialog.result();
+        };
+    preferences_action_->trigger();
+    passed = passed && preference_triggers == 2 && preference_dialogs == 2 &&
+             preferences_ == initial_preferences;
+
+    preferences_apply_callback_ = original_preferences_callback;
+    preferences_dialog_executor_ =
+        [&passed, &preference_dialogs](PreferencesDialog& dialog) {
+            ++preference_dialogs;
+            auto* background = dialog.findChild<QCheckBox*>(
+                QStringLiteral("newTabsOpenInBackground"));
+            auto* after_current = dialog.findChild<QCheckBox*>(
+                QStringLiteral("newTabsOpenAfterCurrentOne"));
+            auto* buttons = dialog.findChild<QDialogButtonBox*>(
+                QStringLiteral("preferencesButtonBox"));
+            passed = passed && background != nullptr &&
+                     after_current != nullptr && buttons != nullptr;
+            if (background != nullptr)
+                background->setChecked(!background->isChecked());
+            if (after_current != nullptr)
+                after_current->setChecked(!after_current->isChecked());
+            if (buttons != nullptr)
+                buttons->button(QDialogButtonBox::Ok)->click();
+            passed = passed && dialog.result() == QDialog::Accepted;
+            return dialog.result();
+        };
+    preferences_action_->trigger();
+    auto expected_preferences = initial_preferences;
+    expected_preferences.open_new_tabs_in_background =
+        !expected_preferences.open_new_tabs_in_background;
+    expected_preferences.open_new_tabs_after_current =
+        !expected_preferences.open_new_tabs_after_current;
+    passed = passed && preference_triggers == 3 && preference_dialogs == 3 &&
+             preferences_ == expected_preferences &&
+             facade_->ExportArticleTabSession() == initial_session;
+    preferences_dialog_executor_ = {};
+    preferences_apply_callback_ = original_preferences_callback;
+    disconnect(preference_trigger_connection);
     passed = passed && dictionary_paths_ == initial_paths &&
              sound_directories_ == initial_sounds &&
              mediawiki_sources_ == initial_wikis &&
@@ -4113,6 +4214,11 @@ void MainWindow::SetPreferences(
     }
 }
 
+void MainWindow::SetPreferencesApplyCallback(
+    PreferencesApplyCallback apply_callback) {
+    preferences_apply_callback_ = std::move(apply_callback);
+}
+
 bool MainWindow::RestoreMainWindowGeometry(const std::string& geometry) {
     if (geometry.empty())
         return false;
@@ -4939,6 +5045,34 @@ void MainWindow::EditSourceDirectories() {
     }
     source_configuration_busy_ = false;
     dictionaries_action_->setEnabled(true);
+}
+
+void MainWindow::EditPreferences() {
+    if (preferences_busy_)
+        return;
+    preferences_busy_ = true;
+    preferences_action_->setEnabled(false);
+    try {
+        PreferencesDialog dialog(
+            preferences_,
+            preferences_apply_callback_
+                ? preferences_apply_callback_
+                : [](const auto&) {
+                      return QStringLiteral(
+                          "Preferences cannot be applied in this context");
+                  },
+            this);
+        if (preferences_dialog_executor_)
+            preferences_dialog_executor_(dialog);
+        else
+            dialog.exec();
+    } catch (...) {
+        preferences_busy_ = false;
+        preferences_action_->setEnabled(true);
+        throw;
+    }
+    preferences_busy_ = false;
+    preferences_action_->setEnabled(true);
 }
 
 void MainWindow::StartLookup() {

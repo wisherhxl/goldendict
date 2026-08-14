@@ -359,9 +359,12 @@ shortcut, role, and separator-free order. It verifies exact QAction reuse by
 the source button and menu, unique shortcut ownership, single dispatch, modal
 busy/reentrant exclusion, cancellation and application-failure preservation,
 successful acceptance, unchanged facade session and private Qt state, and
-continued central usability. The unsupported Preferences action is explicitly
-absent; existing source-directory and core configuration tests remain the
-source of truth for validation and atomic replacement semantics.
+continued central usability. The dependent Preferences coverage pins the
+canonical action identity, text, F4 shortcut, role, and order, plus the bounded
+General/Tabs controls. It verifies cancel/no mutation, reentrant exclusion,
+failed apply preservation, successful complete-candidate submission, and
+continued session/layout usability; existing core configuration tests remain
+the source of truth for validation and atomic replacement semantics.
 `goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
 History and its sole backed legacy `searchInPageAction`, including exact text,
 role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and

@@ -112,8 +112,13 @@ The Phase 8 Edit-menu leaf exposes that same source-configuration workflow
 through one canonical Widgets-owned `dictionaries` action shared with the
 existing source button. Widgets owns modal and busy presentation; validation,
 session restoration, atomic persistence, and facade replacement remain in the
-existing application/core path. The unimplemented Preferences UI is not
-represented by a placeholder action.
+existing application/core path. Its dependent Preferences leaf adds the
+canonical action only with a bounded legacy-shaped General/Tabs surface for
+the two tab-opening preferences the current application already applies.
+Widgets constructs a complete preferences candidate; the composition root
+validates, recomposes, restores the complete session, atomically persists, and
+then replaces runtime state. Runtime-unbacked legacy preference groups are not
+shown as inert controls.
 The Phase 8 P4a current-persistence foundation extends that complete candidate
 with ordered, bounded transport-neutral records for MediaWiki, website, Forvo,
 and DICT sources. Stable IDs, names, enabled intent, adapter-compatible URLs,

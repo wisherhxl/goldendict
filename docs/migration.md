@@ -623,6 +623,20 @@ persistence, failure preservation, and facade replacement. The pinned
 Qt main-window state remains at private version 7. The other menu branches and
 the opaque-state acceptance audit remained separate leaves.
 
+The dependent bounded Preferences leaf adds the pinned `preferences` action
+after Dictionaries with `&Preferences...`, F4, and `PreferencesRole`, and a
+legacy-shaped General page containing only the backed Tabs group. Its two
+controls configure whether new tabs open after the current tab and whether
+they open in the background. Widgets only collect and display the complete
+preferences candidate; the composition root validates it, recomposes the
+application, restores the complete article session, persists atomically, and
+then replaces the live facade and presentation preferences. Cancel and failed
+validation leave configuration and runtime state unchanged. Preferences for
+appearance, tray, hotkeys, scan popup, audio, network/proxy, full-text search,
+history, favorites, and advanced behavior remain independent Phase 8 leaves
+because their current runtime application contracts are absent; Phase 8
+acceptance remains blocked on explicitly approved backed subsets for them.
+
 The next independent Phase 8 menu leaf adds the pinned `menuSearch` identity
 between Edit and History. It exposes only the existing in-article
 `searchInPageAction`, with its legacy text, role, and Ctrl+F shortcut, and

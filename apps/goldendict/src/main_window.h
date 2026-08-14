@@ -40,6 +40,7 @@ class QShortcut;
 class FavoritesTreeWidget;
 class SuggestionWorker;
 class SourceDirectoriesDialog;
+class PreferencesDialog;
 
 namespace goldendict::core {
 class DesktopFacade;
@@ -73,6 +74,8 @@ class MainWindow final : public QMainWindow {
         const std::vector<
             goldendict::core::ExternalProgramSourceConfiguration>&)>;
     using HistoryExportCallback = std::function<QString(const QString&)>;
+    using PreferencesApplyCallback =
+        std::function<QString(const goldendict::core::ApplicationPreferences&)>;
     explicit MainWindow(const QString& configuration_directory,
                         QWidget* parent = nullptr);
     ~MainWindow() override;
@@ -80,6 +83,7 @@ class MainWindow final : public QMainWindow {
     void SetFacade(goldendict::core::DesktopFacade* facade);
     void SetPreferences(
         const goldendict::core::ApplicationPreferences& preferences);
+    void SetPreferencesApplyCallback(PreferencesApplyCallback apply_callback);
     bool RestoreMainWindowGeometry(const std::string& geometry);
     std::string CaptureMainWindowGeometry() const;
     bool RestoreMainWindowState(const std::string& state);
@@ -190,6 +194,7 @@ class MainWindow final : public QMainWindow {
     void ImportFavorites();
     void ExportFavorites();
     void EditDictionaryGroups();
+    void EditPreferences();
 
    private:
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -264,6 +269,9 @@ class MainWindow final : public QMainWindow {
     std::function<int(SourceDirectoriesDialog&)> source_dialog_executor_;
     bool source_configuration_busy_ = false;
     goldendict::core::ApplicationPreferences preferences_;
+    PreferencesApplyCallback preferences_apply_callback_;
+    std::function<int(PreferencesDialog&)> preferences_dialog_executor_;
+    bool preferences_busy_ = false;
     QPushButton* dictionary_sources_button_ = nullptr;
     QLineEdit* query_ = nullptr;
     QComboBox* group_selector_ = nullptr;
@@ -320,6 +328,7 @@ class MainWindow final : public QMainWindow {
     QAction* save_article_action_ = nullptr;
     QAction* quit_action_ = nullptr;
     QAction* dictionaries_action_ = nullptr;
+    QAction* preferences_action_ = nullptr;
     QAction* search_in_page_action_ = nullptr;
     QAction* visit_homepage_action_ = nullptr;
     QAction* open_config_folder_action_ = nullptr;

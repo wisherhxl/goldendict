@@ -794,6 +794,35 @@ int main(int argc, char* argv[]) {
                                      QString::fromLocal8Bit(error.what()));
             }
         });
+    window.SetPreferencesApplyCallback(
+        [&](const goldendict::core::ApplicationPreferences& preferences) {
+            if (preferences == configuration.preferences)
+                return QString{};
+            auto updated = configuration;
+            updated.preferences = preferences;
+            updated.article_tab_session = facade->ExportArticleTabSession();
+            try {
+                goldendict::core::ValidateConfiguration(updated);
+                auto replacement =
+                    goldendict::network::ComposeConfiguredApplication(updated);
+                if (!replacement.facade->RestoreArticleTabSession(
+                        *updated.article_tab_session)) {
+                    throw std::runtime_error(
+                        "Unable to restore the article tab session");
+                }
+                goldendict::core::SaveConfiguration(
+                    configuration_path.toStdString(), updated);
+                window.SetPreferences(updated.preferences);
+                window.SetFacade(replacement.facade.get());
+                facade = std::move(replacement.facade);
+                composition_diagnostics = std::move(replacement.diagnostics);
+                ReportRuntimeCompositionDiagnostics(composition_diagnostics);
+                configuration = std::move(updated);
+                return QString{};
+            } catch (const std::exception& error) {
+                return QString::fromLocal8Bit(error.what());
+            }
+        });
     window.show();
 
     if (HasArgument(argc, argv, QStringLiteral("--search-menu-smoke"))) {
