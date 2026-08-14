@@ -341,6 +341,13 @@ successful acceptance, unchanged facade session and private Qt state, and
 continued central usability. The unsupported Preferences action is explicitly
 absent; existing source-directory and core configuration tests remain the
 source of truth for validation and atomic replacement semantics.
+`goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
+History and its sole backed legacy `searchInPageAction`, including exact text,
+role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and
+the explicit absence of full-text placeholders. Real offscreen Chromium finds
+verify match/no-match status, per-tab query and presentation restoration,
+closed-tab cleanup, stale-completion isolation, single dispatch, unchanged
+facade session and private Qt state, and continued central usability.
 They also pin the unique `navToolbar` identity, top-area default and ordering,
 top/bottom movement policy, Back/Forward/group/query/lookup control order and
 parentage, focus chain, minimum query usability, Alt+D/Ctrl+L focus behavior,

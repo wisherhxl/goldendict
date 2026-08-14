@@ -239,6 +239,12 @@ quit through the application's orderly shutdown path. Widgets continues to own
 dialogs and action availability; facade-owned session mutation and the
 composition root's persistence remain unchanged. Unsupported legacy page
 setup, rescan, and tray commands are not represented by placeholders.
+The Search branch follows the same canonical-action rule: its sole supported
+entry is the existing in-article find action. Widgets keeps query, match
+status, focus, and asynchronous completion generations per article tab, while
+each WebEngine view retains its own match state. Full-text, compound, scan, and
+global search remain absent rather than crossing the GUI boundary with an
+unbacked command.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,

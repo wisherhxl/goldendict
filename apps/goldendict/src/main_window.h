@@ -138,6 +138,7 @@ class MainWindow final : public QMainWindow {
     void RunFileMenuSmokeCheck(const QString& path,
                                std::function<void(bool)> completion);
     void RunEditMenuSmokeCheck(std::function<void(bool)> completion);
+    void RunSearchMenuSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabSessionRestartSmokeCheck(
         bool prepare, std::function<void(bool)> completion);
 
@@ -227,6 +228,7 @@ class MainWindow final : public QMainWindow {
     void ApplyDictionaryFilter(goldendict::core::SuggestionQuery* query) const;
     void RefreshResultsNavigation();
     void RefreshSuggestions();
+    void RefreshArticleSearch();
     void StartSuggestionLookup();
     void FinishSuggestionLookup(goldendict::core::ArticleTabId tab_id,
                                 std::uint64_t generation,
@@ -308,6 +310,7 @@ class MainWindow final : public QMainWindow {
     QAction* save_article_action_ = nullptr;
     QAction* quit_action_ = nullptr;
     QAction* dictionaries_action_ = nullptr;
+    QAction* search_in_page_action_ = nullptr;
     QTimer* completion_timer_ = nullptr;
     std::map<goldendict::core::ArticleTabId,
              std::unique_ptr<goldendict::core::LookupRequest>>
@@ -315,6 +318,15 @@ class MainWindow final : public QMainWindow {
     std::map<goldendict::core::ArticleTabId,
              std::vector<goldendict::core::DictionaryIdentity>>
         lookup_results_;
+
+    struct ArticleSearchPresentation {
+        QString query;
+        QString status;
+        std::uint64_t generation = 0U;
+    };
+
+    std::map<goldendict::core::ArticleTabId, ArticleSearchPresentation>
+        article_search_presentations_;
 
     struct SuggestionPresentation {
         QString query;

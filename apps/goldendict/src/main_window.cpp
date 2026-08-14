@@ -387,6 +387,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     dictionaries_action_->setMenuRole(QAction::NoRole);
     edit_menu->addAction(dictionaries_action_);
     dictionary_sources_button_->addAction(dictionaries_action_);
+    auto* search_menu = app_menu_bar->addMenu(QStringLiteral("Search"));
+    search_menu->setObjectName(QStringLiteral("menuSearch"));
+    search_in_page_action_ =
+        new QAction(QStringLiteral("Search in page"), this);
+    search_in_page_action_->setObjectName(QStringLiteral("searchInPageAction"));
+    search_in_page_action_->setShortcut(QKeySequence::Find);
+    search_in_page_action_->setShortcutContext(Qt::WindowShortcut);
+    search_in_page_action_->setMenuRole(QAction::TextHeuristicRole);
+    search_menu->addAction(search_in_page_action_);
     auto* history_menu = app_menu_bar->addMenu(QStringLiteral("H&istory"));
     history_menu->setObjectName(QStringLiteral("menuHistory"));
     history_menu->addAction(history_dock->toggleViewAction());
@@ -566,8 +575,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             [this]() { FindInArticle(false); });
     connect(article_search_, &QLineEdit::textChanged, this,
             [this](const QString& text) {
+                const auto tab_id = TabIdAt(article_tabs_->currentIndex());
+                if (tab_id == 0U)
+                    return;
+                auto& presentation = article_search_presentations_[tab_id];
+                presentation.query = text;
+                ++presentation.generation;
                 if (text.isEmpty()) {
-                    article_view_->findText(QString());
+                    if (auto* view = ArticleViewForTab(tab_id); view != nullptr)
+                        view->findText(QString());
+                    presentation.status.clear();
                     article_search_status_->clear();
                 }
             });
@@ -599,12 +616,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     });
     connect(print_pdf_action, &QAction::triggered, this,
             &MainWindow::SaveArticleAsPdf);
-    auto* find_action = new QAction(this);
-    find_action->setShortcut(QKeySequence::Find);
-    find_action->setShortcutContext(Qt::WindowShortcut);
-    addAction(find_action);
-    connect(find_action, &QAction::triggered, article_search_,
-            qOverload<>(&QLineEdit::setFocus));
+    connect(search_in_page_action_, &QAction::triggered, this, [this]() {
+        article_search_->setFocus();
+        article_search_->selectAll();
+    });
     suggestion_worker_ = std::make_unique<SuggestionWorker>(
         [this](goldendict::core::ArticleTabId tab_id, std::uint64_t generation,
                goldendict::core::SuggestionResponse response) {
@@ -655,7 +670,7 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
         app_menu_bar == menuBar() &&
         findChildren<QMenuBar*>(QStringLiteral("menubar")).size() == 1 &&
         findChildren<QMenu*>(QStringLiteral("menuView")).size() == 1 &&
-        app_menu_bar->actions().size() == 4 &&
+        app_menu_bar->actions().size() == 5 &&
         app_menu_bar->actions()[1]->menu() == view_menu &&
         view_menu->title() == QStringLiteral("&View") &&
         actions.size() == expected_actions.size();
@@ -748,8 +763,8 @@ void MainWindow::RunHistoryMenuSmokeCheck(
     }
     const auto actions = history_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 4 &&
-        menuBar()->actions()[3]->menu() == history_menu &&
+        menuBar()->actions().size() == 5 &&
+        menuBar()->actions()[4]->menu() == history_menu &&
         history_menu->title() == QStringLiteral("H&istory") &&
         actions.size() == 5 && actions[0] == history_dock->toggleViewAction() &&
         actions[1] == export_history_action_ &&
@@ -845,13 +860,15 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
 
     const auto actions = edit_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 4 &&
+        menuBar()->actions().size() == 5 &&
         menuBar()->actions()[0]->menu()->objectName() ==
             QStringLiteral("menuFile") &&
         menuBar()->actions()[1]->menu()->objectName() ==
             QStringLiteral("menuView") &&
         menuBar()->actions()[2]->menu() == edit_menu &&
         menuBar()->actions()[3]->menu()->objectName() ==
+            QStringLiteral("menuSearch") &&
+        menuBar()->actions()[4]->menu()->objectName() ==
             QStringLiteral("menuHistory") &&
         findChildren<QMenu*>(QStringLiteral("menu_Edit")).size() == 1 &&
         edit_menu->title() == QStringLiteral("&Edit") && actions.size() == 1 &&
@@ -966,6 +983,177 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
     completion(passed);
 }
 
+void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
+    auto* search_menu = findChild<QMenu*>(QStringLiteral("menuSearch"));
+    if (search_menu == nullptr || search_in_page_action_ == nullptr ||
+        article_search_ == nullptr || article_search_status_ == nullptr ||
+        facade_ == nullptr || article_view_ == nullptr) {
+        completion(false);
+        return;
+    }
+
+    const auto actions = search_menu->actions();
+    const auto all_actions = findChildren<QAction*>();
+    auto passed = std::make_shared<bool>(
+        menuBar()->actions().size() == 5 &&
+        menuBar()->actions()[0]->menu()->objectName() ==
+            QStringLiteral("menuFile") &&
+        menuBar()->actions()[1]->menu()->objectName() ==
+            QStringLiteral("menuView") &&
+        menuBar()->actions()[2]->menu()->objectName() ==
+            QStringLiteral("menu_Edit") &&
+        menuBar()->actions()[3]->menu() == search_menu &&
+        menuBar()->actions()[4]->menu()->objectName() ==
+            QStringLiteral("menuHistory") &&
+        findChildren<QMenu*>(QStringLiteral("menuSearch")).size() == 1 &&
+        search_menu->title() == QStringLiteral("Search") &&
+        actions.size() == 1 && actions[0] == search_in_page_action_ &&
+        !actions[0]->isSeparator() &&
+        search_in_page_action_->objectName() ==
+            QStringLiteral("searchInPageAction") &&
+        search_in_page_action_->text() == QStringLiteral("Search in page") &&
+        search_in_page_action_->shortcut() == QKeySequence::Find &&
+        search_in_page_action_->shortcutContext() == Qt::WindowShortcut &&
+        search_in_page_action_->menuRole() == QAction::TextHeuristicRole &&
+        search_in_page_action_->isEnabled() &&
+        findChildren<QAction*>(QStringLiteral("fullTextSearchAction"))
+            .empty() &&
+        std::count_if(all_actions.cbegin(), all_actions.cend(),
+                      [](const QAction* action) {
+                          return action->shortcuts().contains(
+                              QKeySequence::Find);
+                      }) == 1 &&
+        centralWidget() != nullptr && article_tabs_->isVisible() &&
+        kMainWindowStateVersion == 7);
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const std::string initial_state = CaptureMainWindowState();
+    const auto first_tab_id = TabIdAt(article_tabs_->currentIndex());
+    auto* first_view = ArticleViewForTab(first_tab_id);
+    auto triggers = std::make_shared<int>(0);
+    const auto trigger_connection = connect(
+        search_in_page_action_, &QAction::triggered, this,
+        [triggers]() { ++*triggers; }, Qt::DirectConnection);
+
+    connect(
+        first_view, &QWebEngineView::loadFinished, this,
+        [this, completion = std::move(completion), passed, initial_session,
+         initial_state, first_tab_id, first_view, trigger_connection,
+         triggers](bool loaded) mutable {
+            *passed = *passed && loaded;
+            article_search_->setText(QStringLiteral("alpha"));
+            search_in_page_action_->trigger();
+            *passed =
+                *passed && *triggers == 1 &&
+                article_search_->focusPolicy() != Qt::NoFocus &&
+                article_search_->selectedText() == QStringLiteral("alpha");
+            if (!*passed)
+                qWarning() << "search menu smoke failed before first find"
+                           << loaded << *triggers
+                           << article_search_->selectedText();
+            article_search_->setText(QStringLiteral("missing"));
+            FindInArticle(false);
+            article_search_->setText(QStringLiteral("alpha"));
+            FindInArticle(false);
+            QTimer::singleShot(
+                150, this,
+                [this, completion = std::move(completion), passed,
+                 initial_session, initial_state, first_tab_id, first_view,
+                 trigger_connection, triggers]() mutable {
+                    *passed = *passed && article_search_status_->text() ==
+                                             QStringLiteral("1 of 2");
+                    if (!*passed)
+                        qWarning()
+                            << "search menu smoke failed after first find"
+                            << article_search_status_->text();
+                    goldendict::core::TabNavigationState navigation;
+                    navigation.title = "Search smoke second";
+                    const auto opened = facade_->OpenArticleTab(
+                        navigation, goldendict::core::TabOpenPolicy::kNewTab,
+                        goldendict::core::TabActivationPolicy::kActivate,
+                        goldendict::core::TabPlacementPolicy::kAppend);
+                    *passed = *passed && static_cast<bool>(opened);
+                    if (!opened) {
+                        disconnect(trigger_connection);
+                        completion(false);
+                        return;
+                    }
+                    SyncArticleTabs();
+                    const auto second_tab_id = opened.tab_id;
+                    auto* second_view = ArticleViewForTab(second_tab_id);
+                    connect(
+                        second_view, &QWebEngineView::loadFinished, this,
+                        [this, completion = std::move(completion), passed,
+                         initial_session, initial_state, first_tab_id,
+                         first_view, second_tab_id, trigger_connection,
+                         triggers](bool second_loaded) mutable {
+                            *passed = *passed && second_loaded &&
+                                      article_search_->text().isEmpty() &&
+                                      article_search_status_->text().isEmpty();
+                            if (!*passed)
+                                qWarning()
+                                    << "search menu smoke failed on second tab"
+                                    << second_loaded << article_search_->text()
+                                    << article_search_status_->text();
+                            article_search_->setText(QStringLiteral("missing"));
+                            FindInArticle(false);
+                            QTimer::singleShot(
+                                150, this,
+                                [this, completion = std::move(completion),
+                                 passed, initial_session, initial_state,
+                                 first_tab_id, first_view, second_tab_id,
+                                 trigger_connection, triggers]() mutable {
+                                    *passed =
+                                        *passed &&
+                                        article_search_status_->text() ==
+                                            QStringLiteral("No matches") &&
+                                        facade_->ActivateArticleTab(
+                                            first_tab_id);
+                                    if (!*passed)
+                                        qWarning()
+                                            << "search menu smoke failed after "
+                                               "second find"
+                                            << article_search_status_->text();
+                                    SyncArticleTabs();
+                                    *passed =
+                                        *passed &&
+                                        article_view_ == first_view &&
+                                        article_search_->text() ==
+                                            QStringLiteral("alpha") &&
+                                        article_search_status_->text() ==
+                                            QStringLiteral("1 of 2") &&
+                                        *triggers == 1 &&
+                                        facade_->CloseArticleTab(second_tab_id);
+                                    SyncArticleTabs();
+                                    *passed =
+                                        *passed &&
+                                        article_search_presentations_.find(
+                                            second_tab_id) ==
+                                            article_search_presentations_
+                                                .end() &&
+                                        facade_->ExportArticleTabSession() ==
+                                            initial_session &&
+                                        CaptureMainWindowState() ==
+                                            initial_state &&
+                                        centralWidget() != nullptr &&
+                                        article_tabs_->isVisible();
+                                    disconnect(trigger_connection);
+                                    if (!*passed)
+                                        qWarning()
+                                            << "search menu smoke failed "
+                                               "during restoration";
+                                    completion(*passed);
+                                });
+                        },
+                        Qt::SingleShotConnection);
+                    second_view->setHtml(QStringLiteral(
+                        "<!doctype html><html><body>beta beta</body></html>"));
+                });
+        },
+        Qt::SingleShotConnection);
+    first_view->setHtml(QStringLiteral(
+        "<!doctype html><html><body>alpha beta alpha</body></html>"));
+}
+
 void MainWindow::RunFileMenuSmokeCheck(const QString& path,
                                        std::function<void(bool)> completion) {
     auto* file_menu = findChild<QMenu*>(QStringLiteral("menuFile"));
@@ -982,13 +1170,15 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
 
     const auto actions = file_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 4 &&
+        menuBar()->actions().size() == 5 &&
         menuBar()->actions()[0]->menu() == file_menu &&
         menuBar()->actions()[1]->menu()->objectName() ==
             QStringLiteral("menuView") &&
         menuBar()->actions()[2]->menu()->objectName() ==
             QStringLiteral("menu_Edit") &&
         menuBar()->actions()[3]->menu()->objectName() ==
+            QStringLiteral("menuSearch") &&
+        menuBar()->actions()[4]->menu()->objectName() ==
             QStringLiteral("menuHistory") &&
         findChildren<QMenu*>(QStringLiteral("menuFile")).size() == 1 &&
         file_menu->title() == QStringLiteral("&File") && actions.size() == 8 &&
@@ -2787,6 +2977,7 @@ void MainWindow::SyncArticleTabs() {
             }
             lookup_results_.erase(id);
             suggestions_.erase(id);
+            article_search_presentations_.erase(id);
             QWidget* widget = article_tabs_->widget(index);
             article_tabs_->removeTab(index);
             widget->deleteLater();
@@ -2821,6 +3012,7 @@ void MainWindow::SyncArticleTabs() {
     article_tabs_->setCurrentWidget(active_view);
     article_view_ = active_view;
     article_page_ = qobject_cast<ArticlePage*>(active_view->page());
+    RefreshArticleSearch();
     query_->setText(QString::fromStdString(active->navigation.query));
     SelectGroup(active->navigation.group_id);
     setWindowTitle(
@@ -4395,9 +4587,17 @@ void MainWindow::FinishLookup() {
 }
 
 void MainWindow::FindInArticle(bool backwards) {
+    const auto tab_id = TabIdAt(article_tabs_->currentIndex());
+    auto* view = ArticleViewForTab(tab_id);
+    if (tab_id == 0U || view == nullptr)
+        return;
     const QString text = article_search_->text();
+    auto& presentation = article_search_presentations_[tab_id];
+    presentation.query = text;
+    const std::uint64_t generation = ++presentation.generation;
     if (text.isEmpty()) {
-        article_view_->findText(QString());
+        view->findText(QString());
+        presentation.status.clear();
         article_search_status_->clear();
         return;
     }
@@ -4405,16 +4605,47 @@ void MainWindow::FindInArticle(bool backwards) {
     if (backwards) {
         flags |= QWebEnginePage::FindBackward;
     }
-    article_view_->findText(
-        text, flags, [this](const QWebEngineFindTextResult& result) {
-            if (result.numberOfMatches() == 0) {
-                article_search_status_->setText(QStringLiteral("No matches"));
+    view->findText(
+        text, flags,
+        [this, tab_id, view, text,
+         generation](const QWebEngineFindTextResult& result) {
+            const auto found = article_search_presentations_.find(tab_id);
+            if (found == article_search_presentations_.end() ||
+                found->second.generation != generation ||
+                found->second.query != text ||
+                ArticleViewForTab(tab_id) != view) {
                 return;
             }
-            article_search_status_->setText(tr("%1 of %2")
-                                                .arg(result.activeMatch())
-                                                .arg(result.numberOfMatches()));
+            if (result.numberOfMatches() == 0) {
+                found->second.status = QStringLiteral("No matches");
+                if (TabIdAt(article_tabs_->currentIndex()) == tab_id)
+                    article_search_status_->setText(found->second.status);
+                return;
+            }
+            found->second.status = tr("%1 of %2")
+                                       .arg(result.activeMatch())
+                                       .arg(result.numberOfMatches());
+            if (TabIdAt(article_tabs_->currentIndex()) == tab_id)
+                article_search_status_->setText(found->second.status);
         });
+}
+
+void MainWindow::RefreshArticleSearch() {
+    if (article_tabs_ == nullptr || article_search_ == nullptr ||
+        article_search_status_ == nullptr) {
+        return;
+    }
+    const auto tab_id = TabIdAt(article_tabs_->currentIndex());
+    const auto found = article_search_presentations_.find(tab_id);
+    const QSignalBlocker blocker(article_search_);
+    article_search_->setText(found == article_search_presentations_.end()
+                                 ? QString()
+                                 : found->second.query);
+    article_search_status_->setText(found == article_search_presentations_.end()
+                                        ? QString()
+                                        : found->second.status);
+    search_in_page_action_->setEnabled(tab_id != 0U &&
+                                       article_view_ != nullptr);
 }
 
 void MainWindow::SaveArticleAsPdf() {

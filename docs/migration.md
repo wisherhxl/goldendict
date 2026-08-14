@@ -623,6 +623,17 @@ persistence, failure preservation, and facade replacement. The pinned
 Qt main-window state remains at private version 7. The other menu branches and
 final legacy state import remain separate leaves.
 
+The next independent Phase 8 menu leaf adds the pinned `menuSearch` identity
+between Edit and History. It exposes only the existing in-article
+`searchInPageAction`, with its legacy text, role, and Ctrl+F shortcut, and
+shares that canonical action with the article-toolbar search controls. Widgets
+retains per-tab query and match presentation and rejects stale WebEngine find
+completions without changing facade navigation or session state. The pinned
+full-text action is absent because no full-text workflow is backed; compound,
+scan, and global-search placeholders are likewise excluded. Qt main-window
+state remains at private version 7. The remaining menu branches and final
+legacy state import remain separate leaves.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,
