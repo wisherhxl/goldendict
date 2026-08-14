@@ -46,11 +46,15 @@ inline std::filesystem::path WriteEpwingFixture(
         EpwingWrite(root / "LANGUAGE", language);
     }
 
-    std::string honmon(3U * 2048U, '\0');
-    honmon[1] = 1;
+    std::string honmon(4U * 2048U, '\0');
+    honmon[1] = latin ? 2 : 1;
     honmon[16] = static_cast<char>(0x92);
     EpwingBe32(2U, &honmon, 18U);
     EpwingBe32(1U, &honmon, 22U);
+    if (latin) {
+        honmon[32] = static_cast<char>(0x02);
+        EpwingBe32(4U, &honmon, 34U);
+    }
     honmon[2048U] = static_cast<char>(0xe0);
     EpwingBe16(2U, &honmon, 2050U);
     std::size_t cursor = 2052U;
@@ -76,6 +80,10 @@ inline std::filesystem::path WriteEpwingFixture(
         honmon.replace(4096U, first.size(), first);
         const std::string second("\x1f\x02second article\x1f\x03", 18U);
         honmon.replace(4096U + 64U, second.size(), second);
+        std::string copyright("\x1f\x02", 2U);
+        copyright += "Fixture copyright";
+        copyright.append("\x1f\x03", 2U);
+        honmon.replace(6144U, copyright.size(), copyright);
     } else {
         honmon[16] = static_cast<char>(0x91);
         EpwingBe16(1U, &honmon, 2050U);

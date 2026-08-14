@@ -70,6 +70,8 @@ Dictionary Dictionary::Open(
             dictionary.reader_.metadata().source_language;
         dictionary.identity_.target_language =
             dictionary.reader_.metadata().target_language;
+        dictionary.identity_.description =
+            dictionary.reader_.metadata().description;
         dictionary.resource_root_ = info_path.parent_path() / "res";
         return dictionary;
     } catch (const Error& error) {

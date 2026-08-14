@@ -33,6 +33,7 @@ struct Metadata {
     std::string name;
     std::string source_language;
     std::string target_language;
+    std::string description;
 };
 
 struct Article {
@@ -42,7 +43,8 @@ struct Article {
 
 class Reader final {
    public:
-    static Reader Open(const std::filesystem::path& dictionary_path);
+    static Reader Open(const std::filesystem::path& dictionary_path,
+                       std::string_view preferred_language = {});
 
     const Metadata& metadata() const noexcept { return metadata_; }
 

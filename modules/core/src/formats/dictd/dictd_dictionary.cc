@@ -47,6 +47,7 @@ Dictionary Dictionary::Open(std::string id,
         dictionary.identity_.article_count = dictionary.reader_.article_count();
         dictionary.identity_.headword_count =
             dictionary.reader_.headword_count();
+        dictionary.identity_.description = dictionary.reader_.description();
         std::error_code error;
         const auto canonical =
             std::filesystem::weakly_canonical(index_path, error);

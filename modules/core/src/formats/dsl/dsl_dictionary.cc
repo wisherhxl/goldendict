@@ -96,10 +96,11 @@ std::optional<std::filesystem::path> ResolveResource(
 }  // namespace
 
 Dictionary Dictionary::Open(std::string id,
-                            const std::filesystem::path& dictionary_path) {
+                            const std::filesystem::path& dictionary_path,
+                            std::string_view preferred_language) {
     try {
         Dictionary dictionary;
-        dictionary.reader_ = Reader::Open(dictionary_path);
+        dictionary.reader_ = Reader::Open(dictionary_path, preferred_language);
         dictionary.identity_.id = std::move(id);
         dictionary.identity_.name = dictionary.reader_.metadata().name;
         dictionary.identity_.article_count = dictionary.reader_.article_count();
@@ -109,6 +110,8 @@ Dictionary Dictionary::Open(std::string id,
             dictionary.reader_.metadata().source_language;
         dictionary.identity_.target_language =
             dictionary.reader_.metadata().target_language;
+        dictionary.identity_.description =
+            dictionary.reader_.metadata().description;
         std::error_code error;
         const auto canonical =
             std::filesystem::weakly_canonical(dictionary_path, error);

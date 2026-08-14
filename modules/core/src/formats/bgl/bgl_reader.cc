@@ -200,6 +200,7 @@ Reader Reader::Open(const std::filesystem::path& path) {
                 target_charset;
     bool utf8 = false;
     Reader reader;
+    std::string author, email, copyright, description;
     reader.path_ = path;
     for (const auto& block : blocks) {
         if (block.type == 0U && block.data.size() >= 3U &&
@@ -211,12 +212,20 @@ Reader Reader::Open(const std::filesystem::path& path) {
         const unsigned subtype = static_cast<unsigned char>(block.data[1]);
         if (subtype == 1U)
             reader.metadata_.name = block.data.substr(2U);
+        else if (subtype == 2U)
+            author = block.data.substr(2U);
+        else if (subtype == 3U)
+            email = block.data.substr(2U);
+        else if (subtype == 4U)
+            copyright = block.data.substr(2U);
         else if (subtype == 7U && block.data.size() >= 6U)
             reader.metadata_.source_language =
                 Language(static_cast<unsigned char>(block.data[5]));
         else if (subtype == 8U && block.data.size() >= 6U)
             reader.metadata_.target_language =
                 Language(static_cast<unsigned char>(block.data[5]));
+        else if (subtype == 9U)
+            description = block.data.substr(2U);
         else if (subtype == 17U && block.data.size() >= 5U &&
                  (static_cast<unsigned char>(block.data[4]) & 0x80U) != 0U)
             utf8 = true;
@@ -234,6 +243,24 @@ Reader Reader::Open(const std::filesystem::path& path) {
     if (!reader.metadata_.name.empty())
         reader.metadata_.name =
             Decode(reader.metadata_.name, target_charset, path, "title");
+    const auto append = [&reader, &path, &target_charset](
+                            std::string_view label, std::string value) {
+        if (value.empty())
+            return;
+        try {
+            value = Decode(value, target_charset, path, "metadata");
+        } catch (const Error&) {
+            return;
+        }
+        value.erase(std::remove(value.begin(), value.end(), '\r'), value.end());
+        if (!reader.metadata_.description.empty())
+            reader.metadata_.description += "\n\n";
+        reader.metadata_.description += std::string(label) + value;
+    };
+    append("Copyright: ", std::move(copyright));
+    append("Author: ", std::move(author));
+    append("E-mail: ", std::move(email));
+    append("", std::move(description));
     std::size_t article_bytes = 0, resource_bytes = 0;
     for (const auto& block : blocks) {
         if (block.type == 2U) {

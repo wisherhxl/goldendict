@@ -45,6 +45,8 @@ Dictionary Dictionary::Open(std::string id,
             dictionary.reader_.metadata().source_language;
         dictionary.identity_.target_language =
             dictionary.reader_.metadata().target_language;
+        dictionary.identity_.description =
+            dictionary.reader_.metadata().description;
         std::error_code error;
         const auto canonical =
             std::filesystem::weakly_canonical(dictionary_path, error);

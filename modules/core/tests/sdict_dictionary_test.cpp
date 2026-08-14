@@ -38,6 +38,8 @@ void SdictDictionaryTest::ExposesHtmlArticlesIdentityAndSuggestions() {
     QCOMPARE(dictionary.identity().name, "Fixture SDict");
     QCOMPARE(dictionary.identity().source_language, "eng");
     QCOMPARE(dictionary.identity().target_language, "deu");
+    QVERIFY(dictionary.identity().description.find("Fixture copyright") !=
+            std::string::npos);
     QCOMPARE(articles.front().format, "text/html");
     QCOMPARE(articles.front().data, "<b>definition</b>");
     QCOMPARE(suggestions.front(), "example");

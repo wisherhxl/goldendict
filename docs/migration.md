@@ -545,6 +545,16 @@ Invalid, unseeded, or resource-exhausting patterns return no partial results.
 Plain prefix browsing, result ordering, dictionary identity, lookup activation,
 and displayed-headword export remain unchanged.
 
+The bounded R5 residual completes the dictionary-information surface rather
+than restoring the legacy WebKit developer inspector. The core catalog now
+propagates source and target languages and bounded plain-text descriptions for
+BGL, Dictd, DSL annotations, EPWING, GLS, SDict, StarDict, and XDXF in addition
+to the existing Aard, MDict, SLOB, and ZIM metadata. The Widgets dialog presents those
+details in selectable read-only controls. Public source provenance removes URL
+credentials, queries, and fragments; raw source configuration, process
+arguments, multi-file inventories, article inspection, and DevTools remain
+excluded.
+
 The history-management increment adds case-insensitive live filtering to the
 reusable history pane and an explicit clear action. Clearing remains a
 composition-root command: it atomically persists an empty bounded history

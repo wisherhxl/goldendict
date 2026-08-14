@@ -46,7 +46,8 @@ inline std::filesystem::path WriteXdxfFixture(
     std::string xml =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
         "<xdxf lang_from=\"eng\" lang_to=\"deu\" format=\"logical\" "
-        "revision=\"34\"><full_name>Fixture XDXF</full_name>";
+        "revision=\"34\"><full_name>Fixture XDXF</full_name>"
+        "<description>Fixture description</description>";
     for (const auto& entry : entries) {
         xml += "<ar>";
         for (const auto& headword : entry.headwords) {

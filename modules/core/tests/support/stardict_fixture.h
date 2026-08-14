@@ -58,6 +58,8 @@ inline std::filesystem::path WriteStardictFixture(
         "bookname=Generated Test Dictionary\n"
         "lang_from=en\n"
         "lang_to=en\n"
+        "author=Fixture Author\n"
+        "description=Fixture description\n"
         "wordcount=" +
         std::to_string(entries.size()) +
         "\nidxfilesize=" + std::to_string(index.size()) +

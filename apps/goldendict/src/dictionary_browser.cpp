@@ -17,6 +17,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSaveFile>
 #include <QTimer>
@@ -46,11 +47,19 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
     source_->setObjectName(QStringLiteral("dictionarySource"));
     source_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     source_->setWordWrap(true);
-    description_ = new QLabel(this);
+    source_language_ = new QLabel(this);
+    source_language_->setObjectName(QStringLiteral("dictionarySourceLanguage"));
+    source_language_->setTextInteractionFlags(Qt::TextSelectableByMouse |
+                                              Qt::TextSelectableByKeyboard);
+    target_language_ = new QLabel(this);
+    target_language_->setObjectName(QStringLiteral("dictionaryTargetLanguage"));
+    target_language_->setTextInteractionFlags(Qt::TextSelectableByMouse |
+                                              Qt::TextSelectableByKeyboard);
+    description_ = new QPlainTextEdit(this);
     description_->setObjectName(QStringLiteral("dictionaryDescription"));
-    description_->setTextFormat(Qt::PlainText);
-    description_->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    description_->setWordWrap(true);
+    description_->setReadOnly(true);
+    description_->setUndoRedoEnabled(false);
+    description_->setMaximumHeight(120);
     article_count_ = new QLabel(this);
     article_count_->setObjectName(QStringLiteral("dictionaryArticleCount"));
     article_count_->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -60,6 +69,8 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
     details->addRow(QStringLiteral("Identifier:"), identifier_);
     details->addRow(QStringLiteral("Edition:"), edition_);
     details->addRow(QStringLiteral("Source:"), source_);
+    details->addRow(QStringLiteral("Translates from:"), source_language_);
+    details->addRow(QStringLiteral("Translates to:"), target_language_);
     details->addRow(QStringLiteral("Description:"), description_);
     details->addRow(QStringLiteral("Articles:"), article_count_);
     details->addRow(QStringLiteral("Headwords:"), headword_count_);
@@ -214,6 +225,11 @@ void DictionaryBrowser::RunSmokeCheck(const QString& expected_dictionary,
                 !identifier_->text().isEmpty() && !source_->text().isEmpty() &&
                 article_count_->text() == QStringLiteral("3") &&
                 headword_count_->text() == QStringLiteral("3") &&
+                source_language_->text() == QStringLiteral("Not specified") &&
+                target_language_->text() == QStringLiteral("Not specified") &&
+                description_->isReadOnly() &&
+                description_->toPlainText() ==
+                    QStringLiteral("Not specified") &&
                 copy_source_->isEnabled() &&
                 open_source_directory_->isEnabled() &&
                 QApplication::clipboard()->text() == source_->text() &&
@@ -255,6 +271,8 @@ void DictionaryBrowser::RefreshDictionaryInfo() {
         identifier_->clear();
         edition_->clear();
         source_->clear();
+        source_language_->clear();
+        target_language_->clear();
         description_->clear();
         article_count_->clear();
         headword_count_->clear();
@@ -268,9 +286,18 @@ void DictionaryBrowser::RefreshDictionaryInfo() {
                           ? QStringLiteral("Not specified")
                           : QString::fromStdString(dictionary.edition));
     source_->setText(QString::fromStdString(dictionary.source));
-    description_->setText(dictionary.description.empty()
-                              ? QStringLiteral("Not specified")
-                              : QString::fromStdString(dictionary.description));
+    source_language_->setText(
+        dictionary.source_language.empty()
+            ? QStringLiteral("Not specified")
+            : QString::fromStdString(dictionary.source_language));
+    target_language_->setText(
+        dictionary.target_language.empty()
+            ? QStringLiteral("Not specified")
+            : QString::fromStdString(dictionary.target_language));
+    description_->setPlainText(
+        dictionary.description.empty()
+            ? QStringLiteral("Not specified")
+            : QString::fromStdString(dictionary.description));
     article_count_->setText(QString::number(dictionary.article_count));
     headword_count_->setText(QString::number(dictionary.headword_count));
     const QFileInfo source(CurrentSourcePath());

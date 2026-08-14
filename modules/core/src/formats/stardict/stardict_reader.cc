@@ -291,6 +291,21 @@ Reader Reader::Open(
         iterator != fields.end()) {
         reader.metadata_.target_language = iterator->second;
     }
+    const auto append_metadata = [&reader, &fields](std::string_view key,
+                                                    std::string_view label) {
+        const auto iterator = fields.find(std::string(key));
+        if (iterator == fields.end() || iterator->second.empty())
+            return;
+        if (!reader.metadata_.description.empty())
+            reader.metadata_.description += "\n\n";
+        reader.metadata_.description += std::string(label) + iterator->second;
+    };
+    append_metadata("copyright", "Copyright: ");
+    append_metadata("author", "Author: ");
+    append_metadata("email", "E-mail: ");
+    append_metadata("website", "Website: ");
+    append_metadata("date", "Date: ");
+    append_metadata("description", "");
     reader.metadata_.word_count = ParseUnsigned(
         RequireField(fields, "wordcount", info_path), info_path, "wordcount");
     reader.metadata_.index_file_size =

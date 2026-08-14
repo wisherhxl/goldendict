@@ -28,6 +28,7 @@ inline std::filesystem::path WriteGlsFixture(
     std::string text =
         "### Glossary title: Fixture GLS\n"
         "### Author: GoldenDict tests\n"
+        "### Description: Fixture description\n"
         "### Source language: eng\n"
         "### Target language: deu\n"
         "### Glossary section:\n\n";

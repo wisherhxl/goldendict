@@ -231,6 +231,8 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path) {
     constexpr std::string_view kTitle = "### Glossary title:";
     constexpr std::string_view kSource = "### Source language:";
     constexpr std::string_view kTarget = "### Target language:";
+    constexpr std::string_view kAuthor = "### Author:";
+    constexpr std::string_view kDescription = "### Description:";
     constexpr std::string_view kSection = "### Glossary section:";
     std::size_t position = 0U;
     bool found_section = false;
@@ -245,6 +247,19 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path) {
         } else if (HasPrefix(current, kTarget)) {
             reader.metadata_.target_language =
                 LanguageCode(std::string(current.substr(kTarget.size())));
+        } else if (HasPrefix(current, kAuthor)) {
+            const std::string author =
+                Trim(std::string(current.substr(kAuthor.size())));
+            if (!author.empty())
+                reader.metadata_.description = "Author: " + author;
+        } else if (HasPrefix(current, kDescription)) {
+            const std::string description =
+                Trim(std::string(current.substr(kDescription.size())));
+            if (!description.empty()) {
+                if (!reader.metadata_.description.empty())
+                    reader.metadata_.description += "\n\n";
+                reader.metadata_.description += description;
+            }
         } else if (HasPrefix(current, kSection)) {
             found_section = true;
             break;

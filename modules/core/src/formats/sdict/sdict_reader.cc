@@ -272,6 +272,8 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path) {
     }
     const auto word_count = ReadU32(data, 11U, dictionary_path);
     const auto title_offset = ReadU32(data, 19U, dictionary_path);
+    const auto copyright_offset = ReadU32(data, 23U, dictionary_path);
+    const auto version_offset = ReadU32(data, 27U, dictionary_path);
     const auto full_index_offset = ReadU32(data, 35U, dictionary_path);
     const auto articles_offset = ReadU32(data, 39U, dictionary_path);
     if (word_count > kMaximumWordCount || full_index_offset > data.size() ||
@@ -285,6 +287,22 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path) {
     if (reader.metadata_.name.empty()) {
         reader.metadata_.name = dictionary_path.stem().string();
     }
+    reader.metadata_.description = "Title: " + reader.metadata_.name;
+    const auto append_metadata = [&](std::string_view label,
+                                     std::uint32_t offset) {
+        if (offset == 0U)
+            return;
+        try {
+            const std::string value =
+                ReadSizedField(data, offset, reader.compression_,
+                               kMaximumMetadataSize, dictionary_path);
+            if (!value.empty())
+                reader.metadata_.description +=
+                    "\n\n" + std::string(label) + value;
+        } catch (const Error&) {}
+    };
+    append_metadata("Copyright: ", copyright_offset);
+    append_metadata("Version: ", version_offset);
 
     std::uint64_t position = full_index_offset;
     reader.records_.reserve(word_count);

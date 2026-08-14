@@ -38,6 +38,8 @@ Dictionary Dictionary::Open(std::string id, const std::filesystem::path& path) {
             dictionary.reader_.headword_count();
         dictionary.identity_.source_language =
             dictionary.reader_.metadata().source_language;
+        dictionary.identity_.description =
+            dictionary.reader_.metadata().description;
         std::error_code error;
         const auto canonical = std::filesystem::weakly_canonical(path, error);
         dictionary.identity_.source =

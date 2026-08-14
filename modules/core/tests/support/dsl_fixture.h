@@ -30,6 +30,8 @@ inline std::filesystem::path WriteDslFixture(
     const auto path = directory / "fixture.dsl";
     std::ofstream output(path, std::ios::binary);
     output.write(text.data(), static_cast<std::streamsize>(text.size()));
+    std::ofstream annotation(directory / "fixture.ann", std::ios::binary);
+    annotation << "Fixture DSL annotation";
     return path;
 }
 

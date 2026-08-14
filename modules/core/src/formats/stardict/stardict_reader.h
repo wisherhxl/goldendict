@@ -50,6 +50,7 @@ struct Metadata {
     std::string book_name;
     std::string source_language;
     std::string target_language;
+    std::string description;
     std::uint64_t word_count = 0;
     std::uint64_t index_file_size = 0;
     std::string same_type_sequence;

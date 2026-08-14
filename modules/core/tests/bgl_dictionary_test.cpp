@@ -32,6 +32,8 @@ void BglDictionaryTest::ExposesIdentityHtmlSuggestionsAndEmbeddedResources() {
     QCOMPARE(dictionary.identity().name, "Fixture BGL");
     QCOMPARE(dictionary.identity().source_language, "en");
     QCOMPARE(dictionary.identity().target_language, "de");
+    QVERIFY(dictionary.identity().description.find("Fixture description") !=
+            std::string::npos);
     QCOMPARE(dictionary.LookupExact("EXAMPLE").front().format, "text/html");
     QCOMPARE(dictionary.LookupExact("alias").size(), std::size_t{1});
     QCOMPARE(dictionary.SuggestPrefix("exa").front(), "example");

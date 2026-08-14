@@ -323,6 +323,12 @@ deterministic invalid-pattern clearing. Core service tests pin leading-literal
 requirements, Unicode and case behavior, ordering, invalid-pattern errors, and
 the existing 100-candidate bound.
 
+The same smoke also pins empty language/description presentation and the
+read-only description control. Format dictionary tests cover BGL, Dictd, DSL,
+EPWING, GLS, SDict, StarDict, and XDXF description provenance; application service
+tests verify that catalog languages and descriptions cross the public facade
+without affecting lookup identity or ordering.
+
 `goldendict_dictionary_browser_export_smoke` uses the same fixture and real
 dialog to export the displayed prefix results, then verifies the compatibility
 UTF-8 BOM, deterministic suggestion order, one-headword-per-line format, and

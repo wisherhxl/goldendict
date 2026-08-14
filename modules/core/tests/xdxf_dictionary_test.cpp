@@ -42,6 +42,7 @@ void XdxfDictionaryTest::ExposesHtmlIdentitySuggestionsAndResources() {
     QCOMPARE(dictionary.identity().name, "Fixture XDXF");
     QCOMPARE(dictionary.identity().source_language, "eng");
     QCOMPARE(dictionary.identity().target_language, "deu");
+    QCOMPARE(dictionary.identity().description, "Fixture description");
     QCOMPARE(articles.front().format, "text/html");
     QCOMPARE(suggestions.front(), "example");
     QVERIFY(resource.has_value());

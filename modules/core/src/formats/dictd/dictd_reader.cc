@@ -271,6 +271,13 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
             break;
         }
     }
+    for (const auto& record : reader.records_) {
+        if (record.headword == "00databaseinfo" ||
+            record.headword == "00-database-info") {
+            reader.description_ = reader.LoadArticle(record).data;
+            break;
+        }
+    }
     return reader;
 }
 

@@ -541,9 +541,16 @@ Reader Reader::Open(const std::filesystem::path& catalog_path) {
         if (index_count >= 127U)
             Throw(ErrorCode::kInvalidDictionary, *text_path,
                   "Invalid EPWING index count");
+        std::optional<Location> copyright_location;
         for (std::size_t i = 0; i < index_count; ++i) {
             const auto entry = table + 16U + i * 16U;
             const auto id = static_cast<unsigned char>((*text)[entry]);
+            if (id == 0x02U) {
+                const auto start_page = Be32(*text, entry + 2U, *text_path);
+                if (start_page != 0U)
+                    copyright_location = Location{start_page, 0U};
+                continue;
+            }
             if (id != 0x90U && id != 0x91U && id != 0x92U)
                 continue;
             const auto start_page = Be32(*text, entry + 2U, *text_path);
@@ -596,6 +603,15 @@ Reader Reader::Open(const std::filesystem::path& catalog_path) {
                         Throw(ErrorCode::kInvalidDictionary, *text_path,
                               "Too many EPWING entries");
                 }
+            }
+        }
+        if (reader.metadata_.description.empty() &&
+            copyright_location.has_value()) {
+            try {
+                reader.metadata_.description = RenderText(
+                    *text, *copyright_location, *text_path, {}, character_code);
+            } catch (const Error&) {
+                // Copyright metadata is optional and must not hide the book.
             }
         }
         if (reader.metadata_.name.empty())

@@ -29,6 +29,7 @@ struct Metadata {
     std::string name;
     std::string source_language;
     std::string target_language;
+    std::string description;
 };
 
 struct Article {

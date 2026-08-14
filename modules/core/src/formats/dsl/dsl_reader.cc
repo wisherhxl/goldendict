@@ -6,6 +6,7 @@
 #include <array>
 #include <cctype>
 #include <fstream>
+#include <locale>
 #include <optional>
 #include <set>
 #include <unordered_set>
@@ -417,7 +418,8 @@ Error::Error(ErrorCode code, std::filesystem::path path, std::string message)
       code_(code),
       path_(std::move(path)) {}
 
-Reader Reader::Open(const std::filesystem::path& dictionary_path) {
+Reader Reader::Open(const std::filesystem::path& dictionary_path,
+                    std::string_view preferred_language) {
     Reader reader;
     reader.dictionary_path_ = dictionary_path;
     std::string data = ReadFile(dictionary_path);
@@ -425,6 +427,69 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path) {
         data = Gunzip(data, dictionary_path);
     }
     const std::string text = Decode(std::move(data), dictionary_path);
+
+    auto annotation_path = dictionary_path;
+    std::string annotation_name = annotation_path.filename().string();
+    const std::string lower_annotation_name = Lower(annotation_name);
+    const std::size_t annotation_suffix =
+        lower_annotation_name.size() >= 7U &&
+                lower_annotation_name.compare(lower_annotation_name.size() - 7U,
+                                              7U, ".dsl.dz") == 0
+            ? 7U
+        : lower_annotation_name.size() >= 4U &&
+                lower_annotation_name.compare(lower_annotation_name.size() - 4U,
+                                              4U, ".dsl") == 0
+            ? 4U
+            : 0U;
+    if (annotation_suffix != 0U) {
+        annotation_name.resize(annotation_name.size() - annotation_suffix);
+        annotation_path.replace_filename(annotation_name + ".ann");
+        std::error_code annotation_error;
+        const auto annotation_size =
+            std::filesystem::file_size(annotation_path, annotation_error);
+        if (!annotation_error && annotation_size <= 1024U * 1024U) {
+            try {
+                std::string annotation =
+                    Decode(ReadFile(annotation_path), annotation_path);
+                if (annotation.rfind("#LANGUAGE ", 0U) == 0U) {
+                    std::string preferred =
+                        Lower(std::string(preferred_language));
+                    if (preferred.empty()) {
+                        try {
+                            preferred = Lower(std::locale("").name());
+                        } catch (const std::runtime_error&) {}
+                    }
+                    const auto separator = preferred.find_first_of("_.-");
+                    if (separator != std::string::npos)
+                        preferred.resize(separator);
+                    std::size_t selected = 0U;
+                    if (!preferred.empty()) {
+                        const auto exact =
+                            Lower(annotation)
+                                .find("#language \"" + preferred + "\"");
+                        if (exact != std::string::npos)
+                            selected = exact;
+                    }
+                    const auto first_line = annotation.find('\n', selected);
+                    const auto next_section =
+                        first_line == std::string::npos
+                            ? std::string::npos
+                            : annotation.find("\n#LANGUAGE ", first_line);
+                    annotation =
+                        first_line == std::string::npos
+                            ? std::string{}
+                            : annotation.substr(
+                                  first_line + 1U,
+                                  next_section == std::string::npos
+                                      ? std::string::npos
+                                      : next_section - first_line - 1U);
+                }
+                reader.metadata_.description = Trim(std::move(annotation));
+            } catch (const Error&) {
+                // Optional annotations never make the dictionary unavailable.
+            }
+        }
+    }
     std::size_t position = 0U;
     std::optional<std::string_view> pending;
     while (const auto line = NextLine(text, &position)) {

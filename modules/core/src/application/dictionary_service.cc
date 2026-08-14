@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -75,6 +76,106 @@ class CancellationAdapter final : public dictionary::CancellationSignal {
 constexpr std::uint32_t kRegexMatchLimit = 10000U;
 constexpr std::uint32_t kRegexDepthLimit = 100U;
 constexpr std::uint32_t kRegexHeapLimitKiB = 256U;
+constexpr std::size_t kMaximumDictionaryDescriptionBytes = 1024U * 1024U;
+
+std::string PlainMetadata(std::string_view input) {
+    std::string output;
+    output.reserve(std::min(input.size(), kMaximumDictionaryDescriptionBytes));
+    bool inside_tag = false;
+    for (std::size_t index = 0U;
+         index < input.size() &&
+         output.size() < kMaximumDictionaryDescriptionBytes;
+         ++index) {
+        const char character = input[index];
+        if (character == '<') {
+            const auto closing = input.find('>', index + 1U);
+            if (closing != std::string_view::npos) {
+                std::string tag(input.substr(index + 1U, closing - index - 1U));
+                std::transform(tag.begin(), tag.end(), tag.begin(),
+                               [](unsigned char byte) {
+                                   return static_cast<char>(std::tolower(byte));
+                               });
+                if (tag == "script" || tag == "style") {
+                    const std::string end_tag = "</" + tag;
+                    const auto end = std::search(
+                        input.begin() +
+                            static_cast<std::ptrdiff_t>(closing + 1U),
+                        input.end(), end_tag.begin(), end_tag.end(),
+                        [](unsigned char left, unsigned char right) {
+                            return std::tolower(left) == std::tolower(right);
+                        });
+                    if (end != input.end()) {
+                        index = static_cast<std::size_t>(end - input.begin()) +
+                                end_tag.size() - 1U;
+                        inside_tag = true;
+                        continue;
+                    }
+                }
+                if ((tag == "br" || tag == "br/" || tag == "/p" ||
+                     tag == "/div" || tag == "/li") &&
+                    !output.empty() && output.back() != '\n')
+                    output.push_back('\n');
+            }
+            inside_tag = true;
+            continue;
+        }
+        if (inside_tag) {
+            if (character == '>')
+                inside_tag = false;
+            continue;
+        }
+        if (character == '&') {
+            const auto semicolon = input.find(';', index + 1U);
+            if (semicolon != std::string_view::npos &&
+                semicolon - index <= 6U) {
+                const auto entity = input.substr(index, semicolon - index + 1U);
+                if (entity == "&amp;")
+                    output.push_back('&');
+                else if (entity == "&lt;")
+                    output.push_back('<');
+                else if (entity == "&gt;")
+                    output.push_back('>');
+                else if (entity == "&quot;")
+                    output.push_back('"');
+                else if (entity == "&#39;")
+                    output.push_back('\'');
+                else
+                    output.append(entity);
+                index = semicolon;
+                continue;
+            }
+        }
+        const auto byte = static_cast<unsigned char>(character);
+        if (character == '\r') {
+            if (index + 1U < input.size() && input[index + 1U] == '\n')
+                continue;
+            output.push_back('\n');
+        } else if (character == '\n' || character == '\t' || byte >= 0x20U) {
+            output.push_back(character);
+        }
+    }
+    while (!output.empty() && (output.back() == ' ' || output.back() == '\n' ||
+                               output.back() == '\t'))
+        output.pop_back();
+    if (output.size() > kMaximumDictionaryDescriptionBytes)
+        output.resize(kMaximumDictionaryDescriptionBytes);
+    return output;
+}
+
+std::string RedactedProvenance(std::string source) {
+    const auto scheme = source.find("://");
+    if (scheme == std::string::npos)
+        return source;
+    const auto authority = scheme + 3U;
+    const auto path = source.find('/', authority);
+    const auto at = source.find('@', authority);
+    if (at != std::string::npos && (path == std::string::npos || at < path))
+        source.erase(authority, at - authority + 1U);
+    const auto private_part = source.find_first_of("?#", authority);
+    if (private_part != std::string::npos)
+        source.erase(private_part);
+    return source;
+}
 
 std::optional<std::string> WildcardPrefix(std::string_view pattern) {
     std::string prefix;
@@ -281,8 +382,10 @@ DictionaryIdentity PublicIdentity(const dictionary::Identity& identity) {
     DictionaryIdentity result;
     result.id = identity.id;
     result.name = identity.name;
-    result.source = identity.source;
-    result.description = identity.description;
+    result.source = RedactedProvenance(identity.source);
+    result.description = PlainMetadata(identity.description);
+    result.source_language = identity.source_language;
+    result.target_language = identity.target_language;
     result.article_count = identity.article_count;
     result.headword_count = identity.headword_count;
     return result;
@@ -569,7 +672,9 @@ class ServiceState final {
             try {
                 dictionaries_.push_back(
                     std::make_unique<formats::dsl::Dictionary>(
-                        formats::dsl::Dictionary::Open(id, dictionary_path)));
+                        formats::dsl::Dictionary::Open(
+                            id, dictionary_path,
+                            configuration.preferences.interface_language)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});

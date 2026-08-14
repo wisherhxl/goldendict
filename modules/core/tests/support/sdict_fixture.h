@@ -90,6 +90,10 @@ inline std::filesystem::path WriteSdictFixture(
     WriteLittle32(static_cast<std::uint32_t>(entries.size()), 11U, &file);
     WriteLittle32(43U, 19U, &file);
     AppendSizedSdictField("Fixture SDict", compression, &file);
+    WriteLittle32(static_cast<std::uint32_t>(file.size()), 23U, &file);
+    AppendSizedSdictField("Fixture copyright", compression, &file);
+    WriteLittle32(static_cast<std::uint32_t>(file.size()), 27U, &file);
+    AppendSizedSdictField("1.0", compression, &file);
     const auto full_index_offset = static_cast<std::uint32_t>(file.size());
     WriteLittle32(full_index_offset, 35U, &file);
 

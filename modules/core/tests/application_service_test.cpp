@@ -32,6 +32,49 @@ class CancelledToken final : public CancellationToken {
     bool IsCancellationRequested() const noexcept override { return true; }
 };
 
+class InspectionRuntimeSource final : public RuntimeDictionarySource {
+   public:
+    InspectionRuntimeSource() {
+        identity_.id = "inspection";
+        identity_.name = "Inspection";
+        identity_.source =
+            "https://user:secret@example.test/path?token=secret#fragment";
+        identity_.description =
+            "Author: Test<br><script>unsafe()</script>&lt;plain&gt;";
+        identity_.description.push_back('\0');
+        identity_.description += "hidden";
+        identity_.source_language = "en";
+        identity_.target_language = "de";
+    }
+
+    const RuntimeDictionaryIdentity& identity() const noexcept override {
+        return identity_;
+    }
+
+    std::vector<RuntimeDictionaryArticle> LookupExact(
+        std::string_view, const RuntimeRequestOptions&) const override {
+        return {};
+    }
+
+    std::vector<RuntimeDictionaryArticle> LookupPrefix(
+        std::string_view, const RuntimeRequestOptions&) const override {
+        return {};
+    }
+
+    std::vector<std::string> SuggestPrefix(
+        std::string_view, const RuntimeRequestOptions&) const override {
+        return {};
+    }
+
+    std::optional<RuntimeDictionaryResource> GetResource(
+        std::string_view, const RuntimeRequestOptions&) const override {
+        return std::nullopt;
+    }
+
+   private:
+    RuntimeDictionaryIdentity identity_;
+};
+
 class ApplicationServiceTest : public QObject {
     Q_OBJECT
 
@@ -60,6 +103,7 @@ class ApplicationServiceTest : public QObject {
     void CurrentConfigurationTakesPrecedenceOverLegacy();
     void RejectsMalformedLegacyWithoutCreatingCurrent();
     void RejectsMalformedConfiguration();
+    void CatalogSanitizesInspectionMetadata();
     void DiscoversAndQueriesARealFixture();
     void ReturnsCanonicalFoldedMatchInformation();
     void ReturnsRankedPrefixMatches();
@@ -116,6 +160,19 @@ void ApplicationServiceTest::MissingConfigurationIsACleanProfile() {
                                                 false,
                                                 "https://apifree.forvo.com",
                                                 {"en", "ru"}}}));
+}
+
+void ApplicationServiceTest::CatalogSanitizesInspectionMetadata() {
+    std::vector<std::unique_ptr<RuntimeDictionarySource>> sources;
+    sources.push_back(std::make_unique<InspectionRuntimeSource>());
+    const auto service = CreateDictionaryService({}, std::move(sources));
+    const auto catalog = service->GetCatalog();
+
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QCOMPARE(catalog.front().source, "https://example.test/path");
+    QCOMPARE(catalog.front().description, "Author: Test\n<plain>hidden");
+    QCOMPARE(catalog.front().source_language, "en");
+    QCOMPARE(catalog.front().target_language, "de");
 }
 
 void ApplicationServiceTest::ConfigurationRoundTripsEscapedPaths() {
@@ -2013,6 +2070,9 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesDslResources() {
 
     QCOMPARE(catalog.size(), std::size_t{1});
     QVERIFY(catalog.front().id.rfind("dsl-", 0) == 0U);
+    QCOMPARE(catalog.front().source_language, "en");
+    QCOMPARE(catalog.front().target_language, "de");
+    QCOMPARE(catalog.front().description, "Fixture DSL annotation");
     QVERIFY(response.errors.empty());
     QCOMPARE(response.entries.size(), std::size_t{1});
     const auto& entry = response.entries.front();

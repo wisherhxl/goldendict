@@ -43,6 +43,9 @@ inline std::filesystem::path WriteBglFixture(
     const std::filesystem::path& directory) {
     std::string stream;
     AppendBglBlock(3U, std::string("\0\1Fixture BGL", 13U), &stream);
+    AppendBglBlock(3U, std::string("\0\2Fixture Author", 16U), &stream);
+    AppendBglBlock(3U, std::string("\0\4Fixture Copyright", 19U), &stream);
+    AppendBglBlock(3U, std::string("\0\11Fixture description", 21U), &stream);
     AppendBglBlock(3U, std::string("\0\7\0\0\0\0", 6U), &stream);
     AppendBglBlock(3U, std::string("\0\10\0\0\0\6", 6U), &stream);
     AppendBglBlock(3U, std::string("\0\21\0\0\200", 5U), &stream);

@@ -17,6 +17,7 @@ class QListWidget;
 class QComboBox;
 class QCheckBox;
 class QPushButton;
+class QPlainTextEdit;
 
 namespace goldendict::core {
 class DesktopFacade;
@@ -52,7 +53,9 @@ class DictionaryBrowser final : public QDialog {
     QLabel* identifier_ = nullptr;
     QLabel* edition_ = nullptr;
     QLabel* source_ = nullptr;
-    QLabel* description_ = nullptr;
+    QPlainTextEdit* description_ = nullptr;
+    QLabel* source_language_ = nullptr;
+    QLabel* target_language_ = nullptr;
     QLabel* article_count_ = nullptr;
     QLabel* headword_count_ = nullptr;
     QPushButton* copy_source_ = nullptr;

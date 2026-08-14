@@ -51,6 +51,8 @@ struct DictionaryIdentity {
     std::string description;
     std::size_t article_count = 0;
     std::size_t headword_count = 0;
+    std::string source_language;
+    std::string target_language;
 };
 
 struct LanguageInfo {

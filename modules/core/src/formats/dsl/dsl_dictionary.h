@@ -17,7 +17,8 @@ namespace goldendict::core::formats::dsl {
 class Dictionary final : public dictionary::Backend {
    public:
     static Dictionary Open(std::string id,
-                           const std::filesystem::path& dictionary_path);
+                           const std::filesystem::path& dictionary_path,
+                           std::string_view preferred_language = {});
 
     const dictionary::Identity& identity() const noexcept override {
         return identity_;

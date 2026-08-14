@@ -27,6 +27,7 @@ class Error final : public std::runtime_error {
 struct Metadata {
     std::string name;
     std::string source_language = "ja";
+    std::string description;
 };
 
 struct Article {

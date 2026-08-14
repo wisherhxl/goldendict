@@ -287,6 +287,10 @@ void StartElement(void* user_data, const XML_Char* raw_name,
         state->document.metadata.name.empty()) {
         state->metadata_element = name;
         state->metadata_text.clear();
+    } else if (name == "description" &&
+               state->document.metadata.description.empty()) {
+        state->metadata_element = name;
+        state->metadata_text.clear();
     } else if (name == "from" &&
                state->document.metadata.source_language.empty()) {
         auto language = Attribute(attributes, "xml:lang");
@@ -382,7 +386,9 @@ void EndElement(void* user_data, const XML_Char* raw_name) {
         return;
     }
     if (name == state->metadata_element) {
-        if (state->document.metadata.name.empty()) {
+        if (name == "description") {
+            state->document.metadata.description = Trim(state->metadata_text);
+        } else if (state->document.metadata.name.empty()) {
             state->document.metadata.name = Trim(state->metadata_text);
         }
         state->metadata_element.clear();

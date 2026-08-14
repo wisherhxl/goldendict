@@ -3,6 +3,7 @@
 #include <QtTest>
 
 #include <filesystem>
+#include <fstream>
 
 #include "../src/formats/dsl/dsl_dictionary.h"
 #include "support/dsl_fixture.h"
@@ -28,10 +29,14 @@ void DslDictionaryTest::ExposesIdentityHtmlSuggestionsAndResources() {
     const auto root = std::filesystem::path(directory.path().toStdString());
     const auto path = test::WriteDslFixture(root);
     test::WriteDslResource(path, "images/cup.png", "png-data");
-    const Dictionary dictionary = Dictionary::Open("dsl-id", path);
+    std::ofstream(root / "fixture.ann")
+        << "#LANGUAGE \"en\"\nEnglish annotation\n"
+           "#LANGUAGE \"de\"\nGerman annotation";
+    const Dictionary dictionary = Dictionary::Open("dsl-id", path, "de");
     QCOMPARE(dictionary.identity().name, "Fixture DSL");
     QCOMPARE(dictionary.identity().source_language, "en");
     QCOMPARE(dictionary.identity().target_language, "de");
+    QCOMPARE(dictionary.identity().description, "German annotation");
     QCOMPARE(dictionary.LookupExact("CAFE").front().format, "text/html");
     QVERIFY(!dictionary.SuggestPrefix("caf").empty());
     const auto resource = dictionary.GetResource("images/cup.png");

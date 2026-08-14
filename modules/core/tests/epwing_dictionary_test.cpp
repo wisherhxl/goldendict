@@ -18,6 +18,8 @@ void EpwingDictionaryTest::ExposesBackendContract() {
     const auto dictionary =
         Dictionary::Open("epwing-fixture", test::WriteEpwingFixture(root));
     QCOMPARE(dictionary.identity().name, "Fixture EPWING");
+    QVERIFY(dictionary.identity().description.find("Fixture copyright") !=
+            std::string::npos);
     QCOMPARE(dictionary.LookupExact("example").size(), std::size_t{1});
     QCOMPARE(dictionary.SuggestPrefix("sec").front(), "second");
     QVERIFY(dictionary.GetResource("FIXTURE/GAIJI/pixel.png").has_value());
