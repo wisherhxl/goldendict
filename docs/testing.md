@@ -113,6 +113,12 @@ empty older configurations remain compatible, nontrivial ordered groups round
 trip, group and membership bounds plus duplicate IDs are rejected
 deterministically, malformed fields fail to load, and a rejected save leaves
 the previous configuration unchanged without a temporary file.
+It also pins explicit dictionary participation for lookup and suggestions:
+inactive empty filters retain the all/group default, active empty filters
+complete successfully without results, and nonempty filters preserve group
+intersection, catalog order, duplicate normalization, missing-ID diagnostics,
+and cancellation behavior. The installed headless consumer compiles and runs
+the active-empty contract through the exported request DTOs.
 
 The same test pins the public local-source validation seam: both 256-entry
 bounds, empty sound-path and NUL rejection, duplicate and empty-name

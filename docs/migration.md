@@ -555,6 +555,16 @@ the absent pane at its deterministic default; version 1 remains excluded.
 Full-text and compound/expression search, `dictionaryBar`, menus, complete shell
 auditing, and legacy opaque state migration remain separate leaves.
 
+The following Phase 8 dictionary-participation prerequisite makes the existing
+bounded lookup and suggestion dictionary-ID filters explicit when their lists
+are empty. Existing callers retain the empty-means-unfiltered default, while an
+active empty filter completes successfully without consulting a backend. This
+transport-neutral contract enables a later Widgets-owned `dictionaryBar` to
+represent the legacy all-off state without fake identities, persisted group or
+source mutation, or presentation-owned lookup semantics. Toolbar hierarchy,
+local participation state, Qt layout-state integration, and action exposure
+remain the dependent unlabelled Phase 8 leaf.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,

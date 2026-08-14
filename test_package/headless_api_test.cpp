@@ -658,6 +658,19 @@ int main() {
             return Fail("installed headword suggestion failed");
         }
 
+        query.dictionary_ids.clear();
+        query.dictionary_filter_active = true;
+        const auto empty_lookup = service->Lookup(query);
+        if (!empty_lookup.entries.empty() || !empty_lookup.errors.empty()) {
+            return Fail("installed explicit-empty lookup filter failed");
+        }
+        suggestion_query.dictionary_filter_active = true;
+        const auto empty_suggestions = service->Suggest(suggestion_query);
+        if (!empty_suggestions.suggestions.empty() ||
+            !empty_suggestions.errors.empty()) {
+            return Fail("installed explicit-empty suggestion filter failed");
+        }
+
         goldendict::core::HeadwordEnumerationQuery enumeration_query;
         enumeration_query.dictionary_id = catalog.front().id;
         enumeration_query.page_size = 1U;

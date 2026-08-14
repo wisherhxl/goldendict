@@ -1124,6 +1124,9 @@ class ServiceState final {
                  "Only exact and prefix lookup are currently supported"});
             return response;
         }
+        if (query.dictionary_filter_active && query.dictionary_ids.empty()) {
+            return response;
+        }
         const std::string folded_query = foundation::FoldForLookup(query.text);
         response.errors = startup_errors_;
         const std::unordered_set<std::string> requested(
@@ -1237,6 +1240,9 @@ class ServiceState final {
             }
         }
         const std::string folded_query = foundation::FoldForLookup(seed);
+        if (query.dictionary_filter_active && query.dictionary_ids.empty()) {
+            return response;
+        }
         response.errors = startup_errors_;
         const std::unordered_set<std::string> requested(
             query.dictionary_ids.begin(), query.dictionary_ids.end());

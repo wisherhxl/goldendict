@@ -100,6 +100,8 @@ struct LanguageInfo {
 struct LookupQuery {
     std::string text;
     std::vector<std::string> dictionary_ids;
+    // Makes dictionary_ids authoritative even when the collection is empty.
+    bool dictionary_filter_active = false;
     std::vector<std::string> languages;
     MatchMode match_mode = MatchMode::kExact;
     std::size_t result_limit = 20;
@@ -110,6 +112,8 @@ struct LookupQuery {
 struct SuggestionQuery {
     std::string text;
     std::vector<std::string> dictionary_ids;
+    // Makes dictionary_ids authoritative even when the collection is empty.
+    bool dictionary_filter_active = false;
     std::vector<std::string> languages;
     std::size_t result_limit = 20;
     std::chrono::milliseconds timeout = std::chrono::seconds(5);

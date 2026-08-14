@@ -116,6 +116,7 @@ class ApplicationServiceTest : public QObject {
     void FiltersBoundedHeadwordSuggestionsWithRegularExpressions();
     void RejectsInvalidOrUnseededHeadwordPatterns();
     void RanksSuggestionsAcrossDictionaries();
+    void SupportsExplicitEmptyDictionaryParticipation();
     void AppliesResolvedDictionaryGroupsConsistently();
     void DiscoversAndQueriesDictdAlongsideStardict();
     void DiscoversSanitizesAndQueriesSdict();
@@ -1865,6 +1866,7 @@ void ApplicationServiceTest::ReturnsLightweightHeadwordSuggestions() {
              LookupErrorCode::kCancelled);
 
     query.dictionary_ids = {"unavailable"};
+    query.dictionary_filter_active = true;
     const auto unavailable = service->Suggest(query);
     QVERIFY(unavailable.suggestions.empty());
     QCOMPARE(unavailable.errors.size(), std::size_t{1});
@@ -1999,6 +2001,48 @@ void ApplicationServiceTest::RanksSuggestionsAcrossDictionaries() {
     QCOMPARE(response.suggestions.front().match.mode, MatchMode::kExact);
 }
 
+void ApplicationServiceTest::SupportsExplicitEmptyDictionaryParticipation() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteStardictFixture(root, {{"example", "article"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+
+    LookupQuery lookup;
+    lookup.text = "example";
+    const auto unfiltered_lookup = service->Lookup(lookup);
+    QCOMPARE(unfiltered_lookup.entries.size(), std::size_t{1});
+    QVERIFY(unfiltered_lookup.errors.empty());
+
+    lookup.dictionary_filter_active = true;
+    const auto empty_lookup = service->Lookup(lookup);
+    QVERIFY(empty_lookup.entries.empty());
+    QVERIFY(empty_lookup.errors.empty());
+
+    const CancelledToken cancelled;
+    const auto cancelled_empty_lookup = service->Lookup(lookup, &cancelled);
+    QVERIFY(cancelled_empty_lookup.entries.empty());
+    QVERIFY(cancelled_empty_lookup.errors.empty());
+
+    SuggestionQuery suggestion;
+    suggestion.text = "exa";
+    const auto unfiltered_suggestion = service->Suggest(suggestion);
+    QCOMPARE(unfiltered_suggestion.suggestions.size(), std::size_t{1});
+    QVERIFY(unfiltered_suggestion.errors.empty());
+
+    suggestion.dictionary_filter_active = true;
+    const auto empty_suggestion = service->Suggest(suggestion);
+    QVERIFY(empty_suggestion.suggestions.empty());
+    QVERIFY(empty_suggestion.errors.empty());
+
+    const auto cancelled_empty_suggestion =
+        service->Suggest(suggestion, &cancelled);
+    QVERIFY(cancelled_empty_suggestion.suggestions.empty());
+    QVERIFY(cancelled_empty_suggestion.errors.empty());
+}
+
 void ApplicationServiceTest::AppliesResolvedDictionaryGroupsConsistently() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -2052,13 +2096,22 @@ void ApplicationServiceTest::AppliesResolvedDictionaryGroupsConsistently() {
     QCOMPARE(suggestion_response.suggestions[0].dictionary.id, second->id);
     QCOMPARE(suggestion_response.suggestions[1].dictionary.id, first->id);
 
-    lookup.dictionary_ids = {first->id};
+    lookup.dictionary_ids = {first->id, first->id};
+    lookup.dictionary_filter_active = true;
     lookup_response = service.Lookup(lookup);
     QVERIFY(lookup_response.errors.empty());
     QCOMPARE(lookup_response.entries.size(), std::size_t{1});
     QCOMPARE(lookup_response.entries.front().dictionary.id, first->id);
 
+    suggestion.dictionary_ids = {first->id, first->id};
+    suggestion.dictionary_filter_active = true;
+    const auto filtered_suggestion = service.Suggest(suggestion);
+    QVERIFY(filtered_suggestion.errors.empty());
+    QCOMPARE(filtered_suggestion.suggestions.size(), std::size_t{1});
+    QCOMPARE(filtered_suggestion.suggestions.front().dictionary.id, first->id);
+
     lookup.dictionary_ids.clear();
+    lookup.dictionary_filter_active = false;
     lookup.group_id = 8U;
     lookup_response = service.Lookup(lookup);
     QVERIFY(lookup_response.entries.empty());

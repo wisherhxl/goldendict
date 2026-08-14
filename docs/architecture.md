@@ -207,6 +207,14 @@ tagged completions to per-tab generation caches. Core remains authoritative for
 bounded ordering, Unicode folding, group resolution, errors, and
 lookup/tab/history behavior; the pane does not invoke enumeration, full-text,
 wildcard, regular-expression, or compound search.
+The dictionary-participation prerequisite keeps the toolbar boundary equally
+narrow. Lookup and suggestion requests carry an explicit filter-active bit so
+an empty dictionary-ID collection can mean no participating dictionaries;
+without that bit, existing empty collections remain unfiltered. Core still
+owns validation, group intersection, catalog ordering, unavailable-identity
+errors, bounds, and cancellation. A later Widgets `dictionaryBar` may therefore
+own only ephemeral presentation state and must not rewrite persisted group
+membership, group muting metadata, or source enabled intent.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,
