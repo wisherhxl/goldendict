@@ -800,6 +800,13 @@ int main(int argc, char* argv[]) {
             window.RunArticleTabsSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--suggestion-pane-smoke"))) {
+        QTimer::singleShot(15000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunSuggestionPaneSmokeCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
     } else if (HasArgument(
                    argc, argv,
                    QStringLiteral("--article-tab-session-restart-prepare"))) {

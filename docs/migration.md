@@ -543,6 +543,18 @@ preceding Qt 6 layouts; legacy version 1 remains excluded. The prefix/suggestion
 `searchPane`, `dictionaryBar`, menus, and legacy opaque state migration remain
 separate leaves.
 
+The next unlabelled Phase 8 shell increment adds the pinned `searchPane` and
+`wordList` identities as a visible left-side prefix-suggestion pane. A single
+Widgets-owned serial worker submits only the existing bounded suggestion
+contract, cancels replaced work, and rejects stale tab generations; empty,
+failed, cancelled, superseded, and closed-tab requests clear their presentation
+without backend enumeration. Ordered suggestions remain group-aware and
+activate the existing lookup/tab/history workflow. The private Qt state version
+advances while transactionally accepting versions 5, 4, 3, and 2 and seeding
+the absent pane at its deterministic default; version 1 remains excluded.
+Full-text and compound/expression search, `dictionaryBar`, menus, complete shell
+auditing, and legacy opaque state migration remain separate leaves.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,

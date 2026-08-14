@@ -316,6 +316,17 @@ the three immediately preceding private Qt 6 versions, and the two-start smoke
 preserves results-pane placement and visibility while legacy version 1 remains
 rejected.
 
+`goldendict_suggestion_pane_smoke` uses the same Dictd fixture to pin the
+unique visible left-side `searchPane` and `wordList`, bounded service ordering,
+rapid request replacement, keyboard focus transfer, mouse and keyboard lookup
+activation, history dispatch, and clearing after activation, empty input, and
+invalid input. The article-tabs and two-start restart smokes additionally pin
+version-6 state round trips, deterministic seeding while accepting Qt 6
+versions 5 through 2, placement and visibility persistence, usable central
+content, rollback safety, and continued version-1 rejection. Existing
+`application_service_test` cases remain the source of truth for Unicode/case
+folding, group ordering, cancellation, partial errors, and bounded limits.
+
 `goldendict_article_context_menu_smoke` verifies the application-private menu
 model without opening a real popup. It covers resolved internal links,
 allowlisted external links, rejected schemes, bounded exact selections, image

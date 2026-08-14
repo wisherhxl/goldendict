@@ -200,6 +200,13 @@ identities, and navigate by the matching composed-section order. Replacement,
 cancellation, failure, tab closure, and facade rebinding clear presentation
 state before it can become stale. Prefix suggestions, full-text results, and
 dictionary browsing remain independent workflows.
+The prefix-suggestion shell similarly stays private to Widgets. One serial
+worker retains at most a running request and the latest replacement, passes
+cancellation through the existing transport-neutral contract, and returns
+tagged completions to per-tab generation caches. Core remains authoritative for
+bounded ordering, Unicode folding, group resolution, errors, and
+lookup/tab/history behavior; the pane does not invoke enumeration, full-text,
+wildcard, regular-expression, or compound search.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,

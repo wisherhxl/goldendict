@@ -27,6 +27,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMenu>
+#include <QMetaObject>
 #include <QMouseEvent>
 #include <QPixmap>
 #include <QPointer>
@@ -60,17 +61,20 @@
 #include "goldendict/core/desktop_facade.h"
 #include "group_editor.h"
 #include "source_directories_dialog.h"
+#include "suggestion_worker.h"
 
 namespace {
 
-constexpr int kMainWindowStateVersion = 5;
-constexpr int kPreviousMainWindowStateVersion = 4;
-constexpr int kOlderMainWindowStateVersion = 3;
-constexpr int kOldestMainWindowStateVersion = 2;
+constexpr int kMainWindowStateVersion = 6;
+constexpr int kPreviousMainWindowStateVersion = 5;
+constexpr int kOlderMainWindowStateVersion = 4;
+constexpr int kOldestMainWindowStateVersion = 3;
+constexpr int kEarliestMainWindowStateVersion = 2;
 constexpr qsizetype kMaximumMainWindowStateBytes = 64 * 1024;
 constexpr auto kHistoryPaneName = "historyPane";
 constexpr auto kFavoritesPaneName = "favoritesPane";
 constexpr auto kResultsPaneName = "dictsPane";
+constexpr auto kSearchPaneName = "searchPane";
 constexpr auto kPreviousHistoryDockName = "historyDock";
 constexpr auto kPreviousFavoritesDockName = "favoritesDock";
 
@@ -195,6 +199,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     results_list_->setObjectName(QStringLiteral("dictsList"));
     results_list_->setAlternatingRowColors(true);
     results_dock->setWidget(results_list_);
+
+    auto* search_dock = new QDockWidget(QStringLiteral("&Search Pane"), this);
+    search_dock->setObjectName(QString::fromLatin1(kSearchPaneName));
+    auto* search_widget = new QWidget(search_dock);
+    auto* search_layout = new QVBoxLayout(search_widget);
+    search_layout->setContentsMargins(2, 1, 2, 1);
+    suggestions_list_ = new QListWidget(search_widget);
+    suggestions_list_->setObjectName(QStringLiteral("wordList"));
+    suggestions_list_->setAlternatingRowColors(true);
+    search_layout->addWidget(suggestions_list_, 1);
+    search_dock->setWidget(search_widget);
     ApplyDefaultPaneLayout();
 
     auto* nav_toolbar = addToolBar(QStringLiteral("&Navigation"));
@@ -224,7 +239,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     nav_toolbar->addWidget(lookup_controls);
     setTabOrder(group_selector_, query_);
     setTabOrder(query_, lookup_button_);
-    setTabOrder(lookup_button_, results_list_);
+    setTabOrder(lookup_button_, suggestions_list_);
+    setTabOrder(suggestions_list_, results_list_);
+    query_->installEventFilter(this);
+    suggestions_list_->installEventFilter(this);
 
     auto* focus_query_action = new QAction(this);
     focus_query_action->setShortcuts({QKeySequence(QStringLiteral("Alt+D")),
@@ -345,6 +363,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(article_tabs_->tabBar(), &QWidget::customContextMenuRequested, this,
             &MainWindow::ShowTabContextMenu);
     connect(query_, &QLineEdit::returnPressed, this, &MainWindow::StartLookup);
+    connect(query_, &QLineEdit::textChanged, this,
+            &MainWindow::StartSuggestionLookup);
+    connect(group_selector_, &QComboBox::currentIndexChanged, this, [this]() {
+        selected_group_id_ = group_selector_->currentData().value<quint32>();
+        StartSuggestionLookup();
+    });
+    connect(suggestions_list_, &QListWidget::itemClicked, this,
+            [this](QListWidgetItem*) { ActivateSuggestion(); });
     connect(results_list_, &QListWidget::itemSelectionChanged, this,
             &MainWindow::NavigateToSelectedResult);
     connect(results_list_, &QListWidget::itemActivated, this,
@@ -474,6 +500,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     addAction(find_action);
     connect(find_action, &QAction::triggered, article_search_,
             qOverload<>(&QLineEdit::setFocus));
+    suggestion_worker_ = std::make_unique<SuggestionWorker>(
+        [this](goldendict::core::ArticleTabId tab_id, std::uint64_t generation,
+               goldendict::core::SuggestionResponse response) {
+            QMetaObject::invokeMethod(
+                this, [this, tab_id, generation,
+                       response = std::move(response)]() mutable {
+                    FinishSuggestionLookup(tab_id, generation,
+                                           std::move(response));
+                });
+        });
     UpdateNavigationActions();
 }
 
@@ -666,6 +702,92 @@ void MainWindow::RunSystemPrintCheck(std::function<void(bool)> completion) {
                facade_->ExportArticleTabSession() == session_before);
 }
 
+void MainWindow::RunSuggestionPaneSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (facade_ == nullptr ||
+        facade_->GetDictionaryService().GetCatalog().empty()) {
+        completion(false);
+        return;
+    }
+    auto* search_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kSearchPaneName));
+    if (search_dock == nullptr || suggestions_list_ == nullptr) {
+        completion(false);
+        return;
+    }
+    ApplyDefaultPaneLayout();
+    auto lookup_count = std::make_shared<int>(0);
+    connect(this, &MainWindow::LookupSubmitted, this,
+            [lookup_count](const QString&, std::uint32_t) { ++*lookup_count; });
+    query_->setText(QStringLiteral("a"));
+    query_->setText(QStringLiteral("app"));
+    auto attempts = std::make_shared<int>(0);
+    auto poll = std::make_shared<std::function<void()>>();
+    *poll = [this, search_dock, lookup_count, attempts, poll,
+             completion = std::move(completion)]() mutable {
+        if (suggestions_list_->count() == 0 && ++*attempts < 100) {
+            QTimer::singleShot(10, this, *poll);
+            return;
+        }
+        bool passed =
+            findChildren<QDockWidget*>(QString::fromLatin1(kSearchPaneName))
+                    .size() == 1 &&
+            dockWidgetArea(search_dock) == Qt::LeftDockWidgetArea &&
+            search_dock->isVisible() && suggestions_list_->count() == 2 &&
+            suggestions_list_->item(0)->text() == QStringLiteral("apple") &&
+            suggestions_list_->item(1)->text() ==
+                QStringLiteral("application") &&
+            suggestions_list_->count() <= 20;
+        query_->setFocus();
+        QKeyEvent down(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier);
+        QApplication::sendEvent(query_, &down);
+        passed = passed && suggestions_list_->hasFocus() &&
+                 suggestions_list_->currentRow() == 0;
+        QKeyEvent up(QEvent::KeyPress, Qt::Key_Up, Qt::NoModifier);
+        QApplication::sendEvent(suggestions_list_, &up);
+        passed = passed && query_->hasFocus();
+        suggestions_list_->setCurrentRow(0);
+        emit suggestions_list_->itemClicked(suggestions_list_->item(0));
+        passed = passed && query_->text() == QStringLiteral("apple") &&
+                 suggestions_list_->count() == 0 && *lookup_count == 1 &&
+                 article_view_ != nullptr && article_view_->hasFocus();
+        query_->setText(QStringLiteral("app"));
+        auto keyboard_attempts = std::make_shared<int>(0);
+        auto keyboard_poll = std::make_shared<std::function<void()>>();
+        *keyboard_poll = [this, passed, lookup_count, keyboard_attempts,
+                          keyboard_poll,
+                          completion = std::move(completion)]() mutable {
+            if (suggestions_list_->count() < 2 && ++*keyboard_attempts < 100) {
+                QTimer::singleShot(10, this, *keyboard_poll);
+                return;
+            }
+            bool keyboard_passed = passed && suggestions_list_->count() == 2;
+            suggestions_list_->setCurrentRow(1);
+            suggestions_list_->setFocus();
+            QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+            QApplication::sendEvent(suggestions_list_, &enter);
+            keyboard_passed = keyboard_passed &&
+                              query_->text() == QStringLiteral("application") &&
+                              suggestions_list_->count() == 0 &&
+                              *lookup_count == 2;
+            query_->setText(QStringLiteral("app"));
+            query_->clear();
+            keyboard_passed =
+                keyboard_passed && suggestions_list_->count() == 0;
+            query_->setText(QString(5000, QLatin1Char('x')));
+            QTimer::singleShot(100, this,
+                               [this, keyboard_passed,
+                                completion = std::move(completion)]() mutable {
+                                   FinishLookup();
+                                   completion(keyboard_passed &&
+                                              suggestions_list_->count() == 0);
+                               });
+        };
+        QTimer::singleShot(10, this, *keyboard_poll);
+    };
+    QTimer::singleShot(10, this, *poll);
+}
+
 void MainWindow::RunArticleTabsSmokeCheck(
     std::function<void(bool)> completion) {
     if (facade_ == nullptr ||
@@ -698,13 +820,16 @@ void MainWindow::RunArticleTabsSmokeCheck(
         findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     auto* results_dock =
         findChild<QDockWidget*>(QString::fromLatin1(kResultsPaneName));
+    auto* search_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kSearchPaneName));
     auto* article_toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
     auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
     auto* back_button = findChild<QWidget*>(QStringLiteral("backButton"));
     auto* forward_button = findChild<QWidget*>(QStringLiteral("forwardButton"));
     if (history_dock == nullptr || favorites_dock == nullptr ||
-        results_dock == nullptr || results_list_ == nullptr ||
+        results_dock == nullptr || search_dock == nullptr ||
+        results_list_ == nullptr || suggestions_list_ == nullptr ||
         article_toolbar == nullptr || nav_toolbar == nullptr ||
         back_button == nullptr || forward_button == nullptr) {
         completion(false);
@@ -762,14 +887,18 @@ void MainWindow::RunArticleTabsSmokeCheck(
                 .size() == 1 &&
         findChildren<QDockWidget*>(QString::fromLatin1(kResultsPaneName))
                 .size() == 1 &&
+        findChildren<QDockWidget*>(QString::fromLatin1(kSearchPaneName))
+                .size() == 1 &&
         dockWidgetArea(history_dock) == Qt::RightDockWidgetArea &&
         dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
         dockWidgetArea(results_dock) == Qt::RightDockWidgetArea &&
+        dockWidgetArea(search_dock) == Qt::LeftDockWidgetArea &&
         history_dock->isVisible() && favorites_dock->isVisible() &&
-        results_dock->isVisible() &&
+        results_dock->isVisible() && search_dock->isVisible() &&
         tabifiedDockWidgets(history_dock).empty() &&
         tabifiedDockWidgets(favorites_dock).empty() &&
         tabifiedDockWidgets(results_dock).empty() &&
+        tabifiedDockWidgets(search_dock).empty() &&
         results_dock->geometry().top() <= favorites_dock->geometry().top() &&
         favorites_dock->geometry().top() <= history_dock->geometry().top() &&
         history_dock->findChild<QListWidget*>(QStringLiteral("historyList")) !=
@@ -778,7 +907,9 @@ void MainWindow::RunArticleTabsSmokeCheck(
             QStringLiteral("favoritesTree")) == favorites_tree_ &&
         results_dock->findChild<QListWidget*>(QStringLiteral("dictsList")) ==
             results_list_ &&
-        lookup_button_->nextInFocusChain() == results_list_ &&
+        search_dock->findChild<QListWidget*>(QStringLiteral("wordList")) ==
+            suggestions_list_ &&
+        lookup_button_->nextInFocusChain() == suggestions_list_ &&
         centralWidget() != nullptr && article_tabs_ != nullptr &&
         !article_tabs_->isHidden() && article_tabs_->size().width() > 0 &&
         article_tabs_->size().height() > 0;
@@ -791,34 +922,43 @@ void MainWindow::RunArticleTabsSmokeCheck(
     results_dock->toggleViewAction()->trigger();
     const bool results_hidden = !results_dock->isVisible();
     results_dock->toggleViewAction()->trigger();
-    const bool toggle_actions = history_hidden && favorites_hidden &&
-                                results_hidden && history_dock->isVisible() &&
-                                favorites_dock->isVisible() &&
-                                results_dock->isVisible();
+    search_dock->toggleViewAction()->trigger();
+    const bool search_hidden = !search_dock->isVisible();
+    search_dock->toggleViewAction()->trigger();
+    const bool toggle_actions =
+        history_hidden && favorites_hidden && results_hidden && search_hidden &&
+        history_dock->isVisible() && favorites_dock->isVisible() &&
+        results_dock->isVisible() && search_dock->isVisible();
     const std::string default_state = CaptureMainWindowState();
-    results_dock->setObjectName(QStringLiteral("preResultsPanePlaceholder"));
+    search_dock->setObjectName(QStringLiteral("preSearchPanePlaceholder"));
     const QByteArray previous_current_state =
         saveState(kPreviousMainWindowStateVersion);
-    nav_toolbar->setObjectName(
-        QStringLiteral("preNavigationToolbarPlaceholder"));
+    results_dock->setObjectName(QStringLiteral("preResultsPanePlaceholder"));
     const QByteArray older_current_state =
         saveState(kOlderMainWindowStateVersion);
+    nav_toolbar->setObjectName(
+        QStringLiteral("preNavigationToolbarPlaceholder"));
+    const QByteArray oldest_current_state =
+        saveState(kOldestMainWindowStateVersion);
     nav_toolbar->setObjectName(QStringLiteral("navToolbar"));
     history_dock->setObjectName(QString::fromLatin1(kPreviousHistoryDockName));
     favorites_dock->setObjectName(
         QString::fromLatin1(kPreviousFavoritesDockName));
-    const QByteArray oldest_current_state =
-        saveState(kOldestMainWindowStateVersion);
+    const QByteArray earliest_current_state =
+        saveState(kEarliestMainWindowStateVersion);
     history_dock->setObjectName(QString::fromLatin1(kHistoryPaneName));
     favorites_dock->setObjectName(QString::fromLatin1(kFavoritesPaneName));
     results_dock->setObjectName(QString::fromLatin1(kResultsPaneName));
+    search_dock->setObjectName(QString::fromLatin1(kSearchPaneName));
     addDockWidget(Qt::BottomDockWidgetArea, history_dock);
     addDockWidget(Qt::RightDockWidgetArea, favorites_dock);
     addDockWidget(Qt::LeftDockWidgetArea, results_dock);
+    addDockWidget(Qt::RightDockWidgetArea, search_dock);
     addToolBar(Qt::BottomToolBarArea, article_toolbar);
     addToolBar(Qt::BottomToolBarArea, nav_toolbar);
     favorites_dock->hide();
     results_dock->hide();
+    search_dock->hide();
     nav_toolbar->hide();
     const std::string changed_state = CaptureMainWindowState();
     const bool reset_state = RestoreMainWindowState(default_state);
@@ -827,10 +967,11 @@ void MainWindow::RunArticleTabsSmokeCheck(
         dockWidgetArea(history_dock) == Qt::BottomDockWidgetArea &&
         dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
         dockWidgetArea(results_dock) == Qt::LeftDockWidgetArea &&
+        dockWidgetArea(search_dock) == Qt::RightDockWidgetArea &&
         toolBarArea(article_toolbar) == Qt::BottomToolBarArea &&
         toolBarArea(nav_toolbar) == Qt::BottomToolBarArea &&
         !favorites_dock->isVisible() && !results_dock->isVisible() &&
-        !nav_toolbar->isVisible();
+        !search_dock->isVisible() && !nav_toolbar->isVisible();
     const bool restored_previous_current_state =
         RestoreMainWindowState(
             {previous_current_state.constData(),
@@ -838,7 +979,8 @@ void MainWindow::RunArticleTabsSmokeCheck(
         dockWidgetArea(history_dock) == Qt::RightDockWidgetArea &&
         dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
         history_dock->isVisible() && favorites_dock->isVisible() &&
-        results_dock->isVisible() &&
+        results_dock->isVisible() && search_dock->isVisible() &&
+        dockWidgetArea(search_dock) == Qt::LeftDockWidgetArea &&
         toolBarArea(nav_toolbar) == Qt::TopToolBarArea;
     const bool restored_older_current_state =
         RestoreMainWindowState(
@@ -847,7 +989,8 @@ void MainWindow::RunArticleTabsSmokeCheck(
         dockWidgetArea(history_dock) == Qt::RightDockWidgetArea &&
         dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
         history_dock->isVisible() && favorites_dock->isVisible() &&
-        results_dock->isVisible() &&
+        results_dock->isVisible() && search_dock->isVisible() &&
+        dockWidgetArea(search_dock) == Qt::LeftDockWidgetArea &&
         toolBarArea(nav_toolbar) == Qt::TopToolBarArea;
     const bool restored_oldest_current_state =
         RestoreMainWindowState(
@@ -857,7 +1000,15 @@ void MainWindow::RunArticleTabsSmokeCheck(
         dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
         dockWidgetArea(results_dock) == Qt::RightDockWidgetArea &&
         history_dock->isVisible() && favorites_dock->isVisible() &&
-        results_dock->isVisible() &&
+        results_dock->isVisible() && search_dock->isVisible() &&
+        dockWidgetArea(search_dock) == Qt::LeftDockWidgetArea &&
+        toolBarArea(nav_toolbar) == Qt::TopToolBarArea;
+    const bool restored_earliest_current_state =
+        RestoreMainWindowState(
+            {earliest_current_state.constData(),
+             static_cast<std::size_t>(earliest_current_state.size())}) &&
+        dockWidgetArea(search_dock) == Qt::LeftDockWidgetArea &&
+        search_dock->isVisible() && results_dock->isVisible() &&
         toolBarArea(nav_toolbar) == Qt::TopToolBarArea;
     const std::string before_bad_state = CaptureMainWindowState();
     const QByteArray incompatible_state = saveState(1);
@@ -888,7 +1039,7 @@ void MainWindow::RunArticleTabsSmokeCheck(
         focus_shortcuts && toggle_actions && reset_state && restored_state &&
         restored_previous_current_state && rejected_state &&
         restored_older_current_state && restored_oldest_current_state &&
-        topology_safe && final_default;
+        restored_earliest_current_state && topology_safe && final_default;
     if (!passed) {
         qWarning() << "shell state check failed" << restored_geometry
                    << rejected_geometry << default_shell << toggle_actions
@@ -897,7 +1048,7 @@ void MainWindow::RunArticleTabsSmokeCheck(
                    << restored_previous_current_state << rejected_state
                    << restored_older_current_state
                    << restored_oldest_current_state << topology_safe
-                   << final_default;
+                   << restored_earliest_current_state << final_default;
     }
     query_->setText(QStringLiteral("application"));
     SelectGroup(0U);
@@ -1234,12 +1385,14 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
         findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     auto* results_dock =
         findChild<QDockWidget*>(QString::fromLatin1(kResultsPaneName));
+    auto* search_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kSearchPaneName));
     auto* article_toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
     auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
     if (history_dock == nullptr || favorites_dock == nullptr ||
-        results_dock == nullptr || article_toolbar == nullptr ||
-        nav_toolbar == nullptr) {
+        results_dock == nullptr || search_dock == nullptr ||
+        article_toolbar == nullptr || nav_toolbar == nullptr) {
         completion(false);
         return;
     }
@@ -1253,10 +1406,12 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
         addDockWidget(Qt::BottomDockWidgetArea, history_dock);
         addDockWidget(Qt::RightDockWidgetArea, favorites_dock);
         addDockWidget(Qt::LeftDockWidgetArea, results_dock);
+        addDockWidget(Qt::RightDockWidgetArea, search_dock);
         addToolBar(Qt::BottomToolBarArea, article_toolbar);
         addToolBar(Qt::BottomToolBarArea, nav_toolbar);
         favorites_dock->hide();
         results_dock->hide();
+        search_dock->hide();
         emit ArticleTabSessionMutated();
         completion(true);
         return;
@@ -1268,10 +1423,11 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
                   dockWidgetArea(history_dock) == Qt::BottomDockWidgetArea &&
                   dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
                   dockWidgetArea(results_dock) == Qt::LeftDockWidgetArea &&
+                  dockWidgetArea(search_dock) == Qt::RightDockWidgetArea &&
                   toolBarArea(article_toolbar) == Qt::BottomToolBarArea &&
                   toolBarArea(nav_toolbar) == Qt::BottomToolBarArea &&
                   nav_toolbar->isVisible() && !favorites_dock->isVisible() &&
-                  !results_dock->isVisible();
+                  !results_dock->isVisible() && !search_dock->isVisible();
     auto poll = std::make_shared<std::function<void()>>();
     *poll = [this, passed, completion = std::move(completion), poll]() mutable {
         FinishLookup();
@@ -1753,6 +1909,7 @@ void MainWindow::RunDictionaryBrowserExportSmokeCheck(
 }
 
 MainWindow::~MainWindow() {
+    StopSuggestionWorker();
     for (auto& [id, request] : requests_) {
         static_cast<void>(id);
         request->Cancel();
@@ -1930,6 +2087,7 @@ void MainWindow::SyncArticleTabs() {
                 requests_.erase(request);
             }
             lookup_results_.erase(id);
+            suggestions_.erase(id);
             QWidget* widget = article_tabs_->widget(index);
             article_tabs_->removeTab(index);
             widget->deleteLater();
@@ -1973,6 +2131,7 @@ void MainWindow::SyncArticleTabs() {
                   .arg(QString::fromStdString(active->navigation.title)));
     UpdateNavigationActions();
     RefreshResultsNavigation();
+    RefreshSuggestions();
 }
 
 void MainWindow::RebuildArticleTabs() {
@@ -2090,6 +2249,29 @@ void MainWindow::ShowTabContextMenu(const QPoint& position) {
 }
 
 bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == query_ && event->type() == QEvent::KeyPress) {
+        auto* key = static_cast<QKeyEvent*>(event);
+        if (key->matches(QKeySequence::MoveToNextLine) &&
+            suggestions_list_->count() > 0) {
+            suggestions_list_->setFocus(Qt::ShortcutFocusReason);
+            suggestions_list_->setCurrentRow(0);
+            return true;
+        }
+    }
+    if (watched == suggestions_list_ && event->type() == QEvent::KeyPress) {
+        auto* key = static_cast<QKeyEvent*>(event);
+        if (key->matches(QKeySequence::MoveToPreviousLine) &&
+            suggestions_list_->currentRow() == 0) {
+            suggestions_list_->clearSelection();
+            query_->setFocus(Qt::ShortcutFocusReason);
+            return true;
+        }
+        if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) &&
+            suggestions_list_->currentItem() != nullptr) {
+            ActivateSuggestion();
+            return true;
+        }
+    }
     if (watched == article_tabs_->tabBar() &&
         event->type() == QEvent::MouseButtonPress) {
         auto* mouse = static_cast<QMouseEvent*>(event);
@@ -2239,6 +2421,10 @@ void MainWindow::RunDictionaryGroupsSmokeCheck(
 }
 
 void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
+    StopSuggestionWorker();
+    ++suggestion_generation_;
+    suggestions_.clear();
+    RefreshSuggestions();
     completion_timer_->stop();
     for (auto& [id, request] : requests_) {
         static_cast<void>(id);
@@ -2264,6 +2450,16 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
                            : facade->GetDictionaryService().GetCatalog().size();
     status_->setText(
         tr("%1 dictionary loaded").arg(static_cast<qulonglong>(count)));
+    suggestion_worker_ = std::make_unique<SuggestionWorker>(
+        [this](goldendict::core::ArticleTabId tab_id, std::uint64_t generation,
+               goldendict::core::SuggestionResponse response) {
+            QMetaObject::invokeMethod(
+                this, [this, tab_id, generation,
+                       response = std::move(response)]() mutable {
+                    FinishSuggestionLookup(tab_id, generation,
+                                           std::move(response));
+                });
+        });
     if (facade_ != nullptr)
         RebuildArticleTabs();
 }
@@ -2323,21 +2519,29 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         splitDockWidget(results, favorites, Qt::Vertical);
         results->show();
     };
+    const auto place_missing_search_pane = [this]() {
+        auto* search =
+            findChild<QDockWidget*>(QString::fromLatin1(kSearchPaneName));
+        if (search == nullptr)
+            return;
+        removeDockWidget(search);
+        addDockWidget(Qt::LeftDockWidgetArea, search);
+        search->show();
+    };
     if (restoreState(encoded, kMainWindowStateVersion) &&
         HasUsableMainWindowLayout()) {
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
-    place_missing_results_pane();
-    auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
-    if (nav_toolbar != nullptr)
-        addToolBar(Qt::TopToolBarArea, nav_toolbar);
+    place_missing_search_pane();
     if (restoreState(encoded, kPreviousMainWindowStateVersion) &&
         HasUsableMainWindowLayout()) {
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
+    place_missing_search_pane();
     place_missing_results_pane();
+    auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
     if (nav_toolbar != nullptr)
         addToolBar(Qt::TopToolBarArea, nav_toolbar);
     if (restoreState(encoded, kOlderMainWindowStateVersion) &&
@@ -2345,6 +2549,16 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
+    place_missing_search_pane();
+    place_missing_results_pane();
+    if (nav_toolbar != nullptr)
+        addToolBar(Qt::TopToolBarArea, nav_toolbar);
+    if (restoreState(encoded, kOldestMainWindowStateVersion) &&
+        HasUsableMainWindowLayout()) {
+        return true;
+    }
+    restoreState(previous, kMainWindowStateVersion);
+    place_missing_search_pane();
     place_missing_results_pane();
     auto* history =
         findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
@@ -2357,7 +2571,7 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         favorites->setObjectName(
             QString::fromLatin1(kPreviousFavoritesDockName));
         const bool restored_previous =
-            restoreState(encoded, kOldestMainWindowStateVersion);
+            restoreState(encoded, kEarliestMainWindowStateVersion);
         history->setObjectName(QString::fromLatin1(kHistoryPaneName));
         favorites->setObjectName(QString::fromLatin1(kFavoritesPaneName));
         const bool previous_usable = HasUsableMainWindowLayout();
@@ -2396,6 +2610,103 @@ void MainWindow::RefreshResultsNavigation() {
         results_list_->setCurrentRow(0);
 }
 
+void MainWindow::RefreshSuggestions() {
+    if (suggestions_list_ == nullptr)
+        return;
+    const QSignalBlocker blocker(suggestions_list_);
+    suggestions_list_->clear();
+    if (article_tabs_ == nullptr)
+        return;
+    const auto found =
+        suggestions_.find(TabIdAt(article_tabs_->currentIndex()));
+    if (found == suggestions_.end())
+        return;
+    for (const auto& suggestion : found->second.rows) {
+        auto* item = new QListWidgetItem(
+            QString::fromStdString(suggestion.headword), suggestions_list_);
+        item->setToolTip(item->text());
+        item->setData(Qt::UserRole,
+                      QString::fromStdString(suggestion.dictionary.id));
+        item->setTextAlignment(Qt::AlignLeft);
+    }
+    if (suggestions_list_->count() > 0)
+        suggestions_list_->scrollToTop();
+}
+
+void MainWindow::StartSuggestionLookup() {
+    if (suggestions_list_ == nullptr || article_tabs_ == nullptr)
+        return;
+    const auto tab_id = TabIdAt(article_tabs_->currentIndex());
+    if (tab_id == 0U)
+        return;
+    const QString text = query_->text().trimmed();
+    const std::uint64_t generation = ++suggestion_generation_;
+    auto& presentation = suggestions_[tab_id];
+    presentation.query = text;
+    presentation.group_id = selected_group_id_;
+    presentation.generation = generation;
+    presentation.rows.clear();
+    RefreshSuggestions();
+    if (text.isEmpty() || facade_ == nullptr || suggestion_worker_ == nullptr) {
+        if (text.isEmpty()) {
+            if (suggestion_worker_ != nullptr)
+                suggestion_worker_->Cancel();
+            suggestions_.erase(tab_id);
+        }
+        return;
+    }
+    goldendict::core::SuggestionQuery query;
+    query.text = text.toStdString();
+    query.group_id = selected_group_id_;
+    suggestion_worker_->Submit(&facade_->GetDictionaryService(),
+                               std::move(query), tab_id, generation);
+}
+
+void MainWindow::FinishSuggestionLookup(
+    goldendict::core::ArticleTabId tab_id, std::uint64_t generation,
+    goldendict::core::SuggestionResponse response) {
+    const auto found = suggestions_.find(tab_id);
+    if (found == suggestions_.end() || found->second.generation != generation) {
+        return;
+    }
+    found->second.rows.clear();
+    if (response.errors.empty() || response.partial)
+        found->second.rows = std::move(response.suggestions);
+    const bool active = TabIdAt(article_tabs_->currentIndex()) == tab_id;
+    if (active) {
+        RefreshSuggestions();
+        if (!response.errors.empty() && !response.partial)
+            status_->setText(QStringLiteral("Suggestion lookup failed"));
+    }
+}
+
+void MainWindow::ActivateSuggestion() {
+    if (suggestions_list_ == nullptr ||
+        suggestions_list_->currentItem() == nullptr)
+        return;
+    const QString word = suggestions_list_->currentItem()->text();
+    {
+        const QSignalBlocker blocker(query_);
+        query_->setText(word);
+    }
+    const auto tab_id = TabIdAt(article_tabs_->currentIndex());
+    suggestions_.erase(tab_id);
+    ++suggestion_generation_;
+    if (suggestion_worker_ != nullptr)
+        suggestion_worker_->Cancel();
+    RefreshSuggestions();
+    StartLookup();
+    if (article_view_ != nullptr)
+        article_view_->setFocus(Qt::OtherFocusReason);
+}
+
+void MainWindow::StopSuggestionWorker() {
+    if (suggestion_worker_ != nullptr) {
+        suggestion_worker_->Stop();
+        suggestion_worker_.reset();
+    }
+}
+
 void MainWindow::NavigateToSelectedResult() {
     if (article_view_ == nullptr || results_list_ == nullptr ||
         results_list_->currentRow() < 0) {
@@ -2417,11 +2728,16 @@ void MainWindow::ApplyDefaultPaneLayout() {
         findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     auto* results =
         findChild<QDockWidget*>(QString::fromLatin1(kResultsPaneName));
-    if (history == nullptr || favorites == nullptr || results == nullptr)
+    auto* search =
+        findChild<QDockWidget*>(QString::fromLatin1(kSearchPaneName));
+    if (history == nullptr || favorites == nullptr || results == nullptr ||
+        search == nullptr)
         return;
     removeDockWidget(history);
     removeDockWidget(favorites);
     removeDockWidget(results);
+    removeDockWidget(search);
+    addDockWidget(Qt::LeftDockWidgetArea, search);
     addDockWidget(Qt::RightDockWidgetArea, results);
     addDockWidget(Qt::RightDockWidgetArea, favorites);
     addDockWidget(Qt::RightDockWidgetArea, history);
@@ -2430,6 +2746,7 @@ void MainWindow::ApplyDefaultPaneLayout() {
     results->show();
     favorites->show();
     history->show();
+    search->show();
 }
 
 bool MainWindow::HasUsableMainWindowLayout() const {
@@ -2439,14 +2756,16 @@ bool MainWindow::HasUsableMainWindowLayout() const {
         findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     const auto* results =
         findChild<QDockWidget*>(QString::fromLatin1(kResultsPaneName));
+    const auto* search =
+        findChild<QDockWidget*>(QString::fromLatin1(kSearchPaneName));
     const auto* article_toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
     const auto* nav_toolbar =
         findChild<QToolBar*>(QStringLiteral("navToolbar"));
     if (history == nullptr || favorites == nullptr || results == nullptr ||
-        article_toolbar == nullptr || nav_toolbar == nullptr ||
-        centralWidget() == nullptr || article_tabs_ == nullptr ||
-        article_tabs_->isHidden()) {
+        search == nullptr || article_toolbar == nullptr ||
+        nav_toolbar == nullptr || centralWidget() == nullptr ||
+        article_tabs_ == nullptr || article_tabs_->isHidden()) {
         return false;
     }
     const auto intersects_screen = [](const QWidget* widget) {
@@ -2462,8 +2781,8 @@ bool MainWindow::HasUsableMainWindowLayout() const {
         return false;
     };
     return intersects_screen(history) && intersects_screen(favorites) &&
-           intersects_screen(results) && intersects_screen(article_toolbar) &&
-           intersects_screen(nav_toolbar);
+           intersects_screen(results) && intersects_screen(search) &&
+           intersects_screen(article_toolbar) && intersects_screen(nav_toolbar);
 }
 
 void MainWindow::ShowDictionaryBrowser() {
@@ -2912,6 +3231,12 @@ void MainWindow::StartNavigationLookup(
     bool record_history) {
     if (facade_ == nullptr || navigation.query.empty())
         return;
+    suggestions_.erase(tab_id);
+    ++suggestion_generation_;
+    if (suggestion_worker_ != nullptr)
+        suggestion_worker_->Cancel();
+    if (TabIdAt(article_tabs_->currentIndex()) == tab_id)
+        RefreshSuggestions();
     if (auto existing = requests_.find(tab_id); existing != requests_.end()) {
         existing->second->Cancel();
         requests_.erase(existing);

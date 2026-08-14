@@ -37,6 +37,7 @@ class QWebEngineView;
 class QPrinter;
 class QShortcut;
 class FavoritesTreeWidget;
+class SuggestionWorker;
 
 namespace goldendict::core {
 class DesktopFacade;
@@ -125,6 +126,7 @@ class MainWindow final : public QMainWindow {
     void RunDictionaryGroupsSmokeCheck(std::function<void(bool)> completion);
     void RunSourceDirectoriesSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabsSmokeCheck(std::function<void(bool)> completion);
+    void RunSuggestionPaneSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabSessionRestartSmokeCheck(
         bool prepare, std::function<void(bool)> completion);
 
@@ -204,6 +206,13 @@ class MainWindow final : public QMainWindow {
     void SelectGroup(std::uint32_t group_id);
     void RefreshGroupSelector();
     void RefreshResultsNavigation();
+    void RefreshSuggestions();
+    void StartSuggestionLookup();
+    void FinishSuggestionLookup(goldendict::core::ArticleTabId tab_id,
+                                std::uint64_t generation,
+                                goldendict::core::SuggestionResponse response);
+    void ActivateSuggestion();
+    void StopSuggestionWorker();
     void NavigateToSelectedResult();
     bool ExportHistoryToFile(const QString& path);
     QList<int> SelectedFavoriteFolderPath() const;
@@ -239,6 +248,7 @@ class MainWindow final : public QMainWindow {
     QPushButton* import_history_button_ = nullptr;
     FavoritesTreeWidget* favorites_tree_ = nullptr;
     QListWidget* results_list_ = nullptr;
+    QListWidget* suggestions_list_ = nullptr;
     QAction* add_favorite_action_ = nullptr;
     QAction* add_favorite_folder_action_ = nullptr;
     QAction* rename_favorite_action_ = nullptr;
@@ -266,6 +276,18 @@ class MainWindow final : public QMainWindow {
     std::map<goldendict::core::ArticleTabId,
              std::vector<goldendict::core::DictionaryIdentity>>
         lookup_results_;
+
+    struct SuggestionPresentation {
+        QString query;
+        std::uint32_t group_id = 0U;
+        std::uint64_t generation = 0U;
+        std::vector<goldendict::core::HeadwordSuggestion> rows;
+    };
+
+    std::map<goldendict::core::ArticleTabId, SuggestionPresentation>
+        suggestions_;
+    std::uint64_t suggestion_generation_ = 0U;
+    std::unique_ptr<SuggestionWorker> suggestion_worker_;
     DictionaryBrowser* dictionary_browser_ = nullptr;
     std::unique_ptr<QPrinter> printer_;
     bool print_in_progress_ = false;
