@@ -34,6 +34,7 @@
 #include <QPrinter>
 #include <QPushButton>
 #include <QSaveFile>
+#include <QScreen>
 #include <QShortcut>
 #include <QSignalBlocker>
 #include <QTabBar>
@@ -59,6 +60,9 @@
 #include "source_directories_dialog.h"
 
 namespace {
+
+constexpr int kMainWindowStateVersion = 2;
+constexpr qsizetype kMaximumMainWindowStateBytes = 64 * 1024;
 
 QString EscapeHtml(QString text) {
     return text.replace('&', QStringLiteral("&amp;"))
@@ -630,9 +634,56 @@ void MainWindow::RunArticleTabsSmokeCheck(
     const bool rejected_geometry =
         !RestoreMainWindowGeometry("not-qt-geometry") &&
         geometry() == before_rejected;
+    auto* history_dock = findChild<QDockWidget*>(QStringLiteral("historyDock"));
+    auto* favorites_dock =
+        findChild<QDockWidget*>(QStringLiteral("favoritesDock"));
+    auto* article_toolbar =
+        findChild<QToolBar*>(QStringLiteral("articleToolbar"));
+    if (history_dock == nullptr || favorites_dock == nullptr ||
+        article_toolbar == nullptr) {
+        completion(false);
+        return;
+    }
+    const std::string default_state = CaptureMainWindowState();
+    addDockWidget(Qt::BottomDockWidgetArea, history_dock);
+    addDockWidget(Qt::RightDockWidgetArea, favorites_dock);
+    addToolBar(Qt::BottomToolBarArea, article_toolbar);
+    favorites_dock->hide();
+    const std::string changed_state = CaptureMainWindowState();
+    const bool reset_state = RestoreMainWindowState(default_state);
+    const bool restored_state =
+        RestoreMainWindowState(changed_state) &&
+        dockWidgetArea(history_dock) == Qt::BottomDockWidgetArea &&
+        dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
+        toolBarArea(article_toolbar) == Qt::BottomToolBarArea &&
+        !favorites_dock->isVisible();
+    const std::string before_bad_state = CaptureMainWindowState();
+    const QByteArray incompatible_state = saveState(1);
+    const bool rejected_state =
+        !RestoreMainWindowState("not-qt-main-window-state") &&
+        CaptureMainWindowState() == before_bad_state &&
+        !RestoreMainWindowState(
+            {incompatible_state.constData(),
+             static_cast<std::size_t>(incompatible_state.size())}) &&
+        CaptureMainWindowState() == before_bad_state &&
+        !RestoreMainWindowState(std::string(64U * 1024U + 1U, 'x')) &&
+        CaptureMainWindowState() == before_bad_state;
+    favorites_dock->show();
+    favorites_dock->setFloating(true);
+    favorites_dock->setGeometry(100000, 100000, 240, 320);
+    const std::string unreachable_state = CaptureMainWindowState();
+    RestoreMainWindowState(default_state);
+    const std::string before_unreachable = CaptureMainWindowState();
+    const bool topology_restored = RestoreMainWindowState(unreachable_state);
+    const bool topology_safe =
+        topology_restored ? HasUsableMainWindowLayout()
+                          : CaptureMainWindowState() == before_unreachable;
+    const bool final_default = RestoreMainWindowState(default_state);
     bool passed = article_tabs_->count() == 1 &&
                   facade_->GetArticleTabsState().tabs.size() == 1U &&
-                  restored_geometry && rejected_geometry;
+                  restored_geometry && rejected_geometry && reset_state &&
+                  restored_state && rejected_state && topology_safe &&
+                  final_default;
     query_->setText(QStringLiteral("application"));
     SelectGroup(0U);
     StartLookup();
@@ -899,6 +950,16 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
     active_link.target_article_id = "active-target";
     const goldendict::core::ArticleTabSession expected = {
         {{7U, {empty, lookup, link}, 1U}, {42U, {link, active_link}, 1U}}, 42U};
+    auto* history_dock = findChild<QDockWidget*>(QStringLiteral("historyDock"));
+    auto* favorites_dock =
+        findChild<QDockWidget*>(QStringLiteral("favoritesDock"));
+    auto* article_toolbar =
+        findChild<QToolBar*>(QStringLiteral("articleToolbar"));
+    if (history_dock == nullptr || favorites_dock == nullptr ||
+        article_toolbar == nullptr) {
+        completion(false);
+        return;
+    }
     if (prepare) {
         const auto restored = facade_->RestoreArticleTabSession(expected);
         if (!restored) {
@@ -906,6 +967,10 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
             return;
         }
         RebuildArticleTabs();
+        addDockWidget(Qt::BottomDockWidgetArea, history_dock);
+        addDockWidget(Qt::RightDockWidgetArea, favorites_dock);
+        addToolBar(Qt::BottomToolBarArea, article_toolbar);
+        favorites_dock->hide();
         emit ArticleTabSessionMutated();
         completion(true);
         return;
@@ -913,7 +978,11 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
     bool passed = facade_->ExportArticleTabSession() == expected &&
                   article_tabs_->count() == 2 && TabIdAt(0) == 7U &&
                   TabIdAt(1) == 42U &&
-                  TabIdAt(article_tabs_->currentIndex()) == 42U;
+                  TabIdAt(article_tabs_->currentIndex()) == 42U &&
+                  dockWidgetArea(history_dock) == Qt::BottomDockWidgetArea &&
+                  dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
+                  toolBarArea(article_toolbar) == Qt::BottomToolBarArea &&
+                  !favorites_dock->isVisible();
     auto poll = std::make_shared<std::function<void()>>();
     *poll = [this, passed, completion = std::move(completion), poll]() mutable {
         FinishLookup();
@@ -1939,6 +2008,54 @@ bool MainWindow::RestoreMainWindowGeometry(const std::string& geometry) {
 std::string MainWindow::CaptureMainWindowGeometry() const {
     const QByteArray geometry = saveGeometry();
     return {geometry.constData(), static_cast<std::size_t>(geometry.size())};
+}
+
+bool MainWindow::RestoreMainWindowState(const std::string& state) {
+    if (state.empty() ||
+        state.size() > static_cast<std::size_t>(kMaximumMainWindowStateBytes)) {
+        return false;
+    }
+    const QByteArray previous = saveState(kMainWindowStateVersion);
+    const QByteArray encoded(state.data(),
+                             static_cast<qsizetype>(state.size()));
+    if (restoreState(encoded, kMainWindowStateVersion) &&
+        HasUsableMainWindowLayout()) {
+        return true;
+    }
+    restoreState(previous, kMainWindowStateVersion);
+    return false;
+}
+
+std::string MainWindow::CaptureMainWindowState() const {
+    const QByteArray state = saveState(kMainWindowStateVersion);
+    return {state.constData(), static_cast<std::size_t>(state.size())};
+}
+
+bool MainWindow::HasUsableMainWindowLayout() const {
+    const auto* history =
+        findChild<QDockWidget*>(QStringLiteral("historyDock"));
+    const auto* favorites =
+        findChild<QDockWidget*>(QStringLiteral("favoritesDock"));
+    const auto* toolbar =
+        findChild<QToolBar*>(QStringLiteral("articleToolbar"));
+    if (history == nullptr || favorites == nullptr || toolbar == nullptr ||
+        centralWidget() == nullptr) {
+        return false;
+    }
+    const auto intersects_screen = [](const QWidget* widget) {
+        if (!widget->isWindow())
+            return true;
+        const QRect geometry = widget->frameGeometry();
+        for (const QScreen* screen : QApplication::screens()) {
+            const QRect visible =
+                geometry.intersected(screen->availableGeometry());
+            if (visible.width() >= 32 && visible.height() >= 32)
+                return true;
+        }
+        return false;
+    };
+    return intersects_screen(history) && intersects_screen(favorites) &&
+           intersects_screen(toolbar);
 }
 
 void MainWindow::ShowDictionaryBrowser() {

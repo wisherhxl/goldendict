@@ -499,6 +499,17 @@ a 64 KiB decoded limit. Widgets alone calls Qt geometry APIs; malformed,
 oversized, empty, or Qt-rejected data preserves the default layout.
 `mainWindowState` and dock state remain excluded.
 
+The following unlabelled Phase 8 layout-state increment adds bounded current-
+format persistence for the Qt 6 main window's history and favorites docks and
+article toolbar. Core stores at most 64 KiB of opaque state; Widgets uses a
+current-only state version, restores transactionally, validates floating
+widgets against the available screen topology, and returns to the previous
+usable layout on rejection. The pinned legacy `mainWindowState` is not replayed:
+its search, results, favorites, and history panes plus navigation and dictionary
+toolbars do not match the current widget hierarchy, so partial opaque replay
+would be incompatible rather than parity. Legacy-compatible shell layout and
+state migration remain later unlabelled Phase 8 work.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,

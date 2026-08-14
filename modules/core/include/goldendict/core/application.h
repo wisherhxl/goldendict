@@ -385,6 +385,7 @@ struct CoreConfiguration {
     ApplicationPreferences preferences;
     std::optional<ArticleTabSession> article_tab_session;
     std::string main_window_geometry;
+    std::string main_window_state;
 };
 
 // Missing files load as an empty clean-profile configuration. Malformed files

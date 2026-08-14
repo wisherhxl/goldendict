@@ -313,6 +313,7 @@ int main(int argc, char* argv[]) {
     MainWindow window;
     window.SetPreferences(configuration.preferences);
     window.RestoreMainWindowGeometry(configuration.main_window_geometry);
+    window.RestoreMainWindowState(configuration.main_window_state);
     window.SetDictionaryGroups(configuration.dictionary_groups);
     window.SetSourceDirectories(configuration.dictionary_paths,
                                 configuration.sound_directories);
@@ -321,6 +322,7 @@ int main(int argc, char* argv[]) {
         auto updated = configuration;
         updated.article_tab_session = facade->ExportArticleTabSession();
         updated.main_window_geometry = window.CaptureMainWindowGeometry();
+        updated.main_window_state = window.CaptureMainWindowState();
         try {
             goldendict::core::SaveConfiguration(
                 configuration_path.toStdString(), updated);
@@ -882,6 +884,7 @@ int main(int argc, char* argv[]) {
                         {7U, "Preserved", "", {"unavailable"}}};
                     configuration.preferences.interface_language = "en_US";
                     configuration.main_window_geometry = "opaque-geometry";
+                    configuration.main_window_state = "opaque-state";
                     configuration.article_tab_session =
                         facade->ExportArticleTabSession();
                     goldendict::core::SaveConfiguration(
@@ -912,7 +915,9 @@ int main(int argc, char* argv[]) {
                                candidate.article_tab_session ==
                                    original.article_tab_session &&
                                candidate.main_window_geometry ==
-                                   original.main_window_geometry;
+                                   original.main_window_geometry &&
+                               candidate.main_window_state ==
+                                   original.main_window_state;
                     };
 
                     passed = apply_source_directories(
@@ -991,6 +996,8 @@ int main(int argc, char* argv[]) {
                         persisted.forvo_sources.empty() &&
                         persisted.main_window_geometry ==
                             original.main_window_geometry &&
+                        persisted.main_window_state ==
+                            original.main_window_state &&
                         facade->ExportArticleTabSession() == original_session &&
                         facade->GetDictionaryService().GetCatalog().back().id ==
                             "smoke.external";

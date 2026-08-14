@@ -77,6 +77,8 @@ class MainWindow final : public QMainWindow {
         const goldendict::core::ApplicationPreferences& preferences);
     bool RestoreMainWindowGeometry(const std::string& geometry);
     std::string CaptureMainWindowGeometry() const;
+    bool RestoreMainWindowState(const std::string& state);
+    std::string CaptureMainWindowState() const;
     void SetHistoryWords(const QStringList& words);
     void SetHistoryItems(const std::vector<HistoryViewItem>& items);
     void SetFavoriteItems(const std::vector<FavoriteViewItem>& items,
@@ -204,6 +206,7 @@ class MainWindow final : public QMainWindow {
     bool ExportHistoryToFile(const QString& path);
     QList<int> SelectedFavoriteFolderPath() const;
     QList<QList<int>> ExpandedFavoriteFolderPaths() const;
+    bool HasUsableMainWindowLayout() const;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
     std::vector<std::string> dictionary_paths_;

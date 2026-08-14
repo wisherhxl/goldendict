@@ -31,6 +31,7 @@ constexpr std::size_t kMaximumGroupValueBytes = 4096U;
 constexpr std::size_t kMaximumEncodedGroupIconBytes = 64U * 1024U;
 constexpr std::size_t kMaximumPreferenceStringBytes = 4096U;
 constexpr std::size_t kMaximumMainWindowGeometryBytes = 64U * 1024U;
+constexpr std::size_t kMaximumMainWindowStateBytes = 64U * 1024U;
 constexpr std::size_t kMaximumOnlineIdBytes = 128U;
 constexpr std::size_t kMaximumOnlineNameBytes = 256U;
 constexpr std::size_t kMaximumOnlineUrlBytes = 4096U;
@@ -570,6 +571,9 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         kMaximumMainWindowGeometryBytes) {
         throw std::runtime_error("Main-window geometry is too large");
     }
+    if (configuration.main_window_state.size() > kMaximumMainWindowStateBytes) {
+        throw std::runtime_error("Main-window state is too large");
+    }
     const auto has_nul = [](const std::string& value) {
         return value.find('\0') != std::string::npos;
     };
@@ -810,6 +814,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
     std::unordered_map<ArticleTabId, std::size_t> tab_indexes;
     bool has_article_tab_session = false;
     bool has_main_window_geometry = false;
+    bool has_main_window_state = false;
     bool has_index_directory = false;
     bool has_forvo_records = false;
     std::optional<std::size_t> declared_forvo_source_count;
@@ -841,6 +846,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         constexpr std::string_view kPreference = "preference=";
         constexpr std::string_view kMainWindowGeometry =
             "main_window_geometry=";
+        constexpr std::string_view kMainWindowState = "main_window_state=";
         constexpr std::string_view kArticleTabSession = "article_tab_session=";
         constexpr std::string_view kArticleTab = "article_tab=";
         constexpr std::string_view kArticleTabNavigation =
@@ -851,7 +857,15 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
             throw std::runtime_error(
                 "External program arguments must follow their parent");
         }
-        if (line.substr(0, kMainWindowGeometry.size()) == kMainWindowGeometry) {
+        if (line.substr(0, kMainWindowState.size()) == kMainWindowState) {
+            if (has_main_window_state) {
+                throw std::runtime_error("Duplicate main-window state");
+            }
+            has_main_window_state = true;
+            configuration.main_window_state =
+                Decode(line.substr(kMainWindowState.size()));
+        } else if (line.substr(0, kMainWindowGeometry.size()) ==
+                   kMainWindowGeometry) {
             if (has_main_window_geometry) {
                 throw std::runtime_error("Duplicate main-window geometry");
             }
@@ -1338,6 +1352,11 @@ void SaveConfiguration(const std::string& configuration_path,
     if (!configuration.main_window_geometry.empty()) {
         contents += "main_window_geometry=" +
                     Encode(configuration.main_window_geometry) + "\n";
+    }
+    if (!configuration.main_window_state.empty()) {
+        contents +=
+            "main_window_state=" + Encode(configuration.main_window_state) +
+            "\n";
     }
     const auto& p = configuration.preferences;
 #define APPEND_STRING(key, member) AppendPreference(contents, key, p.member)

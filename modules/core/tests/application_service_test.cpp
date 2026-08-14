@@ -93,6 +93,7 @@ class ApplicationServiceTest : public QObject {
     void ApplicationPreferencesCompareByValue();
     void ConfigurationRoundTripsPreferencesDeterministically();
     void ConfigurationRoundTripsBoundedMainWindowGeometry();
+    void ConfigurationRoundTripsBoundedMainWindowState();
     void ConfigurationRejectsMalformedPreferencesAtomically();
     void ConfigurationRejectsGroupBoundsAndDuplicatesAtomically();
     void ConfigurationRejectsMalformedGroups();
@@ -939,6 +940,44 @@ void ApplicationServiceTest::
                           "main_window_geometry=second\n");
     QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
                              std::runtime_error);
+
+    for (const std::string malformed : {"%", "%GG"}) {
+        test::WriteBinaryFile(path,
+                              "goldendict-core-config-v1\n"
+                              "main_window_state=" +
+                                  malformed + "\n");
+        QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                                 std::runtime_error);
+    }
+}
+
+void ApplicationServiceTest::ConfigurationRoundTripsBoundedMainWindowState() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration expected;
+    expected.dictionary_paths = {"/preserved"};
+    expected.main_window_state.assign(64U * 1024U, '\0');
+    expected.main_window_state[1] = '%';
+    expected.main_window_state[2] = '\n';
+
+    SaveConfiguration(path.string(), expected);
+    QCOMPARE(LoadConfiguration(path.string()).main_window_state,
+             expected.main_window_state);
+
+    const std::string original = ReadFile(path);
+    expected.main_window_state.push_back('x');
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), expected),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original);
+    QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\n"
+                          "main_window_state=first\n"
+                          "main_window_state=second\n");
+    QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                             std::runtime_error);
 }
 
 void ApplicationServiceTest::
@@ -1416,6 +1455,7 @@ void ApplicationServiceTest::MissingLegacyPreferencesRetainCurrentDefaults() {
 
     QCOMPARE(migrated.preferences, defaults);
     QVERIFY(migrated.main_window_geometry.empty());
+    QVERIFY(migrated.main_window_state.empty());
     QCOMPARE(LoadConfiguration(current_path.string()).preferences, defaults);
     QCOMPARE(ReadFile(legacy_path), legacy);
 }

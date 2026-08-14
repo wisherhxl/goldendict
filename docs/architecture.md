@@ -169,6 +169,13 @@ session: its configuration contains no tab or navigation records, startup
 always creates a fresh welcome tab, and per-view history and scroll data exist
 only in memory. Consequently there is no legacy article-session format or
 migration input; current-format session persistence remains unchanged.
+The current configuration also carries a separately bounded opaque Qt 6 main-
+window state. Core owns its 64 KiB persistence limit without interpreting Qt
+bytes. Widgets captures and transactionally restores a current-only version,
+checks restored floating docks and toolbars against available screens, and
+rolls back on malformed, incompatible, or unusable state. Legacy version-1
+state remains excluded because its main-window object hierarchy is not yet
+represented by the Qt 6 shell.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,

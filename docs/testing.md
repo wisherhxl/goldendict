@@ -223,6 +223,10 @@ records, older-file compatibility, and exact strict legacy names. Binary
 main-window geometry round-trips through the current store with a 64 KiB
 decoded limit; malformed, duplicate, and oversized current or legacy data is
 rejected atomically while `mainWindowState` remains ignored.
+Current Qt 6 main-window state has an independent 64 KiB current-format bound;
+binary round-trip, duplicate and oversized rejection, atomic save failure, and
+older-file compatibility are pinned while legacy `mainWindowState` remains
+ignored.
 
 `legacy_configuration_location_test` pins R6c with injected synthetic roots
 for portable, Linux/Unix, Windows, and macOS. It verifies exact names and
@@ -286,6 +290,11 @@ forward truncation, and atomic tab/navigation-limit handling.
 It additionally covers configurable default activation, after-current visible
 ordering, valid geometry capture/restore, and deterministic Qt rejection
 fallback.
+It also pins the current dock/toolbar hierarchy, areas, visibility,
+transactional state restoration, malformed and oversized fallback, and safe
+handling of an off-screen floating-state topology. The two-start restart smoke
+verifies that dock and toolbar placement and visibility survive alongside the
+article session without changing tab identities.
 
 `goldendict_article_context_menu_smoke` verifies the application-private menu
 model without opening a real popup. It covers resolved internal links,
