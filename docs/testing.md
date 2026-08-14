@@ -120,6 +120,10 @@ acceptance, exact ordering, and atomic rejected-save behavior.
 The same service test verifies the single-dictionary enumeration contract:
 legacy-compatible unique ordering, bounded continuation, cursor integrity and
 snapshot binding, cancellation, and deterministic unsupported results.
+Focused export coverage verifies multi-page UTF-8 BOM/LF output, exact ordering
+and duplicate semantics, empty dictionaries, cancellation/deadlines, error
+translation, collision-safe sibling temporary files, cleanup, and preservation
+of an existing destination on every unsuccessful path.
 Dictionary tests for StarDict, the 11 R3a.2 article formats, and the three
 R3a.3 audio formats pin capability publication and extraction from natural
 records, including aliases, redirects, reserved Dictd entries, and derived
@@ -343,9 +347,10 @@ tests verify that catalog languages and descriptions cross the public facade
 without affecting lookup identity or ordering.
 
 `goldendict_dictionary_browser_export_smoke` uses the same fixture and real
-dialog to export the displayed prefix results, then verifies the compatibility
-UTF-8 BOM, deterministic suggestion order, one-headword-per-line format, and
-exact file contents in an isolated configuration directory.
+browser to export the selected dictionary's complete list independently of the
+displayed prefix results, then verifies the compatibility UTF-8 BOM,
+enumeration order, one-headword-per-line format, and exact file contents in an
+isolated configuration directory.
 
 `goldendict_history_management_smoke` verifies case-insensitive live history
 filtering, sends the clear command through the real application composition

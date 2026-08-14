@@ -346,7 +346,12 @@ metadata, resource identifiers, resource bytes, and synthesized article text
 are not. Audio enumeration never rewalks directories, reads resource files, or
 decompresses archive members. Runtime sources and local formats without an
 explicit enumeration adapter report unsupported without performing source
-work.
+work. The desktop facade streams complete single-dictionary exports through
+that bounded API without accumulating the list. Exports use UTF-8 with a BOM,
+one sanitized headword per LF-terminated line, preserve enumeration order and
+exact-duplicate semantics, and atomically replace the destination only after
+every page is written and flushed. Unsuccessful exports remove the sibling
+temporary file and leave an existing destination unchanged.
 Prefix ranking is core behavior: canonical exact matches come first, followed
 by shorter canonical candidates with deterministic scores. Neither the GUI nor
 a future AI transport reimplements folding, ranking, limits, cancellation, or

@@ -60,6 +60,12 @@ class DesktopFacadeImpl final : public DesktopFacade {
         return *service_;
     }
 
+    std::unique_ptr<HeadwordExportOperation> StartHeadwordExport(
+        HeadwordExportRequest request) const override {
+        return goldendict::core::StartHeadwordExport(*service_,
+                                                     std::move(request));
+    }
+
     ArticleContent ComposeLookupPage(
         const LookupResponse& response) const override {
         return article::ComposeLookupPage(response);

@@ -10,6 +10,7 @@
 
 #include "goldendict/base/goldendict_def.tp.h"
 #include "goldendict/core/dictionary_service.h"
+#include "goldendict/core/headword_export.h"
 
 namespace goldendict::core {
 
@@ -131,6 +132,8 @@ class GOLDENDICT_EXPORTS DesktopFacade {
 
     virtual DictionaryService& GetDictionaryService() noexcept = 0;
     virtual const DictionaryService& GetDictionaryService() const noexcept = 0;
+    virtual std::unique_ptr<HeadwordExportOperation> StartHeadwordExport(
+        HeadwordExportRequest request) const = 0;
     virtual ArticleContent ComposeLookupPage(
         const LookupResponse& response) const = 0;
     virtual std::optional<ArticleUrl> ResolveArticleUrl(

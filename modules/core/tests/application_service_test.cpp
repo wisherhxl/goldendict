@@ -8,6 +8,7 @@
 #include <string>
 
 #include "goldendict/core/application.h"
+#include "goldendict/core/headword_export.h"
 #include "support/aard_fixture.h"
 #include "support/bgl_fixture.h"
 #include "support/dictd_fixture.h"
@@ -106,6 +107,7 @@ class ApplicationServiceTest : public QObject {
     void CatalogSanitizesInspectionMetadata();
     void DiscoversAndQueriesARealFixture();
     void EnumeratesStarDictHeadwordsWithStableCursors();
+    void ExportsCompleteHeadwordListsAtomically();
     void ReturnsCanonicalFoldedMatchInformation();
     void ReturnsRankedPrefixMatches();
     void ReturnsLightweightHeadwordSuggestions();
@@ -1682,6 +1684,63 @@ void ApplicationServiceTest::EnumeratesStarDictHeadwordsWithStableCursors() {
     QVERIFY(cancelled_page.error.has_value());
     QCOMPARE(cancelled_page.error->code,
              HeadwordEnumerationErrorCode::kCancelled);
+}
+
+void ApplicationServiceTest::ExportsCompleteHeadwordListsAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    std::filesystem::create_directory(root / "dictionary");
+    test::WriteStardictFixture(root / "dictionary",
+                               {{"zebra", "one"},
+                                {"Apple", "two"},
+                                {"Apple", "exact duplicate"},
+                                {"apple", "three"},
+                                {"caf\xc3\xa9", "unicode"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {(root / "dictionary").string()};
+    auto service = CreateDictionaryService(configuration);
+    const auto catalog = service->GetCatalog();
+    QCOMPARE(catalog.size(), std::size_t{1});
+
+    const auto destination = root / "headwords.txt";
+    test::WriteBinaryFile(destination, "previous destination");
+    HeadwordExportRequest request;
+    request.dictionary_id = catalog.front().id;
+    request.destination_path = destination.string();
+    request.page_size = 2U;
+    auto operation = StartHeadwordExport(*service, request);
+    const auto result = operation->Await();
+    QVERIFY(result);
+    QCOMPARE(result.exported_headwords, std::size_t{4});
+    std::ifstream input(destination, std::ios::binary);
+    const std::string contents((std::istreambuf_iterator<char>(input)), {});
+    QCOMPARE(contents, std::string("\xef\xbb\xbf") +
+                           "Apple\napple\ncaf\xc3\xa9\nzebra\n");
+
+    const auto collision = root / ".headwords.txt.goldendict-export-1.tmp";
+    test::WriteBinaryFile(collision, "collision");
+    request.dictionary_id = "missing";
+    auto failed = StartHeadwordExport(*service, request);
+    const auto failure = failed->Await();
+    QCOMPARE(failure.error, HeadwordExportErrorCode::kDictionaryUnavailable);
+    std::ifstream preserved(destination, std::ios::binary);
+    const std::string preserved_contents(
+        (std::istreambuf_iterator<char>(preserved)), {});
+    QCOMPARE(preserved_contents, contents);
+
+    request.dictionary_id = catalog.front().id;
+    request.destination_path = (root / "missing" / "headwords.txt").string();
+    auto unopened = StartHeadwordExport(*service, request);
+    QCOMPARE(unopened->Await().error, HeadwordExportErrorCode::kOpenFailed);
+
+    request.destination_path = destination.string();
+    request.timeout = std::chrono::milliseconds::zero();
+    auto expired = StartHeadwordExport(*service, request);
+    QCOMPARE(expired->Await().error, HeadwordExportErrorCode::kInvalidRequest);
+    std::ifstream still_preserved(destination, std::ios::binary);
+    QCOMPARE(std::string((std::istreambuf_iterator<char>(still_preserved)), {}),
+             contents);
 }
 
 void ApplicationServiceTest::ReturnsCanonicalFoldedMatchInformation() {

@@ -1390,7 +1390,7 @@ void MainWindow::RunDictionaryBrowserExportSmokeCheck(
     ShowDictionaryBrowser();
     dictionary_browser_->RunExportSmokeCheck(
         path, QStringLiteral("app"),
-        QByteArray::fromHex("efbbbf") + "apple\napplication\n",
+        QByteArray::fromHex("efbbbf") + "00databaseshort\napple\napplication\n",
         std::move(completion));
 }
 

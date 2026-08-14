@@ -2,6 +2,7 @@
 
 #include "dictionary_browser.h"
 
+#include <limits>
 #include <utility>
 
 #include <QApplication>
@@ -18,8 +19,9 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPlainTextEdit>
+#include <QProgressDialog>
 #include <QPushButton>
-#include <QSaveFile>
+#include <QRegularExpression>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -123,7 +125,7 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
     result_status_->setObjectName(QStringLiteral("headwordStatus"));
     layout->addWidget(result_status_);
     export_headwords_ =
-        new QPushButton(QStringLiteral("Export Displayed Headwords..."), this);
+        new QPushButton(QStringLiteral("Export All Headwords..."), this);
     export_headwords_->setObjectName(QStringLiteral("exportHeadwords"));
     export_headwords_->setEnabled(false);
     layout->addWidget(export_headwords_);
@@ -159,15 +161,15 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
             });
     connect(export_headwords_, &QPushButton::clicked, this, [this]() {
         const QString path = QFileDialog::getSaveFileName(
-            this, QStringLiteral("Export displayed headwords"), QString(),
+            this, QStringLiteral("Save headwords to file"),
+            DefaultExportFileName(),
             QStringLiteral("Text files (*.txt);;All files (*.*)"));
         if (path.isEmpty()) {
+            result_status_->setText(
+                QStringLiteral("Headword export cancelled"));
             return;
         }
-        result_status_->setText(
-            ExportHeadwordsToFile(path)
-                ? tr("Exported %1 headword(s)").arg(headwords_->count())
-                : QStringLiteral("Could not export headwords"));
+        StartHeadwordExport(path);
     });
     connect(copy_source_, &QPushButton::clicked, this, [this]() {
         QApplication::clipboard()->setText(CurrentSourcePath());
@@ -187,10 +189,13 @@ void DictionaryBrowser::RunExportSmokeCheck(
     QTimer::singleShot(
         0, this,
         [this, path, expected, completion = std::move(completion)]() mutable {
-            const bool exported = ExportHeadwordsToFile(path);
-            QFile file(path);
-            const bool opened = file.open(QIODevice::ReadOnly);
-            completion(exported && opened && file.readAll() == expected);
+            StartHeadwordExport(path, [path, expected,
+                                       completion = std::move(completion)](
+                                          bool exported) mutable {
+                QFile file(path);
+                const bool opened = file.open(QIODevice::ReadOnly);
+                completion(exported && opened && file.readAll() == expected);
+            });
         });
 }
 
@@ -250,7 +255,7 @@ void DictionaryBrowser::RunSmokeCheck(const QString& expected_dictionary,
             const bool regex_passed = headwords_->count() == 2;
             prefix_->setText(QStringLiteral("app("));
             const bool invalid_passed = headwords_->count() == 0 &&
-                                        !export_headwords_->isEnabled() &&
+                                        export_headwords_->isEnabled() &&
                                         !result_status_->text().isEmpty();
             filter_mode_->setCurrentIndex(0);
             prefix_->setText(prefix);
@@ -276,6 +281,7 @@ void DictionaryBrowser::RefreshDictionaryInfo() {
         description_->clear();
         article_count_->clear();
         headword_count_->clear();
+        export_headwords_->setToolTip(QString());
         copy_source_->setEnabled(false);
         open_source_directory_->setEnabled(false);
         return;
@@ -300,6 +306,11 @@ void DictionaryBrowser::RefreshDictionaryInfo() {
             : QString::fromStdString(dictionary.description));
     article_count_->setText(QString::number(dictionary.article_count));
     headword_count_->setText(QString::number(dictionary.headword_count));
+    export_headwords_->setToolTip(
+        dictionary.supports_headword_enumeration
+            ? QString()
+            : QStringLiteral(
+                  "This dictionary does not support complete headword export"));
     const QFileInfo source(CurrentSourcePath());
     copy_source_->setEnabled(!CurrentSourcePath().isEmpty());
     open_source_directory_->setEnabled(source.exists());
@@ -339,6 +350,9 @@ void DictionaryBrowser::RefreshHeadwords() {
         result_status_->setText(QStringLiteral("No dictionary selected"));
         return;
     }
+    export_headwords_->setEnabled(catalog_[static_cast<std::size_t>(index)]
+                                      .supports_headword_enumeration &&
+                                  export_operation_ == nullptr);
     if (prefix.isEmpty()) {
         result_status_->setText(
             mode == goldendict::core::HeadwordFilterMode::kPrefix
@@ -362,7 +376,6 @@ void DictionaryBrowser::RefreshHeadwords() {
             QString::fromStdString(response.errors.front().message));
         return;
     }
-    export_headwords_->setEnabled(headwords_->count() > 0);
     if (!selected_headword.isEmpty()) {
         const auto retained =
             headwords_->findItems(selected_headword, Qt::MatchFixedString);
@@ -375,23 +388,86 @@ void DictionaryBrowser::RefreshHeadwords() {
             .arg(static_cast<qulonglong>(response.suggestions.size())));
 }
 
-bool DictionaryBrowser::ExportHeadwordsToFile(const QString& path) {
-    if (headwords_->count() == 0) {
-        return false;
+QString DictionaryBrowser::DefaultExportFileName() const {
+    const int index = dictionaries_->currentIndex();
+    if (index < 0 || static_cast<std::size_t>(index) >= catalog_.size()) {
+        return QStringLiteral("headwords.txt");
     }
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly) ||
-        file.write(QByteArray::fromHex("efbbbf")) != 3) {
-        return false;
+    QString name =
+        QString::fromStdString(catalog_[static_cast<std::size_t>(index)].name);
+    name.replace(QRegularExpression(QStringLiteral("[\\\\/:*?\"<>|]")),
+                 QStringLiteral("_"));
+    name = name.trimmed();
+    return (name.isEmpty() ? QStringLiteral("headwords") : name) +
+           QStringLiteral(".txt");
+}
+
+void DictionaryBrowser::StartHeadwordExport(
+    const QString& path, std::function<void(bool)> completion) {
+    const int index = dictionaries_->currentIndex();
+    if (facade_ == nullptr || export_operation_ != nullptr || index < 0 ||
+        static_cast<std::size_t>(index) >= catalog_.size() ||
+        !catalog_[static_cast<std::size_t>(index)]
+             .supports_headword_enumeration) {
+        result_status_->setText(
+            QStringLiteral("Selected dictionary cannot export headwords"));
+        if (completion)
+            completion(false);
+        return;
     }
-    for (int index = 0; index < headwords_->count(); ++index) {
-        QByteArray line = headwords_->item(index)->text().toUtf8();
-        line.replace('\n', ' ');
-        line.replace('\r', ' ');
-        line.push_back('\n');
-        if (file.write(line) != line.size()) {
-            return false;
-        }
-    }
-    return file.commit();
+    goldendict::core::HeadwordExportRequest request;
+    request.dictionary_id = catalog_[static_cast<std::size_t>(index)].id;
+    request.destination_path = path.toStdString();
+    export_operation_ = facade_->StartHeadwordExport(std::move(request));
+    export_headwords_->setEnabled(false);
+    dictionaries_->setEnabled(false);
+    export_progress_ = new QProgressDialog(
+        QStringLiteral("Export headwords..."), QStringLiteral("Cancel"), 0,
+        static_cast<int>(std::min<std::size_t>(
+            catalog_[static_cast<std::size_t>(index)].headword_count,
+            static_cast<std::size_t>(std::numeric_limits<int>::max()))),
+        this);
+    export_progress_->setWindowModality(Qt::WindowModal);
+    export_progress_->setMinimumDuration(0);
+    connect(export_progress_, &QProgressDialog::canceled, this,
+            [this]() { export_operation_->Cancel(); });
+    export_poll_timer_ = new QTimer(this);
+    connect(
+        export_poll_timer_, &QTimer::timeout, this,
+        [this, completion = std::move(completion)]() mutable {
+            export_progress_->setValue(static_cast<int>(
+                std::min<std::size_t>(export_operation_->ExportedHeadwords(),
+                                      std::numeric_limits<int>::max())));
+            if (!export_operation_->IsFinished())
+                return;
+            export_poll_timer_->stop();
+            const auto result = export_operation_->Await();
+            const bool success = static_cast<bool>(result);
+            disconnect(export_progress_, &QProgressDialog::canceled, this,
+                       nullptr);
+            export_progress_->close();
+            export_operation_.reset();
+            export_progress_->deleteLater();
+            export_progress_ = nullptr;
+            export_poll_timer_->deleteLater();
+            export_poll_timer_ = nullptr;
+            dictionaries_->setEnabled(true);
+            RefreshHeadwords();
+            if (success) {
+                result_status_->setText(tr("Exported %1 headword(s)")
+                                            .arg(static_cast<qulonglong>(
+                                                result.exported_headwords)));
+            } else if (result.error ==
+                       goldendict::core::HeadwordExportErrorCode::kCancelled) {
+                result_status_->setText(
+                    QStringLiteral("Headword export cancelled"));
+            } else {
+                result_status_->setText(
+                    tr("Could not export headwords: %1")
+                        .arg(QString::fromStdString(result.message)));
+            }
+            if (completion)
+                completion(success);
+        });
+    export_poll_timer_->start(25);
 }

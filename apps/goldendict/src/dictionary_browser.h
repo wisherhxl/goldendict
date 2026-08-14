@@ -10,6 +10,7 @@
 #include <QDialog>
 
 #include "goldendict/core/dictionary_service.h"
+#include "goldendict/core/headword_export.h"
 
 class QLabel;
 class QLineEdit;
@@ -18,6 +19,8 @@ class QComboBox;
 class QCheckBox;
 class QPushButton;
 class QPlainTextEdit;
+class QProgressDialog;
+class QTimer;
 
 namespace goldendict::core {
 class DesktopFacade;
@@ -43,7 +46,9 @@ class DictionaryBrowser final : public QDialog {
    private:
     void RefreshDictionaryInfo();
     void RefreshHeadwords();
-    bool ExportHeadwordsToFile(const QString& path);
+    void StartHeadwordExport(const QString& path,
+                             std::function<void(bool)> completion = {});
+    QString DefaultExportFileName() const;
     QString CurrentSourcePath() const;
     QString CurrentSourceDirectory() const;
 
@@ -66,6 +71,10 @@ class DictionaryBrowser final : public QDialog {
     QListWidget* headwords_ = nullptr;
     QLabel* result_status_ = nullptr;
     QPushButton* export_headwords_ = nullptr;
+    QProgressDialog* export_progress_ = nullptr;
+    QTimer* export_poll_timer_ = nullptr;
+    std::unique_ptr<goldendict::core::HeadwordExportOperation>
+        export_operation_;
 };
 
 #endif  // GOLDENDICT_APPS_GOLDENDICT_DICTIONARY_BROWSER_H_
