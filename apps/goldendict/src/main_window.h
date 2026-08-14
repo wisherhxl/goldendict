@@ -135,6 +135,8 @@ class MainWindow final : public QMainWindow {
     void RunViewMenuSmokeCheck(std::function<void(bool)> completion);
     void RunHistoryMenuSmokeCheck(const QString& path,
                                   std::function<void(bool)> completion);
+    void RunFavoritesMenuSmokeCheck(const QString& path,
+                                    std::function<void(bool)> completion);
     void RunFileMenuSmokeCheck(const QString& path,
                                std::function<void(bool)> completion);
     void RunEditMenuSmokeCheck(std::function<void(bool)> completion);
@@ -218,6 +220,7 @@ class MainWindow final : public QMainWindow {
     void ShowMessage(const QString& title, const QString& message);
     void RefreshHistoryList();
     void UpdateHistoryActions();
+    void UpdateFavoritesActions();
     void SelectGroup(std::uint32_t group_id);
     void RefreshGroupSelector();
     void RefreshDictionaryBar();
@@ -289,6 +292,9 @@ class MainWindow final : public QMainWindow {
     QAction* import_favorites_action_ = nullptr;
     QAction* export_favorites_action_ = nullptr;
     QAction* remove_favorite_action_ = nullptr;
+    std::function<QString()> favorites_export_path_provider_;
+    std::function<QString()> favorites_import_path_provider_;
+    bool favorites_command_busy_ = false;
     QAction* dictionary_browser_action_ = nullptr;
     QToolButton* lookup_button_ = nullptr;
     QToolBar* dictionary_bar_ = nullptr;

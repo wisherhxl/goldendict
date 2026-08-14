@@ -634,6 +634,20 @@ scan, and global-search placeholders are likewise excluded. Qt main-window
 state remains at private version 7. The remaining menu branches and final
 legacy state import remain separate leaves.
 
+The following independent Phase 8 menu leaf adds the pinned `menuFavorites`
+identity after History. It reuses the exact `favoritesPane` toggle and the
+existing XML export, XML import, and active-query Add actions in pinned
+supported order, with one separator and unique Ctrl+I/Ctrl+E ownership. The
+article toolbar and menu share the same action instances; query, tree
+selection, empty-tree, and busy state therefore cannot diverge. Widgets owns
+dialogs and presentation state, while the composition root and core retain
+selected-folder targeting, validation, atomic persistence and transfer, and
+failure preservation. The pinned plain-list export is absent because no
+authoritative Qt 6 implementation exists, and selected-item removal remains
+toolbar-only because the legacy menu has no removal entry. Qt main-window
+state remains at private version 7. The Help branch and final legacy state
+import remain separate leaves.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,

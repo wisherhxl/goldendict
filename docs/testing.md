@@ -323,6 +323,17 @@ single dispatch, empty/nonempty/busy enablement, pane synchronization, atomic
 compatibility export, unchanged private state version, and usable central
 content. Existing history management, import, export, activation, and core
 store tests continue to cover persisted success and failure semantics.
+`goldendict_favorites_menu_smoke` pins the unique `menuFavorites` placement,
+supported legacy order and separator, action identities, roles, shortcuts,
+and exact reuse of the `favoritesPane` toggle and article-toolbar XML
+transfer/Add actions. It verifies unique shortcut ownership, single dispatch,
+pane synchronization, query/tree/empty/busy enablement, selected-folder Add
+targeting, canonical selected-item removal, dialog cancellation, malformed
+import and failed-export preservation, successful atomic XML transfer, and
+unchanged query, central article usability, and private state version. The
+unsupported legacy plain-list export and a menu-only removal proxy are
+explicitly absent; existing Favorites management, transfer, move, and core
+store tests remain authoritative for persistence and validation semantics.
 `goldendict_file_menu_smoke` pins the unique leading `menuFile`, exact supported
 legacy identities, order, separators, roles, shortcuts, and single shortcut
 ownership. It verifies exact action reuse by the tab control, article toolbar,

@@ -840,6 +840,17 @@ int main(int argc, char* argv[]) {
                         .filePath(QStringLiteral("history-menu-export.txt")),
                     [&app](bool passed) { app.exit(passed ? 0 : 1); });
             });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--favorites-menu-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window, [&app, &configuration_directory, &window]() {
+                QDir().mkpath(configuration_directory);
+                window.RunFavoritesMenuSmokeCheck(
+                    QDir(configuration_directory)
+                        .filePath(QStringLiteral("favorites-menu-export.xml")),
+                    [&app](bool passed) { app.exit(passed ? 0 : 1); });
+            });
     } else if (HasArgument(argc, argv, QStringLiteral("--webengine-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         window.RunWebEngineSmokeCheck(

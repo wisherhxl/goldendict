@@ -245,6 +245,13 @@ status, focus, and asynchronous completion generations per article tab, while
 each WebEngine view retains its own match state. Full-text, compound, scan, and
 global search remain absent rather than crossing the GUI boundary with an
 unbacked command.
+The Favorites branch likewise reuses the pane toggle plus the existing XML
+transfer and active-query Add actions. Widgets owns menu identity, dialogs,
+availability, and reentrant-command exclusion; the composition root and core
+continue to own selected-folder targeting, validation, atomic persistence and
+transfer, and failure preservation. Selected-tree removal remains on its
+existing canonical action, while the unsupported legacy plain-list export is
+omitted instead of being recreated in Widgets.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,

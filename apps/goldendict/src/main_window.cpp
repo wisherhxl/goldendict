@@ -14,6 +14,7 @@
 #include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QDir>
 #include <QDockWidget>
 #include <QFile>
 #include <QFileDialog>
@@ -28,6 +29,7 @@
 #include <QListWidget>
 #include <QMenu>
 #include <QMenuBar>
+#include <QMessageBox>
 #include <QMetaObject>
 #include <QMouseEvent>
 #include <QPixmap>
@@ -413,6 +415,26 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     clear_history_action_->setMenuRole(QAction::NoRole);
     history_menu->addAction(clear_history_action_);
     UpdateHistoryActions();
+    auto* favorites_menu = app_menu_bar->addMenu(QStringLiteral("Favo&rites"));
+    favorites_menu->setObjectName(QStringLiteral("menuFavorites"));
+    favorites_dock->toggleViewAction()->setObjectName(
+        QStringLiteral("showHideFavorites"));
+    favorites_dock->toggleViewAction()->setMenuRole(QAction::TextHeuristicRole);
+    favorites_menu->addAction(favorites_dock->toggleViewAction());
+    export_favorites_action_->setText(QStringLiteral("&Export"));
+    export_favorites_action_->setObjectName(QStringLiteral("exportFavorites"));
+    export_favorites_action_->setMenuRole(QAction::TextHeuristicRole);
+    favorites_menu->addAction(export_favorites_action_);
+    import_favorites_action_->setText(QStringLiteral("&Import"));
+    import_favorites_action_->setObjectName(QStringLiteral("importFavorites"));
+    import_favorites_action_->setMenuRole(QAction::TextHeuristicRole);
+    favorites_menu->addAction(import_favorites_action_);
+    favorites_menu->addSeparator();
+    add_favorite_action_->setText(QStringLiteral("&Add"));
+    add_favorite_action_->setObjectName(QStringLiteral("actionAddToFavorites"));
+    add_favorite_action_->setMenuRole(QAction::TextHeuristicRole);
+    favorites_menu->addAction(add_favorite_action_);
+    UpdateFavoritesActions();
     setCentralWidget(central);
 
     scheme_handler_ = new ArticleSchemeHandler(this);
@@ -509,24 +531,22 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                 StartLookup();
             });
     connect(add_favorite_action_, &QAction::triggered, this, [this]() {
+        if (favorites_command_busy_) {
+            return;
+        }
         const QString word = query_->text().trimmed();
         if (!word.isEmpty()) {
+            favorites_command_busy_ = true;
+            UpdateFavoritesActions();
             emit AddFavoriteRequested(word, SelectedFavoriteFolderPath());
+            favorites_command_busy_ = false;
+            UpdateFavoritesActions();
         }
     });
     connect(add_favorite_folder_action_, &QAction::triggered, this,
             &MainWindow::CreateFavoriteFolder);
     connect(favorites_tree_, &QTreeWidget::itemSelectionChanged, this,
-            [this]() {
-                const bool selected = favorites_tree_->currentItem() != nullptr;
-                remove_favorite_action_->setEnabled(selected);
-                rename_favorite_action_->setEnabled(selected);
-                move_favorite_up_action_->setEnabled(selected);
-                move_favorite_down_action_->setEnabled(selected);
-                move_favorite_to_root_action_->setEnabled(
-                    selected &&
-                    favorites_tree_->currentItem()->parent() != nullptr);
-            });
+            [this]() { UpdateFavoritesActions(); });
     connect(rename_favorite_action_, &QAction::triggered, this,
             &MainWindow::RenameFavorite);
     connect(move_favorite_up_action_, &QAction::triggered, this, [this]() {
@@ -555,12 +575,21 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(export_favorites_action_, &QAction::triggered, this,
             &MainWindow::ExportFavorites);
     connect(remove_favorite_action_, &QAction::triggered, this, [this]() {
+        if (favorites_command_busy_) {
+            return;
+        }
         const auto* item = favorites_tree_->currentItem();
         if (item != nullptr) {
+            favorites_command_busy_ = true;
+            UpdateFavoritesActions();
             emit RemoveFavoriteRequested(
                 item->data(0, Qt::UserRole + 1).value<QList<int>>());
+            favorites_command_busy_ = false;
+            UpdateFavoritesActions();
         }
     });
+    connect(query_, &QLineEdit::textChanged, this,
+            [this]() { UpdateFavoritesActions(); });
     connect(dictionary_browser_action_, &QAction::triggered, this,
             &MainWindow::ShowDictionaryBrowser);
     connect(back_action_, &QAction::triggered, this,
@@ -670,7 +699,7 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
         app_menu_bar == menuBar() &&
         findChildren<QMenuBar*>(QStringLiteral("menubar")).size() == 1 &&
         findChildren<QMenu*>(QStringLiteral("menuView")).size() == 1 &&
-        app_menu_bar->actions().size() == 5 &&
+        app_menu_bar->actions().size() == 6 &&
         app_menu_bar->actions()[1]->menu() == view_menu &&
         view_menu->title() == QStringLiteral("&View") &&
         actions.size() == expected_actions.size();
@@ -763,7 +792,7 @@ void MainWindow::RunHistoryMenuSmokeCheck(
     }
     const auto actions = history_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 5 &&
+        menuBar()->actions().size() == 6 &&
         menuBar()->actions()[4]->menu() == history_menu &&
         history_menu->title() == QStringLiteral("H&istory") &&
         actions.size() == 5 && actions[0] == history_dock->toggleViewAction() &&
@@ -850,6 +879,231 @@ void MainWindow::RunHistoryMenuSmokeCheck(
     completion(passed);
 }
 
+void MainWindow::RunFavoritesMenuSmokeCheck(
+    const QString& path, std::function<void(bool)> completion) {
+    auto* favorites_menu = findChild<QMenu*>(QStringLiteral("menuFavorites"));
+    auto* favorites_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
+    auto* article_toolbar =
+        findChild<QToolBar*>(QStringLiteral("articleToolbar"));
+    if (favorites_menu == nullptr || favorites_dock == nullptr ||
+        article_toolbar == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto actions = favorites_menu->actions();
+    bool passed =
+        findChildren<QMenu*>(QStringLiteral("menuFavorites")).size() == 1 &&
+        menuBar()->actions().size() == 6 &&
+        menuBar()->actions()[5]->menu() == favorites_menu &&
+        favorites_menu->title() == QStringLiteral("Favo&rites") &&
+        actions.size() == 5 &&
+        actions[0] == favorites_dock->toggleViewAction() &&
+        actions[1] == export_favorites_action_ &&
+        actions[2] == import_favorites_action_ && actions[3]->isSeparator() &&
+        actions[4] == add_favorite_action_ &&
+        actions[0]->objectName() == QStringLiteral("showHideFavorites") &&
+        actions[1]->objectName() == QStringLiteral("exportFavorites") &&
+        actions[2]->objectName() == QStringLiteral("importFavorites") &&
+        actions[4]->objectName() == QStringLiteral("actionAddToFavorites") &&
+        actions[1]->text() == QStringLiteral("&Export") &&
+        actions[2]->text() == QStringLiteral("&Import") &&
+        actions[4]->text() == QStringLiteral("&Add") &&
+        findChildren<QAction*>(QStringLiteral("ExportFavoritesToList"))
+            .isEmpty() &&
+        actions[0]->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_I) &&
+        actions[1]->shortcut().isEmpty() && actions[2]->shortcut().isEmpty() &&
+        actions[4]->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_E) &&
+        article_toolbar->actions().contains(export_favorites_action_) &&
+        article_toolbar->actions().contains(import_favorites_action_) &&
+        article_toolbar->actions().contains(add_favorite_action_);
+    for (const auto* action :
+         {actions[0], actions[1], actions[2], actions[4]}) {
+        passed = passed && action->menuRole() == QAction::TextHeuristicRole;
+    }
+    int favorites_shortcuts = 0;
+    int add_shortcuts = 0;
+    for (const auto* action : findChildren<QAction*>()) {
+        favorites_shortcuts +=
+            action->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_I);
+        add_shortcuts +=
+            action->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_E);
+    }
+    passed = passed && favorites_shortcuts == 1 && add_shortcuts == 1;
+
+    while (favorites_tree_->topLevelItemCount() > 0) {
+        const auto* item = favorites_tree_->topLevelItem(0);
+        emit RemoveFavoriteRequested(
+            item->data(0, Qt::UserRole + 1).value<QList<int>>());
+    }
+    UpdateFavoritesActions();
+
+    const std::string initial_state = CaptureMainWindowState();
+    actions[0]->trigger();
+    const bool hidden =
+        !favorites_dock->isVisible() && !actions[0]->isChecked();
+    actions[0]->trigger();
+    passed = passed && hidden && favorites_dock->isVisible() &&
+             actions[0]->isChecked() &&
+             CaptureMainWindowState() == initial_state;
+
+    query_->clear();
+    passed = passed && !add_favorite_action_->isEnabled() &&
+             !export_favorites_action_->isEnabled() &&
+             import_favorites_action_->isEnabled();
+    emit AddFavoriteFolderRequested(QStringLiteral("Menu Folder"), {});
+    auto* folder = favorites_tree_->topLevelItem(0);
+    passed = passed && folder != nullptr &&
+             folder->text(0) == QStringLiteral("Menu Folder") &&
+             folder->data(0, Qt::UserRole).toBool();
+    if (folder == nullptr) {
+        completion(false);
+        return;
+    }
+    favorites_tree_->setCurrentItem(folder);
+    query_->setText(QStringLiteral("Menu Favorite"));
+    int add_requests = 0;
+    const auto add_connection = connect(
+        this, &MainWindow::AddFavoriteRequested, this,
+        [&add_requests](const QString& word, const QList<int>& parent_path) {
+            if (word == QStringLiteral("Menu Favorite") &&
+                parent_path == QList<int>{0}) {
+                ++add_requests;
+            }
+        },
+        Qt::DirectConnection);
+    add_favorite_action_->trigger();
+    disconnect(add_connection);
+    folder = favorites_tree_->topLevelItem(0);
+    passed = passed && add_requests == 1 && folder != nullptr &&
+             folder->childCount() == 1 &&
+             folder->child(0)->text(0) == QStringLiteral("Menu Favorite") &&
+             export_favorites_action_->isEnabled();
+
+    int export_requests = 0;
+    const auto export_connection = connect(
+        this, &MainWindow::ExportFavoritesRequested, this,
+        [&export_requests, &path](const QString& requested) {
+            if (requested == path) {
+                ++export_requests;
+            }
+        },
+        Qt::DirectConnection);
+    favorites_export_path_provider_ = [path]() {
+        return path;
+    };
+    export_favorites_action_->trigger();
+    QFile exported(path);
+    const bool export_opened = exported.open(QIODevice::ReadOnly);
+    const QByteArray exported_data =
+        export_opened ? exported.readAll() : QByteArray();
+    passed = passed && export_requests == 1 && export_opened &&
+             exported_data.contains("Menu Folder") &&
+             exported_data.contains("Menu Favorite");
+    favorites_export_path_provider_ = []() {
+        return QString();
+    };
+    export_favorites_action_->trigger();
+    passed = passed && export_requests == 1;
+    disconnect(export_connection);
+
+    folder = favorites_tree_->topLevelItem(0);
+    favorites_tree_->setCurrentItem(folder->child(0));
+    int remove_requests = 0;
+    const auto remove_connection = connect(
+        this, &MainWindow::RemoveFavoriteRequested, this,
+        [&remove_requests](const QList<int>& item_path) {
+            if (item_path == QList<int>({0, 0})) {
+                ++remove_requests;
+            }
+        },
+        Qt::DirectConnection);
+    remove_favorite_action_->trigger();
+    disconnect(remove_connection);
+    folder = favorites_tree_->topLevelItem(0);
+    passed = passed && remove_requests == 1 && folder != nullptr &&
+             folder->childCount() == 0;
+
+    int import_requests = 0;
+    const auto import_connection = connect(
+        this, &MainWindow::ImportFavoritesRequested, this,
+        [&import_requests, &path](const QString& requested) {
+            if (requested == path) {
+                ++import_requests;
+            }
+        },
+        Qt::DirectConnection);
+    favorites_import_path_provider_ = []() {
+        return QString();
+    };
+    import_favorites_action_->trigger();
+    passed = passed && import_requests == 0 &&
+             favorites_tree_->topLevelItem(0)->childCount() == 0;
+    favorites_import_path_provider_ = [path]() {
+        return path;
+    };
+    import_favorites_action_->trigger();
+    folder = favorites_tree_->topLevelItem(0);
+    passed = passed && import_requests == 1 && folder != nullptr &&
+             folder->childCount() == 1 &&
+             folder->child(0)->text(0) == QStringLiteral("Menu Favorite");
+    disconnect(import_connection);
+
+    const QString malformed_path = path + QStringLiteral(".malformed.xml");
+    QFile malformed(malformed_path);
+    if (malformed.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        malformed.write("<root><folder></root>");
+        malformed.close();
+    } else {
+        passed = false;
+    }
+    const auto dismiss_warning = []() {
+        QTimer::singleShot(0, []() {
+            for (auto* widget : QApplication::topLevelWidgets()) {
+                if (auto* message = qobject_cast<QMessageBox*>(widget)) {
+                    message->accept();
+                }
+            }
+        });
+    };
+    favorites_import_path_provider_ = [malformed_path]() {
+        return malformed_path;
+    };
+    dismiss_warning();
+    import_favorites_action_->trigger();
+    folder = favorites_tree_->topLevelItem(0);
+    passed = passed && folder != nullptr && folder->childCount() == 1 &&
+             query_->text() == QStringLiteral("Menu Favorite");
+
+    const QString failed_export_path = path + QStringLiteral(".directory");
+    QDir().mkpath(failed_export_path);
+    favorites_export_path_provider_ = [failed_export_path]() {
+        return failed_export_path;
+    };
+    dismiss_warning();
+    export_favorites_action_->trigger();
+    passed = passed && QFileInfo(failed_export_path).isDir() &&
+             favorites_tree_->topLevelItem(0)->childCount() == 1;
+
+    favorites_command_busy_ = true;
+    UpdateFavoritesActions();
+    passed = passed && !add_favorite_action_->isEnabled() &&
+             !remove_favorite_action_->isEnabled() &&
+             !import_favorites_action_->isEnabled() &&
+             !export_favorites_action_->isEnabled();
+    favorites_command_busy_ = false;
+    UpdateFavoritesActions();
+    passed = passed && add_favorite_action_->isEnabled() &&
+             import_favorites_action_->isEnabled() &&
+             export_favorites_action_->isEnabled() &&
+             centralWidget() != nullptr && article_tabs_->isVisible() &&
+             query_->text() == QStringLiteral("Menu Favorite") &&
+             kMainWindowStateVersion == 7;
+    favorites_export_path_provider_ = {};
+    favorites_import_path_provider_ = {};
+    completion(passed);
+}
+
 void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
     auto* edit_menu = findChild<QMenu*>(QStringLiteral("menu_Edit"));
     if (edit_menu == nullptr || dictionary_sources_button_ == nullptr ||
@@ -860,7 +1114,7 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
 
     const auto actions = edit_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 5 &&
+        menuBar()->actions().size() == 6 &&
         menuBar()->actions()[0]->menu()->objectName() ==
             QStringLiteral("menuFile") &&
         menuBar()->actions()[1]->menu()->objectName() ==
@@ -995,7 +1249,7 @@ void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
     const auto actions = search_menu->actions();
     const auto all_actions = findChildren<QAction*>();
     auto passed = std::make_shared<bool>(
-        menuBar()->actions().size() == 5 &&
+        menuBar()->actions().size() == 6 &&
         menuBar()->actions()[0]->menu()->objectName() ==
             QStringLiteral("menuFile") &&
         menuBar()->actions()[1]->menu()->objectName() ==
@@ -1170,7 +1424,7 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
 
     const auto actions = file_menu->actions();
     bool passed =
-        menuBar()->actions().size() == 5 &&
+        menuBar()->actions().size() == 6 &&
         menuBar()->actions()[0]->menu() == file_menu &&
         menuBar()->actions()[1]->menu()->objectName() ==
             QStringLiteral("menuView") &&
@@ -2638,7 +2892,7 @@ void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
                 },
                 Qt::SingleShotConnection);
             query_->setText(expected);
-            add_favorite_action_->trigger();
+            emit AddFavoriteRequested(expected, SelectedFavoriteFolderPath());
         },
         Qt::SingleShotConnection);
     emit AddFavoriteFolderRequested(QStringLiteral("Smoke Folder"), {});
@@ -4127,21 +4381,61 @@ void MainWindow::RenameFavorite() {
 }
 
 void MainWindow::ImportFavorites() {
-    const QString path = QFileDialog::getOpenFileName(
-        this, QStringLiteral("Import favorites from file"), QString(),
-        QStringLiteral("GoldenDict favorites (*.xml);;All files (*.*)"));
+    if (favorites_command_busy_) {
+        return;
+    }
+    const QString path =
+        favorites_import_path_provider_
+            ? favorites_import_path_provider_()
+            : QFileDialog::getOpenFileName(
+                  this, QStringLiteral("Import favorites from file"), QString(),
+                  QStringLiteral(
+                      "GoldenDict favorites (*.xml);;All files (*.*)"));
     if (!path.isEmpty()) {
+        favorites_command_busy_ = true;
+        UpdateFavoritesActions();
         emit ImportFavoritesRequested(path);
+        favorites_command_busy_ = false;
+        UpdateFavoritesActions();
     }
 }
 
 void MainWindow::ExportFavorites() {
-    const QString path = QFileDialog::getSaveFileName(
-        this, QStringLiteral("Export favorites to file"), QString(),
-        QStringLiteral("GoldenDict favorites (*.xml);;All files (*.*)"));
-    if (!path.isEmpty()) {
-        emit ExportFavoritesRequested(path);
+    if (favorites_command_busy_ || favorites_tree_->topLevelItemCount() == 0) {
+        return;
     }
+    const QString path =
+        favorites_export_path_provider_
+            ? favorites_export_path_provider_()
+            : QFileDialog::getSaveFileName(
+                  this, QStringLiteral("Export favorites to file"), QString(),
+                  QStringLiteral(
+                      "GoldenDict favorites (*.xml);;All files (*.*)"));
+    if (!path.isEmpty()) {
+        favorites_command_busy_ = true;
+        UpdateFavoritesActions();
+        emit ExportFavoritesRequested(path);
+        favorites_command_busy_ = false;
+        UpdateFavoritesActions();
+    }
+}
+
+void MainWindow::UpdateFavoritesActions() {
+    const bool idle = !favorites_command_busy_;
+    const bool selected = favorites_tree_->currentItem() != nullptr;
+    const bool nested =
+        selected && favorites_tree_->currentItem()->parent() != nullptr;
+    add_favorite_action_->setEnabled(idle &&
+                                     !query_->text().trimmed().isEmpty());
+    add_favorite_folder_action_->setEnabled(idle);
+    rename_favorite_action_->setEnabled(idle && selected);
+    move_favorite_up_action_->setEnabled(idle && selected);
+    move_favorite_down_action_->setEnabled(idle && selected);
+    move_favorite_to_root_action_->setEnabled(idle && nested);
+    import_favorites_action_->setEnabled(idle);
+    export_favorites_action_->setEnabled(
+        idle && favorites_tree_->topLevelItemCount() > 0);
+    remove_favorite_action_->setEnabled(idle && selected);
 }
 
 QList<int> MainWindow::SelectedFavoriteFolderPath() const {
@@ -4207,6 +4501,7 @@ void MainWindow::SetFavoriteItems(const std::vector<FavoriteViewItem>& items,
     if (restore_focus) {
         favorites_tree_->setFocus();
     }
+    UpdateFavoritesActions();
 }
 
 void MainWindow::RunWebEngineSmokeCheck(std::function<void(bool)> completion) {
