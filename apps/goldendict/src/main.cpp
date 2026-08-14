@@ -918,6 +918,32 @@ int main(int argc, char* argv[]) {
                         app.exit(passed ? 0 : 1);
                     });
             });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--favorites-preferences-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window,
+            [&app, &configuration_directory, &configuration_path,
+             &favorites_path, &window]() {
+                QDir().mkpath(configuration_directory);
+                window.RunFavoritesPreferencesSmokeCheck(
+                    [&app, &configuration_path, &favorites_path](bool passed) {
+                        try {
+                            const auto persisted_favorites =
+                                goldendict::core::LoadFavorites(
+                                    favorites_path.toStdString());
+                            const auto persisted_configuration =
+                                goldendict::core::LoadConfiguration(
+                                    configuration_path.toStdString());
+                            passed = passed && persisted_favorites.empty() &&
+                                     persisted_configuration.preferences
+                                         .confirm_favorites_deletion;
+                        } catch (...) {
+                            passed = false;
+                        }
+                        app.exit(passed ? 0 : 1);
+                    });
+            });
     } else if (HasArgument(argc, argv, QStringLiteral("--file-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(

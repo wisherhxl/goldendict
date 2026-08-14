@@ -126,6 +126,8 @@ class MainWindow final : public QMainWindow {
                                     std::function<void(bool)> completion);
     void RunHistoryPreferencesSmokeCheck(const QString& import_path,
                                          std::function<void(bool)> completion);
+    void RunFavoritesPreferencesSmokeCheck(
+        std::function<void(bool)> completion);
     void RunFavoritesSmokeCheck(std::function<void(bool)> completion);
     void RunFavoritesCrossFolderMoveSmokeCheck(
         std::function<void(bool)> completion);
@@ -249,6 +251,7 @@ class MainWindow final : public QMainWindow {
     void StopSuggestionWorker();
     void NavigateToSelectedResult();
     QList<int> SelectedFavoriteFolderPath() const;
+    bool ConfirmFavoriteRemoval();
     QList<QList<int>> ExpandedFavoriteFolderPaths() const;
     void ApplyDefaultPaneLayout();
     bool HasUsableMainWindowLayout() const;
@@ -308,6 +311,7 @@ class MainWindow final : public QMainWindow {
     QAction* remove_favorite_action_ = nullptr;
     std::function<QString()> favorites_export_path_provider_;
     std::function<QString()> favorites_import_path_provider_;
+    std::function<bool()> favorite_removal_confirmation_;
     bool favorites_command_busy_ = false;
     QAction* dictionary_browser_action_ = nullptr;
     QToolButton* lookup_button_ = nullptr;

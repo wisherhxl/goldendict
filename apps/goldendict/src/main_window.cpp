@@ -20,6 +20,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QInputDialog>
@@ -612,7 +613,7 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
             return;
         }
         const auto* item = favorites_tree_->currentItem();
-        if (item != nullptr) {
+        if (item != nullptr && ConfirmFavoriteRemoval()) {
             favorites_command_busy_ = true;
             UpdateFavoritesActions();
             emit RemoveFavoriteRequested(
@@ -1237,7 +1238,11 @@ void MainWindow::RunFavoritesMenuSmokeCheck(
             }
         },
         Qt::DirectConnection);
+    favorite_removal_confirmation_ = []() {
+        return true;
+    };
     remove_favorite_action_->trigger();
+    favorite_removal_confirmation_ = {};
     disconnect(remove_connection);
     folder = favorites_tree_->topLevelItem(0);
     passed = passed && remove_requests == 1 && folder != nullptr &&
@@ -1486,15 +1491,19 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
             dialog.findChild<QCheckBox*>(QStringLiteral("storeHistory"));
         auto* maximum_history =
             dialog.findChild<QSpinBox*>(QStringLiteral("historyMaxSizeField"));
+        auto* confirm_favorites = dialog.findChild<QCheckBox*>(
+            QStringLiteral("confirmFavoritesDeletion"));
         auto* buttons = dialog.findChild<QDialogButtonBox*>(
             QStringLiteral("preferencesButtonBox"));
         passed = passed && background != nullptr && store_history != nullptr &&
-                 maximum_history != nullptr &&
+                 maximum_history != nullptr && confirm_favorites != nullptr &&
                  maximum_history->minimum() == 0 &&
                  maximum_history->maximum() == 99999 &&
                  maximum_history->isEnabled() && buttons != nullptr;
         if (background != nullptr)
             background->setChecked(!background->isChecked());
+        if (confirm_favorites != nullptr)
+            confirm_favorites->setChecked(!confirm_favorites->isChecked());
         if (buttons != nullptr)
             buttons->button(QDialogButtonBox::Ok)->click();
         auto* error = dialog.findChild<QLabel*>(
@@ -1520,11 +1529,13 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
             dialog.findChild<QCheckBox*>(QStringLiteral("storeHistory"));
         auto* maximum_history =
             dialog.findChild<QSpinBox*>(QStringLiteral("historyMaxSizeField"));
+        auto* confirm_favorites = dialog.findChild<QCheckBox*>(
+            QStringLiteral("confirmFavoritesDeletion"));
         auto* buttons = dialog.findChild<QDialogButtonBox*>(
             QStringLiteral("preferencesButtonBox"));
         passed = passed && background != nullptr && after_current != nullptr &&
                  store_history != nullptr && maximum_history != nullptr &&
-                 buttons != nullptr;
+                 confirm_favorites != nullptr && buttons != nullptr;
         if (background != nullptr)
             background->setChecked(!background->isChecked());
         if (after_current != nullptr)
@@ -1535,6 +1546,8 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
             passed = passed && maximum_history->isEnabled();
             maximum_history->setValue(0);
         }
+        if (confirm_favorites != nullptr)
+            confirm_favorites->setChecked(false);
         if (buttons != nullptr)
             buttons->button(QDialogButtonBox::Ok)->click();
         passed = passed && dialog.result() == QDialog::Accepted;
@@ -1548,6 +1561,7 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
         !expected_preferences.open_new_tabs_after_current;
     expected_preferences.store_history = false;
     expected_preferences.maximum_history_entries = 0U;
+    expected_preferences.confirm_favorites_deletion = false;
     passed = passed && preference_triggers == 3 && preference_dialogs == 3 &&
              preferences_ == expected_preferences &&
              facade_->ExportArticleTabSession() == initial_session;
@@ -1625,6 +1639,111 @@ void MainWindow::RunHistoryPreferencesSmokeCheck(
              history_list_->count() == 1 &&
              history_list_->item(0)->text() == QStringLiteral("Recorded") &&
              facade_->ExportArticleTabSession() == initial_session;
+    completion(passed);
+}
+
+void MainWindow::RunFavoritesPreferencesSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || favorites_tree_ == nullptr ||
+        add_favorite_action_ == nullptr || remove_favorite_action_ == nullptr ||
+        facade_ == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const std::string initial_state = CaptureMainWindowState();
+    bool passed = favorites_tree_->topLevelItemCount() == 0 &&
+                  preferences_.confirm_favorites_deletion;
+
+    emit AddFavoriteFolderRequested(QStringLiteral("Preference Folder"), {});
+    auto* folder = favorites_tree_->topLevelItem(0);
+    passed = passed && folder != nullptr && folder->childCount() == 0;
+    if (folder == nullptr) {
+        completion(false);
+        return;
+    }
+    favorites_tree_->setCurrentItem(folder);
+    folder->setExpanded(true);
+    query_->setText(QStringLiteral("Preference Favorite"));
+    add_favorite_action_->trigger();
+    folder = favorites_tree_->topLevelItem(0);
+    passed = passed && folder != nullptr && folder->childCount() == 1 &&
+             folder->isExpanded();
+
+    int confirmations = 0;
+    favorite_removal_confirmation_ = [&confirmations]() {
+        ++confirmations;
+        return false;
+    };
+    favorites_tree_->setCurrentItem(folder->child(0));
+    remove_favorite_action_->trigger();
+    folder = favorites_tree_->topLevelItem(0);
+    passed = passed && confirmations == 1 && folder != nullptr &&
+             folder->childCount() == 1 &&
+             favorites_tree_->currentItem() == folder->child(0);
+
+    const auto apply_confirmation = [this, &passed](bool enabled) {
+        preferences_dialog_executor_ = [&passed,
+                                        enabled](PreferencesDialog& dialog) {
+            auto* group =
+                dialog.findChild<QGroupBox*>(QStringLiteral("favoritesBox"));
+            auto* confirmation = dialog.findChild<QCheckBox*>(
+                QStringLiteral("confirmFavoritesDeletion"));
+            auto* interval = dialog.findChild<QSpinBox*>(
+                QStringLiteral("favoritesSaveIntervalField"));
+            auto* buttons = dialog.findChild<QDialogButtonBox*>(
+                QStringLiteral("preferencesButtonBox"));
+            passed =
+                passed && group != nullptr && confirmation != nullptr &&
+                interval == nullptr && buttons != nullptr &&
+                confirmation->text() ==
+                    QStringLiteral("Confirmation for items deletion") &&
+                confirmation->toolTip() ==
+                    QStringLiteral(
+                        "Turn this option on to confirm every operation of "
+                        "items deletion");
+            if (confirmation != nullptr)
+                confirmation->setChecked(enabled);
+            if (buttons != nullptr)
+                buttons->button(QDialogButtonBox::Ok)->click();
+            passed = passed && dialog.result() == QDialog::Accepted;
+            return dialog.result();
+        };
+        preferences_action_->trigger();
+        preferences_dialog_executor_ = {};
+    };
+
+    apply_confirmation(false);
+    folder = favorites_tree_->topLevelItem(0);
+    passed = passed && !preferences_.confirm_favorites_deletion &&
+             folder != nullptr && folder->isExpanded() &&
+             favorites_tree_->currentItem() == folder->child(0);
+    remove_favorite_action_->trigger();
+    folder = favorites_tree_->topLevelItem(0);
+    passed = passed && confirmations == 1 && folder != nullptr &&
+             folder->childCount() == 0;
+
+    apply_confirmation(true);
+    folder = favorites_tree_->topLevelItem(0);
+    favorites_tree_->setCurrentItem(folder);
+    query_->setText(QStringLiteral("Subtree Favorite"));
+    add_favorite_action_->trigger();
+    folder = favorites_tree_->topLevelItem(0);
+    favorites_tree_->setCurrentItem(folder);
+    remove_favorite_action_->trigger();
+    passed = passed && confirmations == 2 &&
+             favorites_tree_->topLevelItemCount() == 1;
+
+    favorite_removal_confirmation_ = [&confirmations]() {
+        ++confirmations;
+        return true;
+    };
+    remove_favorite_action_->trigger();
+    favorite_removal_confirmation_ = {};
+    passed = passed && confirmations == 3 &&
+             favorites_tree_->topLevelItemCount() == 0 &&
+             facade_->ExportArticleTabSession() == initial_session &&
+             CaptureMainWindowState() == initial_state;
     completion(passed);
 }
 
@@ -3404,7 +3523,11 @@ void MainWindow::RunFavoritesTransferSmokeCheck(
                         },
                         Qt::SingleShotConnection);
                     favorites_tree_->setCurrentItem(folder);
+                    favorite_removal_confirmation_ = []() {
+                        return true;
+                    };
                     remove_favorite_action_->trigger();
+                    favorite_removal_confirmation_ = {};
                 },
                 Qt::SingleShotConnection);
             emit ExportFavoritesRequested(path);
@@ -4845,6 +4968,20 @@ QList<int> MainWindow::SelectedFavoriteFolderPath() const {
     return item == nullptr
                ? QList<int>{}
                : item->data(0, Qt::UserRole + 1).value<QList<int>>();
+}
+
+bool MainWindow::ConfirmFavoriteRemoval() {
+    if (!preferences_.confirm_favorites_deletion) {
+        return true;
+    }
+    if (favorite_removal_confirmation_) {
+        return favorite_removal_confirmation_();
+    }
+    return QMessageBox::warning(
+               this, QStringLiteral("GoldenDict"),
+               QStringLiteral("All selected items will be deleted. Continue?"),
+               QMessageBox::Yes | QMessageBox::No,
+               QMessageBox::No) == QMessageBox::Yes;
 }
 
 QList<QList<int>> MainWindow::ExpandedFavoriteFolderPaths() const {

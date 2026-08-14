@@ -34,6 +34,7 @@ class PreferencesDialog final : public QDialog {
     QCheckBox* open_in_background_ = nullptr;
     QCheckBox* store_history_ = nullptr;
     QSpinBox* maximum_history_entries_ = nullptr;
+    QCheckBox* confirm_favorites_deletion_ = nullptr;
     QLabel* validation_error_ = nullptr;
 };
 

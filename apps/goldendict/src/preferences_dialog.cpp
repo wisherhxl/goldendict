@@ -77,6 +77,21 @@ PreferencesDialog::PreferencesDialog(
     maximum_layout->addStretch();
     history_layout->addLayout(maximum_layout);
     general_layout->addWidget(history_group);
+
+    auto* favorites_group =
+        new QGroupBox(QStringLiteral("Favorites"), general_page);
+    favorites_group->setObjectName(QStringLiteral("favoritesBox"));
+    auto* favorites_layout = new QVBoxLayout(favorites_group);
+    confirm_favorites_deletion_ = new QCheckBox(
+        QStringLiteral("Confirmation for items deletion"), favorites_group);
+    confirm_favorites_deletion_->setObjectName(
+        QStringLiteral("confirmFavoritesDeletion"));
+    confirm_favorites_deletion_->setToolTip(QStringLiteral(
+        "Turn this option on to confirm every operation of items deletion"));
+    confirm_favorites_deletion_->setChecked(
+        preferences.confirm_favorites_deletion);
+    favorites_layout->addWidget(confirm_favorites_deletion_);
+    general_layout->addWidget(favorites_group);
     general_layout->addStretch();
     tabs->addTab(general_page, QStringLiteral("General"));
     layout->addWidget(tabs);
@@ -105,6 +120,8 @@ void PreferencesDialog::Apply() {
     candidate.store_history = store_history_->isChecked();
     candidate.maximum_history_entries =
         static_cast<std::uint32_t>(maximum_history_entries_->value());
+    candidate.confirm_favorites_deletion =
+        confirm_favorites_deletion_->isChecked();
     const QString error = apply_callback_(candidate);
     if (!error.isEmpty()) {
         validation_error_->setText(error);

@@ -373,6 +373,15 @@ future recording, bounded replacement import while recording is disabled,
 re-enabled recording, persisted history/configuration, and an unchanged article
 session. `history_store_test` pins zero, legacy-maximum, and out-of-range import
 limits; configuration tests reject values above the exposed maximum atomically.
+The General/Favorites extension pins the exact legacy confirmation control and
+the intentional absence of the unbacked save interval. The deterministic
+`goldendict_favorites_preferences_smoke` verifies rejected word and folder
+removal, accepted subtree removal, confirmation-disabled removal, unchanged
+selected-folder add targeting, persisted configuration/favorites, and an
+unchanged article session and layout. Core configuration tests cover the
+default, current round trip, strict legacy boolean migration, and value
+comparison; existing favorites and menu smokes retain atomic failure,
+selection/expansion, transfer, ordering, and canonical-action coverage.
 `goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
 History and its sole backed legacy `searchInPageAction`, including exact text,
 role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and

@@ -829,6 +829,9 @@ void ApplicationServiceTest::ApplicationPreferencesCompareByValue() {
     second.open_new_tabs_after_current = true;
     QVERIFY(first != second);
     first.open_new_tabs_after_current = true;
+    second.confirm_favorites_deletion = false;
+    QVERIFY(first != second);
+    second.confirm_favorites_deletion = true;
     second.full_text_search_mode = FullTextSearchMode::kWildcard;
     QVERIFY(first != second);
 }
@@ -859,6 +862,7 @@ void ApplicationServiceTest::
     preferences.help_zoom_factor = 0.75;
     preferences.words_zoom_level = -2;
     preferences.maximum_history_entries = 1234U;
+    preferences.confirm_favorites_deletion = false;
     preferences.collapse_large_articles = true;
     preferences.article_size_limit = 4096U;
     preferences.synonym_search_enabled = false;
@@ -890,6 +894,7 @@ void ApplicationServiceTest::
     QCOMPARE(actual.preferences.words_zoom_level, preferences.words_zoom_level);
     QCOMPARE(actual.preferences.article_size_limit,
              preferences.article_size_limit);
+    QCOMPARE(actual.preferences.confirm_favorites_deletion, false);
     QCOMPARE(actual.preferences.synonym_search_enabled,
              preferences.synonym_search_enabled);
     QCOMPARE(actual.preferences.full_text_search_mode,
@@ -911,6 +916,7 @@ void ApplicationServiceTest::
     QCOMPARE(older.preferences.open_new_tabs_in_background, true);
     QCOMPARE(older.preferences.zoom_factor, 1.0);
     QCOMPARE(older.preferences.maximum_history_entries, std::uint32_t{500});
+    QCOMPARE(older.preferences.confirm_favorites_deletion, true);
 }
 
 void ApplicationServiceTest::
@@ -1170,6 +1176,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<zoomFactor>1.375</zoomFactor><helpZoomFactor>0.75</helpZoomFactor>"
         "<wordsZoomLevel>-2</wordsZoomLevel>"
         "<maxStringsInHistory>1234</maxStringsInHistory>"
+        "<confirmFavoritesDeletion>0</confirmFavoritesDeletion>"
         "<collapseBigArticles>1</collapseBigArticles>"
         "<articleSizeLimit>4096</articleSizeLimit>"
         "<synonymSearchEnabled>0</synonymSearchEnabled>"
@@ -1241,6 +1248,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.full_text_match_case, true);
     QCOMPARE(preferences.full_text_maximum_word_distance, std::uint32_t{9});
     QCOMPARE(preferences.full_text_disabled_types, "audio|images");
+    QCOMPARE(preferences.confirm_favorites_deletion, false);
     QCOMPARE(migrated.main_window_geometry, "geometry");
     QVERIFY(std::filesystem::exists(current_path));
     std::ifstream legacy_input(legacy_path, std::ios::binary);
@@ -1484,6 +1492,7 @@ void ApplicationServiceTest::RejectsMalformedLegacyPreferencesAtomically() {
         "<articleSizeLimit>0</articleSizeLimit>",
         "<interfaceLanguage><nested/></interfaceLanguage>",
         "<storeHistory>1</storeHistory><storeHistory>0</storeHistory>",
+        "<confirmFavoritesDeletion>true</confirmFavoritesDeletion>",
         "<proxyserver enabled=\"yes\" useSystemProxy=\"0\"/>",
         "<proxyserver useSystemProxy=\"0\"/>",
         "<proxyserver enabled=\"1\"/>",

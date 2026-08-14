@@ -649,6 +649,18 @@ composition-root responsibilities. Cancel and failures preserve prior state.
 Appearance, tray, hotkeys, scan popup, audio, network/proxy, full-text search,
 favorites, and advanced Preferences remain separate Phase 8 leaves.
 
+The next independent Preferences leaf extends General with the pinned
+Favorites deletion-confirmation checkbox, defaulting on. It confirms removal
+of the selected word or complete folder subtree before the existing path-based
+command is dispatched; rejection is a pure cancellation, while acceptance and
+disabled confirmation retain immediate atomic favorites persistence and
+failure preservation. Applying the complete preference candidate preserves
+favorites ordering, selection and expansion, selected-folder targeting, and
+the article session. The pinned favorites save interval remains unexposed
+because the current model has no delayed-save contract. Appearance, tray,
+hotkeys, scan popup, audio, network/proxy, article, full-text search, and
+advanced Preferences remain separate Phase 8 leaves.
+
 The next independent Phase 8 menu leaf adds the pinned `menuSearch` identity
 between Edit and History. It exposes only the existing in-article
 `searchInPageAction`, with its legacy text, role, and Ctrl+F shortcut, and

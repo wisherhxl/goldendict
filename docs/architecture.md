@@ -126,6 +126,13 @@ newest-first trimming, persistence, session restoration, and facade
 replacement; the dialog only edits a complete candidate. Disabling recording
 preserves existing entries, while lowering the maximum persists the trimmed
 history before live state is swapped.
+The following General/Favorites leaf exposes only the existing
+`confirm_favorites_deletion` field, defaulting on. Widgets confirms the
+canonical selected-item removal before dispatch; rejection leaves the tree
+and all application state untouched, while acceptance continues through the
+existing atomic favorites-save path. The legacy save-interval control remains
+absent because current favorites mutations are persisted immediately and no
+compatible delayed-save runtime contract exists.
 The Phase 8 P4a current-persistence foundation extends that complete candidate
 with ordered, bounded transport-neutral records for MediaWiki, website, Forvo,
 and DICT sources. Stable IDs, names, enabled intent, adapter-compatible URLs,
