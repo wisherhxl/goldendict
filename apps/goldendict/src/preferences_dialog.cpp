@@ -158,6 +158,13 @@ PreferencesDialog::PreferencesDialog(
     input_phrase_layout->addWidget(input_phrase_symbols);
     input_phrase_layout->addStretch();
     general_layout->addWidget(input_phrase_group);
+    ignore_diacritics_ =
+        new QCheckBox(QStringLiteral("Ignore diacritics"), general_page);
+    ignore_diacritics_->setObjectName(QStringLiteral("ignoreDiacritics"));
+    ignore_diacritics_->setToolTip(QStringLiteral(
+        "Turn this option on to ignore diacritics while searching articles"));
+    ignore_diacritics_->setChecked(preferences.ignore_diacritics);
+    general_layout->addWidget(ignore_diacritics_);
     general_layout->addStretch();
     tabs->addTab(general_page, QStringLiteral("General"));
     layout->addWidget(tabs);
@@ -195,6 +202,7 @@ void PreferencesDialog::Apply() {
         limit_input_phrase_length_->isChecked();
     candidate.input_phrase_length_limit =
         static_cast<std::uint32_t>(input_phrase_length_limit_->value());
+    candidate.ignore_diacritics = ignore_diacritics_->isChecked();
     const QString error = apply_callback_(candidate);
     if (!error.isEmpty()) {
         validation_error_->setText(error);

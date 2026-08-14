@@ -81,6 +81,7 @@ constexpr std::uint32_t kRegexMatchLimit = 10000U;
 constexpr std::uint32_t kRegexDepthLimit = 100U;
 constexpr std::uint32_t kRegexHeapLimitKiB = 256U;
 constexpr std::size_t kMaximumDictionaryDescriptionBytes = 1024U * 1024U;
+constexpr std::size_t kMaximumExactCollisionCandidates = 4096U;
 
 std::uint64_t RotateLeft(std::uint64_t value, unsigned bits) noexcept {
     return (value << bits) | (value >> (64U - bits));
@@ -488,8 +489,9 @@ LookupErrorCode TranslateErrorCode(dictionary::ErrorCode code) {
         case dictionary::ErrorCode::kDeadlineExceeded:
             return LookupErrorCode::kDeadlineExceeded;
         case dictionary::ErrorCode::kInvalidData:
-        case dictionary::ErrorCode::kUnsupported:
             return LookupErrorCode::kInternal;
+        case dictionary::ErrorCode::kUnsupported:
+            return LookupErrorCode::kUnsupported;
     }
     return LookupErrorCode::kInternal;
 }
@@ -930,6 +932,7 @@ class ServiceState final {
                     "Runtime dictionary sources must have unique non-empty "
                     "IDs");
             }
+            runtime_source_ids_.insert(source->identity().id);
             dictionaries_.push_back(std::move(source));
         }
         for (const auto& group : configuration.dictionary_groups) {
@@ -1137,6 +1140,8 @@ class ServiceState final {
             return response;
         }
         const std::string folded_query = foundation::FoldForLookup(query.text);
+        const std::string exact_query = foundation::NormalizeForExactLookup(
+            query.text, preferences_.ignore_diacritics);
         response.errors = startup_errors_;
         const std::unordered_set<std::string> requested(
             query.dictionary_ids.begin(), query.dictionary_ids.end());
@@ -1161,14 +1166,39 @@ class ServiceState final {
                 break;
             }
             auto backend_options = options;
+            const bool runtime_source =
+                runtime_source_ids_.count(identity.id) != 0U;
+            if (query.match_mode == MatchMode::kExact &&
+                preferences_.ignore_diacritics && runtime_source &&
+                !identity.supports_diacritic_insensitive_lookup) {
+                response.errors.push_back(
+                    {LookupErrorCode::kUnsupported, identity.id,
+                     "Dictionary source does not support "
+                     "diacritic-insensitive exact lookup"});
+                continue;
+            }
+            backend_options.ignore_diacritics =
+                query.match_mode == MatchMode::kExact &&
+                preferences_.ignore_diacritics;
             backend_options.result_limit =
-                options.result_limit - response.entries.size();
+                query.match_mode == MatchMode::kExact && !runtime_source
+                    ? kMaximumExactCollisionCandidates
+                    : options.result_limit - response.entries.size();
             try {
                 const auto articles =
                     query.match_mode == MatchMode::kExact
                         ? backend->LookupExact(query.text, backend_options)
                         : backend->LookupPrefix(query.text, backend_options);
                 for (const auto& article : articles) {
+                    dictionary::CheckRequest(backend_options);
+                    if (query.match_mode == MatchMode::kExact &&
+                        foundation::NormalizeForExactLookup(
+                            article.headword, preferences_.ignore_diacritics) !=
+                            exact_query) {
+                        continue;
+                    }
+                    if (response.entries.size() >= options.result_limit)
+                        break;
                     const auto document =
                         article::Assemble(identity, {article});
                     DictionaryEntry entry;
@@ -1192,6 +1222,13 @@ class ServiceState final {
                                  resource.resource_id)});
                     }
                     response.entries.push_back(std::move(entry));
+                }
+                if (query.match_mode == MatchMode::kExact && !runtime_source &&
+                    articles.size() == kMaximumExactCollisionCandidates) {
+                    response.errors.push_back(
+                        {LookupErrorCode::kInternal, identity.id,
+                         "Exact lookup collision scan reached its bounded "
+                         "candidate limit"});
                 }
             } catch (const dictionary::Error& error) {
                 response.errors.push_back({TranslateErrorCode(error.code()),
@@ -1382,6 +1419,7 @@ class ServiceState final {
     }
 
     ApplicationPreferences preferences_;
+    std::unordered_set<std::string> runtime_source_ids_;
     std::vector<std::unique_ptr<dictionary::Backend>> dictionaries_;
     std::unordered_map<std::uint32_t, std::vector<const dictionary::Backend*>>
         groups_;

@@ -15,6 +15,8 @@ class TextFoldingError final : public std::runtime_error {
 };
 
 std::string FoldForLookup(std::string_view text);
+std::string NormalizeForExactLookup(std::string_view text,
+                                    bool ignore_diacritics);
 
 }  // namespace goldendict::core::foundation
 

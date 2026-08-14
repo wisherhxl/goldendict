@@ -566,6 +566,16 @@ int Fail(const std::string& message) {
 
 int main() {
     try {
+        goldendict::core::RuntimeRequestOptions runtime_options;
+        goldendict::core::RuntimeDictionaryIdentity runtime_identity;
+        runtime_options.ignore_diacritics = true;
+        runtime_identity.supports_diacritic_insensitive_lookup = true;
+        if (!runtime_options.ignore_diacritics ||
+            !runtime_identity.supports_diacritic_insensitive_lookup ||
+            goldendict::core::LookupErrorCode::kUnsupported ==
+                goldendict::core::LookupErrorCode::kInternal) {
+            return Fail("runtime diacritic capability contract failed");
+        }
         TemporaryDirectory directory;
         const auto dictionary_root = directory.path() / "dictionary";
         WriteFixture(dictionary_root);

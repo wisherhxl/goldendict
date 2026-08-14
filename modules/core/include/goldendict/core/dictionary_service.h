@@ -44,6 +44,7 @@ enum class LookupErrorCode {
     kDictionaryUnavailable,
     kCancelled,
     kDeadlineExceeded,
+    kUnsupported,
     kInternal,
 };
 

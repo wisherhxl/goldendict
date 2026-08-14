@@ -89,6 +89,12 @@ bool IsDiscarded(UChar32 code_point) noexcept {
            u_ispunct(code_point);
 }
 
+bool IsMark(UChar32 code_point) noexcept {
+    const auto category = static_cast<UCharCategory>(u_charType(code_point));
+    return category == U_NON_SPACING_MARK ||
+           category == U_COMBINING_SPACING_MARK || category == U_ENCLOSING_MARK;
+}
+
 std::vector<UChar> RemoveMarksWhitespaceAndPunctuation(
     const std::vector<UChar>& input) {
     std::vector<UChar> output;
@@ -106,6 +112,23 @@ std::vector<UChar> RemoveMarksWhitespaceAndPunctuation(
         } else {
             output.push_back(U16_LEAD(code_point));
             output.push_back(U16_TRAIL(code_point));
+        }
+    }
+    return output;
+}
+
+std::vector<UChar> RemoveMarks(const std::vector<UChar>& input) {
+    std::vector<UChar> output;
+    output.reserve(input.size());
+    std::int32_t position = 0;
+    const auto length = static_cast<std::int32_t>(input.size());
+    while (position < length) {
+        const auto begin = position;
+        UChar32 code_point = 0;
+        U16_NEXT(input.data(), position, length, code_point);
+        if (code_point >= 0 && !IsMark(code_point)) {
+            output.insert(output.end(), input.begin() + begin,
+                          input.begin() + position);
         }
     }
     return output;
@@ -143,6 +166,25 @@ std::string FoldForLookup(std::string_view text) {
     folded = FoldCase(folded);
     folded = Normalize(normalizer, folded);
     return ToUtf8(RemoveMarksWhitespaceAndPunctuation(folded));
+}
+
+std::string NormalizeForExactLookup(std::string_view text,
+                                    bool ignore_diacritics) {
+    if (text.empty())
+        return {};
+    UErrorCode status = U_ZERO_ERROR;
+    const UNormalizer2* nfc = unorm2_getNFCInstance(&status);
+    RequireSuccess(status, "Cannot initialize NFC normalization");
+    auto result = Normalize(nfc, FromUtf8(text));
+    result = FoldCase(result);
+    result = Normalize(nfc, result);
+    if (!ignore_diacritics)
+        return ToUtf8(result);
+    status = U_ZERO_ERROR;
+    const UNormalizer2* nfd = unorm2_getNFDInstance(&status);
+    RequireSuccess(status, "Cannot initialize NFD normalization");
+    result = RemoveMarks(Normalize(nfd, result));
+    return ToUtf8(Normalize(nfc, result));
 }
 
 }  // namespace goldendict::core::foundation

@@ -182,6 +182,12 @@ or process timeout remains the outer fallback between polling opportunities.
 External plain-text and HTML results pass through core's normal untrusted article
 policy, prefix-match stdout is interpreted as bounded nonempty Unicode lines,
 and external sources do not expose resources.
+Exact lookup now carries an explicit diacritic policy through the public
+runtime request options. A runtime identity must advertise support before core
+can request diacritic-insensitive matching, and supporting sources must apply
+the policy before their result bound. The configured network and external
+adapters do not advertise that capability, so core reports a typed per-source
+lookup error instead of silently accepting provider-dependent behavior.
 The Phase 8 P4b current-persistence increment adds ordered, bounded
 external-program records with stable identity, enabled intent, plain-text,
 HTML, or prefix-match output, an absolute executable, ordered argument

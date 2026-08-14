@@ -1809,9 +1809,11 @@ void MainWindow::RunArticlesPreferencesSmokeCheck(
             dialog.findChild<QSpinBox*>(QStringLiteral("articleSizeLimit"));
         auto* label =
             dialog.findChild<QLabel*>(QStringLiteral("articleSizeLimitLabel"));
+        auto* ignore =
+            dialog.findChild<QCheckBox*>(QStringLiteral("ignoreDiacritics"));
         passed =
             passed && group != nullptr && collapse != nullptr &&
-            limit != nullptr && label != nullptr &&
+            limit != nullptr && label != nullptr && ignore != nullptr &&
             group->title() == QStringLiteral("Articles") &&
             collapse->text() == QStringLiteral("Collapse articles more than") &&
             collapse->toolTip() ==
@@ -1825,9 +1827,16 @@ void MainWindow::RunArticlesPreferencesSmokeCheck(
                 static_cast<int>(initial_preferences.article_size_limit) &&
             limit->isEnabled() == initial_preferences.collapse_large_articles &&
             label->text() == QStringLiteral("symbols") &&
+            ignore->text() == QStringLiteral("Ignore diacritics") &&
+            ignore->toolTip() ==
+                QStringLiteral(
+                    "Turn this option on to ignore diacritics while searching "
+                    "articles") &&
+            ignore->isChecked() == initial_preferences.ignore_diacritics &&
             dialog.findChild<QWidget*>(QStringLiteral("displayStyle")) ==
                 nullptr;
         collapse->setChecked(true);
+        ignore->setChecked(true);
         limit->setValue(3450);
         passed = passed && limit->isEnabled();
         dialog.reject();
@@ -1848,9 +1857,12 @@ void MainWindow::RunArticlesPreferencesSmokeCheck(
             dialog.findChild<QSpinBox*>(QStringLiteral("articleSizeLimit"));
         auto* buttons = dialog.findChild<QDialogButtonBox*>(
             QStringLiteral("preferencesButtonBox"));
+        auto* ignore =
+            dialog.findChild<QCheckBox*>(QStringLiteral("ignoreDiacritics"));
         passed = passed && collapse != nullptr && limit != nullptr &&
-                 buttons != nullptr;
+                 ignore != nullptr && buttons != nullptr;
         collapse->setChecked(true);
+        ignore->setChecked(true);
         limit->setValue(3450);
         buttons->button(QDialogButtonBox::Ok)->click();
         auto* error = dialog.findChild<QLabel*>(
@@ -1872,9 +1884,12 @@ void MainWindow::RunArticlesPreferencesSmokeCheck(
             dialog.findChild<QSpinBox*>(QStringLiteral("articleSizeLimit"));
         auto* buttons = dialog.findChild<QDialogButtonBox*>(
             QStringLiteral("preferencesButtonBox"));
+        auto* ignore =
+            dialog.findChild<QCheckBox*>(QStringLiteral("ignoreDiacritics"));
         passed = passed && collapse != nullptr && limit != nullptr &&
-                 buttons != nullptr;
+                 ignore != nullptr && buttons != nullptr;
         collapse->setChecked(true);
+        ignore->setChecked(true);
         limit->setValue(3450);
         buttons->button(QDialogButtonBox::Ok)->click();
         passed = passed && dialog.result() == QDialog::Accepted;
@@ -1884,6 +1899,7 @@ void MainWindow::RunArticlesPreferencesSmokeCheck(
     preferences_dialog_executor_ = {};
     preferences_apply_callback_ = original_callback;
     passed = passed && preferences_.collapse_large_articles &&
+             preferences_.ignore_diacritics &&
              preferences_.article_size_limit == 3450U &&
              facade_->ExportArticleTabSession() == initial_session &&
              CaptureMainWindowState() == initial_state &&

@@ -76,6 +76,45 @@ class InspectionRuntimeSource final : public RuntimeDictionarySource {
     RuntimeDictionaryIdentity identity_;
 };
 
+class DiacriticRuntimeSource final : public RuntimeDictionarySource {
+   public:
+    explicit DiacriticRuntimeSource(bool supported) {
+        identity_.id =
+            supported ? "diacritic-capable" : "diacritic-unsupported";
+        identity_.name = identity_.id;
+        identity_.supports_diacritic_insensitive_lookup = supported;
+    }
+
+    const RuntimeDictionaryIdentity& identity() const noexcept override {
+        return identity_;
+    }
+
+    std::vector<RuntimeDictionaryArticle> LookupExact(
+        std::string_view, const RuntimeRequestOptions& options) const override {
+        if (!options.ignore_diacritics)
+            return {};
+        return {{"café", "text", "runtime definition"}};
+    }
+
+    std::vector<RuntimeDictionaryArticle> LookupPrefix(
+        std::string_view, const RuntimeRequestOptions&) const override {
+        return {};
+    }
+
+    std::vector<std::string> SuggestPrefix(
+        std::string_view, const RuntimeRequestOptions&) const override {
+        return {};
+    }
+
+    std::optional<RuntimeDictionaryResource> GetResource(
+        std::string_view, const RuntimeRequestOptions&) const override {
+        return std::nullopt;
+    }
+
+   private:
+    RuntimeDictionaryIdentity identity_;
+};
+
 class ApplicationServiceTest : public QObject {
     Q_OBJECT
 
@@ -110,6 +149,7 @@ class ApplicationServiceTest : public QObject {
     void EnumeratesStarDictHeadwordsWithStableCursors();
     void ExportsCompleteHeadwordListsAtomically();
     void ReturnsCanonicalFoldedMatchInformation();
+    void EnforcesRuntimeDiacriticCapability();
     void ReturnsRankedPrefixMatches();
     void ReturnsLightweightHeadwordSuggestions();
     void FiltersBoundedHeadwordSuggestionsWithWildcards();
@@ -1858,19 +1898,46 @@ void ApplicationServiceTest::ReturnsCanonicalFoldedMatchInformation() {
     QVERIFY(directory.isValid());
     const auto root = TemporaryPath(directory);
     test::WriteStardictFixture(root,
-                               {{"Caf\xc3\xa9-au-lait", "folded definition"}});
+                               {{"Caf\xc3\xa9 au lait", "folded definition"}});
     CoreConfiguration configuration;
     configuration.dictionary_paths = {root.string()};
     auto service = CreateDictionaryService(configuration);
     LookupQuery query;
     query.text = "CAFE AU LAIT";
 
+    const auto sensitive = service->Lookup(query);
+
+    QVERIFY(sensitive.errors.empty());
+    QVERIFY(sensitive.entries.empty());
+
+    configuration.preferences.ignore_diacritics = true;
+    service = CreateDictionaryService(configuration);
     const auto response = service->Lookup(query);
 
     QCOMPARE(response.errors.size(), std::size_t{0});
     QCOMPARE(response.entries.size(), std::size_t{1});
     QCOMPARE(response.entries.front().match.requested_headword, "CAFE AU LAIT");
     QCOMPARE(response.entries.front().match.normalized_headword, "cafeaulait");
+}
+
+void ApplicationServiceTest::EnforcesRuntimeDiacriticCapability() {
+    CoreConfiguration configuration;
+    configuration.preferences.ignore_diacritics = true;
+    std::vector<std::unique_ptr<RuntimeDictionarySource>> sources;
+    sources.push_back(std::make_unique<DiacriticRuntimeSource>(false));
+    sources.push_back(std::make_unique<DiacriticRuntimeSource>(true));
+    auto service = CreateDictionaryService(configuration, std::move(sources));
+    LookupQuery query;
+    query.text = "cafe";
+
+    const auto response = service->Lookup(query);
+
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    QCOMPARE(response.entries.front().article.plain_text, "runtime definition");
+    QCOMPARE(response.errors.size(), std::size_t{1});
+    QCOMPARE(response.errors.front().dictionary_id, "diacritic-unsupported");
+    QCOMPARE(response.errors.front().code, LookupErrorCode::kUnsupported);
+    QVERIFY(response.partial);
 }
 
 void ApplicationServiceTest::ReturnsRankedPrefixMatches() {

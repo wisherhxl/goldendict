@@ -38,6 +38,7 @@ class PreferencesDialog final : public QDialog {
     QCheckBox* collapse_large_articles_ = nullptr;
     QSpinBox* article_size_limit_ = nullptr;
     QCheckBox* limit_input_phrase_length_ = nullptr;
+    QCheckBox* ignore_diacritics_ = nullptr;
     QSpinBox* input_phrase_length_limit_ = nullptr;
     QLabel* validation_error_ = nullptr;
 };

@@ -12,6 +12,7 @@ class TextFoldingTest : public QObject {
    private slots:
     void FoldsLookupEquivalentText_data();
     void FoldsLookupEquivalentText();
+    void NormalizesExactLookupText();
     void RejectsMalformedUtf8();
 };
 
@@ -35,6 +36,20 @@ void TextFoldingTest::FoldsLookupEquivalentText_data() {
         << QString::fromUtf8("СЛОВО") << QString::fromUtf8("слово");
     QTest::newRow("cjk") << QString::fromUtf8("词典")
                          << QString::fromUtf8("词典");
+}
+
+void TextFoldingTest::NormalizesExactLookupText() {
+    QCOMPARE(QString::fromStdString(NormalizeForExactLookup(
+                 QString::fromUtf8("CAFÉ-au lait").toStdString(), false)),
+             QString::fromUtf8("café-au lait"));
+    QCOMPARE(QString::fromStdString(NormalizeForExactLookup(
+                 QString::fromUtf8("CAFE\u0301-au lait").toStdString(), true)),
+             QStringLiteral("cafe-au lait"));
+    QVERIFY(NormalizeForExactLookup("cafe-au lait", false) !=
+            NormalizeForExactLookup("cafe au lait", false));
+    QVERIFY_EXCEPTION_THROWN(
+        NormalizeForExactLookup(std::string("\xc3\x28", 2), true),
+        TextFoldingError);
 }
 
 void TextFoldingTest::FoldsLookupEquivalentText() {

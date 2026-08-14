@@ -402,6 +402,14 @@ suggestion, asynchronous, navigation, and atomic session/configuration
 rejection behavior. The offscreen Preferences smoke verifies rejected input
 does not submit history or mutate the article session and reports the
 configured limit while clearing suggestions.
+
+The General/Ignore diacritics extension pins default-off persistence and
+legacy migration, the NFC/case-fold/NFD/mark-removal comparison pipeline,
+diacritic-sensitive disabled lookup, enabled local collision matching, and the
+public runtime capability/request contract. Unsupported runtime sources report
+an explicit per-source error. Prefix suggestions and headword enumeration are
+unchanged. The offscreen Preferences smoke covers cancel, failed apply,
+successful persistence, session preservation, and the backed checkbox.
 `goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
 History and its sole backed legacy `searchInPageAction`, including exact text,
 role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and

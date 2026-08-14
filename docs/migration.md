@@ -688,6 +688,17 @@ The current bound and Unicode-scalar rule intentionally replace the pinned
 legacy widget's `9999999` maximum and Qt UTF-16-code-unit count. The next
 independent Preferences leaf is General/Ignore diacritics.
 
+The General/Ignore diacritics leaf adds the pinned default-off checkbox and
+keeps the original query in history and restored tab navigation. Exact local
+lookup first obtains folded-index candidates, then compares NFC, default
+Unicode case fold, NFC; when enabled it additionally applies NFD, removes all
+Mn/Mc/Me marks, and returns to NFC. Punctuation and whitespace remain
+significant in this collision check. Prefix lookup, suggestions, aliases,
+redirect targets, group participation, and exported headword enumeration keep
+their existing behavior. Runtime sources use a capability-aware public request
+contract; unsupported configured sources fail explicitly rather than producing
+source-dependent matches.
+
 The next independent Phase 8 menu leaf adds the pinned `menuSearch` identity
 between Edit and History. It exposes only the existing in-article
 `searchInPageAction`, with its legacy text, role, and Ctrl+F shortcut, and

@@ -48,6 +48,10 @@ struct RuntimeRequestOptions {
     std::chrono::steady_clock::time_point deadline =
         std::chrono::steady_clock::time_point::max();
     const RuntimeCancellationSignal* cancellation = nullptr;
+    // Exact lookup sources advertising diacritic-insensitive capability must
+    // apply this policy before result_limit. Prefix and suggestion operations
+    // ignore this field.
+    bool ignore_diacritics = false;
 };
 
 struct RuntimeDictionaryIdentity {
@@ -60,6 +64,7 @@ struct RuntimeDictionaryIdentity {
     std::size_t article_count = 0U;
     std::size_t headword_count = 0U;
     bool supports_headword_enumeration = false;
+    bool supports_diacritic_insensitive_lookup = false;
 };
 
 struct RuntimeHeadwordPage {
