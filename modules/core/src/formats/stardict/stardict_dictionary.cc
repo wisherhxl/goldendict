@@ -7,6 +7,7 @@
 #include <system_error>
 #include <utility>
 
+#include "goldendict/core/dictionary_service.h"
 #include "stardict_resource.h"
 
 namespace goldendict::core::formats::stardict {
@@ -60,6 +61,7 @@ Dictionary Dictionary::Open(
         dictionary.identity_.article_count = dictionary.reader_.article_count();
         dictionary.identity_.headword_count =
             dictionary.reader_.headword_count();
+        dictionary.identity_.supports_headword_enumeration = true;
         std::error_code filesystem_error;
         const auto canonical_source =
             std::filesystem::weakly_canonical(info_path, filesystem_error);
@@ -122,6 +124,17 @@ std::vector<std::string> Dictionary::SuggestPrefix(
         [&options]() { dictionary::CheckRequest(options); });
     dictionary::CheckRequest(options);
     return suggestions;
+}
+
+dictionary::HeadwordPage Dictionary::EnumerateHeadwords(
+    std::size_t offset, const dictionary::RequestOptions& options) const {
+    dictionary::CheckRequest(options);
+    auto [headwords, complete] = reader_.EnumerateHeadwords(
+        offset, options.result_limit,
+        core::kMaximumHeadwordEnumerationResponseBytes,
+        [&options]() { dictionary::CheckRequest(options); });
+    dictionary::CheckRequest(options);
+    return {std::move(headwords), complete};
 }
 
 std::optional<dictionary::Resource> Dictionary::GetResource(

@@ -8,8 +8,10 @@
 #include <fstream>
 #include <limits>
 #include <map>
+#include <mutex>
 #include <sstream>
 #include <system_error>
+#include <thread>
 #include <unordered_set>
 #include <utility>
 
@@ -19,6 +21,12 @@
 #include "../../foundation/text_folding.h"
 
 namespace goldendict::core::formats::stardict {
+
+struct Reader::EnumerationState {
+    std::mutex mutex;
+    std::shared_ptr<const std::vector<std::uint32_t>> ordinals;
+};
+
 namespace {
 
 constexpr std::string_view kInfoSignature = "StarDict's dict ifo file";
@@ -26,6 +34,62 @@ constexpr std::uintmax_t kMaximumIndexSize = 256U * 1024U * 1024U;
 constexpr std::uintmax_t kMaximumDictionarySize =
     static_cast<std::uintmax_t>(2U) * 1024U * 1024U * 1024U;
 constexpr std::string_view kGeneratedIndexFormat = "stardict-records-v1";
+
+class Utf16Units final {
+   public:
+    explicit Utf16Units(std::string_view input) : input_(input) {}
+
+    std::optional<std::uint16_t> Next() {
+        if (low_surrogate_ != 0U) {
+            const auto result = low_surrogate_;
+            low_surrogate_ = 0U;
+            return result;
+        }
+        if (offset_ == input_.size())
+            return std::nullopt;
+        const auto first = static_cast<unsigned char>(input_[offset_++]);
+        std::uint32_t point = first;
+        std::size_t continuation = 0U;
+        if ((first & 0xe0U) == 0xc0U) {
+            point = first & 0x1fU;
+            continuation = 1U;
+        } else if ((first & 0xf0U) == 0xe0U) {
+            point = first & 0x0fU;
+            continuation = 2U;
+        } else if ((first & 0xf8U) == 0xf0U) {
+            point = first & 0x07U;
+            continuation = 3U;
+        }
+        for (std::size_t index = 0U; index < continuation; ++index) {
+            point = (point << 6U) |
+                    (static_cast<unsigned char>(input_[offset_++]) & 0x3fU);
+        }
+        if (point <= 0xffffU)
+            return static_cast<std::uint16_t>(point);
+        point -= 0x10000U;
+        low_surrogate_ = static_cast<std::uint16_t>(0xdc00U + (point & 0x3ffU));
+        return static_cast<std::uint16_t>(0xd800U + (point >> 10U));
+    }
+
+   private:
+    std::string_view input_;
+    std::size_t offset_ = 0U;
+    std::uint16_t low_surrogate_ = 0U;
+};
+
+int CompareLikeQString(std::string_view left, std::string_view right) {
+    Utf16Units left_units(left);
+    Utf16Units right_units(right);
+    while (true) {
+        const auto left_unit = left_units.Next();
+        const auto right_unit = right_units.Next();
+        if (!left_unit || !right_unit) {
+            return left_unit ? 1 : right_unit ? -1 : 0;
+        }
+        if (*left_unit != *right_unit)
+            return *left_unit < *right_unit ? -1 : 1;
+    }
+}
 
 bool HasPrefix(std::string_view text, std::string_view prefix) noexcept {
     return text.size() >= prefix.size() &&
@@ -486,7 +550,82 @@ Reader Reader::Open(
                   "Index record points outside dictionary data");
         }
     }
+    reader.enumeration_state_ = std::make_shared<EnumerationState>();
     return reader;
+}
+
+std::pair<std::vector<std::string>, bool> Reader::EnumerateHeadwords(
+    std::size_t offset, std::size_t result_limit, std::size_t byte_limit,
+    const std::function<void()>& checkpoint) const {
+    if (!enumeration_state_) {
+        throw std::logic_error("StarDict enumeration state is unavailable");
+    }
+    std::unique_lock<std::mutex> lock(enumeration_state_->mutex,
+                                      std::defer_lock);
+    while (!lock.try_lock()) {
+        if (checkpoint) {
+            checkpoint();
+        }
+        std::this_thread::yield();
+    }
+    if (!enumeration_state_->ordinals) {
+        if (index_.size() > std::numeric_limits<std::uint32_t>::max()) {
+            Throw(ErrorCode::kInvalidIndex, {},
+                  "StarDict has too many headwords to enumerate");
+        }
+        auto ordinals = std::make_shared<std::vector<std::uint32_t>>();
+        ordinals->reserve(index_.size());
+        for (std::size_t index = 0U; index < index_.size(); ++index) {
+            if (checkpoint && index % 1024U == 0U) {
+                checkpoint();
+            }
+            ordinals->push_back(static_cast<std::uint32_t>(index));
+        }
+        std::size_t comparisons = 0U;
+        std::stable_sort(ordinals->begin(), ordinals->end(),
+                         [this, &checkpoint, &comparisons](
+                             std::uint32_t left, std::uint32_t right) {
+                             if (checkpoint && comparisons++ % 1024U == 0U) {
+                                 checkpoint();
+                             }
+                             return CompareLikeQString(index_[left].headword,
+                                                       index_[right].headword) <
+                                    0;
+                         });
+        const auto unique_end = std::unique(
+            ordinals->begin(), ordinals->end(),
+            [this](std::uint32_t left, std::uint32_t right) {
+                return index_[left].headword == index_[right].headword;
+            });
+        ordinals->erase(unique_end, ordinals->end());
+        enumeration_state_->ordinals = std::move(ordinals);
+    }
+    const auto ordinals = enumeration_state_->ordinals;
+    lock.unlock();
+    if (offset > ordinals->size()) {
+        throw std::out_of_range("StarDict enumeration offset is stale");
+    }
+    std::vector<std::string> headwords;
+    headwords.reserve(std::min(result_limit, ordinals->size() - offset));
+    std::size_t bytes = 0U;
+    std::size_t position = offset;
+    while (position < ordinals->size() && headwords.size() < result_limit) {
+        if (checkpoint && headwords.size() % 64U == 0U) {
+            checkpoint();
+        }
+        const auto& headword = index_[(*ordinals)[position]].headword;
+        if (headword.size() > byte_limit) {
+            Throw(ErrorCode::kInvalidIndex, {},
+                  "StarDict headword exceeds the enumeration response bound");
+        }
+        if (!headwords.empty() && headword.size() > byte_limit - bytes) {
+            break;
+        }
+        bytes += headword.size();
+        headwords.push_back(headword);
+        ++position;
+    }
+    return {std::move(headwords), position == ordinals->size()};
 }
 
 std::vector<Article> Reader::LookupExact(

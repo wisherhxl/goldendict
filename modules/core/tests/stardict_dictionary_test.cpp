@@ -25,6 +25,7 @@ class StardictDictionaryTest : public QObject {
     void ExposesIdentityAndBoundedArticles();
     void ReturnsBoundedPrefixArticles();
     void ReturnsBoundedHeadwordSuggestions();
+    void EnumeratesUniqueHeadwordsInLegacyOrder();
     void PreservesFormattedArticleData();
     void HonorsCancellationAndDeadline();
     void TranslatesReaderFailures();
@@ -96,6 +97,34 @@ void StardictDictionaryTest::ReturnsBoundedHeadwordSuggestions() {
     QCOMPARE(suggestions.size(), std::size_t{2});
     QCOMPARE(suggestions[0], "example");
     QCOMPARE(suggestions[1], "examples");
+}
+
+void StardictDictionaryTest::EnumeratesUniqueHeadwordsInLegacyOrder() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto info_path = test::WriteStardictFixture(
+        TemporaryPath(directory), {{"zebra", "one"},
+                                   {"Apple", "two"},
+                                   {"apple", "three"},
+                                   {"Apple", "duplicate"},
+                                   {"\xf0\x90\x80\x80", "non-bmp"},
+                                   {"\xee\x80\x80", "bmp"}});
+    const Dictionary dictionary = Dictionary::Open("fixture-id", info_path);
+    dictionary::RequestOptions options;
+    options.result_limit = 2U;
+
+    const auto first = dictionary.EnumerateHeadwords(0U, options);
+    const auto second = dictionary.EnumerateHeadwords(2U, options);
+    const auto third = dictionary.EnumerateHeadwords(4U, options);
+
+    QVERIFY(dictionary.identity().supports_headword_enumeration);
+    QCOMPARE(first.headwords, (std::vector<std::string>{"Apple", "apple"}));
+    QVERIFY(!first.complete);
+    QCOMPARE(second.headwords,
+             (std::vector<std::string>{"zebra", "\xf0\x90\x80\x80"}));
+    QVERIFY(!second.complete);
+    QCOMPARE(third.headwords, (std::vector<std::string>{"\xee\x80\x80"}));
+    QVERIFY(third.complete);
 }
 
 void StardictDictionaryTest::PreservesFormattedArticleData() {

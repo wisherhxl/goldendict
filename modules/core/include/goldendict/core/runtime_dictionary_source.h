@@ -59,6 +59,12 @@ struct RuntimeDictionaryIdentity {
     std::string target_language;
     std::size_t article_count = 0U;
     std::size_t headword_count = 0U;
+    bool supports_headword_enumeration = false;
+};
+
+struct RuntimeHeadwordPage {
+    std::vector<std::string> headwords;
+    bool complete = false;
 };
 
 struct RuntimeDictionaryArticle {
@@ -88,6 +94,9 @@ class GOLDENDICT_EXPORTS RuntimeDictionarySource {
     virtual std::vector<std::string> SuggestPrefix(
         std::string_view prefix, const RuntimeRequestOptions& options =
                                      RuntimeRequestOptions{}) const = 0;
+    virtual RuntimeHeadwordPage EnumerateHeadwords(
+        std::size_t offset,
+        const RuntimeRequestOptions& options = RuntimeRequestOptions{}) const;
     virtual std::optional<RuntimeDictionaryResource> GetResource(
         std::string_view resource_id, const RuntimeRequestOptions& options =
                                           RuntimeRequestOptions{}) const = 0;

@@ -105,6 +105,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsMalformedConfiguration();
     void CatalogSanitizesInspectionMetadata();
     void DiscoversAndQueriesARealFixture();
+    void EnumeratesStarDictHeadwordsWithStableCursors();
     void ReturnsCanonicalFoldedMatchInformation();
     void ReturnsRankedPrefixMatches();
     void ReturnsLightweightHeadwordSuggestions();
@@ -1630,6 +1631,57 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
     const auto missing = service.Lookup(query);
     QVERIFY(missing.entries.empty());
     QVERIFY(missing.errors.empty());
+}
+
+void ApplicationServiceTest::EnumeratesStarDictHeadwordsWithStableCursors() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteStardictFixture(root, {{"zebra", "one"},
+                                      {"Apple", "two"},
+                                      {"Apple", "duplicate"},
+                                      {"apple", "three"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    const auto catalog = service->GetCatalog();
+    QCOMPARE(catalog.size(), std::size_t{1});
+    QVERIFY(catalog.front().supports_headword_enumeration);
+
+    HeadwordEnumerationQuery query;
+    query.dictionary_id = catalog.front().id;
+    query.page_size = 2U;
+    const auto first = service->EnumerateHeadwords(query);
+    QVERIFY(!first.error.has_value());
+    QCOMPARE(first.headwords, (std::vector<std::string>{"Apple", "apple"}));
+    QVERIFY(!first.complete);
+    QVERIFY(!first.next_cursor.empty());
+
+    query.cursor = first.next_cursor;
+    const auto second = service->EnumerateHeadwords(query);
+    QVERIFY(!second.error.has_value());
+    QCOMPARE(second.headwords, (std::vector<std::string>{"zebra"}));
+    QVERIFY(second.complete);
+    QVERIFY(second.next_cursor.empty());
+
+    query.cursor.back() = query.cursor.back() == '0' ? '1' : '0';
+    const auto malformed = service->EnumerateHeadwords(query);
+    QVERIFY(malformed.error.has_value());
+    QCOMPARE(malformed.error->code,
+             HeadwordEnumerationErrorCode::kMalformedCursor);
+
+    auto replacement = CreateDictionaryService(configuration);
+    query.cursor = first.next_cursor;
+    const auto stale = replacement->EnumerateHeadwords(query);
+    QVERIFY(stale.error.has_value());
+    QCOMPARE(stale.error->code, HeadwordEnumerationErrorCode::kStaleCursor);
+
+    const CancelledToken cancelled;
+    query.cursor.clear();
+    const auto cancelled_page = service->EnumerateHeadwords(query, &cancelled);
+    QVERIFY(cancelled_page.error.has_value());
+    QCOMPARE(cancelled_page.error->code,
+             HeadwordEnumerationErrorCode::kCancelled);
 }
 
 void ApplicationServiceTest::ReturnsCanonicalFoldedMatchInformation() {

@@ -5,14 +5,17 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <charconv>
 #include <chrono>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <future>
 #include <iomanip>
 #include <limits>
 #include <memory>
 #include <optional>
+#include <random>
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
@@ -77,6 +80,88 @@ constexpr std::uint32_t kRegexMatchLimit = 10000U;
 constexpr std::uint32_t kRegexDepthLimit = 100U;
 constexpr std::uint32_t kRegexHeapLimitKiB = 256U;
 constexpr std::size_t kMaximumDictionaryDescriptionBytes = 1024U * 1024U;
+
+std::uint64_t RotateLeft(std::uint64_t value, unsigned bits) noexcept {
+    return (value << bits) | (value >> (64U - bits));
+}
+
+std::uint64_t SipHash(std::string_view input, std::uint64_t key0,
+                      std::uint64_t key1) noexcept {
+    std::uint64_t v0 = 0x736f6d6570736575ULL ^ key0;
+    std::uint64_t v1 = 0x646f72616e646f6dULL ^ key1;
+    std::uint64_t v2 = 0x6c7967656e657261ULL ^ key0;
+    std::uint64_t v3 = 0x7465646279746573ULL ^ key1;
+    const auto round = [&]() {
+        v0 += v1;
+        v1 = RotateLeft(v1, 13U);
+        v1 ^= v0;
+        v0 = RotateLeft(v0, 32U);
+        v2 += v3;
+        v3 = RotateLeft(v3, 16U);
+        v3 ^= v2;
+        v0 += v3;
+        v3 = RotateLeft(v3, 21U);
+        v3 ^= v0;
+        v2 += v1;
+        v1 = RotateLeft(v1, 17U);
+        v1 ^= v2;
+        v2 = RotateLeft(v2, 32U);
+    };
+    std::uint64_t block = 0U;
+    std::size_t offset = 0U;
+    while (input.size() - offset >= 8U) {
+        std::memcpy(&block, input.data() + offset, sizeof(block));
+        v3 ^= block;
+        round();
+        round();
+        v0 ^= block;
+        offset += 8U;
+    }
+    block = static_cast<std::uint64_t>(input.size()) << 56U;
+    for (std::size_t index = 0U; offset + index < input.size(); ++index) {
+        block |= static_cast<std::uint64_t>(
+                     static_cast<unsigned char>(input[offset + index]))
+                 << (index * 8U);
+    }
+    v3 ^= block;
+    round();
+    round();
+    v0 ^= block;
+    v2 ^= 0xffU;
+    round();
+    round();
+    round();
+    round();
+    return v0 ^ v1 ^ v2 ^ v3;
+}
+
+constexpr std::uint64_t kCursorKey0 = 0x476f6c64656e4469ULL;
+constexpr std::uint64_t kCursorKey1 = 0x637448656164776fULL;
+
+std::string Hex64(std::uint64_t value) {
+    std::ostringstream output;
+    output << std::hex << std::setfill('0') << std::setw(16) << value;
+    return output.str();
+}
+
+std::optional<std::uint64_t> ParseHex64(std::string_view value) {
+    if (value.size() != 16U)
+        return std::nullopt;
+    std::uint64_t result = 0U;
+    const auto parsed =
+        std::from_chars(value.data(), value.data() + value.size(), result, 16);
+    return parsed.ec == std::errc{} && parsed.ptr == value.data() + value.size()
+               ? std::optional<std::uint64_t>(result)
+               : std::nullopt;
+}
+
+std::pair<std::uint64_t, std::uint64_t> NewSnapshotId() {
+    std::random_device random;
+    const auto next = [&]() {
+        return (static_cast<std::uint64_t>(random()) << 32U) ^ random();
+    };
+    return {next(), next()};
+}
 
 std::string PlainMetadata(std::string_view input) {
     std::string output;
@@ -388,6 +473,8 @@ DictionaryIdentity PublicIdentity(const dictionary::Identity& identity) {
     result.target_language = identity.target_language;
     result.article_count = identity.article_count;
     result.headword_count = identity.headword_count;
+    result.supports_headword_enumeration =
+        identity.supports_headword_enumeration;
     return result;
 }
 
@@ -870,6 +957,156 @@ class ServiceState final {
         return catalog;
     }
 
+    HeadwordEnumerationPage EnumerateHeadwords(
+        const HeadwordEnumerationQuery& query,
+        const CancellationToken* cancellation) const {
+        HeadwordEnumerationPage response;
+        response.dictionary_id = query.dictionary_id;
+        const auto fail = [&](HeadwordEnumerationErrorCode code,
+                              std::string message) {
+            response.headwords.clear();
+            response.next_cursor.clear();
+            response.complete = false;
+            response.error = HeadwordEnumerationError{code, query.dictionary_id,
+                                                      std::move(message)};
+            return response;
+        };
+        if (query.dictionary_id.empty() ||
+            query.dictionary_id.size() > kMaximumLookupFilterBytes ||
+            query.dictionary_id.find('\0') != std::string::npos ||
+            !foundation::IsValidUtf8(query.dictionary_id) ||
+            query.page_size == 0U ||
+            query.page_size > kMaximumHeadwordEnumerationPageSize ||
+            query.cursor.size() > kMaximumHeadwordEnumerationCursorBytes) {
+            return fail(HeadwordEnumerationErrorCode::kInvalidRequest,
+                        "Headword enumeration request exceeds its bounds");
+        }
+        const auto backend =
+            std::find_if(dictionaries_.begin(), dictionaries_.end(),
+                         [&query](const auto& item) {
+                             return item->identity().id == query.dictionary_id;
+                         });
+        if (backend == dictionaries_.end()) {
+            return fail(HeadwordEnumerationErrorCode::kDictionaryUnavailable,
+                        "Requested dictionary is unavailable");
+        }
+        if (!(*backend)->identity().supports_headword_enumeration) {
+            return fail(HeadwordEnumerationErrorCode::kUnsupported,
+                        "Dictionary does not support headword enumeration");
+        }
+        std::size_t offset = 0U;
+        if (!query.cursor.empty()) {
+            std::array<std::string_view, 7> fields;
+            std::size_t begin = 0U;
+            for (std::size_t field = 0U; field < fields.size(); ++field) {
+                const auto end = query.cursor.find(':', begin);
+                if (field + 1U == fields.size()) {
+                    if (end != std::string::npos) {
+                        return fail(
+                            HeadwordEnumerationErrorCode::kMalformedCursor,
+                            "Headword enumeration cursor is malformed");
+                    }
+                    fields[field] =
+                        std::string_view(query.cursor).substr(begin);
+                } else {
+                    if (end == std::string::npos) {
+                        return fail(
+                            HeadwordEnumerationErrorCode::kMalformedCursor,
+                            "Headword enumeration cursor is malformed");
+                    }
+                    fields[field] = std::string_view(query.cursor)
+                                        .substr(begin, end - begin);
+                    begin = end + 1U;
+                }
+            }
+            const auto snapshot0 = ParseHex64(fields[1]);
+            const auto snapshot1 = ParseHex64(fields[2]);
+            const auto dictionary_hash = ParseHex64(fields[3]);
+            const auto cursor_offset = ParseHex64(fields[4]);
+            const auto reserved = ParseHex64(fields[5]);
+            const auto tag = ParseHex64(fields[6]);
+            const auto payload_end = query.cursor.rfind(':');
+            if (fields[0] != "gdhe1" || !snapshot0 || !snapshot1 ||
+                !dictionary_hash || !cursor_offset || !reserved || !tag ||
+                *reserved != 0U || payload_end == std::string::npos ||
+                SipHash(std::string_view(query.cursor).substr(0U, payload_end),
+                        kCursorKey0, kCursorKey1) != *tag) {
+                return fail(HeadwordEnumerationErrorCode::kMalformedCursor,
+                            "Headword enumeration cursor is malformed");
+            }
+            if (*snapshot0 != snapshot_id_.first ||
+                *snapshot1 != snapshot_id_.second ||
+                *dictionary_hash !=
+                    SipHash(query.dictionary_id, kCursorKey1, kCursorKey0)) {
+                return fail(HeadwordEnumerationErrorCode::kStaleCursor,
+                            "Headword enumeration cursor is stale");
+            }
+            if (*cursor_offset > std::numeric_limits<std::size_t>::max()) {
+                return fail(HeadwordEnumerationErrorCode::kStaleCursor,
+                            "Headword enumeration cursor is stale");
+            }
+            offset = static_cast<std::size_t>(*cursor_offset);
+        }
+        const CancellationAdapter signal(cancellation);
+        dictionary::RequestOptions options;
+        options.result_limit = query.page_size;
+        options.cancellation = &signal;
+        if (query.timeout <= std::chrono::milliseconds::zero()) {
+            options.deadline = std::chrono::steady_clock::time_point::min();
+        } else {
+            const auto now = std::chrono::steady_clock::now();
+            const auto remaining =
+                std::chrono::steady_clock::time_point::max() - now;
+            options.deadline =
+                query.timeout >= remaining
+                    ? std::chrono::steady_clock::time_point::max()
+                    : now + query.timeout;
+        }
+        try {
+            auto page = (*backend)->EnumerateHeadwords(offset, options);
+            response.headwords = std::move(page.headwords);
+            response.complete = page.complete;
+            if (!response.complete) {
+                const auto next = offset + response.headwords.size();
+                std::string payload = "gdhe1:" + Hex64(snapshot_id_.first) +
+                                      ":" + Hex64(snapshot_id_.second) + ":" +
+                                      Hex64(SipHash(query.dictionary_id,
+                                                    kCursorKey1, kCursorKey0)) +
+                                      ":" + Hex64(next) + ":" + Hex64(0U);
+                response.next_cursor =
+                    payload + ":" +
+                    Hex64(SipHash(payload, kCursorKey0, kCursorKey1));
+            }
+            return response;
+        } catch (const std::out_of_range&) {
+            return fail(HeadwordEnumerationErrorCode::kStaleCursor,
+                        "Headword enumeration cursor is stale");
+        } catch (const dictionary::Error& error) {
+            switch (error.code()) {
+                case dictionary::ErrorCode::kCancelled:
+                    return fail(HeadwordEnumerationErrorCode::kCancelled,
+                                error.what());
+                case dictionary::ErrorCode::kDeadlineExceeded:
+                    return fail(HeadwordEnumerationErrorCode::kDeadlineExceeded,
+                                error.what());
+                case dictionary::ErrorCode::kUnavailable:
+                    return fail(
+                        HeadwordEnumerationErrorCode::kDictionaryUnavailable,
+                        error.what());
+                case dictionary::ErrorCode::kUnsupported:
+                    return fail(HeadwordEnumerationErrorCode::kUnsupported,
+                                error.what());
+                case dictionary::ErrorCode::kInvalidData:
+                    return fail(HeadwordEnumerationErrorCode::kInternal,
+                                error.what());
+            }
+        } catch (const std::exception& error) {
+            return fail(HeadwordEnumerationErrorCode::kInternal, error.what());
+        }
+        return fail(HeadwordEnumerationErrorCode::kInternal,
+                    "Headword enumeration failed");
+    }
+
     LookupResponse Lookup(const LookupQuery& query,
                           const CancellationToken* cancellation) const {
         LookupResponse response;
@@ -1126,6 +1363,8 @@ class ServiceState final {
     std::unordered_map<std::uint32_t, std::vector<const dictionary::Backend*>>
         groups_;
     std::vector<LookupError> startup_errors_;
+    const std::pair<std::uint64_t, std::uint64_t> snapshot_id_ =
+        NewSnapshotId();
 };
 
 class AsyncCancellationToken final : public CancellationToken {
@@ -1212,6 +1451,12 @@ class DictionaryServiceImpl final : public DictionaryService {
         const SuggestionQuery& query,
         const CancellationToken* cancellation) const override {
         return state_->Suggest(query, cancellation);
+    }
+
+    HeadwordEnumerationPage EnumerateHeadwords(
+        const HeadwordEnumerationQuery& query,
+        const CancellationToken* cancellation) const override {
+        return state_->EnumerateHeadwords(query, cancellation);
     }
 
     std::unique_ptr<LookupRequest> StartLookup(

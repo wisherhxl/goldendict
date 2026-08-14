@@ -21,6 +21,10 @@ inline constexpr std::size_t kMaximumLookupLanguageFilters = 32U;
 inline constexpr std::size_t kMaximumLookupFilterBytes = 256U;
 inline constexpr std::size_t kMaximumLookupResults = 100U;
 inline constexpr std::size_t kMaximumHeadwordPatternBytes = 256U;
+inline constexpr std::size_t kMaximumHeadwordEnumerationPageSize = 256U;
+inline constexpr std::size_t kMaximumHeadwordEnumerationCursorBytes = 256U;
+inline constexpr std::size_t kMaximumHeadwordEnumerationResponseBytes =
+    1024U * 1024U;
 
 enum class HeadwordFilterMode {
     kPrefix,
@@ -43,6 +47,17 @@ enum class LookupErrorCode {
     kInternal,
 };
 
+enum class HeadwordEnumerationErrorCode {
+    kInvalidRequest,
+    kDictionaryUnavailable,
+    kUnsupported,
+    kMalformedCursor,
+    kStaleCursor,
+    kCancelled,
+    kDeadlineExceeded,
+    kInternal,
+};
+
 struct DictionaryIdentity {
     std::string id;
     std::string name;
@@ -53,6 +68,28 @@ struct DictionaryIdentity {
     std::size_t headword_count = 0;
     std::string source_language;
     std::string target_language;
+    bool supports_headword_enumeration = false;
+};
+
+struct HeadwordEnumerationQuery {
+    std::string dictionary_id;
+    std::string cursor;
+    std::size_t page_size = kMaximumHeadwordEnumerationPageSize;
+    std::chrono::milliseconds timeout = std::chrono::seconds(5);
+};
+
+struct HeadwordEnumerationError {
+    HeadwordEnumerationErrorCode code = HeadwordEnumerationErrorCode::kInternal;
+    std::string dictionary_id;
+    std::string message;
+};
+
+struct HeadwordEnumerationPage {
+    std::string dictionary_id;
+    std::vector<std::string> headwords;
+    std::string next_cursor;
+    bool complete = false;
+    std::optional<HeadwordEnumerationError> error;
 };
 
 struct LanguageInfo {
@@ -158,6 +195,9 @@ class GOLDENDICT_EXPORTS DictionaryService {
         const CancellationToken* cancellation = nullptr) const = 0;
     virtual SuggestionResponse Suggest(
         const SuggestionQuery& query,
+        const CancellationToken* cancellation = nullptr) const = 0;
+    virtual HeadwordEnumerationPage EnumerateHeadwords(
+        const HeadwordEnumerationQuery& query,
         const CancellationToken* cancellation = nullptr) const = 0;
     virtual std::unique_ptr<LookupRequest> StartLookup(
         LookupQuery query) const = 0;

@@ -17,6 +17,13 @@ RuntimeCancellationSignal::~RuntimeCancellationSignal() = default;
 
 RuntimeDictionarySource::~RuntimeDictionarySource() = default;
 
+RuntimeHeadwordPage RuntimeDictionarySource::EnumerateHeadwords(
+    std::size_t, const RuntimeRequestOptions&) const {
+    throw RuntimeSourceError(
+        RuntimeSourceErrorCode::kUnsupported,
+        "Dictionary does not support headword enumeration");
+}
+
 namespace dictionary {
 
 void CheckRequest(const RequestOptions& options) {

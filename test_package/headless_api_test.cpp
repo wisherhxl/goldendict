@@ -658,6 +658,29 @@ int main() {
             return Fail("installed headword suggestion failed");
         }
 
+        goldendict::core::HeadwordEnumerationQuery enumeration_query;
+        enumeration_query.dictionary_id = catalog.front().id;
+        enumeration_query.page_size = 1U;
+        const auto enumeration_first =
+            service->EnumerateHeadwords(enumeration_query);
+        if (!catalog.front().supports_headword_enumeration ||
+            enumeration_first.error.has_value() ||
+            enumeration_first.headwords !=
+                std::vector<std::string>{"example"} ||
+            enumeration_first.complete) {
+            return Fail("installed headword enumeration first page failed");
+        }
+        enumeration_query.cursor = enumeration_first.next_cursor;
+        const auto enumeration_second =
+            service->EnumerateHeadwords(enumeration_query);
+        if (enumeration_second.error.has_value() ||
+            enumeration_second.headwords !=
+                std::vector<std::string>{"linked"} ||
+            !enumeration_second.complete ||
+            !enumeration_second.next_cursor.empty()) {
+            return Fail("installed headword enumeration final page failed");
+        }
+
         query.text = "missing";
         query.match_mode = goldendict::core::MatchMode::kExact;
         const auto missing = service->Lookup(query);
@@ -672,6 +695,16 @@ int main() {
         auto dictd_service =
             goldendict::core::CreateDictionaryService(dictd_configuration);
         const auto dictd_catalog = dictd_service->GetCatalog();
+        enumeration_query = {};
+        enumeration_query.dictionary_id = dictd_catalog.front().id;
+        const auto unsupported_enumeration =
+            dictd_service->EnumerateHeadwords(enumeration_query);
+        if (dictd_catalog.front().supports_headword_enumeration ||
+            !unsupported_enumeration.error.has_value() ||
+            unsupported_enumeration.error->code !=
+                goldendict::core::HeadwordEnumerationErrorCode::kUnsupported) {
+            return Fail("unsupported enumeration capability failed");
+        }
         query = {};
         query.text = "EXAMPLE";
         const auto dictd_response = dictd_service->Lookup(query);

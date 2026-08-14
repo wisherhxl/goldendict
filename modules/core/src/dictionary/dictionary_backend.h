@@ -14,6 +14,7 @@ using RequestOptions = RuntimeRequestOptions;
 using Identity = RuntimeDictionaryIdentity;
 using Article = RuntimeDictionaryArticle;
 using Resource = RuntimeDictionaryResource;
+using HeadwordPage = RuntimeHeadwordPage;
 using Backend = RuntimeDictionarySource;
 
 void CheckRequest(const RequestOptions& options);

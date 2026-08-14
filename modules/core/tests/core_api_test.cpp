@@ -46,6 +46,14 @@ class EmptyDictionaryService final : public DictionaryService {
         return {};
     }
 
+    HeadwordEnumerationPage EnumerateHeadwords(
+        const HeadwordEnumerationQuery& query,
+        const CancellationToken* cancellation) const override {
+        static_cast<void>(query);
+        static_cast<void>(cancellation);
+        return {};
+    }
+
     std::unique_ptr<LookupRequest> StartLookup(
         LookupQuery query) const override {
         static_cast<void>(query);

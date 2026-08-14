@@ -328,6 +328,18 @@ identical lookup semantics.
 The headless lookup request supports bounded prefix matching through
 `MatchMode::kPrefix`. A separate `Suggest` operation returns lightweight
 headwords and match metadata without reading or assembling article bodies.
+
+Complete headword enumeration is a separate per-dictionary capability. The
+public core request accepts one stable dictionary identity, a bounded page
+size, an opaque cursor, a deadline, and cancellation. Cursors carry a checked
+version, service-snapshot identity, dictionary digest, and unique ordinal, so
+malformed or stale continuation cannot silently restart. Supported backends
+return exact-unique source strings in the pinned legacy case-sensitive UTF-16
+code-unit order. StarDict implements the first leaf with a lazily published
+four-byte ordinal index over its immutable records; construction is bounded by
+the validated source index and checks cancellation/deadline, while subsequent
+pages are direct ranges. Runtime sources and local formats without an explicit
+enumeration adapter report unsupported without performing source work.
 Prefix ranking is core behavior: canonical exact matches come first, followed
 by shorter canonical candidates with deterministic scores. Neither the GUI nor
 a future AI transport reimplements folding, ranking, limits, cancellation, or

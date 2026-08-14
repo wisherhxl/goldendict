@@ -555,6 +555,18 @@ credentials, queries, and fragments; raw source configuration, process
 arguments, multi-file inventories, article inspection, and DevTools remain
 excluded.
 
+The Phase 8 R3a.1 prerequisite adds a bounded transport-neutral contract for
+enumerating one dictionary's complete headword index. It reproduces the pinned
+legacy list semantics: exact duplicate removal followed by case-sensitive,
+non-locale-aware UTF-16 code-unit ordering. Opaque authenticated cursors are
+bound to one immutable core-service snapshot and dictionary. StarDict is the
+first supported backend; it lazily builds a cancellation-aware sorted ordinal
+index and then traverses all pages linearly without copying a complete word
+list. Aard, BGL, Dictd, DSL, EPWING, GLS, MDict, SDict, SLOB, XDXF, and ZIM are
+the bounded R3a.2 leaf. LSA, sound directories, and ZIP sounds are R3a.3.
+Unsupported local and runtime sources fail before source I/O. R3b export UI
+and file writing remain blocked until the required format leaves are complete.
+
 The history-management increment adds case-insensitive live filtering to the
 reusable history pane and an explicit clear action. Clearing remains a
 composition-root command: it atomically persists an empty bounded history

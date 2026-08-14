@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -87,6 +88,9 @@ class Reader final {
         std::string_view prefix,
         std::size_t result_limit = std::numeric_limits<std::size_t>::max(),
         const std::function<void()>& checkpoint = {}) const;
+    std::pair<std::vector<std::string>, bool> EnumerateHeadwords(
+        std::size_t offset, std::size_t result_limit, std::size_t byte_limit,
+        const std::function<void()>& checkpoint = {}) const;
 
    private:
     struct IndexRecord {
@@ -96,6 +100,8 @@ class Reader final {
         std::uint32_t article_size = 0;
     };
 
+    struct EnumerationState;
+
     std::vector<const IndexRecord*> RankedPrefixMatches(
         std::string_view prefix, const std::function<void()>& checkpoint) const;
 
@@ -103,6 +109,7 @@ class Reader final {
     std::vector<IndexRecord> index_;
     std::string dictionary_data_;
     IndexState index_state_ = IndexState::kSourceOnly;
+    std::shared_ptr<EnumerationState> enumeration_state_;
 };
 
 }  // namespace goldendict::core::formats::stardict
