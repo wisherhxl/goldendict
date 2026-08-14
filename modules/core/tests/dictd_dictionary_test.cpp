@@ -43,6 +43,10 @@ void DictdDictionaryTest::ExposesPlainArticlesAndSuggestions() {
     QCOMPARE(dictionary.identity().name, "fixture");
     QCOMPARE(dictionary.identity().article_count, std::size_t{3});
     QCOMPARE(dictionary.identity().headword_count, std::size_t{4});
+    QVERIFY(dictionary.identity().supports_headword_enumeration);
+    QCOMPARE(dictionary.EnumerateHeadwords(0U).headwords,
+             (std::vector<std::string>{"00databaseinfo", "Example Original",
+                                       "example", "examples"}));
     QCOMPARE(dictionary.identity().description, "Fixture description");
     QCOMPARE(articles.size(), std::size_t{1});
     QCOMPARE(articles.front().format, "text/plain");

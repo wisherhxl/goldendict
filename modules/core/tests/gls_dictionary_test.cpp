@@ -40,6 +40,9 @@ void GlsDictionaryTest::ExposesHtmlIdentitySuggestionsAndResources() {
 
     QCOMPARE(dictionary.identity().id, "gls-id");
     QCOMPARE(dictionary.identity().name, "Fixture GLS");
+    QVERIFY(dictionary.identity().supports_headword_enumeration);
+    QCOMPARE(dictionary.EnumerateHeadwords(0U).headwords,
+             (std::vector<std::string>{"example"}));
     QCOMPARE(dictionary.identity().source_language, "eng");
     QCOMPARE(dictionary.identity().target_language, "deu");
     QCOMPARE(dictionary.identity().description,

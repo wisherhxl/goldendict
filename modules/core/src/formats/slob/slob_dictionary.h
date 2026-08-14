@@ -27,6 +27,9 @@ class Dictionary final : public dictionary::Backend {
     std::vector<std::string> SuggestPrefix(
         std::string_view prefix,
         const dictionary::RequestOptions& options = {}) const override;
+    dictionary::HeadwordPage EnumerateHeadwords(
+        std::size_t offset,
+        const dictionary::RequestOptions& options = {}) const override;
     std::optional<dictionary::Resource> GetResource(
         std::string_view resource_id,
         const dictionary::RequestOptions& options = {}) const override;

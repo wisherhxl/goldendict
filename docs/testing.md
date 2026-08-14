@@ -113,12 +113,13 @@ the previous configuration unchanged without a temporary file.
 The same test pins the public local-source validation seam: both 256-entry
 bounds, empty sound-path and NUL rejection, duplicate and empty-name
 acceptance, exact ordering, and atomic rejected-save behavior.
-The same service test verifies the R3a.1 single-dictionary enumeration
-contract: StarDict capability, legacy-compatible unique ordering, bounded
-continuation, cursor integrity and snapshot binding, cancellation, and
-deterministic unsupported results. `stardict_dictionary_test` covers the lazy
-ordinal index independently; the installed headless consumer pins the exported
-DTO and virtual API.
+The same service test verifies the single-dictionary enumeration contract:
+legacy-compatible unique ordering, bounded continuation, cursor integrity and
+snapshot binding, cancellation, and deterministic unsupported results.
+Dictionary tests for StarDict and the 11 R3a.2 article formats pin capability
+publication and extraction from natural records, including aliases, redirects,
+and reserved Dictd entries. The installed headless consumer pins the unchanged
+exported DTO and virtual API.
 `application_service_test` also pins the Phase 8 P4a current online-source
 store. Ordered MediaWiki, website, Forvo, and DICT DTOs round-trip through
 canonical v1 records; older current files receive the disabled ordered

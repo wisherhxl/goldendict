@@ -34,6 +34,8 @@ void DslDictionaryTest::ExposesIdentityHtmlSuggestionsAndResources() {
            "#LANGUAGE \"de\"\nGerman annotation";
     const Dictionary dictionary = Dictionary::Open("dsl-id", path, "de");
     QCOMPARE(dictionary.identity().name, "Fixture DSL");
+    QVERIFY(dictionary.identity().supports_headword_enumeration);
+    QVERIFY(!dictionary.EnumerateHeadwords(0U).headwords.empty());
     QCOMPARE(dictionary.identity().source_language, "en");
     QCOMPARE(dictionary.identity().target_language, "de");
     QCOMPARE(dictionary.identity().description, "German annotation");

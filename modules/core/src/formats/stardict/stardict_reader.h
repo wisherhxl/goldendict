@@ -15,6 +15,8 @@
 #include <string_view>
 #include <vector>
 
+#include "../../dictionary/ordered_headword_index.h"
+
 namespace goldendict::core::formats::stardict {
 
 enum class ErrorCode {
@@ -100,8 +102,6 @@ class Reader final {
         std::uint32_t article_size = 0;
     };
 
-    struct EnumerationState;
-
     std::vector<const IndexRecord*> RankedPrefixMatches(
         std::string_view prefix, const std::function<void()>& checkpoint) const;
 
@@ -109,7 +109,7 @@ class Reader final {
     std::vector<IndexRecord> index_;
     std::string dictionary_data_;
     IndexState index_state_ = IndexState::kSourceOnly;
-    std::shared_ptr<EnumerationState> enumeration_state_;
+    dictionary::OrderedHeadwordIndex enumeration_index_;
 };
 
 }  // namespace goldendict::core::formats::stardict

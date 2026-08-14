@@ -664,6 +664,17 @@ const std::string& Reader::ResolveArticle(std::size_t article) const {
     return articles_[article];
 }
 
+std::pair<std::vector<std::string>, bool> Reader::EnumerateHeadwords(
+    std::size_t offset, std::size_t result_limit, std::size_t byte_limit,
+    const std::function<void()>& checkpoint) const {
+    return enumeration_index_.Page(
+        records_.size(),
+        [this](std::uint32_t ordinal) -> std::string_view {
+            return records_[ordinal].word;
+        },
+        offset, result_limit, byte_limit, checkpoint);
+}
+
 std::vector<Article> Reader::LookupExact(
     std::string_view word, std::size_t limit,
     const std::function<void()>& checkpoint) const {

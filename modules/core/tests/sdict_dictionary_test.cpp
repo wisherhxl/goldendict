@@ -36,6 +36,9 @@ void SdictDictionaryTest::ExposesHtmlArticlesIdentityAndSuggestions() {
 
     QCOMPARE(dictionary.identity().id, "sdict-id");
     QCOMPARE(dictionary.identity().name, "Fixture SDict");
+    QVERIFY(dictionary.identity().supports_headword_enumeration);
+    QCOMPARE(dictionary.EnumerateHeadwords(0U).headwords,
+             (std::vector<std::string>{"example"}));
     QCOMPARE(dictionary.identity().source_language, "eng");
     QCOMPARE(dictionary.identity().target_language, "deu");
     QVERIFY(dictionary.identity().description.find("Fixture copyright") !=

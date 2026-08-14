@@ -18,6 +18,9 @@ void EpwingDictionaryTest::ExposesBackendContract() {
     const auto dictionary =
         Dictionary::Open("epwing-fixture", test::WriteEpwingFixture(root));
     QCOMPARE(dictionary.identity().name, "Fixture EPWING");
+    QVERIFY(dictionary.identity().supports_headword_enumeration);
+    QCOMPARE(dictionary.EnumerateHeadwords(0U).headwords,
+             (std::vector<std::string>{"example", "second"}));
     QVERIFY(dictionary.identity().description.find("Fixture copyright") !=
             std::string::npos);
     QCOMPARE(dictionary.LookupExact("example").size(), std::size_t{1});

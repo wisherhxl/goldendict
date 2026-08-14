@@ -25,6 +25,9 @@ void ZimDictionaryTest::ExposesIdentityArticlesSuggestionsAndResources() {
         std::filesystem::path(directory.path().toStdString()));
     const Dictionary dictionary = Dictionary::Open("zim-id", {path, {path}});
     QCOMPARE(dictionary.identity().name, "Fixture ZIM");
+    QVERIFY(dictionary.identity().supports_headword_enumeration);
+    QCOMPARE(dictionary.EnumerateHeadwords(0U).headwords,
+             (std::vector<std::string>{"Alias", "Example", "Plain"}));
     QCOMPARE(dictionary.identity().source_language, "en");
     QCOMPARE(dictionary.LookupExact("alias").front().format, "text/html");
     QCOMPARE(dictionary.SuggestPrefix("exa").front(), "Example");

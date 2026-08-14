@@ -40,6 +40,9 @@ void XdxfDictionaryTest::ExposesHtmlIdentitySuggestionsAndResources() {
 
     QCOMPARE(dictionary.identity().id, "xdxf-id");
     QCOMPARE(dictionary.identity().name, "Fixture XDXF");
+    QVERIFY(dictionary.identity().supports_headword_enumeration);
+    QCOMPARE(dictionary.EnumerateHeadwords(0U).headwords,
+             (std::vector<std::string>{"example"}));
     QCOMPARE(dictionary.identity().source_language, "eng");
     QCOMPARE(dictionary.identity().target_language, "deu");
     QCOMPARE(dictionary.identity().description, "Fixture description");

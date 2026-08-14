@@ -589,6 +589,17 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path,
     return reader;
 }
 
+std::pair<std::vector<std::string>, bool> Reader::EnumerateHeadwords(
+    std::size_t offset, std::size_t result_limit, std::size_t byte_limit,
+    const std::function<void()>& checkpoint) const {
+    return enumeration_index_.Page(
+        records_.size(),
+        [this](std::uint32_t ordinal) -> std::string_view {
+            return records_[ordinal].headword;
+        },
+        offset, result_limit, byte_limit, checkpoint);
+}
+
 std::vector<Article> Reader::LookupExact(
     std::string_view headword, std::size_t result_limit,
     const std::function<void()>& checkpoint) const {

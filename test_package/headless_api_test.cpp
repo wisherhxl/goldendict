@@ -697,13 +697,14 @@ int main() {
         const auto dictd_catalog = dictd_service->GetCatalog();
         enumeration_query = {};
         enumeration_query.dictionary_id = dictd_catalog.front().id;
-        const auto unsupported_enumeration =
+        const auto dictd_enumeration =
             dictd_service->EnumerateHeadwords(enumeration_query);
-        if (dictd_catalog.front().supports_headword_enumeration ||
-            !unsupported_enumeration.error.has_value() ||
-            unsupported_enumeration.error->code !=
-                goldendict::core::HeadwordEnumerationErrorCode::kUnsupported) {
-            return Fail("unsupported enumeration capability failed");
+        if (!dictd_catalog.front().supports_headword_enumeration ||
+            dictd_enumeration.error.has_value() ||
+            dictd_enumeration.headwords !=
+                std::vector<std::string>{"example"} ||
+            !dictd_enumeration.complete) {
+            return Fail("installed Dictd enumeration capability failed");
         }
         query = {};
         query.text = "EXAMPLE";
