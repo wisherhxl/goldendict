@@ -176,6 +176,13 @@ checks restored floating docks and toolbars against available screens, and
 rolls back on malformed, incompatible, or unusable state. Legacy version-1
 state remains excluded because its main-window object hierarchy is not yet
 represented by the Qt 6 shell.
+The first legacy-compatible shell increment gives the existing, fully backed
+favorites and history docks their pinned `favoritesPane` and `historyPane`
+identities and deterministic visible right-side vertical defaults. A private
+Qt state-version transition accepts the immediately preceding current Qt 6
+dock identities and rewrites them on the next save; it does not accept or
+interpret legacy version-1 state. Search, results, navigation, and dictionary
+shell objects remain prerequisites for legacy opaque-state migration.
 The application composition layer also owns a private, non-Widgets adapter for
 legacy configuration locations. It converts Qt's runtime paths and platform
 into an injected value object, then applies the pinned portable, Linux/Unix,

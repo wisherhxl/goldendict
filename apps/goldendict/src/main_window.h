@@ -206,6 +206,7 @@ class MainWindow final : public QMainWindow {
     bool ExportHistoryToFile(const QString& path);
     QList<int> SelectedFavoriteFolderPath() const;
     QList<QList<int>> ExpandedFavoriteFolderPaths() const;
+    void ApplyDefaultPaneLayout();
     bool HasUsableMainWindowLayout() const;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;

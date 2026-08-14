@@ -61,8 +61,13 @@
 
 namespace {
 
-constexpr int kMainWindowStateVersion = 2;
+constexpr int kMainWindowStateVersion = 3;
+constexpr int kPreviousMainWindowStateVersion = 2;
 constexpr qsizetype kMaximumMainWindowStateBytes = 64 * 1024;
+constexpr auto kHistoryPaneName = "historyPane";
+constexpr auto kFavoritesPaneName = "favoritesPane";
+constexpr auto kPreviousHistoryDockName = "historyDock";
+constexpr auto kPreviousFavoritesDockName = "favoritesDock";
 
 QString EscapeHtml(QString text) {
     return text.replace('&', QStringLiteral("&amp;"))
@@ -130,8 +135,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     article_tabs_->setCornerWidget(add_tab_button, Qt::TopLeftCorner);
     layout->addWidget(article_tabs_, 1);
 
-    auto* history_dock = new QDockWidget(QStringLiteral("History"), this);
-    history_dock->setObjectName(QStringLiteral("historyDock"));
+    auto* history_dock = new QDockWidget(QStringLiteral("&History Pane"), this);
+    history_dock->setObjectName(QString::fromLatin1(kHistoryPaneName));
     auto* history_widget = new QWidget(history_dock);
     auto* history_layout = new QVBoxLayout(history_widget);
     history_layout->setContentsMargins(4, 4, 4, 4);
@@ -161,10 +166,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     history_layout->addWidget(history_list_, 1);
     history_layout->addLayout(history_buttons);
     history_dock->setWidget(history_widget);
-    addDockWidget(Qt::LeftDockWidgetArea, history_dock);
 
-    auto* favorites_dock = new QDockWidget(QStringLiteral("Favorites"), this);
-    favorites_dock->setObjectName(QStringLiteral("favoritesDock"));
+    auto* favorites_dock =
+        new QDockWidget(QStringLiteral("Favor&ites Pane"), this);
+    favorites_dock->setObjectName(QString::fromLatin1(kFavoritesPaneName));
     favorites_tree_ = new FavoritesTreeWidget(favorites_dock);
     favorites_tree_->setObjectName(QStringLiteral("favoritesTree"));
     favorites_tree_->setHeaderHidden(true);
@@ -176,9 +181,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                                                 ExpandedFavoriteFolderPaths());
     });
     favorites_dock->setWidget(favorites_tree_);
-    addDockWidget(Qt::LeftDockWidgetArea, favorites_dock);
-    tabifyDockWidget(history_dock, favorites_dock);
-    history_dock->raise();
+    ApplyDefaultPaneLayout();
 
     auto* article_toolbar = addToolBar(QStringLiteral("Article"));
     article_toolbar->setObjectName(QStringLiteral("articleToolbar"));
@@ -634,9 +637,10 @@ void MainWindow::RunArticleTabsSmokeCheck(
     const bool rejected_geometry =
         !RestoreMainWindowGeometry("not-qt-geometry") &&
         geometry() == before_rejected;
-    auto* history_dock = findChild<QDockWidget*>(QStringLiteral("historyDock"));
+    auto* history_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
     auto* favorites_dock =
-        findChild<QDockWidget*>(QStringLiteral("favoritesDock"));
+        findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     auto* article_toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
     if (history_dock == nullptr || favorites_dock == nullptr ||
@@ -644,7 +648,42 @@ void MainWindow::RunArticleTabsSmokeCheck(
         completion(false);
         return;
     }
+    ApplyDefaultPaneLayout();
+    const bool default_shell =
+        findChildren<QDockWidget*>(QString::fromLatin1(kHistoryPaneName))
+                .size() == 1 &&
+        findChildren<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName))
+                .size() == 1 &&
+        dockWidgetArea(history_dock) == Qt::RightDockWidgetArea &&
+        dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
+        history_dock->isVisible() && favorites_dock->isVisible() &&
+        tabifiedDockWidgets(history_dock).empty() &&
+        tabifiedDockWidgets(favorites_dock).empty() &&
+        favorites_dock->geometry().top() <= history_dock->geometry().top() &&
+        history_dock->findChild<QListWidget*>(QStringLiteral("historyList")) !=
+            nullptr &&
+        favorites_dock->findChild<QTreeWidget*>(
+            QStringLiteral("favoritesTree")) == favorites_tree_ &&
+        centralWidget() != nullptr && article_tabs_ != nullptr &&
+        !article_tabs_->isHidden() && article_tabs_->size().width() > 0 &&
+        article_tabs_->size().height() > 0;
+    history_dock->toggleViewAction()->trigger();
+    const bool history_hidden = !history_dock->isVisible();
+    history_dock->toggleViewAction()->trigger();
+    favorites_dock->toggleViewAction()->trigger();
+    const bool favorites_hidden = !favorites_dock->isVisible();
+    favorites_dock->toggleViewAction()->trigger();
+    const bool toggle_actions = history_hidden && favorites_hidden &&
+                                history_dock->isVisible() &&
+                                favorites_dock->isVisible();
     const std::string default_state = CaptureMainWindowState();
+    history_dock->setObjectName(QString::fromLatin1(kPreviousHistoryDockName));
+    favorites_dock->setObjectName(
+        QString::fromLatin1(kPreviousFavoritesDockName));
+    const QByteArray previous_current_state =
+        saveState(kPreviousMainWindowStateVersion);
+    history_dock->setObjectName(QString::fromLatin1(kHistoryPaneName));
+    favorites_dock->setObjectName(QString::fromLatin1(kFavoritesPaneName));
     addDockWidget(Qt::BottomDockWidgetArea, history_dock);
     addDockWidget(Qt::RightDockWidgetArea, favorites_dock);
     addToolBar(Qt::BottomToolBarArea, article_toolbar);
@@ -657,6 +696,13 @@ void MainWindow::RunArticleTabsSmokeCheck(
         dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
         toolBarArea(article_toolbar) == Qt::BottomToolBarArea &&
         !favorites_dock->isVisible();
+    const bool restored_previous_current_state =
+        RestoreMainWindowState(
+            {previous_current_state.constData(),
+             static_cast<std::size_t>(previous_current_state.size())}) &&
+        dockWidgetArea(history_dock) == Qt::RightDockWidgetArea &&
+        dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
+        history_dock->isVisible() && favorites_dock->isVisible();
     const std::string before_bad_state = CaptureMainWindowState();
     const QByteArray incompatible_state = saveState(1);
     const bool rejected_state =
@@ -681,9 +727,17 @@ void MainWindow::RunArticleTabsSmokeCheck(
     const bool final_default = RestoreMainWindowState(default_state);
     bool passed = article_tabs_->count() == 1 &&
                   facade_->GetArticleTabsState().tabs.size() == 1U &&
-                  restored_geometry && rejected_geometry && reset_state &&
-                  restored_state && rejected_state && topology_safe &&
-                  final_default;
+                  restored_geometry && rejected_geometry && default_shell &&
+                  toggle_actions && reset_state && restored_state &&
+                  restored_previous_current_state && rejected_state &&
+                  topology_safe && final_default;
+    if (!passed) {
+        qWarning() << "shell state check failed" << restored_geometry
+                   << rejected_geometry << default_shell << toggle_actions
+                   << reset_state << restored_state
+                   << restored_previous_current_state << rejected_state
+                   << topology_safe << final_default;
+    }
     query_->setText(QStringLiteral("application"));
     SelectGroup(0U);
     StartLookup();
@@ -950,9 +1004,10 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
     active_link.target_article_id = "active-target";
     const goldendict::core::ArticleTabSession expected = {
         {{7U, {empty, lookup, link}, 1U}, {42U, {link, active_link}, 1U}}, 42U};
-    auto* history_dock = findChild<QDockWidget*>(QStringLiteral("historyDock"));
+    auto* history_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
     auto* favorites_dock =
-        findChild<QDockWidget*>(QStringLiteral("favoritesDock"));
+        findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     auto* article_toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
     if (history_dock == nullptr || favorites_dock == nullptr ||
@@ -2023,6 +2078,23 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
+    auto* history =
+        findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
+    auto* favorites =
+        findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
+    if (history != nullptr && favorites != nullptr) {
+        history->setObjectName(QString::fromLatin1(kPreviousHistoryDockName));
+        favorites->setObjectName(
+            QString::fromLatin1(kPreviousFavoritesDockName));
+        const bool restored_previous =
+            restoreState(encoded, kPreviousMainWindowStateVersion);
+        history->setObjectName(QString::fromLatin1(kHistoryPaneName));
+        favorites->setObjectName(QString::fromLatin1(kFavoritesPaneName));
+        const bool previous_usable = HasUsableMainWindowLayout();
+        if (restored_previous && previous_usable)
+            return true;
+    }
+    restoreState(previous, kMainWindowStateVersion);
     return false;
 }
 
@@ -2031,15 +2103,32 @@ std::string MainWindow::CaptureMainWindowState() const {
     return {state.constData(), static_cast<std::size_t>(state.size())};
 }
 
+void MainWindow::ApplyDefaultPaneLayout() {
+    auto* history =
+        findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
+    auto* favorites =
+        findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
+    if (history == nullptr || favorites == nullptr)
+        return;
+    removeDockWidget(history);
+    removeDockWidget(favorites);
+    addDockWidget(Qt::RightDockWidgetArea, favorites);
+    addDockWidget(Qt::RightDockWidgetArea, history);
+    splitDockWidget(favorites, history, Qt::Vertical);
+    favorites->show();
+    history->show();
+}
+
 bool MainWindow::HasUsableMainWindowLayout() const {
     const auto* history =
-        findChild<QDockWidget*>(QStringLiteral("historyDock"));
+        findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
     const auto* favorites =
-        findChild<QDockWidget*>(QStringLiteral("favoritesDock"));
+        findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     const auto* toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
     if (history == nullptr || favorites == nullptr || toolbar == nullptr ||
-        centralWidget() == nullptr) {
+        centralWidget() == nullptr || article_tabs_ == nullptr ||
+        article_tabs_->isHidden()) {
         return false;
     }
     const auto intersects_screen = [](const QWidget* widget) {

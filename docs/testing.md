@@ -295,6 +295,12 @@ transactional state restoration, malformed and oversized fallback, and safe
 handling of an off-screen floating-state topology. The two-start restart smoke
 verifies that dock and toolbar placement and visibility survive alongside the
 article session without changing tab identities.
+The shell assertions additionally pin the unique `favoritesPane` and
+`historyPane` identities, visible right-side vertical default ordering,
+non-tabification, real child widgets, toggle actions, and usable central article
+content. They also verify transactional restoration of state captured by the
+immediately preceding current Qt 6 dock identities without admitting pinned
+legacy version-1 state.
 
 `goldendict_article_context_menu_smoke` verifies the application-private menu
 model without opening a real popup. It covers resolved internal links,

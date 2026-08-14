@@ -510,6 +510,16 @@ toolbars do not match the current widget hierarchy, so partial opaque replay
 would be incompatible rather than parity. Legacy-compatible shell layout and
 state migration remain later unlabelled Phase 8 work.
 
+The next unlabelled Phase 8 shell increment aligns the already-functional
+favorites and history docks with the pinned legacy `favoritesPane` and
+`historyPane` identities. Both panes are visible by default in a deterministic
+vertical split on the right, with favorites above history and usable article
+content retained in the center. The private current Qt state version advances
+while transactionally accepting the immediately preceding `favoritesDock` and
+`historyDock` state; legacy version-1 `mainWindowState` remains excluded.
+Search and results panes, navigation and dictionary toolbars, menus, and final
+legacy state import remain separate unlabelled Phase 8 leaves.
+
 The Phase 8 R6b legacy article-session audit closes without a parser or import
 surface. At pinned legacy commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, the XML configuration has no tab,
