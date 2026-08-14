@@ -62,7 +62,9 @@ class MainWindow final : public QMainWindow {
         const std::vector<goldendict::core::MediaWikiSourceConfiguration>&,
         const std::vector<goldendict::core::WebsiteSourceConfiguration>&,
         const std::vector<goldendict::core::ForvoSourceConfiguration>&,
-        const std::vector<goldendict::core::DictServerSourceConfiguration>&)>;
+        const std::vector<goldendict::core::DictServerSourceConfiguration>&,
+        const std::vector<
+            goldendict::core::ExternalProgramSourceConfiguration>&)>;
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
@@ -90,6 +92,8 @@ class MainWindow final : public QMainWindow {
             forvo_sources,
         const std::vector<goldendict::core::DictServerSourceConfiguration>&
             dict_server_sources,
+        const std::vector<goldendict::core::ExternalProgramSourceConfiguration>&
+            external_program_sources,
         SourceApplyCallback apply_callback);
     const std::vector<goldendict::core::DictionaryGroupConfiguration>&
     DictionaryGroups() const noexcept;
@@ -190,6 +194,8 @@ class MainWindow final : public QMainWindow {
     std::vector<goldendict::core::ForvoSourceConfiguration> forvo_sources_;
     std::vector<goldendict::core::DictServerSourceConfiguration>
         dict_server_sources_;
+    std::vector<goldendict::core::ExternalProgramSourceConfiguration>
+        external_program_sources_;
     SourceApplyCallback source_apply_callback_;
     goldendict::core::ApplicationPreferences preferences_;
     QLineEdit* query_ = nullptr;

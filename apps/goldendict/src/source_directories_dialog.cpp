@@ -4,12 +4,17 @@
 
 #include <algorithm>
 
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFileDialog>
+#include <QFileInfo>
+#include <QFormLayout>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
 #include <QTabWidget>
@@ -35,7 +40,7 @@ SourceDirectoriesDialog::SourceDirectoriesDialog(
         sound_directories,
     QWidget* parent)
     : SourceDirectoriesDialog(dictionary_paths, sound_directories, {}, {}, {},
-                              {}, {}, parent) {}
+                              {}, {}, {}, parent) {}
 
 SourceDirectoriesDialog::SourceDirectoriesDialog(
     const std::vector<std::string>& dictionary_paths,
@@ -49,6 +54,8 @@ SourceDirectoriesDialog::SourceDirectoriesDialog(
         forvo_sources,
     const std::vector<goldendict::core::DictServerSourceConfiguration>&
         dict_server_sources,
+    const std::vector<goldendict::core::ExternalProgramSourceConfiguration>&
+        external_program_sources,
     ApplyCallback apply_callback, QWidget* parent)
     : QDialog(parent), apply_callback_(std::move(apply_callback)) {
     setWindowTitle(QStringLiteral("Dictionary Sources"));
@@ -84,6 +91,8 @@ SourceDirectoriesDialog::SourceDirectoriesDialog(
                       QStringLiteral("Database"), QStringLiteral("Strategy")},
                      &dict_server_sources_, QStringLiteral("dictServer")),
                  QStringLiteral("DICT Servers"));
+    tabs->addTab(CreateExternalProgramTab(),
+                 QStringLiteral("External Programs"));
     layout->addWidget(tabs);
     validation_error_ = new QLabel(this);
     validation_error_->setObjectName(QStringLiteral("sourceValidationError"));
@@ -139,12 +148,33 @@ SourceDirectoriesDialog::SourceDirectoriesDialog(
              QString::number(static_cast<unsigned int>(source.port)),
              QString::fromStdString(source.database),
              QString::fromStdString(source.strategy)});
+    for (const auto& source : external_program_sources) {
+        auto* item = new QTreeWidgetItem(external_program_sources_);
+        item->setData(0, Qt::UserRole, QString::fromStdString(source.id));
+        item->setCheckState(0, source.enabled ? Qt::Checked : Qt::Unchecked);
+        item->setText(1, QString::fromStdString(source.name));
+        item->setFlags(item->flags() | Qt::ItemIsEditable);
+        item->setData(0, Qt::UserRole + 1,
+                      static_cast<int>(source.output_kind));
+        item->setData(0, Qt::UserRole + 2,
+                      QString::fromStdString(source.executable));
+        item->setData(0, Qt::UserRole + 3,
+                      QString::fromStdString(source.working_directory));
+        QStringList arguments;
+        for (const auto& argument : source.argument_templates)
+            arguments.push_back(QString::fromStdString(argument));
+        item->setData(0, Qt::UserRole + 4, arguments);
+    }
     UpdateDictionaryButtons();
     UpdateSoundButtons();
     UpdateOnlineButtons(mediawiki_sources_);
     UpdateOnlineButtons(website_sources_);
     UpdateOnlineButtons(forvo_sources_);
     UpdateOnlineButtons(dict_server_sources_);
+    if (external_program_sources_->topLevelItemCount() > 0)
+        external_program_sources_->setCurrentItem(
+            external_program_sources_->topLevelItem(0));
+    UpdateExternalProgramSelection();
 }
 
 QWidget* SourceDirectoriesDialog::CreateDictionaryTab() {
@@ -235,6 +265,182 @@ QWidget* SourceDirectoriesDialog::CreateSoundTab() {
     return tab;
 }
 
+QWidget* SourceDirectoriesDialog::CreateExternalProgramTab() {
+    auto* tab = new QWidget(this);
+    auto* layout = new QVBoxLayout(tab);
+    auto* description = new QLabel(
+        QStringLiteral("Programs are started directly without a shell. Each "
+                       "argument is passed separately; %GDWORD% is replaced "
+                       "by the query word."),
+        tab);
+    description->setWordWrap(true);
+    layout->addWidget(description);
+
+    auto* program_row = new QHBoxLayout();
+    external_program_sources_ = new QTreeWidget(tab);
+    external_program_sources_->setObjectName(
+        QStringLiteral("externalProgramList"));
+    external_program_sources_->setHeaderLabels(
+        {QStringLiteral("Enabled"), QStringLiteral("Name")});
+    external_program_sources_->setRootIsDecorated(false);
+    external_program_sources_->setSelectionMode(
+        QAbstractItemView::SingleSelection);
+    external_program_sources_->header()->setSectionResizeMode(
+        0, QHeaderView::ResizeToContents);
+    external_program_sources_->header()->setStretchLastSection(true);
+    program_row->addWidget(external_program_sources_, 1);
+    auto* program_controls = new QVBoxLayout();
+    external_program_add_ =
+        AddButton(program_controls, QStringLiteral("&Add..."),
+                  QStringLiteral("externalProgramAdd"));
+    external_program_remove_ =
+        AddButton(program_controls, QStringLiteral("&Remove"),
+                  QStringLiteral("externalProgramRemove"));
+    external_program_up_ =
+        AddButton(program_controls, QStringLiteral("Move &Up"),
+                  QStringLiteral("externalProgramUp"));
+    external_program_down_ =
+        AddButton(program_controls, QStringLiteral("Move &Down"),
+                  QStringLiteral("externalProgramDown"));
+    program_controls->addStretch();
+    program_row->addLayout(program_controls);
+    layout->addLayout(program_row, 1);
+
+    auto* details = new QGroupBox(QStringLiteral("Selected program"), tab);
+    auto* details_layout = new QFormLayout(details);
+    external_program_result_kind_ = new QComboBox(details);
+    external_program_result_kind_->setObjectName(
+        QStringLiteral("externalProgramResultKind"));
+    external_program_result_kind_->addItems({QStringLiteral("Plain Text"),
+                                             QStringLiteral("HTML"),
+                                             QStringLiteral("Prefix Match")});
+    details_layout->addRow(QStringLiteral("Result kind:"),
+                           external_program_result_kind_);
+
+    auto* executable_row = new QHBoxLayout();
+    external_program_executable_ = new QLineEdit(details);
+    external_program_executable_->setObjectName(
+        QStringLiteral("externalProgramExecutable"));
+    auto* browse_executable =
+        new QPushButton(QStringLiteral("Browse..."), details);
+    browse_executable->setObjectName(
+        QStringLiteral("externalProgramBrowseExecutable"));
+    executable_row->addWidget(external_program_executable_, 1);
+    executable_row->addWidget(browse_executable);
+    details_layout->addRow(QStringLiteral("Executable:"), executable_row);
+
+    auto* working_row = new QHBoxLayout();
+    external_program_working_directory_ = new QLineEdit(details);
+    external_program_working_directory_->setObjectName(
+        QStringLiteral("externalProgramWorkingDirectory"));
+    auto* browse_working =
+        new QPushButton(QStringLiteral("Browse..."), details);
+    browse_working->setObjectName(
+        QStringLiteral("externalProgramBrowseWorkingDirectory"));
+    auto* clear_working = new QPushButton(QStringLiteral("Clear"), details);
+    clear_working->setObjectName(
+        QStringLiteral("externalProgramClearWorkingDirectory"));
+    working_row->addWidget(external_program_working_directory_, 1);
+    working_row->addWidget(browse_working);
+    working_row->addWidget(clear_working);
+    details_layout->addRow(QStringLiteral("Working directory:"), working_row);
+
+    auto* argument_row = new QHBoxLayout();
+    external_program_arguments_ = new QListWidget(details);
+    external_program_arguments_->setObjectName(
+        QStringLiteral("externalProgramArgumentList"));
+    external_program_arguments_->setEditTriggers(
+        QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
+    argument_row->addWidget(external_program_arguments_, 1);
+    auto* argument_controls = new QVBoxLayout();
+    external_argument_add_ =
+        AddButton(argument_controls, QStringLiteral("A&dd"),
+                  QStringLiteral("externalArgumentAdd"));
+    external_argument_remove_ =
+        AddButton(argument_controls, QStringLiteral("Remo&ve"),
+                  QStringLiteral("externalArgumentRemove"));
+    external_argument_up_ =
+        AddButton(argument_controls, QStringLiteral("Move U&p"),
+                  QStringLiteral("externalArgumentUp"));
+    external_argument_down_ =
+        AddButton(argument_controls, QStringLiteral("Move Do&wn"),
+                  QStringLiteral("externalArgumentDown"));
+    argument_controls->addStretch();
+    argument_row->addLayout(argument_controls);
+    details_layout->addRow(QStringLiteral("Arguments:"), argument_row);
+    layout->addWidget(details);
+
+    connect(external_program_add_, &QPushButton::clicked, this, [this]() {
+        const QString executable = QFileDialog::getOpenFileName(
+            this, QStringLiteral("Choose an executable"));
+        if (!executable.isEmpty())
+            AddExternalProgram(QFileInfo(executable).absoluteFilePath());
+    });
+    connect(external_program_remove_, &QPushButton::clicked, this, [this]() {
+        StoreExternalProgramDetails();
+        const int row = external_program_sources_->indexOfTopLevelItem(
+            external_program_sources_->currentItem());
+        external_program_current_item_ = nullptr;
+        if (row >= 0)
+            delete external_program_sources_->takeTopLevelItem(row);
+        if (external_program_sources_->topLevelItemCount() > 0) {
+            external_program_sources_->setCurrentItem(
+                external_program_sources_->topLevelItem(std::min(
+                    row, external_program_sources_->topLevelItemCount() - 1)));
+        } else {
+            UpdateExternalProgramSelection();
+        }
+    });
+    connect(external_program_up_, &QPushButton::clicked, this,
+            [this]() { MoveExternalProgram(-1); });
+    connect(external_program_down_, &QPushButton::clicked, this,
+            [this]() { MoveExternalProgram(1); });
+    connect(external_program_sources_, &QTreeWidget::currentItemChanged, this,
+            [this]() { UpdateExternalProgramSelection(); });
+    connect(external_program_result_kind_,
+            QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            [this]() { StoreExternalProgramDetails(); });
+    connect(external_program_executable_, &QLineEdit::textChanged, this,
+            [this]() { StoreExternalProgramDetails(); });
+    connect(external_program_working_directory_, &QLineEdit::textChanged, this,
+            [this]() { StoreExternalProgramDetails(); });
+    connect(external_program_arguments_, &QListWidget::itemChanged, this,
+            [this]() { StoreExternalProgramDetails(); });
+    connect(browse_executable, &QPushButton::clicked, this, [this]() {
+        const QString executable = QFileDialog::getOpenFileName(
+            this, QStringLiteral("Choose an executable"),
+            external_program_executable_->text());
+        if (!executable.isEmpty())
+            external_program_executable_->setText(
+                QFileInfo(executable).absoluteFilePath());
+    });
+    connect(browse_working, &QPushButton::clicked, this, [this]() {
+        const QString directory = QFileDialog::getExistingDirectory(
+            this, QStringLiteral("Choose a working directory"),
+            external_program_working_directory_->text());
+        if (!directory.isEmpty())
+            external_program_working_directory_->setText(
+                QDir(directory).absolutePath());
+    });
+    connect(clear_working, &QPushButton::clicked,
+            external_program_working_directory_, &QLineEdit::clear);
+    connect(external_argument_add_, &QPushButton::clicked, this,
+            [this]() { AddExternalArgument(QStringLiteral("%GDWORD%")); });
+    connect(external_argument_remove_, &QPushButton::clicked, this, [this]() {
+        delete external_program_arguments_->takeItem(
+            external_program_arguments_->currentRow());
+        StoreExternalProgramDetails();
+        UpdateExternalArgumentButtons();
+    });
+    connect(external_argument_up_, &QPushButton::clicked, this,
+            [this]() { MoveExternalArgument(-1); });
+    connect(external_argument_down_, &QPushButton::clicked, this,
+            [this]() { MoveExternalArgument(1); });
+    connect(external_program_arguments_, &QListWidget::currentRowChanged, this,
+            [this]() { UpdateExternalArgumentButtons(); });
+    return tab;
+}
+
 QWidget* SourceDirectoriesDialog::CreateOnlineTab(
     const QString& description, const QStringList& headers, QTreeWidget** tree,
     const QString& object_prefix) {
@@ -297,6 +503,11 @@ namespace {
 
 QString NewOnlineId() {
     return QStringLiteral("online.") +
+           QUuid::createUuid().toString(QUuid::Id128);
+}
+
+QString NewExternalProgramId() {
+    return QStringLiteral("program.") +
            QUuid::createUuid().toString(QUuid::Id128);
 }
 
@@ -373,6 +584,149 @@ void SourceDirectoriesDialog::UpdateOnlineButtons(QTreeWidget* tree) {
     findChild<QPushButton*>(prefix + QStringLiteral("Up"))->setEnabled(row > 0);
     findChild<QPushButton*>(prefix + QStringLiteral("Down"))
         ->setEnabled(row >= 0 && row + 1 < tree->topLevelItemCount());
+}
+
+void SourceDirectoriesDialog::AddExternalProgram(const QString& executable) {
+    auto* item = new QTreeWidgetItem(external_program_sources_);
+    item->setData(0, Qt::UserRole, NewExternalProgramId());
+    item->setCheckState(0, Qt::Unchecked);
+    item->setText(1, QFileInfo(executable).completeBaseName());
+    item->setFlags(item->flags() | Qt::ItemIsEditable);
+    item->setData(0, Qt::UserRole + 1,
+                  static_cast<int>(
+                      goldendict::core::ExternalProgramOutputKind::kPlainText));
+    item->setData(0, Qt::UserRole + 2, executable);
+    item->setData(0, Qt::UserRole + 3, QString{});
+    item->setData(0, Qt::UserRole + 4, QStringList{QStringLiteral("%GDWORD%")});
+    external_program_sources_->setCurrentItem(item);
+    external_program_sources_->editItem(item, 1);
+    UpdateExternalProgramButtons();
+}
+
+void SourceDirectoriesDialog::MoveExternalProgram(int offset) {
+    StoreExternalProgramDetails();
+    const int row = external_program_sources_->indexOfTopLevelItem(
+        external_program_sources_->currentItem());
+    if (row < 0 || row + offset < 0 ||
+        row + offset >= external_program_sources_->topLevelItemCount())
+        return;
+    auto* item = external_program_sources_->takeTopLevelItem(row);
+    external_program_sources_->insertTopLevelItem(row + offset, item);
+    external_program_sources_->setCurrentItem(item);
+    UpdateExternalProgramButtons();
+}
+
+void SourceDirectoriesDialog::UpdateExternalProgramSelection() {
+    StoreExternalProgramDetails();
+    external_program_current_item_ = external_program_sources_->currentItem();
+    loading_external_program_ = true;
+    external_program_arguments_->clear();
+    const bool selected = external_program_current_item_ != nullptr;
+    if (selected) {
+        external_program_result_kind_->setCurrentIndex(
+            external_program_current_item_->data(0, Qt::UserRole + 1).toInt());
+        external_program_executable_->setText(
+            external_program_current_item_->data(0, Qt::UserRole + 2)
+                .toString());
+        external_program_working_directory_->setText(
+            external_program_current_item_->data(0, Qt::UserRole + 3)
+                .toString());
+        for (const auto& argument :
+             external_program_current_item_->data(0, Qt::UserRole + 4)
+                 .toStringList()) {
+            auto* item =
+                new QListWidgetItem(argument, external_program_arguments_);
+            item->setFlags(item->flags() | Qt::ItemIsEditable);
+        }
+        if (external_program_arguments_->count() > 0)
+            external_program_arguments_->setCurrentRow(0);
+    } else {
+        external_program_result_kind_->setCurrentIndex(0);
+        external_program_executable_->clear();
+        external_program_working_directory_->clear();
+    }
+    external_program_result_kind_->setEnabled(selected);
+    external_program_executable_->setEnabled(selected);
+    external_program_working_directory_->setEnabled(selected);
+    external_program_arguments_->setEnabled(selected);
+    findChild<QPushButton*>(QStringLiteral("externalProgramBrowseExecutable"))
+        ->setEnabled(selected);
+    findChild<QPushButton*>(
+        QStringLiteral("externalProgramBrowseWorkingDirectory"))
+        ->setEnabled(selected);
+    findChild<QPushButton*>(
+        QStringLiteral("externalProgramClearWorkingDirectory"))
+        ->setEnabled(selected);
+    loading_external_program_ = false;
+    UpdateExternalProgramButtons();
+    UpdateExternalArgumentButtons();
+}
+
+void SourceDirectoriesDialog::UpdateExternalProgramButtons() {
+    const int row = external_program_sources_->indexOfTopLevelItem(
+        external_program_sources_->currentItem());
+    external_program_add_->setEnabled(
+        static_cast<std::size_t>(
+            external_program_sources_->topLevelItemCount()) <
+        goldendict::core::kMaximumOnlineSources);
+    external_program_remove_->setEnabled(row >= 0);
+    external_program_up_->setEnabled(row > 0);
+    external_program_down_->setEnabled(
+        row >= 0 && row + 1 < external_program_sources_->topLevelItemCount());
+}
+
+void SourceDirectoriesDialog::StoreExternalProgramDetails() {
+    if (loading_external_program_ || external_program_current_item_ == nullptr)
+        return;
+    external_program_current_item_->setData(
+        0, Qt::UserRole + 1, external_program_result_kind_->currentIndex());
+    external_program_current_item_->setData(
+        0, Qt::UserRole + 2, external_program_executable_->text());
+    external_program_current_item_->setData(
+        0, Qt::UserRole + 3, external_program_working_directory_->text());
+    QStringList arguments;
+    for (int row = 0; row < external_program_arguments_->count(); ++row)
+        arguments.push_back(external_program_arguments_->item(row)->text());
+    external_program_current_item_->setData(0, Qt::UserRole + 4, arguments);
+}
+
+void SourceDirectoriesDialog::AddExternalArgument(const QString& argument) {
+    if (external_program_current_item_ == nullptr ||
+        static_cast<std::size_t>(external_program_arguments_->count()) >=
+            goldendict::core::kMaximumExternalProgramArguments)
+        return;
+    auto* item = new QListWidgetItem(argument, external_program_arguments_);
+    item->setFlags(item->flags() | Qt::ItemIsEditable);
+    external_program_arguments_->setCurrentItem(item);
+    external_program_arguments_->editItem(item);
+    StoreExternalProgramDetails();
+    UpdateExternalArgumentButtons();
+}
+
+void SourceDirectoriesDialog::MoveExternalArgument(int offset) {
+    const int row = external_program_arguments_->currentRow();
+    if (row < 0 || row + offset < 0 ||
+        row + offset >= external_program_arguments_->count())
+        return;
+    auto* item = external_program_arguments_->takeItem(row);
+    external_program_arguments_->insertItem(row + offset, item);
+    external_program_arguments_->setCurrentRow(row + offset);
+    StoreExternalProgramDetails();
+    UpdateExternalArgumentButtons();
+}
+
+void SourceDirectoriesDialog::UpdateExternalArgumentButtons() {
+    const int row = external_program_arguments_->currentRow();
+    const bool program_selected = external_program_current_item_ != nullptr;
+    external_argument_add_->setEnabled(
+        program_selected &&
+        static_cast<std::size_t>(external_program_arguments_->count()) <
+            goldendict::core::kMaximumExternalProgramArguments);
+    external_argument_remove_->setEnabled(program_selected && row >= 0);
+    external_argument_up_->setEnabled(program_selected && row > 0);
+    external_argument_down_->setEnabled(
+        program_selected && row >= 0 &&
+        row + 1 < external_program_arguments_->count());
 }
 
 void SourceDirectoriesDialog::AddDictionaryPath(const QString& path) {
@@ -510,6 +864,30 @@ SourceDirectoriesDialog::DictServerSources() const {
     return sources;
 }
 
+std::vector<goldendict::core::ExternalProgramSourceConfiguration>
+SourceDirectoriesDialog::ExternalProgramSources() {
+    StoreExternalProgramDetails();
+    std::vector<goldendict::core::ExternalProgramSourceConfiguration> sources;
+    sources.reserve(static_cast<std::size_t>(
+        external_program_sources_->topLevelItemCount()));
+    for (int row = 0; row < external_program_sources_->topLevelItemCount();
+         ++row) {
+        const auto* item = external_program_sources_->topLevelItem(row);
+        std::vector<std::string> arguments;
+        for (const auto& argument :
+             item->data(0, Qt::UserRole + 4).toStringList())
+            arguments.push_back(argument.toStdString());
+        sources.push_back(
+            {ItemId(item), item->text(1).toStdString(), ItemEnabled(item),
+             static_cast<goldendict::core::ExternalProgramOutputKind>(
+                 item->data(0, Qt::UserRole + 1).toInt()),
+             item->data(0, Qt::UserRole + 2).toString().toStdString(),
+             std::move(arguments),
+             item->data(0, Qt::UserRole + 3).toString().toStdString()});
+    }
+    return sources;
+}
+
 void SourceDirectoriesDialog::Apply() {
     if (QWidget* focus = focusWidget())
         focus->clearFocus();
@@ -521,12 +899,14 @@ void SourceDirectoriesDialog::Apply() {
         candidate.website_sources = WebsiteSources();
         candidate.forvo_sources = ForvoSources();
         candidate.dict_server_sources = DictServerSources();
+        candidate.external_program_sources = ExternalProgramSources();
         goldendict::core::ValidateConfiguration(candidate);
         if (apply_callback_) {
             const QString error = apply_callback_(
                 candidate.dictionary_paths, candidate.sound_directories,
                 candidate.mediawiki_sources, candidate.website_sources,
-                candidate.forvo_sources, candidate.dict_server_sources);
+                candidate.forvo_sources, candidate.dict_server_sources,
+                candidate.external_program_sources);
             if (!error.isEmpty()) {
                 validation_error_->setText(error);
                 validation_error_->show();

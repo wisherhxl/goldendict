@@ -13,8 +13,11 @@
 
 class QListWidget;
 class QLabel;
+class QComboBox;
+class QLineEdit;
 class QPushButton;
 class QTreeWidget;
+class QTreeWidgetItem;
 
 class SourceDirectoriesDialog final : public QDialog {
     Q_OBJECT
@@ -26,7 +29,9 @@ class SourceDirectoriesDialog final : public QDialog {
         const std::vector<goldendict::core::MediaWikiSourceConfiguration>&,
         const std::vector<goldendict::core::WebsiteSourceConfiguration>&,
         const std::vector<goldendict::core::ForvoSourceConfiguration>&,
-        const std::vector<goldendict::core::DictServerSourceConfiguration>&)>;
+        const std::vector<goldendict::core::DictServerSourceConfiguration>&,
+        const std::vector<
+            goldendict::core::ExternalProgramSourceConfiguration>&)>;
 
     SourceDirectoriesDialog(
         const std::vector<std::string>& dictionary_paths,
@@ -45,6 +50,8 @@ class SourceDirectoriesDialog final : public QDialog {
             forvo_sources,
         const std::vector<goldendict::core::DictServerSourceConfiguration>&
             dict_server_sources,
+        const std::vector<goldendict::core::ExternalProgramSourceConfiguration>&
+            external_program_sources,
         ApplyCallback apply_callback, QWidget* parent = nullptr);
 
     std::vector<std::string> DictionaryPaths() const;
@@ -58,10 +65,13 @@ class SourceDirectoriesDialog final : public QDialog {
         const;
     std::vector<goldendict::core::DictServerSourceConfiguration>
     DictServerSources() const;
+    std::vector<goldendict::core::ExternalProgramSourceConfiguration>
+    ExternalProgramSources();
 
    private:
     QWidget* CreateDictionaryTab();
     QWidget* CreateSoundTab();
+    QWidget* CreateExternalProgramTab();
     QWidget* CreateOnlineTab(const QString& description,
                              const QStringList& headers, QTreeWidget** tree,
                              const QString& object_prefix);
@@ -71,6 +81,14 @@ class SourceDirectoriesDialog final : public QDialog {
     void AddDictServer();
     void MoveOnline(QTreeWidget* tree, int offset);
     void UpdateOnlineButtons(QTreeWidget* tree);
+    void AddExternalProgram(const QString& executable);
+    void MoveExternalProgram(int offset);
+    void UpdateExternalProgramSelection();
+    void UpdateExternalProgramButtons();
+    void StoreExternalProgramDetails();
+    void AddExternalArgument(const QString& argument);
+    void MoveExternalArgument(int offset);
+    void UpdateExternalArgumentButtons();
     void Apply();
     void AddDictionaryPath(const QString& path);
     void AddSoundDirectory(const QString& path, const QString& name);
@@ -93,6 +111,21 @@ class SourceDirectoriesDialog final : public QDialog {
     QTreeWidget* website_sources_ = nullptr;
     QTreeWidget* forvo_sources_ = nullptr;
     QTreeWidget* dict_server_sources_ = nullptr;
+    QTreeWidget* external_program_sources_ = nullptr;
+    QComboBox* external_program_result_kind_ = nullptr;
+    QLineEdit* external_program_executable_ = nullptr;
+    QLineEdit* external_program_working_directory_ = nullptr;
+    QListWidget* external_program_arguments_ = nullptr;
+    QPushButton* external_program_add_ = nullptr;
+    QPushButton* external_program_remove_ = nullptr;
+    QPushButton* external_program_up_ = nullptr;
+    QPushButton* external_program_down_ = nullptr;
+    QPushButton* external_argument_add_ = nullptr;
+    QPushButton* external_argument_remove_ = nullptr;
+    QPushButton* external_argument_up_ = nullptr;
+    QPushButton* external_argument_down_ = nullptr;
+    bool loading_external_program_ = false;
+    QTreeWidgetItem* external_program_current_item_ = nullptr;
     QLabel* validation_error_ = nullptr;
     ApplyCallback apply_callback_;
 };

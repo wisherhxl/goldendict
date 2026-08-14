@@ -101,6 +101,13 @@ validation failures are returned to the open dialog. The composition root
 continues to own construction, session restoration, atomic persistence, and
 the final facade swap; presentation code neither persists configuration nor
 handles Forvo credentials.
+P5c extends this presentation boundary with external-program fields and an
+ordered argument-template editor. Stable IDs remain hidden and every argument
+remains a distinct DTO value; executable and working-directory pickers only
+collect absolute paths. Widgets do not test-run programs, compose command
+lines, or add environment policy. The existing core validation and
+composition-root transaction continue to own acceptance, shell-free runtime
+construction, session restoration, persistence, and facade replacement.
 The Phase 8 P4a current-persistence foundation extends that complete candidate
 with ordered, bounded transport-neutral records for MediaWiki, website, Forvo,
 and DICT sources. Stable IDs, names, enabled intent, adapter-compatible URLs,

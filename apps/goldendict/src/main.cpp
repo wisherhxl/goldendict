@@ -568,13 +568,18 @@ int main(int argc, char* argv[]) {
                 forvo_sources,
             const std::vector<goldendict::core::DictServerSourceConfiguration>&
                 dict_server_sources,
+            const std::vector<
+                goldendict::core::ExternalProgramSourceConfiguration>&
+                external_program_sources,
             bool show_error) -> QString {
         if (dictionary_paths == configuration.dictionary_paths &&
             sound_directories == configuration.sound_directories &&
             mediawiki_sources == configuration.mediawiki_sources &&
             website_sources == configuration.website_sources &&
             forvo_sources == configuration.forvo_sources &&
-            dict_server_sources == configuration.dict_server_sources) {
+            dict_server_sources == configuration.dict_server_sources &&
+            external_program_sources ==
+                configuration.external_program_sources) {
             return {};
         }
         auto updated = configuration;
@@ -584,6 +589,7 @@ int main(int argc, char* argv[]) {
         updated.website_sources = website_sources;
         updated.forvo_sources = forvo_sources;
         updated.dict_server_sources = dict_server_sources;
+        updated.external_program_sources = external_program_sources;
         updated.article_tab_session = facade->ExportArticleTabSession();
         try {
             goldendict::core::ValidateConfiguration(updated);
@@ -604,10 +610,10 @@ int main(int argc, char* argv[]) {
             composition_diagnostics = std::move(replacement.diagnostics);
             ReportRuntimeCompositionDiagnostics(composition_diagnostics);
             configuration = std::move(updated);
-            window.SetOnlineSources(configuration.mediawiki_sources,
-                                    configuration.website_sources,
-                                    configuration.forvo_sources,
-                                    configuration.dict_server_sources, {});
+            window.SetOnlineSources(
+                configuration.mediawiki_sources, configuration.website_sources,
+                configuration.forvo_sources, configuration.dict_server_sources,
+                configuration.external_program_sources, {});
             return {};
         } catch (const std::exception& error) {
             if (show_error) {
@@ -626,18 +632,23 @@ int main(int argc, char* argv[]) {
                                  configuration.mediawiki_sources,
                                  configuration.website_sources,
                                  configuration.forvo_sources,
-                                 configuration.dict_server_sources, show_error)
+                                 configuration.dict_server_sources,
+                                 configuration.external_program_sources,
+                                 show_error)
                 .isEmpty();
         };
     window.SetOnlineSources(
         configuration.mediawiki_sources, configuration.website_sources,
         configuration.forvo_sources, configuration.dict_server_sources,
+        configuration.external_program_sources,
         [&](const auto& dictionary_paths, const auto& sound_directories,
             const auto& mediawiki_sources, const auto& website_sources,
-            const auto& forvo_sources, const auto& dict_server_sources) {
+            const auto& forvo_sources, const auto& dict_server_sources,
+            const auto& external_program_sources) {
             return apply_sources(dictionary_paths, sound_directories,
                                  mediawiki_sources, website_sources,
-                                 forvo_sources, dict_server_sources, false);
+                                 forvo_sources, dict_server_sources,
+                                 external_program_sources, false);
         });
     QObject::connect(
         &window, &MainWindow::SourceDirectoriesEdited, &window,
@@ -859,12 +870,18 @@ int main(int argc, char* argv[]) {
                     const std::vector<
                         goldendict::core::ForvoSourceConfiguration>
                         empty_forvo;
+                    auto edited_programs =
+                        configuration.external_program_sources;
+                    edited_programs.front().name = "Edited External";
+                    edited_programs.front().argument_templates = {
+                        "%GDWORD%", "", "--literal"};
                     passed = passed &&
                              apply_sources(
                                  configuration.dictionary_paths,
                                  configuration.sound_directories, edited_wikis,
                                  configuration.website_sources, empty_forvo,
-                                 configuration.dict_server_sources, false)
+                                 configuration.dict_server_sources,
+                                 edited_programs, false)
                                  .isEmpty();
                     const auto persisted = goldendict::core::LoadConfiguration(
                         configuration_path.toStdString());
@@ -875,8 +892,7 @@ int main(int argc, char* argv[]) {
                         persisted.dictionary_groups ==
                             original.dictionary_groups &&
                         persisted.preferences == original.preferences &&
-                        persisted.external_program_sources ==
-                            original.external_program_sources &&
+                        persisted.external_program_sources == edited_programs &&
                         persisted.mediawiki_sources == edited_wikis &&
                         persisted.forvo_sources.empty() &&
                         persisted.main_window_geometry ==

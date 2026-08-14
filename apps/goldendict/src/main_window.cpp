@@ -1459,11 +1459,14 @@ void MainWindow::SetOnlineSources(
         forvo_sources,
     const std::vector<goldendict::core::DictServerSourceConfiguration>&
         dict_server_sources,
+    const std::vector<goldendict::core::ExternalProgramSourceConfiguration>&
+        external_program_sources,
     SourceApplyCallback apply_callback) {
     mediawiki_sources_ = mediawiki_sources;
     website_sources_ = website_sources;
     forvo_sources_ = forvo_sources;
     dict_server_sources_ = dict_server_sources;
+    external_program_sources_ = external_program_sources;
     if (apply_callback)
         source_apply_callback_ = std::move(apply_callback);
 }
@@ -1865,19 +1868,44 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
          {"en", "ru"}}};
     const std::vector<goldendict::core::DictServerSourceConfiguration> dicts = {
         {"dict.one", "DICT", true, "dict.example", 2628U, "*", "prefix"}};
+    const std::vector<goldendict::core::ExternalProgramSourceConfiguration>
+        programs = {{"program.one",
+                     "Plain",
+                     false,
+                     goldendict::core::ExternalProgramOutputKind::kPlainText,
+                     "/bin/echo",
+                     {},
+                     ""},
+                    {"program.two",
+                     "Prefix",
+                     true,
+                     goldendict::core::ExternalProgramOutputKind::kPrefixMatch,
+                     "/usr/bin/printf",
+                     {"%GDWORD%"},
+                     "/tmp"}};
     bool reject_once = true;
     bool callback_received = false;
     SourceDirectoriesDialog online(
-        paths, sounds, wikis, websites, forvo, dicts,
+        paths, sounds, wikis, websites, forvo, dicts, programs,
         [&](const auto&, const auto&, const auto& edited_wikis,
             const auto& edited_websites, const auto& edited_forvo,
-            const auto& edited_dicts) {
-            callback_received = edited_wikis.front().id == "wiki.two" &&
-                                edited_wikis.front().enabled &&
-                                edited_websites == websites &&
-                                edited_forvo.front().language_codes ==
-                                    (std::vector<std::string>{"ru", "en"}) &&
-                                edited_dicts == dicts;
+            const auto& edited_dicts, const auto& edited_programs) {
+            callback_received =
+                edited_wikis.front().id == "wiki.two" &&
+                edited_wikis.front().enabled && edited_websites == websites &&
+                edited_forvo.front().language_codes ==
+                    (std::vector<std::string>{"ru", "en"}) &&
+                edited_dicts == dicts &&
+                edited_programs.front().id == "program.two" &&
+                edited_programs.front().enabled &&
+                edited_programs.front().output_kind ==
+                    goldendict::core::ExternalProgramOutputKind::kHtml &&
+                edited_programs.front().executable == "/usr/bin/printf" &&
+                edited_programs.front().working_directory.empty() &&
+                edited_programs.front().argument_templates ==
+                    (std::vector<std::string>{"", "%GDWORD%"}) &&
+                edited_programs[1].id == "program.one" &&
+                edited_programs[1].argument_templates.empty();
             if (reject_once) {
                 reject_once = false;
                 return QStringLiteral("forced apply failure");
@@ -1892,8 +1920,31 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
     auto* forvo_list =
         online.findChild<QTreeWidget*>(QStringLiteral("forvoList"));
     auto* buttons = online.findChild<QDialogButtonBox*>();
+    auto* program_list =
+        online.findChild<QTreeWidget*>(QStringLiteral("externalProgramList"));
+    auto* program_up =
+        online.findChild<QPushButton*>(QStringLiteral("externalProgramUp"));
+    auto* result_kind = online.findChild<QComboBox*>(
+        QStringLiteral("externalProgramResultKind"));
+    auto* executable = online.findChild<QLineEdit*>(
+        QStringLiteral("externalProgramExecutable"));
+    auto* working_directory = online.findChild<QLineEdit*>(
+        QStringLiteral("externalProgramWorkingDirectory"));
+    auto* clear_working = online.findChild<QPushButton*>(
+        QStringLiteral("externalProgramClearWorkingDirectory"));
+    auto* arguments = online.findChild<QListWidget*>(
+        QStringLiteral("externalProgramArgumentList"));
+    auto* argument_add =
+        online.findChild<QPushButton*>(QStringLiteral("externalArgumentAdd"));
+    auto* argument_up =
+        online.findChild<QPushButton*>(QStringLiteral("externalArgumentUp"));
     passed = passed && wiki_list != nullptr && wiki_up != nullptr &&
-             forvo_list != nullptr && buttons != nullptr;
+             forvo_list != nullptr && buttons != nullptr &&
+             program_list != nullptr && program_up != nullptr &&
+             result_kind != nullptr && executable != nullptr &&
+             working_directory != nullptr && clear_working != nullptr &&
+             arguments != nullptr && argument_add != nullptr &&
+             argument_up != nullptr;
     if (passed) {
         auto* website_list =
             online.findChild<QTreeWidget*>(QStringLiteral("websiteList"));
@@ -1909,6 +1960,20 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
         wiki_up->click();
         wiki_list->topLevelItem(0)->setCheckState(0, Qt::Checked);
         forvo_list->topLevelItem(0)->setText(3, QStringLiteral("ru,en"));
+        program_list->setCurrentItem(program_list->topLevelItem(1));
+        program_up->click();
+        result_kind->setCurrentIndex(static_cast<int>(
+            goldendict::core::ExternalProgramOutputKind::kHtml));
+        clear_working->click();
+        argument_add->click();
+        arguments->currentItem()->setText(QString{});
+        argument_up->click();
+        executable->setText(QStringLiteral("relative"));
+        buttons->button(QDialogButtonBox::Apply)->click();
+        passed = passed && !callback_received &&
+                 online.result() != QDialog::Accepted && error != nullptr &&
+                 !error->isHidden();
+        executable->setText(QStringLiteral("/usr/bin/printf"));
         buttons->button(QDialogButtonBox::Apply)->click();
         passed = passed && callback_received &&
                  online.result() != QDialog::Accepted && error != nullptr &&
@@ -1918,12 +1983,13 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
     }
     bool received_empty = false;
     SourceDirectoriesDialog empty_online(
-        paths, sounds, {}, {}, {}, {},
+        paths, sounds, {}, {}, {}, {}, {},
         [&](const auto&, const auto&, const auto& empty_wikis,
             const auto& empty_websites, const auto& empty_forvo,
-            const auto& empty_dicts) {
+            const auto& empty_dicts, const auto& empty_programs) {
             received_empty = empty_wikis.empty() && empty_websites.empty() &&
-                             empty_forvo.empty() && empty_dicts.empty();
+                             empty_forvo.empty() && empty_dicts.empty() &&
+                             empty_programs.empty();
             return QString{};
         },
         this);
@@ -1936,10 +2002,10 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
 }
 
 void MainWindow::EditSourceDirectories() {
-    SourceDirectoriesDialog dialog(dictionary_paths_, sound_directories_,
-                                   mediawiki_sources_, website_sources_,
-                                   forvo_sources_, dict_server_sources_,
-                                   source_apply_callback_, this);
+    SourceDirectoriesDialog dialog(
+        dictionary_paths_, sound_directories_, mediawiki_sources_,
+        website_sources_, forvo_sources_, dict_server_sources_,
+        external_program_sources_, source_apply_callback_, this);
     dialog.exec();
 }
 

@@ -172,6 +172,14 @@ apply-failure feedback, retry, exact empty Forvo persistence, complete-facade
 replacement, and preservation of unrelated configuration and the article
 session. Website and DICT DTO round trips remain pinned by the same atomic
 application path, with no credential field or public network request.
+P5c coverage in the same smoke pins hidden external-program IDs, enabled and
+program ordering, result-kind editing, absolute executable and optional
+working-directory staging, ordered `%GDWORD%` and empty argument templates,
+core validation feedback, retry after synchronous apply failure, exact empty
+collection behavior, and preservation of unrelated configuration and the
+article session. The editor never starts a process; shell-free execution and
+runtime error behavior remain covered by the focused external and runtime
+composition tests.
 It also imports ordered legacy groups with favorites folders, shortcuts,
 separate muted-ID collections, external icons, and canonical Base64 embedded
 icon metadata. Unknown nonempty dictionary IDs remain stable, while malformed,

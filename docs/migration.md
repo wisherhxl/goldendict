@@ -454,6 +454,18 @@ atomically, and only then rebinds presentation state. Exact empty collections
 are preserved, including the Forvo presence marker. Credentials, external
 program editing, icons, iframe and legacy encoding settings remain excluded.
 
+The P5c presentation increment adds ordered external-program editing to the
+same dialog and complete-candidate apply path. Widgets retain hidden stable
+identities and enabled intent, expose only plain-text, HTML, and prefix-match
+results, select absolute executables and optional working directories, and
+stage each ordered argument template separately with explicit add, remove, and
+reorder controls. `%GDWORD%` remains an argument-template substitution; the UI
+never reconstructs a command line, invokes a shell, or executes a program.
+Core validation and canonical persistence remain unchanged. Apply composes and
+restores a complete replacement before atomic save and presentation rebinding,
+so validation, composition, restore, or save failure leaves the active
+configuration and facade intact while the dialog remains open for correction.
+
 The current-preferences foundation adds deterministic portable defaults and
 bounded optional preference records to the core-owned current configuration.
 It round-trips locale, appearance, window, hotkey, scan, audio, proxy policy,
