@@ -1017,13 +1017,14 @@ support, and the Phase 8 workflow; dictionary-reference menu limits on Phase 7
 per-dictionary article-context navigation; and update checks on Phase 9 release
 integration.
 
-Network cache size and clear-on-exit are specifically blocked on a
-`Phase 7 network-cache ownership audit`. The current tree has persisted DTO
-fields, an ephemeral per-request `QNetworkAccessManager`, and the default
-`QWebEngineProfile`, but no configured disk-cache owner or transactional
-apply/rollback contract. That prerequisite must decide whether Qt Network,
-WebEngine, or both belong to pinned legacy scope and assign ownership before a
-Preferences leaf becomes ready.
+The `Phase 7 network-cache ownership audit` is accepted. Qt Network is the
+exclusive owner of the GoldenDict-managed HTTP/HTTPS response cache;
+WebEngine remains outside the preference contract. The later bounded
+Preferences leaf must first introduce the documented application-lifetime
+network owner, dedicated cache path, startup/shutdown behavior, redacted
+failure handling, and transactional policy apply with the explicit exception
+that evicted disposable cache bytes cannot be reconstructed. It must not
+change WebEngine profile policy or clear WebEngine data.
 
 History and Favorites save intervals are intentionally excluded because
 current mutations persist immediately. Web plugins have no supported Qt

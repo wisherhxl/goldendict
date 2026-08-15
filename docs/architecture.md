@@ -641,13 +641,43 @@ pointer, or preference callbacks. Article content receives no script, object,
 listener, or command capability; CSP, sanitization, navigation policy, and the
 existing bounded selection-lookup command remain unchanged.
 
-In particular, persisted network-cache fields do not establish runtime
-ownership. Current network requests use an ephemeral `QNetworkAccessManager`,
-while articles use the default `QWebEngineProfile`; neither is a configured,
-transactional disk-cache owner. A Phase 7 ownership audit must first determine
-the pinned scope, owner or owners, and apply/rollback contract. Mandatory
-article CSP and sanitization also cannot be weakened by restoring the legacy
-optional cross-site-content checkbox.
+The Phase 7 network-cache ownership audit assigns the persisted maximum-size
+and clear-on-exit fields exclusively to the Qt Network adapter used for
+GoldenDict-managed HTTP/HTTPS source traffic. This preserves the pinned
+behavior: legacy GoldenDict attached one `QNetworkDiskCache` to its article
+network manager, changed that cache's maximum size, and cleared that same
+cache during coordinated shutdown. It did not configure an independent
+browser cache. Core continues to own the transport-neutral persisted fields;
+the network module must replace its current ephemeral per-request manager with
+one application-lifetime owner before the controls can be exposed. Widgets
+and `QWebEngineProfile` remain outside the contract.
+
+The future owner receives a dedicated path below
+`QStandardPaths::CacheLocation`. A zero limit means no Qt Network disk cache;
+a positive limit is converted from MiB to bytes and applied exactly. Startup
+validates the bound and prepares the owned path before publishing the network
+runtime. Path or cache setup failure produces a redacted diagnostic and
+degrades online sources to uncached traffic without blocking local
+dictionaries. When clear-on-exit is false, entries may persist across clean
+restarts. When it is true, coordinated shutdown first prevents new requests,
+cancels or joins outstanding requests, and then clears only the owned Qt
+Network cache. Crashes and forced termination provide no cleanup guarantee;
+cleanup failure is non-fatal and may be retried on a later clean shutdown.
+Diagnostics must not expose URLs, cache keys, credentials, or response data.
+
+Preference apply validates and prepares a complete candidate before
+persistence and activation. Any validation, preparation, persistence, or
+activation failure preserves the previous persisted policy and active owner.
+Reducing the limit or disabling caching may evict entries immediately;
+rollback restores policy and ownership but cannot reconstruct evicted cache
+bytes. This bounded loss of disposable cache content is the only rollback
+exception and must remain explicit in the later Preferences leaf.
+
+WebEngine's default-profile cache path, size, type, cookies, and persistent
+storage are not changed or cleared by these controls. A WebEngine profile
+policy or broader browser-data deletion promise requires a separate reviewed
+prerequisite. Mandatory article CSP and sanitization also cannot be weakened
+by restoring the legacy optional cross-site-content checkbox.
 
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

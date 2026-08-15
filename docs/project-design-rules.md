@@ -129,6 +129,12 @@ module built as a shared library when `BUILD_SHARED_LIBS=ON`.
   `ti_define_module(...)`. Exposing a dependency through installed headers or
   exported usage requirements makes it public; implementation-only
   dependencies remain private.
+- GoldenDict-managed HTTP/HTTPS response caching belongs exclusively to the
+  Qt Network adapter. Core may persist transport-neutral cache policy, but the
+  network module owns the application-lifetime manager, disk-cache instance,
+  injected cache path, and request quiescence. Widgets and WebEngine do not
+  own or reinterpret that policy, and the owned cache directory must not be
+  shared by multiple disk-cache instances or combined with WebEngine data.
 
 This rule applies to all migrated GoldenDict product behavior. It implements
 single responsibility, interface segregation, and dependency inversion while

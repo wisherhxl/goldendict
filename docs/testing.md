@@ -473,12 +473,24 @@ programs, WebEngine, system proxy policy, or application-global proxy state.
 The five ready Phase 8 Preferences leaves are complete; remaining controls
 retain their named prerequisites.
 
-Network cache controls are not test-ready. A Phase 7 network-cache ownership
-audit must first identify whether the ephemeral Qt Network path, the default
-WebEngine profile, or both are in pinned scope and define transactional
-apply/rollback behavior. Blocked Phase 5/6/7/9 capabilities acquire focused
-Preferences coverage only after their named runtime prerequisite is accepted;
-intentionally excluded controls receive no inert-widget smoke.
+The Phase 7 network-cache ownership audit is accepted without executable
+behavior changes: Qt Network exclusively owns the managed HTTP/HTTPS cache,
+and WebEngine is outside the preference contract. The later runtime and
+Preferences leaf requires focused network coverage for zero and positive
+limits, exact MiB conversion, the dedicated path, cache hits and restart
+persistence, reduction/eviction, and setup failure degrading to uncached
+traffic. Transaction tests must cover invalid candidates and
+prepare/persist/activation failure while preserving prior policy and the
+active manager, with the documented exception that evicted bytes are not
+recoverable. Shutdown tests must prove request quiescence, owned-cache-only
+clearing, disabled-cleanup persistence, and non-fatal redacted cleanup
+failure. WebEngine isolation coverage must prove that apply and cleanup do not
+mutate its profile cache type, size, path, cookies, or persistent storage.
+Only after that runtime contract exists may an offscreen Preferences/restart
+smoke expose the two pinned controls. Other blocked Phase 5/6/7/9 capabilities
+acquire focused Preferences coverage only after their named runtime
+prerequisite is accepted; intentionally excluded controls receive no
+inert-widget smoke.
 `goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
 History and its sole backed legacy `searchInPageAction`, including exact text,
 role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and
