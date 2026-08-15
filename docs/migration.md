@@ -976,16 +976,17 @@ The dependency-ordered ready graph is:
    transaction, query/article focus, child-consumption, modal, and two-process
    restart coverage pins cancel/failure preservation and successful persistence
    without adding tray, close-to-tray, scan, or hotkey behavior.
-4. `P8-PREF-4 General/Interface — Article click interaction` is the exact next
-   durable Phase 8 Preferences leaf and depends on the
-   completed Phase 7 WebEngine interaction and bounded lookup path. The shared
-   WebEngine pointer/selection boundary exposes double-click translation and
-   single-click selection without granting active behavior to untrusted
-   content. Configuration tests and an isolated WebEngine smoke must cover all
-   four toggle combinations, exactly-once dispatch, link and input exclusions,
-   unchanged cancellation/history/tab/security behavior, transaction failure,
-   and restart.
-5. `P8-PREF-5 General/Network — Manual HTTP CONNECT proxy` uses the existing
+4. `P8-PREF-4 General/Interface — Article click interaction` is complete. It
+   reuses the existing persisted and strictly migrated booleans and exposes the
+   pinned controls. Eligible pointer events run only a fixed application-owned
+   DOM query in WebEngine's isolated application world; bounded results enter
+   the existing selection-lookup command exactly once, while links, inputs,
+   editable content, stale callbacks, and disabled modes cannot dispatch.
+   Configuration and isolated two-process WebEngine coverage pins all four
+   combinations, exclusions, transaction failure, and restart without changing
+   CSP, sanitization, navigation, history, tabs, or article security.
+5. `P8-PREF-5 General/Network — Manual HTTP CONNECT proxy` is the exact next
+   durable Phase 8 Preferences leaf and uses the existing
    credential-free proxy DTO/migration, `HttpRequest::Proxy`,
    `QNetworkAccessManager::setProxy`, and atomic runtime recomposition. It
    exposes disabled/manual HTTP CONNECT host and port only; credentials, system

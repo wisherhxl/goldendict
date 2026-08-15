@@ -912,6 +912,12 @@ void ApplicationServiceTest::ApplicationPreferencesCompareByValue() {
     second.escape_hides_main_window = true;
     QVERIFY(first != second);
     first.escape_hides_main_window = true;
+    second.double_click_translates = false;
+    QVERIFY(first != second);
+    first.double_click_translates = false;
+    second.select_word_by_single_click = true;
+    QVERIFY(first != second);
+    first.select_word_by_single_click = true;
     second.confirm_favorites_deletion = false;
     QVERIFY(first != second);
     second.confirm_favorites_deletion = true;
@@ -933,6 +939,8 @@ void ApplicationServiceTest::
     preferences.hide_single_tab = true;
     preferences.mru_tab_order = true;
     preferences.escape_hides_main_window = true;
+    preferences.double_click_translates = false;
+    preferences.select_word_by_single_click = true;
     preferences.enable_tray_icon = false;
     preferences.main_window_hotkey = "Alt+Space";
     preferences.scan_popup_modifiers = 0x021U;
@@ -965,6 +973,10 @@ void ApplicationServiceTest::
     QVERIFY(first.find("preference=mru_tab_order|1\n") != std::string::npos);
     QVERIFY(first.find("preference=escape_hides_main_window|1\n") !=
             std::string::npos);
+    QVERIFY(first.find("preference=double_click_translates|0\n") !=
+            std::string::npos);
+    QVERIFY(first.find("preference=select_word_by_single_click|1\n") !=
+            std::string::npos);
     const auto actual = LoadConfiguration(path.string());
 
     QCOMPARE(actual.preferences.interface_language,
@@ -975,6 +987,8 @@ void ApplicationServiceTest::
     QCOMPARE(actual.preferences.hide_single_tab, true);
     QCOMPARE(actual.preferences.mru_tab_order, true);
     QCOMPARE(actual.preferences.escape_hides_main_window, true);
+    QCOMPARE(actual.preferences.double_click_translates, false);
+    QCOMPARE(actual.preferences.select_word_by_single_click, true);
     QCOMPARE(actual.preferences.enable_tray_icon, preferences.enable_tray_icon);
     QCOMPARE(actual.preferences.scan_popup_modifiers,
              preferences.scan_popup_modifiers);
@@ -1015,12 +1029,27 @@ void ApplicationServiceTest::
     QCOMPARE(older.preferences.hide_single_tab, false);
     QCOMPARE(older.preferences.mru_tab_order, false);
     QCOMPARE(older.preferences.escape_hides_main_window, false);
+    QCOMPARE(older.preferences.double_click_translates, true);
+    QCOMPARE(older.preferences.select_word_by_single_click, false);
     QCOMPARE(older.preferences.zoom_factor, 1.0);
     QCOMPARE(older.preferences.maximum_history_entries, std::uint32_t{500});
     QCOMPARE(older.preferences.confirm_favorites_deletion, true);
     QCOMPARE(older.preferences.always_expand_optional_parts, false);
     QCOMPARE(older.preferences.limit_input_phrase_length, false);
     QCOMPARE(older.preferences.input_phrase_length_limit, std::uint32_t{1000});
+
+    for (const bool translate : {false, true}) {
+        for (const bool select : {false, true}) {
+            CoreConfiguration combination;
+            combination.preferences.double_click_translates = translate;
+            combination.preferences.select_word_by_single_click = select;
+            SaveConfiguration(path.string(), combination);
+            const auto round_trip = LoadConfiguration(path.string());
+            QCOMPARE(round_trip.preferences.double_click_translates, translate);
+            QCOMPARE(round_trip.preferences.select_word_by_single_click,
+                     select);
+        }
+    }
 }
 
 void ApplicationServiceTest::
@@ -1284,6 +1313,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<displayStyle>dark</displayStyle><addonStyle>contrast.css</addonStyle>"
         "<hideMenubar>1</hideMenubar><enableTrayIcon>0</enableTrayIcon>"
         "<doubleClickTranslates>0</doubleClickTranslates>"
+        "<selectWordBySingleClick>1</selectWordBySingleClick>"
         "<enableMainWindowHotkey>1</enableMainWindowHotkey>"
         "<mainWindowHotkey>Alt+Space</mainWindowHotkey>"
         "<scanPopupModifiers>33</scanPopupModifiers>"
@@ -1355,6 +1385,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.hide_menubar, true);
     QCOMPARE(preferences.enable_tray_icon, false);
     QCOMPARE(preferences.double_click_translates, false);
+    QCOMPARE(preferences.select_word_by_single_click, true);
     QCOMPARE(preferences.main_window_hotkey, "Alt+Space");
     QCOMPARE(preferences.scan_popup_modifiers, std::uint32_t{33});
     QCOMPARE(preferences.scan_popup_alt_mode_seconds, std::uint32_t{12});
@@ -1619,6 +1650,10 @@ void ApplicationServiceTest::RejectsMalformedLegacyPreferencesAtomically() {
         "<hideSingleTab>1</hideSingleTab><hideSingleTab>0</hideSingleTab>",
         "<mruTabOrder>true</mruTabOrder>",
         "<mruTabOrder>1</mruTabOrder><mruTabOrder>0</mruTabOrder>",
+        "<doubleClickTranslates>1</doubleClickTranslates>"
+        "<doubleClickTranslates>0</doubleClickTranslates>",
+        "<selectWordBySingleClick>1</selectWordBySingleClick>"
+        "<selectWordBySingleClick>0</selectWordBySingleClick>",
         "<zoomFactor>nan</zoomFactor>",
         "<wordsZoomLevel>2x</wordsZoomLevel>",
         "<scanPopupModifiers>65535</scanPopupModifiers>",

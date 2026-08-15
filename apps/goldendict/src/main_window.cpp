@@ -2347,6 +2347,208 @@ void MainWindow::RunEscapeHidesMainWindowRestartSmokeCheck(
     completion(passed);
 }
 
+void MainWindow::RunArticleClickPreferencesSmokeCheck(
+    std::function<void(bool)> completion) {
+    auto* view = qobject_cast<ArticleView*>(article_tabs_->currentWidget());
+    if (preferences_action_ == nullptr || facade_ == nullptr ||
+        view == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial_preferences = preferences_;
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const std::string initial_state = CaptureMainWindowState();
+    auto passed = std::make_shared<bool>(
+        initial_preferences.double_click_translates &&
+        !initial_preferences.select_word_by_single_click);
+    const auto inspect = [passed](PreferencesDialog& dialog, bool accept) {
+        auto* translate = dialog.findChild<QCheckBox*>(
+            QStringLiteral("doubleClickTranslates"));
+        auto* select =
+            dialog.findChild<QCheckBox*>(QStringLiteral("selectBySingleClick"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        *passed =
+            *passed && translate != nullptr && select != nullptr &&
+            buttons != nullptr &&
+            translate->text() ==
+                QStringLiteral("Double-click translates the word clicked") &&
+            translate->toolTip().isEmpty() &&
+            select->text() == QStringLiteral("Select word by single click") &&
+            select->toolTip() ==
+                QStringLiteral(
+                    "Turn this option on if you want to select words by "
+                    "single mouse click");
+        if (translate != nullptr)
+            translate->setChecked(true);
+        if (select != nullptr)
+            select->setChecked(true);
+        if (accept && buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        else
+            dialog.reject();
+        return dialog.result();
+    };
+    preferences_dialog_executor_ = [inspect](PreferencesDialog& dialog) {
+        return inspect(dialog, false);
+    };
+    preferences_action_->trigger();
+    *passed = *passed && preferences_ == initial_preferences;
+
+    const auto original_callback = preferences_apply_callback_;
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("forced article click preferences failure");
+    };
+    preferences_dialog_executor_ = [passed](PreferencesDialog& dialog) {
+        auto* translate = dialog.findChild<QCheckBox*>(
+            QStringLiteral("doubleClickTranslates"));
+        auto* select =
+            dialog.findChild<QCheckBox*>(QStringLiteral("selectBySingleClick"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        if (translate != nullptr)
+            translate->setChecked(false);
+        if (select != nullptr)
+            select->setChecked(true);
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        auto* error = dialog.findChild<QLabel*>(
+            QStringLiteral("preferencesValidationError"));
+        *passed = *passed && dialog.result() != QDialog::Accepted &&
+                  error != nullptr && !error->isHidden();
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    *passed = *passed && preferences_ == initial_preferences;
+
+    preferences_apply_callback_ = original_callback;
+    preferences_dialog_executor_ = [inspect](PreferencesDialog& dialog) {
+        return inspect(dialog, true);
+    };
+    preferences_action_->trigger();
+    preferences_dialog_executor_ = {};
+    preferences_apply_callback_ = original_callback;
+    *passed = *passed && preferences_.double_click_translates &&
+              preferences_.select_word_by_single_click;
+    view = new ArticleView(this);
+    view->resize(640, 480);
+    view->show();
+
+    auto lookup_count = std::make_shared<int>(0);
+    connect(view, &ArticleView::SelectionLookupRequested, view,
+            [lookup_count](const QString& word, ArticleLinkDisposition) {
+                if (word == QStringLiteral("alpha"))
+                    ++*lookup_count;
+            });
+    connect(
+        view, &QWebEngineView::loadFinished, this,
+        [this, view, passed, lookup_count, initial_session, initial_state,
+         completion = std::move(completion)](bool success) mutable {
+            if (!success) {
+                completion(false);
+                return;
+            }
+            struct Case {
+                bool translate_enabled;
+                bool select_enabled;
+                QString target;
+                bool translate;
+                bool expect_selection;
+                int expected_lookups;
+            };
+            auto cases = std::make_shared<QList<Case>>(QList<Case>{
+                {false, false, QStringLiteral("word"), false, false, 0},
+                {false, false, QStringLiteral("word"), true, false, 0},
+                {true, false, QStringLiteral("word"), false, false, 0},
+                {true, false, QStringLiteral("word"), true, true, 1},
+                {false, true, QStringLiteral("word"), false, true, 1},
+                {false, true, QStringLiteral("word"), true, false, 1},
+                {true, true, QStringLiteral("word"), false, true, 1},
+                {true, true, QStringLiteral("word"), true, true, 2},
+                {true, true, QStringLiteral("link"), false, false, 2},
+                {true, true, QStringLiteral("link"), true, false, 2},
+                {true, true, QStringLiteral("input"), false, false, 2},
+                {true, true, QStringLiteral("input"), true, false, 2},
+                {true, true, QStringLiteral("long"), true, false, 2},
+            });
+            auto index = std::make_shared<int>(0);
+            auto run = std::make_shared<std::function<void()>>();
+            *run = [this, view, passed, lookup_count, cases, index, run,
+                    initial_session, initial_state,
+                    completion = std::move(completion)]() mutable {
+                if (*index >= cases->size()) {
+                    SetPreferences(preferences_);
+                    *passed =
+                        *passed &&
+                        facade_->ExportArticleTabSession() == initial_session &&
+                        CaptureMainWindowState() == initial_state;
+                    view->deleteLater();
+                    completion(*passed);
+                    return;
+                }
+                const Case current = cases->at((*index)++);
+                view->SetClickPreferences(current.translate_enabled,
+                                          current.select_enabled);
+                view->page()->runJavaScript(
+                    QStringLiteral(
+                        "(() => {window.getSelection().removeAllRanges();"
+                        "const r=document.getElementById('%1')"
+                        ".getBoundingClientRect(); return [r.left+r.width/2,"
+                        "r.top+r.height/2];})()")
+                        .arg(current.target),
+                    [view, passed, lookup_count, current,
+                     run](const QVariant& value) {
+                        const QVariantList point = value.toList();
+                        if (point.size() != 2) {
+                            *passed = false;
+                            (*run)();
+                            return;
+                        }
+                        view->TriggerWordQueryForTest(
+                            QPointF(point[0].toDouble(), point[1].toDouble()),
+                            current.translate);
+                        if (current.translate && current.translate_enabled &&
+                            current.select_enabled &&
+                            current.target == QStringLiteral("word")) {
+                            view->TriggerWordQueryForTest(
+                                QPointF(point[0].toDouble(),
+                                        point[1].toDouble()),
+                                true);
+                        }
+                        QTimer::singleShot(
+                            50, view,
+                            [view, passed, lookup_count, current, run]() {
+                                const bool selected =
+                                    view->page()->selectedText() ==
+                                    QStringLiteral("alpha");
+                                *passed =
+                                    *passed &&
+                                    selected == current.expect_selection &&
+                                    *lookup_count == current.expected_lookups;
+                                (*run)();
+                            });
+                    });
+            };
+            (*run)();
+        },
+        Qt::SingleShotConnection);
+    view->setHtml(QStringLiteral(
+        "<!doctype html><html><body>"
+        "<span id='word'>alpha</span> "
+        "<a id='link' href='goldendict://lookup/beta'><span>beta</span></a> "
+        "<input id='input' value='gamma'>"
+        "<span id='long'>abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz"
+        "abcdefgh</span>"
+        "</body></html>"));
+}
+
+void MainWindow::RunArticleClickRestartSmokeCheck(
+    std::function<void(bool)> completion) {
+    completion(preferences_.double_click_translates &&
+               preferences_.select_word_by_single_click);
+}
+
 void MainWindow::RunMruTabOrderPreferencesSmokeCheck(
     std::function<void(bool)> completion) {
     if (preferences_action_ == nullptr || facade_ == nullptr ||
@@ -4342,6 +4544,8 @@ ArticleView* MainWindow::CreateArticleView(
     goldendict::core::ArticleTabId tab_id) {
     auto* view = new ArticleView(article_tabs_);
     view->SetFacade(facade_);
+    view->SetClickPreferences(preferences_.double_click_translates,
+                              preferences_.select_word_by_single_click);
     view->setProperty("articleTabId", QVariant::fromValue<qulonglong>(tab_id));
     auto* page = new ArticlePage(view);
     page->SetFacade(facade_);
@@ -5353,9 +5557,10 @@ void MainWindow::SetPreferences(
         FinishMruTraversal();
     article_tabs_->setTabBarAutoHide(preferences_.hide_single_tab);
     for (int index = 0; index < article_tabs_->count(); ++index) {
-        auto* view =
-            qobject_cast<QWebEngineView*>(article_tabs_->widget(index));
+        auto* view = qobject_cast<ArticleView*>(article_tabs_->widget(index));
         if (view != nullptr) {
+            view->SetClickPreferences(preferences_.double_click_translates,
+                                      preferences_.select_word_by_single_click);
             auto* page = qobject_cast<ArticlePage*>(view->page());
             if (page != nullptr) {
                 page->SetOpenNewTabsInBackground(

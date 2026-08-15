@@ -95,6 +95,14 @@ add_test(NAME goldendict_escape_hides_main_window_preferences_smoke
 set_tests_properties(goldendict_escape_hides_main_window_preferences_smoke
   PROPERTIES TIMEOUT 40)
 
+add_test(NAME goldendict_article_click_preferences_smoke
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-click-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/article_click_restart.cmake)
+set_tests_properties(goldendict_article_click_preferences_smoke
+  PROPERTIES TIMEOUT 50)
+
 add_test(NAME goldendict_view_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --view-menu-smoke)
 set_tests_properties(goldendict_view_menu_smoke PROPERTIES

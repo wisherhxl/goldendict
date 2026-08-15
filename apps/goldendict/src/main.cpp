@@ -1085,6 +1085,34 @@ int main(int argc, char* argv[]) {
             window.RunEscapeHidesMainWindowRestartSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--article-click-preferences-smoke"))) {
+        QTimer::singleShot(15000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &configuration_path, &window]() {
+            window.RunArticleClickPreferencesSmokeCheck(
+                [&app, &configuration_path](bool passed) {
+                    try {
+                        const auto persisted =
+                            goldendict::core::LoadConfiguration(
+                                configuration_path.toStdString());
+                        passed =
+                            passed &&
+                            persisted.preferences.double_click_translates &&
+                            persisted.preferences.select_word_by_single_click;
+                    } catch (...) {
+                        passed = false;
+                    }
+                    app.exit(passed ? 0 : 1);
+                });
+        });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--article-click-restart-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunArticleClickRestartSmokeCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
     } else if (HasArgument(argc, argv, QStringLiteral("--view-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(0, &window, [&app, &window]() {

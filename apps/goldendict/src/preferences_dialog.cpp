@@ -70,6 +70,25 @@ PreferencesDialog::PreferencesDialog(
     escape_hides_main_window_->setChecked(preferences.escape_hides_main_window);
     general_layout->addWidget(escape_hides_main_window_);
 
+    double_click_translates_ = new QCheckBox(
+        QStringLiteral("Double-click translates the word clicked"),
+        general_page);
+    double_click_translates_->setObjectName(
+        QStringLiteral("doubleClickTranslates"));
+    double_click_translates_->setChecked(preferences.double_click_translates);
+    general_layout->addWidget(double_click_translates_);
+
+    select_word_by_single_click_ = new QCheckBox(
+        QStringLiteral("Select word by single click"), general_page);
+    select_word_by_single_click_->setObjectName(
+        QStringLiteral("selectBySingleClick"));
+    select_word_by_single_click_->setToolTip(QStringLiteral(
+        "Turn this option on if you want to select words by single mouse "
+        "click"));
+    select_word_by_single_click_->setChecked(
+        preferences.select_word_by_single_click);
+    general_layout->addWidget(select_word_by_single_click_);
+
     auto* history_group =
         new QGroupBox(QStringLiteral("History"), general_page);
     history_group->setObjectName(QStringLiteral("preferencesHistoryGroup"));
@@ -235,6 +254,9 @@ void PreferencesDialog::Apply() {
     candidate.hide_single_tab = hide_single_tab_->isChecked();
     candidate.mru_tab_order = mru_tab_order_->isChecked();
     candidate.escape_hides_main_window = escape_hides_main_window_->isChecked();
+    candidate.double_click_translates = double_click_translates_->isChecked();
+    candidate.select_word_by_single_click =
+        select_word_by_single_click_->isChecked();
     candidate.store_history = store_history_->isChecked();
     candidate.maximum_history_entries =
         static_cast<std::uint32_t>(maximum_history_entries_->value());

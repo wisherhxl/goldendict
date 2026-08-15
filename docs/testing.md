@@ -453,9 +453,12 @@ each:
 - P8-PREF-3 verifies the existing escape preference through query, article,
   child, and modal focus paths, including disabled behavior, cancel/failure,
   successful hiding, and restart.
-- P8-PREF-4 uses isolated WebEngine coverage for all double-click-translation
-  and single-click-selection combinations, link/input exclusions, exactly-once
-  dispatch, unchanged security/history/tabs, transaction failure, and restart.
+- P8-PREF-4 is accepted by current/legacy configuration coverage and
+  `goldendict_article_click_preferences_smoke`. Its isolated WebEngine view
+  covers all four double-click-translation/single-click-selection combinations,
+  the pinned controls, the 60-UTF-16-unit bound, link/input exclusions,
+  exactly-once dispatch, cancel/failure preservation, unchanged security,
+  history and tabs, and a second-process restart.
 - P8-PREF-5 combines configuration/migration cases, a loopback origin/proxy
   runtime-composition test, and an offscreen dialog smoke to prove strict HTTP
   CONNECT host/port validation, direct versus proxied traffic, atomic facade

@@ -622,6 +622,15 @@ only at the main-window key fallback, after the focused child declines it.
 Enabled handling hides rather than toggles the window; modal dialogs retain
 their own ESC behavior. Tray, close-to-tray, scan-popup, and global-hotkey
 behavior remain outside this leaf.
+The following article-click leaf likewise reuses the existing default-on
+double-click-translation and default-off single-click-selection fields. A
+private Widgets boundary handles eligible unmodified left-button events with a
+fixed application-owned DOM query in WebEngine's isolated application world.
+It returns only a nonempty selection shorter than 60 UTF-16 units, excludes
+links, form controls, and editable content, and invalidates stale document,
+pointer, or preference callbacks. Article content receives no script, object,
+listener, or command capability; CSP, sanitization, navigation policy, and the
+existing bounded selection-lookup command remain unchanged.
 
 In particular, persisted network-cache fields do not establish runtime
 ownership. Current network requests use an ephemeral `QNetworkAccessManager`,
