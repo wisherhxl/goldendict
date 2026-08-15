@@ -220,6 +220,14 @@ set_tests_properties(goldendict_dictionary_context_navigation_smoke PROPERTIES
     "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-navigation-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-navigation-test-home/cache"
   TIMEOUT 20)
 
+add_test(NAME goldendict_dictionary_context_preferences_smoke
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-preferences-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/dictionary_context_preferences_restart.cmake)
+set_tests_properties(goldendict_dictionary_context_preferences_smoke
+  PROPERTIES TIMEOUT 40)
+
 add_test(NAME goldendict_system_print_smoke
   COMMAND $<TARGET_FILE:goldendict> --system-print-smoke)
 set_tests_properties(goldendict_system_print_smoke PROPERTIES

@@ -51,6 +51,7 @@ class PreferencesDialog final : public QDialog {
     QCheckBox* ignore_diacritics_ = nullptr;
     QCheckBox* synonym_search_enabled_ = nullptr;
     QSpinBox* input_phrase_length_limit_ = nullptr;
+    QSpinBox* maximum_dictionary_references_ = nullptr;
     QSpinBox* maximum_network_cache_megabytes_ = nullptr;
     QCheckBox* clear_network_cache_on_exit_ = nullptr;
     QGroupBox* use_proxy_server_ = nullptr;

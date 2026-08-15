@@ -585,6 +585,7 @@ int main() {
         WriteFixture(dictionary_root);
 
         goldendict::core::CoreConfiguration configuration;
+        configuration.preferences.maximum_dictionary_references = 0U;
         configuration.dictionary_paths = {dictionary_root.string()};
         configuration.index_directory = (directory.path() / "indexes").string();
         configuration.external_program_sources = {
@@ -603,6 +604,7 @@ int main() {
         if (loaded.dictionary_paths != configuration.dictionary_paths ||
             loaded.index_directory != configuration.index_directory ||
             loaded.sound_directories != configuration.sound_directories ||
+            loaded.preferences.maximum_dictionary_references != 0U ||
             loaded.external_program_sources !=
                 configuration.external_program_sources) {
             return Fail("configuration round-trip failed");

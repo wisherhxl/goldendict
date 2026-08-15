@@ -609,6 +609,15 @@ document-generation checks make replaced or closed origins harmless. No core
 DTO, persistence schema, dictionary backend, or article security boundary
 changes.
 
+The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
+`maximum_dictionary_references` field without changing the DTO layout. Core
+owns its legacy-compatible `0..9999` validation, current persistence, and
+strict `maxDictionaryRefsInContextMenu` migration. Widgets applies the value
+to every private per-tab snapshot only after the complete candidate succeeds;
+snapshot revisions invalidate actions captured before a live change. Zero
+lists no dictionaries and retains the `.........` handoff whenever results are
+represented. The results pane remains complete and independently bounded.
+
 P8-PREF-5 exposes only disabled or credential-free manual HTTP CONNECT
 proxying with a validated host and port. The optional
 network composer injects one private candidate into every configured online

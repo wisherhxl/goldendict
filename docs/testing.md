@@ -478,21 +478,29 @@ mapping, tunneled response buffering, deadline/cancellation inheritance, and
 credential/endpoint redaction. Runtime composition injects the credential-free
 candidate into MediaWiki, website, Forvo, and DICT without affecting external
 programs, WebEngine, system proxy policy, or application-global proxy state.
-The six P8-PREF leaves are complete; remaining controls retain their named
-prerequisites until their separately audited owners are ready. The post-cache
-completeness audit finds no independently ready next Preferences leaf.
+The first seven P8-PREF leaves are complete; remaining controls retain their
+named prerequisites until their separately audited owners are ready. The
+post-navigation completeness audit finds no independently ready next
+Preferences leaf.
 
 The Phase 7 bounded per-dictionary article-context navigation prerequisite is
 accepted. `goldendict_dictionary_context_navigation_smoke` pins first-result
 ordering, repeated-dictionary deduplication, catalog-name/ID fallback, the
-fixed 20-entry bound, the pinned `.........` overflow handoff to the existing
+default 20-entry bound, the pinned `.........` overflow handoff to the existing
 results pane, cleared/non-lookup absence, stale presentation/document
 invalidation, and closed-origin safety. The guarded app path also requires the
 originating tab, view, and presentation generation to remain current. Existing
 article-context-menu and article-tabs coverage continues to
 pin link, selection, copy, image, tab scoping, and results-pane behavior. This
-coverage adds no Preferences widget and does not reopen P8-PREF-1 through
-P8-PREF-6.
+coverage now shares the accepted P8-PREF-7 runtime owner.
+
+P8-PREF-7 configuration coverage pins current and strict legacy persistence at
+zero and the `9999` maximum plus atomic rejection above it. Its offscreen
+Preferences and WebEngine coverage pins the exact label, tooltip, range, step,
+default, cancel/failure/success transaction, live existing-tab revision,
+new-lookup behavior, zero/minimum/default/maximum/overflow cases, stale-action
+invalidation, complete results-pane capacity, and unchanged session/layout and
+unrelated facade state.
 
 The Phase 7 network-cache ownership audit and runtime owner are accepted: Qt
 Network exclusively owns the managed HTTP/HTTPS cache, and WebEngine is

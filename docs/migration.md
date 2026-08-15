@@ -1011,6 +1011,12 @@ The dependency-ordered ready graph is:
    runtime lifecycle, offscreen transaction, and two-process restart coverage
    pins exact MiB behavior, failure rollback, request-quiescent owned-directory
    cleanup, and WebEngine isolation, subject only to disposable-byte eviction.
+7. `P8-PREF-7 General/Interface — Dictionary context-menu limit` is complete
+   after the accepted Phase 7 navigation prerequisite. It reuses the installed
+   field and restores the pinned label, tooltip, `0..9999` range, unit step,
+   default 20, zero-to-overflow behavior, and `.........` results-pane handoff.
+   Successful apply atomically revises every private tab snapshot; cancel,
+   failure, and stale actions leave presentation and session state unchanged.
 
 The following controls remain blocked on named non-Preferences prerequisites:
 languages, help, and appearance on Phase 9 shipped translations/help/styles;
@@ -1020,8 +1026,7 @@ Wayland contracts, with Windows technologies in Phase 10; Audio on Phase 7
 audio-link routing and Phase 9 playback/process integration; system proxy and
 credentials on Phase 7/9 policy, and SOCKS5/HTTP GET on Phase 7 transport
 support; full-text controls on Phase 5 indexing/contracts, Phase 6 per-format
-support, and the Phase 8 workflow; dictionary-reference menu limits on Phase 7
-per-dictionary article-context navigation; and update checks on Phase 9 release
+support, and the Phase 8 workflow; and update checks on Phase 9 release
 integration.
 
 The `Phase 7 network-cache ownership audit` and runtime-owner prerequisite are
@@ -1052,24 +1057,25 @@ not presented in the pinned Preferences dialog, including menu visibility,
 always-on-top, search-pane mode, and zoom state, do not create Preferences
 parity requirements.
 
-The post-cache completeness audit finds no independently ready Preferences
-leaf after P8-PREF-6. Every remaining dialog control is either blocked by the
+The post-navigation completeness audit finds no independently ready Preferences
+leaf after P8-PREF-7. Every remaining dialog control is either blocked by the
 named Phase 5/6/7/9/10 prerequisite above or intentionally excluded. The
 overall Preferences gate therefore remains open without naming a speculative
 successor.
 
 The Phase 7 `bounded per-dictionary article-context navigation` leaf is
-accepted. It is not a Preferences successor: it satisfies the named runtime
-prerequisite for the later dictionary-reference menu-limit control. Widgets
+accepted and now backs the dependent Preferences control. Widgets
 derives one private per-tab presentation snapshot from ordered lookup entries
 and shares first-result indexes between the article context menu and existing
 results pane; no public core API, persistence field, or inert control was
 added.
 
-The context menu must list dictionaries in first-result order, deduplicate
-repeated identities, use the catalog name with an ID fallback, and navigate to
+The context menu lists dictionaries in first-result order, deduplicates
+repeated identities, uses the catalog name with an ID fallback, and navigates to
 the first represented article for the selected dictionary. The list uses the
-pinned default bound of 20 and the pinned legacy `.........` overflow label.
+persisted `0..9999` bound, whose pinned default is 20, and the pinned legacy
+`.........` overflow label. Zero skips dictionary actions and hands any
+represented results to the pane through that overflow action.
 Overflow exposes the existing results pane instead of creating an unbounded
 menu. Empty, failed, stale, and non-lookup pages show no dictionary entries,
 and tab, view, presentation, and document identities make captured actions

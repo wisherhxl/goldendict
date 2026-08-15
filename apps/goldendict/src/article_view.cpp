@@ -248,18 +248,21 @@ void ArticleView::SetDictionaryContextEntries(
     dictionary_context_entries_ = std::move(entries);
     dictionary_context_overflow_ = overflow;
     dictionary_context_generation_ = presentation_generation;
+    ++dictionary_context_revision_;
 }
 
 ArticleDictionaryContextSnapshot ArticleView::DictionaryContextSnapshot()
     const {
     return {dictionary_context_entries_, dictionary_context_overflow_,
-            dictionary_context_generation_, document_generation_};
+            dictionary_context_generation_, document_generation_,
+            dictionary_context_revision_};
 }
 
 bool ArticleView::IsCurrentDictionarySnapshot(
     const ArticleDictionaryContextSnapshot& snapshot) const noexcept {
     return snapshot.document_generation == document_generation_ &&
-           snapshot.presentation_generation == dictionary_context_generation_;
+           snapshot.presentation_generation == dictionary_context_generation_ &&
+           snapshot.snapshot_revision == dictionary_context_revision_;
 }
 
 void ArticleView::TriggerDictionaryContextAction(

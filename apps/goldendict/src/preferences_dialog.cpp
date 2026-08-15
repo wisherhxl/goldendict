@@ -229,6 +229,26 @@ PreferencesDialog::PreferencesDialog(
         "lists from Stardict, Babylon and GLS dictionaries"));
     synonym_search_enabled_->setChecked(preferences.synonym_search_enabled);
     general_layout->addWidget(synonym_search_enabled_);
+
+    auto* dictionary_context_layout = new QHBoxLayout;
+    auto* dictionary_context_label = new QLabel(
+        QStringLiteral("Context menu dictionaries limit:"), general_page);
+    dictionary_context_label->setObjectName(
+        QStringLiteral("maxDictsInContextMenuLabel"));
+    dictionary_context_label->setToolTip(
+        QStringLiteral("Adjust this value to avoid huge context menus."));
+    maximum_dictionary_references_ = new QSpinBox(general_page);
+    maximum_dictionary_references_->setObjectName(
+        QStringLiteral("maxDictsInContextMenu"));
+    maximum_dictionary_references_->setRange(0, 9999);
+    maximum_dictionary_references_->setSingleStep(1);
+    maximum_dictionary_references_->setValue(
+        static_cast<int>(preferences.maximum_dictionary_references));
+    dictionary_context_label->setBuddy(maximum_dictionary_references_);
+    dictionary_context_layout->addWidget(dictionary_context_label);
+    dictionary_context_layout->addWidget(maximum_dictionary_references_);
+    dictionary_context_layout->addStretch();
+    general_layout->addLayout(dictionary_context_layout);
     general_layout->addStretch();
     tabs->addTab(general_page, QStringLiteral("General"));
 
@@ -370,6 +390,8 @@ void PreferencesDialog::Apply() {
         static_cast<std::uint32_t>(input_phrase_length_limit_->value());
     candidate.ignore_diacritics = ignore_diacritics_->isChecked();
     candidate.synonym_search_enabled = synonym_search_enabled_->isChecked();
+    candidate.maximum_dictionary_references =
+        static_cast<std::uint16_t>(maximum_dictionary_references_->value());
     candidate.proxy_mode = use_proxy_server_->isChecked()
                                ? goldendict::core::ProxyMode::kManual
                                : goldendict::core::ProxyMode::kDisabled;

@@ -73,8 +73,6 @@
 
 namespace {
 
-constexpr int kMaximumDictionaryContextEntries = 20;
-
 constexpr int kMainWindowStateVersion = 7;
 constexpr int kPreviousMainWindowStateVersion = 6;
 constexpr int kOlderMainWindowStateVersion = 5;
@@ -1928,6 +1926,82 @@ void MainWindow::RunArticlesPreferencesSmokeCheck(
     completion(passed);
 }
 
+void MainWindow::RunDictionaryContextPreferencesSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || facade_ == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial_preferences = preferences_;
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const std::string initial_state = CaptureMainWindowState();
+    bool passed = true;
+    const auto inspect = [&passed, initial_preferences](
+                             PreferencesDialog& dialog, int value,
+                             bool accept) {
+        auto* label = dialog.findChild<QLabel*>(
+            QStringLiteral("maxDictsInContextMenuLabel"));
+        auto* limit = dialog.findChild<QSpinBox*>(
+            QStringLiteral("maxDictsInContextMenu"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && label != nullptr && limit != nullptr &&
+                 buttons != nullptr &&
+                 label->text() ==
+                     QStringLiteral("Context menu dictionaries limit:") &&
+                 label->toolTip() ==
+                     QStringLiteral(
+                         "Adjust this value to avoid huge context menus.") &&
+                 limit->minimum() == 0 && limit->maximum() == 9999 &&
+                 limit->singleStep() == 1 &&
+                 limit->value() ==
+                     static_cast<int>(
+                         initial_preferences.maximum_dictionary_references);
+        if (limit != nullptr)
+            limit->setValue(value);
+        if (accept && buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        else
+            dialog.reject();
+        return dialog.result();
+    };
+
+    preferences_dialog_executor_ = [&inspect](PreferencesDialog& dialog) {
+        return inspect(dialog, 0, false);
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences;
+
+    const auto original_callback = preferences_apply_callback_;
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("forced dictionary context preference failure");
+    };
+    preferences_dialog_executor_ = [&inspect,
+                                    &passed](PreferencesDialog& dialog) {
+        const int result = inspect(dialog, 0, true);
+        auto* error = dialog.findChild<QLabel*>(
+            QStringLiteral("preferencesValidationError"));
+        passed = passed && result != QDialog::Accepted && error != nullptr &&
+                 !error->isHidden();
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences;
+
+    preferences_apply_callback_ = original_callback;
+    preferences_dialog_executor_ = [&inspect](PreferencesDialog& dialog) {
+        return inspect(dialog, 0, true);
+    };
+    preferences_action_->trigger();
+    preferences_dialog_executor_ = {};
+    preferences_apply_callback_ = original_callback;
+    passed = passed && preferences_.maximum_dictionary_references == 0U &&
+             facade_->ExportArticleTabSession() == initial_session &&
+             CaptureMainWindowState() == initial_state;
+    completion(passed);
+}
+
 void MainWindow::RunSynonymPreferencesSmokeCheck(
     std::function<void(bool)> completion) {
     if (preferences_action_ == nullptr || facade_ == nullptr) {
@@ -3416,6 +3490,7 @@ void MainWindow::RunArticleContextMenuCheck(
 
 void MainWindow::RunDictionaryContextNavigationCheck(
     std::function<void(bool)> completion) {
+    const auto original_preferences = preferences_;
     const auto tab_id = TabIdAt(article_tabs_->currentIndex());
     auto* view = ArticleViewForTab(tab_id);
     auto* results_dock =
@@ -3445,8 +3520,8 @@ void MainWindow::RunDictionaryContextNavigationCheck(
     RefreshResultsNavigation();
     auto snapshot = view->DictionaryContextSnapshot();
     bool passed =
-        snapshot.entries.size() == kMaximumDictionaryContextEntries &&
-        snapshot.overflow && results_list_->count() == 22 &&
+        snapshot.entries.size() == 20 && snapshot.overflow &&
+        results_list_->count() == 22 &&
         snapshot.entries[0].dictionary_id == QStringLiteral("dictionary-0") &&
         snapshot.entries[0].display_name ==
             QStringLiteral("Catalog Dictionary 0") &&
@@ -3465,6 +3540,30 @@ void MainWindow::RunDictionaryContextNavigationCheck(
             });
     view->TriggerDictionaryContextActionForTest(snapshot, 1);
     passed = passed && *navigation_requests == 1 && *requested_result == 2;
+
+    auto zero_preferences = preferences_;
+    zero_preferences.maximum_dictionary_references = 0U;
+    SetPreferences(zero_preferences);
+    auto zero_snapshot = view->DictionaryContextSnapshot();
+    view->TriggerDictionaryContextActionForTest(snapshot, 0);
+    passed = passed && zero_snapshot.entries.isEmpty() &&
+             zero_snapshot.overflow && *navigation_requests == 1;
+
+    auto one_preferences = preferences_;
+    one_preferences.maximum_dictionary_references = 1U;
+    SetPreferences(one_preferences);
+    auto one_snapshot = view->DictionaryContextSnapshot();
+    passed =
+        passed && one_snapshot.entries.size() == 1 && one_snapshot.overflow;
+
+    auto maximum_preferences = preferences_;
+    maximum_preferences.maximum_dictionary_references = 9999U;
+    SetPreferences(maximum_preferences);
+    auto maximum_snapshot = view->DictionaryContextSnapshot();
+    passed = passed && maximum_snapshot.entries.size() == 22 &&
+             !maximum_snapshot.overflow;
+    SetPreferences(original_preferences);
+    snapshot = view->DictionaryContextSnapshot();
 
     presentation.rows.clear();
     RefreshDictionaryContext(tab_id);
@@ -5919,6 +6018,8 @@ void MainWindow::SetPreferences(
             }
         }
     }
+    for (int index = 0; index < article_tabs_->count(); ++index)
+        RefreshDictionaryContext(TabIdAt(index));
 }
 
 void MainWindow::SetPreferencesApplyCallback(
@@ -6220,11 +6321,10 @@ void MainWindow::RefreshDictionaryContext(
     std::uint64_t generation = 0U;
     if (found != lookup_results_.end()) {
         generation = found->second.generation;
-        overflow = found->second.rows.size() >
-                   static_cast<std::size_t>(kMaximumDictionaryContextEntries);
-        const auto count = std::min(
-            found->second.rows.size(),
-            static_cast<std::size_t>(kMaximumDictionaryContextEntries));
+        const auto limit = static_cast<std::size_t>(
+            preferences_.maximum_dictionary_references);
+        overflow = found->second.rows.size() > limit;
+        const auto count = std::min(found->second.rows.size(), limit);
         entries.reserve(static_cast<qsizetype>(count));
         for (std::size_t index = 0; index < count; ++index) {
             const auto& row = found->second.rows[index];
@@ -6265,7 +6365,8 @@ void MainWindow::ShowDictionaryResultsPane(
     if (found == lookup_results_.end() ||
         found->second.generation != generation ||
         found->second.rows.size() <=
-            static_cast<std::size_t>(kMaximumDictionaryContextEntries) ||
+            static_cast<std::size_t>(
+                preferences_.maximum_dictionary_references) ||
         ArticleViewForTab(tab_id) != view || facade_ == nullptr) {
         return;
     }

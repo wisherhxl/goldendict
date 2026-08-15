@@ -963,6 +963,7 @@ void ApplicationServiceTest::
     preferences.article_size_limit = 4096U;
     preferences.limit_input_phrase_length = true;
     preferences.input_phrase_length_limit = 321U;
+    preferences.maximum_dictionary_references = 9999U;
     preferences.synonym_search_enabled = false;
     preferences.full_text_search_mode = FullTextSearchMode::kRegularExpression;
     preferences.full_text_match_case = true;
@@ -1006,6 +1007,8 @@ void ApplicationServiceTest::
              preferences.article_size_limit);
     QCOMPARE(actual.preferences.limit_input_phrase_length, true);
     QCOMPARE(actual.preferences.input_phrase_length_limit, std::uint32_t{321});
+    QCOMPARE(actual.preferences.maximum_dictionary_references,
+             std::uint16_t{9999});
     QCOMPARE(actual.preferences.confirm_favorites_deletion, false);
     QCOMPARE(actual.preferences.always_expand_optional_parts, true);
     QCOMPARE(actual.preferences.synonym_search_enabled,
@@ -1038,6 +1041,14 @@ void ApplicationServiceTest::
     QCOMPARE(older.preferences.always_expand_optional_parts, false);
     QCOMPARE(older.preferences.limit_input_phrase_length, false);
     QCOMPARE(older.preferences.input_phrase_length_limit, std::uint32_t{1000});
+    QCOMPARE(older.preferences.maximum_dictionary_references,
+             std::uint16_t{20});
+
+    expected.preferences.maximum_dictionary_references = 0U;
+    SaveConfiguration(path.string(), expected);
+    QCOMPARE(LoadConfiguration(path.string())
+                 .preferences.maximum_dictionary_references,
+             std::uint16_t{0});
 
     for (const bool translate : {false, true}) {
         for (const bool select : {false, true}) {
@@ -1155,6 +1166,12 @@ void ApplicationServiceTest::
 
     invalid = original;
     invalid.preferences.interface_language = std::string("bad\xc3\x28", 5U);
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+
+    invalid = original;
+    invalid.preferences.maximum_dictionary_references = 10000U;
     QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
                              std::runtime_error);
     QCOMPARE(ReadFile(path), original_bytes);
@@ -1351,6 +1368,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<alwaysExpandOptionalParts>1</alwaysExpandOptionalParts>"
         "<collapseBigArticles>1</collapseBigArticles>"
         "<articleSizeLimit>4096</articleSizeLimit>"
+        "<maxDictionaryRefsInContextMenu>0</maxDictionaryRefsInContextMenu>"
         "<synonymSearchEnabled>0</synonymSearchEnabled>"
         "<newTabsOpenAfterCurrentOne>1</newTabsOpenAfterCurrentOne>"
         "<newTabsOpenInBackground>0</newTabsOpenInBackground>"
@@ -1422,6 +1440,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.maximum_history_entries, std::uint32_t{1234});
     QCOMPARE(preferences.collapse_large_articles, true);
     QCOMPARE(preferences.article_size_limit, std::uint32_t{4096});
+    QCOMPARE(preferences.maximum_dictionary_references, std::uint16_t{0});
     QCOMPARE(preferences.synonym_search_enabled, false);
     QCOMPARE(preferences.full_text_search_mode,
              FullTextSearchMode::kRegularExpression);
@@ -1675,6 +1694,8 @@ void ApplicationServiceTest::RejectsMalformedLegacyPreferencesAtomically() {
         "<selectWordBySingleClick>0</selectWordBySingleClick>",
         "<zoomFactor>nan</zoomFactor>",
         "<wordsZoomLevel>2x</wordsZoomLevel>",
+        "<maxDictionaryRefsInContextMenu>10000</"
+        "maxDictionaryRefsInContextMenu>",
         "<scanPopupModifiers>65535</scanPopupModifiers>",
         "<scanPopupUnpinnedWindowFlags>3</scanPopupUnpinnedWindowFlags>",
         "<internalPlayerBackend>unknown</internalPlayerBackend>",

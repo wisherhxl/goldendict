@@ -37,6 +37,7 @@ struct ArticleDictionaryContextSnapshot {
     bool overflow = false;
     quint64 presentation_generation = 0U;
     quint64 document_generation = 0U;
+    quint64 snapshot_revision = 0U;
 };
 
 struct ArticleContext {
@@ -106,6 +107,7 @@ class ArticleView final : public QWebEngineView {
     QList<ArticleDictionaryContextEntry> dictionary_context_entries_;
     bool dictionary_context_overflow_ = false;
     quint64 dictionary_context_generation_ = 0U;
+    quint64 dictionary_context_revision_ = 0U;
 };
 
 #endif  // GOLDENDICT_APPS_GOLDENDICT_ARTICLE_VIEW_H_

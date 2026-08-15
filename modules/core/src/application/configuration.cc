@@ -737,8 +737,7 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         preferences.article_size_limit > 1000000U ||
         preferences.input_phrase_length_limit == 0U ||
         preferences.input_phrase_length_limit > 1000000U ||
-        preferences.maximum_dictionary_references == 0U ||
-        preferences.maximum_dictionary_references > 1000U ||
+        preferences.maximum_dictionary_references > 9999U ||
         static_cast<std::uint8_t>(preferences.full_text_search_mode) > 2U ||
         preferences.full_text_maximum_articles_per_dictionary == 0U ||
         preferences.full_text_maximum_articles_per_dictionary > 100000U ||

@@ -123,6 +123,8 @@ class MainWindow final : public QMainWindow {
     void RunArticleContextMenuCheck(std::function<void(bool)> completion);
     void RunDictionaryContextNavigationCheck(
         std::function<void(bool)> completion);
+    void RunDictionaryContextPreferencesSmokeCheck(
+        std::function<void(bool)> completion);
     void RunSystemPrintCheck(std::function<void(bool)> completion);
     void RunHistorySmokeCheck(std::function<void(bool)> completion);
     void RunHistoryManagementSmokeCheck(std::function<void(bool)> completion);
