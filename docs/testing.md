@@ -494,6 +494,17 @@ article-context-menu and article-tabs coverage continues to
 pin link, selection, copy, image, tab scoping, and results-pane behavior. This
 coverage now shares the accepted P8-PREF-7 runtime owner.
 
+The selected next migration leaf is the separate Phase 5 bounded full-text
+indexing and query contract. Its focused core coverage must use a generated
+reference corpus to pin index creation, reuse, stale rebuild, and corrupt-index
+rejection; whole-word, plain-text, wildcard, and regular-expression modes;
+case, diacritic, word-order, and word-distance policy; dictionary and result
+limits; deterministic provenance and bounded match metadata; and cancellation,
+deadlines, malformed queries, and oversized input. The installed headless
+consumer must cover any public contract evolution. This prerequisite adds no
+format adapter, full-text workflow, Preferences widget, or presentation
+placeholder; those remain separately gated Phase 6 and Phase 8 work.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

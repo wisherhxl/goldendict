@@ -39,7 +39,7 @@
 | Bounded legacy text encoding conversion | slice | Phase 5 | strict Latin-1, UTF-16, GB18030, and EUC-JP fixtures |
 | Headword suggestions | slice | Phase 5 | bounded ranked suggestion fixtures and installed-consumer tests |
 | Morphology and transliteration | later | Phase 5 | per-language fixtures |
-| Full-text search | later | Phase 5/8 | index and UI workflow tests |
+| Full-text search | selected | Phase 5/6/8 | bounded indexing/query contract first; per-format and UI workflow tests follow |
 
 ## Local Dictionary Formats
 
@@ -88,7 +88,7 @@ not authorize dropping a legacy format.
 
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |
-| Article audio-link routing | mapped | Phase 7/9 | local media fixtures |
+| Article audio-link routing | blocked | Phase 7/9 | playback/service ownership contract, then local media fixtures |
 | Qt Multimedia playback | mapped | Phase 9 | supported codec smoke |
 | FFmpeg/libao playback | mapped | Phase 9 | optional feature tests |
 | External audio player | mapped | Phase 9 | controlled process test |

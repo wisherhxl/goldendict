@@ -609,6 +609,17 @@ document-generation checks make replaced or closed origins harmless. No core
 DTO, persistence schema, dictionary backend, or article security boundary
 changes.
 
+The next-leaf audit returns to the earliest incomplete foundation and selects
+the Phase 5 bounded full-text indexing and query contract. It belongs in
+`goldendict_core`: index lifecycle and query semantics remain browser- and
+transport-neutral, results preserve stable dictionary/headword provenance and
+bounded match metadata, and completion, cancellation, deadlines, corruption,
+and resource limits follow the existing headless ownership rules. A generated
+reference corpus validates the contract without importing format-specific
+indexing. Concrete Phase 6 adapters, the Phase 8 workflow and controls, and
+presentation highlighting remain downstream consumers rather than part of the
+foundation leaf.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

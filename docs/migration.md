@@ -1082,15 +1082,36 @@ and tab, view, presentation, and document identities make captured actions
 harmless after replacement or closure. Existing link, selection, copy, image,
 print, tab, and results-pane behavior remains unchanged.
 
-This leaf precedes the other blocked families by dependency order. Audio has
-typed resources but no accepted playback/service ownership contract. Full
-text still requires the Phase 5 indexing/query contract before Phase 6
-per-format support and the Phase 8 workflow. System proxy, credentials,
-SOCKS5, and HTTP GET require transport and policy contracts beyond the
-accepted credential-free HTTP CONNECT subset. Phase 9 translation, help,
-style, desktop, hotkey, scan, audio, and update work remains later platform
-integration, and the corresponding Phase 10 native behavior remains dependent
-on those cross-platform contracts.
+The fresh post-Phase-7/8 next-leaf audit selects the Phase 5 `bounded
+full-text indexing and query contract` as the sole next independently
+implementable prerequisite. The existing core already provides bounded and
+cancellable requests, Unicode folding, stable dictionary identity, complete
+paged headword enumeration for the migrated article formats, structured
+plain-text article retrieval, generated-index lifecycle patterns, persisted
+full-text settings, and a reserved full-text match mode. The leaf can therefore
+establish and test a transport-neutral contract with a generated reference
+corpus before any format or UI depends on it.
+
+The leaf owns bounded document ingestion, index creation, reuse and stale-index
+rebuild, whole-word/plain-text/wildcard/regular-expression queries, case and
+diacritic policy, word order and distance, dictionary and result limits,
+deterministic provenance and match metadata, cancellation, deadlines,
+corruption handling, and resource limits. It does not wire a concrete
+dictionary format, add the Phase 8 search workflow or Preferences controls, or
+publish inert UI. Its gate is a headless generated corpus that proves those
+behaviors, including malformed and oversized input and stale or corrupt index
+failures, while the installed consumer covers any evolved public contract.
+
+Phase 6 per-format full-text support follows that contract, then the Phase 8
+workflow and its Preferences controls. Audio is the next foundation candidate,
+but typed resources do not yet settle ownership between WebEngine delivery, a
+private audio service, optional playback backends, and presentation. System
+proxy, credentials, SOCKS5, and HTTP GET require transport and security policy
+beyond accepted credential-free HTTP CONNECT. Phase 9 translations, help,
+styles, tray/autostart, hotkeys, scan/clipboard, audio playback, and updates
+retain their asset, desktop, platform, release, or ownership prerequisites.
+Their Windows-native Phase 10 behavior remains downstream of the corresponding
+cross-platform contracts.
 
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.
