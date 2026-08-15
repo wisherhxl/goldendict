@@ -182,6 +182,14 @@ empty-ID injection, collisions with local and runtime identities, unchanged DTOs
 after disabled omission, atomic failure without a partially returned service,
 and pre-cancelled/pre-expired behavior for every method on both wrappers.
 Zero result limits are also verified to return without source I/O.
+`http_client_test` also pins the Phase 7 Qt Network cache owner. Loopback
+coverage verifies cache hits through the shared manager, exact MiB conversion,
+the injected owned path, retained clean-restart persistence, zero-limit
+eviction, clear-on-exit isolation from a WebEngine sentinel, uncached
+degradation after redacted setup failure, and cancellation/join before owned
+directory cleanup. Preparation does not alter an active runtime; activation
+is the point where reducing or disabling the limit may irreversibly discard
+disposable cache bytes.
 P5a.2 coverage adds four-family ordering, Forvo language-child identities and
 configured-source provenance, redacted missing-credential diagnostics, secret
 non-disclosure, and atomic malformed/inconsistent credential rejection. Local

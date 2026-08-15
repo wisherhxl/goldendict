@@ -13,6 +13,8 @@
 
 namespace goldendict::network {
 
+class NetworkRuntime;
+
 using ForvoCredentialMap = std::map<std::string, std::string>;
 
 enum class RuntimeCompositionDiagnosticCode {
@@ -38,10 +40,18 @@ struct ApplicationCompositionResult {
 RuntimeCompositionResult ComposeConfiguredRuntimeSources(
     const goldendict::core::CoreConfiguration& configuration,
     const ForvoCredentialMap& forvo_credentials = {});
+RuntimeCompositionResult ComposeConfiguredRuntimeSources(
+    const goldendict::core::CoreConfiguration& configuration,
+    const ForvoCredentialMap& forvo_credentials,
+    const std::shared_ptr<NetworkRuntime>& network_runtime);
 
 ApplicationCompositionResult ComposeConfiguredApplication(
     const goldendict::core::CoreConfiguration& configuration,
     const ForvoCredentialMap& forvo_credentials = {});
+ApplicationCompositionResult ComposeConfiguredApplication(
+    const goldendict::core::CoreConfiguration& configuration,
+    const ForvoCredentialMap& forvo_credentials,
+    const std::shared_ptr<NetworkRuntime>& network_runtime);
 
 }  // namespace goldendict::network
 

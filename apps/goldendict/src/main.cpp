@@ -21,6 +21,7 @@
 #include "goldendict/core/application.h"
 #include "goldendict/core/favorites_store.h"
 #include "goldendict/core/history_store.h"
+#include "goldendict/network/network_runtime.h"
 #include "goldendict/network/runtime_composition.h"
 #include "legacy_configuration_location.h"
 #include "main_window.h"
@@ -280,8 +281,22 @@ int main(int argc, char* argv[]) {
              ""}};
     }
 
+    const std::string network_cache_root =
+        QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+            .toStdString();
+    auto network_preparation = goldendict::network::NetworkRuntime::Prepare(
+        {configuration.preferences.maximum_network_cache_megabytes,
+         configuration.preferences.clear_network_cache_on_exit},
+        network_cache_root);
+    auto network_runtime = goldendict::network::NetworkRuntime::Create(
+        std::move(network_preparation));
+    if (!network_runtime->diagnostic().empty()) {
+        qWarning().noquote()
+            << QString::fromStdString(network_runtime->diagnostic());
+    }
     auto application_composition =
-        goldendict::network::ComposeConfiguredApplication(configuration);
+        goldendict::network::ComposeConfiguredApplication(configuration, {},
+                                                          network_runtime);
     ReportRuntimeCompositionDiagnostics(application_composition.diagnostics);
     auto facade = std::move(application_composition.facade);
     auto composition_diagnostics =
@@ -709,7 +724,8 @@ int main(int argc, char* argv[]) {
         try {
             goldendict::core::ValidateConfiguration(updated);
             auto replacement =
-                goldendict::network::ComposeConfiguredApplication(updated);
+                goldendict::network::ComposeConfiguredApplication(
+                    updated, {}, network_runtime);
             if (!replacement.facade->RestoreArticleTabSession(
                     *updated.article_tab_session)) {
                 throw std::runtime_error(
@@ -779,7 +795,8 @@ int main(int argc, char* argv[]) {
             updated.article_tab_session = facade->ExportArticleTabSession();
             try {
                 auto replacement =
-                    goldendict::network::ComposeConfiguredApplication(updated);
+                    goldendict::network::ComposeConfiguredApplication(
+                        updated, {}, network_runtime);
                 if (!replacement.facade->RestoreArticleTabSession(
                         *updated.article_tab_session)) {
                     throw std::runtime_error(
@@ -816,8 +833,28 @@ int main(int argc, char* argv[]) {
             bool history_saved = false;
             try {
                 goldendict::core::ValidateConfiguration(updated);
+                const bool cache_policy_changed =
+                    preferences.maximum_network_cache_megabytes !=
+                        configuration.preferences
+                            .maximum_network_cache_megabytes ||
+                    preferences.clear_network_cache_on_exit !=
+                        configuration.preferences.clear_network_cache_on_exit;
+                auto prepared_cache =
+                    goldendict::network::NetworkRuntime::Preparation{};
+                if (cache_policy_changed) {
+                    prepared_cache =
+                        goldendict::network::NetworkRuntime::Prepare(
+                            {preferences.maximum_network_cache_megabytes,
+                             preferences.clear_network_cache_on_exit},
+                            network_cache_root);
+                    if (preferences.maximum_network_cache_megabytes != 0U &&
+                        !prepared_cache.cache_available) {
+                        throw std::runtime_error(prepared_cache.diagnostic);
+                    }
+                }
                 auto replacement =
-                    goldendict::network::ComposeConfiguredApplication(updated);
+                    goldendict::network::ComposeConfiguredApplication(
+                        updated, {}, network_runtime);
                 if (!replacement.facade->RestoreArticleTabSession(
                         *updated.article_tab_session)) {
                     throw std::runtime_error(
@@ -830,6 +867,13 @@ int main(int argc, char* argv[]) {
                 }
                 goldendict::core::SaveConfiguration(
                     configuration_path.toStdString(), updated);
+                if (cache_policy_changed &&
+                    !network_runtime->Activate(std::move(prepared_cache))) {
+                    goldendict::core::SaveConfiguration(
+                        configuration_path.toStdString(), configuration);
+                    throw std::runtime_error(
+                        "Unable to activate the Qt Network cache policy");
+                }
                 window.SetPreferences(updated.preferences);
                 window.SetFacade(replacement.facade.get());
                 facade = std::move(replacement.facade);

@@ -18,6 +18,7 @@
 #include "dict_server_source.h"
 #include "forvo_source.h"
 #include "goldendict/external/external_program_source.h"
+#include "goldendict/network/network_runtime.h"
 #include "mediawiki_source.h"
 #include "website_source.h"
 
@@ -131,12 +132,6 @@ std::function<bool()> StopRequested(const RuntimeRequestOptions& options) {
                 options.cancellation->IsCancellationRequested()) ||
                std::chrono::steady_clock::now() >= options.deadline;
     };
-}
-
-HttpRequest HttpTransport(const std::optional<HttpRequest::Proxy>& proxy) {
-    HttpRequest request;
-    request.proxy = proxy;
-    return request;
 }
 
 [[noreturn]] void TranslateHttpError(const HttpError& error,
@@ -254,8 +249,8 @@ class MediaWikiRuntimeSource final : public RuntimeDictionarySource {
    public:
     MediaWikiRuntimeSource(
         const goldendict::core::MediaWikiSourceConfiguration& configuration,
-        const std::optional<HttpRequest::Proxy>& proxy)
-        : source_(configuration.base_url, HttpTransport(proxy)) {
+        HttpRequest transport)
+        : source_(configuration.base_url, std::move(transport)) {
         identity_.id = configuration.id;
         identity_.name = configuration.name;
         identity_.source = configuration.base_url;
@@ -320,8 +315,8 @@ class WebsiteRuntimeSource final : public RuntimeDictionarySource {
    public:
     WebsiteRuntimeSource(
         const goldendict::core::WebsiteSourceConfiguration& configuration,
-        const std::optional<HttpRequest::Proxy>& proxy)
-        : source_(configuration.url_template, HttpTransport(proxy)) {
+        HttpRequest transport)
+        : source_(configuration.url_template, std::move(transport)) {
         identity_.id = configuration.id;
         identity_.name = configuration.name;
         identity_.source = configuration.url_template;
@@ -374,10 +369,9 @@ class ForvoRuntimeSource final : public RuntimeDictionarySource {
    public:
     ForvoRuntimeSource(
         const goldendict::core::ForvoSourceConfiguration& configuration,
-        std::string credential, std::string language,
-        const std::optional<HttpRequest::Proxy>& proxy)
+        std::string credential, std::string language, HttpRequest transport)
         : source_(configuration.api_base_url, std::move(credential), language,
-                  HttpTransport(proxy)) {
+                  std::move(transport)) {
         identity_.id = ForvoChildId(configuration.id, language);
         identity_.name = configuration.name + " (" + language + ")";
         identity_.source = configuration.api_base_url;
@@ -642,6 +636,14 @@ class ExternalProgramRuntimeSource final : public RuntimeDictionarySource {
 RuntimeCompositionResult ComposeConfiguredRuntimeSources(
     const goldendict::core::CoreConfiguration& configuration,
     const ForvoCredentialMap& forvo_credentials) {
+    return ComposeConfiguredRuntimeSources(configuration, forvo_credentials,
+                                           {});
+}
+
+RuntimeCompositionResult ComposeConfiguredRuntimeSources(
+    const goldendict::core::CoreConfiguration& configuration,
+    const ForvoCredentialMap& forvo_credentials,
+    const std::shared_ptr<NetworkRuntime>& network_runtime) {
     goldendict::core::ValidateConfiguration(configuration);
     std::optional<HttpRequest::Proxy> proxy;
     const auto& preferences = configuration.preferences;
@@ -697,16 +699,19 @@ RuntimeCompositionResult ComposeConfiguredRuntimeSources(
     }
 
     RuntimeCompositionResult result;
+    HttpRequest transport;
+    transport.proxy = proxy;
+    transport.runtime = network_runtime;
     for (const auto& source : configuration.mediawiki_sources) {
         if (source.enabled) {
             result.sources.push_back(
-                std::make_unique<MediaWikiRuntimeSource>(source, proxy));
+                std::make_unique<MediaWikiRuntimeSource>(source, transport));
         }
     }
     for (const auto& source : configuration.website_sources) {
         if (source.enabled) {
             result.sources.push_back(
-                std::make_unique<WebsiteRuntimeSource>(source, proxy));
+                std::make_unique<WebsiteRuntimeSource>(source, transport));
         }
     }
     for (const auto& source : configuration.forvo_sources) {
@@ -722,7 +727,7 @@ RuntimeCompositionResult ComposeConfiguredRuntimeSources(
         }
         for (const auto& language : source.language_codes) {
             result.sources.push_back(std::make_unique<ForvoRuntimeSource>(
-                source, credential->second, language, proxy));
+                source, credential->second, language, transport));
         }
     }
     for (const auto& source : configuration.dict_server_sources) {
@@ -743,8 +748,15 @@ RuntimeCompositionResult ComposeConfiguredRuntimeSources(
 ApplicationCompositionResult ComposeConfiguredApplication(
     const goldendict::core::CoreConfiguration& configuration,
     const ForvoCredentialMap& forvo_credentials) {
-    auto runtime =
-        ComposeConfiguredRuntimeSources(configuration, forvo_credentials);
+    return ComposeConfiguredApplication(configuration, forvo_credentials, {});
+}
+
+ApplicationCompositionResult ComposeConfiguredApplication(
+    const goldendict::core::CoreConfiguration& configuration,
+    const ForvoCredentialMap& forvo_credentials,
+    const std::shared_ptr<NetworkRuntime>& network_runtime) {
+    auto runtime = ComposeConfiguredRuntimeSources(
+        configuration, forvo_credentials, network_runtime);
     auto facade = goldendict::core::CreateDesktopFacade(
         configuration, std::move(runtime.sources));
     return {std::move(facade), std::move(runtime.diagnostics)};

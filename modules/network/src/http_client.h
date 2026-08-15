@@ -6,12 +6,17 @@
 #include <chrono>
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+class QNetworkAccessManager;
+
 namespace goldendict::network {
+
+class NetworkRuntime;
 
 enum class HttpErrorCode {
     kInvalidRequest,
@@ -54,6 +59,7 @@ struct HttpRequest {
     std::size_t maximum_redirects = 5U;
     std::optional<Credentials> credentials;
     std::optional<Proxy> proxy;
+    std::shared_ptr<NetworkRuntime> runtime;
 };
 
 struct HttpResponse {
@@ -65,6 +71,9 @@ struct HttpResponse {
 
 HttpResponse FetchHttp(
     const HttpRequest& request,
+    const std::function<bool()>& is_cancellation_requested = {});
+HttpResponse FetchHttpWithManager(
+    QNetworkAccessManager& manager, const HttpRequest& request,
     const std::function<bool()>& is_cancellation_requested = {});
 
 }  // namespace goldendict::network

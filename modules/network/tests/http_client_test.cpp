@@ -2,14 +2,19 @@
 
 #include <QtTest>
 
+#include <QDir>
+#include <QFile>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QTemporaryDir>
 
 #include <chrono>
+#include <future>
 #include <string>
 #include <utility>
 
 #include "../src/http_client.h"
+#include "goldendict/network/network_runtime.h"
 
 namespace goldendict::network {
 namespace {
@@ -36,6 +41,14 @@ class HttpFixture final : public QObject {
                                 "HTTP/1.1 200 OK\r\nContent-Type: text/plain; "
                                 "charset=utf-8\r\nContent-Length: 5\r\n"
                                 "Connection: close\r\n\r\nhello";
+                        } else if (target == "/cache") {
+                            ++cache_requests_;
+                            response =
+                                "HTTP/1.1 200 OK\r\nContent-Type: "
+                                "text/plain\r\n"
+                                "Cache-Control: public, max-age=3600\r\n"
+                                "Content-Length: 6\r\nConnection: close\r\n\r\n"
+                                "cached";
                         } else if (target == "/redirect") {
                             response =
                                 "HTTP/1.1 302 Found\r\nLocation: /ok\r\n"
@@ -114,9 +127,12 @@ class HttpFixture final : public QObject {
         cross_origin_target_ = std::move(target);
     }
 
+    int cache_requests() const { return cache_requests_; }
+
    private:
     QTcpServer server_;
     std::string cross_origin_target_;
+    int cache_requests_ = 0;
 };
 
 class ProxyFixture final : public QObject {
@@ -180,6 +196,19 @@ void VerifyError(HttpErrorCode expected, Callback&& callback) {
     }
 }
 
+HttpResponse FetchWhileProcessingEvents(
+    const std::shared_ptr<NetworkRuntime>& runtime,
+    const HttpRequest& request) {
+    auto future = std::async(std::launch::async, [runtime, request]() {
+        return runtime->Fetch(request);
+    });
+    while (future.wait_for(std::chrono::milliseconds(1)) !=
+           std::future_status::ready) {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
+    }
+    return future.get();
+}
+
 }  // namespace
 
 class HttpClientTest : public QObject {
@@ -191,6 +220,10 @@ class HttpClientTest : public QObject {
     void EnforcesResponseAndTimeBudgets();
     void ObservesCancellation();
     void SupportsScopedOriginAndProxyAuthentication();
+    void OwnsExactIsolatedPersistentCache();
+    void DisablesAndClearsOnlyOwnedCache();
+    void CancelsAndJoinsBeforeShutdownCleanup();
+    void ActivatesPreparedPolicyTransactionally();
 };
 
 void HttpClientTest::FetchesResponseAndFollowsRelativeRedirect() {
@@ -302,6 +335,132 @@ void HttpClientTest::SupportsScopedOriginAndProxyAuthentication() {
         QVERIFY(!message.contains("secret-user"));
         QVERIFY(!message.contains("secret-password"));
     }
+}
+
+void HttpClientTest::OwnsExactIsolatedPersistentCache() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto preparation =
+        NetworkRuntime::Prepare({7U, false}, root.path().toStdString());
+    QVERIFY(preparation.cache_available);
+    QCOMPARE(preparation.cache_directory,
+             QDir(root.path()).filePath("qt-network-http").toStdString());
+    auto runtime = NetworkRuntime::Create(std::move(preparation));
+    QCOMPARE(runtime->maximum_cache_bytes(), 7LL * 1024LL * 1024LL);
+
+    HttpFixture fixture;
+    HttpRequest request;
+    request.url = fixture.Url("/cache");
+    request.runtime = runtime;
+    const auto first = FetchWhileProcessingEvents(runtime, request);
+    const auto second = FetchWhileProcessingEvents(runtime, request);
+    QCOMPARE(std::string(first.body.begin(), first.body.end()),
+             std::string("cached"));
+    QCOMPARE(std::string(second.body.begin(), second.body.end()),
+             std::string("cached"));
+    QCOMPARE(fixture.cache_requests(), 1);
+    runtime.reset();
+
+    auto restarted = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({7U, false}, root.path().toStdString()));
+    request.runtime = restarted;
+    const auto response = FetchWhileProcessingEvents(restarted, request);
+    QCOMPARE(std::string(response.body.begin(), response.body.end()),
+             std::string("cached"));
+    QCOMPARE(fixture.cache_requests(), 1);
+}
+
+void HttpClientTest::DisablesAndClearsOnlyOwnedCache() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    QFile sibling(QDir(root.path()).filePath("webengine-sentinel"));
+    QVERIFY(sibling.open(QIODevice::WriteOnly));
+    QCOMPARE(sibling.write("browser"), qint64{7});
+    sibling.close();
+
+    auto disabled = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({0U, true}, root.path().toStdString()));
+    QCOMPARE(disabled->maximum_cache_bytes(), 0);
+    QVERIFY(
+        !QDir(QString::fromStdString(disabled->cache_directory())).exists());
+    disabled.reset();
+    QVERIFY(sibling.exists());
+
+    auto clearing = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({1U, true}, root.path().toStdString()));
+    const QString owned = QString::fromStdString(clearing->cache_directory());
+    QVERIFY(QDir(owned).exists());
+    clearing.reset();
+    QVERIFY(!QDir(owned).exists());
+    QVERIFY(sibling.exists());
+
+    const auto failed =
+        NetworkRuntime::Prepare({1U, false}, sibling.fileName().toStdString());
+    QVERIFY(!failed.cache_available);
+    QCOMPARE(failed.diagnostic,
+             std::string("Qt Network cache setup failed; HTTP traffic will "
+                         "remain uncached"));
+    const auto missing_root = NetworkRuntime::Prepare({1U, false}, {});
+    QVERIFY(!missing_root.cache_available);
+    QVERIFY(missing_root.cache_directory.empty());
+}
+
+void HttpClientTest::CancelsAndJoinsBeforeShutdownCleanup() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({10240U, true}, root.path().toStdString()));
+    QCOMPARE(runtime->maximum_cache_bytes(), 10240LL * 1024LL * 1024LL);
+    const QString owned = QString::fromStdString(runtime->cache_directory());
+
+    HttpFixture fixture;
+    HttpRequest request;
+    request.url = fixture.Url("/slow");
+    request.timeout = std::chrono::seconds(5);
+    auto fetch = std::async(std::launch::async, [runtime, request]() {
+        try {
+            static_cast<void>(runtime->Fetch(request));
+            return false;
+        } catch (const HttpError& error) {
+            return error.code() == HttpErrorCode::kCancelled;
+        }
+    });
+    QTest::qWait(20);
+    runtime->Shutdown();
+    QVERIFY(fetch.get());
+    QVERIFY(!QDir(owned).exists());
+
+    HttpRequest rejected;
+    rejected.url = fixture.Url("/ok");
+    VerifyError(HttpErrorCode::kCancelled,
+                [&]() { static_cast<void>(runtime->Fetch(rejected)); });
+}
+
+void HttpClientTest::ActivatesPreparedPolicyTransactionally() {
+    QTemporaryDir root;
+    QTemporaryDir other_root;
+    QVERIFY(root.isValid());
+    QVERIFY(other_root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+
+    auto wrong_owner =
+        NetworkRuntime::Prepare({1U, false}, other_root.path().toStdString());
+    QVERIFY(!runtime->Activate(std::move(wrong_owner)));
+    QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
+
+    auto reduced =
+        NetworkRuntime::Prepare({1U, false}, root.path().toStdString());
+    QVERIFY(runtime->Activate(std::move(reduced)));
+    QCOMPARE(runtime->maximum_cache_bytes(), 1LL * 1024LL * 1024LL);
+
+    const QString owned = QString::fromStdString(runtime->cache_directory());
+    QVERIFY(QDir(owned).exists());
+    auto disabled =
+        NetworkRuntime::Prepare({0U, false}, root.path().toStdString());
+    QVERIFY(runtime->Activate(std::move(disabled)));
+    QCOMPARE(runtime->maximum_cache_bytes(), 0);
+    QVERIFY(!QDir(owned).exists());
 }
 
 }  // namespace goldendict::network

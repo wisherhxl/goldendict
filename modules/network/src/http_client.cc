@@ -2,6 +2,8 @@
 
 #include "http_client.h"
 
+#include "goldendict/network/network_runtime.h"
+
 #include <QAuthenticator>
 #include <QCoreApplication>
 #include <QElapsedTimer>
@@ -66,9 +68,28 @@ HttpResponse FetchHttp(const HttpRequest& request,
                         "HTTP timeout and response limit must be positive");
     }
 
+    if (request.runtime != nullptr) {
+        return request.runtime->Fetch(request, is_cancelled);
+    }
+    QNetworkAccessManager manager;
+    return FetchHttpWithManager(manager, request, is_cancelled);
+}
+
+HttpResponse FetchHttpWithManager(QNetworkAccessManager& manager,
+                                  const HttpRequest& request,
+                                  const std::function<bool()>& is_cancelled) {
+    if (QCoreApplication::instance() == nullptr) {
+        throw HttpError(HttpErrorCode::kTransport,
+                        "HTTP fetch requires a core application event loop");
+    }
+    if (request.timeout <= std::chrono::milliseconds::zero() ||
+        request.maximum_response_bytes == 0U) {
+        throw HttpError(HttpErrorCode::kInvalidRequest,
+                        "HTTP timeout and response limit must be positive");
+    }
     QUrl url = ValidateUrl(QString::fromStdString(request.url));
     const QUrl credential_origin = url;
-    QNetworkAccessManager manager;
+    const QNetworkProxy previous_proxy = manager.proxy();
     if (request.proxy.has_value()) {
         if (request.proxy->host.empty() || request.proxy->port == 0U) {
             throw HttpError(HttpErrorCode::kInvalidRequest,
@@ -78,9 +99,13 @@ HttpResponse FetchHttp(const HttpRequest& request,
                             QString::fromStdString(request.proxy->host),
                             request.proxy->port);
         manager.setProxy(proxy);
+    } else {
+        manager.setProxy(QNetworkProxy::NoProxy);
     }
+    QObject authentication_context;
     QObject::connect(
-        &manager, &QNetworkAccessManager::authenticationRequired, &manager,
+        &manager, &QNetworkAccessManager::authenticationRequired,
+        &authentication_context,
         [&](QNetworkReply* challenged_reply, QAuthenticator* authenticator) {
             if (!request.credentials.has_value() ||
                 !HasSameOrigin(credential_origin,
@@ -93,7 +118,8 @@ HttpResponse FetchHttp(const HttpRequest& request,
                 QString::fromStdString(request.credentials->password));
         });
     QObject::connect(
-        &manager, &QNetworkAccessManager::proxyAuthenticationRequired, &manager,
+        &manager, &QNetworkAccessManager::proxyAuthenticationRequired,
+        &authentication_context,
         [&](const QNetworkProxy&, QAuthenticator* authenticator) {
             if (!request.proxy.has_value() ||
                 !request.proxy->credentials.has_value()) {
@@ -226,6 +252,7 @@ HttpResponse FetchHttp(const HttpRequest& request,
                                 : transport_message.toStdString());
         }
 
+        manager.setProxy(previous_proxy);
         return {status, url.toString(QUrl::FullyEncoded).toStdString(),
                 content_type.toStdString(), std::move(body)};
     }

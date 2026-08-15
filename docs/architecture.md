@@ -648,12 +648,13 @@ behavior: legacy GoldenDict attached one `QNetworkDiskCache` to its article
 network manager, changed that cache's maximum size, and cleared that same
 cache during coordinated shutdown. It did not configure an independent
 browser cache. Core continues to own the transport-neutral persisted fields;
-the network module must replace its current ephemeral per-request manager with
-one application-lifetime owner before the controls can be exposed. Widgets
+the network module provides one application-lifetime owner in place of the
+former ephemeral per-request manager. Widgets
 and `QWebEngineProfile` remain outside the contract.
 
-The future owner receives a dedicated path below
-`QStandardPaths::CacheLocation`. A zero limit means no Qt Network disk cache;
+The composition root injects a dedicated `qt-network-http` path below
+`QStandardPaths::CacheLocation`; tests inject an isolated root. A zero limit
+means no Qt Network disk cache and evicts the previously owned directory;
 a positive limit is converted from MiB to bytes and applied exactly. Startup
 validates the bound and prepares the owned path before publishing the network
 runtime. Path or cache setup failure produces a redacted diagnostic and
@@ -664,6 +665,13 @@ cancels or joins outstanding requests, and then clears only the owned Qt
 Network cache. Crashes and forced termination provide no cleanup guarantee;
 cleanup failure is non-fatal and may be retried on a later clean shutdown.
 Diagnostics must not expose URLs, cache keys, credentials, or response data.
+
+Preparation and activation are separate network-runtime operations so the
+later Preferences control can validate and prepare a candidate, persist it,
+and only then publish it. Preparation never attaches a second disk-cache
+instance to the active directory. Activation of a reduced or zero limit may
+irreversibly evict disposable bytes; abandoning a prepared candidate leaves
+the active owner unchanged.
 
 Preference apply validates and prepares a complete candidate before
 persistence and activation. Any validation, preparation, persistence, or
