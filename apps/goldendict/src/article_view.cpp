@@ -2,6 +2,8 @@
 
 #include "article_view.h"
 
+#include <utility>
+
 #include <QApplication>
 #include <QClipboard>
 #include <QContextMenuEvent>
@@ -32,6 +34,8 @@ ArticleView::ArticleView(QWidget* parent) : QWebEngineView(parent) {
     connect(this, &QWebEngineView::loadStarted, this, [this]() {
         ++document_generation_;
         ++pointer_generation_;
+        dictionary_context_entries_.clear();
+        dictionary_context_overflow_ = false;
     });
 }
 
@@ -238,6 +242,54 @@ void ArticleView::TriggerWordQueryForTest(const QPointF& position,
     QueryWordAt(position, translate);
 }
 
+void ArticleView::SetDictionaryContextEntries(
+    QList<ArticleDictionaryContextEntry> entries, bool overflow,
+    quint64 presentation_generation) {
+    dictionary_context_entries_ = std::move(entries);
+    dictionary_context_overflow_ = overflow;
+    dictionary_context_generation_ = presentation_generation;
+}
+
+ArticleDictionaryContextSnapshot ArticleView::DictionaryContextSnapshot()
+    const {
+    return {dictionary_context_entries_, dictionary_context_overflow_,
+            dictionary_context_generation_, document_generation_};
+}
+
+bool ArticleView::IsCurrentDictionarySnapshot(
+    const ArticleDictionaryContextSnapshot& snapshot) const noexcept {
+    return snapshot.document_generation == document_generation_ &&
+           snapshot.presentation_generation == dictionary_context_generation_;
+}
+
+void ArticleView::TriggerDictionaryContextAction(
+    const ArticleDictionaryContextSnapshot& snapshot, int entry_index) {
+    if (!IsCurrentDictionarySnapshot(snapshot) || entry_index < 0 ||
+        entry_index >= snapshot.entries.size()) {
+        return;
+    }
+    const auto& entry = snapshot.entries[entry_index];
+    emit DictionaryResultRequested(entry.dictionary_id,
+                                   entry.first_result_index,
+                                   snapshot.presentation_generation);
+}
+
+void ArticleView::TriggerDictionaryContextOverflow(
+    const ArticleDictionaryContextSnapshot& snapshot) {
+    if (IsCurrentDictionarySnapshot(snapshot) && snapshot.overflow)
+        emit DictionaryResultsPaneRequested(snapshot.presentation_generation);
+}
+
+void ArticleView::TriggerDictionaryContextActionForTest(
+    const ArticleDictionaryContextSnapshot& snapshot, int entry_index) {
+    TriggerDictionaryContextAction(snapshot, entry_index);
+}
+
+void ArticleView::TriggerDictionaryContextOverflowForTest(
+    const ArticleDictionaryContextSnapshot& snapshot) {
+    TriggerDictionaryContextOverflow(snapshot);
+}
+
 void ArticleView::contextMenuEvent(QContextMenuEvent* event) {
     auto* request = lastContextMenuRequest();
     if (request == nullptr)
@@ -248,8 +300,10 @@ void ArticleView::contextMenuEvent(QContextMenuEvent* event) {
         request->mediaType() == QWebEngineContextMenuRequest::MediaTypeImage &&
             !request->mediaUrl().isEmpty()};
     const auto available = AvailableContextActions(context);
+    const auto dictionary_snapshot = DictionaryContextSnapshot();
     QMenu menu(this);
     QHash<QAction*, ArticleContextAction> action_map;
+    QHash<QAction*, int> dictionary_action_map;
     const QString display_selection = DisplaySelection(context.selected_text);
     for (const auto action : available) {
         QString label;
@@ -290,7 +344,26 @@ void ArticleView::contextMenuEvent(QContextMenuEvent* event) {
         }
         action_map.insert(menu.addAction(label), action);
     }
+    if (!dictionary_snapshot.entries.isEmpty()) {
+        if (!menu.isEmpty())
+            menu.addSeparator();
+        for (int index = 0; index < dictionary_snapshot.entries.size();
+             ++index) {
+            dictionary_action_map.insert(
+                menu.addAction(dictionary_snapshot.entries[index].display_name),
+                index);
+        }
+    }
+    QAction* overflow_action = nullptr;
+    if (dictionary_snapshot.overflow)
+        overflow_action = menu.addAction(QStringLiteral("........."));
     QAction* selected = menu.exec(event->globalPos());
-    if (selected != nullptr)
+    if (selected == overflow_action) {
+        TriggerDictionaryContextOverflow(dictionary_snapshot);
+    } else if (dictionary_action_map.contains(selected)) {
+        TriggerDictionaryContextAction(dictionary_snapshot,
+                                       dictionary_action_map.value(selected));
+    } else if (action_map.contains(selected)) {
         TriggerContextAction(action_map.value(selected), context);
+    }
 }

@@ -1058,23 +1058,22 @@ named Phase 5/6/7/9/10 prerequisite above or intentionally excluded. The
 overall Preferences gate therefore remains open without naming a speculative
 successor.
 
-The independent next-prerequisite readiness audit selects the Phase 7
-`bounded per-dictionary article-context navigation` leaf. It is not a
-Preferences successor: it satisfies the named runtime prerequisite for the
-later dictionary-reference menu-limit control. Ordered lookup entries already
-retain dictionary identity, the active-tab results pane already performs
-per-dictionary navigation, and the article context menu already snapshots its
-originating tab. The leaf therefore stays in Widgets and reuses existing core
-DTOs and composition; it adds no public core API, persistence field, or inert
-control.
+The Phase 7 `bounded per-dictionary article-context navigation` leaf is
+accepted. It is not a Preferences successor: it satisfies the named runtime
+prerequisite for the later dictionary-reference menu-limit control. Widgets
+derives one private per-tab presentation snapshot from ordered lookup entries
+and shares first-result indexes between the article context menu and existing
+results pane; no public core API, persistence field, or inert control was
+added.
 
 The context menu must list dictionaries in first-result order, deduplicate
 repeated identities, use the catalog name with an ID fallback, and navigate to
 the first represented article for the selected dictionary. The list uses the
-pinned default bound of 20. Overflow exposes the existing results pane instead
-of creating an unbounded menu. Empty, failed, stale, and non-lookup pages show
-no dictionary entries, and an action becomes harmless if its originating tab
-or document is replaced or closed. Existing link, selection, copy, image,
+pinned default bound of 20 and the pinned legacy `.........` overflow label.
+Overflow exposes the existing results pane instead of creating an unbounded
+menu. Empty, failed, stale, and non-lookup pages show no dictionary entries,
+and tab, view, presentation, and document identities make captured actions
+harmless after replacement or closure. Existing link, selection, copy, image,
 print, tab, and results-pane behavior remains unchanged.
 
 This leaf precedes the other blocked families by dependency order. Audio has

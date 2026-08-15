@@ -121,6 +121,8 @@ class MainWindow final : public QMainWindow {
     void RunWebEngineSmokeCheck(std::function<void(bool)> completion);
     void RunWebEngineInteractionCheck(std::function<void(bool)> completion);
     void RunArticleContextMenuCheck(std::function<void(bool)> completion);
+    void RunDictionaryContextNavigationCheck(
+        std::function<void(bool)> completion);
     void RunSystemPrintCheck(std::function<void(bool)> completion);
     void RunHistorySmokeCheck(std::function<void(bool)> completion);
     void RunHistoryManagementSmokeCheck(std::function<void(bool)> completion);
@@ -284,6 +286,12 @@ class MainWindow final : public QMainWindow {
     void ActivateSuggestion();
     void StopSuggestionWorker();
     void NavigateToSelectedResult();
+    void NavigateToArticleResult(ArticleView* view, int result_index);
+    void RefreshDictionaryContext(goldendict::core::ArticleTabId tab_id);
+    void StoreLookupResults(goldendict::core::ArticleTabId tab_id,
+                            const goldendict::core::LookupResponse& response);
+    void ShowDictionaryResultsPane(goldendict::core::ArticleTabId tab_id,
+                                   ArticleView* view, std::uint64_t generation);
     QList<int> SelectedFavoriteFolderPath() const;
     bool ConfirmFavoriteRemoval();
     QList<QList<int>> ExpandedFavoriteFolderPaths() const;
@@ -383,8 +391,19 @@ class MainWindow final : public QMainWindow {
     std::map<goldendict::core::ArticleTabId,
              std::unique_ptr<goldendict::core::LookupRequest>>
         requests_;
-    std::map<goldendict::core::ArticleTabId,
-             std::vector<goldendict::core::DictionaryIdentity>>
+
+    struct DictionaryResultPresentation {
+        std::string dictionary_id;
+        std::string display_name;
+        int first_result_index = 0;
+    };
+
+    struct LookupResultPresentation {
+        std::uint64_t generation = 0U;
+        std::vector<DictionaryResultPresentation> rows;
+    };
+
+    std::map<goldendict::core::ArticleTabId, LookupResultPresentation>
         lookup_results_;
 
     struct ArticleSearchPresentation {

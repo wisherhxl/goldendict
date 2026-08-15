@@ -73,6 +73,8 @@
 
 namespace {
 
+constexpr int kMaximumDictionaryContextEntries = 20;
+
 constexpr int kMainWindowStateVersion = 7;
 constexpr int kPreviousMainWindowStateVersion = 6;
 constexpr int kOlderMainWindowStateVersion = 5;
@@ -3412,6 +3414,120 @@ void MainWindow::RunArticleContextMenuCheck(
     completion(passed);
 }
 
+void MainWindow::RunDictionaryContextNavigationCheck(
+    std::function<void(bool)> completion) {
+    const auto tab_id = TabIdAt(article_tabs_->currentIndex());
+    auto* view = ArticleViewForTab(tab_id);
+    auto* results_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kResultsPaneName));
+    if (tab_id == 0U || view == nullptr || results_dock == nullptr) {
+        completion(false);
+        return;
+    }
+
+    goldendict::core::LookupResponse response;
+    const auto append = [&response](std::string id, std::string name) {
+        goldendict::core::DictionaryEntry entry;
+        entry.dictionary.id = std::move(id);
+        entry.dictionary.name = std::move(name);
+        response.entries.push_back(std::move(entry));
+    };
+    append("dictionary-0", "Catalog Dictionary 0");
+    append("dictionary-0", "Repeated Name Must Be Ignored");
+    append("dictionary-1", "");
+    for (int index = 2; index < 22; ++index) {
+        append("dictionary-" + std::to_string(index),
+               "Catalog Dictionary " + std::to_string(index));
+    }
+    auto& presentation = lookup_results_[tab_id];
+    ++presentation.generation;
+    StoreLookupResults(tab_id, response);
+    RefreshResultsNavigation();
+    auto snapshot = view->DictionaryContextSnapshot();
+    bool passed =
+        snapshot.entries.size() == kMaximumDictionaryContextEntries &&
+        snapshot.overflow && results_list_->count() == 22 &&
+        snapshot.entries[0].dictionary_id == QStringLiteral("dictionary-0") &&
+        snapshot.entries[0].display_name ==
+            QStringLiteral("Catalog Dictionary 0") &&
+        snapshot.entries[1].dictionary_id == QStringLiteral("dictionary-1") &&
+        snapshot.entries[1].display_name == QStringLiteral("dictionary-1") &&
+        snapshot.entries[1].first_result_index == 2 &&
+        results_list_->item(1)->data(Qt::UserRole + 1).toInt() == 2;
+
+    auto navigation_requests = std::make_shared<int>(0);
+    auto requested_result = std::make_shared<int>(-1);
+    connect(view, &ArticleView::DictionaryResultRequested, this,
+            [navigation_requests, requested_result](const QString&, int index,
+                                                    quint64) {
+                ++*navigation_requests;
+                *requested_result = index;
+            });
+    view->TriggerDictionaryContextActionForTest(snapshot, 1);
+    passed = passed && *navigation_requests == 1 && *requested_result == 2;
+
+    presentation.rows.clear();
+    RefreshDictionaryContext(tab_id);
+    RefreshResultsNavigation();
+    passed = passed && view->DictionaryContextSnapshot().entries.isEmpty() &&
+             results_list_->count() == 0;
+    StoreLookupResults(tab_id, response);
+    RefreshResultsNavigation();
+    ++presentation.generation;
+    RefreshDictionaryContext(tab_id);
+    view->TriggerDictionaryContextActionForTest(snapshot, 0);
+    passed = passed && *navigation_requests == 1;
+    snapshot = view->DictionaryContextSnapshot();
+
+    results_dock->hide();
+    view->TriggerDictionaryContextOverflowForTest(snapshot);
+    passed = passed && results_dock->isVisible() &&
+             TabIdAt(article_tabs_->currentIndex()) == tab_id &&
+             results_list_->count() == 22;
+
+    CreateEmptyArticleTab(true);
+    const auto closing_tab_id = TabIdAt(article_tabs_->currentIndex());
+    QPointer<ArticleView> closing_view = ArticleViewForTab(closing_tab_id);
+    if (closing_view.isNull()) {
+        completion(false);
+        return;
+    }
+    auto& closing_presentation = lookup_results_[closing_tab_id];
+    ++closing_presentation.generation;
+    StoreLookupResults(closing_tab_id, response);
+    const auto closing_snapshot = closing_view->DictionaryContextSnapshot();
+    const int closing_index = article_tabs_->indexOf(closing_view);
+    CloseArticleTab(closing_index);
+    results_dock->hide();
+    if (!closing_view.isNull())
+        closing_view->TriggerDictionaryContextOverflowForTest(closing_snapshot);
+    passed = passed &&
+             lookup_results_.find(closing_tab_id) == lookup_results_.end() &&
+             !results_dock->isVisible() &&
+             TabIdAt(article_tabs_->currentIndex()) == tab_id;
+
+    connect(
+        view, &QWebEngineView::loadFinished, this,
+        [this, view, snapshot, tab_id, navigation_requests, passed,
+         completion = std::move(completion)](bool loaded) mutable {
+            view->TriggerDictionaryContextActionForTest(snapshot, 0);
+            view->TriggerDictionaryContextOverflowForTest(snapshot);
+            bool final_passed =
+                passed && loaded && *navigation_requests == 1 &&
+                view->DictionaryContextSnapshot().entries.isEmpty() &&
+                !view->DictionaryContextSnapshot().overflow;
+            lookup_results_.erase(tab_id);
+            RefreshDictionaryContext(tab_id);
+            RefreshResultsNavigation();
+            final_passed = final_passed && results_list_->count() == 0 &&
+                           view->DictionaryContextSnapshot().entries.isEmpty();
+            completion(final_passed);
+        },
+        Qt::SingleShotConnection);
+    view->setHtml(QStringLiteral(
+        "<!doctype html><html><body><h1>Non-lookup page</h1></body></html>"));
+}
+
 void MainWindow::RunSystemPrintCheck(std::function<void(bool)> completion) {
     int dialog_calls = 0;
     int dispatch_calls = 0;
@@ -4793,6 +4909,29 @@ ArticleView* MainWindow::CreateArticleView(
             [this](const QString& text) { query_->setText(text); });
     connect(view, &ArticleView::ExternalUrlRequested, this,
             [](const QUrl& url) { QDesktopServices::openUrl(url); });
+    connect(view, &ArticleView::DictionaryResultRequested, this,
+            [this, tab_id, view](const QString& dictionary_id,
+                                 int first_result_index, quint64 generation) {
+                const auto found = lookup_results_.find(tab_id);
+                if (found == lookup_results_.end() ||
+                    found->second.generation != generation ||
+                    ArticleViewForTab(tab_id) != view) {
+                    return;
+                }
+                const auto row = std::find_if(
+                    found->second.rows.begin(), found->second.rows.end(),
+                    [&](const auto& item) {
+                        return item.dictionary_id ==
+                                   dictionary_id.toStdString() &&
+                               item.first_result_index == first_result_index;
+                    });
+                if (row != found->second.rows.end())
+                    NavigateToArticleResult(view, first_result_index);
+            });
+    connect(view, &ArticleView::DictionaryResultsPaneRequested, this,
+            [this, tab_id, view](quint64 generation) {
+                ShowDictionaryResultsPane(tab_id, view, generation);
+            });
     connect(view, &QWebEngineView::urlChanged, this,
             &MainWindow::UpdateNavigationActions);
     connect(view, &QWebEngineView::loadFinished, this,
@@ -5931,22 +6070,12 @@ void MainWindow::RefreshResultsNavigation() {
     const auto found = lookup_results_.find(id);
     if (found == lookup_results_.end())
         return;
-    for (const auto& dictionary : found->second) {
-        bool already_present = false;
-        for (int row = 0; row < results_list_->count(); ++row) {
-            if (results_list_->item(row)->data(Qt::UserRole).toString() ==
-                QString::fromStdString(dictionary.id)) {
-                already_present = true;
-                break;
-            }
-        }
-        if (already_present)
-            continue;
+    for (const auto& dictionary : found->second.rows) {
         auto* item = new QListWidgetItem(
-            QString::fromStdString(dictionary.name.empty() ? dictionary.id
-                                                           : dictionary.name),
-            results_list_);
-        item->setData(Qt::UserRole, QString::fromStdString(dictionary.id));
+            QString::fromStdString(dictionary.display_name), results_list_);
+        item->setData(Qt::UserRole,
+                      QString::fromStdString(dictionary.dictionary_id));
+        item->setData(Qt::UserRole + 1, dictionary.first_result_index);
         item->setToolTip(item->text());
     }
     if (results_list_->count() > 0)
@@ -6064,13 +6193,96 @@ void MainWindow::NavigateToSelectedResult() {
         results_list_->currentRow() < 0) {
         return;
     }
-    const int row = results_list_->currentRow();
-    article_view_->page()->runJavaScript(
+    NavigateToArticleResult(
+        article_view_,
+        results_list_->currentItem()->data(Qt::UserRole + 1).toInt());
+}
+
+void MainWindow::NavigateToArticleResult(ArticleView* view, int result_index) {
+    if (view == nullptr || result_index < 0)
+        return;
+    view->page()->runJavaScript(
         QStringLiteral(
             "const entries=document.querySelectorAll('.gd-dictionary-result');"
             "if(entries[%1]) entries[%1].scrollIntoView(true);")
-            .arg(row));
-    article_view_->setFocus(Qt::OtherFocusReason);
+            .arg(result_index));
+    view->setFocus(Qt::OtherFocusReason);
+}
+
+void MainWindow::RefreshDictionaryContext(
+    goldendict::core::ArticleTabId tab_id) {
+    auto* view = ArticleViewForTab(tab_id);
+    if (view == nullptr)
+        return;
+    const auto found = lookup_results_.find(tab_id);
+    QList<ArticleDictionaryContextEntry> entries;
+    bool overflow = false;
+    std::uint64_t generation = 0U;
+    if (found != lookup_results_.end()) {
+        generation = found->second.generation;
+        overflow = found->second.rows.size() >
+                   static_cast<std::size_t>(kMaximumDictionaryContextEntries);
+        const auto count = std::min(
+            found->second.rows.size(),
+            static_cast<std::size_t>(kMaximumDictionaryContextEntries));
+        entries.reserve(static_cast<qsizetype>(count));
+        for (std::size_t index = 0; index < count; ++index) {
+            const auto& row = found->second.rows[index];
+            entries.push_back({QString::fromStdString(row.dictionary_id),
+                               QString::fromStdString(row.display_name),
+                               row.first_result_index});
+        }
+    }
+    view->SetDictionaryContextEntries(std::move(entries), overflow, generation);
+}
+
+void MainWindow::StoreLookupResults(
+    goldendict::core::ArticleTabId tab_id,
+    const goldendict::core::LookupResponse& response) {
+    auto& results = lookup_results_[tab_id].rows;
+    results.clear();
+    results.reserve(response.entries.size());
+    for (std::size_t index = 0; index < response.entries.size(); ++index) {
+        const auto& dictionary = response.entries[index].dictionary;
+        const bool represented =
+            std::any_of(results.begin(), results.end(), [&](const auto& row) {
+                return row.dictionary_id == dictionary.id;
+            });
+        if (!represented) {
+            results.push_back(
+                {dictionary.id,
+                 dictionary.name.empty() ? dictionary.id : dictionary.name,
+                 static_cast<int>(index)});
+        }
+    }
+    RefreshDictionaryContext(tab_id);
+}
+
+void MainWindow::ShowDictionaryResultsPane(
+    goldendict::core::ArticleTabId tab_id, ArticleView* view,
+    std::uint64_t generation) {
+    const auto found = lookup_results_.find(tab_id);
+    if (found == lookup_results_.end() ||
+        found->second.generation != generation ||
+        found->second.rows.size() <=
+            static_cast<std::size_t>(kMaximumDictionaryContextEntries) ||
+        ArticleViewForTab(tab_id) != view || facade_ == nullptr) {
+        return;
+    }
+    if (TabIdAt(article_tabs_->currentIndex()) != tab_id) {
+        if (!facade_->ActivateArticleTab(tab_id))
+            return;
+        SyncArticleTabs();
+        emit ArticleTabSessionMutated();
+    } else {
+        RefreshResultsNavigation();
+    }
+    auto* results_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kResultsPaneName));
+    if (results_dock != nullptr) {
+        results_dock->show();
+        results_dock->raise();
+    }
 }
 
 void MainWindow::ApplyDefaultPaneLayout() {
@@ -6727,7 +6939,10 @@ void MainWindow::StartNavigationLookup(
         existing->second->Cancel();
         requests_.erase(existing);
     }
-    lookup_results_.erase(tab_id);
+    auto& lookup_presentation = lookup_results_[tab_id];
+    ++lookup_presentation.generation;
+    lookup_presentation.rows.clear();
+    RefreshDictionaryContext(tab_id);
     if (TabIdAt(article_tabs_->currentIndex()) == tab_id)
         RefreshResultsNavigation();
     goldendict::core::LookupQuery query;
@@ -6772,11 +6987,22 @@ void MainWindow::FinishLookup() {
         try {
             const auto response = request->Await();
             if (!response.entries.empty()) {
-                auto& results = lookup_results_[id];
-                results.reserve(response.entries.size());
-                for (const auto& entry : response.entries)
-                    results.push_back(entry.dictionary);
+                StoreLookupResults(id, response);
                 const auto article = facade_->ComposeLookupPage(response);
+                const std::uint64_t presentation_generation =
+                    lookup_results_[id].generation;
+                connect(
+                    view, &QWebEngineView::loadFinished, this,
+                    [this, id, view, presentation_generation](bool success) {
+                        const auto current = lookup_results_.find(id);
+                        if (success && current != lookup_results_.end() &&
+                            current->second.generation ==
+                                presentation_generation &&
+                            ArticleViewForTab(id) == view) {
+                            RefreshDictionaryContext(id);
+                        }
+                    },
+                    Qt::SingleShotConnection);
                 if (article.sanitized_html.has_value()) {
                     view->setHtml(
                         QString::fromUtf8(article.sanitized_html->data(),
@@ -6795,6 +7021,7 @@ void MainWindow::FinishLookup() {
                                          .arg(static_cast<qulonglong>(
                                              response.entries.size())));
             } else if (!response.errors.empty()) {
+                lookup_results_[id].rows.clear();
                 view->setHtml(
                     QStringLiteral("<!doctype html><html><body><h1>Lookup "
                                    "failed</h1><p>%1</p></body></html>")
@@ -6803,6 +7030,7 @@ void MainWindow::FinishLookup() {
                 if (active)
                     status_->setText(QStringLiteral("Lookup failed"));
             } else {
+                lookup_results_[id].rows.clear();
                 view->setHtml(QStringLiteral(
                                   "<!doctype html><html><body><h1>%1</h1><p>No "
                                   "result found.</p></body></html>")
@@ -6811,7 +7039,7 @@ void MainWindow::FinishLookup() {
                     status_->setText(QStringLiteral("No result"));
             }
         } catch (const std::exception& error) {
-            lookup_results_.erase(id);
+            lookup_results_[id].rows.clear();
             view->setHtml(
                 QStringLiteral("<!doctype html><html><body><h1>Lookup "
                                "failed</h1><p>%1</p></body></html>")
@@ -6819,6 +7047,7 @@ void MainWindow::FinishLookup() {
             if (active)
                 status_->setText(QStringLiteral("Lookup failed"));
         }
+        RefreshDictionaryContext(id);
         if (active)
             RefreshResultsNavigation();
     }

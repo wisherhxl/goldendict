@@ -1322,6 +1322,14 @@ int main(int argc, char* argv[]) {
             window.RunArticleContextMenuCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--dictionary-context-navigation-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunDictionaryContextNavigationCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
     } else if (HasArgument(argc, argv,
                            QStringLiteral("--system-print-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });

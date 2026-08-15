@@ -597,16 +597,17 @@ change core tab ordering. Network behavior remains in the optional network
 module, and Phase 9 desktop, translation, help, audio, hotkey, scan, and
 credential policy is not pulled into Phase 8 through inert controls.
 
-The next-prerequisite audit keeps that boundary intact by selecting bounded
-per-dictionary article-context navigation as a Phase 7 Widgets leaf, not as a
-Preferences leaf. The active tab already retains ordered lookup-result
-dictionary identities and exposes the same navigation through the results
-pane, so the context menu reuses that presentation state. It shows each
-dictionary once in first-result order, targets its first represented article,
-and caps the list at the pinned default of 20; overflow delegates to the
-existing results pane. Originating-tab and document identity guard actions
-against replacement or closure. No core DTO, persistence schema, dictionary
-backend, or article security boundary changes.
+Bounded per-dictionary article-context navigation is accepted as a Phase 7
+Widgets leaf, not as a Preferences leaf. The active tab retains a private
+presentation snapshot derived from ordered lookup-result dictionary identities
+and shares each dictionary's first composed-result index with the results pane.
+The context menu shows each dictionary once in first-result order, uses its
+catalog display name with an ID fallback, and caps the list at the pinned
+default of 20. The legacy `.........` overflow action reveals the existing
+results pane. Originating-tab, view, presentation-generation, and WebEngine
+document-generation checks make replaced or closed origins harmless. No core
+DTO, persistence schema, dictionary backend, or article security boundary
+changes.
 
 P8-PREF-5 exposes only disabled or credential-free manual HTTP CONNECT
 proxying with a validated host and port. The optional
