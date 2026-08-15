@@ -5,10 +5,12 @@
 #include <utility>
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QTabWidget>
@@ -228,6 +230,59 @@ PreferencesDialog::PreferencesDialog(
     general_layout->addWidget(synonym_search_enabled_);
     general_layout->addStretch();
     tabs->addTab(general_page, QStringLiteral("General"));
+
+    auto* network_page = new QWidget(tabs);
+    network_page->setObjectName(QStringLiteral("preferencesNetworkPage"));
+    auto* network_layout = new QVBoxLayout(network_page);
+    use_proxy_server_ =
+        new QGroupBox(QStringLiteral("Use proxy server"), network_page);
+    use_proxy_server_->setObjectName(QStringLiteral("useProxyServer"));
+    use_proxy_server_->setCheckable(true);
+    use_proxy_server_->setChecked(
+        preferences.proxy_mode == goldendict::core::ProxyMode::kManual &&
+        preferences.proxy_type == goldendict::core::ProxyType::kHttpConnect);
+    use_proxy_server_->setToolTip(
+        QStringLiteral("Enable if you wish to use a proxy server\n"
+                       "for all program's network requests."));
+    auto* proxy_layout = new QVBoxLayout(use_proxy_server_);
+    auto* custom_proxy =
+        new QCheckBox(QStringLiteral("Custom proxy"), use_proxy_server_);
+    custom_proxy->setObjectName(QStringLiteral("customProxy"));
+    custom_proxy->setChecked(true);
+    custom_proxy->setEnabled(false);
+    proxy_layout->addWidget(custom_proxy);
+    auto* custom_settings =
+        new QGroupBox(QStringLiteral("Custom settings"), use_proxy_server_);
+    custom_settings->setObjectName(QStringLiteral("customSettingsGroup"));
+    auto* settings_layout = new QHBoxLayout(custom_settings);
+    auto* type_label = new QLabel(QStringLiteral("Type:"), custom_settings);
+    proxy_type_ = new QComboBox(custom_settings);
+    proxy_type_->setObjectName(QStringLiteral("proxyType"));
+    proxy_type_->addItem(QStringLiteral("HTTP Transp."));
+    proxy_type_->setEnabled(false);
+    auto* host_label = new QLabel(QStringLiteral("Host:"), custom_settings);
+    proxy_host_ = new QLineEdit(custom_settings);
+    proxy_host_->setObjectName(QStringLiteral("proxyHost"));
+    proxy_host_->setText(QString::fromStdString(preferences.proxy_host));
+    auto* port_label = new QLabel(QStringLiteral("Port:"), custom_settings);
+    proxy_port_ = new QSpinBox(custom_settings);
+    proxy_port_->setObjectName(QStringLiteral("proxyPort"));
+    proxy_port_->setRange(0, 65535);
+    proxy_port_->setValue(preferences.proxy_port);
+    type_label->setBuddy(proxy_type_);
+    host_label->setBuddy(proxy_host_);
+    port_label->setBuddy(proxy_port_);
+    settings_layout->addWidget(type_label);
+    settings_layout->addWidget(proxy_type_);
+    settings_layout->addWidget(host_label);
+    settings_layout->addWidget(proxy_host_);
+    settings_layout->addWidget(port_label);
+    settings_layout->addWidget(proxy_port_);
+    proxy_layout->addWidget(custom_settings);
+    network_layout->addStretch();
+    network_layout->addWidget(use_proxy_server_);
+    network_layout->addStretch();
+    tabs->addTab(network_page, QStringLiteral("&Network"));
     layout->addWidget(tabs);
 
     validation_error_ = new QLabel(this);
@@ -273,6 +328,12 @@ void PreferencesDialog::Apply() {
         static_cast<std::uint32_t>(input_phrase_length_limit_->value());
     candidate.ignore_diacritics = ignore_diacritics_->isChecked();
     candidate.synonym_search_enabled = synonym_search_enabled_->isChecked();
+    candidate.proxy_mode = use_proxy_server_->isChecked()
+                               ? goldendict::core::ProxyMode::kManual
+                               : goldendict::core::ProxyMode::kDisabled;
+    candidate.proxy_type = goldendict::core::ProxyType::kHttpConnect;
+    candidate.proxy_host = proxy_host_->text().toStdString();
+    candidate.proxy_port = static_cast<std::uint16_t>(proxy_port_->value());
     const QString error = apply_callback_(candidate);
     if (!error.isEmpty()) {
         validation_error_->setText(error);

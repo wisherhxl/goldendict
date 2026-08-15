@@ -6,10 +6,13 @@
 #include <chrono>
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include "http_client.h"
 
 namespace goldendict::network {
 
@@ -19,6 +22,8 @@ enum class DictServerErrorCode {
     kCancelled,
     kDeadlineExceeded,
     kResponseTooLarge,
+    kProxyAuthenticationRequired,
+    kProxyTransport,
     kTransport,
     kInvalidResponse,
 };
@@ -40,6 +45,7 @@ struct DictServerOptions {
     std::string strategy = "prefix";
     std::chrono::milliseconds timeout = std::chrono::seconds(5);
     std::size_t maximum_response_bytes = 4U * 1024U * 1024U;
+    std::optional<HttpRequest::Proxy> proxy;
 };
 
 struct DictServerArticle {

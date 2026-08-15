@@ -1138,6 +1138,15 @@ void ApplicationServiceTest::
     QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
 
     invalid = original;
+    invalid.preferences.proxy_mode = ProxyMode::kManual;
+    invalid.preferences.proxy_type = ProxyType::kHttpConnect;
+    invalid.preferences.proxy_host = "proxy.example\r\nInjected: value";
+    invalid.preferences.proxy_port = 3128U;
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+
+    invalid = original;
     invalid.preferences.interface_language.assign(4097U, 'x');
     QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
                              std::runtime_error);

@@ -135,6 +135,9 @@ class MainWindow final : public QMainWindow {
     void RunSynonymPreferencesSmokeCheck(std::function<void(bool)> completion);
     void RunOptionalPartsPreferencesSmokeCheck(
         std::function<void(bool)> completion);
+    void RunProxyPreferencesSmokeCheck(std::function<void(bool)> completion);
+    void RunProxyPreferencesRestartSmokeCheck(
+        std::function<void(bool)> completion);
     void RunHideSingleTabPreferencesSmokeCheck(
         std::function<void(bool)> completion);
     void RunHideSingleTabRestartSmokeCheck(

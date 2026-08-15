@@ -597,6 +597,15 @@ change core tab ordering. Network behavior remains in the optional network
 module, and Phase 9 desktop, translation, help, audio, hotkey, scan, and
 credential policy is not pulled into Phase 8 through inert controls.
 
+The final ready Preferences leaf exposes only disabled or credential-free
+manual HTTP CONNECT proxying with a validated host and port. The optional
+network composer injects one private candidate into every configured online
+source: Qt HTTP adapters use their request-local network manager, while DICT
+uses a bounded, cancellable CONNECT handshake before its raw TCP protocol.
+Neither path mutates the application proxy or WebEngine profile. Private DICT
+transport tests cover optional CONNECT authentication, but credentials never
+enter preferences, persistence, runtime composition, or diagnostics.
+
 The hide-single-tab leaf deliberately evolves the installed transport-neutral
 `ApplicationPreferences` DTO with a default-off boolean. Source consumers must
 recompile and binaries built against the previous structure layout are not ABI

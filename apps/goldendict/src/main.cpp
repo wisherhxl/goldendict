@@ -1113,6 +1113,34 @@ int main(int argc, char* argv[]) {
             window.RunArticleClickRestartSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--proxy-preferences-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &configuration_path, &window]() {
+            window.RunProxyPreferencesSmokeCheck([&app, &configuration_path](
+                                                     bool passed) {
+                try {
+                    const auto persisted = goldendict::core::LoadConfiguration(
+                        configuration_path.toStdString());
+                    passed = passed &&
+                             persisted.preferences.proxy_mode ==
+                                 goldendict::core::ProxyMode::kManual &&
+                             persisted.preferences.proxy_type ==
+                                 goldendict::core::ProxyType::kHttpConnect;
+                } catch (...) {
+                    passed = false;
+                }
+                app.exit(passed ? 0 : 1);
+            });
+        });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--proxy-preferences-restart-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunProxyPreferencesRestartSmokeCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
     } else if (HasArgument(argc, argv, QStringLiteral("--view-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(0, &window, [&app, &window]() {

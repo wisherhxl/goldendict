@@ -285,6 +285,23 @@ void HttpClientTest::SupportsScopedOriginAndProxyAuthentication() {
     invalid_proxy.proxy->port = 0U;
     VerifyError(HttpErrorCode::kInvalidRequest,
                 [&]() { FetchHttp(invalid_proxy); });
+
+    HttpRequest redacted_proxy;
+    redacted_proxy.url = "http://example.test/";
+    redacted_proxy.timeout = std::chrono::milliseconds(100);
+    redacted_proxy.proxy = HttpRequest::Proxy{
+        "secret-proxy.invalid", 3128U,
+        HttpRequest::Credentials{"secret-user", "secret-password"}};
+    try {
+        static_cast<void>(FetchHttp(redacted_proxy));
+        QFAIL("Expected proxy transport error");
+    } catch (const HttpError& error) {
+        QCOMPARE(error.code(), HttpErrorCode::kTransport);
+        const QByteArray message(error.what());
+        QVERIFY(!message.contains("secret-proxy"));
+        QVERIFY(!message.contains("secret-user"));
+        QVERIFY(!message.contains("secret-password"));
+    }
 }
 
 }  // namespace goldendict::network

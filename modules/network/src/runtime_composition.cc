@@ -133,6 +133,12 @@ std::function<bool()> StopRequested(const RuntimeRequestOptions& options) {
     };
 }
 
+HttpRequest HttpTransport(const std::optional<HttpRequest::Proxy>& proxy) {
+    HttpRequest request;
+    request.proxy = proxy;
+    return request;
+}
+
 [[noreturn]] void TranslateHttpError(const HttpError& error,
                                      const RuntimeRequestOptions& options) {
     RuntimeSourceErrorCode code = RuntimeSourceErrorCode::kUnavailable;
@@ -184,6 +190,8 @@ std::function<bool()> StopRequested(const RuntimeRequestOptions& options) {
             code = RuntimeSourceErrorCode::kInvalidData;
             break;
         case DictServerErrorCode::kResponseTooLarge:
+        case DictServerErrorCode::kProxyAuthenticationRequired:
+        case DictServerErrorCode::kProxyTransport:
         case DictServerErrorCode::kTransport:
             break;
     }
@@ -244,9 +252,10 @@ std::vector<std::string> ParsePrefixMatches(std::string output,
 
 class MediaWikiRuntimeSource final : public RuntimeDictionarySource {
    public:
-    explicit MediaWikiRuntimeSource(
-        const goldendict::core::MediaWikiSourceConfiguration& configuration)
-        : source_(configuration.base_url) {
+    MediaWikiRuntimeSource(
+        const goldendict::core::MediaWikiSourceConfiguration& configuration,
+        const std::optional<HttpRequest::Proxy>& proxy)
+        : source_(configuration.base_url, HttpTransport(proxy)) {
         identity_.id = configuration.id;
         identity_.name = configuration.name;
         identity_.source = configuration.base_url;
@@ -309,9 +318,10 @@ class MediaWikiRuntimeSource final : public RuntimeDictionarySource {
 
 class WebsiteRuntimeSource final : public RuntimeDictionarySource {
    public:
-    explicit WebsiteRuntimeSource(
-        const goldendict::core::WebsiteSourceConfiguration& configuration)
-        : source_(configuration.url_template) {
+    WebsiteRuntimeSource(
+        const goldendict::core::WebsiteSourceConfiguration& configuration,
+        const std::optional<HttpRequest::Proxy>& proxy)
+        : source_(configuration.url_template, HttpTransport(proxy)) {
         identity_.id = configuration.id;
         identity_.name = configuration.name;
         identity_.source = configuration.url_template;
@@ -364,8 +374,10 @@ class ForvoRuntimeSource final : public RuntimeDictionarySource {
    public:
     ForvoRuntimeSource(
         const goldendict::core::ForvoSourceConfiguration& configuration,
-        std::string credential, std::string language)
-        : source_(configuration.api_base_url, std::move(credential), language) {
+        std::string credential, std::string language,
+        const std::optional<HttpRequest::Proxy>& proxy)
+        : source_(configuration.api_base_url, std::move(credential), language,
+                  HttpTransport(proxy)) {
         identity_.id = ForvoChildId(configuration.id, language);
         identity_.name = configuration.name + " (" + language + ")";
         identity_.source = configuration.api_base_url;
@@ -458,10 +470,18 @@ class ForvoRuntimeSource final : public RuntimeDictionarySource {
 
 class DictRuntimeSource final : public RuntimeDictionarySource {
    public:
-    explicit DictRuntimeSource(
-        const goldendict::core::DictServerSourceConfiguration& configuration)
-        : source_({configuration.host, configuration.port,
-                   configuration.database, configuration.strategy}) {
+    DictRuntimeSource(
+        const goldendict::core::DictServerSourceConfiguration& configuration,
+        const std::optional<HttpRequest::Proxy>& proxy)
+        : source_([&]() {
+              DictServerOptions options;
+              options.host = configuration.host;
+              options.port = configuration.port;
+              options.database = configuration.database;
+              options.strategy = configuration.strategy;
+              options.proxy = proxy;
+              return options;
+          }()) {
         identity_.id = configuration.id;
         identity_.name = configuration.name;
         identity_.source =
@@ -623,6 +643,13 @@ RuntimeCompositionResult ComposeConfiguredRuntimeSources(
     const goldendict::core::CoreConfiguration& configuration,
     const ForvoCredentialMap& forvo_credentials) {
     goldendict::core::ValidateConfiguration(configuration);
+    std::optional<HttpRequest::Proxy> proxy;
+    const auto& preferences = configuration.preferences;
+    if (preferences.proxy_mode == goldendict::core::ProxyMode::kManual &&
+        preferences.proxy_type == goldendict::core::ProxyType::kHttpConnect) {
+        proxy = HttpRequest::Proxy{preferences.proxy_host,
+                                   preferences.proxy_port, std::nullopt};
+    }
     std::set<std::string> forvo_ids;
     for (const auto& source : configuration.forvo_sources) {
         forvo_ids.insert(source.id);
@@ -673,13 +700,13 @@ RuntimeCompositionResult ComposeConfiguredRuntimeSources(
     for (const auto& source : configuration.mediawiki_sources) {
         if (source.enabled) {
             result.sources.push_back(
-                std::make_unique<MediaWikiRuntimeSource>(source));
+                std::make_unique<MediaWikiRuntimeSource>(source, proxy));
         }
     }
     for (const auto& source : configuration.website_sources) {
         if (source.enabled) {
             result.sources.push_back(
-                std::make_unique<WebsiteRuntimeSource>(source));
+                std::make_unique<WebsiteRuntimeSource>(source, proxy));
         }
     }
     for (const auto& source : configuration.forvo_sources) {
@@ -695,13 +722,13 @@ RuntimeCompositionResult ComposeConfiguredRuntimeSources(
         }
         for (const auto& language : source.language_codes) {
             result.sources.push_back(std::make_unique<ForvoRuntimeSource>(
-                source, credential->second, language));
+                source, credential->second, language, proxy));
         }
     }
     for (const auto& source : configuration.dict_server_sources) {
         if (source.enabled) {
             result.sources.push_back(
-                std::make_unique<DictRuntimeSource>(source));
+                std::make_unique<DictRuntimeSource>(source, proxy));
         }
     }
     for (const auto& source : configuration.external_program_sources) {

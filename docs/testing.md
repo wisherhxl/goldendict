@@ -464,6 +464,15 @@ each:
   CONNECT host/port validation, direct versus proxied traffic, atomic facade
   preservation, secret-free diagnostics/persistence, and restart.
 
+P8-PREF-5 is accepted. `dict_server_source_test` additionally pins its private
+bounded CONNECT handshake, optional test-only Basic authentication, 407
+mapping, tunneled response buffering, deadline/cancellation inheritance, and
+credential/endpoint redaction. Runtime composition injects the credential-free
+candidate into MediaWiki, website, Forvo, and DICT without affecting external
+programs, WebEngine, system proxy policy, or application-global proxy state.
+The five ready Phase 8 Preferences leaves are complete; remaining controls
+retain their named prerequisites.
+
 Network cache controls are not test-ready. A Phase 7 network-cache ownership
 audit must first identify whether the ephemeral Qt Network path, the default
 WebEngine profile, or both are in pinned scope and define transactional

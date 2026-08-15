@@ -489,6 +489,15 @@ credentials, layout/session state, source definitions, UI, and runtime wiring
 remain excluded. This preference migration unlocks T3; P3 remains independently
 ready from the current-preferences foundation.
 
+P8-PREF-5 activates the credential-free manual HTTP CONNECT subset of that
+model. Enabled MediaWiki, website, and Forvo adapters receive a request-local
+Qt HTTP proxy; enabled raw-TCP DICT sources establish a private bounded CONNECT
+tunnel with the same candidate. Disabled mode remains direct. The DICT
+handshake shares its request deadline and cancellation polling with the
+protocol, maps proxy authentication and transport failures deterministically,
+and redacts endpoint and credential data. System, SOCKS5, HTTP GET, WebEngine,
+external-program, and application-global proxy behavior remain excluded.
+
 The bounded T3c increment adds `open_new_tabs_after_current` (default false)
 and `open_new_tabs_in_background` (default true), migrated from their exact
 legacy XML names. New tabs append or insert after the active core tab; default

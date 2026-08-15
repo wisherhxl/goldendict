@@ -119,6 +119,99 @@ class DictServerFixture final {
     DictServerThread thread_;
 };
 
+class ConnectProxyThread final : public QThread {
+   public:
+    void WaitUntilReady() { ready_.acquire(); }
+
+    unsigned short Port() const { return port_; }
+
+   protected:
+    void run() override {
+        QTcpServer server;
+        connect(&server, &QTcpServer::newConnection, &server, [&server]() {
+            while (server.hasPendingConnections()) {
+                QTcpSocket* socket = server.nextPendingConnection();
+                connect(socket, &QTcpSocket::readyRead, socket, [socket]() {
+                    QByteArray input = socket->property("input").toByteArray();
+                    input += socket->readAll();
+                    if (!socket->property("tunnel").toBool()) {
+                        const qsizetype end = input.indexOf("\r\n\r\n");
+                        if (end < 0) {
+                            socket->setProperty("input", input);
+                            return;
+                        }
+                        const QByteArray headers = input.left(end + 4);
+                        input.remove(0, end + 4);
+                        if (!headers.contains("Proxy-Authorization: Basic "
+                                              "cHJveHk6c2VjcmV0\r\n")) {
+                            socket->write(
+                                "HTTP/1.1 407 Proxy Authentication "
+                                "Required\r\nContent-Length: 0\r\n\r\n");
+                            socket->disconnectFromHost();
+                            return;
+                        }
+                        socket->setProperty("tunnel", true);
+                        socket->write(
+                            "HTTP/1.1 200 Connection Established\r\n"
+                            "\r\n220 proxied fixture ready\r\n");
+                    }
+                    while (true) {
+                        const qsizetype end = input.indexOf("\r\n");
+                        if (end < 0) {
+                            break;
+                        }
+                        const QByteArray command = input.left(end);
+                        input.remove(0, end + 2);
+                        if (command == "CLIENT GoldenDict" ||
+                            command == "OPTION MIME") {
+                            socket->write("250 ok\r\n");
+                        } else if (command == "MATCH * prefix \"proxy\"") {
+                            socket->write(
+                                "152 1 matches found\r\n"
+                                "db \"proxied\"\r\n.\r\n250 ok\r\n");
+                        }
+                    }
+                    socket->setProperty("input", input);
+                });
+            }
+        });
+        if (server.listen(QHostAddress::LocalHost, 0)) {
+            port_ = static_cast<unsigned short>(server.serverPort());
+        }
+        ready_.release();
+        if (port_ != 0U) {
+            exec();
+        }
+    }
+
+   private:
+    QSemaphore ready_;
+    unsigned short port_ = 0U;
+};
+
+class ConnectProxyFixture final {
+   public:
+    ConnectProxyFixture() {
+        thread_.start();
+        thread_.WaitUntilReady();
+    }
+
+    ~ConnectProxyFixture() {
+        thread_.quit();
+        thread_.wait();
+    }
+
+    HttpRequest::Proxy Configuration(bool credentials = true) const {
+        return {"127.0.0.1", thread_.Port(),
+                credentials ? std::optional<HttpRequest::Credentials>(
+                                  HttpRequest::Credentials{"proxy", "secret"})
+                            : std::nullopt};
+    }
+
+   private:
+    ConnectProxyThread thread_;
+};
+
 template <typename Callback>
 void VerifyError(DictServerErrorCode expected, Callback&& callback) {
     try {
@@ -146,6 +239,7 @@ class DictServerSourceTest : public QObject {
     void FetchesSuggestionsAndDefinitions();
     void HandlesNoMatchesAndRejectsInvalidInputs();
     void RejectsMalformedResponsesAndCancellation();
+    void TunnelsThroughAuthenticatedConnectProxy();
 };
 
 void DictServerSourceTest::FetchesSuggestionsAndDefinitions() {
@@ -203,6 +297,28 @@ void DictServerSourceTest::RejectsMalformedResponsesAndCancellation() {
     const DictServerSource bounded(std::move(tiny_response));
     VerifyError(DictServerErrorCode::kResponseTooLarge,
                 [&]() { static_cast<void>(bounded.Suggest("Alpha", 1U)); });
+}
+
+void DictServerSourceTest::TunnelsThroughAuthenticatedConnectProxy() {
+    ConnectProxyFixture proxy;
+    DictServerOptions options;
+    options.host = "origin.invalid";
+    options.proxy = proxy.Configuration();
+    const DictServerSource source(options);
+    QCOMPARE(source.Suggest("proxy", 1U),
+             std::vector<std::string>({"proxied"}));
+
+    options.proxy = proxy.Configuration(false);
+    const DictServerSource unauthenticated(options);
+    try {
+        static_cast<void>(unauthenticated.Suggest("proxy", 1U));
+        QFAIL("Expected proxy authentication error");
+    } catch (const DictServerError& error) {
+        QCOMPARE(error.code(),
+                 DictServerErrorCode::kProxyAuthenticationRequired);
+        QVERIFY(!QByteArray(error.what()).contains("secret"));
+        QVERIFY(!QByteArray(error.what()).contains("origin.invalid"));
+    }
 }
 
 }  // namespace goldendict::network

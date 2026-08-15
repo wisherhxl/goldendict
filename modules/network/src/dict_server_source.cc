@@ -17,6 +17,7 @@ namespace {
 constexpr std::size_t kMaximumQueryBytes = 4096U;
 constexpr std::size_t kMaximumResults = 60U;
 constexpr std::size_t kMaximumLineBytes = 64U * 1024U;
+constexpr std::size_t kMaximumProxyHeaderBytes = 64U * 1024U;
 constexpr int kWaitSliceMilliseconds = 50;
 
 [[noreturn]] void InvalidResponse(const std::string& message) {
@@ -85,16 +86,24 @@ class DictConnection final {
                    const std::function<bool()>& is_cancelled)
         : options_(options), is_cancelled_(is_cancelled) {
         timer_.start();
-        socket_.connectToHost(QString::fromStdString(options.host),
-                              options.port);
+        const bool proxied = options.proxy.has_value();
+        socket_.connectToHost(QString::fromStdString(
+                                  proxied ? options.proxy->host : options.host),
+                              proxied ? options.proxy->port : options.port);
         while (socket_.state() != QAbstractSocket::ConnectedState) {
             CheckCancellation(is_cancelled_);
             const int wait = WaitInterval();
             if (!socket_.waitForConnected(wait) &&
                 socket_.state() != QAbstractSocket::ConnectingState) {
-                throw DictServerError(DictServerErrorCode::kTransport,
-                                      "DICT server connection failed");
+                throw DictServerError(
+                    proxied ? DictServerErrorCode::kProxyTransport
+                            : DictServerErrorCode::kTransport,
+                    proxied ? "DICT proxy connection failed"
+                            : "DICT server connection failed");
             }
+        }
+        if (proxied) {
+            EstablishProxyTunnel();
         }
         ExpectStatus(220);
         Write("CLIENT GoldenDict\r\n");
@@ -127,7 +136,7 @@ class DictConnection final {
     }
 
     QByteArray ReadLine() {
-        while (!socket_.canReadLine()) {
+        while (!proxy_buffer_.contains('\n') && !socket_.canReadLine()) {
             CheckCancellation(is_cancelled_);
             if (socket_.bytesAvailable() >
                 static_cast<qint64>(kMaximumLineBytes)) {
@@ -140,7 +149,15 @@ class DictConnection final {
                                       "DICT server closed the connection");
             }
         }
-        QByteArray line = socket_.readLine();
+        QByteArray line = std::move(proxy_buffer_);
+        proxy_buffer_.clear();
+        if (!line.contains('\n')) {
+            line += socket_.readLine();
+        } else {
+            const qsizetype end = line.indexOf('\n') + 1;
+            proxy_buffer_ = line.mid(end);
+            line.truncate(end);
+        }
         received_bytes_ += static_cast<std::size_t>(line.size());
         if (received_bytes_ > options_.maximum_response_bytes ||
             line.size() > static_cast<qsizetype>(kMaximumLineBytes)) {
@@ -172,6 +189,74 @@ class DictConnection final {
     }
 
    private:
+    void EstablishProxyTunnel() {
+        const QByteArray authority =
+            QByteArray::fromStdString(options_.host) + ":" +
+            QByteArray::number(static_cast<unsigned int>(options_.port));
+        QByteArray request = "CONNECT " + authority +
+                             " HTTP/1.1\r\nHost: " + authority +
+                             "\r\nProxy-Connection: Keep-Alive\r\n";
+        if (options_.proxy->credentials.has_value()) {
+            const auto& credentials = *options_.proxy->credentials;
+            const QByteArray token =
+                (QByteArray::fromStdString(credentials.username) + ":" +
+                 QByteArray::fromStdString(credentials.password))
+                    .toBase64();
+            request += "Proxy-Authorization: Basic " + token + "\r\n";
+        }
+        request += "\r\n";
+        if (request.size() > static_cast<qsizetype>(kMaximumProxyHeaderBytes) ||
+            socket_.write(request) != request.size()) {
+            throw DictServerError(DictServerErrorCode::kProxyTransport,
+                                  "DICT proxy request failed");
+        }
+        while (socket_.bytesToWrite() != 0) {
+            CheckCancellation(is_cancelled_);
+            if (!socket_.waitForBytesWritten(WaitInterval()) &&
+                socket_.error() != QAbstractSocket::UnknownSocketError) {
+                throw DictServerError(DictServerErrorCode::kProxyTransport,
+                                      "DICT proxy request failed");
+            }
+        }
+
+        QByteArray response;
+        while (!response.contains("\r\n\r\n")) {
+            CheckCancellation(is_cancelled_);
+            if (socket_.bytesAvailable() == 0 &&
+                !socket_.waitForReadyRead(WaitInterval()) &&
+                socket_.state() != QAbstractSocket::ConnectedState) {
+                throw DictServerError(DictServerErrorCode::kProxyTransport,
+                                      "DICT proxy closed the connection");
+            }
+            response += socket_.readAll();
+            if (response.size() >
+                static_cast<qsizetype>(kMaximumProxyHeaderBytes)) {
+                throw DictServerError(DictServerErrorCode::kProxyTransport,
+                                      "DICT proxy response is invalid");
+            }
+        }
+        const qsizetype header_end = response.indexOf("\r\n\r\n") + 4;
+        const QByteArray header = response.left(header_end);
+        proxy_buffer_ = response.mid(header_end);
+        const QByteArray status_line = header.left(header.indexOf("\r\n"));
+        const QList<QByteArray> parts = status_line.split(' ');
+        bool valid = false;
+        const int status = parts.size() >= 2 ? parts[1].toInt(&valid) : 0;
+        if (!status_line.startsWith("HTTP/1.") || !valid) {
+            throw DictServerError(DictServerErrorCode::kProxyTransport,
+                                  "DICT proxy response is invalid");
+        }
+        if (status == 407) {
+            throw DictServerError(
+                DictServerErrorCode::kProxyAuthenticationRequired,
+                "DICT proxy authentication is required");
+        }
+        if (status < 200 || status >= 300) {
+            throw DictServerError(DictServerErrorCode::kProxyTransport,
+                                  "DICT proxy rejected the connection");
+        }
+    }
+
     int WaitInterval() const {
         const qint64 remaining = options_.timeout.count() - timer_.elapsed();
         if (remaining <= 0) {
@@ -186,6 +271,7 @@ class DictConnection final {
     const std::function<bool()>& is_cancelled_;
     QTcpSocket socket_;
     QElapsedTimer timer_;
+    QByteArray proxy_buffer_;
     std::size_t received_bytes_ = 0U;
 };
 
@@ -267,6 +353,13 @@ DictServerSource::DictServerSource(DictServerOptions options)
         options_.maximum_response_bytes > 64U * 1024U * 1024U) {
         throw DictServerError(DictServerErrorCode::kInvalidConfiguration,
                               "DICT server configuration is invalid");
+    }
+    if (options_.proxy.has_value() &&
+        (options_.proxy->host.empty() || options_.proxy->host.size() > 253U ||
+         options_.proxy->host.find_first_of("\r\n\0") != std::string::npos ||
+         options_.proxy->port == 0U)) {
+        throw DictServerError(DictServerErrorCode::kInvalidConfiguration,
+                              "DICT proxy configuration is invalid");
     }
     static_cast<void>(DecodeUtf8(options_.host, "host",
                                  DictServerErrorCode::kInvalidConfiguration));

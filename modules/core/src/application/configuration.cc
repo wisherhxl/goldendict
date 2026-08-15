@@ -718,7 +718,8 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         throw std::runtime_error("Enumerated preference is invalid");
     }
     if (preferences.proxy_mode == ProxyMode::kManual &&
-        (preferences.proxy_host.empty() || preferences.proxy_port == 0U)) {
+        (preferences.proxy_host.empty() || preferences.proxy_port == 0U ||
+         preferences.proxy_host.find_first_of("\r\n") != std::string::npos)) {
         throw std::runtime_error("Manual proxy requires a host and port");
     }
     if (!std::isfinite(preferences.zoom_factor) ||

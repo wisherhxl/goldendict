@@ -11,7 +11,10 @@
 #include "goldendict/core/application.h"
 
 class QCheckBox;
+class QComboBox;
+class QGroupBox;
 class QLabel;
+class QLineEdit;
 class QSpinBox;
 
 class PreferencesDialog final : public QDialog {
@@ -47,6 +50,10 @@ class PreferencesDialog final : public QDialog {
     QCheckBox* ignore_diacritics_ = nullptr;
     QCheckBox* synonym_search_enabled_ = nullptr;
     QSpinBox* input_phrase_length_limit_ = nullptr;
+    QGroupBox* use_proxy_server_ = nullptr;
+    QComboBox* proxy_type_ = nullptr;
+    QLineEdit* proxy_host_ = nullptr;
+    QSpinBox* proxy_port_ = nullptr;
     QLabel* validation_error_ = nullptr;
 };
 

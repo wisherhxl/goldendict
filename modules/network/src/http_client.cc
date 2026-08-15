@@ -211,7 +211,9 @@ HttpResponse FetchHttp(const HttpRequest& request,
         if (status < 200 || status >= 300) {
             if (status == 0) {
                 throw HttpError(HttpErrorCode::kTransport,
-                                transport_message.toStdString());
+                                request.proxy.has_value()
+                                    ? "HTTP proxy transport failed"
+                                    : transport_message.toStdString());
             }
             throw HttpError(
                 HttpErrorCode::kHttpStatus,
@@ -219,7 +221,9 @@ HttpResponse FetchHttp(const HttpRequest& request,
         }
         if (transport_error != QNetworkReply::NoError) {
             throw HttpError(HttpErrorCode::kTransport,
-                            transport_message.toStdString());
+                            request.proxy.has_value()
+                                ? "HTTP proxy transport failed"
+                                : transport_message.toStdString());
         }
 
         return {status, url.toString(QUrl::FullyEncoded).toStdString(),

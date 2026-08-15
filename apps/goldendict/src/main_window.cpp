@@ -2092,6 +2092,95 @@ void MainWindow::RunOptionalPartsPreferencesSmokeCheck(
     completion(passed);
 }
 
+void MainWindow::RunProxyPreferencesSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || facade_ == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial = preferences_;
+    const auto session = facade_->ExportArticleTabSession();
+    const std::string state = CaptureMainWindowState();
+    bool passed = initial.proxy_mode == goldendict::core::ProxyMode::kDisabled;
+    const auto inspect = [&passed](PreferencesDialog& dialog, bool accept) {
+        auto* group =
+            dialog.findChild<QGroupBox*>(QStringLiteral("useProxyServer"));
+        auto* type = dialog.findChild<QComboBox*>(QStringLiteral("proxyType"));
+        auto* host = dialog.findChild<QLineEdit*>(QStringLiteral("proxyHost"));
+        auto* port = dialog.findChild<QSpinBox*>(QStringLiteral("proxyPort"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed =
+            passed && group != nullptr && type != nullptr && host != nullptr &&
+            port != nullptr && buttons != nullptr &&
+            group->title() == QStringLiteral("Use proxy server") &&
+            group->toolTip() == QStringLiteral(
+                                    "Enable if you wish to use a proxy server\n"
+                                    "for all program's network requests.") &&
+            type->count() == 1 &&
+            type->currentText() == QStringLiteral("HTTP Transp.");
+        if (group != nullptr)
+            group->setChecked(true);
+        if (host != nullptr)
+            host->setText(QStringLiteral("proxy.example"));
+        if (port != nullptr)
+            port->setValue(3128);
+        if (accept && buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        else
+            dialog.reject();
+        return dialog.result();
+    };
+    preferences_dialog_executor_ = [&inspect](PreferencesDialog& dialog) {
+        return inspect(dialog, false);
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial;
+
+    const auto callback = preferences_apply_callback_;
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("forced proxy recomposition failure");
+    };
+    preferences_dialog_executor_ = [&inspect,
+                                    &passed](PreferencesDialog& dialog) {
+        inspect(dialog, true);
+        auto* error = dialog.findChild<QLabel*>(
+            QStringLiteral("preferencesValidationError"));
+        passed = passed && dialog.result() != QDialog::Accepted &&
+                 error != nullptr && !error->isHidden();
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial;
+
+    preferences_apply_callback_ = callback;
+    preferences_dialog_executor_ = [&inspect](PreferencesDialog& dialog) {
+        return inspect(dialog, true);
+    };
+    preferences_action_->trigger();
+    preferences_dialog_executor_ = {};
+    preferences_apply_callback_ = callback;
+    passed =
+        passed &&
+        preferences_.proxy_mode == goldendict::core::ProxyMode::kManual &&
+        preferences_.proxy_type == goldendict::core::ProxyType::kHttpConnect &&
+        preferences_.proxy_host == "proxy.example" &&
+        preferences_.proxy_port == 3128U &&
+        facade_->ExportArticleTabSession() == session &&
+        CaptureMainWindowState() == state;
+    completion(passed);
+}
+
+void MainWindow::RunProxyPreferencesRestartSmokeCheck(
+    std::function<void(bool)> completion) {
+    completion(
+        preferences_.proxy_mode == goldendict::core::ProxyMode::kManual &&
+        preferences_.proxy_type == goldendict::core::ProxyType::kHttpConnect &&
+        preferences_.proxy_host == "proxy.example" &&
+        preferences_.proxy_port == 3128U);
+}
+
 void MainWindow::RunHideSingleTabPreferencesSmokeCheck(
     std::function<void(bool)> completion) {
     if (preferences_action_ == nullptr || facade_ == nullptr ||
