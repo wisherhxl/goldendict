@@ -32,6 +32,7 @@ class PreferencesDialog final : public QDialog {
     ApplyCallback apply_callback_;
     QCheckBox* open_after_current_ = nullptr;
     QCheckBox* open_in_background_ = nullptr;
+    QCheckBox* hide_single_tab_ = nullptr;
     QCheckBox* store_history_ = nullptr;
     QSpinBox* maximum_history_entries_ = nullptr;
     QCheckBox* confirm_favorites_deletion_ = nullptr;

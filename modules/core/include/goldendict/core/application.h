@@ -203,6 +203,7 @@ struct ApplicationPreferences {
     std::string addon_style;
     bool open_new_tabs_after_current = false;
     bool open_new_tabs_in_background = true;
+    bool hide_single_tab = false;
     bool hide_menubar = false;
     bool enable_tray_icon = true;
     bool start_to_tray = false;
@@ -278,8 +279,8 @@ struct ApplicationPreferences {
         return std::tie(
                    interface_language, help_language, display_style,
                    addon_style, open_new_tabs_after_current,
-                   open_new_tabs_in_background, hide_menubar, enable_tray_icon,
-                   start_to_tray, close_to_tray, auto_start,
+                   open_new_tabs_in_background, hide_single_tab, hide_menubar,
+                   enable_tray_icon, start_to_tray, close_to_tray, auto_start,
                    double_click_translates, select_word_by_single_click,
                    escape_hides_main_window, always_on_top, search_in_dock,
                    enable_main_window_hotkey, main_window_hotkey,
@@ -316,9 +317,9 @@ struct ApplicationPreferences {
                    other.interface_language, other.help_language,
                    other.display_style, other.addon_style,
                    other.open_new_tabs_after_current,
-                   other.open_new_tabs_in_background, other.hide_menubar,
-                   other.enable_tray_icon, other.start_to_tray,
-                   other.close_to_tray, other.auto_start,
+                   other.open_new_tabs_in_background, other.hide_single_tab,
+                   other.hide_menubar, other.enable_tray_icon,
+                   other.start_to_tray, other.close_to_tray, other.auto_start,
                    other.double_click_translates,
                    other.select_word_by_single_click,
                    other.escape_hides_main_window, other.always_on_top,

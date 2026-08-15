@@ -565,6 +565,10 @@ int Fail(const std::string& message) {
 }  // namespace
 
 int main() {
+    goldendict::core::ApplicationPreferences preferences;
+    if (preferences.hide_single_tab) {
+        return 1;
+    }
     try {
         goldendict::core::RuntimeRequestOptions runtime_options;
         goldendict::core::RuntimeDictionaryIdentity runtime_identity;

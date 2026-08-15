@@ -144,6 +144,7 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     article_tabs_->setTabsClosable(true);
     article_tabs_->setDocumentMode(true);
     article_tabs_->setMovable(false);
+    article_tabs_->setTabBarAutoHide(preferences_.hide_single_tab);
     article_tabs_->tabBar()->installEventFilter(this);
     article_tabs_->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
     auto* add_tab_button = new QToolButton(article_tabs_);
@@ -2070,6 +2071,118 @@ void MainWindow::RunOptionalPartsPreferencesSmokeCheck(
              facade_->ExportArticleTabSession() == initial_session &&
              CaptureMainWindowState() == initial_state &&
              centralWidget() != nullptr && article_tabs_->isVisible();
+    completion(passed);
+}
+
+void MainWindow::RunHideSingleTabPreferencesSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || facade_ == nullptr ||
+        article_tabs_->count() != 1) {
+        completion(false);
+        return;
+    }
+    const auto initial_preferences = preferences_;
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const std::string initial_state = CaptureMainWindowState();
+    bool passed = article_tabs_->tabBar()->isVisible() ==
+                  !initial_preferences.hide_single_tab;
+    const auto inspect = [&passed](PreferencesDialog& dialog, bool checked,
+                                   bool accept) {
+        auto* checkbox =
+            dialog.findChild<QCheckBox*>(QStringLiteral("hideSingleTab"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && checkbox != nullptr && buttons != nullptr &&
+                 checkbox->text() == QStringLiteral("Hide single tab") &&
+                 checkbox->toolTip() ==
+                     QStringLiteral(
+                         "Select this option if you don't want to see the main "
+                         "tab bar when only a single tab is opened.") &&
+                 checkbox->isChecked() == checked;
+        if (checkbox != nullptr)
+            checkbox->setChecked(accept || !checked);
+        if (accept && buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        else
+            dialog.reject();
+        return dialog.result();
+    };
+
+    preferences_dialog_executor_ =
+        [&inspect, initial_preferences](PreferencesDialog& dialog) {
+            return inspect(dialog, initial_preferences.hide_single_tab, false);
+        };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences &&
+             article_tabs_->tabBar()->isVisible() ==
+                 !initial_preferences.hide_single_tab;
+
+    const auto original_callback = preferences_apply_callback_;
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("forced hide single tab preferences failure");
+    };
+    preferences_dialog_executor_ =
+        [&passed, initial_preferences](PreferencesDialog& dialog) {
+            auto* checkbox =
+                dialog.findChild<QCheckBox*>(QStringLiteral("hideSingleTab"));
+            auto* buttons = dialog.findChild<QDialogButtonBox*>(
+                QStringLiteral("preferencesButtonBox"));
+            passed = passed && checkbox != nullptr && buttons != nullptr;
+            if (checkbox != nullptr)
+                checkbox->setChecked(!initial_preferences.hide_single_tab);
+            if (buttons != nullptr)
+                buttons->button(QDialogButtonBox::Ok)->click();
+            auto* error = dialog.findChild<QLabel*>(
+                QStringLiteral("preferencesValidationError"));
+            passed = passed && dialog.result() != QDialog::Accepted &&
+                     error != nullptr && !error->isHidden();
+            dialog.reject();
+            return dialog.result();
+        };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences &&
+             article_tabs_->tabBar()->isVisible() ==
+                 !initial_preferences.hide_single_tab;
+
+    preferences_apply_callback_ = original_callback;
+    preferences_dialog_executor_ =
+        [&inspect, initial_preferences](PreferencesDialog& dialog) {
+            return inspect(dialog, initial_preferences.hide_single_tab, true);
+        };
+    preferences_action_->trigger();
+    passed = passed && preferences_.hide_single_tab &&
+             !article_tabs_->tabBar()->isVisible();
+    CreateEmptyArticleTab(false);
+    passed = passed && article_tabs_->count() == 2 &&
+             article_tabs_->tabBar()->isVisible();
+    CloseArticleTab(1);
+    passed = passed && article_tabs_->count() == 1 &&
+             !article_tabs_->tabBar()->isVisible();
+
+    preferences_dialog_executor_ = {};
+    preferences_apply_callback_ = original_callback;
+    passed = passed && facade_->ExportArticleTabSession() == initial_session &&
+             CaptureMainWindowState() == initial_state;
+    completion(passed);
+}
+
+void MainWindow::RunHideSingleTabRestartSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (facade_ == nullptr || article_tabs_->count() != 1 ||
+        !preferences_.hide_single_tab || article_tabs_->tabBar()->isVisible()) {
+        completion(false);
+        return;
+    }
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const std::string initial_state = CaptureMainWindowState();
+    CreateEmptyArticleTab(false);
+    bool passed =
+        article_tabs_->count() == 2 && article_tabs_->tabBar()->isVisible();
+    CloseArticleTab(1);
+    passed = passed && article_tabs_->count() == 1 &&
+             !article_tabs_->tabBar()->isVisible() &&
+             facade_->ExportArticleTabSession() == initial_session &&
+             CaptureMainWindowState() == initial_state;
     completion(passed);
 }
 
@@ -4803,6 +4916,7 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
 void MainWindow::SetPreferences(
     const goldendict::core::ApplicationPreferences& preferences) {
     preferences_ = preferences;
+    article_tabs_->setTabBarAutoHide(preferences_.hide_single_tab);
     for (int index = 0; index < article_tabs_->count(); ++index) {
         auto* view =
             qobject_cast<QWebEngineView*>(article_tabs_->widget(index));

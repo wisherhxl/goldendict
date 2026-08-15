@@ -296,6 +296,7 @@ bool IsRecognizedPreference(std::string_view key) {
         "addonStyle",
         "newTabsOpenAfterCurrentOne",
         "newTabsOpenInBackground",
+        "hideSingleTab",
         "hideMenubar",
         "enableTrayIcon",
         "startToTray",
@@ -397,6 +398,7 @@ void ApplyPreference(ApplicationPreferences& p, std::string_view key,
     BOOL("hideMenubar", hide_menubar)
     BOOL("newTabsOpenAfterCurrentOne", open_new_tabs_after_current)
     BOOL("newTabsOpenInBackground", open_new_tabs_in_background)
+    BOOL("hideSingleTab", hide_single_tab)
     BOOL("enableTrayIcon", enable_tray_icon)
     BOOL("startToTray", start_to_tray)
     BOOL("closeToTray", close_to_tray)

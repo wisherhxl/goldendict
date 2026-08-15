@@ -597,6 +597,16 @@ change core tab ordering. Network behavior remains in the optional network
 module, and Phase 9 desktop, translation, help, audio, hotkey, scan, and
 credential policy is not pulled into Phase 8 through inert controls.
 
+The hide-single-tab leaf deliberately evolves the installed transport-neutral
+`ApplicationPreferences` DTO with a default-off boolean. Source consumers must
+recompile and binaries built against the previous structure layout are not ABI
+compatible; Conan's SCM recipe revision and resulting package revision identify
+the rebuilt package without changing the in-progress `1.6.0` product version.
+Core retains unified validation, current persistence, and strict legacy
+`hideSingleTab` migration. Widgets alone applies Qt tab-bar auto-hide, which
+changes visibility at one versus multiple tabs without changing tab identity,
+ordering, activation, session data, or saved layout.
+
 In particular, persisted network-cache fields do not establish runtime
 ownership. Current network requests use an ephemeral `QNetworkAccessManager`,
 while articles use the default `QWebEngineProfile`; neither is a configured,

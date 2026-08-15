@@ -43,8 +43,16 @@ PreferencesDialog::PreferencesDialog(
     open_after_current_->setObjectName(
         QStringLiteral("newTabsOpenAfterCurrentOne"));
     open_after_current_->setChecked(preferences.open_new_tabs_after_current);
+    hide_single_tab_ =
+        new QCheckBox(QStringLiteral("Hide single tab"), tab_group);
+    hide_single_tab_->setObjectName(QStringLiteral("hideSingleTab"));
+    hide_single_tab_->setToolTip(QStringLiteral(
+        "Select this option if you don't want to see the main tab bar when "
+        "only a single tab is opened."));
+    hide_single_tab_->setChecked(preferences.hide_single_tab);
     tab_layout->addWidget(open_in_background_);
     tab_layout->addWidget(open_after_current_);
+    tab_layout->addWidget(hide_single_tab_);
     general_layout->addWidget(tab_group);
 
     auto* history_group =
@@ -209,6 +217,7 @@ void PreferencesDialog::Apply() {
     auto candidate = preferences_;
     candidate.open_new_tabs_in_background = open_in_background_->isChecked();
     candidate.open_new_tabs_after_current = open_after_current_->isChecked();
+    candidate.hide_single_tab = hide_single_tab_->isChecked();
     candidate.store_history = store_history_->isChecked();
     candidate.maximum_history_entries =
         static_cast<std::uint32_t>(maximum_history_entries_->value());

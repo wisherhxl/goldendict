@@ -903,6 +903,9 @@ void ApplicationServiceTest::ApplicationPreferencesCompareByValue() {
     second.open_new_tabs_after_current = true;
     QVERIFY(first != second);
     first.open_new_tabs_after_current = true;
+    second.hide_single_tab = true;
+    QVERIFY(first != second);
+    first.hide_single_tab = true;
     second.confirm_favorites_deletion = false;
     QVERIFY(first != second);
     second.confirm_favorites_deletion = true;
@@ -921,6 +924,7 @@ void ApplicationServiceTest::
     preferences.display_style = "dark | high contrast";
     preferences.open_new_tabs_after_current = true;
     preferences.open_new_tabs_in_background = false;
+    preferences.hide_single_tab = true;
     preferences.enable_tray_icon = false;
     preferences.main_window_hotkey = "Alt+Space";
     preferences.scan_popup_modifiers = 0x021U;
@@ -957,6 +961,7 @@ void ApplicationServiceTest::
     QCOMPARE(actual.preferences.display_style, preferences.display_style);
     QCOMPARE(actual.preferences.open_new_tabs_after_current, true);
     QCOMPARE(actual.preferences.open_new_tabs_in_background, false);
+    QCOMPARE(actual.preferences.hide_single_tab, true);
     QCOMPARE(actual.preferences.enable_tray_icon, preferences.enable_tray_icon);
     QCOMPARE(actual.preferences.scan_popup_modifiers,
              preferences.scan_popup_modifiers);
@@ -994,6 +999,7 @@ void ApplicationServiceTest::
     QCOMPARE(older.preferences.enable_tray_icon, true);
     QCOMPARE(older.preferences.open_new_tabs_after_current, false);
     QCOMPARE(older.preferences.open_new_tabs_in_background, true);
+    QCOMPARE(older.preferences.hide_single_tab, false);
     QCOMPARE(older.preferences.zoom_factor, 1.0);
     QCOMPARE(older.preferences.maximum_history_entries, std::uint32_t{500});
     QCOMPARE(older.preferences.confirm_favorites_deletion, true);
@@ -1129,6 +1135,8 @@ void ApplicationServiceTest::
     const std::vector<std::string> malformed = {
         "preference=enable_tray_icon|true\n",
         "preference=open_new_tabs_in_background|true\n",
+        "preference=hide_single_tab|true\n",
+        "preference=hide_single_tab|1\npreference=hide_single_tab|0\n",
         "preference=proxy_type|9\n",
         "preference=full_text_search_mode|3\n",
         std::string("preference=interface_language|bad\xc3\x28\n"),
@@ -1281,6 +1289,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<synonymSearchEnabled>0</synonymSearchEnabled>"
         "<newTabsOpenAfterCurrentOne>1</newTabsOpenAfterCurrentOne>"
         "<newTabsOpenInBackground>0</newTabsOpenInBackground>"
+        "<hideSingleTab>1</hideSingleTab>"
         "<fullTextSearch><searchMode>2</searchMode><matchCase>1</matchCase>"
         "<maxDistanceBetweenWords>9</maxDistanceBetweenWords>"
         "<disabledTypes>audio|images</disabledTypes>"
@@ -1321,6 +1330,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.addon_style, "contrast.css");
     QCOMPARE(preferences.open_new_tabs_after_current, true);
     QCOMPARE(preferences.open_new_tabs_in_background, false);
+    QCOMPARE(preferences.hide_single_tab, true);
     QCOMPARE(preferences.hide_menubar, true);
     QCOMPARE(preferences.enable_tray_icon, false);
     QCOMPARE(preferences.double_click_translates, false);
@@ -1584,6 +1594,8 @@ void ApplicationServiceTest::RejectsMalformedLegacyPreferencesAtomically() {
     std::vector<std::string> malformed = {
         "<enableTrayIcon>true</enableTrayIcon>",
         "<newTabsOpenAfterCurrentOne>true</newTabsOpenAfterCurrentOne>",
+        "<hideSingleTab>true</hideSingleTab>",
+        "<hideSingleTab>1</hideSingleTab><hideSingleTab>0</hideSingleTab>",
         "<zoomFactor>nan</zoomFactor>",
         "<wordsZoomLevel>2x</wordsZoomLevel>",
         "<scanPopupModifiers>65535</scanPopupModifiers>",

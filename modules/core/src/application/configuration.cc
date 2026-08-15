@@ -141,6 +141,7 @@ void SetPreference(ApplicationPreferences& preferences, std::string_view name,
     BOOL_PREFERENCE("hide_menubar", hide_menubar)
     BOOL_PREFERENCE("open_new_tabs_after_current", open_new_tabs_after_current)
     BOOL_PREFERENCE("open_new_tabs_in_background", open_new_tabs_in_background)
+    BOOL_PREFERENCE("hide_single_tab", hide_single_tab)
     BOOL_PREFERENCE("enable_tray_icon", enable_tray_icon)
     BOOL_PREFERENCE("start_to_tray", start_to_tray)
     BOOL_PREFERENCE("close_to_tray", close_to_tray)
@@ -1385,6 +1386,7 @@ void SaveConfiguration(const std::string& configuration_path,
     APPEND_STRING("addon_style", addon_style);
     APPEND_BOOL("open_new_tabs_after_current", open_new_tabs_after_current);
     APPEND_BOOL("open_new_tabs_in_background", open_new_tabs_in_background);
+    APPEND_BOOL("hide_single_tab", hide_single_tab);
     APPEND_BOOL("hide_menubar", hide_menubar);
     APPEND_BOOL("enable_tray_icon", enable_tray_icon);
     APPEND_BOOL("start_to_tray", start_to_tray);

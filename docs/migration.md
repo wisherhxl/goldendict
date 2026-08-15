@@ -948,15 +948,17 @@ backed and acceptance-covered.
 
 The dependency-ordered ready graph is:
 
-1. `P8-PREF-1 General/Tabs — Hide single tab` adds the missing bounded boolean,
-   default/current persistence, strict `hideSingleTab` migration, pinned
-   checkbox, and Qt tab-bar auto-hide through the existing complete-candidate
-   transaction. It must preserve active-tab identity, ordering, session,
-   layout, and unrelated preferences across cancel, failed apply, success, and
-   restart. Configuration migration/round-trip tests and an offscreen one-tab,
-   multi-tab, transaction, and restart smoke are required. This is the exact
-   next Phase 8 Preferences leaf.
-2. `P8-PREF-2 General/Tabs — MRU Ctrl-Tab order` follows P8-PREF-1 in task
+1. `P8-PREF-1 General/Tabs — Hide single tab` is complete. The installed
+   transport-neutral preferences DTO now carries the default-off boolean, with
+   canonical current persistence, strict `hideSingleTab` migration, the pinned
+   checkbox, and Widgets-owned Qt tab-bar auto-hide through the existing atomic
+   complete-candidate transaction. Configuration and offscreen transaction,
+   one/multiple-tab, and restart coverage preserve active identity, ordering,
+   session, layout, and unrelated preferences. This deliberate DTO layout
+   evolution requires installed C++ consumers to rebuild; the unchanged 1.6.0
+   version is distinguished by Conan SCM recipe and package revisions.
+2. `P8-PREF-2 General/Tabs — MRU Ctrl-Tab order` is the exact next Phase 8
+   Preferences leaf and follows P8-PREF-1 in task
    order and uses the existing stable tab IDs and lifecycle. It adds the
    missing bounded boolean/default/migration and pinned checkbox, while Widgets
    owns a bounded MRU identity list and never reorders the core or persisted
