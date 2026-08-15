@@ -24,6 +24,9 @@ void BglReaderTest::ReadsMetadataEntriesAliasesAndResources() {
     QCOMPARE(reader.metadata().target_language, "de");
     QCOMPARE(reader.LookupExact("EXAMPLE").size(), std::size_t{1});
     QCOMPARE(reader.LookupExact("alias").size(), std::size_t{1});
+    QCOMPARE(reader.FindHeadwordsForSynonym("alias", 20U),
+             std::vector<std::string>{"example"});
+    QVERIFY(reader.FindHeadwordsForSynonym("example", 20U).empty());
     QCOMPARE(reader.SuggestPrefix("exa").front(), "example");
     QVERIFY(reader.LookupPrefix("exa", 0U).empty());
     QVERIFY(reader.SuggestPrefix("exa", 0U).empty());

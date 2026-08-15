@@ -131,6 +131,7 @@ class MainWindow final : public QMainWindow {
     void RunFavoritesPreferencesSmokeCheck(
         std::function<void(bool)> completion);
     void RunArticlesPreferencesSmokeCheck(std::function<void(bool)> completion);
+    void RunSynonymPreferencesSmokeCheck(std::function<void(bool)> completion);
     void RunFavoritesSmokeCheck(std::function<void(bool)> completion);
     void RunFavoritesCrossFolderMoveSmokeCheck(
         std::function<void(bool)> completion);

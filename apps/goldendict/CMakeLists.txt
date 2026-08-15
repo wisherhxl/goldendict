@@ -59,6 +59,13 @@ set_tests_properties(goldendict_articles_preferences_smoke PROPERTIES
     "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/articles-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/articles-preferences-test-home/cache"
   TIMEOUT 20)
 
+add_test(NAME goldendict_synonym_preferences_smoke
+  COMMAND $<TARGET_FILE:goldendict> --synonym-preferences-smoke)
+set_tests_properties(goldendict_synonym_preferences_smoke PROPERTIES
+  ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/synonym-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/synonym-preferences-test-home/cache"
+  TIMEOUT 20)
+
 add_test(NAME goldendict_view_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --view-menu-smoke)
 set_tests_properties(goldendict_view_menu_smoke PROPERTIES

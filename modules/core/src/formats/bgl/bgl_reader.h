@@ -64,6 +64,9 @@ class Reader final {
         std::string_view prefix,
         std::size_t limit = std::numeric_limits<std::size_t>::max(),
         const std::function<void()>& checkpoint = {}) const;
+    std::vector<std::string> FindHeadwordsForSynonym(
+        std::string_view headword, std::size_t result_limit,
+        const std::function<void()>& checkpoint = {}) const;
     std::pair<std::vector<std::string>, bool> EnumerateHeadwords(
         std::size_t offset, std::size_t result_limit, std::size_t byte_limit,
         const std::function<void()>& checkpoint = {}) const;
@@ -73,6 +76,7 @@ class Reader final {
     struct Record {
         std::string word;
         std::string folded;
+        std::string primary_headword;
         std::size_t article = 0;
     };
 

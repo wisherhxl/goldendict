@@ -21,6 +21,7 @@ class StardictReaderTest : public QObject {
     void MatchesFoldEquivalentHeadwords();
     void RanksFoldedPrefixMatches();
     void SuggestsDistinctRankedHeadwords();
+    void ReadsSynonymsAndPreservesPrimaryHeadwordsInGeneratedIndex();
     void InvokesLookupCheckpoints();
     void ReturnsNoArticleForMissingHeadword();
     void RejectsInvalidInfoSignature();
@@ -88,6 +89,29 @@ void StardictReaderTest::MatchesFoldEquivalentHeadwords() {
     QCOMPARE(cjk.size(), std::size_t{1});
     QCOMPARE(cjk.front().data, "cjk");
     QVERIFY(reader.LookupExact("!!!").empty());
+}
+
+void StardictReaderTest::
+    ReadsSynonymsAndPreservesPrimaryHeadwordsInGeneratedIndex() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path = test::WriteStardictFixture(
+        root, {{"primary", "definition"}, {"other", "other definition"}});
+    test::WriteStardictSynonyms(info_path, {{"alias", 0U}});
+    const auto generated_index = root / "fixture.gdindex";
+
+    const Reader created = Reader::Open(info_path, generated_index);
+    QCOMPARE(created.index_state(), IndexState::kCreated);
+    QCOMPARE(created.LookupExact("alias").front().data, "definition");
+    QCOMPARE(created.FindHeadwordsForSynonym("alias", 20U),
+             std::vector<std::string>{"primary"});
+    QCOMPARE(created.SuggestPrefix("ali").front(), "alias");
+
+    const Reader reused = Reader::Open(info_path, generated_index);
+    QCOMPARE(reused.index_state(), IndexState::kReused);
+    QCOMPARE(reused.FindHeadwordsForSynonym("alias", 20U),
+             std::vector<std::string>{"primary"});
 }
 
 void StardictReaderTest::RanksFoldedPrefixMatches() {

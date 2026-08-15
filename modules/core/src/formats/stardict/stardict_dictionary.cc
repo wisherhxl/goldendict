@@ -126,6 +126,17 @@ std::vector<std::string> Dictionary::SuggestPrefix(
     return suggestions;
 }
 
+std::vector<std::string> Dictionary::FindHeadwordsForSynonym(
+    std::string_view headword,
+    const dictionary::RequestOptions& options) const {
+    dictionary::CheckRequest(options);
+    auto result = reader_.FindHeadwordsForSynonym(
+        headword, options.result_limit,
+        [&options]() { dictionary::CheckRequest(options); });
+    dictionary::CheckRequest(options);
+    return result;
+}
+
 dictionary::HeadwordPage Dictionary::EnumerateHeadwords(
     std::size_t offset, const dictionary::RequestOptions& options) const {
     dictionary::CheckRequest(options);

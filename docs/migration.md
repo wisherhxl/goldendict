@@ -917,6 +917,16 @@ position, and successful refreshes retain the moved selection and folder
 expansion state. The current and legacy-compatible file formats are unchanged;
 copy and multi-selection behavior remain outside this increment.
 
+The next independent Phase 8 Preferences leaf restores General/Extra search
+via synonyms. The existing default-on persisted preference now controls an
+exact-lookup-only core workflow: private StarDict `.syn`, Babylon BGL
+alternate, and GLS secondary-headword mappings resolve primary forms, which
+are searched across the already participating dictionaries without rewriting
+the original query or changing suggestions and other match modes. The private
+StarDict cache format advances and older implementation-generated caches
+rebuild automatically. The next independent Preferences leaf is
+General/Expand optional parts.
+
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.
 - Provide a compatible migration path for legacy configuration, dictionary

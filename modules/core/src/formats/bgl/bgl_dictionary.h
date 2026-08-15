@@ -14,7 +14,8 @@
 
 namespace goldendict::core::formats::bgl {
 
-class Dictionary final : public dictionary::Backend {
+class Dictionary final : public dictionary::Backend,
+                         public dictionary::SynonymBackend {
    public:
     static Dictionary Open(std::string id,
                            const std::filesystem::path& dictionary_path);
@@ -31,6 +32,9 @@ class Dictionary final : public dictionary::Backend {
         const dictionary::RequestOptions& options = {}) const override;
     std::vector<std::string> SuggestPrefix(
         std::string_view prefix,
+        const dictionary::RequestOptions& options = {}) const override;
+    std::vector<std::string> FindHeadwordsForSynonym(
+        std::string_view headword,
         const dictionary::RequestOptions& options = {}) const override;
     dictionary::HeadwordPage EnumerateHeadwords(
         std::size_t offset,

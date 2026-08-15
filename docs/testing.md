@@ -410,6 +410,14 @@ public runtime capability/request contract. Unsupported runtime sources report
 an explicit per-source error. Prefix suggestions and headword enumeration are
 unchanged. The offscreen Preferences smoke covers cancel, failed apply,
 successful persistence, session preservation, and the backed checkbox.
+The General/Extra search via synonyms extension pins the legacy default-on
+checkbox, tooltip, cancel/failure/success transaction, and persistence. Core
+fixtures verify disabled same-dictionary alias behavior, enabled
+synonym-to-primary expansion across participating dictionaries, result
+deduplication, original requested text, and unchanged suggestions. StarDict
+reader coverage validates bounded `.syn` parsing and primary mappings across
+private generated-index creation and reuse; malformed or stale source data
+cannot be silently accepted.
 `goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
 History and its sole backed legacy `searchInPageAction`, including exact text,
 role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and

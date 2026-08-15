@@ -103,6 +103,21 @@ std::vector<std::string> Dictionary::SuggestPrefix(
     }
 }
 
+std::vector<std::string> Dictionary::FindHeadwordsForSynonym(
+    std::string_view headword,
+    const dictionary::RequestOptions& options) const {
+    dictionary::CheckRequest(options);
+    try {
+        auto result = reader_.FindHeadwordsForSynonym(
+            headword, options.result_limit,
+            [&options]() { dictionary::CheckRequest(options); });
+        dictionary::CheckRequest(options);
+        return result;
+    } catch (const Error& error) {
+        throw TranslateError(error);
+    }
+}
+
 dictionary::HeadwordPage Dictionary::EnumerateHeadwords(
     std::size_t offset, const dictionary::RequestOptions& options) const {
     dictionary::CheckRequest(options);

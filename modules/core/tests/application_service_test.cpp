@@ -149,6 +149,7 @@ class ApplicationServiceTest : public QObject {
     void EnumeratesStarDictHeadwordsWithStableCursors();
     void ExportsCompleteHeadwordListsAtomically();
     void ReturnsCanonicalFoldedMatchInformation();
+    void AppliesLegacySynonymSearchWithoutChangingSuggestions();
     void EnforcesRuntimeDiacriticCapability();
     void ReturnsRankedPrefixMatches();
     void ReturnsLightweightHeadwordSuggestions();
@@ -1918,6 +1919,56 @@ void ApplicationServiceTest::ReturnsCanonicalFoldedMatchInformation() {
     QCOMPARE(response.entries.size(), std::size_t{1});
     QCOMPARE(response.entries.front().match.requested_headword, "CAFE AU LAIT");
     QCOMPARE(response.entries.front().match.normalized_headword, "cafeaulait");
+}
+
+void ApplicationServiceTest::
+    AppliesLegacySynonymSearchWithoutChangingSuggestions() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    std::filesystem::create_directories(root / "synonyms");
+    std::filesystem::create_directories(root / "primary");
+    const auto synonym_info = test::WriteStardictFixture(
+        root / "synonyms", {{"primary", "synonym source article"}});
+    test::WriteStardictSynonyms(synonym_info, {{"alias", 0U}});
+    test::WriteStardictFixture(root / "primary",
+                               {{"primary", "cross-dictionary article"}});
+
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    configuration.preferences.synonym_search_enabled = false;
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery lookup;
+    lookup.text = "alias";
+    const auto disabled = service->Lookup(lookup);
+    QVERIFY(disabled.errors.empty());
+    QCOMPARE(disabled.entries.size(), std::size_t{1});
+    QCOMPARE(disabled.entries.front().article.plain_text,
+             "synonym source article");
+
+    SuggestionQuery suggestion;
+    suggestion.text = "ali";
+    const auto disabled_suggestions = service->Suggest(suggestion);
+    QCOMPARE(disabled_suggestions.suggestions.size(), std::size_t{1});
+    QCOMPARE(disabled_suggestions.suggestions.front().headword, "alias");
+
+    configuration.preferences.synonym_search_enabled = true;
+    service = CreateDictionaryService(configuration);
+    const auto enabled = service->Lookup(lookup);
+    QVERIFY(enabled.errors.empty());
+    QCOMPARE(enabled.entries.size(), std::size_t{2});
+    std::set<std::string> articles;
+    for (const auto& entry : enabled.entries) {
+        articles.insert(entry.article.plain_text);
+        QCOMPARE(entry.match.requested_headword, "alias");
+        QCOMPARE(entry.match.mode, MatchMode::kExact);
+    }
+    QCOMPARE(articles, (std::set<std::string>{"cross-dictionary article",
+                                              "synonym source article"}));
+
+    const auto enabled_suggestions = service->Suggest(suggestion);
+    QCOMPARE(enabled_suggestions.suggestions.size(), std::size_t{1});
+    QCOMPARE(enabled_suggestions.suggestions.front().headword, "alias");
 }
 
 void ApplicationServiceTest::EnforcesRuntimeDiacriticCapability() {

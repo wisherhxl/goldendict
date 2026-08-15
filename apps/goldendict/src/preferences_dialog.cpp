@@ -165,6 +165,15 @@ PreferencesDialog::PreferencesDialog(
         "Turn this option on to ignore diacritics while searching articles"));
     ignore_diacritics_->setChecked(preferences.ignore_diacritics);
     general_layout->addWidget(ignore_diacritics_);
+    synonym_search_enabled_ = new QCheckBox(
+        QStringLiteral("Extra search via synonyms"), general_page);
+    synonym_search_enabled_->setObjectName(
+        QStringLiteral("synonymSearchEnabled"));
+    synonym_search_enabled_->setToolTip(QStringLiteral(
+        "Turn this option on to enable extra articles search via synonym "
+        "lists from Stardict, Babylon and GLS dictionaries"));
+    synonym_search_enabled_->setChecked(preferences.synonym_search_enabled);
+    general_layout->addWidget(synonym_search_enabled_);
     general_layout->addStretch();
     tabs->addTab(general_page, QStringLiteral("General"));
     layout->addWidget(tabs);
@@ -203,6 +212,7 @@ void PreferencesDialog::Apply() {
     candidate.input_phrase_length_limit =
         static_cast<std::uint32_t>(input_phrase_length_limit_->value());
     candidate.ignore_diacritics = ignore_diacritics_->isChecked();
+    candidate.synonym_search_enabled = synonym_search_enabled_->isChecked();
     const QString error = apply_callback_(candidate);
     if (!error.isEmpty()) {
         validation_error_->setText(error);

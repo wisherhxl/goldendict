@@ -79,6 +79,25 @@ inline std::filesystem::path WriteStardictResource(
     return path;
 }
 
+inline void WriteStardictSynonyms(
+    const std::filesystem::path& info_path,
+    const std::vector<std::pair<std::string, std::uint32_t>>& synonyms) {
+    std::string data;
+    for (const auto& [headword, article_index] : synonyms) {
+        data.append(headword);
+        data.push_back('\0');
+        AppendBigEndian32(article_index, &data);
+    }
+    auto synonym_path = info_path;
+    synonym_path.replace_extension(".syn");
+    WriteBinaryFile(synonym_path, data);
+    std::ifstream input(info_path, std::ios::binary);
+    std::string info((std::istreambuf_iterator<char>(input)),
+                     std::istreambuf_iterator<char>());
+    info += "synwordcount=" + std::to_string(synonyms.size()) + "\n";
+    WriteBinaryFile(info_path, info);
+}
+
 inline std::filesystem::path CompressStardictDictionary(
     const std::filesystem::path& info_path) {
     auto dictionary_path = info_path;

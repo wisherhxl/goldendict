@@ -1907,6 +1907,85 @@ void MainWindow::RunArticlesPreferencesSmokeCheck(
     completion(passed);
 }
 
+void MainWindow::RunSynonymPreferencesSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || facade_ == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial_preferences = preferences_;
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const std::string initial_state = CaptureMainWindowState();
+    bool passed = true;
+
+    preferences_dialog_executor_ = [&passed, initial_preferences](
+                                       PreferencesDialog& dialog) {
+        auto* checkbox = dialog.findChild<QCheckBox*>(
+            QStringLiteral("synonymSearchEnabled"));
+        passed =
+            passed && checkbox != nullptr &&
+            checkbox->text() == QStringLiteral("Extra search via synonyms") &&
+            checkbox->toolTip() ==
+                QStringLiteral(
+                    "Turn this option on to enable extra articles search "
+                    "via synonym lists from Stardict, Babylon and GLS "
+                    "dictionaries") &&
+            checkbox->isChecked() == initial_preferences.synonym_search_enabled;
+        if (checkbox != nullptr)
+            checkbox->setChecked(!initial_preferences.synonym_search_enabled);
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences;
+
+    const auto original_callback = preferences_apply_callback_;
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("forced synonym preferences failure");
+    };
+    preferences_dialog_executor_ = [&passed](PreferencesDialog& dialog) {
+        auto* checkbox = dialog.findChild<QCheckBox*>(
+            QStringLiteral("synonymSearchEnabled"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && checkbox != nullptr && buttons != nullptr;
+        if (checkbox != nullptr)
+            checkbox->setChecked(false);
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        auto* error = dialog.findChild<QLabel*>(
+            QStringLiteral("preferencesValidationError"));
+        passed = passed && dialog.result() != QDialog::Accepted &&
+                 error != nullptr && !error->isHidden();
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences;
+
+    preferences_apply_callback_ = original_callback;
+    preferences_dialog_executor_ = [&passed](PreferencesDialog& dialog) {
+        auto* checkbox = dialog.findChild<QCheckBox*>(
+            QStringLiteral("synonymSearchEnabled"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && checkbox != nullptr && buttons != nullptr;
+        if (checkbox != nullptr)
+            checkbox->setChecked(false);
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        passed = passed && dialog.result() == QDialog::Accepted;
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    preferences_dialog_executor_ = {};
+    preferences_apply_callback_ = original_callback;
+    passed = passed && !preferences_.synonym_search_enabled &&
+             facade_->ExportArticleTabSession() == initial_session &&
+             CaptureMainWindowState() == initial_state;
+    completion(passed);
+}
+
 void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
     auto* search_menu = findChild<QMenu*>(QStringLiteral("menuSearch"));
     if (search_menu == nullptr || search_in_page_action_ == nullptr ||

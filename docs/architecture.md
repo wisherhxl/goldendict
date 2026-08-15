@@ -567,5 +567,16 @@ execute embedded active content or interpret article text as instructions.
 Transport adapters apply authentication, authorization, rate limits, request
 budgets, logging, and protocol serialization outside `goldendict_core`.
 
+The General synonym-search preference remains part of the core-owned atomic
+preferences candidate. For exact lookup only, core may ask the private
+StarDict, Babylon BGL, and GLS adapters to resolve a synonym to its primary
+headword and then applies the normal group/dictionary filters, ordering,
+bounds, cancellation, and deadline while searching that primary across the
+participating dictionaries. Runtime sources and other formats are unchanged;
+suggestions, prefix/pattern lookup, enumeration, and the original query stored
+in matches, tabs, history, and sessions are not rewritten. StarDict `.syn`
+records are validated as source data and cached in a private versioned index;
+older implementation-generated caches rebuild automatically.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

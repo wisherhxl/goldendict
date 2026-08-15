@@ -362,6 +362,7 @@ Reader Reader::Open(const std::filesystem::path& path) {
                            source_charset, path, "alternate"));
                 pos += length;
             }
+        const std::string primary_headword = words.front();
         for (auto& word : words) {
             if (word.empty())
                 continue;
@@ -369,8 +370,9 @@ Reader Reader::Open(const std::filesystem::path& path) {
                 Throw(ErrorCode::kInvalidDictionary, path,
                       "BGL contains too many headwords");
             try {
-                reader.records_.push_back(
-                    {word, foundation::FoldForLookup(word), article_index});
+                reader.records_.push_back({word,
+                                           foundation::FoldForLookup(word),
+                                           primary_headword, article_index});
             } catch (const foundation::TextFoldingError& error) {
                 Throw(ErrorCode::kInvalidDictionary, path,
                       "Invalid BGL headword: " + std::string(error.what()));
@@ -472,6 +474,29 @@ std::vector<std::string> Reader::SuggestPrefix(
                 break;
         }
     return out;
+}
+
+std::vector<std::string> Reader::FindHeadwordsForSynonym(
+    std::string_view headword, std::size_t result_limit,
+    const std::function<void()>& checkpoint) const {
+    const std::string folded = foundation::FoldForLookup(headword);
+    std::vector<std::string> result;
+    if (result_limit == 0U)
+        return result;
+    std::unordered_set<std::string> seen;
+    std::size_t number = 0U;
+    for (const auto& record : records_) {
+        if (checkpoint && (number++ % 1024U) == 0U)
+            checkpoint();
+        if (record.folded == folded &&
+            foundation::FoldForLookup(record.primary_headword) != folded &&
+            seen.insert(record.primary_headword).second) {
+            result.push_back(record.primary_headword);
+            if (result.size() == result_limit)
+                break;
+        }
+    }
+    return result;
 }
 
 const std::string* Reader::Resource(std::string_view id) const {

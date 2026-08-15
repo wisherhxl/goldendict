@@ -26,7 +26,7 @@ constexpr std::string_view kInfoSignature = "StarDict's dict ifo file";
 constexpr std::uintmax_t kMaximumIndexSize = 256U * 1024U * 1024U;
 constexpr std::uintmax_t kMaximumDictionarySize =
     static_cast<std::uintmax_t>(2U) * 1024U * 1024U * 1024U;
-constexpr std::string_view kGeneratedIndexFormat = "stardict-records-v1";
+constexpr std::string_view kGeneratedIndexFormat = "stardict-records-v2";
 
 bool HasPrefix(std::string_view text, std::string_view prefix) noexcept {
     return text.size() >= prefix.size() &&
@@ -250,8 +250,16 @@ Reader Reader::Open(
         }
         dictionary_path += ".dz";
     }
-    const std::vector<std::filesystem::path> source_paths = {
-        info_path, index_path, dictionary_path};
+    auto synonym_path = info_path;
+    synonym_path.replace_extension(".syn");
+    std::vector<std::filesystem::path> source_paths = {info_path, index_path,
+                                                       dictionary_path};
+    if (std::filesystem::exists(synonym_path, filesystem_error)) {
+        source_paths.push_back(synonym_path);
+    } else if (filesystem_error) {
+        Throw(ErrorCode::kMissingFile, synonym_path,
+              "Cannot inspect optional synonym file");
+    }
     std::optional<dictionary::SourceSnapshot> initial_sources;
     if (generated_index_path.has_value()) {
         try {
@@ -326,7 +334,8 @@ Reader Reader::Open(
             : ReadFile(dictionary_path, ErrorCode::kInvalidDictionary,
                        kMaximumDictionarySize);
 
-    const auto parse_source_index = [&reader, &index_path]() {
+    const auto parse_source_index = [&reader, &index_path, &synonym_path,
+                                     &fields, &info_path]() {
         const std::string index_data =
             ReadFile(index_path, ErrorCode::kInvalidIndex, kMaximumIndexSize);
         if (reader.metadata_.index_file_size != index_data.size()) {
@@ -345,6 +354,7 @@ Reader Reader::Open(
             }
             IndexRecord record;
             record.headword = index_data.substr(cursor, terminator - cursor);
+            record.primary_headword = record.headword;
             record.article_offset =
                 ReadBigEndian32(index_data, terminator + 1U);
             record.article_size = ReadBigEndian32(index_data, terminator + 5U);
@@ -355,6 +365,46 @@ Reader Reader::Open(
             Throw(ErrorCode::kInvalidIndex, index_path,
                   "Index record count does not match wordcount");
         }
+        if (std::filesystem::exists(synonym_path)) {
+            const std::string synonym_data = ReadFile(
+                synonym_path, ErrorCode::kInvalidIndex, kMaximumIndexSize);
+            std::size_t synonym_cursor = 0U;
+            std::size_t synonym_count = 0U;
+            while (synonym_cursor < synonym_data.size()) {
+                const auto terminator = synonym_data.find('\0', synonym_cursor);
+                if (terminator == std::string::npos ||
+                    terminator == synonym_cursor ||
+                    synonym_data.size() - terminator - 1U < 4U) {
+                    Throw(ErrorCode::kInvalidIndex, synonym_path,
+                          "Truncated or malformed synonym record");
+                }
+                const auto article_index =
+                    ReadBigEndian32(synonym_data, terminator + 1U);
+                if (article_index >= reader.metadata_.word_count) {
+                    Throw(ErrorCode::kInvalidIndex, synonym_path,
+                          "Synonym references an invalid index record");
+                }
+                IndexRecord record = records[article_index];
+                record.headword = synonym_data.substr(
+                    synonym_cursor, terminator - synonym_cursor);
+                records.push_back(std::move(record));
+                synonym_cursor = terminator + 5U;
+                ++synonym_count;
+            }
+            const auto declared = fields.find("synwordcount");
+            if (declared == fields.end() ||
+                ParseUnsigned(declared->second, info_path, "synwordcount") !=
+                    synonym_count) {
+                Throw(ErrorCode::kInvalidInfo, info_path,
+                      "Synonym count does not match synwordcount");
+            }
+        } else if (const auto declared = fields.find("synwordcount");
+                   declared != fields.end() &&
+                   ParseUnsigned(declared->second, info_path, "synwordcount") !=
+                       0U) {
+            Throw(ErrorCode::kMissingFile, synonym_path,
+                  "Declared synonym file is missing");
+        }
         return records;
     };
 
@@ -363,13 +413,19 @@ Reader Reader::Open(
         AppendBigEndian64(records.size(), &payload);
         for (const auto& record : records) {
             if (record.headword.size() >
-                std::numeric_limits<std::uint32_t>::max()) {
+                    std::numeric_limits<std::uint32_t>::max() ||
+                record.primary_headword.size() >
+                    std::numeric_limits<std::uint32_t>::max()) {
                 throw dictionary::GeneratedIndexError(
                     "StarDict headword exceeds the index size limit");
             }
             AppendBigEndian32(
                 static_cast<std::uint32_t>(record.headword.size()), &payload);
             payload.append(record.headword);
+            AppendBigEndian32(
+                static_cast<std::uint32_t>(record.primary_headword.size()),
+                &payload);
+            payload.append(record.primary_headword);
             AppendBigEndian32(record.article_offset, &payload);
             AppendBigEndian32(record.article_size, &payload);
         }
@@ -386,9 +442,9 @@ Reader Reader::Open(
         };
         require(0U, 8U);
         const auto record_count = ReadBigEndian64(payload, 0U);
-        if (record_count != reader.metadata_.word_count ||
+        if (record_count < reader.metadata_.word_count ||
             record_count > std::numeric_limits<std::size_t>::max() ||
-            record_count > (payload.size() - 8U) / 12U) {
+            record_count > (payload.size() - 8U) / 16U) {
             throw dictionary::GeneratedIndexError(
                 "Generated StarDict index has an invalid record count");
         }
@@ -399,10 +455,15 @@ Reader Reader::Open(
             require(cursor, 4U);
             const auto headword_size = ReadBigEndian32(payload, cursor);
             cursor += 4U;
-            require(cursor, static_cast<std::size_t>(headword_size) + 8U);
+            require(cursor, static_cast<std::size_t>(headword_size) + 4U);
             IndexRecord record;
             record.headword = payload.substr(cursor, headword_size);
             cursor += headword_size;
+            const auto primary_size = ReadBigEndian32(payload, cursor);
+            cursor += 4U;
+            require(cursor, static_cast<std::size_t>(primary_size) + 8U);
+            record.primary_headword = payload.substr(cursor, primary_size);
+            cursor += primary_size;
             record.article_offset = ReadBigEndian32(payload, cursor);
             record.article_size = ReadBigEndian32(payload, cursor + 4U);
             cursor += 8U;
@@ -576,6 +637,29 @@ std::vector<std::string> Reader::SuggestPrefix(
         }
     }
     return suggestions;
+}
+
+std::vector<std::string> Reader::FindHeadwordsForSynonym(
+    std::string_view headword, std::size_t result_limit,
+    const std::function<void()>& checkpoint) const {
+    const std::string folded = foundation::FoldForLookup(headword);
+    std::vector<std::string> result;
+    if (result_limit == 0U)
+        return result;
+    std::unordered_set<std::string> seen;
+    std::size_t number = 0U;
+    for (const auto& record : index_) {
+        if (checkpoint && (number++ % 1024U) == 0U)
+            checkpoint();
+        if (record.folded_headword == folded &&
+            foundation::FoldForLookup(record.primary_headword) != folded &&
+            seen.insert(record.primary_headword).second) {
+            result.push_back(record.primary_headword);
+            if (result.size() == result_limit)
+                break;
+        }
+    }
+    return result;
 }
 
 std::vector<const Reader::IndexRecord*> Reader::RankedPrefixMatches(

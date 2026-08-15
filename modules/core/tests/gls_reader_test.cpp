@@ -39,6 +39,9 @@ void GlsReaderTest::ReadsMetadataAliasesRankedMatchesAndHtml() {
     QVERIFY(exact.front().data.find("<b>drink</b>") != std::string::npos);
     QCOMPARE(prefix.size(), std::size_t{2});
     QCOMPARE(suggestions.front(), "Café");
+    QCOMPARE(reader.FindHeadwordsForSynonym("coffee", 20U),
+             std::vector<std::string>{"Café"});
+    QVERIFY(reader.FindHeadwordsForSynonym("Café", 20U).empty());
 }
 
 void GlsReaderTest::ReadsCompressedAndUtf16TextAndInvokesCheckpoints() {

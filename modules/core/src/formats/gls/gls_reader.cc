@@ -300,6 +300,7 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path) {
         const std::size_t article_index = reader.articles_.size();
         total_article_bytes += article.size();
         reader.articles_.push_back(std::move(article));
+        const std::string primary_headword = headwords.front();
         for (auto& headword : headwords) {
             if (reader.records_.size() == kMaximumRecords) {
                 Throw(ErrorCode::kInvalidDictionary, dictionary_path,
@@ -308,7 +309,7 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path) {
             try {
                 reader.records_.push_back({headword,
                                            foundation::FoldForLookup(headword),
-                                           article_index});
+                                           primary_headword, article_index});
             } catch (const foundation::TextFoldingError& error) {
                 Throw(
                     ErrorCode::kInvalidDictionary, dictionary_path,
@@ -399,6 +400,29 @@ std::vector<std::string> Reader::SuggestPrefix(
             if (result.size() == result_limit) {
                 break;
             }
+        }
+    }
+    return result;
+}
+
+std::vector<std::string> Reader::FindHeadwordsForSynonym(
+    std::string_view headword, std::size_t result_limit,
+    const std::function<void()>& checkpoint) const {
+    const std::string folded = foundation::FoldForLookup(headword);
+    std::vector<std::string> result;
+    if (result_limit == 0U)
+        return result;
+    std::unordered_set<std::string> seen;
+    std::size_t number = 0U;
+    for (const auto& record : records_) {
+        if (checkpoint && (number++ % 1024U) == 0U)
+            checkpoint();
+        if (record.folded_headword == folded &&
+            foundation::FoldForLookup(record.primary_headword) != folded &&
+            seen.insert(record.primary_headword).second) {
+            result.push_back(record.primary_headword);
+            if (result.size() == result_limit)
+                break;
         }
     }
     return result;

@@ -1149,6 +1149,60 @@ class ServiceState final {
         const CancellationAdapter signal(cancellation);
         const auto options = MakeOptions(query, &signal);
         const auto backends = BackendsForGroup(query.group_id);
+        std::vector<std::string> lookup_terms{query.text};
+        std::unordered_set<std::string> folded_lookup_terms{folded_query};
+        std::unordered_set<std::string> exact_lookup_terms{exact_query};
+        if (query.match_mode == MatchMode::kExact &&
+            preferences_.synonym_search_enabled) {
+            for (const auto* backend : backends) {
+                if (lookup_terms.size() >= options.result_limit)
+                    break;
+                const auto& identity = backend->identity();
+                if ((!requested.empty() &&
+                     requested.count(identity.id) == 0U) ||
+                    (!query.languages.empty() &&
+                     std::find(query.languages.begin(), query.languages.end(),
+                               identity.source_language) ==
+                         query.languages.end() &&
+                     std::find(query.languages.begin(), query.languages.end(),
+                               identity.target_language) ==
+                         query.languages.end())) {
+                    continue;
+                }
+                const auto* synonym_backend =
+                    dynamic_cast<const dictionary::SynonymBackend*>(backend);
+                if (synonym_backend == nullptr)
+                    continue;
+                try {
+                    for (auto headword :
+                         synonym_backend->FindHeadwordsForSynonym(query.text,
+                                                                  options)) {
+                        dictionary::CheckRequest(options);
+                        if (folded_lookup_terms
+                                .insert(foundation::FoldForLookup(headword))
+                                .second) {
+                            exact_lookup_terms.insert(
+                                foundation::NormalizeForExactLookup(
+                                    headword, preferences_.ignore_diacritics));
+                            lookup_terms.push_back(std::move(headword));
+                            if (lookup_terms.size() >= options.result_limit)
+                                break;
+                        }
+                    }
+                } catch (const dictionary::Error& error) {
+                    response.errors.push_back({TranslateErrorCode(error.code()),
+                                               identity.id, error.what()});
+                    if (error.code() == dictionary::ErrorCode::kCancelled ||
+                        error.code() ==
+                            dictionary::ErrorCode::kDeadlineExceeded) {
+                        return response;
+                    }
+                } catch (const std::exception& error) {
+                    response.errors.push_back({LookupErrorCode::kInternal,
+                                               identity.id, error.what()});
+                }
+            }
+        }
         for (const auto* backend : backends) {
             const auto& identity = backend->identity();
             if (!requested.empty() && requested.count(identity.id) == 0U) {
@@ -1185,29 +1239,46 @@ class ServiceState final {
                     ? kMaximumExactCollisionCandidates
                     : options.result_limit - response.entries.size();
             try {
-                const auto articles =
-                    query.match_mode == MatchMode::kExact
-                        ? backend->LookupExact(query.text, backend_options)
-                        : backend->LookupPrefix(query.text, backend_options);
+                std::vector<dictionary::Article> articles;
+                for (const auto& lookup_term : lookup_terms) {
+                    auto term_articles =
+                        query.match_mode == MatchMode::kExact
+                            ? backend->LookupExact(lookup_term, backend_options)
+                            : backend->LookupPrefix(lookup_term,
+                                                    backend_options);
+                    articles.insert(
+                        articles.end(),
+                        std::make_move_iterator(term_articles.begin()),
+                        std::make_move_iterator(term_articles.end()));
+                    if (articles.size() >= backend_options.result_limit)
+                        break;
+                }
+                std::unordered_set<std::string> seen_articles;
                 for (const auto& article : articles) {
                     dictionary::CheckRequest(backend_options);
                     if (query.match_mode == MatchMode::kExact &&
-                        foundation::NormalizeForExactLookup(
-                            article.headword, preferences_.ignore_diacritics) !=
-                            exact_query) {
+                        exact_lookup_terms.count(
+                            foundation::NormalizeForExactLookup(
+                                article.headword,
+                                preferences_.ignore_diacritics)) == 0U) {
                         continue;
                     }
                     if (response.entries.size() >= options.result_limit)
                         break;
                     const auto document =
                         article::Assemble(identity, {article});
+                    const std::string article_key =
+                        document.plain_text + "\n" + document.sanitized_html;
+                    if (!seen_articles.insert(article_key).second)
+                        continue;
                     DictionaryEntry entry;
                     entry.dictionary = PublicIdentity(identity);
                     entry.language = {identity.source_language,
                                       identity.target_language};
                     const std::string folded_headword =
                         foundation::FoldForLookup(article.headword);
-                    const bool exact = folded_headword == folded_query;
+                    const bool exact =
+                        folded_lookup_terms.count(folded_headword) != 0U;
                     entry.match = {
                         query.text, folded_headword,
                         exact ? MatchMode::kExact : MatchMode::kPrefix,
