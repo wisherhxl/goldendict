@@ -646,7 +646,7 @@ history, favorites, and advanced behavior remain independent Phase 8 leaves
 because their current runtime application contracts are absent; Phase 8
 acceptance remains blocked on explicitly approved backed subsets for them.
 
-The next independent Preferences leaf extends General with the pinned History
+The subsequent Preferences leaf extends General with the pinned History
 group: `Store history` defaults on and `Maximum history size` defaults to 500
 within the legacy `0..99999` range. Disabling storage affects only ordinary
 future lookups; explicit import still replaces history and is bounded by the
@@ -658,7 +658,7 @@ composition-root responsibilities. Cancel and failures preserve prior state.
 Appearance, tray, hotkeys, scan popup, audio, network/proxy, full-text search,
 favorites, and advanced Preferences remain separate Phase 8 leaves.
 
-The next independent Preferences leaf extends General with the pinned
+The subsequent Preferences leaf extends General with the pinned
 Favorites deletion-confirmation checkbox, defaulting on. It confirms removal
 of the selected word or complete folder subtree before the existing path-based
 command is dispatched; rejection is a pure cancellation, while acceptance and
@@ -926,14 +926,14 @@ position, and successful refreshes retain the moved selection and folder
 expansion state. The current and legacy-compatible file formats are unchanged;
 copy and multi-selection behavior remain outside this increment.
 
-The next independent Phase 8 Preferences leaf restores General/Extra search
+The subsequent Phase 8 Preferences leaf restores General/Extra search
 via synonyms. The existing default-on persisted preference now controls an
 exact-lookup-only core workflow: private StarDict `.syn`, Babylon BGL
 alternate, and GLS secondary-headword mappings resolve primary forms, which
 are searched across the already participating dictionaries without rewriting
 the original query or changing suggestions and other match modes. The private
 StarDict cache format advances and older implementation-generated caches
-rebuild automatically. The next independent Preferences leaf is
+rebuild automatically. The subsequent Preferences leaf is
 General/Expand optional parts.
 
 The General/Expand optional parts leaf adds the pinned default-off checkbox and
@@ -994,16 +994,16 @@ The dependency-ordered ready graph is:
    Configuration and isolated two-process WebEngine coverage pins all four
    combinations, exclusions, transaction failure, and restart without changing
    CSP, sanitization, navigation, history, tabs, or article security.
-5. `P8-PREF-5 General/Network — Manual HTTP CONNECT proxy` is the exact next
-   durable Phase 8 Preferences leaf and uses the existing
+5. `P8-PREF-5 General/Network — Manual HTTP CONNECT proxy` is complete. It uses
+   the existing
    credential-free proxy DTO/migration, `HttpRequest::Proxy`,
    `QNetworkAccessManager::setProxy`, and atomic runtime recomposition. It
    exposes disabled/manual HTTP CONNECT host and port only; credentials, system
    proxy, SOCKS5, legacy HTTP GET proxying, WebEngine policy, and process-global
    mutation remain excluded. Configuration/migration tests, loopback
    origin/proxy composition tests, and an offscreen transaction/restart smoke
-   must prove strict validation, direct disabled traffic, proxied enabled
-   traffic, live-facade preservation, and secret-free persistence/diagnostics.
+   prove strict validation, direct disabled traffic, proxied enabled traffic,
+   live-facade preservation, and secret-free persistence/diagnostics.
 6. `P8-PREF-6 General/Network — Qt Network cache policy` is complete after its
    separately audited Phase 7 runtime owner. It exposes only the pinned cache
    size and clear-on-exit controls and reuses the neutral persisted fields plus
@@ -1027,11 +1027,10 @@ integration.
 The `Phase 7 network-cache ownership audit` and runtime-owner prerequisite are
 complete. Qt Network is the
 exclusive owner of the GoldenDict-managed HTTP/HTTPS response cache;
-WebEngine remains outside the preference contract. The later bounded
-Preferences leaf may use the documented prepare, persist, and activate
-boundary, with the explicit exception that evicted disposable cache bytes
-cannot be reconstructed. It must not change WebEngine profile policy or clear
-WebEngine data.
+WebEngine remains outside the preference contract. P8-PREF-6 uses the
+documented prepare, persist, and activate boundary, with the explicit
+exception that evicted disposable cache bytes cannot be reconstructed. It
+does not change WebEngine profile policy or clear WebEngine data.
 
 The dependent Phase 8 General/Network cache leaf is complete. It restores the
 pinned 0--2000 MiB maximum-size editor and clear-on-exit checkbox, including
@@ -1052,6 +1051,12 @@ control. Windows-only Scan Popup technologies remain Phase 10. Legacy fields
 not presented in the pinned Preferences dialog, including menu visibility,
 always-on-top, search-pane mode, and zoom state, do not create Preferences
 parity requirements.
+
+The post-cache completeness audit finds no independently ready Preferences
+leaf after P8-PREF-6. Every remaining dialog control is either blocked by the
+named Phase 5/6/7/9/10 prerequisite above or intentionally excluded. The
+overall Preferences gate therefore remains open without naming a speculative
+successor.
 
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.

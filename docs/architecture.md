@@ -597,8 +597,8 @@ change core tab ordering. Network behavior remains in the optional network
 module, and Phase 9 desktop, translation, help, audio, hotkey, scan, and
 credential policy is not pulled into Phase 8 through inert controls.
 
-The final ready Preferences leaf exposes only disabled or credential-free
-manual HTTP CONNECT proxying with a validated host and port. The optional
+P8-PREF-5 exposes only disabled or credential-free manual HTTP CONNECT
+proxying with a validated host and port. The optional
 network composer injects one private candidate into every configured online
 source: Qt HTTP adapters use their request-local network manager, while DICT
 uses a bounded, cancellable CONNECT handshake before its raw TCP protocol.

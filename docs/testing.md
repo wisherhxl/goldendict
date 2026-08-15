@@ -478,28 +478,22 @@ mapping, tunneled response buffering, deadline/cancellation inheritance, and
 credential/endpoint redaction. Runtime composition injects the credential-free
 candidate into MediaWiki, website, Forvo, and DICT without affecting external
 programs, WebEngine, system proxy policy, or application-global proxy state.
-The five leaves named by the completeness audit are complete; remaining
-controls retain their named prerequisites until their separately audited
-owners are ready.
+The six P8-PREF leaves are complete; remaining controls retain their named
+prerequisites until their separately audited owners are ready. The post-cache
+completeness audit finds no independently ready next Preferences leaf.
 
-The Phase 7 network-cache ownership audit is accepted without executable
-behavior changes: Qt Network exclusively owns the managed HTTP/HTTPS cache,
-and WebEngine is outside the preference contract. The later runtime and
-Preferences leaf requires focused network coverage for zero and positive
+The Phase 7 network-cache ownership audit and runtime owner are accepted: Qt
+Network exclusively owns the managed HTTP/HTTPS cache, and WebEngine is
+outside the preference contract. `http_client_test` covers zero and positive
 limits, exact MiB conversion, the dedicated path, cache hits and restart
-persistence, reduction/eviction, and setup failure degrading to uncached
-traffic. Transaction tests must cover invalid candidates and
-prepare/persist/activation failure while preserving prior policy and the
-active manager, with the documented exception that evicted bytes are not
-recoverable. Shutdown tests must prove request quiescence, owned-cache-only
-clearing, disabled-cleanup persistence, and non-fatal redacted cleanup
-failure. WebEngine isolation coverage must prove that apply and cleanup do not
-mutate its profile cache type, size, path, cookies, or persistent storage.
-Only after that runtime contract exists may an offscreen Preferences/restart
-smoke expose the two pinned controls. Other blocked Phase 5/6/7/9 capabilities
-acquire focused Preferences coverage only after their named runtime
-prerequisite is accepted; intentionally excluded controls receive no
-inert-widget smoke.
+persistence, reduction/eviction, setup failure degrading to uncached traffic,
+transaction rollback, request quiescence, owned-cache-only clearing, and
+non-fatal redacted cleanup failure. The P8-PREF-6 offscreen/restart smoke adds
+the pinned controls, complete-candidate transaction, persisted restart policy,
+owned-directory cleanup, and WebEngine sentinel isolation. Other blocked
+Phase 5/6/7/9/10 capabilities acquire focused Preferences coverage only after
+their named runtime prerequisite is accepted; intentionally excluded controls
+receive no inert-widget smoke.
 
 The General/Network cache Preferences leaf adds focused current/legacy
 configuration bounds and preserves the runtime-owner coverage above. Its
