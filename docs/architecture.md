@@ -606,6 +606,15 @@ Core retains unified validation, current persistence, and strict legacy
 `hideSingleTab` migration. Widgets alone applies Qt tab-bar auto-hide, which
 changes visibility at one versus multiple tabs without changing tab identity,
 ordering, activation, session data, or saved layout.
+The following MRU-tab-order leaf deliberately evolves that installed DTO again
+with another default-off boolean and the same source-consumer rebuild
+requirement. Core owns canonical current persistence and strict legacy
+`mruTabOrder` migration, while Widgets owns a runtime-only stable-tab-ID list
+bounded by the existing 32-tab session capacity. Ctrl+Tab and Ctrl+Shift+Tab
+traverse one chord-stable MRU sequence in opposite directions. This corrects
+the pinned legacy reverse inconsistency without reordering or extending the
+core or persisted tab collection; facade/session replacement reconstructs the
+runtime list from the active identity and persisted positional order.
 
 In particular, persisted network-cache fields do not establish runtime
 ownership. Current network requests use an ephemeral `QNetworkAccessManager`,

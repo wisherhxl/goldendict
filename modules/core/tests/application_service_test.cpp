@@ -906,6 +906,9 @@ void ApplicationServiceTest::ApplicationPreferencesCompareByValue() {
     second.hide_single_tab = true;
     QVERIFY(first != second);
     first.hide_single_tab = true;
+    second.mru_tab_order = true;
+    QVERIFY(first != second);
+    first.mru_tab_order = true;
     second.confirm_favorites_deletion = false;
     QVERIFY(first != second);
     second.confirm_favorites_deletion = true;
@@ -925,6 +928,7 @@ void ApplicationServiceTest::
     preferences.open_new_tabs_after_current = true;
     preferences.open_new_tabs_in_background = false;
     preferences.hide_single_tab = true;
+    preferences.mru_tab_order = true;
     preferences.enable_tray_icon = false;
     preferences.main_window_hotkey = "Alt+Space";
     preferences.scan_popup_modifiers = 0x021U;
@@ -954,6 +958,7 @@ void ApplicationServiceTest::
 
     SaveConfiguration(path.string(), expected);
     const std::string first = ReadFile(path);
+    QVERIFY(first.find("preference=mru_tab_order|1\n") != std::string::npos);
     const auto actual = LoadConfiguration(path.string());
 
     QCOMPARE(actual.preferences.interface_language,
@@ -962,6 +967,7 @@ void ApplicationServiceTest::
     QCOMPARE(actual.preferences.open_new_tabs_after_current, true);
     QCOMPARE(actual.preferences.open_new_tabs_in_background, false);
     QCOMPARE(actual.preferences.hide_single_tab, true);
+    QCOMPARE(actual.preferences.mru_tab_order, true);
     QCOMPARE(actual.preferences.enable_tray_icon, preferences.enable_tray_icon);
     QCOMPARE(actual.preferences.scan_popup_modifiers,
              preferences.scan_popup_modifiers);
@@ -1000,6 +1006,7 @@ void ApplicationServiceTest::
     QCOMPARE(older.preferences.open_new_tabs_after_current, false);
     QCOMPARE(older.preferences.open_new_tabs_in_background, true);
     QCOMPARE(older.preferences.hide_single_tab, false);
+    QCOMPARE(older.preferences.mru_tab_order, false);
     QCOMPARE(older.preferences.zoom_factor, 1.0);
     QCOMPARE(older.preferences.maximum_history_entries, std::uint32_t{500});
     QCOMPARE(older.preferences.confirm_favorites_deletion, true);
@@ -1137,6 +1144,8 @@ void ApplicationServiceTest::
         "preference=open_new_tabs_in_background|true\n",
         "preference=hide_single_tab|true\n",
         "preference=hide_single_tab|1\npreference=hide_single_tab|0\n",
+        "preference=mru_tab_order|true\n",
+        "preference=mru_tab_order|1\npreference=mru_tab_order|0\n",
         "preference=proxy_type|9\n",
         "preference=full_text_search_mode|3\n",
         std::string("preference=interface_language|bad\xc3\x28\n"),
@@ -1290,6 +1299,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<newTabsOpenAfterCurrentOne>1</newTabsOpenAfterCurrentOne>"
         "<newTabsOpenInBackground>0</newTabsOpenInBackground>"
         "<hideSingleTab>1</hideSingleTab>"
+        "<mruTabOrder>1</mruTabOrder>"
         "<fullTextSearch><searchMode>2</searchMode><matchCase>1</matchCase>"
         "<maxDistanceBetweenWords>9</maxDistanceBetweenWords>"
         "<disabledTypes>audio|images</disabledTypes>"
@@ -1331,6 +1341,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.open_new_tabs_after_current, true);
     QCOMPARE(preferences.open_new_tabs_in_background, false);
     QCOMPARE(preferences.hide_single_tab, true);
+    QCOMPARE(preferences.mru_tab_order, true);
     QCOMPARE(preferences.hide_menubar, true);
     QCOMPARE(preferences.enable_tray_icon, false);
     QCOMPARE(preferences.double_click_translates, false);
@@ -1596,6 +1607,8 @@ void ApplicationServiceTest::RejectsMalformedLegacyPreferencesAtomically() {
         "<newTabsOpenAfterCurrentOne>true</newTabsOpenAfterCurrentOne>",
         "<hideSingleTab>true</hideSingleTab>",
         "<hideSingleTab>1</hideSingleTab><hideSingleTab>0</hideSingleTab>",
+        "<mruTabOrder>true</mruTabOrder>",
+        "<mruTabOrder>1</mruTabOrder><mruTabOrder>0</mruTabOrder>",
         "<zoomFactor>nan</zoomFactor>",
         "<wordsZoomLevel>2x</wordsZoomLevel>",
         "<scanPopupModifiers>65535</scanPopupModifiers>",

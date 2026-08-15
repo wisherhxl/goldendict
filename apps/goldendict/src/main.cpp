@@ -1047,6 +1047,45 @@ int main(int argc, char* argv[]) {
             window.RunViewMenuSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--mru-tab-order-preferences-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window, [&app, &configuration, &configuration_path, &window]() {
+                if (configuration.preferences.mru_tab_order) {
+                    configuration.preferences.mru_tab_order = false;
+                    try {
+                        goldendict::core::SaveConfiguration(
+                            configuration_path.toStdString(), configuration);
+                        window.SetPreferences(configuration.preferences);
+                    } catch (...) {
+                        app.exit(1);
+                        return;
+                    }
+                }
+                window.RunMruTabOrderPreferencesSmokeCheck(
+                    [&app, &configuration_path, &window](bool passed) {
+                        try {
+                            const auto persisted =
+                                goldendict::core::LoadConfiguration(
+                                    configuration_path.toStdString());
+                            passed =
+                                passed && persisted.preferences.mru_tab_order;
+                            window.SetPreferences(persisted.preferences);
+                        } catch (...) {
+                            passed = false;
+                        }
+                        if (!passed) {
+                            app.exit(1);
+                            return;
+                        }
+                        window.RunMruTabOrderRestartSmokeCheck(
+                            [&app](bool restart_passed) {
+                                app.exit(restart_passed ? 0 : 1);
+                            });
+                    });
+            });
     } else if (HasArgument(argc, argv,
                            QStringLiteral("--history-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });

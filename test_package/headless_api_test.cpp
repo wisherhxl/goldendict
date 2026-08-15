@@ -566,7 +566,7 @@ int Fail(const std::string& message) {
 
 int main() {
     goldendict::core::ApplicationPreferences preferences;
-    if (preferences.hide_single_tab) {
+    if (preferences.hide_single_tab || preferences.mru_tab_order) {
         return 1;
     }
     try {

@@ -428,18 +428,21 @@ backed checkbox. DSL reader, article assembler, and article composer tests pin
 the rendering behavior and unchanged structured plain text.
 
 The Phase 8 Preferences completeness audit leaves the overall Preferences gate
-open. P8-PREF-1 is accepted through current/legacy configuration coverage, the
-installed consumer, and `goldendict_hide_single_tab_preferences_smoke`. The
+open. P8-PREF-1 and P8-PREF-2 are accepted through current/legacy configuration
+coverage, the installed consumer, and their focused offscreen smokes. The
+`goldendict_hide_single_tab_preferences_smoke`
 smoke pins the checkbox text and tooltip, cancel and forced-failure rollback,
 successful persistence, one/multiple-tab visibility, complete session/layout
 preservation, and reload through the startup preference path. Remaining ready
-leaves use the existing core configuration tests and one focused GUI/runtime
-smoke each:
+is joined by `goldendict_mru_tab_order_preferences_smoke`, which pins the exact
+default-off checkbox without a tooltip, positional disabled traversal,
+chord-stable symmetric forward/reverse MRU traversal, the existing 32-tab
+capacity as the sole MRU bound, create/close/restore cleanup, cancel and forced
+failure preservation, successful atomic application, persisted tab-order
+preservation, and deterministic restart reconstruction. Remaining ready leaves
+use the existing core configuration tests and one focused GUI/runtime smoke
+each:
 
-- P8-PREF-2 verifies preference persistence/migration, positional disabled and
-  deterministic forward/reverse MRU traversal, stale-ID cleanup after tab
-  create/close/restore, transaction failure, and restart reconstruction without
-  changing persisted tab order.
 - P8-PREF-3 verifies the existing escape preference through query, article,
   child, and modal focus paths, including disabled behavior, cancel/failure,
   successful hiding, and restart.

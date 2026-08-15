@@ -138,6 +138,9 @@ class MainWindow final : public QMainWindow {
         std::function<void(bool)> completion);
     void RunHideSingleTabRestartSmokeCheck(
         std::function<void(bool)> completion);
+    void RunMruTabOrderPreferencesSmokeCheck(
+        std::function<void(bool)> completion);
+    void RunMruTabOrderRestartSmokeCheck(std::function<void(bool)> completion);
     void RunFavoritesSmokeCheck(std::function<void(bool)> completion);
     void RunFavoritesCrossFolderMoveSmokeCheck(
         std::function<void(bool)> completion);
@@ -226,6 +229,9 @@ class MainWindow final : public QMainWindow {
     void CloseArticleTab(int index);
     void CloseOtherArticleTabs(int index);
     void CreateEmptyArticleTab(bool activate);
+    void ReconcileMruTabIds(bool rebuild = false);
+    void TraverseArticleTabs(bool forward);
+    void FinishMruTraversal();
     goldendict::core::TabPlacementPolicy NewTabPlacementPolicy() const;
     void NavigateArticleTab(bool forward);
     void OpenArticleLink(goldendict::core::ArticleTabId tab_id, const QUrl& url,
@@ -332,6 +338,9 @@ class MainWindow final : public QMainWindow {
     std::map<std::uint32_t, std::vector<std::string>> solo_restore_ids_;
     QLabel* status_ = nullptr;
     QTabWidget* article_tabs_ = nullptr;
+    std::vector<goldendict::core::ArticleTabId> mru_tab_ids_;
+    std::vector<goldendict::core::ArticleTabId> mru_traversal_ids_;
+    bool mru_traversal_active_ = false;
     ArticleView* article_view_ = nullptr;
     ArticlePage* article_page_ = nullptr;
     ArticleSchemeHandler* scheme_handler_ = nullptr;

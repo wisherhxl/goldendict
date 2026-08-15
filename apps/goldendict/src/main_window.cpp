@@ -707,6 +707,7 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
         });
     UpdateNavigationActions();
     UpdateFileActions();
+    qApp->installEventFilter(this);
 }
 
 bool MainWindow::DispatchSafeExternalUrl(const QUrl& url) {
@@ -2183,6 +2184,153 @@ void MainWindow::RunHideSingleTabRestartSmokeCheck(
              !article_tabs_->tabBar()->isVisible() &&
              facade_->ExportArticleTabSession() == initial_session &&
              CaptureMainWindowState() == initial_state;
+    completion(passed);
+}
+
+void MainWindow::RunMruTabOrderPreferencesSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || facade_ == nullptr ||
+        query_ == nullptr) {
+        completion(false);
+        return;
+    }
+    goldendict::core::TabNavigationState empty;
+    empty.title = "(untitled)";
+    const goldendict::core::ArticleTabSession initial_session = {
+        {{10U, {empty}, 0U}, {20U, {empty}, 0U}, {30U, {empty}, 0U}}, 10U};
+    if (!facade_->RestoreArticleTabSession(initial_session)) {
+        completion(false);
+        return;
+    }
+    ReconcileMruTabIds(true);
+    SyncArticleTabs();
+    bool passed = mru_tab_ids_ ==
+                  (std::vector<goldendict::core::ArticleTabId>{10U, 20U, 30U});
+    const std::string initial_state = CaptureMainWindowState();
+    const auto send_key = [this](int key, Qt::KeyboardModifiers modifiers,
+                                 QEvent::Type type = QEvent::KeyPress) {
+        QKeyEvent event(type, key, modifiers);
+        QApplication::sendEvent(query_, &event);
+    };
+    auto active_id = [this]() {
+        return facade_->GetArticleTabsState().active_tab_id;
+    };
+
+    auto disabled = preferences_;
+    disabled.mru_tab_order = false;
+    SetPreferences(disabled);
+    send_key(Qt::Key_Tab, Qt::ControlModifier);
+    passed = passed && active_id() == 20U;
+    send_key(Qt::Key_Control, Qt::NoModifier, QEvent::KeyRelease);
+    send_key(Qt::Key_Backtab, Qt::ControlModifier | Qt::ShiftModifier);
+    passed = passed && active_id() == 10U;
+    send_key(Qt::Key_Control, Qt::NoModifier, QEvent::KeyRelease);
+
+    const auto preferences_before_dialog = preferences_;
+    const auto session_before_dialog = facade_->ExportArticleTabSession();
+    const auto mru_before_dialog = mru_tab_ids_;
+
+    preferences_dialog_executor_ = [&passed](PreferencesDialog& dialog) {
+        auto* checkbox =
+            dialog.findChild<QCheckBox*>(QStringLiteral("mruTabOrder"));
+        passed = passed && checkbox != nullptr &&
+                 checkbox->text() ==
+                     QStringLiteral("Ctrl-Tab navigates tabs in MRU order") &&
+                 checkbox->toolTip().isEmpty() && !checkbox->isChecked();
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == preferences_before_dialog &&
+             facade_->ExportArticleTabSession() == session_before_dialog &&
+             mru_tab_ids_ == mru_before_dialog;
+
+    const auto original_callback = preferences_apply_callback_;
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("forced MRU preferences failure");
+    };
+    preferences_dialog_executor_ = [&passed](PreferencesDialog& dialog) {
+        auto* checkbox =
+            dialog.findChild<QCheckBox*>(QStringLiteral("mruTabOrder"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && checkbox != nullptr && buttons != nullptr;
+        if (checkbox != nullptr)
+            checkbox->setChecked(true);
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        auto* error = dialog.findChild<QLabel*>(
+            QStringLiteral("preferencesValidationError"));
+        passed = passed && dialog.result() != QDialog::Accepted &&
+                 error != nullptr && !error->isHidden();
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == preferences_before_dialog &&
+             facade_->ExportArticleTabSession() == session_before_dialog &&
+             mru_tab_ids_ == mru_before_dialog;
+
+    preferences_apply_callback_ = original_callback;
+    preferences_dialog_executor_ = [&passed](PreferencesDialog& dialog) {
+        auto* checkbox =
+            dialog.findChild<QCheckBox*>(QStringLiteral("mruTabOrder"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && checkbox != nullptr && buttons != nullptr;
+        if (checkbox != nullptr)
+            checkbox->setChecked(true);
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_.mru_tab_order &&
+             facade_->ExportArticleTabSession() == session_before_dialog;
+
+    ActivateArticleTab(2);
+    ActivateArticleTab(0);
+    passed = passed && active_id() == 10U;
+
+    send_key(Qt::Key_Tab, Qt::ControlModifier);
+    passed = passed && active_id() == 30U;
+    send_key(Qt::Key_Backtab, Qt::ControlModifier | Qt::ShiftModifier);
+    passed = passed && active_id() == 10U;
+    send_key(Qt::Key_Tab, Qt::ControlModifier);
+    passed = passed && active_id() == 30U;
+    send_key(Qt::Key_Control, Qt::NoModifier, QEvent::KeyRelease);
+
+    CloseArticleTab(0);
+    CreateEmptyArticleTab(false);
+    const auto changed = facade_->GetArticleTabsState();
+    passed = passed && changed.tabs.size() == 3U && changed.tabs[0].id == 20U &&
+             changed.tabs[1].id == 30U && changed.active_tab_id == 30U;
+    send_key(Qt::Key_Tab, Qt::ControlModifier);
+    send_key(Qt::Key_Control, Qt::NoModifier, QEvent::KeyRelease);
+    passed = passed && active_id() == 20U;
+
+    preferences_dialog_executor_ = {};
+    preferences_apply_callback_ = original_callback;
+    passed = passed && CaptureMainWindowState() == initial_state;
+    completion(passed);
+}
+
+void MainWindow::RunMruTabOrderRestartSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (facade_ == nullptr || !preferences_.mru_tab_order) {
+        completion(false);
+        return;
+    }
+    const auto session = facade_->ExportArticleTabSession();
+    ReconcileMruTabIds(true);
+    SyncArticleTabs();
+    bool passed = facade_->ExportArticleTabSession() == session &&
+                  mru_tab_ids_.size() == session.tabs.size() &&
+                  !mru_tab_ids_.empty() &&
+                  mru_tab_ids_.front() == session.active_tab_id;
+    TraverseArticleTabs(true);
+    FinishMruTraversal();
+    passed = passed && facade_->ExportArticleTabSession().tabs == session.tabs;
     completion(passed);
 }
 
@@ -4004,6 +4152,7 @@ void MainWindow::RunDictionaryBrowserExportSmokeCheck(
 }
 
 MainWindow::~MainWindow() {
+    qApp->removeEventFilter(this);
     StopSuggestionWorker();
     for (auto& [id, request] : requests_) {
         static_cast<void>(id);
@@ -4293,6 +4442,96 @@ void MainWindow::SyncArticleTabs() {
     UpdateNavigationActions();
     RefreshResultsNavigation();
     RefreshSuggestions();
+    ReconcileMruTabIds();
+}
+
+void MainWindow::ReconcileMruTabIds(bool rebuild) {
+    if (facade_ == nullptr) {
+        mru_tab_ids_.clear();
+        mru_traversal_ids_.clear();
+        mru_traversal_active_ = false;
+        return;
+    }
+    const auto state = facade_->GetArticleTabsState();
+    const auto is_valid = [&state](goldendict::core::ArticleTabId id) {
+        return std::any_of(state.tabs.begin(), state.tabs.end(),
+                           [id](const auto& tab) { return tab.id == id; });
+    };
+    if (rebuild) {
+        mru_tab_ids_.clear();
+        mru_traversal_ids_.clear();
+        mru_traversal_active_ = false;
+    } else {
+        mru_tab_ids_.erase(
+            std::remove_if(mru_tab_ids_.begin(), mru_tab_ids_.end(),
+                           [&](auto id) { return !is_valid(id); }),
+            mru_tab_ids_.end());
+        mru_traversal_ids_.erase(
+            std::remove_if(mru_traversal_ids_.begin(), mru_traversal_ids_.end(),
+                           [&](auto id) { return !is_valid(id); }),
+            mru_traversal_ids_.end());
+    }
+    for (const auto& tab : state.tabs) {
+        if (std::find(mru_tab_ids_.begin(), mru_tab_ids_.end(), tab.id) ==
+            mru_tab_ids_.end()) {
+            mru_tab_ids_.push_back(tab.id);
+        }
+    }
+    if (!mru_traversal_active_) {
+        const auto active = std::find(mru_tab_ids_.begin(), mru_tab_ids_.end(),
+                                      state.active_tab_id);
+        if (active != mru_tab_ids_.end()) {
+            std::rotate(mru_tab_ids_.begin(), active, std::next(active));
+        }
+    }
+    Q_ASSERT(mru_tab_ids_.size() == state.tabs.size());
+    Q_ASSERT(mru_tab_ids_.size() <= goldendict::core::kMaximumArticleTabs);
+}
+
+void MainWindow::TraverseArticleTabs(bool forward) {
+    if (facade_ == nullptr || article_tabs_->count() < 2)
+        return;
+    if (!preferences_.mru_tab_order) {
+        const int count = article_tabs_->count();
+        const int offset = forward ? 1 : count - 1;
+        ActivateArticleTab((article_tabs_->currentIndex() + offset) % count);
+        return;
+    }
+    ReconcileMruTabIds();
+    if (!mru_traversal_active_) {
+        mru_traversal_ids_ = mru_tab_ids_;
+        mru_traversal_active_ = true;
+    }
+    const auto active_id = facade_->GetArticleTabsState().active_tab_id;
+    const auto active = std::find(mru_traversal_ids_.begin(),
+                                  mru_traversal_ids_.end(), active_id);
+    if (active == mru_traversal_ids_.end() || mru_traversal_ids_.empty()) {
+        FinishMruTraversal();
+        return;
+    }
+    const auto current = static_cast<std::size_t>(
+        std::distance(mru_traversal_ids_.begin(), active));
+    const auto count = mru_traversal_ids_.size();
+    const auto target =
+        forward ? (current + 1U) % count : (current + count - 1U) % count;
+    const auto state = facade_->GetArticleTabsState();
+    const auto valid_tab = std::find_if(
+        state.tabs.begin(), state.tabs.end(), [&](const auto& item) {
+            return item.id == mru_traversal_ids_[target];
+        });
+    if (valid_tab != state.tabs.end() &&
+        facade_->ActivateArticleTab(valid_tab->id)) {
+        SyncArticleTabs();
+        emit ArticleTabSessionMutated();
+    }
+}
+
+void MainWindow::FinishMruTraversal() {
+    if (!mru_traversal_active_)
+        return;
+    mru_traversal_active_ = false;
+    mru_traversal_ids_.clear();
+    ReconcileMruTabIds();
 }
 
 void MainWindow::RebuildArticleTabs() {
@@ -4410,6 +4649,27 @@ void MainWindow::ShowTabContextMenu(const QPoint& position) {
 }
 
 bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
+    const auto* watched_widget = qobject_cast<QWidget*>(watched);
+    const bool main_window_key =
+        watched_widget != nullptr && watched_widget->window() == this;
+    if (main_window_key && event->type() == QEvent::KeyPress) {
+        auto* key = static_cast<QKeyEvent*>(event);
+        if (key->key() == Qt::Key_Tab &&
+            key->modifiers() == Qt::ControlModifier) {
+            TraverseArticleTabs(true);
+            return true;
+        }
+        if ((key->key() == Qt::Key_Backtab || key->key() == Qt::Key_Tab) &&
+            key->modifiers() == (Qt::ControlModifier | Qt::ShiftModifier)) {
+            TraverseArticleTabs(false);
+            return true;
+        }
+    }
+    if (main_window_key && event->type() == QEvent::KeyRelease) {
+        auto* key = static_cast<QKeyEvent*>(event);
+        if (key->key() == Qt::Key_Control)
+            FinishMruTraversal();
+    }
     if (watched == query_ && event->type() == QEvent::KeyPress) {
         auto* key = static_cast<QKeyEvent*>(event);
         if (key->matches(QKeySequence::MoveToNextLine) &&
@@ -4859,6 +5119,7 @@ void MainWindow::RunDictionaryBarSmokeCheck(
 }
 
 void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
+    const QSignalBlocker tab_signal_blocker(article_tabs_);
     StopSuggestionWorker();
     ++suggestion_generation_;
     suggestions_.clear();
@@ -4888,6 +5149,7 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     article_view_ = nullptr;
     article_page_ = nullptr;
     facade_ = facade;
+    ReconcileMruTabIds(true);
     RefreshDictionaryBar();
     scheme_handler_->SetFacade(facade);
     if (dictionary_browser_ != nullptr) {
@@ -4916,6 +5178,8 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
 void MainWindow::SetPreferences(
     const goldendict::core::ApplicationPreferences& preferences) {
     preferences_ = preferences;
+    if (!preferences_.mru_tab_order)
+        FinishMruTraversal();
     article_tabs_->setTabBarAutoHide(preferences_.hide_single_tab);
     for (int index = 0; index < article_tabs_->count(); ++index) {
         auto* view =

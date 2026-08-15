@@ -957,16 +957,19 @@ The dependency-ordered ready graph is:
    session, layout, and unrelated preferences. This deliberate DTO layout
    evolution requires installed C++ consumers to rebuild; the unchanged 1.6.0
    version is distinguished by Conan SCM recipe and package revisions.
-2. `P8-PREF-2 General/Tabs — MRU Ctrl-Tab order` is the exact next Phase 8
-   Preferences leaf and follows P8-PREF-1 in task
-   order and uses the existing stable tab IDs and lifecycle. It adds the
-   missing bounded boolean/default/migration and pinned checkbox, while Widgets
-   owns a bounded MRU identity list and never reorders the core or persisted
-   tab collection. Positional disabled traversal, deterministic forward and
-   reverse MRU traversal, create/close/restore cleanup, transaction failure,
-   and restart reconstruction require configuration tests and an offscreen
-   multi-tab keyboard smoke.
-3. `P8-PREF-3 General/Interface — ESC hides main window` uses the current shell
+2. `P8-PREF-2 General/Tabs — MRU Ctrl-Tab order` is complete. The installed
+   preferences DTO carries the default-off boolean with canonical current
+   persistence and strict `mruTabOrder` migration; consumers must rebuild for
+   the second deliberate layout evolution. Widgets owns stable runtime MRU
+   identities under the existing 32-tab session capacity and reconstructs
+   them after replacement without persisting or reordering tabs. Disabled
+   traversal stays positional; enabled Ctrl+Tab and Ctrl+Shift+Tab traverse a
+   chord-stable MRU sequence symmetrically, intentionally correcting the
+   pinned legacy reverse inconsistency. Configuration, transaction,
+   lifecycle, keyboard, and restart coverage pin stale-ID cleanup and order
+   preservation.
+3. `P8-PREF-3 General/Interface — ESC hides main window` is the exact next
+   Phase 8 Preferences leaf and uses the current shell
    and existing persisted/migrated `escape_hides_main_window` field. It exposes
    only the pinned checkbox and routes unconsumed ESC to window hiding; tray,
    close-to-tray, scan, and hotkey behavior are excluded. Focus-path coverage
