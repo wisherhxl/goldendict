@@ -672,10 +672,28 @@ Preferred full Linux Release verification workflow:
 conan export conan/recipes/python-html5lib
 conan install . --build=missing -s build_type=Release \
   -pr:h=profiles/qt-webengine -pr:b=default
+. build/Release/generators/conanbuild.sh
+. build/Release/generators/conanrun.sh
 cmake --fresh --preset conan-release
 cmake --build --preset conan-release
 ctest --preset conan-release --output-on-failure
 cmake --install build/Release
+```
+
+That workflow uses the default `install_mode=library` and verifies the SDK
+install boundary. It is not a self-contained application deployment. For a
+clean-environment runtime smoke, configure a separate runtime-mode build:
+
+```sh
+conan install . --build=missing -s build_type=Release \
+  -pr:h=profiles/qt-webengine -pr:b=default \
+  -o '&:install_mode=runtime'
+. build/Release/generators/conanbuild.sh
+. build/Release/generators/conanrun.sh
+cmake --fresh --preset conan-release
+cmake --build --preset conan-release
+ctest --preset conan-release -R goldendict_installed_runtime_smoke \
+  --output-on-failure
 ```
 
 Run the full workflow after changes to CMake, Conan, modules, applications,
@@ -684,9 +702,11 @@ documentation-only changes, a full build is not required. If the full workflow
 is skipped, mention why in the final response or pull request notes.
 
 When install verification includes a runtime-dependency self-contained smoke
-test, run the installed executable from a clean environment. On Linux, keep only
-the normal system command path with `PATH=/usr/bin:/bin`. On Windows, clear
-`Path`.
+test, use `install_mode=runtime` and leave
+`install_runtime_dependencies=auto`. Run the installed wrapper from a clean
+environment; on Linux, keep only the normal system command path with
+`PATH=/usr/bin:/bin`. On Windows, clear `Path`. Do not use a library-mode
+install for this check: it intentionally omits third-party runtime deployment.
 
 ## Test Framework Policy
 

@@ -89,6 +89,14 @@ development files such as headers, static/import archives, and CMake package
 exports/configs. In `cmd.exe`, quote scoped Conan options with double quotes,
 for example `-o "&:install_mode=runtime"`.
 
+On Linux, runtime mode gives installed ELF files a relocatable RUNPATH into the
+bundle's own library directory. Use `bin/goldendict.sh` for installed-application
+smokes so the bundled Qt plugin paths are also selected. A library-mode install
+is an SDK layout and is not expected to start in a clean environment without
+its resolved dependency environment. Qt WebEngine's HarfBuzz subset and main
+libraries are installed as an ABI-matched pair from the resolved Conan graph;
+do not substitute a system library with the same SONAME.
+
 Use `-o '&:install_mode=library'` for the SDK/library install layout. Library
 mode installs runtime files plus development files such as headers, libraries,
 and CMake package metadata.
