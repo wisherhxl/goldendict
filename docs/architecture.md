@@ -587,5 +587,23 @@ default-off preference is enabled. Hidden optional text does not count toward
 the existing large-article collapse threshold; structured plain text and
 headless visible rendering retain the complete article.
 
+The Phase 8 Preferences completeness audit preserves this ownership rule for
+all remaining leaves. Widgets may expose only a backed control and submit a
+complete preferences candidate; core owns transport-neutral defaults,
+validation, current persistence, and legacy migration; the composition root
+must construct and restore replacement runtime state before persistence and a
+live swap. Presentation-only tab/window state stays in Widgets and must not
+change core tab ordering. Network behavior remains in the optional network
+module, and Phase 9 desktop, translation, help, audio, hotkey, scan, and
+credential policy is not pulled into Phase 8 through inert controls.
+
+In particular, persisted network-cache fields do not establish runtime
+ownership. Current network requests use an ephemeral `QNetworkAccessManager`,
+while articles use the default `QWebEngineProfile`; neither is a configured,
+transactional disk-cache owner. A Phase 7 ownership audit must first determine
+the pinned scope, owner or owners, and apply/rollback contract. Mandatory
+article CSP and sanitization also cannot be weakened by restoring the legacy
+optional cross-site-content checkbox.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

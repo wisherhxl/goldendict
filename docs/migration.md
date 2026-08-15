@@ -936,7 +936,87 @@ composition, while Widgets edits the complete candidate through the existing
 atomic recomposition/session-restoration transaction. Plain-text results,
 headless visible rendering, queries, filters, ordering, bounds, cancellation,
 deadlines, suggestions, and non-DSL formats remain unchanged. The repository
-task graph does not yet designate the next independent Preferences leaf.
+task graph continues with the audited Preferences leaves below.
+
+The Phase 8 Preferences acceptance audit compares every control in pinned
+legacy `preferences.ui` and its `preferences.cc`, `config.hh`, and
+`mainwindow.cc` backing with the current DTO, migration, runtime, Widgets, and
+tests. Phase 8 Preferences is not yet accepted. Tab placement, history size and
+recording, Favorites deletion confirmation, article collapsing, input-phrase
+limits, diacritic policy, synonym expansion, and optional parts are fully
+backed and acceptance-covered.
+
+The dependency-ordered ready graph is:
+
+1. `P8-PREF-1 General/Tabs — Hide single tab` adds the missing bounded boolean,
+   default/current persistence, strict `hideSingleTab` migration, pinned
+   checkbox, and Qt tab-bar auto-hide through the existing complete-candidate
+   transaction. It must preserve active-tab identity, ordering, session,
+   layout, and unrelated preferences across cancel, failed apply, success, and
+   restart. Configuration migration/round-trip tests and an offscreen one-tab,
+   multi-tab, transaction, and restart smoke are required. This is the exact
+   next Phase 8 Preferences leaf.
+2. `P8-PREF-2 General/Tabs — MRU Ctrl-Tab order` follows P8-PREF-1 in task
+   order and uses the existing stable tab IDs and lifecycle. It adds the
+   missing bounded boolean/default/migration and pinned checkbox, while Widgets
+   owns a bounded MRU identity list and never reorders the core or persisted
+   tab collection. Positional disabled traversal, deterministic forward and
+   reverse MRU traversal, create/close/restore cleanup, transaction failure,
+   and restart reconstruction require configuration tests and an offscreen
+   multi-tab keyboard smoke.
+3. `P8-PREF-3 General/Interface — ESC hides main window` uses the current shell
+   and existing persisted/migrated `escape_hides_main_window` field. It exposes
+   only the pinned checkbox and routes unconsumed ESC to window hiding; tray,
+   close-to-tray, scan, and hotkey behavior are excluded. Focus-path coverage
+   must prove unchanged disabled behavior, child and modal precedence,
+   cancel/failure preservation, successful apply, and restart persistence.
+4. `P8-PREF-4 General/Interface — Article click interaction` depends on the
+   completed Phase 7 WebEngine interaction and bounded lookup path. The shared
+   WebEngine pointer/selection boundary exposes double-click translation and
+   single-click selection without granting active behavior to untrusted
+   content. Configuration tests and an isolated WebEngine smoke must cover all
+   four toggle combinations, exactly-once dispatch, link and input exclusions,
+   unchanged cancellation/history/tab/security behavior, transaction failure,
+   and restart.
+5. `P8-PREF-5 General/Network — Manual HTTP CONNECT proxy` uses the existing
+   credential-free proxy DTO/migration, `HttpRequest::Proxy`,
+   `QNetworkAccessManager::setProxy`, and atomic runtime recomposition. It
+   exposes disabled/manual HTTP CONNECT host and port only; credentials, system
+   proxy, SOCKS5, legacy HTTP GET proxying, WebEngine policy, and process-global
+   mutation remain excluded. Configuration/migration tests, loopback
+   origin/proxy composition tests, and an offscreen transaction/restart smoke
+   must prove strict validation, direct disabled traffic, proxied enabled
+   traffic, live-facade preservation, and secret-free persistence/diagnostics.
+
+The following controls remain blocked on named non-Preferences prerequisites:
+languages, help, and appearance on Phase 9 shipped translations/help/styles;
+tray and autostart on Phase 9 desktop integration; hotkeys on Phase 9 global
+hotkey and clipboard integration; Scan Popup on Phase 9 scan/clipboard/X11/
+Wayland contracts, with Windows technologies in Phase 10; Audio on Phase 7
+audio-link routing and Phase 9 playback/process integration; system proxy and
+credentials on Phase 7/9 policy, and SOCKS5/HTTP GET on Phase 7 transport
+support; full-text controls on Phase 5 indexing/contracts, Phase 6 per-format
+support, and the Phase 8 workflow; dictionary-reference menu limits on Phase 7
+per-dictionary article-context navigation; and update checks on Phase 9 release
+integration.
+
+Network cache size and clear-on-exit are specifically blocked on a
+`Phase 7 network-cache ownership audit`. The current tree has persisted DTO
+fields, an ephemeral per-request `QNetworkAccessManager`, and the default
+`QWebEngineProfile`, but no configured disk-cache owner or transactional
+apply/rollback contract. That prerequisite must decide whether Qt Network,
+WebEngine, or both belong to pinned legacy scope and assign ownership before a
+Preferences leaf becomes ready.
+
+History and Favorites save intervals are intentionally excluded because
+current mutations persist immediately. Web plugins have no supported Qt
+WebEngine equivalent. The mandatory CSP/sanitizer replaces the optional
+cross-site-content control with a stronger security boundary. Header-identity
+suppression has no approved transport policy and must not appear as an inert
+control. Windows-only Scan Popup technologies remain Phase 10. Legacy fields
+not presented in the pinned Preferences dialog, including menu visibility,
+always-on-top, search-pane mode, and zoom state, do not create Preferences
+parity requirements.
 
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.

@@ -426,6 +426,35 @@ enabled visibility, and the legacy large-article threshold interaction.
 successful persistence, reopen, complete session/layout preservation, and the
 backed checkbox. DSL reader, article assembler, and article composer tests pin
 the rendering behavior and unchanged structured plain text.
+
+The Phase 8 Preferences completeness audit leaves the overall Preferences gate
+open. Future ready leaves use the existing core configuration tests and one
+focused GUI/runtime smoke each:
+
+- P8-PREF-1 verifies `hideSingleTab` defaults, current round trip, strict
+  legacy migration, cancel/failure preservation, one-versus-many tab-bar
+  visibility, unchanged session/layout, and restart.
+- P8-PREF-2 verifies preference persistence/migration, positional disabled and
+  deterministic forward/reverse MRU traversal, stale-ID cleanup after tab
+  create/close/restore, transaction failure, and restart reconstruction without
+  changing persisted tab order.
+- P8-PREF-3 verifies the existing escape preference through query, article,
+  child, and modal focus paths, including disabled behavior, cancel/failure,
+  successful hiding, and restart.
+- P8-PREF-4 uses isolated WebEngine coverage for all double-click-translation
+  and single-click-selection combinations, link/input exclusions, exactly-once
+  dispatch, unchanged security/history/tabs, transaction failure, and restart.
+- P8-PREF-5 combines configuration/migration cases, a loopback origin/proxy
+  runtime-composition test, and an offscreen dialog smoke to prove strict HTTP
+  CONNECT host/port validation, direct versus proxied traffic, atomic facade
+  preservation, secret-free diagnostics/persistence, and restart.
+
+Network cache controls are not test-ready. A Phase 7 network-cache ownership
+audit must first identify whether the ephemeral Qt Network path, the default
+WebEngine profile, or both are in pinned scope and define transactional
+apply/rollback behavior. Blocked Phase 5/6/7/9 capabilities acquire focused
+Preferences coverage only after their named runtime prerequisite is accepted;
+intentionally excluded controls receive no inert-widget smoke.
 `goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
 History and its sole backed legacy `searchInPageAction`, including exact text,
 role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and
