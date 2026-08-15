@@ -31,6 +31,7 @@ class QPushButton;
 class QPoint;
 class QComboBox;
 class QEvent;
+class QKeyEvent;
 class QTabWidget;
 class QTimer;
 class QToolBar;
@@ -141,6 +142,10 @@ class MainWindow final : public QMainWindow {
     void RunMruTabOrderPreferencesSmokeCheck(
         std::function<void(bool)> completion);
     void RunMruTabOrderRestartSmokeCheck(std::function<void(bool)> completion);
+    void RunEscapeHidesMainWindowPreferencesSmokeCheck(
+        std::function<void(bool)> completion);
+    void RunEscapeHidesMainWindowRestartSmokeCheck(
+        std::function<void(bool)> completion);
     void RunFavoritesSmokeCheck(std::function<void(bool)> completion);
     void RunFavoritesCrossFolderMoveSmokeCheck(
         std::function<void(bool)> completion);
@@ -215,6 +220,7 @@ class MainWindow final : public QMainWindow {
 
    private:
     bool eventFilter(QObject* watched, QEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
     void StartLookupInTab(goldendict::core::TabOpenPolicy open_policy,
                           goldendict::core::TabActivationPolicy activation,
                           const QString& internal_url = {},

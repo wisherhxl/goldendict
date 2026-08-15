@@ -87,6 +87,14 @@ set_tests_properties(goldendict_mru_tab_order_preferences_smoke PROPERTIES
     "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/mru-tab-order-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/mru-tab-order-preferences-test-home/cache"
   TIMEOUT 20)
 
+add_test(NAME goldendict_escape_hides_main_window_preferences_smoke
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/escape-preferences-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/escape_hides_main_window_restart.cmake)
+set_tests_properties(goldendict_escape_hides_main_window_preferences_smoke
+  PROPERTIES TIMEOUT 40)
+
 add_test(NAME goldendict_view_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --view-menu-smoke)
 set_tests_properties(goldendict_view_menu_smoke PROPERTIES

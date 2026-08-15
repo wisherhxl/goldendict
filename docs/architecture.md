@@ -615,6 +615,13 @@ traverse one chord-stable MRU sequence in opposite directions. This corrects
 the pinned legacy reverse inconsistency without reordering or extending the
 core or persisted tab collection; facade/session replacement reconstructs the
 runtime list from the active identity and persisted positional order.
+The following ESC-hiding leaf reuses the existing default-off
+`escape_hides_main_window` preference without changing the installed DTO or
+configuration schema. Widgets exposes the pinned control and handles plain ESC
+only at the main-window key fallback, after the focused child declines it.
+Enabled handling hides rather than toggles the window; modal dialogs retain
+their own ESC behavior. Tray, close-to-tray, scan-popup, and global-hotkey
+behavior remain outside this leaf.
 
 In particular, persisted network-cache fields do not establish runtime
 ownership. Current network requests use an ephemeral `QNetworkAccessManager`,

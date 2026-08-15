@@ -968,14 +968,16 @@ The dependency-ordered ready graph is:
    pinned legacy reverse inconsistency. Configuration, transaction,
    lifecycle, keyboard, and restart coverage pin stale-ID cleanup and order
    preservation.
-3. `P8-PREF-3 General/Interface — ESC hides main window` is the exact next
-   Phase 8 Preferences leaf and uses the current shell
-   and existing persisted/migrated `escape_hides_main_window` field. It exposes
-   only the pinned checkbox and routes unconsumed ESC to window hiding; tray,
-   close-to-tray, scan, and hotkey behavior are excluded. Focus-path coverage
-   must prove unchanged disabled behavior, child and modal precedence,
-   cancel/failure preservation, successful apply, and restart persistence.
-4. `P8-PREF-4 General/Interface — Article click interaction` depends on the
+3. `P8-PREF-3 General/Interface — ESC hides main window` is complete. It reuses
+   the existing default-off, persisted, and strictly migrated
+   `escape_hides_main_window` field and exposes the pinned checkbox. Widgets
+   hides the main window only when a focused child declines plain ESC; disabled
+   behavior is unchanged and modal dialogs retain precedence. Offscreen
+   transaction, query/article focus, child-consumption, modal, and two-process
+   restart coverage pins cancel/failure preservation and successful persistence
+   without adding tray, close-to-tray, scan, or hotkey behavior.
+4. `P8-PREF-4 General/Interface — Article click interaction` is the exact next
+   durable Phase 8 Preferences leaf and depends on the
    completed Phase 7 WebEngine interaction and bounded lookup path. The shared
    WebEngine pointer/selection boundary exposes double-click translation and
    single-click selection without granting active behavior to untrusted

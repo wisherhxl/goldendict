@@ -1041,6 +1041,50 @@ int main(int argc, char* argv[]) {
                         });
                 });
         });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral(
+                       "--escape-hides-main-window-preferences-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window,
+            [&app, &configuration, &configuration_directory,
+             &configuration_path, &window]() {
+                QDir().mkpath(configuration_directory);
+                if (configuration.preferences.escape_hides_main_window) {
+                    configuration.preferences.escape_hides_main_window = false;
+                    try {
+                        goldendict::core::SaveConfiguration(
+                            configuration_path.toStdString(), configuration);
+                        window.SetPreferences(configuration.preferences);
+                    } catch (...) {
+                        app.exit(1);
+                        return;
+                    }
+                }
+                window.RunEscapeHidesMainWindowPreferencesSmokeCheck(
+                    [&app, &configuration_path](bool passed) {
+                        try {
+                            const auto persisted =
+                                goldendict::core::LoadConfiguration(
+                                    configuration_path.toStdString());
+                            passed =
+                                passed &&
+                                persisted.preferences.escape_hides_main_window;
+                        } catch (...) {
+                            passed = false;
+                        }
+                        app.exit(passed ? 0 : 1);
+                    });
+            });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral(
+                               "--escape-hides-main-window-restart-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunEscapeHidesMainWindowRestartSmokeCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
     } else if (HasArgument(argc, argv, QStringLiteral("--view-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(0, &window, [&app, &window]() {

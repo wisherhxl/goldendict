@@ -315,6 +315,13 @@ non-tabification, real child widgets, toggle actions, and usable central article
 content. They also verify transactional restoration of state captured by the
 immediately preceding current Qt 6 dock identities without admitting pinned
 legacy version-1 state.
+`goldendict_escape_hides_main_window_preferences_smoke` pins the existing
+default-off preference's canonical current round trip and strict legacy name,
+the exact General checkbox, unchanged disabled handling, focused query and
+article fallback, child and modal precedence, and cancel/failure preservation.
+Its isolated second process reloads the successful configuration and proves
+that enabled unconsumed ESC continues to hide only the main window after
+restart.
 `goldendict_history_menu_smoke` pins the unique `menuHistory` placement and
 legacy action identities, order, separator, roles, shortcuts, and exact reuse
 of the `historyPane` toggle action. Injected import/export paths exercise the

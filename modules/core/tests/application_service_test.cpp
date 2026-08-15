@@ -909,6 +909,9 @@ void ApplicationServiceTest::ApplicationPreferencesCompareByValue() {
     second.mru_tab_order = true;
     QVERIFY(first != second);
     first.mru_tab_order = true;
+    second.escape_hides_main_window = true;
+    QVERIFY(first != second);
+    first.escape_hides_main_window = true;
     second.confirm_favorites_deletion = false;
     QVERIFY(first != second);
     second.confirm_favorites_deletion = true;
@@ -929,6 +932,7 @@ void ApplicationServiceTest::
     preferences.open_new_tabs_in_background = false;
     preferences.hide_single_tab = true;
     preferences.mru_tab_order = true;
+    preferences.escape_hides_main_window = true;
     preferences.enable_tray_icon = false;
     preferences.main_window_hotkey = "Alt+Space";
     preferences.scan_popup_modifiers = 0x021U;
@@ -959,6 +963,8 @@ void ApplicationServiceTest::
     SaveConfiguration(path.string(), expected);
     const std::string first = ReadFile(path);
     QVERIFY(first.find("preference=mru_tab_order|1\n") != std::string::npos);
+    QVERIFY(first.find("preference=escape_hides_main_window|1\n") !=
+            std::string::npos);
     const auto actual = LoadConfiguration(path.string());
 
     QCOMPARE(actual.preferences.interface_language,
@@ -968,6 +974,7 @@ void ApplicationServiceTest::
     QCOMPARE(actual.preferences.open_new_tabs_in_background, false);
     QCOMPARE(actual.preferences.hide_single_tab, true);
     QCOMPARE(actual.preferences.mru_tab_order, true);
+    QCOMPARE(actual.preferences.escape_hides_main_window, true);
     QCOMPARE(actual.preferences.enable_tray_icon, preferences.enable_tray_icon);
     QCOMPARE(actual.preferences.scan_popup_modifiers,
              preferences.scan_popup_modifiers);
@@ -1007,6 +1014,7 @@ void ApplicationServiceTest::
     QCOMPARE(older.preferences.open_new_tabs_in_background, true);
     QCOMPARE(older.preferences.hide_single_tab, false);
     QCOMPARE(older.preferences.mru_tab_order, false);
+    QCOMPARE(older.preferences.escape_hides_main_window, false);
     QCOMPARE(older.preferences.zoom_factor, 1.0);
     QCOMPARE(older.preferences.maximum_history_entries, std::uint32_t{500});
     QCOMPARE(older.preferences.confirm_favorites_deletion, true);
@@ -1300,6 +1308,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<newTabsOpenInBackground>0</newTabsOpenInBackground>"
         "<hideSingleTab>1</hideSingleTab>"
         "<mruTabOrder>1</mruTabOrder>"
+        "<escKeyHidesMainWindow>1</escKeyHidesMainWindow>"
         "<fullTextSearch><searchMode>2</searchMode><matchCase>1</matchCase>"
         "<maxDistanceBetweenWords>9</maxDistanceBetweenWords>"
         "<disabledTypes>audio|images</disabledTypes>"
@@ -1342,6 +1351,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.open_new_tabs_in_background, false);
     QCOMPARE(preferences.hide_single_tab, true);
     QCOMPARE(preferences.mru_tab_order, true);
+    QCOMPARE(preferences.escape_hides_main_window, true);
     QCOMPARE(preferences.hide_menubar, true);
     QCOMPARE(preferences.enable_tray_icon, false);
     QCOMPARE(preferences.double_click_translates, false);

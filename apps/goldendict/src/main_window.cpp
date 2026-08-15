@@ -87,6 +87,23 @@ constexpr auto kSearchPaneName = "searchPane";
 constexpr auto kPreviousHistoryDockName = "historyDock";
 constexpr auto kPreviousFavoritesDockName = "favoritesDock";
 
+class EscapeConsumer final : public QObject {
+   public:
+    bool consumed = false;
+
+   protected:
+    bool eventFilter(QObject*, QEvent* event) override {
+        if (event->type() == QEvent::KeyPress) {
+            const auto* key = static_cast<QKeyEvent*>(event);
+            if (key->key() == Qt::Key_Escape) {
+                consumed = true;
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
 QString EscapeHtml(QString text) {
     return text.replace('&', QStringLiteral("&amp;"))
         .replace('<', QStringLiteral("&lt;"))
@@ -2184,6 +2201,149 @@ void MainWindow::RunHideSingleTabRestartSmokeCheck(
              !article_tabs_->tabBar()->isVisible() &&
              facade_->ExportArticleTabSession() == initial_session &&
              CaptureMainWindowState() == initial_state;
+    completion(passed);
+}
+
+void MainWindow::RunEscapeHidesMainWindowPreferencesSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || facade_ == nullptr ||
+        query_ == nullptr || article_tabs_->currentWidget() == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial_preferences = preferences_;
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const std::string initial_state = CaptureMainWindowState();
+    bool passed = !initial_preferences.escape_hides_main_window;
+    const auto send_escape = [](QWidget* target) {
+        QKeyEvent press(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+        QApplication::sendEvent(target, &press);
+        QApplication::processEvents();
+    };
+    const auto show_window = [this]() {
+        show();
+        raise();
+        activateWindow();
+        QApplication::processEvents();
+    };
+
+    show_window();
+    query_->setFocus();
+    send_escape(query_);
+    passed = passed && isVisible();
+
+    EscapeConsumer consumer;
+    query_->installEventFilter(&consumer);
+    send_escape(query_);
+    query_->removeEventFilter(&consumer);
+    passed = passed && consumer.consumed && isVisible();
+
+    QDialog modal(this);
+    modal.setModal(true);
+    modal.show();
+    QApplication::processEvents();
+    send_escape(&modal);
+    passed = passed && modal.result() == QDialog::Rejected && isVisible();
+
+    const auto inspect = [&passed](PreferencesDialog& dialog, bool checked,
+                                   bool accept) {
+        auto* checkbox = dialog.findChild<QCheckBox*>(
+            QStringLiteral("escKeyHidesMainWindow"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed =
+            passed && checkbox != nullptr && buttons != nullptr &&
+            checkbox->text() == QStringLiteral("ESC key hides main window") &&
+            checkbox->toolTip() ==
+                QStringLiteral(
+                    "Normally, pressing ESC key moves focus to the "
+                    "translation line.\nWith this on however, it will "
+                    "hide the main window.") &&
+            checkbox->isChecked() == checked;
+        if (checkbox != nullptr)
+            checkbox->setChecked(!checked);
+        if (accept && buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        else
+            dialog.reject();
+        return dialog.result();
+    };
+
+    preferences_dialog_executor_ = [&inspect](PreferencesDialog& dialog) {
+        return inspect(dialog, false, false);
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences && isVisible();
+
+    const auto original_callback = preferences_apply_callback_;
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("forced ESC preference failure");
+    };
+    preferences_dialog_executor_ = [&passed](PreferencesDialog& dialog) {
+        auto* checkbox = dialog.findChild<QCheckBox*>(
+            QStringLiteral("escKeyHidesMainWindow"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && checkbox != nullptr && buttons != nullptr;
+        if (checkbox != nullptr)
+            checkbox->setChecked(true);
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        auto* error = dialog.findChild<QLabel*>(
+            QStringLiteral("preferencesValidationError"));
+        passed = passed && dialog.result() != QDialog::Accepted &&
+                 error != nullptr && !error->isHidden();
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences && isVisible();
+
+    preferences_apply_callback_ = original_callback;
+    preferences_dialog_executor_ = [&inspect](PreferencesDialog& dialog) {
+        return inspect(dialog, false, true);
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_.escape_hides_main_window && isVisible();
+
+    query_->setFocus();
+    send_escape(query_);
+    passed = passed && !isVisible();
+    show_window();
+    auto* article = qobject_cast<QWidget*>(article_tabs_->currentWidget());
+    article->setFocus();
+    send_escape(article);
+    passed = passed && !isVisible();
+    show_window();
+
+    preferences_dialog_executor_ = {};
+    preferences_apply_callback_ = original_callback;
+    passed = passed && facade_->ExportArticleTabSession() == initial_session &&
+             CaptureMainWindowState() == initial_state;
+    completion(passed);
+}
+
+void MainWindow::RunEscapeHidesMainWindowRestartSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (!preferences_.escape_hides_main_window || query_ == nullptr ||
+        article_tabs_->currentWidget() == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto send_escape = [](QWidget* target) {
+        QKeyEvent press(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+        QApplication::sendEvent(target, &press);
+        QApplication::processEvents();
+    };
+    query_->setFocus();
+    send_escape(query_);
+    bool passed = !isVisible();
+    show();
+    QApplication::processEvents();
+    auto* article = qobject_cast<QWidget*>(article_tabs_->currentWidget());
+    article->setFocus();
+    send_escape(article);
+    passed = passed && !isVisible();
     completion(passed);
 }
 
@@ -4705,6 +4865,17 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
         }
     }
     return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::keyPressEvent(QKeyEvent* event) {
+    if (event->key() == Qt::Key_Escape &&
+        event->modifiers() == Qt::NoModifier &&
+        preferences_.escape_hides_main_window) {
+        hide();
+        event->accept();
+        return;
+    }
+    QMainWindow::keyPressEvent(event);
 }
 
 void MainWindow::SetDictionaryGroups(

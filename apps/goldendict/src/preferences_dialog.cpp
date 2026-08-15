@@ -60,6 +60,16 @@ PreferencesDialog::PreferencesDialog(
     tab_layout->addWidget(mru_tab_order_);
     general_layout->addWidget(tab_group);
 
+    escape_hides_main_window_ = new QCheckBox(
+        QStringLiteral("ESC key hides main window"), general_page);
+    escape_hides_main_window_->setObjectName(
+        QStringLiteral("escKeyHidesMainWindow"));
+    escape_hides_main_window_->setToolTip(QStringLiteral(
+        "Normally, pressing ESC key moves focus to the translation line.\n"
+        "With this on however, it will hide the main window."));
+    escape_hides_main_window_->setChecked(preferences.escape_hides_main_window);
+    general_layout->addWidget(escape_hides_main_window_);
+
     auto* history_group =
         new QGroupBox(QStringLiteral("History"), general_page);
     history_group->setObjectName(QStringLiteral("preferencesHistoryGroup"));
@@ -224,6 +234,7 @@ void PreferencesDialog::Apply() {
     candidate.open_new_tabs_after_current = open_after_current_->isChecked();
     candidate.hide_single_tab = hide_single_tab_->isChecked();
     candidate.mru_tab_order = mru_tab_order_->isChecked();
+    candidate.escape_hides_main_window = escape_hides_main_window_->isChecked();
     candidate.store_history = store_history_->isChecked();
     candidate.maximum_history_entries =
         static_cast<std::uint32_t>(maximum_history_entries_->value());
