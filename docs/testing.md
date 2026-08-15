@@ -482,6 +482,17 @@ The six P8-PREF leaves are complete; remaining controls retain their named
 prerequisites until their separately audited owners are ready. The post-cache
 completeness audit finds no independently ready next Preferences leaf.
 
+The selected next migration leaf is the separate Phase 7 bounded
+per-dictionary article-context navigation prerequisite. Its focused offscreen
+coverage must pin first-result ordering, repeated-dictionary deduplication,
+catalog-name/ID fallback, navigation to the first matching article, the fixed
+20-entry bound, overflow handoff to the existing results pane, and absence on
+empty, failed, stale, or non-lookup pages. A replaced or closed originating
+tab/document must make captured actions harmless. Existing context-menu and
+results-navigation smokes must continue to cover link, selection, copy, image,
+tab scoping, and results-pane behavior unchanged. This coverage does not add a
+Preferences widget or reopen P8-PREF-1 through P8-PREF-6.
+
 The Phase 7 network-cache ownership audit and runtime owner are accepted: Qt
 Network exclusively owns the managed HTTP/HTTPS cache, and WebEngine is
 outside the preference contract. `http_client_test` covers zero and positive
