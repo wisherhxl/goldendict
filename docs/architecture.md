@@ -681,6 +681,15 @@ rollback restores policy and ownership but cannot reconstruct evicted cache
 bytes. This bounded loss of disposable cache content is the only rollback
 exception and must remain explicit in the later Preferences leaf.
 
+The Phase 8 General/Network cache Preferences leaf exposes only the pinned
+maximum-size and clear-on-exit controls on the Network page. The size editor is
+bounded to the legacy 0--2000 MiB range; zero disables disk caching, and the
+clear-on-exit control is disabled while zero is selected. Widgets receive the
+owned directory only for the legacy explanatory tooltip and do not discover,
+own, or reinterpret cache policy. Apply reuses the complete
+validate/prepare/persist/activate transaction above, including facade and
+article-session preservation and the disposable-byte rollback exception.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

@@ -87,6 +87,7 @@ class MainWindow final : public QMainWindow {
     void SetPreferences(
         const goldendict::core::ApplicationPreferences& preferences);
     void SetPreferencesApplyCallback(PreferencesApplyCallback apply_callback);
+    void SetNetworkCacheDirectory(const QString& directory);
     bool RestoreMainWindowGeometry(const std::string& geometry);
     std::string CaptureMainWindowGeometry() const;
     bool RestoreMainWindowState(const std::string& state);
@@ -137,6 +138,10 @@ class MainWindow final : public QMainWindow {
         std::function<void(bool)> completion);
     void RunProxyPreferencesSmokeCheck(std::function<void(bool)> completion);
     void RunProxyPreferencesRestartSmokeCheck(
+        std::function<void(bool)> completion);
+    void RunNetworkCachePreferencesSmokeCheck(
+        std::function<void(bool)> completion);
+    void RunNetworkCachePreferencesRestartSmokeCheck(
         std::function<void(bool)> completion);
     void RunHideSingleTabPreferencesSmokeCheck(
         std::function<void(bool)> completion);
@@ -304,6 +309,7 @@ class MainWindow final : public QMainWindow {
     bool source_configuration_busy_ = false;
     goldendict::core::ApplicationPreferences preferences_;
     PreferencesApplyCallback preferences_apply_callback_;
+    QString network_cache_directory_;
     std::function<int(PreferencesDialog&)> preferences_dialog_executor_;
     bool preferences_busy_ = false;
     QPushButton* dictionary_sources_button_ = nullptr;

@@ -330,6 +330,8 @@ int main(int argc, char* argv[]) {
     }
     MainWindow window(configuration_directory);
     window.SetPreferences(configuration.preferences);
+    window.SetNetworkCacheDirectory(
+        QString::fromStdString(network_runtime->cache_directory()));
     window.RestoreMainWindowGeometry(configuration.main_window_geometry);
     window.RestoreMainWindowState(configuration.main_window_state);
     window.SetDictionaryGroups(configuration.dictionary_groups);
@@ -1184,6 +1186,45 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(0, &window, [&app, &window]() {
             window.RunProxyPreferencesRestartSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--network-cache-preferences-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window,
+            [&app, &configuration_path, &network_runtime, &window]() {
+                window.RunNetworkCachePreferencesSmokeCheck(
+                    [&app, &configuration_path, &network_runtime](bool passed) {
+                        const auto persisted =
+                            goldendict::core::LoadConfiguration(
+                                configuration_path.toStdString());
+                        passed =
+                            passed &&
+                            persisted.preferences
+                                    .maximum_network_cache_megabytes == 64U &&
+                            !persisted.preferences
+                                 .clear_network_cache_on_exit &&
+                            network_runtime->maximum_cache_bytes() ==
+                                64LL * 1024LL * 1024LL;
+                        app.exit(passed ? 0 : 1);
+                    });
+            });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral(
+                               "--network-cache-preferences-restart-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &network_runtime, &window]() {
+            const bool runtime_restarted =
+                network_runtime->maximum_cache_bytes() ==
+                64LL * 1024LL * 1024LL;
+            window.RunNetworkCachePreferencesRestartSmokeCheck(
+                [&app, &network_runtime, runtime_restarted](bool passed) {
+                    passed = passed && runtime_restarted &&
+                             network_runtime->maximum_cache_bytes() ==
+                                 32LL * 1024LL * 1024LL;
+                    app.exit(passed ? 0 : 1);
+                });
         });
     } else if (HasArgument(argc, argv, QStringLiteral("--view-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });

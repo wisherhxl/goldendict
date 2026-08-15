@@ -110,6 +110,14 @@ add_test(NAME goldendict_proxy_preferences_smoke
     -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/proxy_preferences_restart.cmake)
 set_tests_properties(goldendict_proxy_preferences_smoke PROPERTIES TIMEOUT 40)
 
+add_test(NAME goldendict_network_cache_preferences_smoke
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/network-cache-preferences-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/network_cache_preferences_restart.cmake)
+set_tests_properties(goldendict_network_cache_preferences_smoke
+  PROPERTIES TIMEOUT 40)
+
 add_test(NAME goldendict_view_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --view-menu-smoke)
 set_tests_properties(goldendict_view_menu_smoke PROPERTIES

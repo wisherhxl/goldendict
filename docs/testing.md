@@ -478,8 +478,9 @@ mapping, tunneled response buffering, deadline/cancellation inheritance, and
 credential/endpoint redaction. Runtime composition injects the credential-free
 candidate into MediaWiki, website, Forvo, and DICT without affecting external
 programs, WebEngine, system proxy policy, or application-global proxy state.
-The five ready Phase 8 Preferences leaves are complete; remaining controls
-retain their named prerequisites.
+The five leaves named by the completeness audit are complete; remaining
+controls retain their named prerequisites until their separately audited
+owners are ready.
 
 The Phase 7 network-cache ownership audit is accepted without executable
 behavior changes: Qt Network exclusively owns the managed HTTP/HTTPS cache,
@@ -499,6 +500,15 @@ smoke expose the two pinned controls. Other blocked Phase 5/6/7/9 capabilities
 acquire focused Preferences coverage only after their named runtime
 prerequisite is accepted; intentionally excluded controls receive no
 inert-widget smoke.
+
+The General/Network cache Preferences leaf adds focused current/legacy
+configuration bounds and preserves the runtime-owner coverage above. Its
+offscreen smoke pins the legacy labels, platform suffix, 0--2000 range,
+defaults, owned-directory tooltip, zero-dependent enablement, cancel, failed
+apply, successful persistence/activation, and unchanged facade/session/layout.
+A two-process restart smoke verifies retained positive policy, exact active MiB
+limits, subsequent clear-on-exit cleanup of only `qt-network-http`, and an
+untouched WebEngine sentinel.
 `goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
 History and its sole backed legacy `searchInPageAction`, including exact text,
 role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and

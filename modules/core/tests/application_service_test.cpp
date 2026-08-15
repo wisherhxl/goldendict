@@ -952,6 +952,7 @@ void ApplicationServiceTest::
     preferences.proxy_host = "proxy.example";
     preferences.proxy_port = 8443U;
     preferences.maximum_network_cache_megabytes = 256U;
+    preferences.clear_network_cache_on_exit = false;
     preferences.zoom_factor = 1.375;
     preferences.help_zoom_factor = 0.75;
     preferences.words_zoom_level = -2;
@@ -1165,6 +1166,12 @@ void ApplicationServiceTest::
     QCOMPARE(ReadFile(path), original_bytes);
 
     invalid = original;
+    invalid.preferences.maximum_network_cache_megabytes = 10241U;
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+
+    invalid = original;
     invalid.preferences.maximum_history_entries = 100000U;
     QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
                              std::runtime_error);
@@ -1193,6 +1200,7 @@ void ApplicationServiceTest::
         "preference=mru_tab_order|true\n",
         "preference=mru_tab_order|1\npreference=mru_tab_order|0\n",
         "preference=proxy_type|9\n",
+        "preference=maximum_network_cache_megabytes|10241\n",
         "preference=full_text_search_mode|3\n",
         std::string("preference=interface_language|bad\xc3\x28\n"),
         "preference=zoom_factor|nan\n",
@@ -1335,6 +1343,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<user>ignored-user</user><password>ignored-secret</password>"
         "</proxyserver>"
         "<maxNetworkCacheSize>256</maxNetworkCacheSize>"
+        "<clearNetworkCacheOnExit>0</clearNetworkCacheOnExit>"
         "<zoomFactor>1.375</zoomFactor><helpZoomFactor>0.75</helpZoomFactor>"
         "<wordsZoomLevel>-2</wordsZoomLevel>"
         "<maxStringsInHistory>1234</maxStringsInHistory>"
@@ -1406,6 +1415,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.proxy_host, "proxy.example");
     QCOMPARE(preferences.proxy_port, std::uint16_t{8443});
     QCOMPARE(preferences.maximum_network_cache_megabytes, std::uint32_t{256});
+    QCOMPARE(preferences.clear_network_cache_on_exit, false);
     QCOMPARE(preferences.zoom_factor, 1.375);
     QCOMPARE(preferences.help_zoom_factor, 0.75);
     QCOMPARE(preferences.words_zoom_level, std::int32_t{-2});

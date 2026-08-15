@@ -18,7 +18,8 @@
 
 PreferencesDialog::PreferencesDialog(
     const goldendict::core::ApplicationPreferences& preferences,
-    ApplyCallback apply_callback, QWidget* parent)
+    ApplyCallback apply_callback, const QString& network_cache_directory,
+    QWidget* parent)
     : QDialog(parent),
       preferences_(preferences),
       apply_callback_(std::move(apply_callback)) {
@@ -279,6 +280,47 @@ PreferencesDialog::PreferencesDialog(
     settings_layout->addWidget(port_label);
     settings_layout->addWidget(proxy_port_);
     proxy_layout->addWidget(custom_settings);
+    auto* cache_layout = new QHBoxLayout;
+    auto* cache_label =
+        new QLabel(QStringLiteral("Maximum network cache size:"), network_page);
+    cache_label->setObjectName(QStringLiteral("networkCacheSizeLabel"));
+    maximum_network_cache_megabytes_ = new QSpinBox(network_page);
+    maximum_network_cache_megabytes_->setObjectName(
+        QStringLiteral("maxNetworkCacheSize"));
+    maximum_network_cache_megabytes_->setRange(0, 2000);
+#ifdef Q_OS_WIN
+    maximum_network_cache_megabytes_->setSuffix(QStringLiteral(" MB"));
+#else
+    maximum_network_cache_megabytes_->setSuffix(QStringLiteral(" MiB"));
+#endif
+    maximum_network_cache_megabytes_->setToolTip(
+        QStringLiteral(
+            "Maximum disk space occupied by GoldenDict's network cache in\n%1\n"
+            "If set to 0 the network disk cache will be disabled.")
+            .arg(network_cache_directory));
+    maximum_network_cache_megabytes_->setValue(
+        static_cast<int>(preferences.maximum_network_cache_megabytes));
+    cache_label->setBuddy(maximum_network_cache_megabytes_);
+    clear_network_cache_on_exit_ = new QCheckBox(
+        QStringLiteral("Clear network cache on exit"), network_page);
+    clear_network_cache_on_exit_->setObjectName(
+        QStringLiteral("clearNetworkCacheOnExit"));
+    clear_network_cache_on_exit_->setToolTip(
+        QStringLiteral("When this option is enabled, GoldenDict\n"
+                       "clears its network cache from disk during exit."));
+    clear_network_cache_on_exit_->setChecked(
+        preferences.clear_network_cache_on_exit);
+    clear_network_cache_on_exit_->setEnabled(
+        preferences.maximum_network_cache_megabytes != 0U);
+    connect(maximum_network_cache_megabytes_, &QSpinBox::valueChanged,
+            clear_network_cache_on_exit_, [this](int value) {
+                clear_network_cache_on_exit_->setEnabled(value != 0);
+            });
+    cache_layout->addWidget(cache_label);
+    cache_layout->addWidget(maximum_network_cache_megabytes_);
+    cache_layout->addWidget(clear_network_cache_on_exit_);
+    cache_layout->addStretch();
+    network_layout->addLayout(cache_layout);
     network_layout->addStretch();
     network_layout->addWidget(use_proxy_server_);
     network_layout->addStretch();
@@ -334,6 +376,10 @@ void PreferencesDialog::Apply() {
     candidate.proxy_type = goldendict::core::ProxyType::kHttpConnect;
     candidate.proxy_host = proxy_host_->text().toStdString();
     candidate.proxy_port = static_cast<std::uint16_t>(proxy_port_->value());
+    candidate.maximum_network_cache_megabytes =
+        static_cast<std::uint32_t>(maximum_network_cache_megabytes_->value());
+    candidate.clear_network_cache_on_exit =
+        clear_network_cache_on_exit_->isChecked();
     const QString error = apply_callback_(candidate);
     if (!error.isEmpty()) {
         validation_error_->setText(error);

@@ -2181,6 +2181,129 @@ void MainWindow::RunProxyPreferencesRestartSmokeCheck(
         preferences_.proxy_port == 3128U);
 }
 
+void MainWindow::RunNetworkCachePreferencesSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || facade_ == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial = preferences_;
+    const auto session = facade_->ExportArticleTabSession();
+    const std::string state = CaptureMainWindowState();
+    bool passed = initial.maximum_network_cache_megabytes == 50U &&
+                  initial.clear_network_cache_on_exit;
+    const auto inspect = [this, &passed](PreferencesDialog& dialog,
+                                         bool accept) {
+        auto* label =
+            dialog.findChild<QLabel*>(QStringLiteral("networkCacheSizeLabel"));
+        auto* size =
+            dialog.findChild<QSpinBox*>(QStringLiteral("maxNetworkCacheSize"));
+        auto* clear = dialog.findChild<QCheckBox*>(
+            QStringLiteral("clearNetworkCacheOnExit"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed =
+            passed && label != nullptr && size != nullptr && clear != nullptr &&
+            buttons != nullptr &&
+            label->text() == QStringLiteral("Maximum network cache size:") &&
+            size->minimum() == 0 && size->maximum() == 2000 &&
+            size->value() == 50 &&
+#ifdef Q_OS_WIN
+            size->suffix() == QStringLiteral(" MB") &&
+#else
+            size->suffix() == QStringLiteral(" MiB") &&
+#endif
+            size->toolTip() ==
+                QStringLiteral(
+                    "Maximum disk space occupied by GoldenDict's network "
+                    "cache in\n%1\nIf set to 0 the network disk cache will "
+                    "be disabled.")
+                    .arg(network_cache_directory_) &&
+            clear->text() == QStringLiteral("Clear network cache on exit") &&
+            clear->toolTip() ==
+                QStringLiteral(
+                    "When this option is enabled, GoldenDict\nclears its "
+                    "network cache from disk during exit.");
+        if (size != nullptr) {
+            size->setValue(0);
+            passed = passed && clear != nullptr && !clear->isEnabled();
+            size->setValue(64);
+            passed = passed && clear != nullptr && clear->isEnabled();
+        }
+        if (clear != nullptr)
+            clear->setChecked(false);
+        if (accept && buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        else
+            dialog.reject();
+        return dialog.result();
+    };
+    preferences_dialog_executor_ = [&inspect](PreferencesDialog& dialog) {
+        return inspect(dialog, false);
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial;
+
+    const auto callback = preferences_apply_callback_;
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("forced network cache apply failure");
+    };
+    preferences_dialog_executor_ = [&inspect,
+                                    &passed](PreferencesDialog& dialog) {
+        inspect(dialog, true);
+        auto* error = dialog.findChild<QLabel*>(
+            QStringLiteral("preferencesValidationError"));
+        passed = passed && dialog.result() != QDialog::Accepted &&
+                 error != nullptr && !error->isHidden();
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial;
+
+    preferences_apply_callback_ = callback;
+    preferences_dialog_executor_ = [&inspect](PreferencesDialog& dialog) {
+        return inspect(dialog, true);
+    };
+    preferences_action_->trigger();
+    preferences_dialog_executor_ = {};
+    preferences_apply_callback_ = callback;
+    passed = passed && preferences_.maximum_network_cache_megabytes == 64U &&
+             !preferences_.clear_network_cache_on_exit &&
+             facade_->ExportArticleTabSession() == session &&
+             CaptureMainWindowState() == state;
+    completion(passed);
+}
+
+void MainWindow::RunNetworkCachePreferencesRestartSmokeCheck(
+    std::function<void(bool)> completion) {
+    bool passed = preferences_.maximum_network_cache_megabytes == 64U &&
+                  !preferences_.clear_network_cache_on_exit;
+    preferences_dialog_executor_ = [&passed](PreferencesDialog& dialog) {
+        auto* size =
+            dialog.findChild<QSpinBox*>(QStringLiteral("maxNetworkCacheSize"));
+        auto* clear = dialog.findChild<QCheckBox*>(
+            QStringLiteral("clearNetworkCacheOnExit"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && size != nullptr && clear != nullptr &&
+                 buttons != nullptr && size->value() == 64 &&
+                 !clear->isChecked();
+        if (size != nullptr)
+            size->setValue(32);
+        if (clear != nullptr)
+            clear->setChecked(true);
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    preferences_dialog_executor_ = {};
+    passed = passed && preferences_.maximum_network_cache_megabytes == 32U &&
+             preferences_.clear_network_cache_on_exit;
+    completion(passed);
+}
+
 void MainWindow::RunHideSingleTabPreferencesSmokeCheck(
     std::function<void(bool)> completion) {
     if (preferences_action_ == nullptr || facade_ == nullptr ||
@@ -5664,6 +5787,10 @@ void MainWindow::SetPreferencesApplyCallback(
     preferences_apply_callback_ = std::move(apply_callback);
 }
 
+void MainWindow::SetNetworkCacheDirectory(const QString& directory) {
+    network_cache_directory_ = directory;
+}
+
 bool MainWindow::RestoreMainWindowGeometry(const std::string& geometry) {
     if (geometry.empty())
         return false;
@@ -6528,6 +6655,7 @@ void MainWindow::EditPreferences() {
                       return QStringLiteral(
                           "Preferences cannot be applied in this context");
                   },
+            network_cache_directory_,
             this);
         if (preferences_dialog_executor_)
             preferences_dialog_executor_(dialog);

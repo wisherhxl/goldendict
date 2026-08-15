@@ -1004,6 +1004,13 @@ The dependency-ordered ready graph is:
    origin/proxy composition tests, and an offscreen transaction/restart smoke
    must prove strict validation, direct disabled traffic, proxied enabled
    traffic, live-facade preservation, and secret-free persistence/diagnostics.
+6. `P8-PREF-6 General/Network — Qt Network cache policy` is complete after its
+   separately audited Phase 7 runtime owner. It exposes only the pinned cache
+   size and clear-on-exit controls and reuses the neutral persisted fields plus
+   validate/prepare/persist/activate transaction. Focused configuration,
+   runtime lifecycle, offscreen transaction, and two-process restart coverage
+   pins exact MiB behavior, failure rollback, request-quiescent owned-directory
+   cleanup, and WebEngine isolation, subject only to disposable-byte eviction.
 
 The following controls remain blocked on named non-Preferences prerequisites:
 languages, help, and appearance on Phase 9 shipped translations/help/styles;
@@ -1025,6 +1032,16 @@ Preferences leaf may use the documented prepare, persist, and activate
 boundary, with the explicit exception that evicted disposable cache bytes
 cannot be reconstructed. It must not change WebEngine profile policy or clear
 WebEngine data.
+
+The dependent Phase 8 General/Network cache leaf is complete. It restores the
+pinned 0--2000 MiB maximum-size editor and clear-on-exit checkbox, including
+the zero-limit enablement rule and injected owned-directory tooltip, while
+reusing the existing transport-neutral fields and prepare/persist/activate
+transaction. Cancel and every apply failure preserve configuration, runtime
+ownership, facade, session, and layout; successful apply and clean restart
+publish the exact MiB policy. Reducing or disabling may still irreversibly
+evict disposable bytes. WebEngine profile data, cookies, storage, proxy policy,
+and cache-now operations remain outside this leaf.
 
 History and Favorites save intervals are intentionally excluded because
 current mutations persist immediately. Web plugins have no supported Qt

@@ -26,7 +26,8 @@ class PreferencesDialog final : public QDialog {
 
     PreferencesDialog(
         const goldendict::core::ApplicationPreferences& preferences,
-        ApplyCallback apply_callback, QWidget* parent = nullptr);
+        ApplyCallback apply_callback, const QString& network_cache_directory,
+        QWidget* parent = nullptr);
 
    private:
     void Apply();
@@ -50,6 +51,8 @@ class PreferencesDialog final : public QDialog {
     QCheckBox* ignore_diacritics_ = nullptr;
     QCheckBox* synonym_search_enabled_ = nullptr;
     QSpinBox* input_phrase_length_limit_ = nullptr;
+    QSpinBox* maximum_network_cache_megabytes_ = nullptr;
+    QCheckBox* clear_network_cache_on_exit_ = nullptr;
     QGroupBox* use_proxy_server_ = nullptr;
     QComboBox* proxy_type_ = nullptr;
     QLineEdit* proxy_host_ = nullptr;
