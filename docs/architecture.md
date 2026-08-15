@@ -578,5 +578,14 @@ in matches, tabs, history, and sessions are not rewritten. StarDict `.syn`
 records are validated as source data and cached in a private versioned index;
 older implementation-generated caches rebuild automatically.
 
+The General optional-parts preference extends the same complete candidate and
+desktop recomposition path without changing installed request or result types.
+Private DSL rendering marks `[*]` zones for the common sanitizer, which emits
+only fixed inert semantic markup. Desktop composition keeps those zones hidden
+behind one script-free article control by default or exposes them when the
+default-off preference is enabled. Hidden optional text does not count toward
+the existing large-article collapse threshold; structured plain text and
+headless visible rendering retain the complete article.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

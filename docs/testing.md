@@ -418,6 +418,14 @@ deduplication, original requested text, and unchanged suggestions. StarDict
 reader coverage validates bounded `.syn` parsing and primary mappings across
 private generated-index creation and reuse; malformed or stale source data
 cannot be silently accepted.
+The General/Expand optional parts extension pins default-off persistence,
+strict legacy migration, exact checkbox and transaction behavior, bounded DSL
+semantic markers, sanitizer isolation, disabled article-level expansion,
+enabled visibility, and the legacy large-article threshold interaction.
+`goldendict_optional_parts_preferences_smoke` covers cancel, failed apply,
+successful persistence, reopen, complete session/layout preservation, and the
+backed checkbox. DSL reader, article assembler, and article composer tests pin
+the rendering behavior and unchanged structured plain text.
 `goldendict_search_menu_smoke` pins the unique `menuSearch` between Edit and
 History and its sole backed legacy `searchInPageAction`, including exact text,
 role, Ctrl+F ownership, canonical instance reuse, focus/select dispatch, and

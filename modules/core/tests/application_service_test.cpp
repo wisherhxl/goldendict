@@ -937,6 +937,7 @@ void ApplicationServiceTest::
     preferences.words_zoom_level = -2;
     preferences.maximum_history_entries = 1234U;
     preferences.confirm_favorites_deletion = false;
+    preferences.always_expand_optional_parts = true;
     preferences.collapse_large_articles = true;
     preferences.article_size_limit = 4096U;
     preferences.limit_input_phrase_length = true;
@@ -973,6 +974,7 @@ void ApplicationServiceTest::
     QCOMPARE(actual.preferences.limit_input_phrase_length, true);
     QCOMPARE(actual.preferences.input_phrase_length_limit, std::uint32_t{321});
     QCOMPARE(actual.preferences.confirm_favorites_deletion, false);
+    QCOMPARE(actual.preferences.always_expand_optional_parts, true);
     QCOMPARE(actual.preferences.synonym_search_enabled,
              preferences.synonym_search_enabled);
     QCOMPARE(actual.preferences.full_text_search_mode,
@@ -995,6 +997,7 @@ void ApplicationServiceTest::
     QCOMPARE(older.preferences.zoom_factor, 1.0);
     QCOMPARE(older.preferences.maximum_history_entries, std::uint32_t{500});
     QCOMPARE(older.preferences.confirm_favorites_deletion, true);
+    QCOMPARE(older.preferences.always_expand_optional_parts, false);
     QCOMPARE(older.preferences.limit_input_phrase_length, false);
     QCOMPARE(older.preferences.input_phrase_length_limit, std::uint32_t{1000});
 }
@@ -1272,6 +1275,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<wordsZoomLevel>-2</wordsZoomLevel>"
         "<maxStringsInHistory>1234</maxStringsInHistory>"
         "<confirmFavoritesDeletion>0</confirmFavoritesDeletion>"
+        "<alwaysExpandOptionalParts>1</alwaysExpandOptionalParts>"
         "<collapseBigArticles>1</collapseBigArticles>"
         "<articleSizeLimit>4096</articleSizeLimit>"
         "<synonymSearchEnabled>0</synonymSearchEnabled>"
@@ -1344,6 +1348,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.full_text_maximum_word_distance, std::uint32_t{9});
     QCOMPARE(preferences.full_text_disabled_types, "audio|images");
     QCOMPARE(preferences.confirm_favorites_deletion, false);
+    QCOMPARE(preferences.always_expand_optional_parts, true);
     QCOMPARE(migrated.main_window_geometry, "geometry");
     QVERIFY(std::filesystem::exists(current_path));
     std::ifstream legacy_input(legacy_path, std::ios::binary);
@@ -1588,6 +1593,7 @@ void ApplicationServiceTest::RejectsMalformedLegacyPreferencesAtomically() {
         "<interfaceLanguage><nested/></interfaceLanguage>",
         "<storeHistory>1</storeHistory><storeHistory>0</storeHistory>",
         "<confirmFavoritesDeletion>true</confirmFavoritesDeletion>",
+        "<alwaysExpandOptionalParts>true</alwaysExpandOptionalParts>",
         "<proxyserver enabled=\"yes\" useSystemProxy=\"0\"/>",
         "<proxyserver useSystemProxy=\"0\"/>",
         "<proxyserver enabled=\"1\"/>",

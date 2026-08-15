@@ -50,8 +50,10 @@ class DesktopFacadeImpl final : public DesktopFacade {
         : service_(CreateDictionaryService(configuration,
                                            std::move(runtime_sources))),
           preferences_(configuration.preferences),
-          article_options_{configuration.preferences.collapse_large_articles,
-                           configuration.preferences.article_size_limit} {
+          article_options_{
+              configuration.preferences.always_expand_optional_parts,
+              configuration.preferences.collapse_large_articles,
+              configuration.preferences.article_size_limit} {
         tabs_.push_back(CreateTabRecord(EmptyNavigation()));
         active_tab_id_ = tabs_.front().id;
     }

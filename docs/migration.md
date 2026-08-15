@@ -927,6 +927,17 @@ StarDict cache format advances and older implementation-generated caches
 rebuild automatically. The next independent Preferences leaf is
 General/Expand optional parts.
 
+The General/Expand optional parts leaf adds the pinned default-off checkbox and
+restores DSL `[*]` zones end to end. Disabled pages initially hide every
+optional zone behind one script-free article control and exclude hidden text
+from large-article threshold measurement; enabled pages expose the zones and
+omit the control. Core owns bounded DSL semantics, sanitization, and desktop
+composition, while Widgets edits the complete candidate through the existing
+atomic recomposition/session-restoration transaction. Plain-text results,
+headless visible rendering, queries, filters, ordering, bounds, cancellation,
+deadlines, suggestions, and non-DSL formats remain unchanged. The repository
+task graph does not yet designate the next independent Preferences leaf.
+
   Concrete local formats remain private to the core library; the executable
   composition root may reference only justified optional integration modules.
 - Provide a compatible migration path for legacy configuration, dictionary

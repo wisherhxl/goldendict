@@ -381,6 +381,10 @@ std::string RenderDsl(std::string_view input, std::string_view primary) {
                     html += "</span>";
                 } else if (tag == "br") {
                     html += "<br>";
+                } else if (tag == "*") {
+                    html += "<gd-optional>";
+                } else if (tag == "/*") {
+                    html += "</gd-optional>";
                 }
                 index = end + 1U;
                 continue;

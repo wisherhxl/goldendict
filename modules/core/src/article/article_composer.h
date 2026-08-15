@@ -8,6 +8,7 @@
 namespace goldendict::core::article {
 
 struct ArticleCompositionOptions {
+    bool always_expand_optional_parts = false;
     bool collapse_large_articles = false;
     std::uint32_t article_size_limit = 2000U;
 };

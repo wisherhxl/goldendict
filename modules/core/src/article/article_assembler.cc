@@ -284,6 +284,8 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
             stack.pop_back();
             if (suppressed_depth > 0) {
                 --suppressed_depth;
+            } else if (tag.name == "gd-optional") {
+                html->append("</span>");
             } else if (Contains(kAllowedTags, tag.name)) {
                 html->append("</" + tag.name + ">");
                 if (IsBlock(tag.name)) {
@@ -298,6 +300,8 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                 if (!tag.self_closing) {
                     ++suppressed_depth;
                 }
+            } else if (tag.name == "gd-optional") {
+                html->append("<span class=\"gd-optional-part\">");
             } else if (Contains(kAllowedTags, tag.name)) {
                 html->append("<" + tag.name);
                 if (tag.name == "a") {

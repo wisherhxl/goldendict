@@ -33,6 +33,8 @@ void DslReaderTest::ReadsMetadataExpansionsMarkupAndRankedMatches() {
     QVERIFY(article.find("<b>drink</b>") != std::string::npos);
     QVERIFY(article.find("bword://coffee") != std::string::npos);
     QVERIFY(article.find("images/cup.png") != std::string::npos);
+    QVERIFY(article.find("<gd-optional>optional</gd-optional>") !=
+            std::string::npos);
     QCOMPARE(reader.SuggestPrefix("caf").front(), "Caf");
 }
 

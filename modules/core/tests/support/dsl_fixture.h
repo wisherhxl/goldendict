@@ -24,7 +24,7 @@ inline std::filesystem::path WriteDslFixture(
         "#SOURCE_CODE_PAGE \"UTF-8\"\n"
         "Caf(e)\n"
         "~ shop\n"
-        "\t[b]drink[/b] <<coffee>> [s]images/cup.png[/s]\n"
+        "\t[b]drink[/b] [*]optional[/*] <<coffee>> [s]images/cup.png[/s]\n"
         "cafeteria\n"
         "\tplace\n";
     const auto path = directory / "fixture.dsl";

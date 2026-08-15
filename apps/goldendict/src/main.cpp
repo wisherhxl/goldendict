@@ -995,6 +995,25 @@ int main(int argc, char* argv[]) {
                         .filePath(QStringLiteral("file-menu-article.html")),
                     [&app](bool passed) { app.exit(passed ? 0 : 1); });
             });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--optional-parts-preferences-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &configuration_path, &window]() {
+            window.RunOptionalPartsPreferencesSmokeCheck(
+                [&app, &configuration_path](bool passed) {
+                    try {
+                        const auto persisted_configuration =
+                            goldendict::core::LoadConfiguration(
+                                configuration_path.toStdString());
+                        passed = passed && persisted_configuration.preferences
+                                               .always_expand_optional_parts;
+                    } catch (...) {
+                        passed = false;
+                    }
+                    app.exit(passed ? 0 : 1);
+                });
+        });
     } else if (HasArgument(argc, argv, QStringLiteral("--view-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(0, &window, [&app, &window]() {

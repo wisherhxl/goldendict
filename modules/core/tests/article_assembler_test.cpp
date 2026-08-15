@@ -14,6 +14,7 @@ class ArticleAssemblerTest : public QObject {
    private slots:
     void EscapesPlainTextAndKeepsItStructured();
     void SanitizesMarkupAndRewritesTypedLinks();
+    void PreservesOnlyInternalOptionalPartSemantics();
     void PreservesSafeAudioAndCollectsItsResource();
     void DeduplicatesResourceReferencesAcrossArticles();
     void RemovesActiveContentAndUnsafeAttributes();
@@ -61,6 +62,22 @@ void ArticleAssemblerTest::SanitizesMarkupAndRewritesTypedLinks() {
     QCOMPARE(document.resources.front().resource_id, "images/pixel.png");
 }
 
+void ArticleAssemblerTest::PreservesOnlyInternalOptionalPartSemantics() {
+    const Document document = Assemble(
+        kDictionary,
+        {{"example", "text/html",
+          "before<gd-optional><b>optional</b></gd-optional>after"
+          "<span class=\"gd-optional-part\" onclick=\"bad()\">plain</span>"}});
+
+    QCOMPARE(document.plain_text, "beforeoptionalafterplain");
+    QVERIFY(document.sanitized_html.find(
+                "<span class=\"gd-optional-part\"><b>optional</b></span>") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("onclick") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("<span>plain</span>") !=
+            std::string::npos);
+}
+
 void ArticleAssemblerTest::PreservesSafeAudioAndCollectsItsResource() {
     const Document document = Assemble(
         kDictionary, {{"example", "text/html",
@@ -106,7 +123,7 @@ void ArticleAssemblerTest::RemovesActiveContentAndUnsafeAttributes() {
     QCOMPARE(document.plain_text, "safelink");
     QVERIFY(document.sanitized_html.find("script") == std::string::npos);
     QVERIFY(document.sanitized_html.find("onclick") == std::string::npos);
-    QVERIFY(document.sanitized_html.find("display:none") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("<p style=") == std::string::npos);
     QVERIFY(document.sanitized_html.find("onerror") == std::string::npos);
     QVERIFY(document.sanitized_html.find("javascript:") == std::string::npos);
     QVERIFY(document.sanitized_html.find("secret") == std::string::npos);

@@ -1986,6 +1986,93 @@ void MainWindow::RunSynonymPreferencesSmokeCheck(
     completion(passed);
 }
 
+void MainWindow::RunOptionalPartsPreferencesSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || facade_ == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial_preferences = preferences_;
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const std::string initial_state = CaptureMainWindowState();
+    bool passed = true;
+    const auto inspect = [&passed](PreferencesDialog& dialog, bool checked,
+                                   bool new_value, bool accept) {
+        auto* checkbox = dialog.findChild<QCheckBox*>(
+            QStringLiteral("alwaysExpandOptionalParts"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed =
+            passed && checkbox != nullptr && buttons != nullptr &&
+            checkbox->text() == QStringLiteral("Expand optional &parts") &&
+            checkbox->toolTip() == QStringLiteral(
+                                       "Turn this option on to always expand "
+                                       "optional parts of articles") &&
+            checkbox->isChecked() == checked;
+        if (checkbox != nullptr)
+            checkbox->setChecked(new_value);
+        if (accept && buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        else
+            dialog.reject();
+        return dialog.result();
+    };
+
+    preferences_dialog_executor_ = [&inspect, initial_preferences](
+                                       PreferencesDialog& dialog) {
+        return inspect(dialog, initial_preferences.always_expand_optional_parts,
+                       !initial_preferences.always_expand_optional_parts,
+                       false);
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences;
+
+    const auto original_callback = preferences_apply_callback_;
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("forced optional parts preferences failure");
+    };
+    preferences_dialog_executor_ = [&passed](PreferencesDialog& dialog) {
+        auto* checkbox = dialog.findChild<QCheckBox*>(
+            QStringLiteral("alwaysExpandOptionalParts"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        passed = passed && checkbox != nullptr && buttons != nullptr;
+        if (checkbox != nullptr)
+            checkbox->setChecked(true);
+        if (buttons != nullptr)
+            buttons->button(QDialogButtonBox::Ok)->click();
+        auto* error = dialog.findChild<QLabel*>(
+            QStringLiteral("preferencesValidationError"));
+        passed = passed && dialog.result() != QDialog::Accepted &&
+                 error != nullptr && !error->isHidden();
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_ == initial_preferences;
+
+    preferences_apply_callback_ = original_callback;
+    preferences_dialog_executor_ = [&inspect, initial_preferences](
+                                       PreferencesDialog& dialog) {
+        return inspect(dialog, initial_preferences.always_expand_optional_parts,
+                       true, true);
+    };
+    preferences_action_->trigger();
+    passed = passed && preferences_.always_expand_optional_parts;
+
+    preferences_dialog_executor_ = [&inspect](PreferencesDialog& dialog) {
+        return inspect(dialog, true, true, false);
+    };
+    preferences_action_->trigger();
+    preferences_dialog_executor_ = {};
+    preferences_apply_callback_ = original_callback;
+    passed = passed && preferences_.always_expand_optional_parts &&
+             facade_->ExportArticleTabSession() == initial_session &&
+             CaptureMainWindowState() == initial_state &&
+             centralWidget() != nullptr && article_tabs_->isVisible();
+    completion(passed);
+}
+
 void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
     auto* search_menu = findChild<QMenu*>(QStringLiteral("menuSearch"));
     if (search_menu == nullptr || search_in_page_action_ == nullptr ||

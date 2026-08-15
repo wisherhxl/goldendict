@@ -123,6 +123,16 @@ PreferencesDialog::PreferencesDialog(
     articles_layout->addStretch();
     general_layout->addWidget(articles_group);
 
+    always_expand_optional_parts_ =
+        new QCheckBox(QStringLiteral("Expand optional &parts"), general_page);
+    always_expand_optional_parts_->setObjectName(
+        QStringLiteral("alwaysExpandOptionalParts"));
+    always_expand_optional_parts_->setToolTip(QStringLiteral(
+        "Turn this option on to always expand optional parts of articles"));
+    always_expand_optional_parts_->setChecked(
+        preferences.always_expand_optional_parts);
+    general_layout->addWidget(always_expand_optional_parts_);
+
     auto* input_phrase_group =
         new QGroupBox(QStringLiteral("Input phrase length"), general_page);
     input_phrase_group->setObjectName(
@@ -207,6 +217,8 @@ void PreferencesDialog::Apply() {
     candidate.collapse_large_articles = collapse_large_articles_->isChecked();
     candidate.article_size_limit =
         static_cast<std::uint32_t>(article_size_limit_->value());
+    candidate.always_expand_optional_parts =
+        always_expand_optional_parts_->isChecked();
     candidate.limit_input_phrase_length =
         limit_input_phrase_length_->isChecked();
     candidate.input_phrase_length_limit =
