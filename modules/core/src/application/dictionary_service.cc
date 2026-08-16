@@ -851,10 +851,17 @@ class ServiceState final {
         }
         for (const auto& catalog_path : epwing_discovery.catalog_files) {
             const std::string id = StableId("epwing", catalog_path);
+            std::optional<std::filesystem::path> full_text_index_path;
+            if (!configuration.index_directory.empty()) {
+                full_text_index_path =
+                    std::filesystem::u8path(configuration.index_directory) /
+                    (id + ".gdfts");
+            }
             try {
                 dictionaries_.push_back(
                     std::make_unique<formats::epwing::Dictionary>(
-                        formats::epwing::Dictionary::Open(id, catalog_path)));
+                        formats::epwing::Dictionary::Open(
+                            id, catalog_path, full_text_index_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});

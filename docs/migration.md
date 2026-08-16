@@ -1721,8 +1721,9 @@ headword-independent physical owner and complete ordered immutable revision;
 no blocker remains. The audit therefore selects exactly P6-FT-14, the private
 EPWING full-text adapter, and selects or ranks no successor.
 
-P6-FT-14 creates one document per retained physical ingestion article whose
-bounded rendered HTML assembles to non-empty inert plain text. First-record
+P6-FT-14 is complete and creates one document per retained physical ingestion
+article whose bounded rendered HTML assembles to non-empty inert plain text.
+First-record
 ownership supplies the canonical headword, aliases, `first_record_ordinal`,
 `article_ordinal`, `text_file_ordinal`, page, and offset. Aliases are not
 documents, and equal content at different physical identities remains
@@ -1749,6 +1750,8 @@ configuration/Preferences, dependencies, GUI/Phase 8, `.gdfts`
 serialization, and eleven completed adapters. It excludes legacy `_FTS`,
 metadata/resource indexing, highlighting, other adapters, unsupported EPWING
 parity, and unrelated refactors.
+
+No successor after P6-FT-14 is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

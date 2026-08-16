@@ -30,7 +30,8 @@ inline void EpwingWrite(const std::filesystem::path& path,
 }
 
 inline std::filesystem::path WriteEpwingFixture(
-    const std::filesystem::path& root, bool latin = true) {
+    const std::filesystem::path& root, bool latin = true,
+    std::string_view first_article = "definition next") {
     std::string catalog(16U + 164U, '\0');
     EpwingBe16(1U, &catalog, 0U);
     EpwingBe16(1U, &catalog, 2U);
@@ -74,7 +75,8 @@ inline std::filesystem::path WriteEpwingFixture(
         add_index("example", 0U, &honmon, &cursor);
         add_index("second", 64U, &honmon, &cursor);
         std::string first("\x1f\x02", 2U);
-        first += "definition ";
+        first += first_article;
+        first += " ";
         first.append("\x1f\x42\x00\x00next", 8U);
         first.append("\x1f\x62\x00\x00\x00\x03\x00\x64", 8U);
         first.append("\x1f\x03", 2U);

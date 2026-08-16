@@ -1174,6 +1174,8 @@ int main() {
         WriteEpwingFixture(epwing_root);
         goldendict::core::CoreConfiguration epwing_configuration;
         epwing_configuration.dictionary_paths = {epwing_root.string()};
+        epwing_configuration.index_directory =
+            (directory.path() / "epwing-indexes").string();
         auto epwing_service =
             goldendict::core::CreateDictionaryService(epwing_configuration);
         const auto epwing_catalog = epwing_service->GetCatalog();
@@ -1190,6 +1192,24 @@ int main() {
             epwing_response.entries.front().article.sanitized_html->find(
                 "Installed EPWING definition.") == std::string::npos) {
             return Fail("installed EPWING lookup failed");
+        }
+        goldendict::core::FullTextQuery epwing_full_text_query;
+        epwing_full_text_query.text = "Installed";
+        const auto epwing_full_text =
+            epwing_service->SearchFullText(epwing_full_text_query);
+        if (!epwing_full_text.errors.empty() ||
+            epwing_full_text.results.size() != 1U ||
+            epwing_full_text.results.front().dictionary.id !=
+                epwing_catalog.front().id ||
+            epwing_full_text.results.front().dictionary.name !=
+                "Installed EPWING" ||
+            epwing_full_text.results.front().headword != "example" ||
+            epwing_full_text.results.front().document_id !=
+                "epwing-index:0:0:0:3:0" ||
+            epwing_full_text.results.front().match.mode !=
+                goldendict::core::MatchMode::kFullText ||
+            epwing_full_text.results.front().matches.size() != 1U) {
+            return Fail("installed EPWING full-text search failed");
         }
 
         const auto sound_root = directory.path() / "sounds";

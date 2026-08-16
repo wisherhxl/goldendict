@@ -116,7 +116,11 @@ endif()
 
 if(TARGET epwing_dictionary_test)
   target_sources(epwing_dictionary_test PRIVATE
+    src/article/article_assembler.cc
+    src/article/article_document.cc
+    src/article/internal_url.cc
     src/dictionary/dictionary_backend.cc
+    src/dictionary/full_text_index.cc
     src/dictionary/generated_index.cc
     src/foundation/text_encoding.cc
     src/foundation/text_folding.cc
@@ -124,7 +128,7 @@ if(TARGET epwing_dictionary_test)
     src/formats/epwing/epwing_dictionary.cc
     src/formats/epwing/epwing_reader.cc
   )
-  target_link_libraries(epwing_dictionary_test PRIVATE ICU::uc)
+  target_link_libraries(epwing_dictionary_test PRIVATE expat::expat ICU::uc)
 endif()
 
 if(TARGET aard_reader_test)

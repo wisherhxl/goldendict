@@ -155,7 +155,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsMalformedConfiguration();
     void CatalogSanitizesInspectionMetadata();
     void DiscoversAndQueriesARealFixture();
-    void SearchesTenLocalFormatsFullTextWithMixedFormatErrors();
+    void SearchesTwelveLocalFormatsFullTextWithMixedFormatErrors();
     void EnumeratesStarDictHeadwordsWithStableCursors();
     void ExportsCompleteHeadwordListsAtomically();
     void ReturnsCanonicalFoldedMatchInformation();
@@ -1915,7 +1915,7 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
 }
 
 void ApplicationServiceTest::
-    SearchesTenLocalFormatsFullTextWithMixedFormatErrors() {
+    SearchesTwelveLocalFormatsFullTextWithMixedFormatErrors() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     const auto root = TemporaryPath(directory);
@@ -1930,6 +1930,7 @@ void ApplicationServiceTest::
     std::filesystem::create_directories(root / "slob");
     std::filesystem::create_directories(root / "zim");
     std::filesystem::create_directories(root / "mdict");
+    std::filesystem::create_directories(root / "epwing");
     test::WriteStardictFixture(root / "first",
                                {{"Alpha", "shared searchable first"}});
     test::WriteSdictFixture(root / "sdict",
@@ -1955,6 +1956,8 @@ void ApplicationServiceTest::
     test::WriteMdictContainer(
         root / "mdict" / "fixture.mdx", "Fixture MDict",
         {{"Lambda", "<b>shared searchable eleventh</b>"}});
+    test::WriteEpwingFixture(root / "epwing", true,
+                             "shared searchable twelfth");
     CoreConfiguration configuration;
     configuration.dictionary_paths = {root.string()};
     configuration.index_directory = (root / "indexes").string();
@@ -1963,7 +1966,7 @@ void ApplicationServiceTest::
     auto service =
         CreateDictionaryService(configuration, std::move(runtime_sources));
     const auto catalog = service->GetCatalog();
-    QCOMPARE(catalog.size(), 12U);
+    QCOMPARE(catalog.size(), 13U);
 
     FullTextQuery query;
     query.text = "shared";
@@ -1983,7 +1986,7 @@ void ApplicationServiceTest::
     query.dictionary_ids.push_back("unavailable");
     query.result_limit = kMaximumFullTextResults;
     const auto filtered = service->SearchFullText(query);
-    QCOMPARE(filtered.results.size(), 11U);
+    QCOMPARE(filtered.results.size(), 12U);
     std::vector<std::string> adapted_ids;
     for (const auto& result : filtered.results) {
         adapted_ids.push_back(result.dictionary.id);
@@ -2033,6 +2036,10 @@ void ApplicationServiceTest::
                  adapted_ids.begin(), adapted_ids.end(),
                  [](const auto& id) { return id.rfind("mdict-", 0U) == 0U; }),
              1);
+    QCOMPARE(std::count_if(
+                 adapted_ids.begin(), adapted_ids.end(),
+                 [](const auto& id) { return id.rfind("epwing-", 0U) == 0U; }),
+             1);
     std::vector<std::string> expected_adapted_ids;
     for (const auto& item : catalog) {
         if (std::find(adapted_ids.begin(), adapted_ids.end(), item.id) !=
@@ -2064,6 +2071,8 @@ void ApplicationServiceTest::
              filtered.results[9].dictionary.id);
     QCOMPARE(repeated.results[10].dictionary.id,
              filtered.results[10].dictionary.id);
+    QCOMPARE(repeated.results[11].dictionary.id,
+             filtered.results[11].dictionary.id);
     QCOMPARE(filtered.results.front().match.mode, MatchMode::kFullText);
     QCOMPARE(filtered.results.front().matches.size(), 1U);
     QCOMPARE(filtered.errors.size(), 2U);
@@ -2120,7 +2129,7 @@ void ApplicationServiceTest::
     query = {};
     query.text = "shared";
     const auto contained = service->SearchFullText(query);
-    QCOMPARE(contained.results.size(), std::size_t{10});
+    QCOMPARE(contained.results.size(), std::size_t{11});
     QVERIFY(std::any_of(contained.results.begin(), contained.results.end(),
                         [](const auto& result) {
                             return result.dictionary.id.rfind("aard-", 0U) ==

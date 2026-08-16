@@ -1351,8 +1351,9 @@ physical ownership required by the pinned legacy behavior above. The adapter
 is decision-complete, so the audit selects exactly P6-FT-14, the private
 EPWING full-text adapter. It selects and ranks no successor.
 
-P6-FT-14 retains exactly one document for each ingestion article with
-non-empty assembled text, in retained physical-article order. The first record
+P6-FT-14 is complete and retains exactly one document for each ingestion
+article with non-empty assembled text, in retained physical-article order. The
+first record
 for `(text_file_ordinal, page, offset)` supplies the canonical headword,
 `first_record_ordinal`, and `article_ordinal`; later records for that identity
 remain aliases and never become documents. Equal rendered bytes at different
@@ -1391,6 +1392,8 @@ private `.gdfts` serialization, and the eleven completed adapter behaviors.
 Legacy `_FTS` compatibility, metadata/resource indexing, highlighting, other
 adapters, compressed or otherwise unsupported EPWING parity, and unrelated
 refactors are excluded.
+
+No successor after P6-FT-14 is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

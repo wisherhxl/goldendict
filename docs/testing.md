@@ -947,8 +947,8 @@ GUI/Phase 8 behavior, `.gdfts` serialization, or completed-format behavior.
 EPWING remains typed unsupported; no adapter, successor, or later leaf is
 selected or ranked.
 
-The P6-FT-14 implementation gate extends the generated EPWING fixtures to the
-private adapter and lifecycle. It proves one document per retained physical
+The accepted P6-FT-14 implementation extends the generated EPWING fixtures to
+the private adapter and lifecycle. It proves one document per retained physical
 article, first-record canonical headword and aliases, distinct equal-content
 identities, empty-output exclusion, inert plain text assembled from bounded
 HTML, inert references, and exact canonical unsigned-decimal
@@ -969,12 +969,12 @@ Mixed-service coverage becomes twelve-format and retains dictionary-ID order,
 filtering, the global result bound, adapted no-match behavior, typed
 unavailable requested IDs, and contained per-dictionary failures. Installed
 C++ coverage requires an exact-provenance EPWING result; installed C coverage
-remains unchanged. Future implementation must run focused tests, a fresh Linux
-Release configure/build, full `ctest --preset conan-release` with 103
+remains unchanged. Acceptance requires focused tests, a fresh Linux Release
+configure/build, full `ctest --preset conan-release` with 103
 registered tests unless an intentional delta is justified, Release install
 and installed C/C++ consumers, and a clean committed exact-SCM `conan create`
-with the Qt WebEngine host profile and packaged consumers. This documentation
-audit runs no build. No successor after P6-FT-14 is selected or ranked.
+with the Qt WebEngine host profile and packaged consumers. No successor after
+P6-FT-14 is selected or ranked.
 
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
