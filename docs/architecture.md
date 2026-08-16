@@ -2670,6 +2670,70 @@ safe structured error-detail presentation contract. P8-FT-22 therefore exposes
 only the migrated response's bounded partial fact. P8-FT-22 is complete. No
 successor after P8-FT-22 is selected or ranked.
 
+### Phase 8 full-text empty-result status (selected)
+
+The independent documentation-only post-P8-FT-22 readiness audit is pinned to
+clean migrated revision `8a79669095166821e6361f24bf02a27d8bb6a2fb` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-23: present the unambiguous empty result
+of a generation-current accepted response.
+
+P8-FT-23 is dependency-ready because P8-FT-9 accepts only the current terminal
+generation, P8-FT-11 retains the complete response, P8-FT-17 presents its
+retained-result count, and P8-FT-22 independently presents authoritative
+partiality. One private Widgets-owned status consumes only the existing
+response's result count, `partial` flag, and error collection. Core remains
+authoritative for all three facts. No public API, DTO, persistence, dependency,
+adapter, index-format, or build-system change is required.
+
+The status reads `No matches` exactly when a generation-current accepted
+response has zero retained results, `partial == false`, and no errors. Initial
+state and replacement submission hide it. Nonempty, partial, and
+error-containing responses hide it, so Widgets neither claims a conclusive
+empty search after incomplete work nor preempts a later error-presentation
+contract. The existing partial status remains independent. Stale or cancelled
+completions, controller detachment, service replacement, and teardown cannot
+introduce or overwrite the current status. Result rows, count, selection,
+focus, activation, response ownership, and accepted-generation synchronization
+remain unchanged.
+
+Focused future acceptance covers initial and replacement reset; conclusive
+empty responses; nonempty, partial-empty, partial-nonempty, error-only, and
+result-plus-error responses; repeated accepted transitions; and stale,
+cancelled, detached, replaced-service, and teardown completion safety. The
+focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-23 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or compiled test.
+
+Error summaries and details; exact `document_id` navigation and
+source-dictionary targeting; columns, icons, additional metadata roles, and
+other decoration; match ranges and excerpt presentation; highlighting,
+ignore-diacritics transfer, and WebEngine handoff; Preferences enablement,
+format exclusions, size/index policy, and persistence; index readiness,
+visibility, status, progress, background lifecycle, rebuild, and failure UI;
+adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies, builds, and
+unrelated parity remain independent surfaces. They are decomposed only; none is
+selected or ranked. No public API, DTO, persistence, Core, adapter, index,
+dependency, or build surface belongs to P8-FT-23.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
+installed `FullTextResponse` contract, and completed
+P8-FT-9/P8-FT-11/P8-FT-17/P8-FT-22. Pinned legacy
+`fulltextsearch.cc:448-449,499-586` clears retained rows before a replacement,
+silently contains individual dictionary failures, and leaves the accepted
+zero count as its only empty-result presentation. The migrated application
+already uses exact text `No matches` for a conclusive zero-match article search
+at `main_window.cpp:5122-5136,7706-7723`. No successor after P8-FT-23 is
+selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
