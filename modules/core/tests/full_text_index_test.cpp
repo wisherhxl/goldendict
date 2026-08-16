@@ -56,25 +56,36 @@ class FullTextIndexTest : public QObject {
 void FullTextIndexTest::Lifecycle() {
     TemporaryDirectory directory;
     const auto path = directory.path() / "reference.gdfts";
+    const auto source = directory.path() / "source.txt";
+    {
+        std::ofstream output(source);
+        output << "one";
+    }
+    auto sources = CaptureSourceSnapshot({source});
     const std::vector documents{Document("a", "Alpha", "quick brown fox")};
-    QCOMPARE(FullTextIndex::OpenOrBuild(path, "one", documents).state(),
+    QCOMPARE(FullTextIndex::OpenOrBuild(path, sources, documents).state(),
              FullTextIndexState::kCreated);
-    QCOMPARE(FullTextIndex::OpenOrBuild(path, "one", documents).state(),
+    QCOMPARE(FullTextIndex::OpenOrBuild(path, sources, documents).state(),
              FullTextIndexState::kReused);
-    QCOMPARE(FullTextIndex::OpenOrBuild(path, "two", documents).state(),
+    {
+        std::ofstream output(source, std::ios::app);
+        output << "two";
+    }
+    sources = CaptureSourceSnapshot({source});
+    QCOMPARE(FullTextIndex::OpenOrBuild(path, sources, documents).state(),
              FullTextIndexState::kRebuiltStale);
     {
         std::ofstream output(path, std::ios::binary | std::ios::trunc);
         output << "corrupt";
     }
-    QCOMPARE(FullTextIndex::OpenOrBuild(path, "two", documents).state(),
+    QCOMPARE(FullTextIndex::OpenOrBuild(path, sources, documents).state(),
              FullTextIndexState::kRebuiltCorrupt);
 }
 
 void FullTextIndexTest::QueryModesAndFilters() {
     TemporaryDirectory directory;
     auto index = FullTextIndex::OpenOrBuild(
-        directory.path() / "reference.gdfts", "one",
+        directory.path() / "reference.gdfts", {},
         {Document("a", "Alpha", "The quick brown fox"),
          Document("b", "Cafe", "A CAFÉ noir")});
     FullTextQuery query;
@@ -113,7 +124,7 @@ void FullTextIndexTest::QueryModesAndFilters() {
 void FullTextIndexTest::RejectsMalformedAndBoundedWork() {
     TemporaryDirectory directory;
     auto index =
-        FullTextIndex::OpenOrBuild(directory.path() / "reference.gdfts", "one",
+        FullTextIndex::OpenOrBuild(directory.path() / "reference.gdfts", {},
                                    {Document("a", "Alpha", "quick brown fox")});
     FullTextQuery query;
     query.text = "[";
@@ -130,7 +141,7 @@ void FullTextIndexTest::RejectsMalformedAndBoundedWork() {
              FullTextErrorCode::kInvalidQuery);
     Cancelled cancelled;
     QVERIFY_EXCEPTION_THROWN(
-        FullTextIndex::OpenOrBuild(directory.path() / "cancelled", "one",
+        FullTextIndex::OpenOrBuild(directory.path() / "cancelled", {},
                                    {Document("a", "A", "text")}, &cancelled),
         FullTextIndexError);
 }

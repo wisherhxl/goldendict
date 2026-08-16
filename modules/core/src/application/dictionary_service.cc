@@ -696,16 +696,20 @@ class ServiceState final {
         for (const auto& info_path : discovery.info_files) {
             const std::string id = StableId("stardict", info_path);
             std::optional<std::filesystem::path> index_path;
+            std::optional<std::filesystem::path> full_text_index_path;
             if (!configuration.index_directory.empty()) {
                 index_path =
                     std::filesystem::u8path(configuration.index_directory) /
                     (id + ".gdidx");
+                full_text_index_path =
+                    std::filesystem::u8path(configuration.index_directory) /
+                    (id + ".gdfts");
             }
             try {
                 dictionaries_.push_back(
                     std::make_unique<formats::stardict::Dictionary>(
-                        formats::stardict::Dictionary::Open(id, info_path,
-                                                            index_path)));
+                        formats::stardict::Dictionary::Open(
+                            id, info_path, index_path, full_text_index_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});
@@ -1015,23 +1019,58 @@ class ServiceState final {
         }
         std::unordered_set<std::string> requested(query.dictionary_ids.begin(),
                                                   query.dictionary_ids.end());
+        std::unordered_set<std::string> found;
+        const auto deadline = std::chrono::steady_clock::now() + query.timeout;
         for (const auto& backend : dictionaries_) {
             const auto& id = backend->identity().id;
             if (query.dictionary_filter_active && requested.count(id) == 0U) {
                 continue;
             }
-            response.errors.push_back(
-                {FullTextErrorCode::kUnsupported, id,
-                 "Full-text indexing is not available for this dictionary"});
+            found.insert(id);
+            const auto* full_text =
+                dynamic_cast<const dictionary::FullTextBackend*>(backend.get());
+            if (full_text == nullptr) {
+                response.errors.push_back({FullTextErrorCode::kUnsupported, id,
+                                           "Full-text indexing is not "
+                                           "available for this dictionary"});
+                continue;
+            }
+            if (response.results.size() == query.result_limit)
+                continue;
+            const auto now = std::chrono::steady_clock::now();
+            if (cancellation != nullptr &&
+                cancellation->IsCancellationRequested()) {
+                response.errors.push_back({FullTextErrorCode::kCancelled, id,
+                                           "Full-text search cancelled"});
+                break;
+            }
+            if (now >= deadline) {
+                response.errors.push_back(
+                    {FullTextErrorCode::kDeadlineExceeded, id,
+                     "Full-text operation deadline exceeded"});
+                break;
+            }
+            auto backend_query = query;
+            backend_query.result_limit =
+                query.result_limit - response.results.size();
+            backend_query.timeout =
+                std::chrono::duration_cast<std::chrono::milliseconds>(deadline -
+                                                                      now);
+            if (backend_query.timeout <= std::chrono::milliseconds::zero())
+                backend_query.timeout = std::chrono::milliseconds(1);
+            auto backend_response =
+                full_text->SearchFullText(backend_query, cancellation);
+            for (auto& error : backend_response.errors) {
+                if (error.dictionary_id.empty())
+                    error.dictionary_id = id;
+                response.errors.push_back(std::move(error));
+            }
+            for (auto& result : backend_response.results)
+                response.results.push_back(std::move(result));
         }
         if (query.dictionary_filter_active)
             for (const auto& id : query.dictionary_ids) {
-                const auto found =
-                    std::find_if(dictionaries_.begin(), dictionaries_.end(),
-                                 [&id](const auto& backend) {
-                                     return backend->identity().id == id;
-                                 });
-                if (found == dictionaries_.end()) {
+                if (found.count(id) == 0U) {
                     response.errors.push_back(
                         {FullTextErrorCode::kDictionaryUnavailable, id,
                          "Full-text dictionary is unavailable"});

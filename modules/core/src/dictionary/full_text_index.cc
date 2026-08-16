@@ -272,7 +272,7 @@ FullTextIndexError::FullTextIndexError(FullTextErrorCode code,
     : std::runtime_error(std::move(message)), code_(code) {}
 
 FullTextIndex FullTextIndex::OpenOrBuild(
-    const std::filesystem::path& path, std::string source_revision,
+    const std::filesystem::path& path, const SourceSnapshot& sources,
     std::vector<FullTextDocument> documents,
     const CancellationToken* cancellation,
     std::chrono::steady_clock::time_point deadline) {
@@ -289,8 +289,7 @@ FullTextIndex FullTextIndex::OpenOrBuild(
                          std::tie(right.dictionary.id, right_headword,
                                   right.document_id);
               });
-    const std::string format = std::string(kFormat) + source_revision;
-    auto loaded = LoadGeneratedIndex(path, format, {});
+    auto loaded = LoadGeneratedIndex(path, kFormat, sources);
     FullTextIndex result;
     if (loaded.state == GeneratedIndexState::kCurrent) {
         try {
@@ -302,7 +301,7 @@ FullTextIndex FullTextIndex::OpenOrBuild(
         }
     }
     Check(cancellation, deadline);
-    StoreGeneratedIndex(path, format, {}, Serialize(documents));
+    StoreGeneratedIndex(path, kFormat, sources, Serialize(documents));
     result.documents_ = std::move(documents);
     result.state_ = loaded.state == GeneratedIndexState::kMissing
                         ? FullTextIndexState::kCreated

@@ -3,6 +3,7 @@
 #ifndef GOLDENDICT_CORE_SRC_DICTIONARY_DICTIONARY_BACKEND_H_
 #define GOLDENDICT_CORE_SRC_DICTIONARY_DICTIONARY_BACKEND_H_
 
+#include "full_text_index.h"
 #include "goldendict/core/runtime_dictionary_source.h"
 
 namespace goldendict::core::dictionary {
@@ -24,6 +25,16 @@ class SynonymBackend {
     virtual ~SynonymBackend() = default;
     virtual std::vector<std::string> FindHeadwordsForSynonym(
         std::string_view headword, const RequestOptions& options) const = 0;
+};
+
+// Private capability implemented only by formats with accepted full-text
+// ingestion. Runtime sources deliberately do not inherit this interface.
+class FullTextBackend {
+   public:
+    virtual ~FullTextBackend() = default;
+    virtual FullTextResponse SearchFullText(
+        const FullTextQuery& query,
+        const CancellationToken* cancellation = nullptr) const = 0;
 };
 
 void CheckRequest(const RequestOptions& options);

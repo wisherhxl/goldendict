@@ -548,7 +548,34 @@ Reader Reader::Open(
                   "Index record points outside dictionary data");
         }
     }
+    try {
+        reader.source_snapshot_ =
+            dictionary::CaptureSourceSnapshot(source_paths);
+    } catch (const dictionary::GeneratedIndexError& error) {
+        Throw(ErrorCode::kIndexStorage, info_path, error.what());
+    }
     return reader;
+}
+
+std::vector<PrimaryArticle> Reader::ReadPrimaryArticles(
+    const std::function<void()>& checkpoint) const {
+    std::vector<PrimaryArticle> articles;
+    articles.reserve(static_cast<std::size_t>(metadata_.word_count));
+    for (std::size_t ordinal = 0U;
+         ordinal < static_cast<std::size_t>(metadata_.word_count); ++ordinal) {
+        if (checkpoint)
+            checkpoint();
+        const auto& record = index_[ordinal];
+        PrimaryArticle article;
+        article.record_ordinal = ordinal;
+        article.headword = record.headword;
+        article.article_offset = record.article_offset;
+        article.article_size = record.article_size;
+        article.data =
+            dictionary_data_.substr(record.article_offset, record.article_size);
+        articles.push_back(std::move(article));
+    }
+    return articles;
 }
 
 std::pair<std::vector<std::string>, bool> Reader::EnumerateHeadwords(

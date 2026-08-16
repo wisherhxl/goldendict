@@ -641,7 +641,9 @@ comes from the existing inert article-assembly policy, and a distinct private
 artifact under the configured index directory covers `.ifo`, `.idx`,
 `.dict`/`.dict.dz`, and optional `.syn` source revision. This private
 ingestion, lifecycle, and service-aggregation pattern is the prerequisite for
-later per-format adapters.
+later per-format adapters. The leaf is complete: the service deterministically
+merges bounded StarDict results with typed unsupported and unavailable errors,
+and the installed consumer exercises the unchanged `SearchFullText` contract.
 
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core

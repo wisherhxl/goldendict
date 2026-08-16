@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "generated_index.h"
 #include "goldendict/core/dictionary_service.h"
 
 namespace goldendict::core::dictionary {
@@ -43,7 +44,7 @@ class FullTextIndexError final : public std::runtime_error {
 class FullTextIndex final {
    public:
     static FullTextIndex OpenOrBuild(
-        const std::filesystem::path& path, std::string source_revision,
+        const std::filesystem::path& path, const SourceSnapshot& sources,
         std::vector<FullTextDocument> documents,
         const CancellationToken* cancellation = nullptr,
         std::chrono::steady_clock::time_point deadline =

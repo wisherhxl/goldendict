@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iterator>
 #include <string>
+#include <thread>
 
 #include "goldendict/core/application.h"
 #include "goldendict/core/headword_export.h"
@@ -31,6 +32,14 @@ namespace {
 class CancelledToken final : public CancellationToken {
    public:
     bool IsCancellationRequested() const noexcept override { return true; }
+};
+
+class SlowToken final : public CancellationToken {
+   public:
+    bool IsCancellationRequested() const noexcept override {
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        return false;
+    }
 };
 
 class InspectionRuntimeSource final : public RuntimeDictionarySource {
@@ -146,6 +155,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsMalformedConfiguration();
     void CatalogSanitizesInspectionMetadata();
     void DiscoversAndQueriesARealFixture();
+    void SearchesStarDictFullTextWithMixedFormatErrors();
     void EnumeratesStarDictHeadwordsWithStableCursors();
     void ExportsCompleteHeadwordListsAtomically();
     void ReturnsCanonicalFoldedMatchInformation();
@@ -1895,11 +1905,85 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
     QCOMPARE(loaded, image_data);
     QVERIFY(std::filesystem::exists(root / "indexes" /
                                     (catalog.front().id + ".gdidx")));
+    QVERIFY(std::filesystem::exists(root / "indexes" /
+                                    (catalog.front().id + ".gdfts")));
 
     query.text = "missing";
     const auto missing = service.Lookup(query);
     QVERIFY(missing.entries.empty());
     QVERIFY(missing.errors.empty());
+}
+
+void ApplicationServiceTest::SearchesStarDictFullTextWithMixedFormatErrors() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    std::filesystem::create_directories(root / "first");
+    std::filesystem::create_directories(root / "second");
+    test::WriteStardictFixture(root / "first",
+                               {{"Alpha", "shared searchable first"}});
+    test::WriteStardictFixture(root / "second",
+                               {{"Beta", "shared searchable second"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    configuration.index_directory = (root / "indexes").string();
+    std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources;
+    runtime_sources.push_back(std::make_unique<InspectionRuntimeSource>());
+    auto service =
+        CreateDictionaryService(configuration, std::move(runtime_sources));
+    const auto catalog = service->GetCatalog();
+    QCOMPARE(catalog.size(), 3U);
+
+    FullTextQuery query;
+    query.text = "searchable";
+    query.result_limit = 1U;
+    const auto bounded = service->SearchFullText(query);
+    QCOMPARE(bounded.results.size(), 1U);
+    QCOMPARE(bounded.errors.size(), 1U);
+    QCOMPARE(bounded.errors.front().code, FullTextErrorCode::kUnsupported);
+    QCOMPARE(bounded.errors.front().dictionary_id, std::string("inspection"));
+    QVERIFY(bounded.partial);
+
+    query.dictionary_filter_active = true;
+    query.dictionary_ids = {bounded.results.front().dictionary.id, "inspection",
+                            "unavailable"};
+    query.result_limit = kMaximumFullTextResults;
+    const auto filtered = service->SearchFullText(query);
+    QCOMPARE(filtered.results.size(), 1U);
+    QCOMPARE(filtered.results.front().match.mode, MatchMode::kFullText);
+    QCOMPARE(filtered.results.front().matches.size(), 1U);
+    QCOMPARE(filtered.errors.size(), 2U);
+    QCOMPARE(filtered.errors[0].code, FullTextErrorCode::kUnsupported);
+    QCOMPARE(filtered.errors[0].dictionary_id, std::string("inspection"));
+    QCOMPARE(filtered.errors[1].code,
+             FullTextErrorCode::kDictionaryUnavailable);
+    QCOMPARE(filtered.errors[1].dictionary_id, std::string("unavailable"));
+
+    query.dictionary_ids.clear();
+    const auto active_empty = service->SearchFullText(query);
+    QVERIFY(active_empty.results.empty());
+    QVERIFY(active_empty.errors.empty());
+    QVERIFY(!active_empty.partial);
+
+    query.dictionary_filter_active = false;
+    query.dictionary_ids.clear();
+    CancelledToken cancelled;
+    const auto cancelled_response = service->SearchFullText(query, &cancelled);
+    QVERIFY(cancelled_response.results.empty());
+    QCOMPARE(cancelled_response.errors.size(), 1U);
+    QCOMPARE(cancelled_response.errors.front().code,
+             FullTextErrorCode::kCancelled);
+
+    query.dictionary_filter_active = true;
+    query.dictionary_ids = {bounded.results.front().dictionary.id};
+    query.timeout = std::chrono::milliseconds(1);
+    SlowToken slow;
+    const auto expired = service->SearchFullText(query, &slow);
+    QVERIFY(expired.results.empty());
+    QCOMPARE(expired.errors.size(), 1U);
+    QCOMPARE(expired.errors.front().code, FullTextErrorCode::kDeadlineExceeded);
+    QCOMPARE(expired.errors.front().dictionary_id,
+             bounded.results.front().dictionary.id);
 }
 
 void ApplicationServiceTest::EnumeratesStarDictHeadwordsWithStableCursors() {

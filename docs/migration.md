@@ -1128,7 +1128,9 @@ or presentation behavior. Other formats, resource and metadata text, legacy
 full-text index compatibility, highlighting, dependency additions, and
 unrelated refactors are excluded. Later per-format adapters depend on the
 private capability and service-aggregation pattern established by this leaf;
-the Phase 8 full-text workflow remains downstream.
+the Phase 8 full-text workflow remains downstream. P6-FT-1 is complete with
+generated plain/HTML, synonym, compressed-data, lifecycle, mixed-service, and
+installed-consumer coverage.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

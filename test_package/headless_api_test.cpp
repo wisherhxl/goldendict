@@ -620,17 +620,21 @@ int main() {
         }
 
         goldendict::core::FullTextQuery full_text_query;
-        full_text_query.text = "example";
+        full_text_query.text = "caf\xc3\xa9";
         full_text_query.dictionary_filter_active = true;
         full_text_query.dictionary_ids = {catalog.front().id};
         const auto full_text_response =
             service->SearchFullText(full_text_query);
-        if (!full_text_response.results.empty() ||
-            full_text_response.errors.size() != 1U ||
-            full_text_response.errors.front().code !=
-                goldendict::core::FullTextErrorCode::kUnsupported ||
-            full_text_response.errors.front().dictionary_id !=
-                catalog.front().id) {
+        if (!full_text_response.errors.empty() ||
+            full_text_response.results.size() != 1U ||
+            full_text_response.results.front().dictionary.id !=
+                catalog.front().id ||
+            full_text_response.results.front().headword != "example" ||
+            full_text_response.results.front().document_id.rfind(
+                "stardict-idx:0:", 0U) != 0U ||
+            full_text_response.results.front().matches.size() != 1U ||
+            full_text_response.results.front().matches.front().text !=
+                "caf\xc3\xa9") {
             return Fail("installed full-text query contract failed");
         }
         full_text_query.dictionary_ids.clear();
