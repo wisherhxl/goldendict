@@ -1395,6 +1395,91 @@ refactors are excluded.
 
 No successor after P6-FT-14 is selected or ranked.
 
+## Phase 8 Full-Text Workflow Readiness
+
+The post-adapter audit is based on migrated revision
+`f5547edfc3d5464d2182d5196df669b63765b568` and pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Phase 6 per-format full-text
+support is complete: `dictionary_service.h:28-32,47-63,149-172,256-277`
+defines the installed bounded query, modes, match and typed-error contract, and
+`dictionary_service.cc:1078-1157` validates and aggregates it across the
+private backends with deterministic dictionary order, one global result bound,
+filtering, deadlines, cancellation, unavailable IDs, contained errors and
+partial-response state. P6-FT-1 through P6-FT-14 supply the twelve textual
+format adapters without exposing their ingestion or private `.gdfts`
+serialization.
+
+The migrated application has no full-text dialog or result presentation.
+Its nearest asynchronous precedent is private Widgets code:
+`suggestion_worker.cpp:8-102` owns a replaceable pending request, an atomic
+cancellation token, worker-thread execution, exception containment and a
+terminal callback; `main_window.cpp:715-724,5988-5997,6285-6289` delivers the
+response on the GUI thread and stops the worker around facade replacement and
+shutdown. The installed full-text operation remains synchronous at
+`dictionary_service.h:270-272`; this is sufficient for a private worker and
+does not justify another installed request interface.
+
+The pinned legacy application keeps the user concerns distinct even though
+one dialog composes them. `mainwindow.cc:4754-4791` owns the modeless dialog
+and translation handoff. `fulltextsearch.cc:232-285,408-420,438-516` owns query
+modes/options and launches asynchronous per-dictionary requests;
+`fulltextsearch.cc:356-368,518-580` owns cancellation, aggregation and busy
+state; `fulltextsearch.cc:594-610` activates a result and constructs the
+highlight handoff; and `fulltextsearch.cc:613-659` derives dictionaries from
+the selected group, full-text eligibility and muting. Index availability and
+lifecycle are separate: `fulltextsearch.cc:370-405` displays ready/to-index
+counts and the current index name, while `mainwindow.cc:754,1381-1393,4850-4855`
+owns background indexing and status. Persistent controls are separate again:
+`preferences.cc:360-382,490-575` and `preferences.ui:1253-1429` own global
+enablement, the twelve format gates and the maximum dictionary-size policy.
+
+The candidate comparison therefore has explicit dependencies:
+
+| Candidate | Readiness and dependency | Audit decision |
+| --- | --- | --- |
+| Request/controller ownership and asynchronous execution | The installed operation, cancellation token and private worker precedent are complete; no product choice or public contract is required | Smallest independent prerequisite; P8-FT-1 selected |
+| Dialog shell and query modes/options | Requires a request controller and product decisions about which current persisted defaults are dialog state | Deferred and not ranked |
+| Dictionary selection | Requires dialog composition and an explicit choice between legacy group/muting semantics and the migrated dictionary-bar/group model | Deferred and not ranked |
+| Result presentation and activation | Requires completed requests plus a decision about grouping, duplicate headwords, partial errors and lookup handoff | Deferred and not ranked |
+| Highlighting | Requires activation semantics and a bounded WebEngine highlighting contract not present in current DTOs | Deferred and not ranked |
+| Persistent Preferences controls | Persistence exists, but applying enablement, format exclusions and size limits affects index composition/lifecycle policy | Deferred and not ranked |
+| Index availability/lifecycle visibility | Current installed identity and response DTOs expose neither capability nor lifecycle state; background build ownership is a separate prerequisite | Deferred and not ranked |
+
+P8-FT-1 is a private cancellable asynchronous full-text request controller in
+Widgets. It accepts an immutable `FullTextQuery`, a borrowed
+`DictionaryService` whose lifetime is guarded by its owner, and a monotonically
+increasing request generation. One private worker owns at most one pending and
+one running request and a cancellation token for each accepted request. A new
+submission cancels and replaces older pending/running work. The worker invokes
+the unchanged `SearchFullText` operation off the GUI thread and posts exactly
+one terminal `FullTextResponse` with its generation back to the GUI thread.
+The controller discards stale generations and completions received after its
+consumer is detached.
+
+Core continues to own query validation, dictionary filtering and ordering,
+query modes, limits, deadlines, result and match DTOs, per-dictionary failures
+and partial-response semantics. The controller owns only request lifetime,
+threading, cancellation and safe completion delivery. Explicit cancel,
+consumer destruction, facade replacement and application shutdown cancel
+pending/running work and join the worker before the borrowed service can be
+replaced or destroyed. These operations are idempotent. Exceptions crossing
+the service call boundary become one terminal `kInternal` error with an empty
+dictionary ID; normal core partial results and typed cancellation, deadline,
+unavailable and backend errors pass through unchanged. P8-FT-1 exposes only a
+binary running/finished lifecycle to its future consumer and does not invent
+per-dictionary progress.
+
+P8-FT-1 does not add the dialog, action/menu wiring, query widgets, dictionary
+or group selection, result model, activation or article lookup, highlighting,
+Preferences UI or application of persisted full-text policy, index readiness
+or progress, or background index lifecycle. It changes no installed API or
+DTO, runtime-source interface, dependency, configuration representation,
+private `.gdfts` serialization or adapter. Legacy `_FTS` compatibility,
+metadata/resource indexing, platform integration, unrelated UI parity and
+refactors remain excluded.
+
+No successor after P8-FT-1 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

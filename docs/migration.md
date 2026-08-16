@@ -1753,6 +1753,35 @@ parity, and unrelated refactors.
 
 No successor after P6-FT-14 is selected or ranked.
 
+The fresh Phase 6 milestone and Phase 8 workflow audit is pinned to migrated
+revision `f5547edfc3d5464d2182d5196df669b63765b568` and legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It confirms that all twelve
+private textual-format adapters now dispatch through the installed bounded
+`SearchFullText` contract. The remaining user workflow is not one leaf: the
+legacy dialog separately composes request lifetime, query options, group and
+muting selection, result presentation and activation, highlighting, persisted
+format/size policy, index readiness, and background indexing.
+
+Only P8-FT-1, the private cancellable asynchronous full-text request
+controller, is independently ready. The existing synchronous installed call
+and cancellation token are sufficient, and the migrated private suggestion
+worker supplies the applicable Widgets lifetime pattern. The future controller
+accepts an immutable query and generation, replaces older work by
+cancellation, runs the service call off the GUI thread, converts a boundary
+exception to a terminal internal error, returns the unchanged response to the
+GUI thread, rejects stale completions, and cancels and joins before dialog
+destruction, facade replacement or shutdown can invalidate the borrowed
+service. Core retains all query, dictionary, limit, deadline, result and typed
+error semantics; the controller exposes no invented per-dictionary progress.
+
+P8-FT-1 excludes every visible full-text control and result behavior,
+dictionary/group selection, activation, highlighting, persistent Preferences
+application, index availability and background lifecycle. It also preserves
+installed APIs/DTOs, configuration compatibility, dependencies, all twelve
+adapters and private `.gdfts` serialization. Legacy `_FTS`, metadata/resource
+indexing, platform integration and unrelated Phase 7/8/9/10 work remain out of
+scope. No successor after P8-FT-1 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

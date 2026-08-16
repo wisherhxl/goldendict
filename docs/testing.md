@@ -1141,6 +1141,30 @@ filtering, sends the clear command through the real application composition
 path, checks the refreshed empty pane, and reloads the atomically persisted
 empty history through the public core API.
 
+## Phase 8 Full-Text Request Controller Gate
+
+The Phase 6 milestone audit confirms all twelve private format adapters against
+the installed `SearchFullText` contract. P8-FT-1 selects only the private
+Widgets asynchronous request controller and does not add a visible workflow.
+Its future focused QTest must use a deterministic fake service or generated
+full-text fixture and verify off-GUI-thread execution, GUI-thread terminal
+delivery, unchanged successful and partial responses, explicit cancellation,
+replacement cancellation, typed cancellation/deadline/error pass-through,
+boundary-exception conversion to `kInternal`, stale-generation rejection,
+consumer detachment, facade replacement and shutdown join. It must also prove
+that a cancelled pending request never starts and that cancel/stop are
+idempotent.
+
+No UI smoke is required for this nonvisual prerequisite. Any later dialog or
+visible result leaf must add its own offscreen smoke and cannot claim coverage
+from the controller test. The future implementation gate is Release configure
+and build plus full `ctest --preset conan-release` with the current 103-test
+baseline unless an intentional registered-test delta is documented. Run
+install and installed-consumer checks only if an installed surface is affected;
+P8-FT-1 is specified not to affect one. The exact-SCM Conan package and packaged
+consumers must nevertheless be verified from the implementation revision.
+No successor after P8-FT-1 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
