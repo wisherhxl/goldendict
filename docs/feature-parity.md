@@ -39,14 +39,14 @@
 | Bounded legacy text encoding conversion | slice | Phase 5 | strict Latin-1, UTF-16, GB18030, and EUC-JP fixtures |
 | Headword suggestions | slice | Phase 5 | bounded ranked suggestion fixtures and installed-consumer tests |
 | Morphology and transliteration | later | Phase 5 | per-language fixtures |
-| Full-text search | slice | Phase 5/6/8 | installed bounded query and private reference-index contract complete; P6-FT-1 StarDict, P6-FT-2 SDict, and P6-FT-3 XDXF private adapters are accepted before later formats and the Phase 8 workflow |
+| Full-text search | slice | Phase 5/6/8 | installed bounded query and private reference-index contract complete; P6-FT-1 StarDict, P6-FT-2 SDict, and P6-FT-3 XDXF adapters are accepted; P6-FT-4 Dictd is the next private adapter before later formats and the Phase 8 workflow |
 
 ## Local Dictionary Formats
 
 | Format/source | Status | Batch | Required verification |
 | --- | --- | --- | --- |
 | StarDict | slice | vertical slice | discover/index/search/article/resource accepted; P6-FT-1 full-text adapter accepted with primary-only ingestion, assembled plain text, private lifecycle, and installed-service coverage |
-| Dictd | slice | text batch | strict `.index` + bounded plain/dictzip data, folded lookup, suggestions, and corruption tests |
+| Dictd | slice | text batch | strict `.index` + bounded plain/dictzip data, folded lookup, suggestions, and corruption tests; direct pinned legacy FTS evidence selects P6-FT-4 with byte-range deduplication, metadata exclusion, assembled plain text, two-source lifecycle, and mixed-service coverage |
 | SDict | slice | text batch | bounded `.dct` parsing, plain/zlib/bzip2 fields, folded search/suggestions, sanitized HTML/link conversion, and corruption tests accepted; P6-FT-2 private full-text support accepted with distinct-offset ingestion, assembled plain text, private lifecycle, and mixed-service coverage |
 | XDXF | slice | text batch | bounded XML/compressed XML, folded lookup/suggestions, sanitized markup/links, and confined directory resources accepted; P6-FT-3 private full-text support accepted with per-article ingestion, first-key provenance, alias deduplication, inert assembled plain text, and single-source lifecycle |
 | GLS | slice | text batch | bounded UTF-8/UTF-16 and compressed text, metadata, aliases, folded lookup/suggestions, sanitized HTML, and confined directory resources; resource ZIP and full-text parity remain |

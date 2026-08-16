@@ -1175,9 +1175,9 @@ contract, P6-FT-1 and P6-FT-2 private capability/service dispatch, and XDXF's
 accepted complete record/article retention, multi-key article ownership,
 bounded plain/gzip decoding, safe markup/link conversion, inert article
 assembly, stable identity, single-source ownership, and generated fixtures.
-Pinned legacy XDXF explicitly advertises full-text support. Dictd remains
-excluded because the pinned legacy backend does not advertise usable full-text
-support, and the migrated repository supplies no stronger contrary fact.
+Pinned legacy XDXF explicitly advertises full-text support. The audit's Dictd
+exclusion was based on incomplete legacy evidence and is superseded by the
+post-P6-FT-3 audit below.
 
 Each validated XDXF article ordinal contributes exactly one document. The
 first validated `<k>` record for that article supplies the canonical headword;
@@ -1217,6 +1217,51 @@ validated article ordinal, preserves first-key canonical provenance, excludes
 alias-only and non-article text, and participates in the accepted `.gdfts`
 lifecycle and deterministic mixed-service dispatch without changing installed
 or runtime-source surfaces.
+
+The fresh independent post-P6-FT-3 audit selects P6-FT-4, the private Dictd
+adapter, as the next bounded leaf. Direct pinned legacy evidence supersedes the
+earlier Dictd exclusion: `dictdfiles.cc` at `3d93dd6` initializes and gates
+Dictd full-text indexing and implements `_FTS` creation and search. The
+migrated reader provides complete source-order `.index` traversal, optional
+original-headword aliases, validated article byte ranges, bounded plain and
+dictzip data loading, `text/plain` article assembly, stable identity, the
+complete companion source set, and generated fixtures. The completed Phase 5
+contract and P6-FT-1 through P6-FT-3 private capability/service dispatch are
+its prerequisites.
+
+Each distinct validated non-metadata `(article_offset, article_size)` range
+contributes exactly one document. Records named `00databaseshort`,
+`00-database-short`, `00databaseinfo`, or `00-database-info` remain metadata
+and are excluded. The first remaining source record owning the range supplies
+the canonical headword; its optional original headword and later records
+sharing the range are aliases and do not duplicate it. The private document ID
+is `dictd-index:<record-ordinal>:<article-offset>:<article-size>`. Ingestion
+passes the existing `text/plain` article through the inert assembler and
+indexes only its bounded plain text, excluding metadata, alias-only text,
+resource data, and generated link or markup interpretation.
+
+P6-FT-4 owns a distinct private `.gdfts` artifact in the configured index
+directory. Its complete source revision is the `.index` file plus the actually
+selected `.dict` or `.dict.dz` companion; changing either file or switching
+the selected companion forces stale rebuild. No configured index directory
+leaves Dictd typed unsupported. Cancellation, deadlines, resource limits,
+corruption, and storage failures remain contained per dictionary. In a mixed
+service, StarDict, SDict, XDXF, and Dictd results merge deterministically under
+the existing global bound; adapted no-match dictionaries add no error,
+requested non-adapted sources remain typed unsupported, and missing requested
+IDs remain typed unavailable.
+
+The leaf changes no installed `SearchFullText` API or DTO, public capability
+flag, runtime-source interface, configuration, preference, widget,
+presentation, dependency, or private index format. Legacy `_FTS`
+compatibility, metadata or resource indexing, highlighting, the Phase 8
+workflow, other adapters, and unrelated refactors are excluded. GLS, DSL, BGL,
+MDict, Aard, ZIM, SLOB, and EPWING remain later because their larger
+format-specific contracts make them less bounded than Dictd. LSA, ZIP sound
+packs, and sound directories remain outside textual article ingestion. The
+implementation gate is focused generated-fixture, lifecycle, and mixed-service
+coverage, the unchanged installed consumer, the complete Linux Release
+test/install path, and clean committed exact-SCM Conan package creation.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

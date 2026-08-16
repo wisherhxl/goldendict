@@ -581,6 +581,35 @@ WebEngine host profile. GUI, Preferences, highlighting, other adapters, legacy
 `_FTS` indexes, metadata or resource indexing, dependency changes, and private
 index-format evolution are excluded.
 
+P6-FT-4 extends the generated Dictd fixtures without downloaded data. Focused
+reader/backend coverage exercises plain and `.dict.dz` companions, complete
+source-order index traversal, optional original-headword aliases, repeated
+article ranges, reserved metadata records, article-range corruption, and
+source mutation. It proves one document per distinct validated non-metadata
+`(article_offset, article_size)` range, first-record canonical headword
+selection, exact `dictd-index:<record-ordinal>:<article-offset>:<article-size>`
+provenance, and bounded plain text from the existing inert assembler. Reserved
+metadata, alias-only text, resource data, and generated link or markup
+interpretation are excluded.
+
+The Dictd private artifact tests cover create, reuse, `.index` and selected
+data-companion stale rebuild, plain/dictzip selection changes, corrupt rebuild,
+disabled indexing without a configured index directory, resource limits,
+cancellation, deadlines, and contained storage failures. Application-service
+coverage combines generated StarDict, SDict, XDXF, and Dictd fixtures and pins
+deterministic merged ordering, dictionary filters, the global result bound,
+adapted no-match behavior, typed unsupported errors for every requested
+non-adapted local or runtime source, typed unavailable errors for missing IDs,
+cancellation, and deadlines. The installed consumer returns a Dictd result
+through the unchanged installed `SearchFullText` API and DTOs.
+
+The implementation gate is the Linux Release configure/build and
+`ctest --preset conan-release`, library install and installed `test_package`
+consumer, then clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile. GUI, Preferences, highlighting, other adapters, legacy
+`_FTS` compatibility, metadata or resource indexing, dependency changes, and
+private index-format evolution are excluded.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

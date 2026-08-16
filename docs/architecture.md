@@ -665,37 +665,6 @@ The leaf is complete with generated distinct-offset, compressed-article,
 inert-assembly, lifecycle, contained-failure, mixed-service, and installed-
 consumer coverage.
 
-The fresh post-P6-FT-2 readiness audit selects P6-FT-3, the private XDXF
-adapter, rather than following migration order mechanically. Among the
-remaining migrated formats with pinned legacy full-text support, XDXF is the
-smallest dependency-ready leaf: its reader already retains every validated
-`<ar>` article and every accepted `<k>` record in source order, maps multiple
-keys explicitly to one article ordinal, converts supported markup and links to
-bounded safe HTML, exposes stable dictionary identity, owns one discovered
-plain or gzip-compressed source, and has generated fixtures for both forms.
-GLS, DSL, BGL, MDict, Aard, ZIM, SLOB, and EPWING remain later leaves because
-their synonym, optional-headword, redirect, multi-source, resource-bearing, or
-specialized-container rules require larger format-specific contracts. Dictd
-remains excluded: the pinned legacy backend does not advertise usable
-full-text support, and no stronger migrated-repository evidence supersedes
-that boundary.
-
-The audit compares the accepted migrated reader models, not their original
-migration sequence:
-
-| Format | Complete records and dedup model | Assembly and provenance | Source/index ownership and readiness |
-| --- | --- | --- | --- |
-| XDXF | All keys and articles retained; keys share an explicit article ordinal | Safe HTML already assembles to plain text; first-key record ordinal plus article ordinal is stable | One `.xdxf`/`.xdxf.dz`, generated fixtures, and pinned legacy full-text support; selected |
-| GLS | All headword records retained; aliases share an article and primary headword | Safe HTML is reusable, but canonical synonym behavior spans UTF-8/UTF-16 decoding | One plain/compressed source and fixtures with legacy support; later than the smaller UTF-8 XDXF seam |
-| DSL | Expanded optional and tilde headwords share an article | Safe HTML is reusable, but expanded-headword canonical provenance needs its own rule | Plain/compressed source and fixtures with legacy support; later |
-| BGL | Primary and alias records share decoded articles | Safe HTML is reusable, but alias provenance crosses binary control records and code pages | One gzip/block source plus embedded resources and fixtures with legacy support; later |
-| MDict | All key records retained; redirects resolve by folded target | Safe HTML is reusable, but redirect-chain canonical ownership needs a dedicated rule | MDX plus companion MDD source set and fixtures with legacy support; later |
-| Aard | Index records map to decoded article objects, including redirects | Safe article output is reusable, but redirect target dedup/provenance remains format-specific | One archive today, with multi-volume parity outstanding; fixtures and legacy support exist; later |
-| ZIM | Directory records resolve redirect chains to cluster/blob articles | Safe article output is reusable, but redirect/resource namespaces and target ownership interact | Consecutive split-file source set, fixtures, and legacy support; later |
-| SLOB | Multiple references can share item/bin-backed articles | Safe article output is reusable, but reference-to-item dedup and provenance need a dedicated rule | One container today, with store/conversion variants and fixtures plus legacy support; later |
-| EPWING | Word-index records currently retain article text per record | Safe output is reusable, but duplicate/grouped-index ownership is not yet explicit | `CATALOGS` plus subbook tree, fixtures, and legacy support; later |
-| Dictd | Complete headword records exist, but no eligible legacy full-text contract | Plain article assembly and offsets alone do not establish parity provenance | `.index` plus data source and fixtures; excluded because pinned legacy does not advertise full-text support |
-
 P6-FT-3 creates one private document per validated XDXF article ordinal. The
 first validated key belonging to the article supplies the canonical headword;
 later keys are aliases and do not duplicate the article. Stable provenance is
@@ -714,6 +683,58 @@ unchanged.
 The leaf is complete with generated source-order, alias-deduplication,
 inert-assembly, lifecycle, contained-failure, mixed-service, and installed-
 consumer coverage.
+
+The fresh post-P6-FT-3 readiness audit selects P6-FT-4, the private Dictd
+adapter, rather than following migration order mechanically. Direct inspection
+of pinned legacy `dictdfiles.cc` at `3d93dd6` supersedes the earlier exclusion:
+the backend owns `_FTS` creation and search, initializes `can_FTS`, and applies
+the `DICTD` full-text preference gate. The migrated reader already retains
+every validated source-order index record and optional original-headword
+alias, validates article byte ranges, loads plain or dictzip data, returns
+`text/plain` articles through the inert assembler, owns the complete two-file
+source set, and has generated fixtures. GLS, DSL, BGL, MDict, Aard, ZIM, SLOB,
+and EPWING remain later leaves because their encoding/synonym,
+expanded-headword, redirect-chain, resource, multi-volume, or specialized-
+container rules require larger format-specific contracts.
+
+The audit compares the accepted migrated reader models, not their original
+migration sequence:
+
+| Format | Complete records and dedup model | Assembly and provenance | Source/index ownership and readiness |
+| --- | --- | --- | --- |
+| Dictd | All index records and optional original-headword aliases retained; repeated byte ranges can be deduplicated explicitly | Direct plain-text assembly; first owning record ordinal plus validated offset and size is stable | `.index` plus selected `.dict`/`.dict.dz`, generated fixtures, and direct pinned legacy full-text support; selected |
+| GLS | All headword records retained; aliases share an article and primary headword | Safe HTML is reusable, but canonical synonym behavior spans UTF-8/UTF-16 decoding | One plain/compressed source and fixtures with legacy support; later |
+| DSL | Expanded optional and tilde headwords share an article | Safe HTML is reusable, but expanded-headword canonical provenance needs its own rule | Plain/compressed source and fixtures with legacy support; later |
+| BGL | Primary and alias records share decoded articles | Safe HTML is reusable, but alias provenance crosses binary control records and code pages | One gzip/block source plus embedded resources and fixtures with legacy support; later |
+| MDict | All key records retained; redirects resolve by folded target | Safe HTML is reusable, but redirect-chain canonical ownership needs a dedicated rule | MDX plus companion MDD source set and fixtures with legacy support; later |
+| Aard | Index records map to decoded article objects, including redirects | Safe article output is reusable, but redirect target dedup/provenance remains format-specific | One archive today, with multi-volume parity outstanding; fixtures and legacy support exist; later |
+| ZIM | Directory records resolve redirect chains to cluster/blob articles | Safe article output is reusable, but redirect/resource namespaces and target ownership interact | Consecutive split-file source set, fixtures, and legacy support; later |
+| SLOB | Multiple references can share item/bin-backed articles | Safe article output is reusable, but reference-to-item dedup and provenance need a dedicated rule | One container today, with store/conversion variants and fixtures plus legacy support; later |
+| EPWING | Word-index records currently retain article text per record | Safe output is reusable, but duplicate/grouped-index ownership is not yet explicit | `CATALOGS` plus subbook tree, fixtures, and legacy support; later |
+| LSA / ZIP sounds / sound directories | Complete audio-name records exist, but not textual definition articles | Generated playback HTML contains resource references rather than eligible searchable article text | Resource-oriented backends; excluded from per-format textual full-text ingestion |
+
+P6-FT-4 creates one private document per distinct validated non-metadata Dictd
+`(article_offset, article_size)` byte range. Source-order records named
+`00databaseshort`, `00-database-short`, `00databaseinfo`, or
+`00-database-info` remain dictionary metadata and are not searchable
+documents. The first remaining record owning a range supplies the canonical
+headword; its optional original headword and later records sharing that range
+are aliases and do not duplicate the article. Stable provenance is
+`dictd-index:<record-ordinal>:<article-offset>:<article-size>`. Searchable text
+is only the bounded plain text obtained by passing the existing `text/plain`
+article through the inert assembler; metadata, alias-only text, resource data,
+and generated link or markup interpretation are excluded.
+
+The distinct private `.gdfts` artifact under the configured index directory
+uses the `.index` file and the actually selected `.dict` or `.dict.dz`
+companion as its complete source revision. Changes to either source or a switch
+of the selected companion force a stale rebuild. StarDict, SDict, XDXF, and
+Dictd reuse the accepted private capability and service dispatch. With no
+configured index directory Dictd remains typed unsupported; all other
+non-adapted local and runtime formats retain typed unsupported behavior, and
+missing requested IDs remain typed unavailable. Installed `SearchFullText`
+APIs and DTOs, runtime-source interfaces, public capability flags,
+preferences, dependencies, and the private index format remain unchanged.
 
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
