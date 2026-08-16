@@ -2375,6 +2375,57 @@ or public/installed interface, and the registered Release baseline remains 109
 tests.
 No successor after P8-FT-17 is selected or ranked.
 
+### Phase 8 full-text result dictionary-name tooltip (selected)
+
+The independent post-P8-FT-17 documentation audit is pinned to clean migrated
+revision `7c8fc16e55844b2712f3257a78b7f6b8e6cc3b5b` and unchanged clean
+read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It rechecks every remaining full-text workflow surface without advance ranking
+and selects exactly one smallest dependency-ready leaf, P8-FT-18: project the
+result dictionary name as the visible row's tooltip.
+
+P8-FT-18 is dependency-ready because P8-FT-10 gives the private response model
+an immutable snapshot of every complete `FullTextResult`, P8-FT-11 synchronizes
+that model only with the generation-current accepted response, and P8-FT-12
+attaches it directly to the visible result list. The private Widgets model owns
+the tooltip projection. Core continues to own dictionary identity and result
+semantics. No public API, DTO, persistence, dependency, adapter, index-format,
+or build-system change is required.
+
+For a valid result row, `Qt::ToolTipRole` returns the exact UTF-8
+`FullTextResult::dictionary.name` decoded for Qt display. Duplicate headwords
+from different result dictionaries retain independent row tooltips. An empty
+dictionary name produces no visible tooltip; the model does not substitute the
+dictionary ID, source, edition, or other metadata. Invalid, foreign,
+out-of-range, or nonzero-column indexes and unsupported roles return no value.
+The existing display text, ordering, duplicates, metadata snapshot, activation,
+accepted-generation synchronization, and retained-result count are unchanged.
+
+Focused acceptance covers exact Unicode dictionary names, distinct tooltip
+values for duplicate-headword rows from different dictionaries, empty-name
+suppression, copied and moved response lifetime, deterministic reset
+replacement, invalid and foreign indexes, unsupported roles, and unchanged
+display and result metadata. The existing private response-model test is the
+focused future implementation gate; the established Linux Release build, full
+tests, package, install, and installed-consumer workflow remains the full gate.
+
+Exact `document_id` navigation and source-dictionary targeting; initial/current
+selection, keyboard focus, and selection retention; non-tooltip decoration,
+columns, delegates, icons, and additional metadata roles; empty/error/partial
+messaging beyond the numeric retained-result count; match ranges and excerpt
+presentation; highlighting, ignore-diacritics transfer, and WebEngine handoff;
+Preferences enablement, format exclusions, size/index policy, and persistence;
+index readiness, visibility, status, progress, background lifecycle, rebuild,
+and failure UI; adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies,
+builds, and unrelated parity remain independent surfaces. They are decomposed
+only; none is selected or ranked.
+
+Evidence is migrated `full_text_response_model.h/.cpp`, its focused tests, and
+the P8-FT-11/P8-FT-12 dialog synchronization and attachment, plus pinned legacy
+`fulltextsearch.cc:690-721`, where `HeadwordsListModel::data()` independently
+projects contributing dictionary names through `Qt::ToolTipRole`.
+No successor after P8-FT-18 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
