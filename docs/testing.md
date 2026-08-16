@@ -553,6 +553,34 @@ exact-SCM `conan create` with the Release Qt WebEngine host profile. GUI,
 Preferences, highlighting, other adapters, legacy `_FTS` indexes, metadata or
 resource text, dependency changes, and index-format evolution are excluded.
 
+P6-FT-3 extends the generated XDXF fixtures without downloaded data. Focused
+reader/backend coverage exercises plain and `.xdxf.dz` sources, complete
+article/key traversal, multiple keys sharing one article, multiple articles,
+safe markup and links, and source mutation. It proves one document per
+validated article ordinal, first-key canonical headword selection, stable
+XDXF-prefixed provenance derived from first-key record ordinal plus article
+ordinal, and searchable bounded plain text from the existing inert assembler.
+It also proves that metadata, resource contents and paths, link targets, image
+references, raw XML and markup, and alias-only text are excluded.
+
+The XDXF private artifact tests cover create, reuse, source-stamp stale rebuild,
+corrupt rebuild, disabled indexing without a configured index directory,
+resource limits, cancellation, deadlines, and contained storage failures.
+Application-service coverage combines generated StarDict, SDict, and XDXF
+fixtures and pins deterministic merged ordering, dictionary filters, the global
+result bound, adapted no-match behavior, typed unsupported errors for every
+requested non-adapted local or runtime source, typed unavailable errors for
+missing requested IDs, cancellation, and deadlines. The installed consumer
+returns an XDXF result through the unchanged installed `SearchFullText` API and
+DTOs.
+
+The later implementation gate is the Linux Release configure/build and
+`ctest --preset conan-release`, library install and installed `test_package`
+consumer, then clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile. GUI, Preferences, highlighting, other adapters, legacy
+`_FTS` indexes, metadata or resource indexing, dependency changes, and private
+index-format evolution are excluded.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

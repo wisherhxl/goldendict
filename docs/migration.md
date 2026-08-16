@@ -1169,6 +1169,49 @@ indexes only inert assembled plain text, and participates in the accepted
 `.gdfts` lifecycle and deterministic mixed-service dispatch without changing
 installed or runtime-source surfaces.
 
+The fresh independent post-P6-FT-2 audit selects P6-FT-3, the private XDXF
+adapter, as the next bounded leaf. Its prerequisites are the completed Phase 5
+contract, P6-FT-1 and P6-FT-2 private capability/service dispatch, and XDXF's
+accepted complete record/article retention, multi-key article ownership,
+bounded plain/gzip decoding, safe markup/link conversion, inert article
+assembly, stable identity, single-source ownership, and generated fixtures.
+Pinned legacy XDXF explicitly advertises full-text support. Dictd remains
+excluded because the pinned legacy backend does not advertise usable full-text
+support, and the migrated repository supplies no stronger contrary fact.
+
+Each validated XDXF article ordinal contributes exactly one document. The
+first validated `<k>` record for that article supplies the canonical headword;
+later keys referencing the same article are aliases and do not duplicate it.
+The private document ID is derived from the first key's record ordinal and the
+article ordinal with an XDXF-specific prefix. Ingestion passes the existing
+sanitized `text/html` representation through the inert article assembler and
+indexes only its bounded plain text. Metadata, resource contents or paths,
+link targets, image references, raw XML or markup, and alias text not present
+in the assembled article are excluded.
+
+P6-FT-3 owns a distinct private `.gdfts` artifact in the configured index
+directory. The one discovered `.xdxf` or `.xdxf.dz` file is the complete
+source-revision input and controls create, reuse, stale rebuild, and corrupt
+rebuild. No configured index directory leaves the dictionary typed
+unsupported. Cancellation, deadlines, resource limits, corruption, and
+storage failures retain the accepted contained per-dictionary behavior. In a
+mixed service, StarDict, SDict, and XDXF results merge deterministically within
+the existing global bound; an adapted no-match dictionary adds no error,
+requested non-adapted local or runtime dictionaries return typed unsupported
+errors, and missing requested IDs return typed unavailable errors.
+
+The leaf changes no installed `SearchFullText` API or DTO, public capability
+flag, runtime-source interface, preference, widget, presentation, dependency,
+or private index format. Legacy `_FTS` compatibility, metadata or resource
+indexing, highlighting, the Phase 8 workflow, other adapters, and unrelated
+refactors are excluded. The implementation gate is focused generated-fixture
+and mixed-service coverage, the unchanged installed consumer, the complete
+Linux Release test/install path, and clean committed exact-SCM Conan package
+creation. GLS, DSL, BGL, MDict, Aard, ZIM, SLOB, and EPWING remain later
+per-format leaves because their synonym, optional-headword, redirect,
+multi-source, resource-bearing, or specialized-container semantics require
+larger contracts.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
