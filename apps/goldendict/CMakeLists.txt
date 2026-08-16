@@ -91,6 +91,7 @@ ti_add_executable(full_text_search_dialog_test
   tests/full_text_search_dialog_test.cpp
   src/full_text_search_dialog.cpp
   src/full_text_query_composer.cpp
+  src/full_text_response_model.cpp
   src/full_text_request_controller.cpp)
 target_include_directories(full_text_search_dialog_test PRIVATE src)
 ti_target_include_modules_recurse(full_text_search_dialog_test

@@ -19,6 +19,7 @@ class QPushButton;
 namespace goldendict::app {
 
 class FullTextQueryComposer;
+class FullTextResponseModel;
 class FullTextSearchDialogTest;
 
 class FullTextSearchDialog final : public QDialog {
@@ -51,6 +52,7 @@ class FullTextSearchDialog final : public QDialog {
     QPushButton* search_button_ = nullptr;
     QPushButton* cancel_button_ = nullptr;
     QProgressBar* progress_ = nullptr;
+    FullTextResponseModel* response_model_ = nullptr;
     FullTextRequestController controller_;
     goldendict::core::FullTextQuery projected_query_;
     std::optional<goldendict::core::FullTextResponse> response_;

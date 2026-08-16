@@ -2206,8 +2206,8 @@ baseline remains 109 tests. The implementation gate is Linux Release
 configure/build, full `ctest --preset conan-release` with no unintended
 registration delta, and clean committed exact-SCM `conan create` with the
 Release Qt WebEngine host profile and packaged consumers. Installed interfaces
-do not change, so install and standalone installed-consumer checks are not
-required.
+do not change; Release install and standalone installed C and C++ consumers are
+nevertheless required as a stronger verification gate for this leaf.
 
 Visible list/table/tree presentation, columns/additional roles, counts,
 selection, empty/error/partial presentation, article activation/navigation and
@@ -2219,6 +2219,12 @@ behavior remain excluded. Evidence is migrated
 focused tests, plus pinned legacy `fulltextsearch.hh:135-156`,
 `fulltextsearch.cc:518-610,685-750`, and `fulltextsearch.ui:99-238`.
 No successor after P8-FT-11 is selected or ranked.
+
+P8-FT-11 is complete. The private dialog-owned model synchronizes only with
+generation-current accepted responses, replacement submissions clear both
+snapshots, and stale or cancelled completions update neither. Complete retained
+response errors and partial state remain unchanged, projected results preserve
+Core order, and no visible result view or successor is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

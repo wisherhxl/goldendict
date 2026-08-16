@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "full_text_query_composer.h"
+#include "full_text_response_model.h"
 
 namespace goldendict::app {
 
@@ -32,6 +33,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     composer_->setObjectName(QStringLiteral("fullTextQueryComposer"));
     query_text_ =
         composer_->findChild<QLineEdit*>(QStringLiteral("fullTextQueryText"));
+    response_model_ = new FullTextResponseModel(this);
 
     auto* layout = new QVBoxLayout(this);
     layout->addWidget(composer_);
@@ -100,6 +102,7 @@ void FullTextSearchDialog::SubmitSearch() {
     query.dictionary_ids = projected_query_.dictionary_ids;
     query.dictionary_filter_active = projected_query_.dictionary_filter_active;
     response_.reset();
+    response_model_->Reset({});
     active_generation_ = ++generation_;
     progress_->show();
     search_button_->setEnabled(false);
@@ -120,6 +123,7 @@ void FullTextSearchDialog::FinishSearch(
     }
     active_generation_.reset();
     response_ = std::move(response);
+    response_model_->Reset(*response_);
     RestoreIdleState();
 }
 

@@ -1981,7 +1981,7 @@ snapshot, exposes only the UTF-8 headword for `Qt::DisplayRole` and unchanged
 typed result access, and retains no response-level error or partial state. It
 remains non-integrated, and no successor is selected or ranked.
 
-### Phase 8 full-text dialog response-model integration prerequisite
+### Phase 8 full-text dialog response-model integration prerequisite (complete)
 
 The fresh documentation-only post-P8-FT-10 readiness audit is pinned to clean
 migrated revision `f177cb2915a1c0e4618b44713e40c4eb1cf4c600` and the
@@ -2023,6 +2023,13 @@ is included. Decisive migrated evidence is
 pinned legacy evidence is `fulltextsearch.hh:135-156`,
 `fulltextsearch.cc:518-610,685-750`, and `fulltextsearch.ui:99-238`.
 No successor after P8-FT-11 is selected or ranked.
+
+P8-FT-11 is complete. `FullTextSearchDialog` owns one private child response
+model, clears its retained response and projected rows on replacement
+submission, and updates both only for a generation-current accepted
+completion. The retained response continues to own complete error and partial
+state while the model owns its independent ordered result snapshot. No visible
+result view or successor is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

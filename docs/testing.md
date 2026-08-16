@@ -1505,7 +1505,7 @@ and partial responses, ordering, duplicate headwords, complete typed metadata,
 copy/move and snapshot lifetime, atomic replacement, invalid model access, and
 deterministic repeated projection. No successor is selected or ranked.
 
-## Phase 8 Full-Text Dialog Response-Model Integration Gate (Selected)
+## Phase 8 Full-Text Dialog Response-Model Integration Gate (Complete)
 
 The documentation-only post-P8-FT-10 audit selects P8-FT-11 as the sole
 smallest independently decision-complete leaf: private synchronization of the
@@ -1527,8 +1527,8 @@ the Release suite baseline remains 109 tests. The full implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, then clean committed exact-SCM `conan create`
 with the Release Qt WebEngine host profile and packaged consumers. P8-FT-11
-changes no installed interface, so install and standalone installed-consumer
-checks are not required.
+changes no installed interface; Release install and standalone installed C and
+C++ consumers are nevertheless required as a stronger verification gate.
 
 List/table/tree presentation, columns/additional roles, counts, selection,
 empty/error/partial presentation, article activation/navigation and lookup
@@ -1540,6 +1540,13 @@ tests do not belong to P8-FT-11. Evidence is migrated
 focused tests, plus pinned legacy `fulltextsearch.hh:135-156`,
 `fulltextsearch.cc:518-610,685-750`, and `fulltextsearch.ui:99-238`.
 No successor after P8-FT-11 is selected or ranked.
+
+P8-FT-11 is complete. The existing offscreen dialog QTest covers single child
+model ownership, initial and replacement emptiness, exact current-completion
+projection, unchanged retained error and partial state, atomic repeated reset,
+stale and cancelled suppression, service replacement and detach safety, and
+the absence of a visible result view. The registered Release baseline remains
+109 tests. No successor is selected or ranked.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

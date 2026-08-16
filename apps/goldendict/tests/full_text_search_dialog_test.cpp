@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QAbstractItemView>
 #include <QLineEdit>
 #include <QProgressBar>
 #include <QPushButton>
@@ -9,6 +10,7 @@
 #include <mutex>
 #include <utility>
 
+#include "full_text_response_model.h"
 #include "full_text_search_dialog.h"
 
 namespace goldendict::app {
@@ -127,6 +129,10 @@ QProgressBar* Progress(FullTextSearchDialog* dialog) {
         QStringLiteral("fullTextSearchProgress"));
 }
 
+FullTextResponseModel* ResponseModel(FullTextSearchDialog* dialog) {
+    return dialog->findChild<FullTextResponseModel*>();
+}
+
 }  // namespace
 
 class FullTextSearchDialogTest final : public QObject {
@@ -134,6 +140,7 @@ class FullTextSearchDialogTest final : public QObject {
 
    private slots:
     void SubmitsExactComposedAndProjectedQueryAndRetainsResponse();
+    void ProjectsCompleteCurrentResponsesAndReplacesRowsAtomically();
     void ReplacesRunningAndPendingGenerationsAndSuppressesStaleCompletion();
     void CancellationIsIdempotentAndRestoresIdleState();
     void ServiceReplacementDetachAndDestructionSuppressLateDelivery();
@@ -168,9 +175,20 @@ void FullTextSearchDialogTest::
     auto* search = SearchButton(&dialog);
     auto* cancel = CancelButton(&dialog);
     auto* progress = Progress(&dialog);
+    auto* response_model = ResponseModel(&dialog);
     QVERIFY(search != nullptr);
     QVERIFY(cancel != nullptr);
     QVERIFY(progress != nullptr);
+    QVERIFY(response_model != nullptr);
+    QCOMPARE(response_model, dialog.response_model_);
+    QCOMPARE(response_model->parent(), &dialog);
+    QCOMPARE(dialog.findChildren<FullTextResponseModel*>().size(), 1);
+    QCOMPARE(response_model->rowCount(), 0);
+    const auto item_views = dialog.findChildren<QAbstractItemView*>();
+    for (const auto* item_view : item_views) {
+        QVERIFY(item_view->model() != response_model);
+        QVERIFY(!item_view->isVisible());
+    }
     QVERIFY(search->isEnabled());
     QVERIFY(!cancel->isEnabled());
     QVERIFY(progress->isHidden());
@@ -206,7 +224,89 @@ void FullTextSearchDialogTest::
     QCOMPARE(dialog.response_->errors.size(), std::size_t{1});
     QCOMPARE(dialog.response_->errors.front().dictionary_id,
              std::string("broken"));
+    QCOMPARE(response_model->rowCount(), 1);
+    QCOMPARE(response_model->data(response_model->index(0, 0)).toString(),
+             QStringLiteral("retained"));
     QCOMPARE(dialog.generation_, 1U);
+}
+
+void FullTextSearchDialogTest::
+    ProjectsCompleteCurrentResponsesAndReplacesRowsAtomically() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog dialog(preferences, &service);
+    auto* model = ResponseModel(&dialog);
+    QVERIFY(model != nullptr);
+
+    const auto finish_current =
+        [&dialog](goldendict::core::FullTextResponse response) {
+            dialog.active_generation_ = ++dialog.generation_;
+            dialog.FinishSearch(dialog.generation_, std::move(response));
+        };
+
+    goldendict::core::FullTextResponse empty;
+    empty.errors.push_back(
+        {goldendict::core::FullTextErrorCode::kMalformedIndex, "empty-error",
+         "contained"});
+    finish_current(empty);
+    QVERIFY(dialog.response_.has_value());
+    QCOMPARE(dialog.response_->errors.size(), std::size_t{1});
+    QCOMPARE(dialog.response_->errors.front().code,
+             goldendict::core::FullTextErrorCode::kMalformedIndex);
+    QCOMPARE(dialog.response_->errors.front().dictionary_id,
+             std::string("empty-error"));
+    QCOMPARE(dialog.response_->errors.front().message,
+             std::string("contained"));
+    QVERIFY(!dialog.response_->partial);
+    QCOMPARE(model->rowCount(), 0);
+
+    goldendict::core::FullTextResponse partial;
+    partial.partial = true;
+    partial.results.resize(2);
+    partial.results[0].headword = "first";
+    partial.results[1].headword = "second";
+    partial.errors.push_back(
+        {goldendict::core::FullTextErrorCode::kDeadlineExceeded, "partial",
+         "deadline"});
+    finish_current(partial);
+    QVERIFY(dialog.response_->partial);
+    QCOMPARE(dialog.response_->errors.size(), std::size_t{1});
+    QCOMPARE(dialog.response_->errors.front().code,
+             goldendict::core::FullTextErrorCode::kDeadlineExceeded);
+    QCOMPARE(dialog.response_->errors.front().dictionary_id,
+             std::string("partial"));
+    QCOMPARE(dialog.response_->errors.front().message, std::string("deadline"));
+    QCOMPARE(dialog.response_->results.size(), std::size_t{2});
+    QCOMPARE(dialog.response_->results[0].headword, std::string("first"));
+    QCOMPARE(dialog.response_->results[1].headword, std::string("second"));
+    QCOMPARE(model->rowCount(), 2);
+    QCOMPARE(model->data(model->index(0, 0)).toString(),
+             QStringLiteral("first"));
+    QCOMPARE(model->data(model->index(1, 0)).toString(),
+             QStringLiteral("second"));
+
+    QSignalSpy resets(model, &QAbstractItemModel::modelReset);
+    QSignalSpy inserted(model, &QAbstractItemModel::rowsInserted);
+    QSignalSpy removed(model, &QAbstractItemModel::rowsRemoved);
+    service.response_.results.resize(3);
+    service.response_.results[0].headword = "replacement-a";
+    service.response_.results[1].headword = "replacement-b";
+    service.response_.results[2].headword = "replacement-c";
+    dialog.InitializeQuery(QStringLiteral("replacement"));
+    dialog.SubmitSearch();
+    QVERIFY(!dialog.response_.has_value());
+    QCOMPARE(model->rowCount(), 0);
+    QCOMPARE(resets.size(), 1);
+    QVERIFY(service.WaitForQueries(1U));
+    QTRY_VERIFY(dialog.response_.has_value());
+    QCOMPARE(model->rowCount(), 3);
+    QCOMPARE(resets.size(), 2);
+    QCOMPARE(inserted.size(), 0);
+    QCOMPARE(removed.size(), 0);
+    QCOMPARE(model->data(model->index(0, 0)).toString(),
+             QStringLiteral("replacement-a"));
+    QCOMPARE(model->data(model->index(2, 0)).toString(),
+             QStringLiteral("replacement-c"));
 }
 
 void FullTextSearchDialogTest::
@@ -242,6 +342,11 @@ void FullTextSearchDialogTest::
     QCOMPARE(queries[1].text, std::string("replacement"));
     QCOMPARE(dialog.response_->results.front().headword,
              std::string("current"));
+    QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
+    QCOMPARE(ResponseModel(&dialog)
+                 ->data(ResponseModel(&dialog)->index(0, 0))
+                 .toString(),
+             QStringLiteral("current"));
     QVERIFY(!dialog.active_generation_.has_value());
     QVERIFY(search->isEnabled());
 }
@@ -259,6 +364,7 @@ void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
     QVERIFY(service.WaitForCancellation());
     QVERIFY(!dialog.active_generation_.has_value());
     QVERIFY(!dialog.response_.has_value());
+    QCOMPARE(ResponseModel(&dialog)->rowCount(), 0);
     QVERIFY(SearchButton(&dialog)->isEnabled());
     QVERIFY(!CancelButton(&dialog)->isEnabled());
     QVERIFY(Progress(&dialog)->isHidden());
@@ -267,6 +373,7 @@ void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
     QTest::qWait(20);
     QCoreApplication::processEvents();
     QVERIFY(!dialog.response_.has_value());
+    QCOMPARE(ResponseModel(&dialog)->rowCount(), 0);
     QCOMPARE(dialog.generation_, 1U);
 }
 
@@ -277,19 +384,43 @@ void FullTextSearchDialogTest::
     goldendict::core::ApplicationPreferences preferences;
     {
         FullTextSearchDialog dialog(preferences, &first);
-        dialog.InitializeQuery(QStringLiteral("blocked"));
+        first.response_.results.resize(1);
+        first.response_.results.front().headword = "accepted";
+        dialog.InitializeQuery(QStringLiteral("accepted"));
         dialog.SubmitSearch();
         QVERIFY(first.WaitForQueries(1U));
-        first.ReleaseCancelledRequest();
+        QTRY_VERIFY(dialog.response_.has_value());
+        QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
         dialog.SetService(&second);
-        QVERIFY(first.WaitForCancellation());
+        QVERIFY(dialog.response_.has_value());
+        QCOMPARE(dialog.response_->results.front().headword,
+                 std::string("accepted"));
+        QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
+        dialog.DetachController();
+        dialog.DetachController();
+        QVERIFY(dialog.response_.has_value());
+        QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
+    }
+    QCOMPARE(second.Queries().size(), std::size_t{0});
+
+    ControllableDictionaryService blocked;
+    ControllableDictionaryService replacement;
+    {
+        FullTextSearchDialog dialog(preferences, &blocked);
+        dialog.InitializeQuery(QStringLiteral("blocked"));
+        dialog.SubmitSearch();
+        QVERIFY(blocked.WaitForQueries(1U));
+        blocked.ReleaseCancelledRequest();
+        dialog.SetService(&replacement);
+        QVERIFY(blocked.WaitForCancellation());
         QVERIFY(!dialog.active_generation_.has_value());
         QVERIFY(!dialog.response_.has_value());
+        QCOMPARE(ResponseModel(&dialog)->rowCount(), 0);
         QVERIFY(SearchButton(&dialog)->isEnabled());
         dialog.DetachController();
         dialog.DetachController();
     }
-    QCOMPARE(second.Queries().size(), std::size_t{0});
+    QCOMPARE(replacement.Queries().size(), std::size_t{0});
 }
 
 }  // namespace goldendict::app
