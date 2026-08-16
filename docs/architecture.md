@@ -1919,7 +1919,7 @@ folded into this leaf. Decisive migrated evidence is
 `fulltextsearch.cc:338-570` and `fulltextsearch.ui:99-238`. No successor after
 P8-FT-9 is selected or ranked.
 
-### Phase 8 full-text per-document response projection prerequisite
+### Phase 8 full-text per-document response projection prerequisite (complete)
 
 The fresh documentation-only post-P8-FT-9 readiness audit is pinned to clean
 migrated revision `ee632c2e470b1f24e73d311dd0eec8727d5b5c15` and the
@@ -1931,7 +1931,7 @@ highlighting/WebEngine handoff, Preferences enablement/index policy, and index
 readiness/visibility/status/background lifecycle without ranking them in
 advance.
 
-The audit selects exactly one smallest independently dependency-ready
+The audit selected exactly one smallest independently dependency-ready
 prerequisite, P8-FT-10: a private, non-integrated Qt item model that projects
 one immutable row for every `FullTextResult` in the completed terminal
 `FullTextResponse`. Rows preserve Core response order and remain distinct even
@@ -1951,7 +1951,7 @@ separate decision; the dialog continues to retain the terminal response
 unchanged until a later integration leaf.
 
 P8-FT-10 depends only on the installed result DTO and completed P8-FT-9
-terminal-response path. Its future implementation is limited to the private
+terminal-response path. Its implementation is limited to the private
 model, focused offscreen Widgets QTest, and existing private test registration.
 Acceptance requires exact row count and order, distinct duplicate headwords,
 UTF-8 display conversion, field-for-field typed metadata preservation,
@@ -1975,6 +1975,11 @@ migrated evidence is
 `fulltextsearch.hh:41-65,135-156`,
 `fulltextsearch.cc:129-186,518-610,685-750`, and
 `fulltextsearch.ui:99-238`. No successor after P8-FT-10 is selected or ranked.
+
+P8-FT-10 is complete. The private model owns an ordered immutable result
+snapshot, exposes only the UTF-8 headword for `Qt::DisplayRole` and unchanged
+typed result access, and retains no response-level error or partial state. It
+remains non-integrated, and no successor is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

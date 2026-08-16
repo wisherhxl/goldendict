@@ -2128,14 +2128,14 @@ contract. Evidence is migrated `full_text_request_controller.h/.cpp`,
 `fulltextsearch.cc:338-570` and `fulltextsearch.ui:99-238`. No successor after
 P8-FT-9 is selected or ranked.
 
-The fresh documentation-only post-P8-FT-9 readiness audit is pinned to clean
+The fresh documentation-only post-P8-FT-9 readiness audit was pinned to clean
 migrated revision `ee632c2e470b1f24e73d311dd0eec8727d5b5c15` and unchanged
 clean read-only legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It audits every remaining
 full-text result projection/presentation, result UI/selection/empty/error,
 activation/navigation/lookup, highlighting/WebEngine, Preferences/index
 policy, and index readiness/visibility/status/background-lifecycle surface
-without advance ranking. Exactly one smallest independent prerequisite is
+without advance ranking. Exactly one smallest independent prerequisite was
 selected: P8-FT-10, the private non-integrated per-document response projection
 model. No successor after P8-FT-10 is selected or ranked.
 
@@ -2171,6 +2171,11 @@ migrated `dictionary_service.h:164-196`,
 `fulltextsearch.hh:41-65,135-156`,
 `fulltextsearch.cc:129-186,518-610,685-750`, and
 `fulltextsearch.ui:99-238`. No successor after P8-FT-10 is selected or ranked.
+
+P8-FT-10 is complete. Its private Qt model deterministically snapshots ordered
+results with duplicate headwords and complete typed metadata intact, while
+leaving response errors and partial state unprojected and defining no visible
+presentation. No successor is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
