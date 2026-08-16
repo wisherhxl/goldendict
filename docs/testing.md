@@ -1647,6 +1647,47 @@ No test executable or production navigation side effect was added. The
 registered Release baseline remains 109, and no successor is selected or
 ranked.
 
+## Phase 8 Full-Text Scoped Navigation Prerequisite Gate (Selected)
+
+The post-P8-FT-13 documentation audit selects only P8-FT-14. Before consuming
+the activation signal, lookup navigation must retain the authoritative ordered
+dictionary IDs submitted for the full-text response, including the meaningful
+active-empty case. This prevents history replay, restored tabs, and dictionary
+participation refresh from widening a full-text result lookup.
+
+Focused Core coverage must prove bounded validation; absent, active-nonempty,
+and active-empty scope semantics; navigation equality and back/forward
+retention; complete session export/restore; compatibility with the prior
+ten-field navigation record; count mismatch, more than
+`kMaximumLookupDictionaryFilters` IDs, empty/oversized/invalid UTF-8 IDs, and
+NUL rejection without tab/session mutation.
+Focused MainWindow coverage must prove that retained scope is copied unchanged
+to `LookupQuery`, active-empty starts no dictionary work, and absent scope
+continues to use current group/dictionary-bar participation. Existing unscoped
+lookup, tab, history, restore, and dictionary-context tests must remain green.
+
+P8-FT-14 does not connect the dialog activation signal or test click-to-article
+behavior. Headword handoff across the complete submitted full-text dictionary
+scope, tab disposition, query-edit/history behavior, exact article identity,
+and highlighting remain later independent surfaces. Result-list selection and
+decoration, counts and response states, Preferences/index policy, index
+lifecycle, adapters, index formats including legacy `_FTS`, dependencies,
+build-system changes, and unrelated suites are excluded.
+
+The focused future gate runs `application_service_test`,
+`goldendict_article_tabs_smoke`,
+`goldendict_article_tab_session_restart_smoke`, and
+`goldendict_dictionary_context_navigation_smoke`. The full future gate remains
+Linux Release configure/build, full
+`ctest --preset conan-release`, clean exact-SCM `conan create` with the Qt
+WebEngine host profile and packaged consumers, Release install, and standalone
+installed C and C++ consumers. This documentation-only readiness audit does
+not build because it changes no executable behavior. Evidence is migrated
+`desktop_facade.h`, Core tab/session tests, `main_window.cpp`
+lookup/navigation/filter construction, P8-FT-7 projection, and pinned legacy
+`fulltextsearch.cc:594-610` plus `mainwindow.cc:3002-3014`.
+No successor after P8-FT-14 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

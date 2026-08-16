@@ -2337,6 +2337,50 @@ double click does not add another activation. MainWindow and all lookup,
 dictionary-scope, and navigation behavior remain untouched. The Release test
 baseline remains 109, and no successor is selected or ranked.
 
+### Phase 8 full-text scoped navigation prerequisite (selected)
+
+The independent post-P8-FT-13 audit is pinned to clean migrated revision
+`6ac1912965a60f6d8c9b5614752fa97f3426d80f` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only
+P8-FT-14, the Core-owned scoped lookup-navigation prerequisite. The audit
+rejects a direct activation-to-lookup connection as the next leaf: current
+navigation stores only query and group, so that connection would widen the
+full-text dictionary scope on replay, restore, or participation refresh.
+
+P8-FT-14 adds an optional authoritative ordered dictionary scope to lookup
+navigation, represented by an active flag and dictionary IDs. Active-empty is
+distinct from absent and performs no dictionary lookup. Core owns validation,
+tab history, and backward-compatible session serialization. A scope permits at
+most `kMaximumLookupDictionaryFilters` nonempty IDs, each valid UTF-8 without
+NUL and bounded by `kMaximumLookupFilterBytes`. New navigation records append
+the active flag, count, and encoded IDs; existing ten-field records load as
+unscoped, and inconsistent counts are rejected. MainWindow consumes a retained
+scope unchanged when constructing `LookupQuery` and otherwise preserves the
+current dictionary-bar projection behavior. Invalid scoped state fails
+atomically under the existing navigation/session limits. The future leaf's
+only public contract change is the scoped-navigation fields on
+`TabNavigationState`; this audit changes documentation only.
+
+This prerequisite makes later activation handoff bounded but does not perform
+it. The approved downstream behavior will query the activated result headword
+across the complete dictionary scope submitted for that full-text response;
+it will not narrow to `result.dictionary.id`. Activation connection, tab
+disposition, query-edit synchronization, history emission, exact
+`document_id` selection, and highlighting/WebEngine handoff remain separate.
+Selection/focus/retention, result decoration, counts/status presentation,
+Preferences/index policy, index lifecycle, adapters, index formats and legacy
+`_FTS`, dependencies, build-system changes, and unrelated work remain separate.
+
+Focused acceptance covers scoped navigation validation, active-empty behavior,
+MainWindow lookup-query construction, history back/forward retention, session
+round trips, old-session compatibility, and atomic rejection. Full acceptance
+uses the existing Linux Release build/test/package/install/consumer gate; the
+documentation audit itself does not build. Evidence is migrated
+`desktop_facade.h`, Core tab/session tests, `main_window.cpp` lookup/navigation
+construction, P8-FT-7 projection, and pinned legacy
+`fulltextsearch.cc:594-610` plus `mainwindow.cc:3002-3014`.
+No successor after P8-FT-14 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
