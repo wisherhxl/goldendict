@@ -1965,6 +1965,55 @@ P8-FT-10 through P8-FT-13, plus pinned legacy
 `fulltextsearch.ui:99`.
 No successor after P8-FT-20 is selected or ranked.
 
+## Phase 8 Full-Text Bidirectional Result Rendering Gate (Selected)
+
+The post-P8-FT-20 documentation audit selects only P8-FT-21. The completed
+visible result list, exact display and tooltip projection, and deterministic
+selection/reset contract make private per-row bidirectional painting and
+elision independently testable without changing Core or an installed
+interface.
+
+Focused coverage must prove that each left-to-right, right-to-left, and mixed
+Unicode headword independently supplies its Qt-derived direction to painting.
+Right-to-left rows must paint with `Qt::RightToLeft` and `Qt::ElideLeft` when
+elision is enabled; all other rows must paint with `Qt::LeftToRight` and
+`Qt::ElideRight`. An existing `Qt::ElideNone` must remain unchanged.
+
+Coverage must include duplicate rows and accepted replacement and must prove
+that delegate painting changes no model role or value, row order, tooltip,
+retained-result count, selection, focus, activation, response ownership, or
+accepted-generation synchronization. Existing display/edit/tooltip,
+complete-metadata, count, selection, activation, service-replacement,
+controller-detachment, and teardown coverage must remain green.
+
+The focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-21 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. No build or compiled test is required for this documentation-only audit.
+
+Exact `document_id` navigation and source-dictionary targeting; columns,
+icons, additional metadata roles, and non-bidirectional decoration;
+empty/error/partial messaging beyond the numeric retained-result count; match
+ranges and excerpt presentation; highlighting, ignore-diacritics transfer, and
+WebEngine handoff; Preferences enablement, format exclusions, size/index policy,
+and persistence; index readiness, visibility, status, progress, background
+lifecycle, rebuild, and failure UI; adapters, `.gdfts`, legacy `_FTS`, index
+formats, dependencies, build work, and unrelated suites are excluded and
+remain separately decomposed without ranking. No public API, DTO, persistence,
+Core, adapter, index, dependency, or build surface belongs to P8-FT-21.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`,
+`full_text_response_model.h/.cpp`, their focused tests, and completed
+P8-FT-12/P8-FT-18/P8-FT-19/P8-FT-20, plus pinned legacy
+`fulltextsearch.cc:287-315`, `delegate.hh`, `delegate.cc:5-31`, and
+`fulltextsearch.ui:99`.
+No successor after P8-FT-21 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

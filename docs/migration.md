@@ -2702,6 +2702,63 @@ clears the model before replacement, adds accepted rows without programmatic
 selection or focus transfer, and activates only a clicked or current valid row.
 No successor after P8-FT-20 is selected or ranked.
 
+### Phase 8 full-text bidirectional result rendering (selected)
+
+The independent post-P8-FT-20 audit is pinned to clean migrated revision
+`53281651f9f882cfb9364a55a908f7104d760456` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes
+every remaining full-text workflow surface without advance ranking and selects
+only P8-FT-21, private per-row bidirectional painting and elision for the
+existing result list.
+
+P8-FT-12 owns one visible `QListView`, P8-FT-18 and P8-FT-19 expose the exact
+dictionary name and headword roles, and P8-FT-20 fixes selection, current-index,
+reset, and focus behavior. P8-FT-21 therefore stays within a private Widgets
+delegate. The response model continues to own ordered result data; Core
+continues to own result identity and navigation semantics.
+
+For each painted result row, the delegate derives direction independently from
+the exact displayed headword. Right-to-left text paints with
+`Qt::RightToLeft` and uses `Qt::ElideLeft` when elision is enabled. All other
+text paints with `Qt::LeftToRight` and uses `Qt::ElideRight` when elision is
+enabled. `Qt::ElideNone` remains unchanged. Mixed Unicode follows Qt's
+per-string direction result. Model roles and values, ordering, tooltips,
+retained-result count, selection, focus, activation, response ownership, and
+accepted-generation synchronization remain unchanged.
+
+Focused future acceptance covers left-to-right, right-to-left, and mixed
+Unicode headwords; enabled and disabled elision; duplicate rows; accepted
+replacement; and unchanged tooltips, selection, focus, and activation. The
+focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-21 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or test.
+
+Exact `document_id` navigation and source-dictionary targeting; columns,
+icons, additional metadata roles, and non-bidirectional decoration;
+empty/error/partial messaging beyond the numeric retained-result count; match
+ranges and excerpt presentation; highlighting, ignore-diacritics transfer, and
+WebEngine handoff; Preferences enablement, format exclusions, size/index policy,
+and persistence; index readiness, visibility, status, progress, background
+lifecycle, rebuild, and failure UI; adapters, `.gdfts`, legacy `_FTS`, index
+formats, dependencies, builds, and unrelated parity remain independent and
+unranked. No public API, DTO, persistence, Core, adapter, index, dependency, or
+build-system surface belongs to P8-FT-21.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`,
+`full_text_response_model.h/.cpp`, their focused tests, and completed
+P8-FT-12/P8-FT-18/P8-FT-19/P8-FT-20. Pinned legacy evidence is
+`fulltextsearch.cc:287-315`, `delegate.hh`, `delegate.cc:5-31`, and
+`fulltextsearch.ui:99`: the dialog installs a private word-list delegate whose
+paint path derives direction per displayed string, chooses left or right
+elision accordingly, and preserves an explicit no-elision setting.
+No successor after P8-FT-21 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

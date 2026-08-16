@@ -2546,6 +2546,68 @@ clears the model before replacement, adds accepted rows without programmatic
 selection or focus transfer, and activates only a clicked or current valid row.
 No successor after P8-FT-20 is selected or ranked.
 
+### Phase 8 full-text bidirectional result rendering (selected)
+
+The independent post-P8-FT-20 documentation audit is pinned to clean migrated
+revision `53281651f9f882cfb9364a55a908f7104d760456` and unchanged clean
+read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It rechecks every remaining full-text workflow surface without advance ranking
+and selects exactly one smallest dependency-ready leaf, P8-FT-21: give the
+private result list legacy-compatible per-row bidirectional painting and
+elision.
+
+P8-FT-21 is dependency-ready because P8-FT-12 owns one visible `QListView`,
+P8-FT-18 and P8-FT-19 expose the exact dictionary name and headword roles, and
+P8-FT-20 fixes selection, current-index, reset, and focus behavior. A private
+Widgets delegate owns only presentation of the existing display text. The
+response model continues to own ordered result data, and Core continues to own
+result identity and navigation semantics. No public API, DTO, persistence,
+dependency, adapter, index-format, or build-system change is required.
+
+For each painted result row, the delegate derives direction independently from
+the exact displayed headword. Right-to-left text paints with
+`Qt::RightToLeft`; when elision is enabled it elides at the left with
+`Qt::ElideLeft`. All other text paints with `Qt::LeftToRight`; when elision is
+enabled it elides at the right with `Qt::ElideRight`. An existing
+`Qt::ElideNone` setting remains unchanged. Mixed Unicode text follows Qt's
+per-string direction result. The delegate changes no model role or value, row
+order, tooltip, retained-result count, selection, focus, activation, response
+ownership, or accepted-generation synchronization.
+
+Focused future acceptance covers left-to-right, right-to-left, and mixed
+Unicode headwords; enabled and disabled elision; duplicate rows; accepted
+replacement; and unchanged tooltips, selection, focus, and activation. The
+focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-21 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or compiled test.
+
+Exact `document_id` navigation and source-dictionary targeting; columns,
+icons, additional metadata roles, and non-bidirectional decoration;
+empty/error/partial messaging beyond the numeric retained-result count; match
+ranges and excerpt presentation; highlighting, ignore-diacritics transfer, and
+WebEngine handoff; Preferences enablement, format exclusions, size/index policy,
+and persistence; index readiness, visibility, status, progress, background
+lifecycle, rebuild, and failure UI; adapters, `.gdfts`, legacy `_FTS`, index
+formats, dependencies, builds, and unrelated parity remain independent
+surfaces. They are decomposed only; none is selected or ranked. No public API,
+DTO, persistence, Core, adapter, index, dependency, or build surface belongs to
+P8-FT-21.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`,
+`full_text_response_model.h/.cpp`, their focused tests, and completed
+P8-FT-12/P8-FT-18/P8-FT-19/P8-FT-20. Pinned legacy evidence is
+`fulltextsearch.cc:287-315`, `delegate.hh`, `delegate.cc:5-31`, and
+`fulltextsearch.ui:99`: the dialog installs a private word-list delegate whose
+paint path derives direction per displayed string, chooses left or right
+elision accordingly, and preserves an explicit no-elision setting.
+No successor after P8-FT-21 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
