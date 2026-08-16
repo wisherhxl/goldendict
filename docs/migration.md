@@ -2282,6 +2282,53 @@ replacement; and stale/cancelled suppression. The Release suite remains 109
 registered tests, and no public, persistence, adapter, dependency, index, or
 build-system surface changes. No successor is selected or ranked.
 
+### Phase 8 full-text result activation intent (selected)
+
+The independent documentation-only post-P8-FT-12 audit is pinned to clean
+migrated revision `32b1fba41ee4b7b8e145acf41256e7c393b2764e` and unchanged clean
+read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It selects P8-FT-13 as the sole smallest dependency-ready,
+decision-complete leaf: private Widgets-owned activation intent from the
+P8-FT-12 result list. A valid result activates exactly once on a single
+primary-button click or Return/Enter. Invalid, empty, stale, or reset indexes
+do nothing; a double click must not add a second activation. Return/Enter
+requires an already-current valid index and defines no selection or focus
+policy.
+
+The dialog resolves the row through `FullTextResponseModel::ResultAt()` and
+delivers a safe value snapshot of the existing `FullTextResult` through a
+private application-facing callback/signal. Core retains result identity and
+metadata ownership. Model replacement, cancellation, service replacement, and
+teardown cannot invalidate an accepted intent. No MainWindow navigation or
+installed interface change belongs to this leaf.
+
+Every other remaining surface stays explicitly decomposed. Initial/current
+selection, focus, and retention are separate. Dictionary tooltip/name
+decoration, columns, extra roles, and richer delegates are separate. Counts
+and empty/error/partial presentation are separate. MainWindow lookup,
+per-result dictionary scoping, tab/history/navigation mutation, highlighting,
+and WebEngine handoff are downstream and separate; current tab navigation
+cannot retain exact result-dictionary scope without a separate contract.
+Preferences enablement, format exclusions, size policy, and persistence remain
+behind product policy. Index readiness, visibility, status, progress, and
+background lifecycle remain behind a Core lifecycle contract. Public APIs and
+DTOs, persistence, adapters, `.gdfts`, legacy `_FTS`, dependencies,
+build-system changes, and unrelated behavior are excluded.
+
+Focused acceptance extends the existing offscreen dialog QTest with valid
+single-click and current-index Return/Enter activation, exact one-delivery and
+exact copied result metadata, double-click non-duplication, and invalid/empty/
+reset-index suppression while retaining stale/cancelled and teardown coverage.
+The registered Release baseline remains 109 tests. The future full gate remains
+Linux Release configure/build, full `ctest --preset conan-release`, clean
+exact-SCM `conan create` with the Qt WebEngine host profile and packaged
+consumers, Release install, and standalone installed C and C++ consumers.
+Evidence is migrated `full_text_search_dialog.h/.cpp`,
+`full_text_response_model.h/.cpp`, and focused tests plus pinned legacy
+`fulltextsearch.cc:292-293,594-610,664-673` and
+`fulltextsearch.hh:227,232-233`. No successor after P8-FT-13 is selected or
+ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

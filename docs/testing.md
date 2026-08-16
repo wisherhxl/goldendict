@@ -1598,6 +1598,47 @@ or cancelled completions remain invisible. The registered Release baseline
 remains 109 tests. No selection, focus, activation, decoration, count, state
 presentation, or successor is selected or ranked.
 
+## Phase 8 Full-Text Result Activation-Intent Gate (Selected)
+
+The documentation-only post-P8-FT-12 audit selects P8-FT-13 as the sole
+smallest dependency-ready and independently decision-complete leaf: private
+Widgets-owned activation intent from the existing result list. A valid row
+activates exactly once on a single primary-button click or Return/Enter and
+delivers a safe value snapshot of its existing `FullTextResult`, resolved by
+`FullTextResponseModel::ResultAt()`. Invalid, empty, stale, or reset indexes
+deliver nothing. Return/Enter requires a current valid index. Double-click
+adds no second activation.
+
+The focused offscreen dialog QTest must verify exact one-delivery for a valid
+single click and for Return and Enter on a current valid row; equality of all
+copied result fields, including dictionary identity, headword, document ID,
+match, excerpt, and full match vector; no delivery for invalid indexes, an
+empty model, or an index invalidated by replacement reset; and no duplicate
+delivery from a double click. Existing coverage must continue to prove Core
+order and duplicates, immediate replacement clearing, current-generation-only
+projection, stale/cancelled suppression, service replacement, controller
+detachment, and teardown safety.
+
+The focused gate extends the existing private dialog QTest and registration,
+so the Release baseline remains 109 tests. The full future implementation gate
+is Linux Release configure/build, full `ctest --preset conan-release` without
+registration drift, clean committed exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumer checks. P8-FT-13 changes no installed
+surface, but package and consumer checks remain the stronger full gate.
+
+Selection/focus/retention, dictionary decoration and extra roles, counts and
+empty/error/partial presentation, MainWindow lookup and exact dictionary
+scoping, tab/history/navigation mutation, highlighting/WebEngine handoff,
+Preferences enablement/index policy, index readiness/visibility/status/
+background lifecycle, public APIs/DTOs, persistence, adapters, `.gdfts`,
+legacy `_FTS`, dependencies, build-system changes, and unrelated tests do not
+belong to P8-FT-13. Evidence is migrated `full_text_search_dialog.h/.cpp`,
+`full_text_response_model.h/.cpp`, and focused tests plus pinned legacy
+`fulltextsearch.cc:292-293,594-610,664-673` and
+`fulltextsearch.hh:227,232-233`. No successor after P8-FT-13 is selected or
+ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
