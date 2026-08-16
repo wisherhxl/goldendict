@@ -610,6 +610,11 @@ WebEngine host profile. GUI, Preferences, highlighting, other adapters, legacy
 `_FTS` compatibility, metadata or resource indexing, dependency changes, and
 private index-format evolution are excluded.
 
+P6-FT-4 is accepted with the focused generated-fixture, lifecycle,
+contained-failure, mixed-service, Release build/install/test, exact-SCM Conan
+package, and installed C/C++ consumer coverage described above. Selection of a
+subsequent adapter requires a fresh independent readiness audit.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

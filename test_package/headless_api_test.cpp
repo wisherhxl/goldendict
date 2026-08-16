@@ -744,6 +744,8 @@ int main() {
         WriteDictdFixture(dictd_root);
         goldendict::core::CoreConfiguration dictd_configuration;
         dictd_configuration.dictionary_paths = {dictd_root.string()};
+        dictd_configuration.index_directory =
+            (directory.path() / "dictd-indexes").string();
         auto dictd_service =
             goldendict::core::CreateDictionaryService(dictd_configuration);
         const auto dictd_catalog = dictd_service->GetCatalog();
@@ -768,6 +770,22 @@ int main() {
             dictd_response.entries.front().article.plain_text.find(
                 "Installed Dictd definition.") == std::string::npos) {
             return Fail("installed Dictd lookup failed");
+        }
+        full_text_query = {};
+        full_text_query.text = "Installed";
+        full_text_query.dictionary_filter_active = true;
+        full_text_query.dictionary_ids = {dictd_catalog.front().id};
+        const auto dictd_full_text =
+            dictd_service->SearchFullText(full_text_query);
+        if (!dictd_full_text.errors.empty() ||
+            dictd_full_text.results.size() != 1U ||
+            dictd_full_text.results.front().dictionary.id !=
+                dictd_catalog.front().id ||
+            dictd_full_text.results.front().headword != "example" ||
+            dictd_full_text.results.front().document_id !=
+                "dictd-index:0:0:27" ||
+            dictd_full_text.results.front().matches.size() != 1U) {
+            return Fail("installed Dictd full-text query failed");
         }
 
         const auto sdict_root = directory.path() / "sdict";

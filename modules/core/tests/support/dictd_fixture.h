@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -17,9 +18,19 @@
 namespace goldendict::core::test {
 
 struct DictdFixtureEntry {
+    DictdFixtureEntry(
+        std::string headword_value, std::string article_value,
+        std::string original_headword_value,
+        std::optional<std::size_t> article_reference_value = std::nullopt)
+        : headword(std::move(headword_value)),
+          article(std::move(article_value)),
+          original_headword(std::move(original_headword_value)),
+          article_reference(article_reference_value) {}
+
     std::string headword;
     std::string article;
     std::string original_headword;
+    std::optional<std::size_t> article_reference;
 };
 
 inline std::string EncodeDictdBase64(std::uint32_t value) {
@@ -42,16 +53,27 @@ inline std::filesystem::path WriteDictdFixture(
     std::filesystem::create_directories(directory);
     std::string index;
     std::string data;
-    for (const auto& entry : entries) {
-        index +=
-            entry.headword + '\t' +
-            EncodeDictdBase64(static_cast<std::uint32_t>(data.size())) + '\t' +
-            EncodeDictdBase64(static_cast<std::uint32_t>(entry.article.size()));
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> ranges;
+    ranges.reserve(entries.size());
+    for (std::size_t ordinal = 0U; ordinal < entries.size(); ++ordinal) {
+        const auto& entry = entries[ordinal];
+        std::uint32_t offset = static_cast<std::uint32_t>(data.size());
+        std::uint32_t size = static_cast<std::uint32_t>(entry.article.size());
+        if (entry.article_reference.has_value()) {
+            if (*entry.article_reference >= ordinal) {
+                throw std::runtime_error("Invalid Dictd article reference");
+            }
+            std::tie(offset, size) = ranges[*entry.article_reference];
+        } else {
+            data += entry.article;
+        }
+        ranges.emplace_back(offset, size);
+        index += entry.headword + '\t' + EncodeDictdBase64(offset) + '\t' +
+                 EncodeDictdBase64(size);
         if (!entry.original_headword.empty()) {
             index += '\t' + entry.original_headword;
         }
         index.push_back('\n');
-        data += entry.article;
     }
     const auto index_path = directory / "fixture.index";
     std::ofstream index_output(index_path, std::ios::binary);

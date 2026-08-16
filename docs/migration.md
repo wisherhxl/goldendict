@@ -1263,6 +1263,13 @@ implementation gate is focused generated-fixture, lifecycle, and mixed-service
 coverage, the unchanged installed consumer, the complete Linux Release
 test/install path, and clean committed exact-SCM Conan package creation.
 
+P6-FT-4 is complete. Dictd now contributes one private full-text document per
+distinct validated non-metadata article range, with source-record canonical
+provenance, alias deduplication, inert plain-text assembly, two-source
+`.gdfts` lifecycle, and deterministic mixed-service dispatch. No subsequent
+format adapter is selected; that choice requires a fresh independent readiness
+audit after this implementation.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

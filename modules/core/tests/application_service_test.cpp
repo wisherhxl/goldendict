@@ -155,7 +155,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsMalformedConfiguration();
     void CatalogSanitizesInspectionMetadata();
     void DiscoversAndQueriesARealFixture();
-    void SearchesStarDictSdictAndXdxfFullTextWithMixedFormatErrors();
+    void SearchesStarDictDictdSdictAndXdxfFullTextWithMixedFormatErrors();
     void EnumeratesStarDictHeadwordsWithStableCursors();
     void ExportsCompleteHeadwordListsAtomically();
     void ReturnsCanonicalFoldedMatchInformation();
@@ -1915,7 +1915,7 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
 }
 
 void ApplicationServiceTest::
-    SearchesStarDictSdictAndXdxfFullTextWithMixedFormatErrors() {
+    SearchesStarDictDictdSdictAndXdxfFullTextWithMixedFormatErrors() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     const auto root = TemporaryPath(directory);
@@ -1931,7 +1931,7 @@ void ApplicationServiceTest::
         root / "xdxf",
         {{{"Gamma", "Gamma alias"}, "<def>shared searchable third</def>"}});
     test::WriteDictdFixture(root / "dictd",
-                            {{"Unsupported", "searchable unsupported", ""}});
+                            {{"Delta", "shared searchable fourth", ""}});
     CoreConfiguration configuration;
     configuration.dictionary_paths = {root.string()};
     configuration.index_directory = (root / "indexes").string();
@@ -1947,11 +1947,9 @@ void ApplicationServiceTest::
     query.result_limit = 1U;
     const auto bounded = service->SearchFullText(query);
     QCOMPARE(bounded.results.size(), 1U);
-    QCOMPARE(bounded.errors.size(), 2U);
+    QCOMPARE(bounded.errors.size(), 1U);
     QCOMPARE(bounded.errors.front().code, FullTextErrorCode::kUnsupported);
-    QVERIFY(bounded.errors.front().dictionary_id.rfind("dictd-", 0U) == 0U);
-    QCOMPARE(bounded.errors.back().code, FullTextErrorCode::kUnsupported);
-    QCOMPARE(bounded.errors.back().dictionary_id, std::string("inspection"));
+    QCOMPARE(bounded.errors.front().dictionary_id, std::string("inspection"));
     QVERIFY(bounded.partial);
 
     query.dictionary_filter_active = true;
@@ -1962,7 +1960,7 @@ void ApplicationServiceTest::
     query.dictionary_ids.push_back("unavailable");
     query.result_limit = kMaximumFullTextResults;
     const auto filtered = service->SearchFullText(query);
-    QCOMPARE(filtered.results.size(), 3U);
+    QCOMPARE(filtered.results.size(), 4U);
     std::vector<std::string> adapted_ids;
     for (const auto& result : filtered.results) {
         adapted_ids.push_back(result.dictionary.id);
@@ -1971,6 +1969,10 @@ void ApplicationServiceTest::
                            [](const auto& id) {
                                return id.rfind("stardict-", 0U) == 0U;
                            }),
+             1);
+    QCOMPARE(std::count_if(
+                 adapted_ids.begin(), adapted_ids.end(),
+                 [](const auto& id) { return id.rfind("dictd-", 0U) == 0U; }),
              1);
     QCOMPARE(std::count_if(
                  adapted_ids.begin(), adapted_ids.end(),
@@ -1987,16 +1989,16 @@ void ApplicationServiceTest::
              filtered.results[1].dictionary.id);
     QCOMPARE(repeated.results[2].dictionary.id,
              filtered.results[2].dictionary.id);
+    QCOMPARE(repeated.results[3].dictionary.id,
+             filtered.results[3].dictionary.id);
     QCOMPARE(filtered.results.front().match.mode, MatchMode::kFullText);
     QCOMPARE(filtered.results.front().matches.size(), 1U);
-    QCOMPARE(filtered.errors.size(), 3U);
+    QCOMPARE(filtered.errors.size(), 2U);
     QCOMPARE(filtered.errors[0].code, FullTextErrorCode::kUnsupported);
-    QVERIFY(filtered.errors[0].dictionary_id.rfind("dictd-", 0U) == 0U);
-    QCOMPARE(filtered.errors[1].code, FullTextErrorCode::kUnsupported);
-    QCOMPARE(filtered.errors[1].dictionary_id, std::string("inspection"));
-    QCOMPARE(filtered.errors[2].code,
+    QCOMPARE(filtered.errors[0].dictionary_id, std::string("inspection"));
+    QCOMPARE(filtered.errors[1].code,
              FullTextErrorCode::kDictionaryUnavailable);
-    QCOMPARE(filtered.errors[2].dictionary_id, std::string("unavailable"));
+    QCOMPARE(filtered.errors[1].dictionary_id, std::string("unavailable"));
 
     query.dictionary_ids = adapted_ids;
     query.text = "absent-from-adapted-dictionaries";

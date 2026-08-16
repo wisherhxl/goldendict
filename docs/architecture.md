@@ -736,6 +736,13 @@ missing requested IDs remain typed unavailable. Installed `SearchFullText`
 APIs and DTOs, runtime-source interfaces, public capability flags,
 preferences, dependencies, and the private index format remain unchanged.
 
+P6-FT-4 is complete. Dictd now contributes range-deduplicated private
+full-text documents from validated non-metadata source records, tracks the
+selected two-file source revision, and participates in the accepted mixed
+service dispatch without changing installed or runtime-source surfaces. The
+next format adapter remains unselected pending a fresh independent readiness
+audit.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

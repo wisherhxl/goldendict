@@ -137,6 +137,11 @@ bool HasPrefix(std::string_view text, std::string_view prefix) noexcept {
            text.compare(0, prefix.size(), prefix) == 0;
 }
 
+bool IsReservedMetadata(std::string_view headword) noexcept {
+    return headword == "00databaseshort" || headword == "00-database-short" ||
+           headword == "00databaseinfo" || headword == "00-database-info";
+}
+
 std::size_t Utf8CodePointCount(std::string_view text) noexcept {
     return static_cast<std::size_t>(
         std::count_if(text.begin(), text.end(), [](char byte) {
@@ -188,6 +193,7 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
     reader.name_ = base.filename().string();
     if (std::filesystem::is_regular_file(plain_path, filesystem_error) &&
         !filesystem_error) {
+        reader.dictionary_path_ = plain_path;
         reader.dictionary_data_ = ReadFile(plain_path, kMaximumDictionarySize);
     } else {
         filesystem_error.clear();
@@ -197,6 +203,7 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
             Throw(ErrorCode::kMissingFile, index_path,
                   "Dictd dictionary data companion is missing");
         }
+        reader.dictionary_path_ = compressed_path;
         reader.dictionary_data_ = ReadCompressedFile(compressed_path);
     }
 
@@ -235,6 +242,7 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
                           std::to_string(line_number));
             }
             Record record;
+            record.source_ordinal = line_number - 1U;
             record.headword = std::string(headword);
             try {
                 record.folded_headword =
@@ -261,6 +269,13 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
               "Cannot read complete Dictd index");
     }
 
+    try {
+        reader.source_snapshot_ = dictionary::CaptureSourceSnapshot(
+            {reader.index_path_, reader.dictionary_path_});
+    } catch (const dictionary::GeneratedIndexError& error) {
+        Throw(ErrorCode::kMissingFile, index_path, error.what());
+    }
+
     for (const auto& record : reader.records_) {
         if (record.headword == "00databaseshort" ||
             record.headword == "00-database-short") {
@@ -284,6 +299,26 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
 Article Reader::LoadArticle(const Record& record) const {
     return {record.headword, dictionary_data_.substr(record.article_offset,
                                                      record.article_size)};
+}
+
+std::vector<FullTextArticle> Reader::ReadFullTextArticles(
+    const std::function<void()>& checkpoint) const {
+    std::vector<FullTextArticle> result;
+    std::set<std::pair<std::uint32_t, std::uint32_t>> seen;
+    for (const auto& record : records_) {
+        if (checkpoint) {
+            checkpoint();
+        }
+        if (IsReservedMetadata(record.headword) ||
+            !seen.insert({record.article_offset, record.article_size}).second) {
+            continue;
+        }
+        result.push_back({record.source_ordinal, record.headword,
+                          record.article_offset, record.article_size,
+                          dictionary_data_.substr(record.article_offset,
+                                                  record.article_size)});
+    }
+    return result;
 }
 
 std::pair<std::vector<std::string>, bool> Reader::EnumerateHeadwords(

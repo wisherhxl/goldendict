@@ -8,6 +8,8 @@
 #include <system_error>
 #include <utility>
 
+#include "../../article/article_assembler.h"
+
 namespace goldendict::core::formats::dictd {
 namespace {
 
@@ -38,8 +40,9 @@ std::vector<dictionary::Article> Translate(std::vector<Article> source) {
 
 }  // namespace
 
-Dictionary Dictionary::Open(std::string id,
-                            const std::filesystem::path& index_path) {
+Dictionary Dictionary::Open(
+    std::string id, const std::filesystem::path& index_path,
+    const std::optional<std::filesystem::path>& full_text_index_path) {
     try {
         Dictionary dictionary;
         dictionary.reader_ = Reader::Open(index_path);
@@ -50,15 +53,86 @@ Dictionary Dictionary::Open(std::string id,
             dictionary.reader_.headword_count();
         dictionary.identity_.supports_headword_enumeration = true;
         dictionary.identity_.description = dictionary.reader_.description();
-        std::error_code error;
+        std::error_code filesystem_error;
         const auto canonical =
-            std::filesystem::weakly_canonical(index_path, error);
+            std::filesystem::weakly_canonical(index_path, filesystem_error);
         dictionary.identity_.source =
-            (error ? index_path.lexically_normal() : canonical).string();
+            (filesystem_error ? index_path.lexically_normal() : canonical)
+                .string();
+        if (full_text_index_path.has_value()) {
+            try {
+                std::vector<dictionary::FullTextDocument> documents;
+                const auto source_articles =
+                    dictionary.reader_.ReadFullTextArticles();
+                documents.reserve(source_articles.size());
+                for (const auto& source : source_articles) {
+                    dictionary::Article article{source.headword, "text/plain",
+                                                source.data};
+                    auto assembled = article::Assemble(dictionary.identity_,
+                                                       {std::move(article)});
+                    dictionary::FullTextDocument document;
+                    document.dictionary.id = dictionary.identity_.id;
+                    document.dictionary.name = dictionary.identity_.name;
+                    document.dictionary.source = dictionary.identity_.source;
+                    document.dictionary.description =
+                        dictionary.identity_.description;
+                    document.dictionary.article_count =
+                        dictionary.identity_.article_count;
+                    document.dictionary.headword_count =
+                        dictionary.identity_.headword_count;
+                    document.dictionary.supports_headword_enumeration =
+                        dictionary.identity_.supports_headword_enumeration;
+                    document.headword = source.headword;
+                    document.document_id =
+                        "dictd-index:" + std::to_string(source.record_ordinal) +
+                        ":" + std::to_string(source.article_offset) + ":" +
+                        std::to_string(source.article_size);
+                    document.plain_text = std::move(assembled.plain_text);
+                    documents.push_back(std::move(document));
+                }
+                dictionary.full_text_index_ =
+                    dictionary::FullTextIndex::OpenOrBuild(
+                        *full_text_index_path,
+                        dictionary.reader_.source_snapshot(),
+                        std::move(documents));
+            } catch (const dictionary::FullTextIndexError& error) {
+                dictionary.full_text_error_ = FullTextError{
+                    error.code(), dictionary.identity_.id, error.what()};
+            } catch (const dictionary::GeneratedIndexError& error) {
+                dictionary.full_text_error_ =
+                    FullTextError{FullTextErrorCode::kInternal,
+                                  dictionary.identity_.id, error.what()};
+            } catch (const Error& error) {
+                dictionary.full_text_error_ =
+                    FullTextError{FullTextErrorCode::kResourceLimit,
+                                  dictionary.identity_.id, error.what()};
+            } catch (const dictionary::Error& error) {
+                dictionary.full_text_error_ =
+                    FullTextError{FullTextErrorCode::kResourceLimit,
+                                  dictionary.identity_.id, error.what()};
+            }
+        }
         return dictionary;
     } catch (const Error& error) {
         throw TranslateError(error);
     }
+}
+
+FullTextResponse Dictionary::SearchFullText(
+    const FullTextQuery& query, const CancellationToken* cancellation) const {
+    if (full_text_error_.has_value()) {
+        FullTextResponse response;
+        response.errors.push_back(*full_text_error_);
+        return response;
+    }
+    if (!full_text_index_.has_value()) {
+        FullTextResponse response;
+        response.errors.push_back(
+            {FullTextErrorCode::kUnsupported, identity_.id,
+             "Full-text indexing is not available for this dictionary"});
+        return response;
+    }
+    return full_text_index_->Search(query, cancellation);
 }
 
 std::vector<dictionary::Article> Dictionary::LookupExact(
