@@ -25,11 +25,19 @@ int FullTextResponseModel::rowCount(const QModelIndex& parent) const {
 
 QVariant FullTextResponseModel::data(const QModelIndex& index, int role) const {
     const auto* result = ResultAt(index);
-    if (result == nullptr || role != Qt::DisplayRole) {
+    if (result == nullptr) {
         return {};
     }
-    return QString::fromUtf8(result->headword.data(),
-                             static_cast<int>(result->headword.size()));
+    if (role == Qt::DisplayRole) {
+        return QString::fromUtf8(result->headword.data(),
+                                 static_cast<int>(result->headword.size()));
+    }
+    if (role == Qt::ToolTipRole && !result->dictionary.name.empty()) {
+        return QString::fromUtf8(
+            result->dictionary.name.data(),
+            static_cast<int>(result->dictionary.name.size()));
+    }
+    return {};
 }
 
 void FullTextResponseModel::Reset(goldendict::core::FullTextResponse response) {

@@ -2542,7 +2542,7 @@ public/installed interface, and the registered Release baseline remains 109
 tests.
 No successor after P8-FT-17 is selected or ranked.
 
-### Phase 8 full-text result dictionary-name tooltip (selected)
+### Phase 8 full-text result dictionary-name tooltip (complete)
 
 The independent post-P8-FT-17 audit is pinned to clean migrated revision
 `7c8fc16e55844b2712f3257a78b7f6b8e6cc3b5b` and unchanged clean read-only
@@ -2561,16 +2561,16 @@ out-of-range, nonzero-column, and unsupported-role requests return no value.
 Display text, order, duplicates, metadata, activation, synchronization, and
 count behavior remain unchanged.
 
-Focused future acceptance covers exact Unicode names, distinct tooltips for
+Focused acceptance covers exact Unicode names, distinct tooltips for
 duplicate-headword rows from different dictionaries, empty-name suppression,
 copied/moved response lifetime, deterministic reset replacement, invalid and
 foreign indexes, unsupported roles, and unchanged display and result metadata.
-The focused future command is
+The focused command is
 `ctest --preset conan-release -R '^full_text_response_model_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The full implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release`, clean
 exact-SCM `conan create`, packaged consumers, Release install, and standalone
-installed consumers. This documentation-only audit requires no build.
+installed consumers.
 
 Exact `document_id` navigation and source-dictionary targeting; initial/current
 selection, keyboard focus, and selection retention; non-tooltip decoration,
@@ -2588,6 +2588,9 @@ Evidence is migrated `full_text_response_model.h/.cpp`, its focused tests, and
 the P8-FT-11/P8-FT-12 dialog synchronization and attachment, plus pinned legacy
 `fulltextsearch.cc:690-721`, where `HeadwordsListModel::data()` supplies
 dictionary names through `Qt::ToolTipRole`.
+P8-FT-18 is complete through the private response-model tooltip projection and
+focused tests. It adds no test executable or public/installed interface, and
+the registered Release baseline remains 109 tests.
 No successor after P8-FT-18 is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8

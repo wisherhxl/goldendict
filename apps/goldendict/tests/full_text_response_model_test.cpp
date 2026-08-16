@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QSignalSpy>
+#include <QStandardItemModel>
 #include <QtTest>
 
 #include <cstddef>
@@ -83,7 +84,7 @@ class FullTextResponseModelTest final : public QObject {
 
    private slots:
     void ProjectsEmptyErrorAndPartialResponses();
-    void PreservesOrderDuplicatesDisplayAndMetadata();
+    void PreservesOrderDuplicatesDisplayTooltipsAndMetadata();
     void ResetReplacesSnapshotAtomically();
     void OwnsCopiedAndMovedResponseLifetimes();
     void RepeatedProjectionIsDeterministic();
@@ -112,21 +113,36 @@ void FullTextResponseModelTest::ProjectsEmptyErrorAndPartialResponses() {
              QStringLiteral("retained"));
 }
 
-void FullTextResponseModelTest::PreservesOrderDuplicatesDisplayAndMetadata() {
+void FullTextResponseModelTest::
+    PreservesOrderDuplicatesDisplayTooltipsAndMetadata() {
     goldendict::core::FullTextResponse response;
     response.results = {MakeResult("first", "Straße 日本語 😀", 1U),
                         MakeResult("second", "duplicate", 2U),
-                        MakeResult("third", "DUPLICATE", 3U)};
+                        MakeResult("third", "duplicate", 3U),
+                        MakeResult("empty", "empty name", 4U)};
+    response.results[0].dictionary.name = "Wörterbuch 日本語 😀";
+    response.results[1].dictionary.name = "First dictionary";
+    response.results[2].dictionary.name = "Second dictionary";
+    response.results[3].dictionary.name.clear();
     const auto expected = response.results;
     FullTextResponseModel model(response);
 
-    QCOMPARE(model.rowCount(), 3);
+    QCOMPARE(model.rowCount(), 4);
     QCOMPARE(model.data(model.index(0, 0)).toString(),
              QString::fromUtf8("Straße 日本語 😀"));
     QCOMPARE(model.data(model.index(1, 0)).toString(),
              QStringLiteral("duplicate"));
     QCOMPARE(model.data(model.index(2, 0)).toString(),
-             QStringLiteral("DUPLICATE"));
+             QStringLiteral("duplicate"));
+    QCOMPARE(model.data(model.index(3, 0)).toString(),
+             QStringLiteral("empty name"));
+    QCOMPARE(model.data(model.index(0, 0), Qt::ToolTipRole).toString(),
+             QString::fromUtf8("Wörterbuch 日本語 😀"));
+    QCOMPARE(model.data(model.index(1, 0), Qt::ToolTipRole).toString(),
+             QStringLiteral("First dictionary"));
+    QCOMPARE(model.data(model.index(2, 0), Qt::ToolTipRole).toString(),
+             QStringLiteral("Second dictionary"));
+    QVERIFY(!model.data(model.index(3, 0), Qt::ToolTipRole).isValid());
     for (int row = 0; row < model.rowCount(); ++row) {
         const auto* actual = model.ResultAt(model.index(row, 0));
         QVERIFY(actual != nullptr);
@@ -143,38 +159,51 @@ void FullTextResponseModelTest::ResetReplacesSnapshotAtomically() {
 
     goldendict::core::FullTextResponse replacement;
     replacement.results = {MakeResult("new", "new row", 3U)};
+    replacement.results[0].dictionary.name = "New dictionary";
     model.Reset(replacement);
 
     QCOMPARE(reset_spy.count(), 1);
     QCOMPARE(model.rowCount(), 1);
     QCOMPARE(model.ResultAt(model.index(0, 0))->dictionary.id,
              std::string("new"));
+    QCOMPARE(model.data(model.index(0, 0), Qt::ToolTipRole).toString(),
+             QStringLiteral("New dictionary"));
 }
 
 void FullTextResponseModelTest::OwnsCopiedAndMovedResponseLifetimes() {
     goldendict::core::FullTextResponse copied_source;
     copied_source.results.push_back(MakeResult("copy", "copy source", 1U));
+    copied_source.results[0].dictionary.name = "Copied dictionary";
     FullTextResponseModel copied(copied_source);
     copied_source.results[0].headword = "mutated";
+    copied_source.results[0].dictionary.name = "Mutated dictionary";
     copied_source.results.clear();
     QCOMPARE(copied.data(copied.index(0, 0)).toString(),
              QStringLiteral("copy source"));
+    QCOMPARE(copied.data(copied.index(0, 0), Qt::ToolTipRole).toString(),
+             QStringLiteral("Copied dictionary"));
 
     FullTextResponseModel moved([] {
         goldendict::core::FullTextResponse temporary;
         temporary.results.push_back(MakeResult("move", "move source", 2U));
+        temporary.results[0].dictionary.name = "Moved dictionary";
         return temporary;
     }());
     QCOMPARE(moved.data(moved.index(0, 0)).toString(),
              QStringLiteral("move source"));
+    QCOMPARE(moved.data(moved.index(0, 0), Qt::ToolTipRole).toString(),
+             QStringLiteral("Moved dictionary"));
 
     moved.Reset([] {
         goldendict::core::FullTextResponse temporary;
         temporary.results.push_back(MakeResult("reset", "reset move", 3U));
+        temporary.results[0].dictionary.name = "Reset dictionary";
         return temporary;
     }());
     QCOMPARE(moved.data(moved.index(0, 0)).toString(),
              QStringLiteral("reset move"));
+    QCOMPARE(moved.data(moved.index(0, 0), Qt::ToolTipRole).toString(),
+             QStringLiteral("Reset dictionary"));
 }
 
 void FullTextResponseModelTest::RepeatedProjectionIsDeterministic() {
@@ -189,6 +218,8 @@ void FullTextResponseModelTest::RepeatedProjectionIsDeterministic() {
     for (int row = 0; row < first.rowCount(); ++row) {
         QCOMPARE(first.data(first.index(row, 0)),
                  second.data(second.index(row, 0)));
+        QCOMPARE(first.data(first.index(row, 0), Qt::ToolTipRole),
+                 second.data(second.index(row, 0), Qt::ToolTipRole));
         CompareResult(*first.ResultAt(first.index(row, 0)),
                       *second.ResultAt(second.index(row, 0)));
     }
@@ -199,8 +230,13 @@ void FullTextResponseModelTest::HandlesInvalidIndexesAndRoles() {
     response.results.push_back(MakeResult("one", "headword", 1U));
     FullTextResponseModel model(response);
     FullTextResponseModel other(response);
+    QStandardItemModel foreign(1, 2);
 
     QVERIFY(!model.data(QModelIndex()).isValid());
+    QVERIFY(!model.data(other.index(0, 0), Qt::ToolTipRole).isValid());
+    QVERIFY(!model.data(model.index(1, 0), Qt::ToolTipRole).isValid());
+    QVERIFY(!model.data(model.index(0, 1), Qt::ToolTipRole).isValid());
+    QVERIFY(!model.data(foreign.index(0, 1), Qt::ToolTipRole).isValid());
     QVERIFY(!model.data(model.index(0, 0), Qt::UserRole).isValid());
     QVERIFY(model.ResultAt(QModelIndex()) == nullptr);
     QVERIFY(model.ResultAt(other.index(0, 0)) == nullptr);

@@ -2375,7 +2375,7 @@ or public/installed interface, and the registered Release baseline remains 109
 tests.
 No successor after P8-FT-17 is selected or ranked.
 
-### Phase 8 full-text result dictionary-name tooltip (selected)
+### Phase 8 full-text result dictionary-name tooltip (complete)
 
 The independent post-P8-FT-17 documentation audit is pinned to clean migrated
 revision `7c8fc16e55844b2712f3257a78b7f6b8e6cc3b5b` and unchanged clean
@@ -2406,8 +2406,8 @@ values for duplicate-headword rows from different dictionaries, empty-name
 suppression, copied and moved response lifetime, deterministic reset
 replacement, invalid and foreign indexes, unsupported roles, and unchanged
 display and result metadata. The existing private response-model test is the
-focused future implementation gate; the established Linux Release build, full
-tests, package, install, and installed-consumer workflow remains the full gate.
+focused implementation gate; the established Linux Release build, full tests,
+package, install, and installed-consumer workflow is the full gate.
 
 Exact `document_id` navigation and source-dictionary targeting; initial/current
 selection, keyboard focus, and selection retention; non-tooltip decoration,
@@ -2424,6 +2424,9 @@ Evidence is migrated `full_text_response_model.h/.cpp`, its focused tests, and
 the P8-FT-11/P8-FT-12 dialog synchronization and attachment, plus pinned legacy
 `fulltextsearch.cc:690-721`, where `HeadwordsListModel::data()` independently
 projects contributing dictionary names through `Qt::ToolTipRole`.
+P8-FT-18 is complete through the private response-model tooltip projection and
+focused tests. It adds no test executable or public/installed interface, and
+the registered Release baseline remains 109 tests.
 No successor after P8-FT-18 is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

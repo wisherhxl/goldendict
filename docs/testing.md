@@ -1826,7 +1826,7 @@ Evidence is migrated `full_text_search_dialog.cpp`,
 P8-FT-17 is complete without changing a public or installed interface.
 No successor after P8-FT-17 is selected or ranked.
 
-## Phase 8 Full-Text Result Dictionary-Name Tooltip Gate (Selected)
+## Phase 8 Full-Text Result Dictionary-Name Tooltip Gate (Complete)
 
 The post-P8-FT-17 documentation audit selects only P8-FT-18. The complete
 immutable result snapshot, accepted-response synchronization, and direct list
@@ -1844,13 +1844,13 @@ unsupported-role requests return no value. Existing display-role, ordering,
 duplicate, complete-metadata, activation, dialog synchronization, and count
 coverage remains green.
 
-The focused future command is
+The focused command is
 `ctest --preset conan-release -R '^full_text_response_model_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The full implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release`, clean
 exact-SCM `conan create`, packaged consumers, Release install, and standalone
-installed consumers. No build or compiled test is required for this
-documentation-only audit.
+installed consumers. P8-FT-18 adds no test executable or public/installed
+interface, and the registered Release baseline remains 109 tests.
 
 Exact `document_id` navigation and source-dictionary targeting; initial/current
 selection, keyboard focus, and selection retention; non-tooltip decoration,
