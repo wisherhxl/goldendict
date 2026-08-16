@@ -954,6 +954,60 @@ referenced nonempty article ordinal with first-retained-record ownership,
 inert assembled text, a sole-container `.gdfts` lifecycle, and deterministic
 eight-format service dispatch. No successor is selected.
 
+The fresh post-P6-FT-8 audit revalidates the complete remaining migrated
+textual-format registry as MDict, ZIM, SLOB, and EPWING. At pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, SLOB declares and gates
+full-text support at `slob.cc:633-643`, initializes `can_FTS` and its
+source-backed `_FTS` lifecycle at `slob.cc:667-714`, and traverses source-order
+references while deduplicating the item/bin identity at
+`slob.cc:1148-1263`. The migrated reader parses the reference table in source
+order at `modules/core/src/formats/slob/slob_reader.cc:223-248`, validates and
+decodes raw, zlib, or bzip2 item stores at `slob_reader.cc:249-299`, and retains
+only `text/html*` or `text/plain*` references while deduplicating their
+`(item, bin)` payloads at `slob_reader.cc:300-331`. Generated discovery,
+reader, dictionary, and installed-consumer fixtures already cover the sole
+`.slob` container and its private dependencies.
+
+| Candidate | Complete traversal and ownership | Materialization and complete revision | Audit decision |
+| --- | --- | --- | --- |
+| MDict | Source-order keys resolve folded redirect chains to record data | MDX plus optional MDD volumes leave redirect-target ownership and the multi-file revision unsettled | Unselected |
+| ZIM | Directory records and redirect chains resolve cluster/blob objects across article and resource namespaces | Consecutive split volumes leave namespace-sensitive ownership and the complete revision unsettled | Unselected |
+| SLOB | Source-order textual references resolve item/bin-backed articles; later references can alias the same physical pair | Bounded declared-encoding conversion, raw/zlib/bzip2 stores, sanitized HTML/plain articles, one `.slob`, and generated fixtures are complete | Smallest decision-complete leaf; P6-FT-9 selected |
+| EPWING | Subbook word-index records retain materialized text | Duplicate/grouped-index ownership and the complete `CATALOGS`/subbook tree remain unsettled | Unselected |
+
+P6-FT-9 adds only the private SLOB adapter. Traversal retains source-order
+references whose resolved, lowercased content type begins with `text/html` or
+`text/plain`. Retained textual references receive zero-based
+`record_ordinal` values in retained-reference order; excluded non-text
+references do not consume an ordinal. Each reference carries unsigned
+zero-based `item_index` and `bin_index` values from the container. The first
+retained encounter of each distinct `(item_index, bin_index)` pair receives a
+zero-based `article_ordinal` in first-encounter order and creates one document;
+later references to the pair are aliases. The first retained reference owns
+the canonical headword and `first_record_ordinal`. Stable provenance is
+`slob-index:<first-record-ordinal>:<article-ordinal>:<item-index>:<bin-index>`;
+all four values use canonical unsigned base-10 without signs or padding.
+
+Searchable content is only bounded plain text produced by passing the existing
+sanitized `text/html` or escaped, `<pre>`-wrapped `text/plain` article through
+the inert assembler. Metadata tags, alias headwords as independent content,
+non-text bins, resource names and bytes, icons, raw markup, and advanced
+conversion are excluded. The distinct private `.gdfts` artifact snapshots the
+sole discovered `.slob` as its complete source revision, so any container
+mutation or replacement stales the artifact even when only an excluded
+resource changes.
+
+Without a configured index directory SLOB remains typed unsupported. The
+nine-format mixed service retains stable dictionary-ID ordering, filtering,
+the global result bound, adapted no-match behavior, typed unsupported for
+requested non-adapted local or runtime sources, typed unavailable for missing
+IDs, and contained per-dictionary failures. P6-FT-9 changes no installed
+`SearchFullText` API or DTO, runtime interface, public capability flag,
+configuration, preference, dependency, GUI/Phase 8 behavior, or private
+`.gdfts` serialization. Implementation, legacy `_FTS` compatibility,
+metadata/resource indexing, highlighting, other adapters, and unrelated
+refactors are excluded. No leaf after P6-FT-9 is selected or ranked.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

@@ -1450,6 +1450,45 @@ exact source/article provenance, inert assembled text, a complete sole-`.bgl`
 revision, and deterministic eight-format service dispatch. No successor is
 selected.
 
+The fresh independent post-P6-FT-8 audit covers the exact remaining migrated
+textual registry: MDict, ZIM, SLOB, and EPWING. It selects only P6-FT-9, the
+private SLOB adapter. At pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, `slob.cc:633-643` declares and
+gates full-text support, `slob.cc:667-714` owns the single-source `_FTS`
+lifecycle, and `slob.cc:1148-1263` traverses source-order references and
+deduplicates physical item/bin articles. Migrated SLOB preserves the same
+complete source-order reference evidence, bounded content-type and store
+decoding, item/bin identity, safe article materialization, sole `.slob`
+source, private dependencies, and generated fixtures.
+
+P6-FT-9 retains only references whose normalized content type begins with
+`text/html` or `text/plain`. It assigns zero-based `record_ordinal` values in
+retained textual-reference order; excluded resources do not consume them. The
+first encounter of each distinct unsigned zero-based `(item_index, bin_index)`
+pair assigns a zero-based `article_ordinal`, creates one document, and owns the
+canonical headword. Later references to the pair are aliases. Exact provenance
+is `slob-index:<first-record-ordinal>:<article-ordinal>:<item-index>:<bin-index>`,
+using unpadded unsigned base-10 components. This encodes both first-retained
+logical ownership and the physical SLOB article identity.
+
+Only inert assembled visible text from sanitized HTML or escaped,
+`<pre>`-wrapped plain text is indexed. Metadata tags, alias-only text,
+non-text bins, resources, icons, raw markup, and advanced conversion remain
+inert or excluded. The sole discovered `.slob` is the complete source
+revision; any mutation or replacement stales the private `.gdfts` artifact.
+MDict redirect/MDD ownership, ZIM namespace/split-volume ownership, and EPWING
+grouped-subbook ownership remain unresolved and unselected, without successor
+ranking.
+
+P6-FT-9 preserves installed `SearchFullText` APIs and DTOs, runtime
+interfaces, public capability flags, configuration/preferences, dependencies,
+GUI/Phase 8 behavior, and private `.gdfts` serialization. Implementation,
+legacy `_FTS` compatibility, metadata/resource indexing, highlighting, other
+adapters, and unrelated refactors are excluded. The future adapted service set
+grows to nine with unchanged ordering, filtering, global bounds, typed
+unsupported/unavailable errors, no-match behavior, and per-dictionary failure
+containment. No leaf after P6-FT-9 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

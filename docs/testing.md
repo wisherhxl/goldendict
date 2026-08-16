@@ -746,6 +746,42 @@ adapters, legacy `_FTS` compatibility, metadata/resource indexing, and private
 serialization changes are excluded. No leaf after P6-FT-8 is selected or
 ranked.
 
+The selected P6-FT-9 SLOB implementation leaf extends only generated fixtures.
+Reader/backend tests must prove complete source-order reference traversal,
+retention of only `text/html*` and `text/plain*` content types, zero-based
+retained-textual `record_ordinal` assignment with interleaved excluded
+resources, and one document per distinct `(item_index, bin_index)` pair. They
+pin first-reference canonical ownership, zero-based first-encounter
+`article_ordinal` assignment, shared-pair alias deduplication, distinct bins in
+one item, identical bin indices in different items, repeated identical pairs,
+and exact
+`slob-index:<first-record-ordinal>:<article-ordinal>:<item-index>:<bin-index>`
+provenance with canonical unsigned base-10 components, including multi-digit
+values.
+
+Materialization tests cover declared encodings and raw, zlib, and bzip2 stores;
+accept visible sanitized HTML and escaped plain text; and exclude metadata,
+alias-only text, non-text bins, resource names and bytes, icons, raw markup,
+and advanced conversion. Lifecycle tests cover create, reuse, sole-`.slob`
+mutation and replacement, excluded-resource-only stale rebuild, corrupt
+rebuild, typed unsupported without an index directory, limits, cancellation,
+deadlines, and contained storage failures.
+
+Application-service coverage combines the existing eight accepted adapters
+with SLOB and pins stable dictionary-ID ordering, filtering, the global bound,
+adapted no-match behavior, typed unsupported for requested non-adapted local
+or runtime sources, typed unavailable for missing IDs, and contained failures.
+The installed consumer returns SLOB through unchanged `SearchFullText` APIs
+and DTOs.
+
+The implementation acceptance gate remains Linux Release configure/build and
+`ctest --preset conan-release`, install plus the installed `test_package`
+consumer, and clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile. Dependencies, GUI, Preferences, highlighting, other
+adapters, legacy `_FTS` compatibility, metadata/resource indexing, and private
+serialization changes are excluded. No leaf after P6-FT-9 is selected or
+ranked.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,
