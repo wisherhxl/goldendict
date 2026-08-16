@@ -1981,6 +1981,49 @@ snapshot, exposes only the UTF-8 headword for `Qt::DisplayRole` and unchanged
 typed result access, and retains no response-level error or partial state. It
 remains non-integrated, and no successor is selected or ranked.
 
+### Phase 8 full-text dialog response-model integration prerequisite
+
+The fresh documentation-only post-P8-FT-10 readiness audit is pinned to clean
+migrated revision `f177cb2915a1c0e4618b44713e40c4eb1cf4c600` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks without advance
+ranking the dialog's retained response and private model, visible result
+presentation and states, activation/navigation/lookup, highlighting and
+WebEngine handoff, Preferences enablement/index policy, and index
+readiness/visibility/status/background lifecycle.
+
+The audit selects exactly one smallest independently decision-complete leaf,
+P8-FT-11: private synchronization of the completed P8-FT-9 dialog response
+ownership with the completed P8-FT-10 projection model. The dialog owns one
+child `FullTextResponseModel`. Starting a replacement submission clears the
+retained response and model rows together. Only a generation-current terminal
+completion is retained unchanged and copied into the model's independent
+ordered result snapshot; response errors and `partial` remain solely in the
+unchanged retained response. Stale or cancelled completions update neither.
+Cancellation, service replacement, controller detachment, and teardown retain
+their P8-FT-9 semantics and safe ordering.
+
+P8-FT-11 depends only on P8-FT-9 terminal-response retention and the P8-FT-10
+private model. Acceptance requires initial and replacement emptiness, exact
+current-response projection for success, empty, contained-error, and partial
+responses, atomic row replacement, unchanged retained response-level state,
+stale/cancelled completion suppression, and absence of controller, service,
+configuration, or persistence effects beyond completed contracts. Ownership
+remains private to Widgets; Core continues to own ordering, bounds, errors,
+partial-response meaning, and index behavior.
+
+No list, table, or tree widget; columns or additional roles; counts; selection;
+empty/error/partial presentation; article activation/navigation or lookup
+handoff; highlighting/WebEngine behavior; Preferences enablement/index policy;
+index readiness/visibility/status/background lifecycle; public API;
+persistence; adapter; `.gdfts`; legacy `_FTS`; dependency; or unrelated work
+is included. Decisive migrated evidence is
+`apps/goldendict/src/full_text_search_dialog.h/.cpp`,
+`apps/goldendict/src/full_text_response_model.h/.cpp`, and their focused tests;
+pinned legacy evidence is `fulltextsearch.hh:135-156`,
+`fulltextsearch.cc:518-610,685-750`, and `fulltextsearch.ui:99-238`.
+No successor after P8-FT-11 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

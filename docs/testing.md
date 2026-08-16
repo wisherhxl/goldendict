@@ -1505,6 +1505,42 @@ and partial responses, ordering, duplicate headwords, complete typed metadata,
 copy/move and snapshot lifetime, atomic replacement, invalid model access, and
 deterministic repeated projection. No successor is selected or ranked.
 
+## Phase 8 Full-Text Dialog Response-Model Integration Gate (Selected)
+
+The documentation-only post-P8-FT-10 audit selects P8-FT-11 as the sole
+smallest independently decision-complete leaf: private synchronization of the
+dialog's retained current response with its child `FullTextResponseModel`. No
+successor after P8-FT-11 is selected or ranked.
+
+The focused offscreen dialog QTest must verify an initially empty model; exact
+ordered projection for a generation-current success; zero rows while retained
+errors and `partial` remain unchanged for empty, contained-error, and partial
+responses; clearing when a replacement submission clears the retained
+response; atomic replacement by the next current completion; and no model or
+response update from stale or cancelled completion. Existing coverage must
+continue to prove idempotent cancellation, service replacement, controller
+detachment, teardown safety, exact request composition, and no configuration or
+persistence effect. The dialog must create no visible result view in this leaf.
+
+The focused gate extends the existing private dialog QTest and registration, so
+the Release suite baseline remains 109 tests. The full implementation gate is
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, then clean committed exact-SCM `conan create`
+with the Release Qt WebEngine host profile and packaged consumers. P8-FT-11
+changes no installed interface, so install and standalone installed-consumer
+checks are not required.
+
+List/table/tree presentation, columns/additional roles, counts, selection,
+empty/error/partial presentation, article activation/navigation and lookup
+handoff, highlighting/WebEngine behavior, Preferences enablement/index policy,
+index readiness/visibility/status/background lifecycle, public APIs,
+persistence, adapters, `.gdfts`, legacy `_FTS`, dependencies, and unrelated
+tests do not belong to P8-FT-11. Evidence is migrated
+`full_text_search_dialog.h/.cpp`, `full_text_response_model.h/.cpp`, and their
+focused tests, plus pinned legacy `fulltextsearch.hh:135-156`,
+`fulltextsearch.cc:518-610,685-750`, and `fulltextsearch.ui:99-238`.
+No successor after P8-FT-11 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
