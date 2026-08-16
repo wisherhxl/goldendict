@@ -2383,24 +2383,26 @@ construction, P8-FT-7 projection, and pinned legacy
 `fulltextsearch.cc:594-610` plus `mainwindow.cc:3002-3014`.
 No successor after P8-FT-14 is selected or ranked.
 
-### Phase 8 full-text accepted-response activation context (selected)
+### Phase 8 full-text accepted-response activation context (complete)
 
-The independent post-P8-FT-14 audit is pinned to clean migrated revision
+The independent post-P8-FT-14 audit was pinned to clean migrated revision
 `e3f2ac70814ea8166af747ffee2e3718b5323ac6` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes all
 remaining full-text surfaces without advance ranking and selects only
-P8-FT-15, private accepted-response activation-context retention.
+P8-FT-15, private accepted-response activation-context retention. P8-FT-15 is
+now complete.
 
 Connecting P8-FT-13 directly through MainWindow is not dependency-ready.
-The activation signal carries the result but not the complete scope submitted
-for its response, and the dialog's projected query can change independently of
-retained response rows. P8-FT-15 therefore snapshots the authoritative active
-flag and ordered dictionary IDs at submission, associates them only with the
-generation-current accepted response, clears them with response/model
-replacement, and emits them by value with a valid result activation. Stale or
-cancelled completion, service replacement, detach, and teardown cannot restore
-or deliver obsolete context. Authoritative-empty remains distinct from absent.
-This is a private Widgets change with no public API/DTO or persistence change.
+Before P8-FT-15, the activation signal carried the result but not the complete
+scope submitted for its response, and the dialog's projected query could
+change independently of retained response rows. P8-FT-15 snapshots the
+authoritative active flag and ordered dictionary IDs at submission, associates
+them only with the generation-current accepted response, clears them with
+response/model replacement, and emits them by value with a valid result
+activation. Stale or cancelled completion, service replacement, detach, and
+teardown cannot restore or deliver obsolete context. Authoritative-empty
+remains distinct from absent. This is a private Widgets change with no public
+API/DTO or persistence change.
 
 The later connection is decision-complete but remains unselected. It looks up
 the exact result headword in the current activated article tab, leaves the main
@@ -2422,12 +2424,12 @@ readiness/visibility/status/progress/background lifecycle; adapters and index
 formats including legacy `_FTS`; persistence beyond existing navigation;
 dependencies, build-system work, and unrelated behavior remain independent.
 
-Focused future acceptance covers ordered nonempty and authoritative-empty
+Focused acceptance covers absent, ordered nonempty, and authoritative-empty
 scope snapshots, exact accepted-generation association, replacement clearing,
 stale/cancelled suppression, service/detach safety, by-value lifetime, and
-immunity to later `SetProjectedQuery()` changes. The full future implementation
-gate remains the Linux Release test/package/install/consumer workflow. Evidence
-is migrated dialog submission/completion/activation code and tests, P8-FT-7,
+immunity to later `SetProjectedQuery()` changes. The implementation gate is the
+Linux Release test/package/install/consumer workflow. Evidence is migrated
+dialog submission/completion/activation code and tests, P8-FT-7,
 P8-FT-13, P8-FT-14, and MainWindow lookup/navigation conventions, plus pinned
 legacy `fulltextsearch.cc:594-610` and `mainwindow.cc:3002-3014`.
 No successor after P8-FT-15 is selected or ranked.

@@ -82,12 +82,14 @@ FullTextSearchDialog::~FullTextSearchDialog() {
 void FullTextSearchDialog::SetService(
     const goldendict::core::DictionaryService* service) {
     active_generation_.reset();
+    pending_activation_scope_.reset();
     RestoreIdleState();
     controller_.SetService(service);
 }
 
 void FullTextSearchDialog::DetachController() {
     active_generation_.reset();
+    pending_activation_scope_.reset();
     RestoreIdleState();
     controller_.DetachConsumer();
 }
@@ -126,6 +128,9 @@ void FullTextSearchDialog::SubmitSearch() {
     query.dictionary_filter_active = projected_query_.dictionary_filter_active;
     response_.reset();
     response_model_->Reset({});
+    accepted_activation_scope_.reset();
+    pending_activation_scope_ =
+        ActivationScope{query.dictionary_filter_active, query.dictionary_ids};
     active_generation_ = ++generation_;
     progress_->show();
     search_button_->setEnabled(false);
@@ -135,6 +140,7 @@ void FullTextSearchDialog::SubmitSearch() {
 
 void FullTextSearchDialog::CancelSearch() {
     active_generation_.reset();
+    pending_activation_scope_.reset();
     controller_.Cancel();
     RestoreIdleState();
 }
@@ -145,6 +151,8 @@ void FullTextSearchDialog::FinishSearch(
         return;
     }
     active_generation_.reset();
+    accepted_activation_scope_ = std::move(pending_activation_scope_);
+    pending_activation_scope_.reset();
     response_ = std::move(response);
     response_model_->Reset(*response_);
     RestoreIdleState();
@@ -154,8 +162,11 @@ void FullTextSearchDialog::ActivateResult(const QModelIndex& index) {
     if (!index.isValid() || index != results_->currentIndex())
         return;
     const auto* result = response_model_->ResultAt(index);
-    if (result != nullptr)
-        emit ResultActivationRequested(*result);
+    if (result != nullptr && accepted_activation_scope_.has_value()) {
+        emit ResultActivationRequested(FullTextResultActivationIntent{
+            *result, accepted_activation_scope_->dictionary_filter_active,
+            accepted_activation_scope_->dictionary_ids});
+    }
 }
 
 void FullTextSearchDialog::RestoreIdleState() {

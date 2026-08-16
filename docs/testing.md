@@ -1689,30 +1689,31 @@ lookup/navigation/filter construction, P8-FT-7 projection, and pinned legacy
 `fulltextsearch.cc:594-610` plus `mainwindow.cc:3002-3014`.
 No successor after P8-FT-14 is selected or ranked.
 
-## Phase 8 Full-Text Accepted-Response Activation-Context Gate (Selected)
+## Phase 8 Full-Text Accepted-Response Activation-Context Gate (Complete)
 
-The post-P8-FT-14 documentation audit selects only P8-FT-15. A direct
-activation-to-MainWindow test is premature because the existing activation
-signal has no response-associated dictionary scope and `ProjectedQuery()` can
-change while the displayed response remains. The focused future gate must
-prove that submission snapshots the authoritative active flag and ordered
+The post-P8-FT-14 documentation audit selected only P8-FT-15. A direct
+activation-to-MainWindow test remains premature. The completed private intent
+now carries response-associated dictionary scope even when `ProjectedQuery()`
+changes while the displayed response remains. The focused gate proves that
+submission snapshots the authoritative active flag and ordered
 dictionary IDs; only the generation-current accepted response owns that
 snapshot; replacement clears response, rows, and context atomically; and
 stale/cancelled completion, service replacement, detach, and teardown cannot
 restore or emit obsolete context.
 
-Focused dialog coverage must include ordered nonempty and authoritative-empty
-scope, exact by-value activation delivery, copy lifetime across later model
-reset, deterministic repeated submissions, and a regression in which
+Focused dialog coverage includes absent, ordered nonempty, and
+authoritative-empty scope, exact by-value activation delivery, copy lifetime
+across later model reset, deterministic repeated submissions, and a regression
+in which
 `SetProjectedQuery()` changes after completion without changing the scope
 delivered for an existing row. Existing P8-FT-9 through P8-FT-14 tests remain
 green. No public or installed-consumer coverage is added because the boundary
-remains private to Widgets. The focused future command is
+remains private to Widgets. The focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
 Release target has been built.
 
-The downstream connection acceptance contract is fixed but unselected: exact
-result headword; current activated article tab; unchanged main query edit;
+The downstream connection acceptance contract remains fixed but unselected:
+exact result headword; current activated article tab; unchanged main query edit;
 `kLookup` navigation with headword query/title, active MainWindow group, and
 unchanged accepted-response scope; then successful tab synchronization,
 `ArticleTabSessionMutated`, and `StartNavigationLookup(..., true)`. Tests must
@@ -1725,11 +1726,9 @@ highlighting, ignore-diacritics, WebEngine handoff, selection/focus/retention,
 decoration, counts and response states, Preferences/index policy, index
 lifecycle, adapters/index formats including legacy `_FTS`, persistence beyond
 existing navigation, dependencies/build-system work, and unrelated suites are
-excluded. The full future implementation gate remains Linux Release configure,
+excluded. The full implementation gate is Linux Release configure,
 full `ctest --preset conan-release`, clean exact-SCM `conan create`, packaged
-consumers, Release install, and standalone installed consumers. This
-documentation-only audit does not build because it changes no executable
-behavior.
+consumers, Release install, and standalone installed consumers.
 
 Evidence is migrated dialog submission/completion/activation code and focused
 tests, P8-FT-7, P8-FT-13, P8-FT-14, and MainWindow current-tab lookup/history

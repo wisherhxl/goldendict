@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include <QDialog>
 #include <QModelIndex>
@@ -19,6 +21,12 @@ class QProgressBar;
 class QPushButton;
 
 namespace goldendict::app {
+
+struct FullTextResultActivationIntent final {
+    goldendict::core::FullTextResult result;
+    bool dictionary_filter_active = false;
+    std::vector<std::string> dictionary_ids;
+};
 
 class FullTextQueryComposer;
 class FullTextResponseModel;
@@ -41,7 +49,7 @@ class FullTextSearchDialog final : public QDialog {
     const goldendict::core::FullTextQuery& ProjectedQuery() const noexcept;
 
    signals:
-    void ResultActivationRequested(goldendict::core::FullTextResult result);
+    void ResultActivationRequested(FullTextResultActivationIntent intent);
 
    protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -66,6 +74,14 @@ class FullTextSearchDialog final : public QDialog {
     FullTextRequestController controller_;
     goldendict::core::FullTextQuery projected_query_;
     std::optional<goldendict::core::FullTextResponse> response_;
+
+    struct ActivationScope final {
+        bool dictionary_filter_active = false;
+        std::vector<std::string> dictionary_ids;
+    };
+
+    std::optional<ActivationScope> pending_activation_scope_;
+    std::optional<ActivationScope> accepted_activation_scope_;
     std::optional<std::uint64_t> active_generation_;
     std::uint64_t generation_ = 0U;
 };

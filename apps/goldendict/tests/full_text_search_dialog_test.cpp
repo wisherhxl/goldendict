@@ -215,6 +215,15 @@ void CompareResult(const goldendict::core::FullTextResult& actual,
     }
 }
 
+void CompareIntent(const FullTextResultActivationIntent& actual,
+                   const goldendict::core::FullTextResult& expected_result,
+                   bool expected_filter_active,
+                   const std::vector<std::string>& expected_ids) {
+    CompareResult(actual.result, expected_result);
+    QCOMPARE(actual.dictionary_filter_active, expected_filter_active);
+    QCOMPARE(actual.dictionary_ids, expected_ids);
+}
+
 }  // namespace
 
 class FullTextSearchDialogTest final : public QObject {
@@ -222,6 +231,7 @@ class FullTextSearchDialogTest final : public QObject {
 
    private slots:
     void SubmitsExactComposedAndProjectedQueryAndRetainsResponse();
+    void RetainsExactAcceptedScopeForByValueActivation();
     void ProjectsCompleteCurrentResponsesAndReplacesRowsAtomically();
     void ActivatesExactCurrentResultOnceFromMouseAndKeyboard();
     void SuppressesDuplicateInvalidStaleAndCancelledActivation();
@@ -238,14 +248,16 @@ void FullTextSearchDialogTest::
     auto* model = ResponseModel(&dialog);
     auto* results = Results(&dialog);
     const auto expected = MakeResult("exact-id", u8"café", 4U);
-    goldendict::core::FullTextResponse response;
-    response.results.push_back(expected);
-    model->Reset(response);
+    service.response_.results.push_back(expected);
+    dialog.InitializeQuery(QStringLiteral("needle"));
+    dialog.SubmitSearch();
+    QVERIFY(service.WaitForQueries(1U));
+    QTRY_COMPARE(model->rowCount(), 1);
 
-    std::vector<goldendict::core::FullTextResult> activations;
+    std::vector<FullTextResultActivationIntent> activations;
     connect(&dialog, &FullTextSearchDialog::ResultActivationRequested, &dialog,
-            [&activations](goldendict::core::FullTextResult result) {
-                activations.push_back(std::move(result));
+            [&activations](FullTextResultActivationIntent intent) {
+                activations.push_back(std::move(intent));
             });
     dialog.show();
     QTRY_VERIFY(results->isVisible());
@@ -256,17 +268,17 @@ void FullTextSearchDialogTest::
     QTest::mouseClick(results->viewport(), Qt::LeftButton, Qt::NoModifier,
                       center);
     QCOMPARE(activations.size(), std::size_t{1});
-    CompareResult(activations.back(), expected);
+    CompareIntent(activations.back(), expected, false, {});
 
     results->setCurrentIndex(index);
     results->setFocus();
     QTest::keyClick(results, Qt::Key_Return);
     QCOMPARE(activations.size(), std::size_t{2});
-    CompareResult(activations.back(), expected);
+    CompareIntent(activations.back(), expected, false, {});
 
     QTest::keyClick(results, Qt::Key_Enter, Qt::KeypadModifier);
     QCOMPARE(activations.size(), std::size_t{3});
-    CompareResult(activations.back(), expected);
+    CompareIntent(activations.back(), expected, false, {});
     QCOMPARE(service.LookupCalls(), std::size_t{0});
 }
 
@@ -280,11 +292,13 @@ void FullTextSearchDialogTest::
     goldendict::core::FullTextResponse first;
     first.results.push_back(MakeResult("first", "first", 1U));
     model->Reset(first);
+    dialog.accepted_activation_scope_ =
+        FullTextSearchDialog::ActivationScope{false, {}};
 
-    std::vector<goldendict::core::FullTextResult> activations;
+    std::vector<FullTextResultActivationIntent> activations;
     connect(&dialog, &FullTextSearchDialog::ResultActivationRequested, &dialog,
-            [&activations](goldendict::core::FullTextResult result) {
-                activations.push_back(std::move(result));
+            [&activations](FullTextResultActivationIntent intent) {
+                activations.push_back(std::move(intent));
             });
     dialog.show();
     QTRY_VERIFY(results->isVisible());
@@ -305,6 +319,7 @@ void FullTextSearchDialogTest::
 
     goldendict::core::FullTextResponse replacement;
     replacement.results.push_back(MakeResult("replacement", "replacement", 2U));
+    dialog.accepted_activation_scope_.reset();
     model->Reset(replacement);
     dialog.ActivateResult(stale);
     QCOMPARE(activations.size(), std::size_t{1});
@@ -316,12 +331,17 @@ void FullTextSearchDialogTest::
     const QModelIndex replacement_index = model->index(0, 0);
     results->setCurrentIndex(replacement_index);
     dialog.ActivateResult(replacement_index);
+    QCOMPARE(activations.size(), std::size_t{1});
+    dialog.accepted_activation_scope_ =
+        FullTextSearchDialog::ActivationScope{true, {"replacement-scope"}};
+    dialog.ActivateResult(replacement_index);
     QCOMPARE(activations.size(), std::size_t{2});
     const auto copied = activations.back();
     model->Reset({});
     model->Reset(replacement);
     model->Reset({});
-    CompareResult(copied, replacement.results.front());
+    CompareIntent(copied, replacement.results.front(), true,
+                  {"replacement-scope"});
     dialog.ActivateResult(replacement_index);
     QCOMPARE(activations.size(), std::size_t{2});
 
@@ -426,6 +446,100 @@ void FullTextSearchDialogTest::
     QCOMPARE(dialog.generation_, 1U);
 }
 
+void FullTextSearchDialogTest::RetainsExactAcceptedScopeForByValueActivation() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog dialog(preferences, &service);
+    auto* model = ResponseModel(&dialog);
+    auto* results = Results(&dialog);
+    const auto ordered_result = MakeResult("ordered", "ordered", 5U);
+    service.response_.results = {ordered_result};
+
+    goldendict::core::FullTextQuery ordered_scope;
+    ordered_scope.dictionary_filter_active = true;
+    ordered_scope.dictionary_ids = {"second", "first", "second"};
+    dialog.SetProjectedQuery(ordered_scope);
+    dialog.InitializeQuery(QStringLiteral("ordered"));
+    dialog.SubmitSearch();
+    QVERIFY(service.WaitForQueries(1U));
+    QTRY_COMPARE(model->rowCount(), 1);
+    QVERIFY(dialog.accepted_activation_scope_.has_value());
+    QVERIFY(dialog.accepted_activation_scope_->dictionary_filter_active);
+    QCOMPARE(dialog.accepted_activation_scope_->dictionary_ids,
+             ordered_scope.dictionary_ids);
+
+    std::vector<FullTextResultActivationIntent> activations;
+    connect(&dialog, &FullTextSearchDialog::ResultActivationRequested, &dialog,
+            [&activations](FullTextResultActivationIntent intent) {
+                activations.push_back(std::move(intent));
+            });
+    goldendict::core::FullTextQuery later_scope;
+    later_scope.dictionary_filter_active = true;
+    later_scope.dictionary_ids = {"later"};
+    dialog.SetProjectedQuery(later_scope);
+    dialog.InitializeQuery(QStringLiteral("changed composer"));
+    const QModelIndex ordered_index = model->index(0, 0);
+    results->setCurrentIndex(ordered_index);
+    dialog.ActivateResult(ordered_index);
+    QCOMPARE(activations.size(), std::size_t{1});
+    CompareIntent(activations.back(), ordered_result, true,
+                  ordered_scope.dictionary_ids);
+
+    activations.back().result.headword = "mutated copy";
+    activations.back().dictionary_ids.clear();
+    dialog.ActivateResult(ordered_index);
+    QCOMPARE(activations.size(), std::size_t{2});
+    CompareIntent(activations.back(), ordered_result, true,
+                  ordered_scope.dictionary_ids);
+
+    dialog.InitializeQuery(QStringLiteral("blocked"));
+    dialog.SubmitSearch();
+    QVERIFY(service.WaitForQueries(2U));
+    QVERIFY(!dialog.response_.has_value());
+    QCOMPARE(model->rowCount(), 0);
+    QVERIFY(!dialog.accepted_activation_scope_.has_value());
+    dialog.ActivateResult(ordered_index);
+    QCOMPARE(activations.size(), std::size_t{2});
+    dialog.CancelSearch();
+    QVERIFY(service.WaitForCancellation());
+    service.ReleaseCancelledRequest();
+
+    const auto empty_result = MakeResult("empty", "empty", 6U);
+    service.response_.results = {empty_result};
+    goldendict::core::FullTextQuery empty_scope;
+    empty_scope.dictionary_filter_active = true;
+    dialog.SetProjectedQuery(empty_scope);
+    dialog.InitializeQuery(QStringLiteral("empty"));
+    dialog.SubmitSearch();
+    QVERIFY(service.WaitForQueries(3U));
+    QTRY_COMPARE(model->rowCount(), 1);
+    const QModelIndex empty_index = model->index(0, 0);
+    results->setCurrentIndex(empty_index);
+    dialog.ActivateResult(empty_index);
+    QCOMPARE(activations.size(), std::size_t{3});
+    CompareIntent(activations.back(), empty_result, true, {});
+
+    const auto absent_result = MakeResult("absent", "absent", 7U);
+    service.response_.results = {absent_result};
+    dialog.SetProjectedQuery({});
+    dialog.InitializeQuery(QStringLiteral("absent"));
+    dialog.SubmitSearch();
+    QVERIFY(service.WaitForQueries(4U));
+    QTRY_COMPARE(model->rowCount(), 1);
+    const QModelIndex absent_index = model->index(0, 0);
+    results->setCurrentIndex(absent_index);
+    dialog.ActivateResult(absent_index);
+    QCOMPARE(activations.size(), std::size_t{4});
+    CompareIntent(activations.back(), absent_result, false, {});
+
+    const auto copied = activations.back();
+    dialog.accepted_activation_scope_.reset();
+    model->Reset({});
+    CompareIntent(copied, absent_result, false, {});
+    dialog.ActivateResult(absent_index);
+    QCOMPARE(activations.size(), std::size_t{4});
+}
+
 void FullTextSearchDialogTest::
     ProjectsCompleteCurrentResponsesAndReplacesRowsAtomically() {
     ControllableDictionaryService service;
@@ -526,12 +640,25 @@ void FullTextSearchDialogTest::
     auto* search = SearchButton(&dialog);
     QVERIFY(query != nullptr);
 
+    goldendict::core::FullTextQuery blocked_scope;
+    blocked_scope.dictionary_filter_active = true;
+    blocked_scope.dictionary_ids = {"blocked-scope"};
+    dialog.SetProjectedQuery(blocked_scope);
     query->setText(QStringLiteral("blocked"));
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(1U));
     QVERIFY(!search->isEnabled());
+    goldendict::core::FullTextQuery pending_scope;
+    pending_scope.dictionary_filter_active = true;
+    pending_scope.dictionary_ids = {"pending-scope"};
+    dialog.SetProjectedQuery(pending_scope);
     query->setText(QStringLiteral("never starts"));
     dialog.SubmitSearch();
+    goldendict::core::FullTextQuery replacement_scope;
+    replacement_scope.dictionary_ids = {"replacement", "duplicate",
+                                        "replacement"};
+    replacement_scope.dictionary_filter_active = true;
+    dialog.SetProjectedQuery(replacement_scope);
     query->setText(QStringLiteral("replacement"));
     dialog.SubmitSearch();
     QCOMPARE(dialog.generation_, 3U);
@@ -553,6 +680,10 @@ void FullTextSearchDialogTest::
                  .toString(),
              QStringLiteral("current"));
     QVERIFY(!dialog.active_generation_.has_value());
+    QVERIFY(dialog.accepted_activation_scope_.has_value());
+    QVERIFY(dialog.accepted_activation_scope_->dictionary_filter_active);
+    QCOMPARE(dialog.accepted_activation_scope_->dictionary_ids,
+             replacement_scope.dictionary_ids);
     QVERIFY(search->isEnabled());
 }
 
@@ -568,6 +699,8 @@ void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
     dialog.CancelSearch();
     QVERIFY(service.WaitForCancellation());
     QVERIFY(!dialog.active_generation_.has_value());
+    QVERIFY(!dialog.pending_activation_scope_.has_value());
+    QVERIFY(!dialog.accepted_activation_scope_.has_value());
     QVERIFY(!dialog.response_.has_value());
     QCOMPARE(ResponseModel(&dialog)->rowCount(), 0);
     QVERIFY(SearchButton(&dialog)->isEnabled());
@@ -596,15 +729,19 @@ void FullTextSearchDialogTest::
         QVERIFY(first.WaitForQueries(1U));
         QTRY_VERIFY(dialog.response_.has_value());
         QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
+        QVERIFY(dialog.accepted_activation_scope_.has_value());
         dialog.SetService(&second);
         QVERIFY(dialog.response_.has_value());
         QCOMPARE(dialog.response_->results.front().headword,
                  std::string("accepted"));
         QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
+        QVERIFY(dialog.accepted_activation_scope_.has_value());
+        QVERIFY(!dialog.pending_activation_scope_.has_value());
         dialog.DetachController();
         dialog.DetachController();
         QVERIFY(dialog.response_.has_value());
         QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
+        QVERIFY(dialog.accepted_activation_scope_.has_value());
     }
     QCOMPARE(second.Queries().size(), std::size_t{0});
 
@@ -619,6 +756,8 @@ void FullTextSearchDialogTest::
         dialog.SetService(&replacement);
         QVERIFY(blocked.WaitForCancellation());
         QVERIFY(!dialog.active_generation_.has_value());
+        QVERIFY(!dialog.pending_activation_scope_.has_value());
+        QVERIFY(!dialog.accepted_activation_scope_.has_value());
         QVERIFY(!dialog.response_.has_value());
         QCOMPARE(ResponseModel(&dialog)->rowCount(), 0);
         QVERIFY(SearchButton(&dialog)->isEnabled());

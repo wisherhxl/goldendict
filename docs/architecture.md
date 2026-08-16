@@ -2191,7 +2191,7 @@ MainWindow copies an explicit scope unchanged into `LookupQuery` and retains
 ordinary dictionary-bar projection for unscoped navigation.
 No successor after P8-FT-14 is selected or ranked.
 
-### Phase 8 full-text accepted-response activation context (selected)
+### Phase 8 full-text accepted-response activation context (complete)
 
 The independent post-P8-FT-14 documentation audit is pinned to clean migrated
 revision `e3f2ac70814ea8166af747ffee2e3718b5323ac6` and unchanged clean
@@ -2209,7 +2209,7 @@ changes can therefore replace the projected scope without replacing the
 visible response. Reading that state during activation could silently widen,
 narrow, or otherwise misidentify the scope that produced the result.
 
-P8-FT-15 snapshots `dictionary_filter_active` and the ordered
+P8-FT-15 now snapshots `dictionary_filter_active` and the ordered
 `dictionary_ids` when a search is submitted. Only its generation-current
 accepted completion associates that snapshot with the retained response and
 model rows. Replacement submission clears response, rows, and activation
