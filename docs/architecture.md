@@ -2429,6 +2429,59 @@ focused tests. It adds no test executable or public/installed interface, and
 the registered Release baseline remains 109 tests.
 No successor after P8-FT-18 is selected or ranked.
 
+### Phase 8 full-text result edit-role projection (selected)
+
+The independent post-P8-FT-18 documentation audit is pinned to clean migrated
+revision `d7d2f76a397f5adf0a546ef3885216b35f82753c` and unchanged clean
+read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It rechecks every remaining full-text workflow surface without advance ranking
+and selects exactly one smallest dependency-ready leaf, P8-FT-19: project the
+result headword through the private response model's edit role.
+
+P8-FT-19 is dependency-ready because P8-FT-10 gives the private response model
+an immutable snapshot of every complete `FullTextResult`, P8-FT-11 synchronizes
+that model only with the generation-current accepted response, and P8-FT-12
+attaches it directly to the visible result list. The private Widgets model owns
+the role projection. Core continues to own result identity and semantics. No
+public API, DTO, persistence, dependency, adapter, index-format, or build-system
+change is required.
+
+For a valid result row, `Qt::EditRole` returns the exact UTF-8
+`FullTextResult::headword` decoded identically to `Qt::DisplayRole`. Duplicate
+rows retain their independent headwords. Invalid, foreign, out-of-range, or
+nonzero-column indexes and unsupported roles return no value. The existing
+display and tooltip values, ordering, duplicates, metadata snapshot,
+activation, accepted-generation synchronization, retained-result count,
+selection, focus, and retention behavior are unchanged.
+
+Focused future acceptance covers exact Unicode edit-role headwords, duplicate
+rows, equality with the display role, copied and moved response lifetime,
+deterministic reset replacement, invalid and foreign indexes, unsupported
+roles, and unchanged tooltip and result metadata. The existing private
+response-model test is the focused future implementation gate, with
+`ctest --preset conan-release -R '^full_text_response_model_test$'` after the
+Release target has been built. The established Linux Release build, full tests,
+package, install, and installed-consumer workflow remains the full gate. This
+documentation-only audit requires no build or compiled test.
+
+Exact `document_id` navigation and source-dictionary targeting; initial/current
+selection, keyboard focus, and selection retention; non-edit-role decoration,
+columns, delegates, icons, and additional metadata roles; empty/error/partial
+messaging beyond the numeric retained-result count; match ranges and excerpt
+presentation; highlighting, ignore-diacritics transfer, and WebEngine handoff;
+Preferences enablement, format exclusions, size/index policy, and persistence;
+index readiness, visibility, status, progress, background lifecycle, rebuild,
+and failure UI; adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies,
+builds, and unrelated parity remain independent surfaces. They are decomposed
+only; none is selected or ranked.
+
+Evidence is migrated `full_text_response_model.h/.cpp`, its focused tests, and
+the P8-FT-10/P8-FT-11/P8-FT-12 model ownership, synchronization, and attachment,
+plus pinned legacy `fulltextsearch.cc:690-721`, where
+`HeadwordsListModel::data()` returns the exact headword for both
+`Qt::DisplayRole` and `Qt::EditRole`.
+No successor after P8-FT-19 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

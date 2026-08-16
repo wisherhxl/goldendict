@@ -1869,6 +1869,49 @@ the P8-FT-11/P8-FT-12 dialog synchronization and attachment, plus pinned legacy
 `fulltextsearch.cc:690-721`.
 No successor after P8-FT-18 is selected or ranked.
 
+## Phase 8 Full-Text Result Edit-Role Projection Gate (Selected)
+
+The post-P8-FT-18 documentation audit selects only P8-FT-19. The complete
+immutable result snapshot, accepted-response synchronization, and direct list
+attachment make the private response model's headword edit-role projection
+independently testable without changing Core or an installed interface.
+
+Focused response-model coverage must prove that `Qt::EditRole` for a valid row
+returns the exact Unicode value decoded from `FullTextResult::headword` and is
+identical to that row's `Qt::DisplayRole`. Duplicate rows retain independent
+headwords. Copied and moved response lifetimes and deterministic reset
+replacement retain the correct value, while invalid, foreign, out-of-range,
+nonzero-column, and unsupported-role requests return no value. Existing
+display-role, tooltip, ordering, duplicate, complete-metadata, activation,
+dialog synchronization, count, selection, focus, and retention coverage
+remains green.
+
+The focused future command is
+`ctest --preset conan-release -R '^full_text_response_model_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release`, clean
+exact-SCM `conan create`, packaged consumers, Release install, and standalone
+installed consumers. P8-FT-19 adds no test executable or public/installed
+interface. No build or compiled test is required for this documentation-only
+audit.
+
+Exact `document_id` navigation and source-dictionary targeting; initial/current
+selection, keyboard focus, and selection retention; non-edit-role decoration,
+columns, delegates, icons, and additional metadata roles; empty/error/partial
+messaging beyond the numeric retained-result count; match ranges and excerpt
+presentation; highlighting, ignore-diacritics transfer, and WebEngine handoff;
+Preferences enablement, format exclusions, size/index policy, and persistence;
+index readiness, visibility, status, progress, background lifecycle, rebuild,
+and failure UI; adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies,
+build work, and unrelated suites are excluded and remain separately decomposed
+without ranking. No public API, DTO, persistence, Core, adapter, index,
+dependency, or build surface belongs to P8-FT-19.
+
+Evidence is migrated `full_text_response_model.h/.cpp`, its focused tests, and
+the P8-FT-10/P8-FT-11/P8-FT-12 model ownership, synchronization, and attachment,
+plus pinned legacy `fulltextsearch.cc:690-721`.
+No successor after P8-FT-19 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

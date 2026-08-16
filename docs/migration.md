@@ -2593,6 +2593,53 @@ focused tests. It adds no test executable or public/installed interface, and
 the registered Release baseline remains 109 tests.
 No successor after P8-FT-18 is selected or ranked.
 
+### Phase 8 full-text result edit-role projection (selected)
+
+The independent post-P8-FT-18 audit is pinned to clean migrated revision
+`d7d2f76a397f5adf0a546ef3885216b35f82753c` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes
+every remaining full-text workflow surface without advance ranking and selects
+only P8-FT-19, private result headword edit-role projection.
+
+P8-FT-10 already retains each complete immutable `FullTextResult` in the
+private model, P8-FT-11 synchronizes it only with the accepted response, and
+P8-FT-12 attaches that model to the visible result list. P8-FT-19 therefore
+adds `Qt::EditRole` for a valid row using the exact UTF-8
+`FullTextResult::headword`, decoded identically to `Qt::DisplayRole`. Duplicate
+rows retain independent headwords. Invalid, foreign, out-of-range,
+nonzero-column, and unsupported-role requests return no value. Display,
+tooltip, order, duplicates, metadata, activation, synchronization, count,
+selection, focus, and retention behavior remain unchanged.
+
+Focused future acceptance covers exact Unicode edit-role headwords, duplicate
+rows, equality with the display role, copied/moved response lifetime,
+deterministic reset replacement, invalid and foreign indexes, unsupported
+roles, and unchanged tooltip and result metadata. The focused future command is
+`ctest --preset conan-release -R '^full_text_response_model_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release`, clean
+exact-SCM `conan create`, packaged consumers, Release install, and standalone
+installed consumers. This documentation-only audit requires no build or test.
+
+Exact `document_id` navigation and source-dictionary targeting; initial/current
+selection, keyboard focus, and selection retention; non-edit-role decoration,
+columns, delegates, icons, and additional metadata roles; empty/error/partial
+messaging beyond the numeric retained-result count; match ranges and excerpt
+presentation; highlighting, ignore-diacritics transfer, and WebEngine handoff;
+Preferences enablement, format exclusions, size/index policy, and persistence;
+index readiness, visibility, status, progress, background lifecycle, rebuild,
+and failure UI; adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies,
+builds, and unrelated parity remain independent and unranked. P8-FT-19 changes
+no public API, DTO, persistence, Core, adapter, index, dependency, or
+build-system surface.
+
+Evidence is migrated `full_text_response_model.h/.cpp`, its focused tests, and
+the P8-FT-10/P8-FT-11/P8-FT-12 model ownership, synchronization, and attachment,
+plus pinned legacy `fulltextsearch.cc:690-721`, where
+`HeadwordsListModel::data()` supplies the exact headword through both
+`Qt::DisplayRole` and `Qt::EditRole`.
+No successor after P8-FT-19 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
