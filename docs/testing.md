@@ -505,6 +505,15 @@ consumer must cover any public contract evolution. This prerequisite adds no
 format adapter, full-text workflow, Preferences widget, or presentation
 placeholder; those remain separately gated Phase 6 and Phase 8 work.
 
+`full_text_index_test` supplies that generated reference corpus. It covers
+atomic creation, reuse, stale and corrupt rebuilds; whole-word, plain-text,
+wildcard and regular-expression matching; case/diacritic folding,
+order/distance and dictionary filtering; deterministic provenance and result
+bounds; malformed patterns, oversize work, cancellation, and deadlines. The
+application service retains typed unsupported results until Phase 6 adapters
+provide private ingestion, while `headless_api_test` compiles and runs the new
+installed operation and its active-empty filter behavior.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

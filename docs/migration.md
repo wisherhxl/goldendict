@@ -1102,6 +1102,14 @@ publish inert UI. Its gate is a headless generated corpus that proves those
 behaviors, including malformed and oversized input and stale or corrupt index
 failures, while the installed consumer covers any evolved public contract.
 
+The Phase 5 contract leaf is complete. The installed service exposes only the
+bounded transport-neutral query/result/error operation. A private generated
+corpus pins versioned create/reuse/stale/corrupt lifecycle behavior, the four
+query modes, Unicode case/diacritic policy, word order/distance, filters,
+deterministic provenance, limits, cancellation, deadlines, and malformed or
+oversized input. Index paths, serialization, ingestion, and lifecycle state
+remain private. No Phase 6 adapter or Phase 8 workflow/control is wired.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

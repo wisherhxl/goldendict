@@ -619,6 +619,25 @@ int main() {
             return Fail("catalog discovery or provenance failed");
         }
 
+        goldendict::core::FullTextQuery full_text_query;
+        full_text_query.text = "example";
+        full_text_query.dictionary_filter_active = true;
+        full_text_query.dictionary_ids = {catalog.front().id};
+        const auto full_text_response =
+            service->SearchFullText(full_text_query);
+        if (!full_text_response.results.empty() ||
+            full_text_response.errors.size() != 1U ||
+            full_text_response.errors.front().code !=
+                goldendict::core::FullTextErrorCode::kUnsupported ||
+            full_text_response.errors.front().dictionary_id !=
+                catalog.front().id) {
+            return Fail("installed full-text query contract failed");
+        }
+        full_text_query.dictionary_ids.clear();
+        if (!service->SearchFullText(full_text_query).errors.empty()) {
+            return Fail("active-empty full-text filter contract failed");
+        }
+
         goldendict::core::LookupQuery query;
         query.text = "example";
         query.result_limit = 1U;

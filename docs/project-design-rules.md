@@ -139,3 +139,11 @@ module built as a shared library when `BUILD_SHARED_LIBS=ON`.
 This rule applies to all migrated GoldenDict product behavior. It implements
 single responsibility, interface segregation, and dependency inversion while
 keeping the GUI replaceable and backend code independently testable.
+
+The Phase 5 full-text boundary evolves the installed `DictionaryService` with
+only a transport-neutral bounded query and structured result/error DTOs.
+Document ingestion, generated-index paths and formats, lifecycle state,
+reference corpora, and concrete adapters remain private to `goldendict_core`;
+private search dependencies do not enter the exported dependency graph. The
+virtual-interface addition is an intentional ABI change identified by Conan's
+exact SCM and package revisions.

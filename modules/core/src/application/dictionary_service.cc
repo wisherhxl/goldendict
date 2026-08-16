@@ -630,6 +630,38 @@ std::optional<std::string> ValidateQuery(const SuggestionQuery& query) {
     return std::nullopt;
 }
 
+std::optional<std::string> ValidateQuery(const FullTextQuery& query) {
+    if (query.text.empty() || query.result_limit == 0U ||
+        query.result_limit > kMaximumFullTextResults ||
+        query.timeout <= std::chrono::milliseconds::zero()) {
+        return "Full-text text, result limit, and timeout must be valid";
+    }
+    if (query.text.size() > kMaximumFullTextQueryBytes ||
+        query.text.find('\0') != std::string::npos ||
+        !foundation::IsValidUtf8(query.text)) {
+        return "Full-text query exceeds the UTF-8 input bounds";
+    }
+    if (query.dictionary_ids.size() > kMaximumLookupDictionaryFilters ||
+        HasInvalidFilter(query.dictionary_ids)) {
+        return "Full-text dictionary filters exceed the UTF-8 input bounds";
+    }
+    if (query.maximum_word_distance.has_value() &&
+        *query.maximum_word_distance > kMaximumFullTextWordDistance) {
+        return "Full-text word distance exceeds the supported bound";
+    }
+    if ((query.mode == FullTextQueryMode::kWildcard ||
+         query.mode == FullTextQueryMode::kRegularExpression) &&
+        (query.ignore_word_order || query.maximum_word_distance.has_value())) {
+        return "Word order and distance require a word-based search mode";
+    }
+    if (query.mode == FullTextQueryMode::kRegularExpression) {
+        const CompiledHeadwordPattern pattern(query.text, query.match_case);
+        if (!pattern.error().empty())
+            return pattern.error();
+    }
+    return std::nullopt;
+}
+
 class ServiceState final {
    public:
     explicit ServiceState(
@@ -960,6 +992,53 @@ class ServiceState final {
             catalog.push_back(PublicIdentity(dictionary->identity()));
         }
         return catalog;
+    }
+
+    FullTextResponse SearchFullText(
+        const FullTextQuery& query,
+        const CancellationToken* cancellation) const {
+        FullTextResponse response;
+        if (const auto invalid = ValidateQuery(query); invalid.has_value()) {
+            response.errors.push_back(
+                {FullTextErrorCode::kInvalidQuery, {}, *invalid});
+            return response;
+        }
+        if (cancellation != nullptr &&
+            cancellation->IsCancellationRequested()) {
+            response.errors.push_back({FullTextErrorCode::kCancelled,
+                                       {},
+                                       "Full-text search cancelled"});
+            return response;
+        }
+        if (query.dictionary_filter_active && query.dictionary_ids.empty()) {
+            return response;
+        }
+        std::unordered_set<std::string> requested(query.dictionary_ids.begin(),
+                                                  query.dictionary_ids.end());
+        for (const auto& backend : dictionaries_) {
+            const auto& id = backend->identity().id;
+            if (query.dictionary_filter_active && requested.count(id) == 0U) {
+                continue;
+            }
+            response.errors.push_back(
+                {FullTextErrorCode::kUnsupported, id,
+                 "Full-text indexing is not available for this dictionary"});
+        }
+        if (query.dictionary_filter_active)
+            for (const auto& id : query.dictionary_ids) {
+                const auto found =
+                    std::find_if(dictionaries_.begin(), dictionaries_.end(),
+                                 [&id](const auto& backend) {
+                                     return backend->identity().id == id;
+                                 });
+                if (found == dictionaries_.end()) {
+                    response.errors.push_back(
+                        {FullTextErrorCode::kDictionaryUnavailable, id,
+                         "Full-text dictionary is unavailable"});
+                }
+            }
+        response.partial = !response.errors.empty();
+        return response;
     }
 
     HeadwordEnumerationPage EnumerateHeadwords(
@@ -1591,6 +1670,12 @@ class DictionaryServiceImpl final : public DictionaryService {
         return state_->EnumerateHeadwords(query, cancellation);
     }
 
+    FullTextResponse SearchFullText(
+        const FullTextQuery& query,
+        const CancellationToken* cancellation) const override {
+        return state_->SearchFullText(query, cancellation);
+    }
+
     std::unique_ptr<LookupRequest> StartLookup(
         LookupQuery query) const override {
         return std::make_unique<LookupRequestImpl>(state_, std::move(query));
@@ -1613,6 +1698,19 @@ CancellationToken::~CancellationToken() = default;
 LookupRequest::~LookupRequest() = default;
 
 DictionaryService::~DictionaryService() = default;
+
+FullTextResponse DictionaryService::SearchFullText(
+    const FullTextQuery& query, const CancellationToken* cancellation) const {
+    static_cast<void>(query);
+    FullTextResponse response;
+    response.errors.push_back(
+        {cancellation != nullptr && cancellation->IsCancellationRequested()
+             ? FullTextErrorCode::kCancelled
+             : FullTextErrorCode::kUnsupported,
+         {},
+         "Full-text search is unsupported"});
+    return response;
+}
 
 std::unique_ptr<DictionaryService> CreateDictionaryService(
     const CoreConfiguration& configuration) {

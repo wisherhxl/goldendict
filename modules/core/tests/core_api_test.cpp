@@ -148,6 +148,7 @@ class CoreApiTest : public QObject {
    private slots:
     void LookupQueryHasBoundedDefaults();
     void SuggestionQueryHasBoundedDefaults();
+    void FullTextQueryHasBoundedDefaults();
     void HeadlessServiceDoesNotRequireAGuiApplication();
 };
 
@@ -164,6 +165,22 @@ void CoreApiTest::SuggestionQueryHasBoundedDefaults() {
 
     QCOMPARE(query.result_limit, std::size_t{20});
     QCOMPARE(query.timeout, std::chrono::seconds(5));
+}
+
+void CoreApiTest::FullTextQueryHasBoundedDefaults() {
+    const FullTextQuery query;
+    QCOMPARE(query.mode, FullTextQueryMode::kWholeWords);
+    QCOMPARE(query.result_limit, std::size_t{20});
+    QCOMPARE(query.timeout, std::chrono::seconds(5));
+    QVERIFY(!query.dictionary_filter_active);
+    QVERIFY(!query.maximum_word_distance.has_value());
+
+    FullTextQuery request;
+    request.text = "example";
+    const EmptyDictionaryService service;
+    const auto response = service.SearchFullText(request);
+    QCOMPARE(response.errors.size(), std::size_t{1});
+    QCOMPARE(response.errors.front().code, FullTextErrorCode::kUnsupported);
 }
 
 void CoreApiTest::HeadlessServiceDoesNotRequireAGuiApplication() {

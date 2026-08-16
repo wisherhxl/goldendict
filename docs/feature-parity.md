@@ -39,7 +39,7 @@
 | Bounded legacy text encoding conversion | slice | Phase 5 | strict Latin-1, UTF-16, GB18030, and EUC-JP fixtures |
 | Headword suggestions | slice | Phase 5 | bounded ranked suggestion fixtures and installed-consumer tests |
 | Morphology and transliteration | later | Phase 5 | per-language fixtures |
-| Full-text search | selected | Phase 5/6/8 | bounded indexing/query contract first; per-format and UI workflow tests follow |
+| Full-text search | contract | Phase 5/6/8 | installed bounded query plus private generated-index lifecycle and corpus tests complete; per-format and UI workflow tests follow |
 
 ## Local Dictionary Formats
 

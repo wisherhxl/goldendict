@@ -299,6 +299,16 @@ if(TARGET text_folding_test)
   target_link_libraries(text_folding_test PRIVATE ICU::uc)
 endif()
 
+if(TARGET full_text_index_test)
+  target_sources(full_text_index_test PRIVATE
+    src/dictionary/full_text_index.cc
+    src/dictionary/generated_index.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
+  )
+  target_link_libraries(full_text_index_test PRIVATE ICU::uc)
+endif()
+
 if(TARGET text_encoding_test)
   target_sources(text_encoding_test PRIVATE src/foundation/text_encoding.cc)
   target_link_libraries(text_encoding_test PRIVATE ICU::uc)

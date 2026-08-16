@@ -620,6 +620,15 @@ indexing. Concrete Phase 6 adapters, the Phase 8 workflow and controls, and
 presentation highlighting remain downstream consumers rather than part of the
 foundation leaf.
 
+The completed foundation exposes `SearchFullText` through the installed
+headless service with bounded query, provenance, match, excerpt, and typed-error
+DTOs. Its private versioned reference index uses the existing atomic
+generated-index envelope and distinguishes create, reuse, stale rebuild, and
+corrupt rebuild. Migrated formats do not advertise full-text support until
+Phase 6, and the Phase 8 workflow remains downstream. Adding the virtual
+operation intentionally changes the core ABI; the exact SCM/package revision
+identifies compatible consumers.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

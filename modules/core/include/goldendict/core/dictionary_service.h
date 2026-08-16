@@ -25,6 +25,11 @@ inline constexpr std::size_t kMaximumHeadwordEnumerationPageSize = 256U;
 inline constexpr std::size_t kMaximumHeadwordEnumerationCursorBytes = 256U;
 inline constexpr std::size_t kMaximumHeadwordEnumerationResponseBytes =
     1024U * 1024U;
+inline constexpr std::size_t kMaximumFullTextQueryBytes = 4096U;
+inline constexpr std::size_t kMaximumFullTextResults = 100U;
+inline constexpr std::size_t kMaximumFullTextMatchesPerResult = 32U;
+inline constexpr std::size_t kMaximumFullTextExcerptBytes = 4096U;
+inline constexpr std::uint32_t kMaximumFullTextWordDistance = 1000U;
 
 enum class HeadwordFilterMode {
     kPrefix,
@@ -37,6 +42,24 @@ enum class MatchMode {
     kPrefix,
     kFuzzy,
     kFullText,
+};
+
+enum class FullTextQueryMode {
+    kWholeWords,
+    kPlainText,
+    kWildcard,
+    kRegularExpression,
+};
+
+enum class FullTextErrorCode {
+    kInvalidQuery,
+    kDictionaryUnavailable,
+    kUnsupported,
+    kMalformedIndex,
+    kCancelled,
+    kDeadlineExceeded,
+    kResourceLimit,
+    kInternal,
 };
 
 enum class LookupErrorCode {
@@ -123,11 +146,51 @@ struct SuggestionQuery {
     bool match_case = false;
 };
 
+struct FullTextQuery {
+    std::string text;
+    std::vector<std::string> dictionary_ids;
+    bool dictionary_filter_active = false;
+    FullTextQueryMode mode = FullTextQueryMode::kWholeWords;
+    bool match_case = false;
+    bool ignore_diacritics = false;
+    bool ignore_word_order = false;
+    std::optional<std::uint32_t> maximum_word_distance;
+    std::size_t result_limit = 20U;
+    std::chrono::milliseconds timeout = std::chrono::seconds(5);
+};
+
+struct FullTextMatch {
+    std::size_t byte_offset = 0U;
+    std::size_t byte_length = 0U;
+    std::string text;
+};
+
+struct FullTextError {
+    FullTextErrorCode code = FullTextErrorCode::kInternal;
+    std::string dictionary_id;
+    std::string message;
+};
+
 struct MatchInfo {
     std::string requested_headword;
     std::string normalized_headword;
     MatchMode mode = MatchMode::kExact;
     double score = 1.0;
+};
+
+struct FullTextResult {
+    DictionaryIdentity dictionary;
+    std::string headword;
+    std::string document_id;
+    MatchInfo match;
+    std::string excerpt;
+    std::vector<FullTextMatch> matches;
+};
+
+struct FullTextResponse {
+    std::vector<FullTextResult> results;
+    std::vector<FullTextError> errors;
+    bool partial = false;
 };
 
 struct ArticleContent {
@@ -204,6 +267,9 @@ class GOLDENDICT_EXPORTS DictionaryService {
     virtual HeadwordEnumerationPage EnumerateHeadwords(
         const HeadwordEnumerationQuery& query,
         const CancellationToken* cancellation = nullptr) const = 0;
+    virtual FullTextResponse SearchFullText(
+        const FullTextQuery& query,
+        const CancellationToken* cancellation = nullptr) const;
     virtual std::unique_ptr<LookupRequest> StartLookup(
         LookupQuery query) const = 0;
     virtual std::vector<std::byte> GetResource(
