@@ -1132,6 +1132,37 @@ the Phase 8 full-text workflow remains downstream. P6-FT-1 is complete with
 generated plain/HTML, synonym, compressed-data, lifecycle, mixed-service, and
 installed-consumer coverage.
 
+The next Phase 6 task is P6-FT-2, the private SDict adapter. Its prerequisites
+are the completed Phase 5 contract, P6-FT-1 private capability and service
+dispatch, and SDict's accepted discovery, bounded plain/zlib/bzip2 decoding,
+complete full-index enumeration, safe HTML/link conversion, article assembly,
+stable provenance, and generated fixtures. Each distinct validated article
+offset contributes one document. The first full-index record referencing that
+offset supplies the canonical headword and a document ID derived from its
+record ordinal and article offset; later records sharing the offset are aliases
+and do not duplicate the document. Ingestion passes the converted SDict HTML
+through the existing inert article assembler and indexes only its bounded plain
+text. Metadata, link targets, resources, and raw markup are excluded.
+
+P6-FT-2 owns a distinct private `.gdfts` artifact in the configured index
+directory whose complete source-revision input is the discovered `.dct` file.
+It must preserve create, reuse, stale-rebuild, corrupt-rebuild, cancellation,
+deadline, resource-limit, and contained storage-failure behavior from the
+accepted private index lifecycle. In a mixed service, StarDict and SDict
+results merge deterministically within the existing global bound; adapted
+dictionaries with no match add no error, non-adapted local and runtime formats
+return typed unsupported errors, and requested missing IDs return typed
+unavailable errors. Filtering and aggregation remain service-owned.
+
+The leaf changes no installed `SearchFullText` API or DTO, public capability
+flag, runtime-source interface, configuration, preference, widget, or
+presentation behavior. Other adapters, legacy `_FTS` compatibility, index
+format changes, new dependencies, resource or metadata indexing, highlighting,
+the Phase 8 workflow, and unrelated refactors are excluded. Its later
+implementation gate is the focused generated-fixture and mixed-service
+acceptance suite, the unchanged installed consumer, the complete Linux Release
+test/install path, and clean exact-SCM Conan package creation.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

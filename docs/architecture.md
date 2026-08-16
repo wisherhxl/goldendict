@@ -645,6 +645,23 @@ later per-format adapters. The leaf is complete: the service deterministically
 merges bounded StarDict results with typed unsupported and unavailable errors,
 and the installed consumer exercises the unchanged `SearchFullText` contract.
 
+The next bounded per-format leaf is P6-FT-2, the private SDict adapter. The
+completed StarDict capability and service-dispatch pattern is its prerequisite;
+SDict is the smallest remaining dependency-ready representative because one
+validated `.dct` source already provides complete full-index enumeration,
+plain/zlib/bzip2 article decoding, safe HTML and word-link conversion, stable
+record/article offsets, inert article assembly, and generated fixtures. One
+document is created for each distinct validated article offset. The first
+full-index record that references the offset supplies the canonical headword
+and stable record-derived provenance; later records sharing that offset are
+aliases and do not duplicate the article. Searchable text is only the bounded
+plain text produced by the existing article assembler, excluding metadata,
+link targets, resources, and raw markup. A distinct private artifact under the
+configured index directory tracks the sole `.dct` source revision. StarDict
+and SDict results are merged through the existing private dispatch, while
+non-adapted formats remain typed unsupported results. No installed API,
+runtime-source interface, public capability, or configuration surface changes.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and
