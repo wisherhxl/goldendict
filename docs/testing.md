@@ -788,6 +788,44 @@ coverage, and installed C++ full-text consumption. The registered suite
 remains 103 tests because coverage extends existing test executables; the
 installed C consumer remains unchanged and passing.
 
+The selected P6-FT-10 ZIM implementation leaf extends only generated fixtures.
+Reader/backend tests must prove complete directory-table traversal, old
+namespace `A` and ZIM 6.1+ namespace `C` eligibility, terminal `text/html*` or
+`text/plain*` filtering, interleaved exclusions, and bounded direct and chained
+redirect resolution. They pin zero-based retained-source `record_ordinal`
+assignment, terminal-entry deduplication, first-source title-or-URL ownership,
+zero-based first-encounter `article_ordinal`, shared-target aliases, distinct
+targets with related cluster/blob coordinates, redirect cycles and invalid
+targets, and exact
+`zim-index:<first-record-ordinal>:<article-ordinal>:<target-entry-index>:<cluster-index>:<blob-index>`
+provenance. Every component is canonical unsigned base-10 without signs or
+padding, including multi-digit cases.
+
+Materialization tests cover validated UTF-8 HTML, escaped plain text, raw,
+zlib, and bzip2 clusters, and 32/64-bit blob offsets. They exclude metadata,
+alias-only text, resource names and bytes, non-text blobs, icons, raw markup,
+unsupported LZMA2/Zstd or other conversion, and new link rewriting. Lifecycle
+tests cover create, reuse, sole `.zim` revision, the complete ordered
+consecutive `.zimaa` split set, mutation or replacement of every part, part
+addition/removal, resource-only stale rebuild, corrupt rebuild, typed
+unsupported without an index directory, limits, cancellation, deadlines, and
+contained storage failures.
+
+Application-service coverage combines the nine accepted adapters with ZIM and
+pins stable dictionary-ID ordering, filtering, the global bound, adapted
+no-match behavior, typed unsupported for requested non-adapted local or
+runtime sources, typed unavailable for missing IDs, and contained failures.
+The installed consumer returns ZIM through unchanged `SearchFullText` APIs and
+DTOs.
+
+The implementation acceptance gate remains Linux Release configure/build and
+`ctest --preset conan-release`, install plus the installed `test_package`
+consumer, and clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile. Dependencies, GUI, Preferences, highlighting, other
+adapters, legacy `_FTS` compatibility, metadata/resource indexing, and private
+serialization changes are excluded. No leaf after P6-FT-10 is selected or
+ranked.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

@@ -1495,6 +1495,71 @@ documents with exact four-component provenance. Its sole-container lifecycle
 and deterministic nine-format service integration preserve every public and
 installed boundary. No successor is selected.
 
+The fresh independent post-P6-FT-9 audit covers the exact remaining migrated
+textual registry: MDict, ZIM, and EPWING. At pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, MDict gates full-text support at
+`mdx.cc:264-274` and rebuilds against its dictionary filename set at
+`mdx.cc:489-517`; ZIM gates support at `zim.cc:724-733`, initializes its
+filename-set-backed `_FTS` lifecycle at `zim.cc:752-796`, and discovers and
+deduplicates linked articles at `zim.cc:1094-1195`; EPWING gates support at
+`epwing.cc:138-148` and rebuilds against its dictionary filename set at
+`epwing.cc:372-397`.
+
+Migrated MDict parses source-order keys, bounded record data, folded redirects,
+styles, and companion MDD resources, but assigns one article slot per key
+before redirect resolution; redirect-target ownership and the exact MDX/MDD
+revision therefore require a prerequisite. Migrated EPWING traverses
+`CATALOGS`, subbooks, and supported word-index records and renders bounded safe
+text, but its current deduplication includes the headword and it does not expose
+the complete mutable subbook-tree revision; grouped-index ownership and source
+lifecycle require a prerequisite. Neither candidate is selected or ranked.
+
+ZIM is decision-complete and is the sole selected P6-FT-10 leaf. Migrated
+evidence at `modules/core/src/formats/zim/zim_reader.cc:212-245` preserves
+directory-table order and terminal cluster/blob identity,
+`zim_reader.cc:301-348` provides bounded redirect resolution,
+namespace/MIME eligibility, and terminal-entry deduplication, and
+`modules/core/src/formats/zim/zim_discovery.cc:16-44` owns sole-file and
+consecutive split-volume discovery. Generated fixtures cover raw, zlib, and
+bzip2 clusters, 32/64-bit offsets, redirects, resources, and safe HTML/plain
+materialization without a new dependency.
+
+P6-FT-10 retains only namespace `A` sources, plus namespace `C` sources for
+ZIM 6.1 and later, whose resolved terminal MIME begins with `text/html` or
+`text/plain`. Zero-based `record_ordinal` values follow retained eligible
+source order; excluded entries consume none. The zero-based terminal
+directory-table index is the deduplication identity. Its first retained source
+assigns the zero-based first-encounter `article_ordinal`, owns the canonical
+nonempty title-or-URL headword and `first_record_ordinal`, and creates one
+document; later sources resolving to it are aliases.
+
+Exact provenance is
+`zim-index:<first-record-ordinal>:<article-ordinal>:<target-entry-index>:<cluster-index>:<blob-index>`,
+with every component in canonical unsigned base-10 without signs or padding.
+The five components encode the first logical owner, deduplicated ordinal,
+terminal directory identity, and physical cluster/blob identity and are
+collision-safe within the dictionary revision. Only inert assembled visible
+text from validated HTML or escaped, `<pre>`-wrapped plain text is indexed.
+Metadata, alias-only text, resource names/bytes, non-text blobs, icons, raw
+markup, unsupported compression/conversion, and new link rewriting are
+excluded.
+
+The complete ordered source revision is the sole `.zim`, or every consecutive
+split part from `.zimaa` through the last part before the first missing suffix.
+Any included-part mutation, replacement, addition, removal, or order change,
+including a resource-only change, stales the private `.gdfts` artifact.
+Without an index directory ZIM remains typed unsupported. The future
+ten-format service preserves stable ordering, filtering, global bounds,
+adapted no-match behavior, typed unsupported/unavailable errors, and contained
+per-dictionary failures.
+
+P6-FT-10 preserves installed `SearchFullText` APIs and DTOs, runtime
+interfaces, public capability flags, configuration/preferences, dependencies,
+GUI/Phase 8 behavior, and private `.gdfts` serialization. Implementation,
+legacy `_FTS` compatibility, metadata/resource indexing, highlighting, other
+adapters, and unrelated refactors are excluded.
+No leaf after P6-FT-10 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

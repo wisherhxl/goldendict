@@ -1014,6 +1014,64 @@ retained-reference ordinals, first-reference ownership, exact four-component
 provenance, inert assembled text, a sole-container source revision, and
 deterministic nine-format service dispatch. No successor is selected.
 
+The fresh post-P6-FT-9 audit covers the complete remaining migrated textual
+registry: MDict, ZIM, and EPWING. At pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, MDict gates full-text support at
+`mdx.cc:264-274` and uses the complete dictionary filename set for its generic
+full-text lifecycle at `mdx.cc:489-517`; ZIM gates support at
+`zim.cc:724-733`, owns the complete filename-set lifecycle at
+`zim.cc:752-796`, and collects and deduplicates linked articles at
+`zim.cc:1094-1195`; EPWING gates support at `epwing.cc:138-148` and uses its
+complete dictionary filename set at `epwing.cc:372-397`.
+
+| Candidate | Migrated traversal and ownership | Materialization, revision, and audit decision |
+| --- | --- | --- |
+| MDict | Source-order keys receive separate article slots before folded `@@@LINK=` resolution | Bounded decoding, styles, safe HTML, MDX/MDD discovery, and fixtures exist, but redirect-target ownership and the exact MDX/MDD revision contract require a prerequisite; unselected |
+| ZIM | Directory-table order, bounded redirect resolution, namespace/MIME eligibility, and terminal-entry deduplication are explicit | Bounded UTF-8 HTML/plain text, raw/zlib/bzip2 clusters, consecutive split discovery, private dependencies, and generated fixtures are complete; smallest decision-complete leaf, P6-FT-10 selected |
+| EPWING | `CATALOGS` order and supported word-index records are traversed, but current deduplication includes the headword | Safe rendered text and generated fixtures exist, but grouped-index ownership and the complete mutable subbook-tree revision require a prerequisite; unselected |
+
+P6-FT-10 adds only the private ZIM adapter. It traverses every directory entry
+in directory-table order and resolves redirects through the existing bounded
+cycle and invalid-target checks. A source entry is retained only when it is in
+namespace `A`, or in namespace `C` for ZIM 6.1 and later, and its terminal
+target MIME begins with `text/html` or `text/plain`. Retained eligible sources
+receive zero-based `record_ordinal` values in retained-source order; metadata,
+resources, namespace `X`, non-text targets, and all other excluded entries do
+not consume an ordinal.
+
+The zero-based directory-table index of the terminal target is the
+deduplication identity. Its first retained source creates one document,
+supplies the canonical nonempty title-or-URL headword and
+`first_record_ordinal`, and assigns a zero-based `article_ordinal` in
+first-encounter order. Later retained sources resolving to the same terminal
+entry are aliases. Stable provenance is
+`zim-index:<first-record-ordinal>:<article-ordinal>:<target-entry-index>:<cluster-index>:<blob-index>`.
+All five components use canonical unsigned base-10 without signs or padding;
+the format prefix, first logical owner, deduplicated ordinal, terminal
+directory identity, and physical cluster/blob identity make the string stable
+and collision-safe within the dictionary revision.
+
+Searchable content is only bounded plain text produced by the inert assembler
+from the existing validated UTF-8 HTML or escaped, `<pre>`-wrapped plain text.
+Metadata, alias headwords as independent content, resource names and bytes,
+non-text blobs, icons, raw markup, unsupported compression/conversion, and new
+link rewriting are excluded. The distinct private `.gdfts` artifact snapshots
+the complete ordered discovered source set: the sole `.zim`, or every
+consecutive split part from `.zimaa` through the last part before the first
+missing suffix. Mutation, replacement, addition, removal, or order change of
+any included part stales the artifact, including a resource-only change.
+
+Without a configured index directory ZIM remains typed unsupported. The
+ten-format mixed service preserves stable dictionary-ID ordering, filtering,
+the global bound, adapted no-match behavior, typed unsupported for requested
+non-adapted local or runtime sources, typed unavailable for missing IDs, and
+contained per-dictionary failures. P6-FT-10 changes no installed
+`SearchFullText` API or DTO, runtime interface, public capability flag,
+configuration, preference, dependency, GUI/Phase 8 behavior, or private
+`.gdfts` serialization. Implementation, legacy `_FTS` compatibility,
+metadata/resource indexing, highlighting, other adapters, and unrelated
+refactors are excluded. No leaf after P6-FT-10 is selected or ranked.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and
