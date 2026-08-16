@@ -156,6 +156,7 @@ struct FullTextQuery {
     bool ignore_word_order = false;
     std::optional<std::uint32_t> maximum_word_distance;
     std::size_t result_limit = 20U;
+    std::size_t maximum_articles_per_dictionary = 100U;
     std::chrono::milliseconds timeout = std::chrono::seconds(5);
 };
 

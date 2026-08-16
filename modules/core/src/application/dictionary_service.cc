@@ -636,6 +636,11 @@ std::optional<std::string> ValidateQuery(const FullTextQuery& query) {
         query.timeout <= std::chrono::milliseconds::zero()) {
         return "Full-text text, result limit, and timeout must be valid";
     }
+    if (query.maximum_articles_per_dictionary == 0U ||
+        query.maximum_articles_per_dictionary > 100000U) {
+        return "Full-text maximum articles per dictionary must be between 1 "
+               "and 100000";
+    }
     if (query.text.size() > kMaximumFullTextQueryBytes ||
         query.text.find('\0') != std::string::npos ||
         !foundation::IsValidUtf8(query.text)) {
@@ -783,8 +788,8 @@ class ServiceState final {
             try {
                 dictionaries_.push_back(
                     std::make_unique<formats::xdxf::Dictionary>(
-                        formats::xdxf::Dictionary::Open(
-                            id, dictionary_path, full_text_index_path)));
+                        formats::xdxf::Dictionary::Open(id, dictionary_path,
+                                                        full_text_index_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});
@@ -808,8 +813,8 @@ class ServiceState final {
             try {
                 dictionaries_.push_back(
                     std::make_unique<formats::gls::Dictionary>(
-                        formats::gls::Dictionary::Open(
-                            id, dictionary_path, full_text_index_path)));
+                        formats::gls::Dictionary::Open(id, dictionary_path,
+                                                       full_text_index_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});
@@ -923,8 +928,8 @@ class ServiceState final {
             try {
                 dictionaries_.push_back(
                     std::make_unique<formats::aard::Dictionary>(
-                        formats::aard::Dictionary::Open(
-                            id, dictionary_path, full_text_index_path)));
+                        formats::aard::Dictionary::Open(id, dictionary_path,
+                                                        full_text_index_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});
@@ -1128,8 +1133,10 @@ class ServiceState final {
                 break;
             }
             auto backend_query = query;
-            backend_query.result_limit =
-                query.result_limit - response.results.size();
+            const auto remaining = query.result_limit - response.results.size();
+            const auto dictionary_limit =
+                std::min(query.maximum_articles_per_dictionary, remaining);
+            backend_query.result_limit = dictionary_limit;
             backend_query.timeout =
                 std::chrono::duration_cast<std::chrono::milliseconds>(deadline -
                                                                       now);
@@ -1142,6 +1149,8 @@ class ServiceState final {
                     error.dictionary_id = id;
                 response.errors.push_back(std::move(error));
             }
+            if (backend_response.results.size() > dictionary_limit)
+                backend_response.results.resize(dictionary_limit);
             for (auto& result : backend_response.results)
                 response.results.push_back(std::move(result));
         }

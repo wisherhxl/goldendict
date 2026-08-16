@@ -159,6 +159,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsMalformedConfiguration();
     void CatalogSanitizesInspectionMetadata();
     void DiscoversAndQueriesARealFixture();
+    void AppliesIndependentFullTextQueryLimits();
     void SearchesTwelveLocalFormatsFullTextWithMixedFormatErrors();
     void EnumeratesStarDictHeadwordsWithStableCursors();
     void ExportsCompleteHeadwordListsAtomically();
@@ -2008,6 +2009,98 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
     const auto missing = service.Lookup(query);
     QVERIFY(missing.entries.empty());
     QVERIFY(missing.errors.empty());
+}
+
+void ApplicationServiceTest::AppliesIndependentFullTextQueryLimits() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    std::filesystem::create_directories(root / "first");
+    std::filesystem::create_directories(root / "second");
+    test::WriteStardictFixture(root / "first",
+                               {{"First one", "shared first one"},
+                                {"First two", "shared first two"},
+                                {"First three", "shared first three"}});
+    test::WriteStardictFixture(root / "second",
+                               {{"Second one", "shared second one"},
+                                {"Second two", "shared second two"},
+                                {"Second three", "shared second three"}});
+
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    configuration.index_directory = (root / "indexes").string();
+    auto service = CreateDictionaryService(configuration);
+    const auto catalog = service->GetCatalog();
+    QCOMPARE(catalog.size(), std::size_t{2});
+
+    FullTextQuery query;
+    QCOMPARE(query.result_limit, std::size_t{20});
+    QCOMPARE(query.maximum_articles_per_dictionary, std::size_t{100});
+    query.text = "shared";
+    query.dictionary_filter_active = true;
+    query.dictionary_ids = {catalog[0].id};
+    query.result_limit = 6U;
+    query.maximum_articles_per_dictionary = 2U;
+    const auto one_dictionary = service->SearchFullText(query);
+    QCOMPARE(one_dictionary.results.size(), std::size_t{2});
+    QVERIFY(std::all_of(one_dictionary.results.begin(),
+                        one_dictionary.results.end(), [&](const auto& result) {
+                            return result.dictionary.id == catalog[0].id;
+                        }));
+
+    query.dictionary_ids = {catalog[0].id, catalog[1].id};
+    query.result_limit = 6U;
+    const auto multiple_dictionaries = service->SearchFullText(query);
+    QCOMPARE(multiple_dictionaries.results.size(), std::size_t{4});
+    QCOMPARE(multiple_dictionaries.results[0].dictionary.id, catalog[0].id);
+    QCOMPARE(multiple_dictionaries.results[1].dictionary.id, catalog[0].id);
+    QCOMPARE(multiple_dictionaries.results[2].dictionary.id, catalog[1].id);
+    QCOMPARE(multiple_dictionaries.results[3].dictionary.id, catalog[1].id);
+
+    query.result_limit = 3U;
+    query.maximum_articles_per_dictionary = 100000U;
+    const auto global_precedence = service->SearchFullText(query);
+    QCOMPARE(global_precedence.results.size(), std::size_t{3});
+    QCOMPARE(global_precedence.results[0].dictionary.id, catalog[0].id);
+    QCOMPARE(global_precedence.results[1].dictionary.id, catalog[0].id);
+    QCOMPARE(global_precedence.results[2].dictionary.id, catalog[0].id);
+
+    query.result_limit = 1U;
+    query.maximum_articles_per_dictionary = 1U;
+    QVERIFY(service->SearchFullText(query).errors.empty());
+    query.maximum_articles_per_dictionary = 0U;
+    const auto zero_dictionary_limit = service->SearchFullText(query);
+    QCOMPARE(zero_dictionary_limit.errors.size(), std::size_t{1});
+    QCOMPARE(zero_dictionary_limit.errors.front().code,
+             FullTextErrorCode::kInvalidQuery);
+    query.maximum_articles_per_dictionary = 100001U;
+    const auto excessive_dictionary_limit = service->SearchFullText(query);
+    QCOMPARE(excessive_dictionary_limit.errors.size(), std::size_t{1});
+    QCOMPARE(excessive_dictionary_limit.errors.front().code,
+             FullTextErrorCode::kInvalidQuery);
+
+    query.maximum_articles_per_dictionary = 1U;
+    query.result_limit = 0U;
+    QCOMPARE(service->SearchFullText(query).errors.front().code,
+             FullTextErrorCode::kInvalidQuery);
+    query.result_limit = kMaximumFullTextResults + 1U;
+    QCOMPARE(service->SearchFullText(query).errors.front().code,
+             FullTextErrorCode::kInvalidQuery);
+
+    query.result_limit = kMaximumFullTextResults;
+    query.dictionary_ids.push_back("unavailable");
+    const auto preserved_error = service->SearchFullText(query);
+    QCOMPARE(preserved_error.results.size(), std::size_t{2});
+    QCOMPARE(preserved_error.errors.size(), std::size_t{1});
+    QCOMPARE(preserved_error.errors.front().code,
+             FullTextErrorCode::kDictionaryUnavailable);
+    QVERIFY(preserved_error.partial);
+
+    CancelledToken cancelled;
+    const auto cancelled_response = service->SearchFullText(query, &cancelled);
+    QVERIFY(cancelled_response.results.empty());
+    QCOMPARE(cancelled_response.errors.front().code,
+             FullTextErrorCode::kCancelled);
 }
 
 void ApplicationServiceTest::

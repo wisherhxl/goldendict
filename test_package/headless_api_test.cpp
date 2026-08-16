@@ -186,7 +186,8 @@ void WriteFixture(const std::filesystem::path& root) {
         {"example",
          "<p>UTF-8: caf\xc3\xa9 <a href=\"bword://linked\">linked</a>"
          "<img src=\"images/pixel.png\"><script>active</script></p>"},
-        {"linked", "<p>Linked result.</p>"}};
+        {"linked", "<p>Linked result.</p>"},
+        {"secondary", "<p>Another caf\xc3\xa9 result.</p>"}};
     std::string index;
     std::string dictionary;
     for (const auto& [headword, article] : entries) {
@@ -203,7 +204,7 @@ void WriteFixture(const std::filesystem::path& root) {
         "bookname=Installed Consumer Dictionary\n"
         "lang_from=en\n"
         "lang_to=fr\n"
-        "wordcount=2\n"
+        "wordcount=3\n"
         "idxfilesize=" +
         std::to_string(index.size()) + "\nsametypesequence=h\n";
     Write(root / "fixture.ifo", info);
@@ -620,9 +621,15 @@ int main() {
         }
 
         goldendict::core::FullTextQuery full_text_query;
+        if (full_text_query.result_limit != 20U ||
+            full_text_query.maximum_articles_per_dictionary != 100U) {
+            return Fail("installed full-text query defaults changed");
+        }
         full_text_query.text = "caf\xc3\xa9";
         full_text_query.dictionary_filter_active = true;
         full_text_query.dictionary_ids = {catalog.front().id};
+        full_text_query.result_limit = 2U;
+        full_text_query.maximum_articles_per_dictionary = 1U;
         const auto full_text_response =
             service->SearchFullText(full_text_query);
         if (!full_text_response.errors.empty() ||
@@ -636,6 +643,11 @@ int main() {
             full_text_response.results.front().matches.front().text !=
                 "caf\xc3\xa9") {
             return Fail("installed full-text query contract failed");
+        }
+        full_text_query.result_limit = 2U;
+        full_text_query.maximum_articles_per_dictionary = 100U;
+        if (service->SearchFullText(full_text_query).results.size() != 2U) {
+            return Fail("installed full-text global limit contract failed");
         }
         full_text_query.dictionary_ids.clear();
         if (!service->SearchFullText(full_text_query).errors.empty()) {
@@ -728,8 +740,17 @@ int main() {
         if (enumeration_second.error.has_value() ||
             enumeration_second.headwords !=
                 std::vector<std::string>{"linked"} ||
-            !enumeration_second.complete ||
-            !enumeration_second.next_cursor.empty()) {
+            enumeration_second.complete) {
+            return Fail("installed headword enumeration second page failed");
+        }
+        enumeration_query.cursor = enumeration_second.next_cursor;
+        const auto enumeration_final =
+            service->EnumerateHeadwords(enumeration_query);
+        if (enumeration_final.error.has_value() ||
+            enumeration_final.headwords !=
+                std::vector<std::string>{"secondary"} ||
+            !enumeration_final.complete ||
+            !enumeration_final.next_cursor.empty()) {
             return Fail("installed headword enumeration final page failed");
         }
 

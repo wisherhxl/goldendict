@@ -1539,8 +1539,8 @@ selection, result presentation/activation, highlighting, Preferences
 integration, and index visibility/status/background lifecycle against the
 completed private request controller and four-mode persistence.
 
-The audit authorizes and selects P8-FT-3 as the one narrow prerequisite before
-the dialog/query-controls leaf. The installed `FullTextQuery::result_limit`
+P8-FT-3 completes the one narrow prerequisite before the dialog/query-controls
+leaf. The installed `FullTextQuery::result_limit`
 remains the global hard safety and output cap with its existing default,
 validation and source meaning. A distinct installed
 `maximum_articles_per_dictionary` field is added with default `100` and valid
@@ -1564,10 +1564,10 @@ legacy control. The additive DTO member is an authorized public/source-
 compatible expansion that requires consumer rebuild plus install and
 exact-SCM package verification.
 
-P8-FT-3 adds no action, dialog, query widget, selection policy, result model,
-activation, highlighting, Preferences widget, index visibility, progress or
-background lifecycle. It preserves the completed controller, four-mode
-persistence and legacy translation, all twelve adapters, private `.gdfts`
+The completed P8-FT-3 adds no action, dialog, query widget, selection policy,
+result model, activation, highlighting, Preferences widget, index visibility,
+progress or background lifecycle. It preserves the completed controller,
+four-mode persistence and legacy translation, all twelve adapters, private `.gdfts`
 serialization and dependencies. Legacy `_FTS` compatibility,
 metadata/resource indexing, platform work and unrelated migration behavior
 remain excluded. Dictionary/group selection still requires an explicit
