@@ -1400,9 +1400,14 @@ corruption, resource-limit, and storage failures.
 
 P6-FT-7 changes no installed API/DTO, runtime interface, public capability,
 configuration, preference, dependency, GUI/Phase 8 workflow, or private
-serialization. Implementation code, legacy `_FTS` compatibility,
-metadata/resource indexing, highlighting, other adapters, and unrelated
-refactors are excluded. No leaf after P6-FT-7 is selected.
+serialization. Legacy `_FTS` compatibility, metadata/resource indexing,
+highlighting, other adapters, and unrelated refactors are excluded. No leaf
+after P6-FT-7 is selected.
+
+P6-FT-7 is complete with one private document per DSL article ordinal,
+first-expanded-record ownership, inert assembled visible text, selected-source
+`.gdfts` lifecycle, deterministic seven-format dispatch, and installed-consumer
+coverage. No successor is selected.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

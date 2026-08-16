@@ -894,9 +894,13 @@ per dictionary.
 P6-FT-7 changes no installed `SearchFullText` API or DTO, runtime-source
 interface, public capability flag, configuration, preference, dependency,
 GUI/Phase 8 behavior, or private `.gdfts` serialization. Legacy `_FTS`
-compatibility, metadata/resource indexing, highlighting, implementation code,
-other adapters, and unrelated refactors are excluded. No leaf after P6-FT-7 is
-selected.
+compatibility, metadata/resource indexing, highlighting, other adapters, and
+unrelated refactors are excluded. No leaf after P6-FT-7 is selected.
+
+P6-FT-7 is complete. DSL now contributes one private full-text document per
+validated article ordinal with first-expanded-record ownership, inert assembled
+text, a selected-source `.gdfts` lifecycle, and deterministic seven-format
+service dispatch. No successor is selected.
 
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core

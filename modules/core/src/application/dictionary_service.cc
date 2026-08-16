@@ -824,12 +824,19 @@ class ServiceState final {
         }
         for (const auto& dictionary_path : dsl_discovery.dictionary_files) {
             const std::string id = StableId("dsl", dictionary_path);
+            std::optional<std::filesystem::path> full_text_index_path;
+            if (!configuration.index_directory.empty()) {
+                full_text_index_path =
+                    std::filesystem::u8path(configuration.index_directory) /
+                    (id + ".gdfts");
+            }
             try {
                 dictionaries_.push_back(
                     std::make_unique<formats::dsl::Dictionary>(
                         formats::dsl::Dictionary::Open(
                             id, dictionary_path,
-                            configuration.preferences.interface_language)));
+                            configuration.preferences.interface_language,
+                            full_text_index_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});

@@ -927,6 +927,7 @@ int main() {
         WriteDslFixture(dsl_root);
         goldendict::core::CoreConfiguration dsl_configuration;
         dsl_configuration.dictionary_paths = {dsl_root.string()};
+        dsl_configuration.index_directory = (dsl_root / "indexes").string();
         auto dsl_service =
             goldendict::core::CreateDictionaryService(dsl_configuration);
         const auto dsl_catalog = dsl_service->GetCatalog();
@@ -951,6 +952,17 @@ int main() {
             dsl_resource.size());
         if (dsl_resource_text != "dsl-png") {
             return Fail("installed DSL resource retrieval failed");
+        }
+        full_text_query = {};
+        full_text_query.text = "Installed";
+        full_text_query.dictionary_filter_active = true;
+        full_text_query.dictionary_ids = {dsl_catalog.front().id};
+        const auto dsl_full_text = dsl_service->SearchFullText(full_text_query);
+        if (!dsl_full_text.errors.empty() ||
+            dsl_full_text.results.size() != 1U ||
+            dsl_full_text.results.front().headword != "example" ||
+            dsl_full_text.results.front().document_id != "dsl-index:0:0") {
+            return Fail("installed DSL full-text query failed");
         }
 
         const auto bgl_root = directory.path() / "bgl";

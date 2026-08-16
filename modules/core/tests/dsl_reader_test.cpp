@@ -36,6 +36,17 @@ void DslReaderTest::ReadsMetadataExpansionsMarkupAndRankedMatches() {
     QVERIFY(article.find("<gd-optional>optional</gd-optional>") !=
             std::string::npos);
     QCOMPARE(reader.SuggestPrefix("caf").front(), "Caf");
+    const auto full_text = reader.ReadFullTextArticles();
+    QCOMPARE(full_text.size(), std::size_t{2});
+    QCOMPARE(full_text[0].record_ordinal, std::size_t{0});
+    QCOMPARE(full_text[0].headword, std::string("Caf"));
+    QCOMPARE(full_text[0].article_ordinal, std::size_t{0});
+    QCOMPARE(full_text[1].record_ordinal, std::size_t{3});
+    QCOMPARE(full_text[1].headword, std::string("cafeteria"));
+    QCOMPARE(full_text[1].article_ordinal, std::size_t{1});
+    QCOMPARE(reader.source_snapshot().size(), std::size_t{1});
+    QCOMPARE(reader.source_snapshot().front().path,
+             reader.dictionary_path().string());
 }
 
 void DslReaderTest::ReadsCompressedAndUtf16AndInvokesCheckpoints() {
@@ -52,6 +63,10 @@ void DslReaderTest::ReadsCompressedAndUtf16AndInvokesCheckpoints() {
     const Reader utf16 = Reader::Open(test::WriteUtf16LeDslFixture(root));
     QCOMPARE(utf16.metadata().name, "UTF16 DSL");
     QCOMPARE(utf16.LookupExact("example").front().headword, "example");
+    QCOMPARE(utf16.ReadFullTextArticles().size(), std::size_t{1});
+    const Reader compressed_utf16 = Reader::Open(test::CompressDslFixture(
+        test::WriteUtf16LeDslFixture(root / "utf16-compressed")));
+    QCOMPARE(compressed_utf16.LookupExact("example").size(), std::size_t{1});
 }
 
 void DslReaderTest::RejectsMalformedOrCorruptInput() {

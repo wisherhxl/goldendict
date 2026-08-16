@@ -703,13 +703,17 @@ sources, typed unavailable for missing IDs, and contained failures. The
 installed consumer returns DSL through unchanged `SearchFullText` APIs and
 DTOs.
 
-The implementation acceptance gate remains Linux Release configure/build and
+The implementation acceptance gate is Linux Release configure/build and
 `ctest --preset conan-release`, install plus the installed `test_package`
 consumer, and clean committed exact-SCM `conan create` with the Release Qt
-WebEngine host profile. This readiness audit is documentation-only, so no
-build is required. Dependencies, GUI, Preferences, highlighting, other
+WebEngine host profile. Dependencies, GUI, Preferences, highlighting, other
 adapters, legacy `_FTS` compatibility, metadata/resource indexing, and private
 serialization changes are excluded. No leaf after P6-FT-7 is selected.
+
+P6-FT-7 is accepted with generated encoding, compression, expansion,
+alias-deduplication, inert-assembly, lifecycle, contained-failure,
+seven-format service, Release build/install/package, and installed C/C++
+consumer coverage. No successor is selected.
 
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen

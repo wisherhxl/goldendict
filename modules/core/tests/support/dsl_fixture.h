@@ -14,6 +14,16 @@
 
 namespace goldendict::core::test {
 
+inline std::filesystem::path WriteDslTextFixture(
+    const std::filesystem::path& directory, std::string_view text,
+    std::string_view filename = "fixture.dsl") {
+    std::filesystem::create_directories(directory);
+    const auto path = directory / filename;
+    std::ofstream output(path, std::ios::binary);
+    output.write(text.data(), static_cast<std::streamsize>(text.size()));
+    return path;
+}
+
 inline std::filesystem::path WriteDslFixture(
     const std::filesystem::path& directory) {
     std::filesystem::create_directories(directory);
@@ -27,9 +37,7 @@ inline std::filesystem::path WriteDslFixture(
         "\t[b]drink[/b] [*]optional[/*] <<coffee>> [s]images/cup.png[/s]\n"
         "cafeteria\n"
         "\tplace\n";
-    const auto path = directory / "fixture.dsl";
-    std::ofstream output(path, std::ios::binary);
-    output.write(text.data(), static_cast<std::streamsize>(text.size()));
+    const auto path = WriteDslTextFixture(directory, text);
     std::ofstream annotation(directory / "fixture.ann", std::ios::binary);
     annotation << "Fixture DSL annotation";
     return path;
