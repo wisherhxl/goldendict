@@ -715,6 +715,37 @@ alias-deduplication, inert-assembly, lifecycle, contained-failure,
 seven-format service, Release build/install/package, and installed C/C++
 consumer coverage. No successor is selected.
 
+The selected P6-FT-8 BGL implementation leaf extends only generated fixtures.
+Reader/backend tests must prove complete source-order traversal of supported
+entry-block layouts, one document per referenced article ordinal, first-
+retained-record canonical ownership, primary/alternate alias deduplication,
+the empty-nominal-primary case, multiple articles, UTF-8 and representative
+non-UTF-8 code pages, gzip/block decoding, and exact
+`bgl-index:<first-record-ordinal>:<article-ordinal>` provenance.
+
+Inert-assembly tests accept visible sanitized article text while excluding
+metadata, alias-only text, embedded resource names and bytes, image/link
+targets, raw blocks or markup, and code-page control data. Lifecycle tests
+cover create, reuse, sole-`.bgl` mutation and replacement, embedded-resource-
+only stale rebuild, corrupt rebuild, typed unsupported without an index
+directory, resource limits, cancellation, deadlines, and contained storage
+failures.
+
+Application-service coverage combines StarDict, SDict, XDXF, Dictd, GLS,
+Aard, DSL, and BGL fixtures and pins stable dictionary-ID ordering, filtering,
+the global bound, adapted no-match behavior, typed unsupported for requested
+non-adapted local/runtime sources, typed unavailable for missing IDs, and
+contained failures. The installed consumer returns BGL through unchanged
+`SearchFullText` APIs and DTOs.
+
+The implementation acceptance gate is Linux Release configure/build and
+`ctest --preset conan-release`, install plus the installed `test_package`
+consumer, and clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile. Dependencies, GUI, Preferences, highlighting, other
+adapters, legacy `_FTS` compatibility, metadata/resource indexing, and private
+serialization changes are excluded. No leaf after P6-FT-8 is selected or
+ranked. Builds are unnecessary for this docs-only readiness audit.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

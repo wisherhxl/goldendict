@@ -902,6 +902,53 @@ validated article ordinal with first-expanded-record ownership, inert assembled
 text, a selected-source `.gdfts` lifecycle, and deterministic seven-format
 service dispatch. No successor is selected.
 
+The fresh post-P6-FT-7 audit revalidates the complete remaining migrated
+textual-format registry as BGL, MDict, ZIM, SLOB, and EPWING. At pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, BGL declares `_FTS`
+construction at `bgl.cc:253`, applies its full-text preference gate at
+`bgl.cc:255-259`, initializes `can_FTS` and the source-backed `_FTS` lifecycle
+at `bgl.cc:308-314`, and builds through the common full-text helper at
+`bgl.cc:475-499`. LSA, ZIP sounds, and sound directories remain resource
+backends rather than textual-definition candidates; runtime sources have no
+private per-format ingestion contract.
+
+| Candidate | Complete traversal and ownership | Materialization and complete revision | Audit decision |
+| --- | --- | --- | --- |
+| BGL | Supported entry blocks produce source-order article ordinals; every retained primary or alternate record references its owning ordinal | Bounded gzip/block and code-page decoding, sanitized HTML, one `.bgl`, embedded resources, and generated fixtures are complete | Smallest dependency-ready leaf; P6-FT-8 selected |
+| MDict | Source-order keys resolve folded redirect chains to record data | MDX plus optional MDD volumes leave redirect-target ownership and the multi-file revision unsettled | Unselected |
+| ZIM | Directory records and redirect chains resolve cluster/blob objects across article and resource namespaces | Consecutive split volumes leave namespace-sensitive ownership and the complete revision unsettled | Unselected |
+| SLOB | Source-order references can share item/bin-backed objects | Content-type filtering, stores, and reference/item ownership require a dedicated contract | Unselected |
+| EPWING | Subbook word-index records retain materialized text | Duplicate/grouped-index ownership and the complete `CATALOGS`/subbook tree remain unsettled | Unselected |
+
+P6-FT-8 adds only the private BGL adapter. Each distinct article ordinal
+referenced by at least one retained record contributes one document; an
+unreferenced ordinal contributes none. The first retained source-order record
+for the ordinal supplies the canonical headword, including when an empty
+nominal primary was discarded, and all later primary or alternate records are
+aliases that do not duplicate the document. Stable provenance is
+`bgl-index:<first-record-ordinal>:<article-ordinal>`.
+
+Searchable content is only bounded plain text produced by passing the existing
+sanitized `text/html` article through the inert assembler. Metadata,
+alias-only text, embedded resource names and bytes, image and link targets,
+raw BGL blocks or markup, and code-page control data are excluded. The
+distinct private `.gdfts` artifact snapshots the sole discovered `.bgl` as
+its complete source revision. Any container mutation or replacement,
+including an embedded-resource-only change, forces a stale rebuild because
+article and resource blocks share that physical source, while resource bytes
+remain unindexed.
+
+Without a configured index directory BGL remains typed unsupported. The eight
+adapted formats retain stable dictionary-ID aggregation, filtering, and the
+global result bound; adapted no-match dictionaries add no error, requested
+non-adapted local or runtime sources remain typed unsupported, missing IDs are
+typed unavailable, and per-dictionary failures remain contained. P6-FT-8
+changes no installed `SearchFullText` API or DTO, runtime interface, public
+capability flag, configuration, preference, dependency, GUI/Phase 8 behavior,
+or private `.gdfts` serialization. Legacy `_FTS` compatibility,
+metadata/resource indexing, highlighting, other adapters, and unrelated
+refactors are excluded. No leaf after P6-FT-8 is selected or ranked.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

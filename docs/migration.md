@@ -1409,6 +1409,41 @@ first-expanded-record ownership, inert assembled visible text, selected-source
 `.gdfts` lifecycle, deterministic seven-format dispatch, and installed-consumer
 coverage. No successor is selected.
 
+The fresh independent post-P6-FT-7 audit selects only P6-FT-8, the private BGL
+adapter. Actual migrated registration leaves exactly BGL, MDict, ZIM, SLOB,
+and EPWING as textual candidates. Pinned legacy BGL declares full-text
+construction at `bgl.cc:253`, gates it at `bgl.cc:255-259`, initializes
+`can_FTS` and its source-backed `_FTS` lifecycle at `bgl.cc:308-314`, and
+builds the index at `bgl.cc:475-499`, all at revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+
+BGL is decision-complete because every supported source-order entry block
+materializes one bounded decoded article ordinal and every retained primary or
+alternate record identifies that ordinal. P6-FT-8 creates one document per
+referenced ordinal; the first retained record owns the canonical headword and
+later records are aliases. This also defines ownership when an empty nominal
+primary is discarded. Provenance is
+`bgl-index:<first-record-ordinal>:<article-ordinal>`. Only inert assembled
+visible text from the existing sanitized `text/html` is indexed. Metadata,
+alias-only text, resources, image/link targets, raw blocks or markup, and
+code-page control data are excluded.
+
+The sole discovered `.bgl` is the complete source revision. Mutation or
+replacement, including an embedded-resource-only change, stales the private
+artifact because entries and resources share one container; resource content
+remains unindexed. MDict redirect/MDD ownership, ZIM namespace/split-volume
+ownership, SLOB reference/item content types, and EPWING grouped subbook
+ownership remain unresolved and unselected, without successor ranking.
+
+P6-FT-8 preserves installed `SearchFullText` APIs and DTOs, runtime
+interfaces, public capability flags, configuration/preferences, dependencies,
+GUI/Phase 8 behavior, and private `.gdfts` serialization. Legacy `_FTS`
+compatibility, metadata/resource indexing, highlighting, other adapters, and
+unrelated refactors are excluded. The adapted service set grows to eight with
+unchanged ordering, filtering, global bounds, typed unsupported/unavailable
+errors, no-match behavior, and per-dictionary failure containment. No leaf
+after P6-FT-8 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
