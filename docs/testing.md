@@ -1167,9 +1167,9 @@ No successor after P8-FT-1 is selected or ranked.
 
 ## Phase 8 Full-Text Query-Mode Persistence Gate
 
-P8-FT-2 is a nonvisual configuration prerequisite selected by the
+P8-FT-2 completes the nonvisual configuration prerequisite selected by the
 documentation-only post-P8-FT-1 audit. Focused core QTests and generated
-fixtures must cover migrated mode values `0/1/2/3` mapping respectively to
+fixtures cover migrated mode values `0/1/2/3` mapping respectively to
 whole words/wildcard/regular expression/plain text, exact four-mode migrated
 round trips, preservation of existing migrated `0/1/2`, and legacy XML values
 `0/1/2/3` mapping respectively to whole words/plain text/wildcard/regular
@@ -1182,7 +1182,7 @@ offscreen smoke; selection, result presentation/activation, highlighting,
 Preferences, and index availability/status/background lifecycle likewise
 require separate later gates and cannot claim coverage from P8-FT-2.
 
-The future implementation gate is the focused QTests followed by a Release
+The completed implementation gate is the focused QTests followed by a Release
 build and full `ctest --preset conan-release` with the 104-test baseline unless
 test registration creates an intentional delta. Because P8-FT-2 adds an
 installed/public enum value, run install and installed-consumer checks. Verify

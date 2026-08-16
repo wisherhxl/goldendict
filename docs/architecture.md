@@ -1504,7 +1504,7 @@ persists only whole words `0`, wildcard `1`, and regular expression `2`, while
 the installed `FullTextQueryMode` already supports all four. Reusing legacy
 ordinals directly would reinterpret existing migrated configuration.
 
-P8-FT-2 selects only the nonvisual four-mode persistence prerequisite. Future
+P8-FT-2 completes only the nonvisual four-mode persistence prerequisite. The
 implementation adds the authorized installed/public
 `FullTextSearchMode::kPlainText = 3` enumerator while preserving the enum's
 underlying type, the existing `ApplicationPreferences` field, DTO layout, and

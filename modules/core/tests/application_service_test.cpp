@@ -7,6 +7,7 @@
 #include <iterator>
 #include <string>
 #include <thread>
+#include <type_traits>
 
 #include "goldendict/core/application.h"
 #include "goldendict/core/headword_export.h"
@@ -140,6 +141,8 @@ class ApplicationServiceTest : public QObject {
     void ConfigurationRejectsMalformedArticleTabSessionsAtomically();
     void ApplicationPreferencesCompareByValue();
     void ConfigurationRoundTripsPreferencesDeterministically();
+    void ConfigurationRoundTripsAllFullTextSearchModes();
+    void ConfigurationRejectsUnknownFullTextSearchModeAtomically();
     void ConfigurationRoundTripsBoundedMainWindowGeometry();
     void ConfigurationRoundTripsBoundedMainWindowState();
     void ConfigurationRejectsMalformedPreferencesAtomically();
@@ -149,6 +152,7 @@ class ApplicationServiceTest : public QObject {
     void MigratesAllLegacyOnlineSourcesAtomically();
     void RejectsUnsupportedLegacyOnlineSourcesAtomically();
     void MissingLegacyPreferencesRetainCurrentDefaults();
+    void MigratesAllLegacyFullTextSearchModes();
     void RejectsMalformedLegacyPreferencesAtomically();
     void CurrentConfigurationTakesPrecedenceOverLegacy();
     void RejectsMalformedLegacyWithoutCreatingCurrent();
@@ -1074,6 +1078,68 @@ void ApplicationServiceTest::
     }
 }
 
+void ApplicationServiceTest::ConfigurationRoundTripsAllFullTextSearchModes() {
+    static_assert(std::is_same_v<std::underlying_type_t<FullTextSearchMode>,
+                                 std::uint8_t>);
+    const std::pair<FullTextSearchMode, std::uint8_t> modes[] = {
+        {FullTextSearchMode::kWholeWords, 0U},
+        {FullTextSearchMode::kWildcard, 1U},
+        {FullTextSearchMode::kRegularExpression, 2U},
+        {FullTextSearchMode::kPlainText, 3U},
+    };
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+
+    for (const auto& [mode, ordinal] : modes) {
+        QCOMPARE(static_cast<std::uint8_t>(mode), ordinal);
+        CoreConfiguration configuration;
+        configuration.preferences.full_text_search_mode = mode;
+        SaveConfiguration(path.string(), configuration);
+        QCOMPARE(
+            LoadConfiguration(path.string()).preferences.full_text_search_mode,
+            mode);
+        QVERIFY(ReadFile(path).find(
+                    "preference=full_text_search_mode|" +
+                    std::to_string(static_cast<unsigned int>(ordinal)) +
+                    "\n") != std::string::npos);
+
+        test::WriteBinaryFile(
+            path,
+            "goldendict-core-config-v1\n"
+            "preference=full_text_search_mode|" +
+                std::to_string(static_cast<unsigned int>(ordinal)) + "\n");
+        QCOMPARE(
+            LoadConfiguration(path.string()).preferences.full_text_search_mode,
+            mode);
+    }
+}
+
+void ApplicationServiceTest::
+    ConfigurationRejectsUnknownFullTextSearchModeAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration preserved;
+    preserved.dictionary_paths = {"/preserved"};
+    SaveConfiguration(path.string(), preserved);
+    const std::string original = ReadFile(path);
+
+    CoreConfiguration invalid = preserved;
+    invalid.preferences.full_text_search_mode =
+        static_cast<FullTextSearchMode>(4U);
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original);
+    QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\n"
+                          "preference=full_text_search_mode|4\n");
+    QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                             std::runtime_error);
+}
+
 void ApplicationServiceTest::
     ConfigurationRoundTripsBoundedMainWindowGeometry() {
     QTemporaryDir directory;
@@ -1228,7 +1294,7 @@ void ApplicationServiceTest::
         "preference=mru_tab_order|1\npreference=mru_tab_order|0\n",
         "preference=proxy_type|9\n",
         "preference=maximum_network_cache_megabytes|10241\n",
-        "preference=full_text_search_mode|3\n",
+        "preference=full_text_search_mode|4\n",
         std::string("preference=interface_language|bad\xc3\x28\n"),
         "preference=zoom_factor|nan\n",
         "preference=scan_popup_modifiers|65535\n",
@@ -1385,7 +1451,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<hideSingleTab>1</hideSingleTab>"
         "<mruTabOrder>1</mruTabOrder>"
         "<escKeyHidesMainWindow>1</escKeyHidesMainWindow>"
-        "<fullTextSearch><searchMode>2</searchMode><matchCase>1</matchCase>"
+        "<fullTextSearch><searchMode>3</searchMode><matchCase>1</matchCase>"
         "<maxDistanceBetweenWords>9</maxDistanceBetweenWords>"
         "<disabledTypes>audio|images</disabledTypes>"
         "<dialogGeometry>excluded</dialogGeometry></fullTextSearch>"
@@ -1685,6 +1751,36 @@ void ApplicationServiceTest::MissingLegacyPreferencesRetainCurrentDefaults() {
     QCOMPARE(ReadFile(legacy_path), legacy);
 }
 
+void ApplicationServiceTest::MigratesAllLegacyFullTextSearchModes() {
+    const std::pair<std::uint8_t, FullTextSearchMode> modes[] = {
+        {0U, FullTextSearchMode::kWholeWords},
+        {1U, FullTextSearchMode::kPlainText},
+        {2U, FullTextSearchMode::kWildcard},
+        {3U, FullTextSearchMode::kRegularExpression},
+    };
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto legacy_path = root / "config";
+    const auto current_path = root / "core.conf";
+
+    for (const auto& [ordinal, mode] : modes) {
+        const std::string legacy =
+            "<config><preferences><fullTextSearch><searchMode>" +
+            std::to_string(static_cast<unsigned int>(ordinal)) +
+            "</searchMode></fullTextSearch></preferences></config>";
+        test::WriteBinaryFile(legacy_path, legacy);
+        const auto migrated = LoadOrMigrateConfiguration(
+            current_path.string(), legacy_path.string(), "/indexes");
+        QCOMPARE(migrated.preferences.full_text_search_mode, mode);
+        QCOMPARE(LoadConfiguration(current_path.string())
+                     .preferences.full_text_search_mode,
+                 mode);
+        QCOMPARE(ReadFile(legacy_path), legacy);
+        std::filesystem::remove(current_path);
+    }
+}
+
 void ApplicationServiceTest::RejectsMalformedLegacyPreferencesAtomically() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -1721,7 +1817,7 @@ void ApplicationServiceTest::RejectsMalformedLegacyPreferencesAtomically() {
         "<proxyserver enabled=\"1\" useSystemProxy=\"0\"/>",
         "<proxyserver enabled=\"1\" useSystemProxy=\"0\"><type>9</type>"
         "<host>proxy</host><port>80</port></proxyserver>",
-        "<fullTextSearch><searchMode>3</searchMode></fullTextSearch>",
+        "<fullTextSearch><searchMode>4</searchMode></fullTextSearch>",
     };
     malformed.push_back("<interfaceLanguage>" + std::string(4097U, 'x') +
                         "</interfaceLanguage>");

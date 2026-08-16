@@ -231,7 +231,7 @@ void SetPreference(ApplicationPreferences& preferences, std::string_view name,
         preferences.proxy_type = ParseEnum<ProxyType>(value, 2U);
     } else if (name == "full_text_search_mode") {
         preferences.full_text_search_mode =
-            ParseEnum<FullTextSearchMode>(value, 2U);
+            ParseEnum<FullTextSearchMode>(value, 3U);
     } else if (name == "zoom_factor") {
         preferences.zoom_factor = ParseDouble(value);
     } else if (name == "help_zoom_factor") {
@@ -738,7 +738,7 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         preferences.input_phrase_length_limit == 0U ||
         preferences.input_phrase_length_limit > 1000000U ||
         preferences.maximum_dictionary_references > 9999U ||
-        static_cast<std::uint8_t>(preferences.full_text_search_mode) > 2U ||
+        static_cast<std::uint8_t>(preferences.full_text_search_mode) > 3U ||
         preferences.full_text_maximum_articles_per_dictionary == 0U ||
         preferences.full_text_maximum_articles_per_dictionary > 100000U ||
         preferences.full_text_maximum_word_distance > 1000U ||

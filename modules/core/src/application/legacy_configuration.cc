@@ -493,9 +493,23 @@ void ApplyPreference(ApplicationPreferences& p, std::string_view key,
         p.proxy_type = static_cast<ProxyType>(parsed);
     } else if (key == "fullTextSearch.searchMode") {
         const auto parsed = ParseInteger<std::uint8_t>(value);
-        if (parsed > 2U)
-            throw std::runtime_error("invalid search mode");
-        p.full_text_search_mode = static_cast<FullTextSearchMode>(parsed);
+        switch (parsed) {
+            case 0U:
+                p.full_text_search_mode = FullTextSearchMode::kWholeWords;
+                break;
+            case 1U:
+                p.full_text_search_mode = FullTextSearchMode::kPlainText;
+                break;
+            case 2U:
+                p.full_text_search_mode = FullTextSearchMode::kWildcard;
+                break;
+            case 3U:
+                p.full_text_search_mode =
+                    FullTextSearchMode::kRegularExpression;
+                break;
+            default:
+                throw std::runtime_error("invalid search mode");
+        }
     }
     if (p.scan_popup_modifiers & ~kKnownScanPopupModifierMask)
         throw std::runtime_error("invalid scan modifier mask");

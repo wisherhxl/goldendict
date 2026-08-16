@@ -1793,7 +1793,7 @@ It selects P8-FT-2, the smallest independent prerequisite: lossless four-mode
 query-mode persistence. No visible workflow leaf or successor is selected or
 ranked.
 
-P8-FT-2 authorizes only the additive installed/public
+P8-FT-2 is complete with only the additive installed/public
 `FullTextSearchMode::kPlainText = 3` enumerator. Existing migrated meanings
 remain `0` whole words, `1` wildcard and `2` regular expression; migrated `3`
 means plain text. Legacy XML's distinct `0` whole words, `1` plain text, `2`
@@ -1802,8 +1802,8 @@ underlying type, existing DTO field and layout, and scalar configuration wire
 shape remain unchanged. Unknown current or legacy values remain atomic load
 errors.
 
-The future implementation is limited to the enum, current configuration
-validation, legacy translation, and focused fixtures/tests. It changes no
+The implementation is limited to the enum, current configuration validation,
+legacy translation, and focused fixtures/tests. It changes no
 installed full-text query/result DTO, controller behavior, other persisted
 full-text field, twelve private adapters, `.gdfts`, or dependency. It has no
 request, asynchronous lifecycle, cancellation or visible behavior and excludes

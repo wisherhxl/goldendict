@@ -191,9 +191,10 @@ enum class ProxyType : std::uint8_t { kSocks5, kHttpConnect, kHttpGet };
 enum class AudioBackend : std::uint8_t { kAutomatic, kQtMultimedia, kFfmpeg };
 enum class ScanPopupWindowMode : std::uint8_t { kDefault, kPopup, kTool };
 enum class FullTextSearchMode : std::uint8_t {
-    kWholeWords,
-    kWildcard,
-    kRegularExpression
+    kWholeWords = 0,
+    kWildcard = 1,
+    kRegularExpression = 2,
+    kPlainText = 3
 };
 
 struct ApplicationPreferences {
