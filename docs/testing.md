@@ -1784,6 +1784,47 @@ sequencing and replay, safe replacement, excluded metadata, and failure no-op
 paths without changing the 109-test baseline.
 No successor after P8-FT-16 is selected or ranked.
 
+## Phase 8 Full-Text Accepted-Result Count Presentation Gate (Selected)
+
+The post-P8-FT-16 documentation audit selects only P8-FT-17. The retained
+generation-current response and atomically reset visible model make a private
+dialog-owned result count independently testable without changing Core or an
+installed interface.
+
+Focused dialog coverage must prove an initial `Articles found: 0`, immediate
+reset to zero on replacement submission, and the exact accepted model row
+count for successful and partial responses, including duplicates. Empty and
+contained-error-only accepted responses show zero. Partial counts describe
+retained rows only. Repeated accepted responses replace the count, while stale
+or cancelled completions, service replacement, detach, and teardown cannot
+overwrite the current value. Existing response/model ordering, error, partial,
+activation, and scoped-navigation coverage remains green.
+
+The focused future command is
+`ctest --preset conan-release -R '^(full_text_search_dialog_test|goldendict_full_text_dialog_smoke)$'`
+after the Release targets have been built. The full implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release`, clean
+exact-SCM `conan create`, packaged consumers, Release install, and standalone
+installed consumers. No build or compiled test is required for this
+documentation-only audit.
+
+Exact `document_id` lookup and source-dictionary targeting; initial/current
+selection, keyboard focus, and retention; decoration, tooltips, and metadata;
+empty/error/partial messaging beyond the numeric retained-result count;
+match/excerpt display; highlighting, ignore-diacritics transfer, and WebEngine
+handoff; Preferences/index policy and persistence; index readiness,
+visibility, status, progress, background lifecycle, rebuild, and failure UI;
+adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies, builds, and
+unrelated suites are excluded and remain separately decomposed without
+ranking. No public API, DTO, persistence, adapter, index, dependency, or build
+surface belongs to P8-FT-17.
+
+Evidence is migrated `full_text_search_dialog.cpp`,
+`full_text_response_model.cpp`, and focused tests plus pinned legacy
+`fulltextsearch.cc:290,448-449,570-571` and
+`fulltextsearch.ui:99-129`.
+No successor after P8-FT-17 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

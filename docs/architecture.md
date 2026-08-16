@@ -2319,6 +2319,58 @@ pins successful identity and sequencing, replay, dialog replacement, and
 failure no-op behavior without adding a public surface or test executable.
 No successor after P8-FT-16 is selected or ranked.
 
+### Phase 8 full-text accepted-result count presentation (selected)
+
+The independent post-P8-FT-16 documentation audit is pinned to clean migrated
+revision `b7cfd864b85df4a7ee36d4e08e36287c4fabfd7b` and unchanged clean
+read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It rechecks every remaining full-text workflow surface without advance ranking
+and selects exactly one smallest dependency-ready leaf, P8-FT-17: present the
+count of results retained by the generation-current accepted response.
+
+P8-FT-17 is dependency-ready because P8-FT-11 retains the complete accepted
+response, P8-FT-12 atomically attaches its ordered results to the visible list,
+and replacement submission already clears the response and model together.
+The dialog owns the private count label and derives it from the accepted model
+row count after reset; Core continues to own result ordering, duplicates,
+errors, and `partial` meaning. No public API, DTO, persistence, dependency,
+adapter, index-format, or build-system change is required.
+
+The label reads `Articles found: N`. It starts at zero and returns to zero when
+a replacement search is submitted. A generation-current accepted success or
+partial response shows the complete number of retained projected rows,
+including duplicates. Accepted empty and error-only responses show zero. A
+partial response's number describes retained results only and does not claim
+that the search was complete. Stale or cancelled completions, service
+replacement, controller detachment, and teardown cannot overwrite the current
+count.
+
+Focused acceptance covers initial zero, replacement reset, nonempty success,
+duplicate rows, empty and contained-error responses, partial responses with
+and without retained rows, repeated accepted responses, and stale/cancelled or
+detached completion safety. The existing private dialog test and application
+smoke are the focused future implementation gate; the established Linux
+Release build, full tests, package, install, and installed-consumer workflow
+remains the full gate.
+
+Exact `document_id` lookup and source-dictionary targeting; initial/current
+selection, keyboard focus, and retention; dictionary/result decoration,
+tooltips, and metadata; empty/error/partial messaging beyond the numeric
+retained-result count; match/excerpt presentation; highlighting,
+ignore-diacritics transfer, and WebEngine handoff; Preferences enablement,
+format exclusions, size/index policy, and persistence; index readiness,
+visibility, status, progress, background lifecycle, rebuild, and failure UI;
+adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies, builds, and
+unrelated parity remain separate surfaces. They are decomposed only; none is
+selected or ranked.
+
+Evidence is migrated `full_text_search_dialog.cpp`,
+`full_text_response_model.cpp`, and their focused tests, plus pinned legacy
+`fulltextsearch.cc:290,448-449,570-571` and
+`fulltextsearch.ui:99-129`, which initialize and update the visible
+`articlesFoundLabel` from retained result count.
+No successor after P8-FT-17 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

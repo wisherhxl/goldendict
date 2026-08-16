@@ -2492,6 +2492,52 @@ the existing Core-owned current-tab navigation contract. It adds no test
 executable or public/installed interface.
 No successor after P8-FT-16 is selected or ranked.
 
+### Phase 8 full-text accepted-result count presentation (selected)
+
+The independent post-P8-FT-16 audit is pinned to clean migrated revision
+`b7cfd864b85df4a7ee36d4e08e36287c4fabfd7b` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes
+every remaining full-text workflow surface without advance ranking and selects
+only P8-FT-17, private accepted-result count presentation.
+
+P8-FT-11 supplies the generation-current retained response, P8-FT-12 supplies
+the atomic ordered visible model, and replacement submission already clears
+both. P8-FT-17 therefore adds a dialog-owned `Articles found: N` label whose
+value follows the accepted model row count. It starts and resets to zero;
+accepted success and partial responses count every retained row, including
+duplicates; accepted empty and error-only responses show zero. A partial
+count describes retained results without promising completeness. Stale or
+cancelled completions, service replacement, detach, and teardown cannot
+overwrite the current count. Core retains ownership of ordering, duplicates,
+errors, and `partial` semantics.
+
+Focused acceptance covers initial and replacement zero, nonempty and duplicate
+success, empty and contained-error responses, partial responses with and
+without rows, repeated accepted responses, and stale/cancelled or detached
+completion safety. The focused future gate extends the existing private dialog
+test and application smoke. The full implementation gate remains Linux Release
+configure/build, full `ctest --preset conan-release`, clean exact-SCM
+`conan create`, packaged consumers, Release install, and standalone installed
+consumers. This documentation-only audit requires no build.
+
+Exact `document_id` lookup and source-dictionary targeting; initial/current
+selection, keyboard focus, and retention; dictionary/result decoration,
+tooltips, and metadata; empty/error/partial messaging beyond the numeric
+retained-result count; match/excerpt presentation; highlighting,
+ignore-diacritics transfer, and WebEngine handoff; Preferences enablement,
+format exclusions, size/index policy, and persistence; index readiness,
+visibility, status, progress, background lifecycle, rebuild, and failure UI;
+adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies, builds, and
+unrelated parity remain independent and unranked. P8-FT-17 changes no public
+API, DTO, persistence, adapter, index, dependency, or build-system surface.
+
+Evidence is migrated `full_text_search_dialog.cpp`,
+`full_text_response_model.cpp`, and their focused tests, plus pinned legacy
+`fulltextsearch.cc:290,448-449,570-571` and
+`fulltextsearch.ui:99-129`, where `articlesFoundLabel` is initialized and
+updated from retained result count.
+No successor after P8-FT-17 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
