@@ -1189,6 +1189,38 @@ installed/public enum value, run install and installed-consumer checks. Verify
 the exact-SCM Conan package and packaged consumers from the implementation
 revision. No successor after P8-FT-2 is selected or ranked.
 
+## Phase 8 Full-Text Per-Dictionary Limit Gate
+
+The documentation-only post-P8-FT-2 audit selects P8-FT-3 as the narrow
+installed-query prerequisite. Focused application-service tests must verify
+that the default `maximum_articles_per_dictionary = 100` preserves existing
+callers; `result_limit` retains its independent existing validation; and the
+new field independently accepts `1..100000` and rejects zero and values above
+`100000` without starting backend work.
+
+Generated multi-dictionary fixtures must prove that one dictionary is capped
+by `maximum_articles_per_dictionary`, multiple selected dictionaries may each
+contribute up to that cap, and the combined response always stops at the
+unchanged global `result_limit`. Backend requests must receive
+`min(maximum_articles_per_dictionary, remaining global result_limit)`, with no
+multiplication or derivation between limits. Existing dictionary order and
+filtering, cancellation, deadlines, unavailable/unsupported errors, contained
+backend failures and partial responses remain covered and unchanged.
+
+The installed C++ consumer must construct the expanded `FullTextQuery` and
+observe both limits; the installed C consumer is unchanged. P8-FT-3 adds no
+offscreen smoke because it has no visible behavior. Dialog controls,
+dictionary/group/muting selection, results/activation, highlighting,
+Preferences UI/policy and index visibility/status/background lifecycle require
+their own later gates and cannot claim this coverage.
+
+The implementation gate is focused tests followed by a Release configure and
+build and full `ctest --preset conan-release`, accepting only an intentional
+registered-test delta. Because P8-FT-3 expands an installed/public DTO, run
+install and installed-consumer checks and verify the exact-SCM Conan package
+and packaged consumers from the implementation revision. No successor after
+P8-FT-3 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

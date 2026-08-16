@@ -1813,6 +1813,40 @@ index status/background lifecycle, legacy `_FTS` compatibility,
 metadata/resource indexing, platform work, and unrelated Phase 8/9/10
 behavior. No successor after P8-FT-2 is selected or ranked.
 
+The fresh documentation-only post-P8-FT-2 readiness audit is pinned to
+migrated revision `fcc1eec921a5e564b9b49cefdbf00f4846d71e21` and legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks exactly the
+modeless dialog/query controls, dictionary/group/muting selection, results and
+activation, highlighting, Preferences integration, and index
+visibility/status/background lifecycle. It selects only P8-FT-3, the installed
+query DTO and aggregator prerequisite; no visible workflow leaf or later
+successor is selected or ranked.
+
+P8-FT-3 preserves `FullTextQuery::result_limit` as the unchanged global hard
+safety/output cap and adds the distinct bounded installed
+`maximum_articles_per_dictionary` field. Its default is `100` and its valid
+range is `1..100000`, matching the persisted legacy preference. The two limits
+are validated independently and are never multiplied or derived from one
+another. Each selected dictionary may contribute at most
+`maximum_articles_per_dictionary` accepted articles, while aggregation also
+stops at the existing global `result_limit`; the backend request bound is the
+minimum of the per-dictionary limit and remaining global capacity.
+
+The legacy dialog preference controls only the new per-dictionary field. The
+global limit remains an internal or advanced safety contract, not a relabeled
+legacy control. Existing callers retain behavior because the new default is no
+smaller than any valid global cap. Dictionary ordering/filtering,
+cancellation, deadlines, typed errors and partial responses remain unchanged.
+The additive public DTO member is authorized as source-compatible but requires
+consumer rebuild, install checks and exact-SCM package verification.
+
+P8-FT-3 changes no controller, persistence mapping, adapter, private `.gdfts`
+format or dependency and adds no UI. It excludes dictionary/group/muting
+policy, results/activation, highlighting, Preferences widgets or policy,
+index visibility/background lifecycle, legacy `_FTS`, metadata/resource
+indexing, platform work and unrelated migration behavior. No successor after
+P8-FT-3 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

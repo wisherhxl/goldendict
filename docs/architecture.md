@@ -1529,6 +1529,53 @@ application, index availability/status/background lifecycle, adapter or
 indexing, dependencies, platform work, and unrelated Phase 8/9/10 behavior.
 No successor after P8-FT-2 is selected or ranked.
 
+### Phase 8 full-text per-dictionary limit prerequisite
+
+The fresh documentation-only post-P8-FT-2 readiness audit is pinned to
+migrated revision `fcc1eec921a5e564b9b49cefdbf00f4846d71e21` and the
+unchanged legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It rechecks the modeless dialog/query controls, dictionary/group/muting
+selection, result presentation/activation, highlighting, Preferences
+integration, and index visibility/status/background lifecycle against the
+completed private request controller and four-mode persistence.
+
+The audit authorizes and selects P8-FT-3 as the one narrow prerequisite before
+the dialog/query-controls leaf. The installed `FullTextQuery::result_limit`
+remains the global hard safety and output cap with its existing default,
+validation and source meaning. A distinct installed
+`maximum_articles_per_dictionary` field is added with default `100` and valid
+range `1..100000`, matching the persisted legacy preference one-to-one. The
+two fields are validated independently and neither is derived from or
+multiplied by the other.
+
+For each selected dictionary, the application-service aggregator requests and
+accepts at most `min(maximum_articles_per_dictionary, remaining global
+result_limit)` articles. It stops when the unchanged global `result_limit` is
+reached. The new default preserves existing callers because the global cap is
+already at most `100`. Dictionary order and filtering, cancellation,
+deadlines, unavailable and unsupported dictionaries, contained errors and
+partial-response behavior remain unchanged.
+
+Core owns both installed query limits, their validation, and aggregation.
+Future Widgets dialog composition maps the legacy "maximum articles per
+dictionary" control only to `maximum_articles_per_dictionary`; the global cap
+remains an internal or advanced safety contract and is not relabeled as that
+legacy control. The additive DTO member is an authorized public/source-
+compatible expansion that requires consumer rebuild plus install and
+exact-SCM package verification.
+
+P8-FT-3 adds no action, dialog, query widget, selection policy, result model,
+activation, highlighting, Preferences widget, index visibility, progress or
+background lifecycle. It preserves the completed controller, four-mode
+persistence and legacy translation, all twelve adapters, private `.gdfts`
+serialization and dependencies. Legacy `_FTS` compatibility,
+metadata/resource indexing, platform work and unrelated migration behavior
+remain excluded. Dictionary/group selection still requires an explicit
+migrated group/muting policy; presentation and highlighting retain activation
+and WebEngine dependencies; Preferences and index visibility retain index
+policy and lifecycle prerequisites. No successor after P8-FT-3 is selected or
+ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
