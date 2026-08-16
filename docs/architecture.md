@@ -661,6 +661,9 @@ configured index directory tracks the sole `.dct` source revision. StarDict
 and SDict results are merged through the existing private dispatch, while
 non-adapted formats remain typed unsupported results. No installed API,
 runtime-source interface, public capability, or configuration surface changes.
+The leaf is complete with generated distinct-offset, compressed-article,
+inert-assembly, lifecycle, contained-failure, mixed-service, and installed-
+consumer coverage.
 
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core

@@ -1163,6 +1163,12 @@ implementation gate is the focused generated-fixture and mixed-service
 acceptance suite, the unchanged installed consumer, the complete Linux Release
 test/install path, and clean exact-SCM Conan package creation.
 
+P6-FT-2 is complete. SDict now contributes one private full-text document per
+distinct validated article offset, preserves first-record canonical provenance,
+indexes only inert assembled plain text, and participates in the accepted
+`.gdfts` lifecycle and deterministic mixed-service dispatch without changing
+installed or runtime-source surfaces.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

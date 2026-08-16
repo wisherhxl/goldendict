@@ -16,6 +16,7 @@ class SdictReaderTest : public QObject {
    private slots:
     void ReadsMetadataRankedMatchesAndMarkupLinks();
     void ReadsZlibAndBzip2Fields();
+    void EnumeratesDistinctFullTextArticlesWithStableProvenance();
     void InvokesScanCheckpoints();
     void RejectsCorruptAndUnsupportedCompression();
     void RejectsInvalidSignatureAndTruncatedArticle();
@@ -58,6 +59,30 @@ void SdictReaderTest::ReadsZlibAndBzip2Fields() {
         QCOMPARE(reader.LookupExact("example").front().data,
                  "compressed definition");
     }
+}
+
+void SdictReaderTest::EnumeratesDistinctFullTextArticlesWithStableProvenance() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto path = test::WriteSdictFixture(
+        root, {{"canonical", "<b>shared definition</b>"},
+               {"alias", "ignored alias data", 0U},
+               {"second", "second definition"}});
+
+    const Reader reader = Reader::Open(path);
+    const auto articles = reader.ReadFullTextArticles();
+
+    QCOMPARE(articles.size(), std::size_t{2});
+    QCOMPARE(articles[0].record_ordinal, std::size_t{0});
+    QCOMPARE(articles[0].headword, std::string("canonical"));
+    QCOMPARE(articles[0].data, std::string("<b>shared definition</b>"));
+    QCOMPARE(articles[1].record_ordinal, std::size_t{2});
+    QCOMPARE(articles[1].headword, std::string("second"));
+    QVERIFY(articles[0].article_offset != articles[1].article_offset);
+    QCOMPARE(reader.source_snapshot().size(), std::size_t{1});
+    QCOMPARE(reader.source_snapshot().front().path,
+             std::filesystem::weakly_canonical(path).string());
 }
 
 void SdictReaderTest::InvokesScanCheckpoints() {

@@ -355,7 +355,33 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path) {
         reader.records_.push_back(std::move(record));
         position += next_word;
     }
+    try {
+        reader.source_snapshot_ =
+            dictionary::CaptureSourceSnapshot({dictionary_path});
+    } catch (const dictionary::GeneratedIndexError& error) {
+        Throw(ErrorCode::kMissingFile, dictionary_path, error.what());
+    }
     return reader;
+}
+
+std::vector<FullTextArticle> Reader::ReadFullTextArticles(
+    const std::function<void()>& checkpoint) const {
+    std::vector<FullTextArticle> articles;
+    articles.reserve(records_.size());
+    std::unordered_set<std::uint32_t> seen_offsets;
+    for (std::size_t ordinal = 0U; ordinal < records_.size(); ++ordinal) {
+        if (checkpoint) {
+            checkpoint();
+        }
+        const auto& record = records_[ordinal];
+        if (!seen_offsets.insert(record.article_offset).second) {
+            continue;
+        }
+        auto article = LoadArticle(record);
+        articles.push_back({ordinal, std::move(article.headword),
+                            record.article_offset, std::move(article.data)});
+    }
+    return articles;
 }
 
 Article Reader::LoadArticle(const Record& record) const {

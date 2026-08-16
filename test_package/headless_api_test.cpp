@@ -774,6 +774,8 @@ int main() {
         WriteSdictFixture(sdict_root);
         goldendict::core::CoreConfiguration sdict_configuration;
         sdict_configuration.dictionary_paths = {sdict_root.string()};
+        sdict_configuration.index_directory =
+            (directory.path() / "sdict-indexes").string();
         auto sdict_service =
             goldendict::core::CreateDictionaryService(sdict_configuration);
         const auto sdict_catalog = sdict_service->GetCatalog();
@@ -791,6 +793,22 @@ int main() {
             sdict_response.entries.front().article.sanitized_html->find(
                 "Installed SDict definition.") == std::string::npos) {
             return Fail("installed SDict lookup failed");
+        }
+        full_text_query = {};
+        full_text_query.text = "Installed";
+        full_text_query.dictionary_filter_active = true;
+        full_text_query.dictionary_ids = {sdict_catalog.front().id};
+        const auto sdict_full_text =
+            sdict_service->SearchFullText(full_text_query);
+        if (!sdict_full_text.errors.empty() ||
+            sdict_full_text.results.size() != 1U ||
+            sdict_full_text.results.front().dictionary.id !=
+                sdict_catalog.front().id ||
+            sdict_full_text.results.front().headword != "example" ||
+            sdict_full_text.results.front().document_id.rfind("sdict-index:0:",
+                                                              0U) != 0U ||
+            sdict_full_text.results.front().matches.size() != 1U) {
+            return Fail("installed SDict full-text query failed");
         }
 
         const auto xdxf_root = directory.path() / "xdxf";

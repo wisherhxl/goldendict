@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -17,8 +18,15 @@
 namespace goldendict::core::test {
 
 struct SdictFixtureEntry {
+    SdictFixtureEntry(std::string headword_value, std::string article_value,
+                      std::optional<std::size_t> shared_index = std::nullopt)
+        : headword(std::move(headword_value)),
+          article(std::move(article_value)),
+          shared_article_index(shared_index) {}
+
     std::string headword;
     std::string article;
+    std::optional<std::size_t> shared_article_index;
 };
 
 inline void AppendLittle16(std::uint16_t value, std::string* output) {
@@ -97,16 +105,32 @@ inline std::filesystem::path WriteSdictFixture(
     const auto full_index_offset = static_cast<std::uint32_t>(file.size());
     WriteLittle32(full_index_offset, 35U, &file);
 
-    std::string index;
     std::string articles;
-    for (const auto& entry : entries) {
+    std::vector<std::uint32_t> article_offsets;
+    article_offsets.reserve(entries.size());
+    for (std::size_t ordinal = 0U; ordinal < entries.size(); ++ordinal) {
+        const auto& entry = entries[ordinal];
+        if (entry.shared_article_index.has_value()) {
+            if (*entry.shared_article_index >= ordinal) {
+                throw std::runtime_error(
+                    "SDict fixture alias must reference an earlier article");
+            }
+            article_offsets.push_back(
+                article_offsets[*entry.shared_article_index]);
+            continue;
+        }
+        article_offsets.push_back(static_cast<std::uint32_t>(articles.size()));
+        AppendSizedSdictField(entry.article, compression, &articles);
+    }
+    std::string index;
+    for (std::size_t ordinal = 0U; ordinal < entries.size(); ++ordinal) {
+        const auto& entry = entries[ordinal];
         const auto next =
             static_cast<std::uint16_t>(8U + entry.headword.size());
         AppendLittle16(next, &index);
         AppendLittle16(0U, &index);
-        AppendLittle32(static_cast<std::uint32_t>(articles.size()), &index);
+        AppendLittle32(article_offsets[ordinal], &index);
         index += entry.headword;
-        AppendSizedSdictField(entry.article, compression, &articles);
     }
     file += index;
     WriteLittle32(static_cast<std::uint32_t>(file.size()), 39U, &file);

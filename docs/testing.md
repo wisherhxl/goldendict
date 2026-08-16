@@ -529,23 +529,23 @@ public contract change. No GUI, Preferences, highlighting, other-format,
 resource-text, metadata-text, or legacy-index coverage belongs to this leaf.
 
 P6-FT-2 extends the generated SDict fixtures without downloaded data. Focused
-reader/backend coverage must exercise plain, zlib, and bzip2 articles,
+reader/backend coverage exercises plain, zlib, and bzip2 articles,
 converted markup and word links, complete full-index traversal, and multiple
-headwords sharing one article offset. It must prove one document per distinct
+headwords sharing one article offset. It proves one document per distinct
 article offset, first-record canonical headword selection, stable
 record-ordinal/article-offset document provenance, searchable bounded plain
 text from the existing article assembler, and exclusion of metadata, link
-targets, resources, and raw markup. The distinct private `.gdfts` artifact must
-cover create, reuse, `.dct`-stamp stale rebuild, corrupt rebuild, disabled
+targets, resources, and raw markup. The distinct private `.gdfts` artifact
+covers create, reuse, `.dct`-stamp stale rebuild, corrupt rebuild, disabled
 indexing when no index directory is configured, resource limits, cancellation,
 deadlines, and contained storage failures.
 
-Application-service coverage must combine generated StarDict and SDict
+Application-service coverage combines generated StarDict and SDict
 fixtures and pin deterministic merged ordering, dictionary filters, the global
 result bound, successful adapted dictionaries with no matches, typed
 unsupported errors for every requested non-adapted local or runtime source,
 typed unavailable errors for missing requested IDs, cancellation, and
-deadlines. The installed consumer must return SDict results through the
+deadlines. The installed consumer returns SDict results through the
 unchanged installed `SearchFullText` API and DTOs. The later implementation
 gate is the Linux Release configure/build and `ctest --preset conan-release`,
 library install and installed `test_package` consumer, then clean committed
