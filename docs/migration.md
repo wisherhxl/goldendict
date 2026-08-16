@@ -1847,6 +1847,46 @@ index visibility/background lifecycle, legacy `_FTS`, metadata/resource
 indexing, platform work and unrelated migration behavior. No successor after
 P8-FT-3 is selected or ranked.
 
+The fresh documentation-only post-P8-FT-3 readiness audit is pinned to
+migrated revision `bbad53ecebee93419caa3acf9c560bea128c3a83` and the
+unchanged read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks exactly the
+modeless dialog/query controls, dictionary/group/muting selection, results and
+activation, highlighting, Preferences integration, and index
+visibility/status/background lifecycle. It selects P8-FT-4, the installed
+DTO, validation, and aggregator contract prerequisite, as the sole next leaf.
+Current evidence is `dictionary_service.h:28,151-161` and
+`dictionary_service.cc:633-655,1136-1153`; pinned legacy evidence is
+`config.hh:156-176` and
+`fulltextsearch.cc:249-256,387-394,438-446`.
+
+P8-FT-4 changes `FullTextQuery::maximum_articles_per_dictionary` to
+`std::optional<std::size_t>` with an engaged default of `100`, preserving
+P8-FT-3 callers. Engaged values validate in `1..100000`; disengaged means no
+per-dictionary truncation, not a sentinel, and remains bounded by the global
+cap. `FullTextQuery::result_limit` keeps its existing caller default of `20`
+and independent global hard-cap meaning while its accepted range widens from
+`1..100` to `1..1000000`.
+
+With an engaged per-dictionary limit, Core requests at most
+`min(maximum_articles_per_dictionary, remaining global capacity)` from each
+selected dictionary. With a disengaged limit, Core requests at most the
+remaining global capacity. Aggregation always stops at `result_limit`; neither
+limit is derived from or multiplied by dictionary count or the other limit.
+The later dialog composer maps checked to the engaged persisted value,
+unchecked to `std::nullopt`, and uses a fixed application global cap of
+`100000`, independent of dictionary count and the per-dictionary value.
+
+The optional installed field and widened validation range are an authorized
+public ABI expansion requiring consumer rebuild, install checks, and exact-SCM
+package verification. P8-FT-4 adds no UI and changes no controller,
+persistence mapping, adapter, private `.gdfts` format, or dependency. It
+excludes dialog composition, dictionary/group/muting policy,
+results/activation, highlighting, Preferences widgets and index policy, index
+visibility/background lifecycle, legacy `_FTS`, metadata/resource indexing,
+platform work, and unrelated migration behavior. No successor after P8-FT-4
+is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

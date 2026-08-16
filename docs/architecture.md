@@ -1576,6 +1576,56 @@ and WebEngine dependencies; Preferences and index visibility retain index
 policy and lifecycle prerequisites. No successor after P8-FT-3 is selected or
 ranked.
 
+### Phase 8 full-text optional per-dictionary limit prerequisite
+
+The fresh documentation-only post-P8-FT-3 readiness audit is pinned to
+migrated revision `bbad53ecebee93419caa3acf9c560bea128c3a83` and the
+unchanged read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks the modeless
+dialog/query controls, dictionary/group/muting selection, result
+presentation/activation, highlighting, Preferences integration, and index
+visibility/status/background lifecycle against the completed asynchronous
+controller, four-mode persistence, and global/per-dictionary query limits.
+Migrated evidence is `dictionary_service.h:28,151-161` for the current global
+bound and DTO defaults, `dictionary_service.cc:633-655` for validation, and
+`dictionary_service.cc:1136-1153` for remaining-capacity aggregation. Pinned
+legacy evidence is `config.hh:156-176` for the separate value and enablement
+fields and `fulltextsearch.cc:249-256,387-394,438-446` for checkbox loading,
+persistence, and unchecked `-1` request behavior.
+
+The audit selects P8-FT-4 as the sole next dependency-ready leaf: the
+installed DTO, validation, and aggregator prerequisite needed to express the
+legacy per-dictionary-limit toggle without a sentinel. Core changes
+`FullTextQuery::maximum_articles_per_dictionary` to
+`std::optional<std::size_t>`, engaged by default at `100` so existing P8-FT-3
+callers retain their behavior. Engaged values validate in `1..100000`;
+disengaged means that no per-dictionary truncation is applied, while the
+independent global cap still bounds the request and response.
+
+`FullTextQuery::result_limit` remains the global hard safety and output cap.
+Its caller default remains `20`; only its accepted range widens from
+`1..100` to `1..1000000`. For an engaged per-dictionary limit, the aggregator
+requests at most the minimum of that value and the remaining global capacity.
+For a disengaged limit, it requests at most the remaining global capacity. It
+always stops at `result_limit`; neither limit is derived from or multiplied by
+the other limit or the selected dictionary count.
+
+The later Widgets dialog composer, which P8-FT-4 does not select, maps a
+checked legacy control to the engaged persisted value and an unchecked control
+to `std::nullopt`. It uses the fixed application global cap `100000`,
+independent of the selected dictionary count and per-dictionary value. Core
+owns the optional installed field, both bounds, validation, and aggregation;
+Widgets will own only that later UI-to-query mapping.
+
+P8-FT-4 is an authorized installed/public ABI expansion and requires consumer
+rebuild, install verification, and exact-SCM package verification. It changes
+no controller, persistence mapping, adapter, private `.gdfts` format, or
+dependency and adds no visible UI. Dialog composition, dictionary/group/muting
+policy, results/activation, highlighting, Preferences widgets and index
+policy, index visibility/status/background lifecycle, legacy `_FTS`,
+metadata/resource indexing, platform work, and unrelated migration behavior
+remain excluded. No successor after P8-FT-4 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
