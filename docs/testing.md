@@ -1736,6 +1736,50 @@ conventions, plus pinned legacy `fulltextsearch.cc:594-610` and
 `mainwindow.cc:3002-3014`.
 No successor after P8-FT-15 is selected or ranked.
 
+## Phase 8 Full-Text Scoped Result Navigation Connection Gate (Selected)
+
+The post-P8-FT-15 documentation audit selects only P8-FT-16. P8-FT-13 now
+delivers exact result activation, P8-FT-14 retains authoritative optional scope
+through Core navigation history/session/restoration/replay, and P8-FT-15 binds
+immutable submitted scope to the accepted response. The private MainWindow
+connection can therefore be tested without adding a public API or reading
+mutable dialog projection state.
+
+Focused MainWindow/full-text-dialog coverage must prove that activation uses
+the exact result headword as `kLookup` query and title, targets and activates
+the current article tab without creating a new or background tab, leaves the
+main query edit unchanged, captures the active MainWindow group, and copies
+ordered nonempty or authoritative-empty accepted scope unchanged. After a
+successful `OpenArticleTab`, assertions must observe tab synchronization,
+`ArticleTabSessionMutated`, and `StartNavigationLookup(..., true)` effects,
+including one navigation identity across Core history/session state, ordinary
+lookup-history emission, restoration, and replay without scope widening.
+
+Failure cases cover missing facade, dialog, or accepted context; invalid result
+activation or navigation; and tab-limit failure. Each must start no dictionary
+lookup, emit no lookup history, and cause no session mutation while preserving
+the existing MainWindow failure status. Existing P8-FT-9 through P8-FT-15
+focused and Core navigation/session tests remain green. The focused command is
+`ctest --preset conan-release -R '^goldendict_full_text_dialog_smoke$'` after
+the Release target has been built.
+
+Exact `document_id` and source-dictionary targeting, match/excerpt metadata,
+highlighting, ignore-diacritics, WebEngine handoff, selection/focus/retention,
+decoration, counts and response states, Preferences/index policy, index
+lifecycle, adapters/index formats including legacy `_FTS`, persistence beyond
+existing navigation, dependency/build work, and unrelated suites are excluded
+and remain separately decomposed without ranking. The full implementation gate
+is Linux Release configure/build, full `ctest --preset conan-release`, clean
+exact-SCM `conan create`, packaged consumers, Release install, and standalone
+installed consumers.
+
+Evidence is migrated dialog activation/context code and focused tests,
+P8-FT-7, P8-FT-13, P8-FT-14 Core tab/session coverage, P8-FT-15, and MainWindow
+current-tab `OpenArticleTab`, synchronization, session-mutation, failure-status,
+and `StartNavigationLookup` conventions, plus pinned legacy
+`fulltextsearch.cc:594-610` and `mainwindow.cc:3002-3014`.
+No successor after P8-FT-16 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

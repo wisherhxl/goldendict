@@ -2254,6 +2254,66 @@ the clicked headword and complete matching dictionary-ID list to the current
 article view without synchronizing the main query edit.
 No successor after P8-FT-15 is selected or ranked.
 
+### Phase 8 full-text scoped result navigation connection (selected)
+
+The independent post-P8-FT-15 documentation audit is pinned to clean migrated
+revision `bb7298ab1fd04c302fb74d2903d3fa92a8c63bc6` and unchanged clean
+read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It rechecks every remaining full-text workflow surface without advance ranking
+and selects exactly one smallest dependency-ready leaf, P8-FT-16: connect the
+accepted full-text result activation intent to MainWindow's existing scoped
+current-tab navigation path.
+
+P8-FT-13 supplies exact by-value result activation, P8-FT-14 preserves an
+optional authoritative dictionary scope through navigation history, session
+state, restoration, replay, and participation refresh, and P8-FT-15 associates
+the immutable submitted scope only with its generation-current accepted
+response. The earlier scope-identity gap is therefore closed. MainWindow owns
+the private presentation-event connection, navigation construction, current-
+tab mutation, existing failure status, and lookup handoff; Core continues to
+own navigation validation, bounded history/session mutation, and scoped replay.
+No public API, persistence contract, dependency, adapter, or index-format
+change is required.
+
+P8-FT-16 uses the activated result's exact headword as both navigation query
+and title. It targets and activates the current article tab, never opens a new
+or background tab, leaves the main query edit unchanged, records MainWindow's
+active group at activation, and copies the accepted response's dictionary
+scope unchanged, including authoritative empty. After successful
+`OpenArticleTab`, MainWindow follows its established order: synchronize tabs,
+emit `ArticleTabSessionMutated`, and call `StartNavigationLookup(..., true)`.
+That single navigation identity drives Core tab history, session restoration
+and replay, ordinary lookup-history emission, and the lookup request.
+
+Missing facade, dialog, or accepted activation context; invalid activation or
+navigation; and tab-limit failure start no lookup and cause no lookup-history
+or session mutation. Existing MainWindow failure-status behavior remains
+authoritative. Focused acceptance covers exact headword/query/title, current-
+tab activation without tab creation, unchanged main query text, activation-
+time group capture, ordered nonempty and authoritative-empty scope, successful
+mutation/lookup sequencing, history/session identity and replay without scope
+widening, and every failure no-op path.
+
+Exact `document_id` selection, source-dictionary targeting, match/excerpt
+metadata, highlighting, ignore-diacritics handoff, and WebEngine behavior remain
+deferred. Initial/current selection, focus, and retention; result decoration;
+counts and empty/error/partial presentation; Preferences enablement and index
+policy; index readiness, visibility, status, progress, and background
+lifecycle; adapters and index formats including legacy `_FTS`; persistence
+beyond existing navigation; dependencies and build-system work; and unrelated
+parity remain separate surfaces. These surfaces are decomposed only; none is
+selected or ranked.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp` and focused tests,
+P8-FT-7 dictionary projection, P8-FT-13 activation intent, P8-FT-14 scoped
+navigation and Core tab/session coverage, P8-FT-15 accepted-response context,
+and `main_window.cpp` current-tab `OpenArticleTab`, synchronization, session-
+mutation, failure-status, and `StartNavigationLookup` conventions. Pinned
+legacy `fulltextsearch.cc:594-610` and `mainwindow.cc:3002-3014` pass the exact
+clicked headword and complete matching dictionary-ID list to the current
+article view without synchronizing the main query edit.
+No successor after P8-FT-16 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

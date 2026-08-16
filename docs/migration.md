@@ -2434,6 +2434,61 @@ P8-FT-13, P8-FT-14, and MainWindow lookup/navigation conventions, plus pinned
 legacy `fulltextsearch.cc:594-610` and `mainwindow.cc:3002-3014`.
 No successor after P8-FT-15 is selected or ranked.
 
+### Phase 8 full-text scoped result navigation connection (selected)
+
+The independent post-P8-FT-15 audit is pinned to clean migrated revision
+`bb7298ab1fd04c302fb74d2903d3fa92a8c63bc6` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes every
+remaining full-text workflow surface without advance ranking and selects only
+P8-FT-16, the private activation-to-MainWindow scoped current-tab navigation
+connection.
+
+P8-FT-16 is dependency-ready because P8-FT-13 delivers the exact result,
+P8-FT-14 retains authoritative optional dictionary scope through Core
+navigation history/session/replay, and P8-FT-15 delivers the immutable accepted-
+response scope with activation. MainWindow owns the private signal connection,
+navigation construction, current-tab mutation, failure status, and lookup
+handoff. Core retains navigation validation, bounded history/session ownership,
+and scoped replay. No public API, persistence, dependency, adapter, index-
+format, or build-system change belongs to this leaf.
+
+The activated result's exact headword becomes the `kLookup` navigation query
+and title. Navigation targets and activates the current article tab, creates no
+new or background tab, leaves the main query edit unchanged, captures the
+active MainWindow group, and copies the accepted dictionary scope unchanged,
+including authoritative empty. A successful `OpenArticleTab` is followed in
+the existing order by tab synchronization, `ArticleTabSessionMutated`, and
+`StartNavigationLookup(..., true)`, preserving one identity for tab history,
+session restoration/replay, ordinary lookup-history emission, and lookup.
+Missing facade, dialog, or accepted context; invalid activation/navigation; or
+tab-limit failure starts no lookup and causes no lookup-history or session
+mutation while retaining existing MainWindow failure behavior.
+
+Focused acceptance covers exact headword/query/title, current-tab activation
+without tab creation, unchanged main query text, activation-time group capture,
+ordered nonempty and authoritative-empty scopes, successful sequencing,
+history/session identity and replay without widening, and missing-context,
+missing-facade/dialog, invalid-activation/navigation, and tab-limit no-ops. The
+future implementation gate is Linux Release configure/build, full
+`ctest --preset conan-release`, clean exact-SCM `conan create`, packaged
+consumers, Release install, and standalone installed consumers.
+
+Exact `document_id` and source-dictionary targeting, match/excerpt metadata,
+highlighting, ignore-diacritics, and WebEngine handoff remain deferred.
+Selection/focus/retention; decoration; counts and empty/error/partial states;
+Preferences/index policy; index readiness/visibility/status/progress/background
+lifecycle; adapters and index formats including legacy `_FTS`; persistence
+beyond existing navigation; dependencies/build work; and unrelated parity
+remain independent surfaces. They are decomposed only and no later leaf is
+selected or ranked.
+
+Evidence is migrated dialog activation/context code and focused tests,
+P8-FT-7, P8-FT-13, P8-FT-14 and its Core tab/session coverage, P8-FT-15, and
+MainWindow `OpenArticleTab`/synchronization/session-mutation/failure-status/
+`StartNavigationLookup` conventions, plus pinned legacy
+`fulltextsearch.cc:594-610` and `mainwindow.cc:3002-3014`.
+No successor after P8-FT-16 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
