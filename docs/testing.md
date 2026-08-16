@@ -871,6 +871,44 @@ refactors are excluded. No adapter or leaf after P6-FT-11 is selected or
 ranked. The registered suite remains 103 tests because the coverage extends
 the existing MDict reader and discovery executables.
 
+The post-P6-FT-11 audit selects only P6-FT-12, the private MDict adapter.
+Generated adapter fixtures must reuse the prerequisite's source-order view and
+cover direct, chained, and folded redirects; terminal, missing-target, and
+cycle outcomes; folded headword collisions; duplicate aliases; equal bytes at
+distinct physical ranges; multi-digit provenance components; and empty or
+otherwise excluded materialization. Exact expected provenance is
+`mdict-index:<first-record-ordinal>:<article-ordinal>:<terminal-key-ordinal>:<record-offset>:<record-size>`
+with canonical unsigned base-10 components.
+
+Lifecycle fixtures must cover initial creation and reuse plus mutation or
+replacement of the MDX, base MDD, and every consecutive numbered MDD;
+companion addition and removal; ordering/topology changes; resource-only MDD
+changes; corrupt rebuilds; limits; checkpoints, cancellation, and deadlines;
+and contained storage failures. No fixture may treat MDD content as a text
+document. Materialization assertions accept only inert text assembled from the
+resolved terminal's bounded decoded/styled HTML and reject redirect payloads,
+empty output, metadata, MDD resource names/bytes, alias-only documents, and
+active markup.
+
+Application-service coverage adds MDict to the ten accepted adapters and pins
+eleven-format dictionary-ID ordering, filtering, the global bound, adapted
+no-match behavior, typed unsupported for EPWING and requested non-adapted local
+or runtime sources, typed unavailable for missing IDs, and contained
+per-dictionary failures. The installed C++ consumer must return MDict through
+the unchanged `SearchFullText` API and verify exact provenance; the installed
+C consumer remains unchanged.
+
+The implementation acceptance gate is focused generated-fixture tests, Linux
+Release configure/build and `ctest --preset conan-release`, install plus the
+installed `test_package` consumer, and clean committed exact-SCM `conan create`
+with the Release Qt WebEngine host profile. This documentation-only audit runs
+no build. It changes no API/DTO, runtime interface, capability, configuration,
+Preferences, dependency, GUI/Phase 8 behavior, or `.gdfts` serialization and
+excludes implementation, legacy `_FTS`, metadata/resource indexing,
+highlighting, other adapters, dependencies, and unrelated refactors. EPWING
+remains unselected and unranked, and no leaf after P6-FT-12 is selected or
+ranked.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

@@ -1135,6 +1135,50 @@ adapter implementation, legacy `_FTS`, metadata/resource indexing,
 highlighting, other formats, dependencies, and unrelated refactors. No adapter
 or leaf after the prerequisite is selected or ranked.
 
+The fresh post-P6-FT-11 audit revalidates the complete remaining migrated
+textual registry as exactly MDict and EPWING. At pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, MDict gates full-text support at
+`mdx.cc:264-274`, owns rebuilds through the complete dictionary filename set at
+`mdx.cc:489-517`, and extracts article text at `mdx.cc:519-533`; EPWING gates
+support at `epwing.cc:138-148`, owns rebuilds through its dictionary filename
+set at `epwing.cc:372-397`, and exposes physical article page/offset at
+`epwing.cc:400-420`.
+
+| Candidate | Readiness evidence | Audit decision |
+| --- | --- | --- |
+| MDict | P6-FT-11 supplies source ordinals, explicit terminal/missing/cycle outcomes, folded redirect resolution, exact terminal key/range identity, first-source/article ownership, aliases, checkpoints, safe bounded materialization, and the complete ordered MDX/consecutive-MDD snapshot | Decision-complete; select only P6-FT-12, the private MDict adapter |
+| EPWING | Current migrated deduplication still includes the headword in `(text-file, headword, page, offset)`, and neither `CATALOGS` nor the complete mutable subbook tree is exposed as a revision | Not decision-complete; unselected and unranked |
+
+P6-FT-12 adds only the private MDict full-text adapter. It traverses the
+immutable P6-FT-11 ingestion view in `record_ordinal` order and creates one
+document for each first encounter of a distinct terminal
+`(terminal-key-ordinal, record-offset, record-size)` identity. The first
+resolving source owns the canonical headword and `first_record_ordinal`; later
+resolving keys remain aliases, and `article_ordinal` follows zero-based
+first-terminal encounter order. Each document uses the locked collision-safe
+provenance
+`mdict-index:<first-record-ordinal>:<article-ordinal>:<terminal-key-ordinal>:<record-offset>:<record-size>`,
+with every component canonical unsigned base-10 without signs or padding.
+
+Materialization converts only the resolved terminal's existing bounded
+decoded/styled HTML into inert plain text through the established private
+assembly path. Missing targets, cycles, unresolved redirect payloads, empty
+inert output, metadata, MDD names or bytes, aliases as independent documents,
+and active markup are excluded. The source revision is the discovered MDX,
+then base MDD, then every consecutive numbered MDD; mutation, replacement,
+addition, removal, or order change of any member stales the artifact, including
+resource-only MDD changes. MDD companions own no text documents.
+
+The eleven-format mixed service preserves dictionary-ID ordering and filtering,
+the global result bound, adapted no-match behavior, typed unsupported for
+EPWING and requested non-adapted local or runtime sources, typed unavailable
+for missing IDs, and contained per-dictionary failures. P6-FT-12 changes no
+installed `SearchFullText` API or DTO, runtime interface, public capability,
+configuration, preference, dependency, GUI/Phase 8 behavior, or private
+`.gdfts` serialization. This audit excludes implementation, legacy `_FTS`,
+metadata/resource indexing, highlighting, other formats, dependencies, and
+unrelated refactors. No adapter or leaf after P6-FT-12 is selected or ranked.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

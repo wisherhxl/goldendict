@@ -1623,6 +1623,47 @@ metadata/resource indexing, highlighting, other formats, dependency work, and
 unrelated refactors. No adapter or successor after this prerequisite is
 selected or ranked.
 
+The fresh post-P6-FT-11 readiness audit covers exactly the two remaining
+migrated textual candidates, MDict and EPWING, against pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Legacy MDict gates full-text at
+`mdx.cc:264-274`, rebuilds from its complete filename set at `mdx.cc:489-517`,
+and extracts text at `mdx.cc:519-533`. Legacy EPWING gates full-text at
+`epwing.cc:138-148`, rebuilds from its dictionary filename set at
+`epwing.cc:372-397`, and extracts physical page/offset at `epwing.cc:400-420`.
+
+P6-FT-11 closes MDict's prior gap completely: its immutable view provides
+source-order ordinals, terminal/missing/cycle outcomes, folded redirect
+resolution, exact terminal key/range identity, first-source and article
+ownership, aliases, checkpoints, bounded decoded/styled materialization, and
+the ordered MDX/base-MDD/consecutive-MDD snapshot. P6-FT-12 is therefore
+selected as the sole decision-complete private adapter leaf. EPWING remains
+unselected and unranked because its current physical deduplication includes
+the headword and it exposes no complete mutable `CATALOGS`/subbook-tree
+revision.
+
+P6-FT-12 consumes the prerequisite without revising it: one document per
+distinct terminal `(terminal-key-ordinal, record-offset, record-size)`, owned
+by the first resolving source, with aliases retained and zero-based
+first-encounter `article_ordinal`. Provenance is exactly
+`mdict-index:<first-record-ordinal>:<article-ordinal>:<terminal-key-ordinal>:<record-offset>:<record-size>`
+using canonical unsigned base-10 components. Only inert text assembled from
+the terminal's bounded decoded/styled HTML is indexed. Missing/cyclic
+redirects, unresolved payloads, empty output, metadata, MDD names/bytes,
+aliases as independent documents, and active markup are excluded.
+
+The complete revision remains the discovered MDX followed by base MDD and all
+consecutive numbered MDD companions. Mutation, replacement, addition, removal,
+or order change of any member, including a resource-only MDD, stales the
+artifact; MDD files never own documents. The eleven-format mixed service must
+retain ordering, filtering, global bounds, adapted no-match behavior, typed
+unsupported for EPWING and other non-adapted sources, typed unavailable for
+missing IDs, and contained failures. Public APIs/DTOs, runtime interfaces,
+capability flags, configuration/preferences, dependencies, GUI/Phase 8, and
+private `.gdfts` serialization remain unchanged. Implementation, legacy
+`_FTS`, metadata/resource indexing, highlighting, other formats, dependencies,
+and unrelated refactors are excluded. No successor after P6-FT-12 is selected
+or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
