@@ -62,6 +62,7 @@ class FullTextSearchDialog final : public QDialog {
     void CancelSearch();
     void FinishSearch(std::uint64_t generation,
                       goldendict::core::FullTextResponse response);
+    void ResetResults(goldendict::core::FullTextResponse response);
     void ActivateResult(const QModelIndex& index);
     void UpdateResultCount();
     void RestoreIdleState();

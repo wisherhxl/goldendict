@@ -44,6 +44,8 @@ FullTextSearchDialog::FullTextSearchDialog(
 
     results_ = new QListView(this);
     results_->setObjectName(QStringLiteral("fullTextSearchResults"));
+    results_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    results_->setSelectionMode(QAbstractItemView::SingleSelection);
     results_->setModel(response_model_);
     results_->installEventFilter(this);
     layout->addWidget(results_);
@@ -133,7 +135,7 @@ void FullTextSearchDialog::SubmitSearch() {
     query.dictionary_ids = projected_query_.dictionary_ids;
     query.dictionary_filter_active = projected_query_.dictionary_filter_active;
     response_.reset();
-    response_model_->Reset({});
+    ResetResults({});
     UpdateResultCount();
     accepted_activation_scope_.reset();
     pending_activation_scope_ =
@@ -161,9 +163,15 @@ void FullTextSearchDialog::FinishSearch(
     accepted_activation_scope_ = std::move(pending_activation_scope_);
     pending_activation_scope_.reset();
     response_ = std::move(response);
-    response_model_->Reset(*response_);
+    ResetResults(*response_);
     UpdateResultCount();
     RestoreIdleState();
+}
+
+void FullTextSearchDialog::ResetResults(
+    goldendict::core::FullTextResponse response) {
+    response_model_->Reset(std::move(response));
+    results_->selectionModel()->clear();
 }
 
 void FullTextSearchDialog::ActivateResult(const QModelIndex& index) {

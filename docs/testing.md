@@ -1911,40 +1911,41 @@ the P8-FT-10/P8-FT-11/P8-FT-12 model ownership, synchronization, and attachment,
 plus pinned legacy `fulltextsearch.cc:690-721`.
 No successor after P8-FT-19 is selected or ranked.
 
-## Phase 8 Full-Text Result-List Selection Gate (Selected)
+## Phase 8 Full-Text Result-List Selection Gate (Complete)
 
-The post-P8-FT-19 documentation audit selects only P8-FT-20. Completed model
+P8-FT-20 is complete. The post-P8-FT-19 documentation audit selected only
+P8-FT-20. Completed model
 ownership, accepted-response synchronization, visible list attachment, and
 current-row activation make the private result list's selection and reset
 contract independently testable without changing Core or an installed
 interface.
 
-Focused dialog coverage must prove that the list has at most one current and
+Focused dialog coverage proves that the list has at most one current and
 selected row; initial, empty, and error-only states have neither; and a
 generation-current successful or partial response does not select a row or
 steal keyboard focus. Ordinary user interaction may establish one current and
-selected row. Starting a replacement must clear rows, current index, and
-selection atomically, and its accepted response must remain unselected even
+selected row. Starting a replacement clears rows, current index, and selection
+atomically, and its accepted response remains unselected even
 when the same headword or row position returns. Stale and cancelled completions
-must not restore selection, current index, or focus.
+do not restore selection, current index, or focus.
 
-Coverage must separately begin with the list and another widget owning keyboard
-focus and prove that reset preserves that ownership. Existing click, Return,
+Coverage separately begins with the list and another widget owning keyboard
+focus and proves that reset preserves that ownership. Existing click, Return,
 and Enter activation remains unchanged and requires a valid current row.
 Existing ordered projection, duplicate rows, display/edit/tooltip roles,
 complete metadata, accepted-generation synchronization, retained-result count,
 service replacement, controller detachment, and teardown coverage remains
 green.
 
-The focused future command is
+The focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The full implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. P8-FT-20 adds no test executable or
 public/installed interface, so the registered Release baseline remains 109
-tests. No build or compiled test is required for this documentation-only audit.
+tests.
 
 Exact `document_id` navigation and source-dictionary targeting; non-selection
 decoration, columns, delegates, icons, and additional metadata roles;

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QItemSelectionModel>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListView>
@@ -237,6 +238,7 @@ class FullTextSearchDialogTest final : public QObject {
 
    private slots:
     void SubmitsExactComposedAndProjectedQueryAndRetainsResponse();
+    void KeepsSelectionAndFocusDeterministicAcrossAcceptedResponses();
     void RetainsExactAcceptedScopeForByValueActivation();
     void ProjectsCompleteCurrentResponsesAndReplacesRowsAtomically();
     void ActivatesExactCurrentResultOnceFromMouseAndKeyboard();
@@ -274,6 +276,8 @@ void FullTextSearchDialogTest::
     QTest::mouseClick(results->viewport(), Qt::LeftButton, Qt::NoModifier,
                       center);
     QCOMPARE(activations.size(), std::size_t{1});
+    QCOMPARE(results->currentIndex(), index);
+    QCOMPARE(results->selectionModel()->selectedRows(), QModelIndexList{index});
     CompareIntent(activations.back(), expected, false, {});
 
     results->setCurrentIndex(index);
@@ -412,7 +416,11 @@ void FullTextSearchDialogTest::
             .size(),
         1);
     QCOMPARE(results->model(), response_model);
+    QCOMPARE(results->selectionBehavior(), QAbstractItemView::SelectRows);
+    QCOMPARE(results->selectionMode(), QAbstractItemView::SingleSelection);
     QCOMPARE(response_model->rowCount(), 0);
+    QVERIFY(!results->currentIndex().isValid());
+    QVERIFY(!results->selectionModel()->hasSelection());
     dialog.show();
     QTRY_VERIFY(results->isVisible());
     QVERIFY(search->isEnabled());
@@ -455,7 +463,106 @@ void FullTextSearchDialogTest::
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 1"));
     QCOMPARE(response_model->data(response_model->index(0, 0)).toString(),
              QStringLiteral("retained"));
+    QVERIFY(!results->currentIndex().isValid());
+    QVERIFY(!results->selectionModel()->hasSelection());
     QCOMPARE(dialog.generation_, 1U);
+}
+
+void FullTextSearchDialogTest::
+    KeepsSelectionAndFocusDeterministicAcrossAcceptedResponses() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog dialog(preferences, &service);
+    auto* query =
+        dialog.findChild<QLineEdit*>(QStringLiteral("fullTextQueryText"));
+    auto* model = ResponseModel(&dialog);
+    auto* results = Results(&dialog);
+    QVERIFY(query != nullptr);
+    QVERIFY(model != nullptr);
+    QVERIFY(results != nullptr);
+    dialog.show();
+    QTRY_VERIFY(results->isVisible());
+
+    const auto finish_current =
+        [&dialog](goldendict::core::FullTextResponse response) {
+            dialog.active_generation_ = ++dialog.generation_;
+            dialog.FinishSearch(dialog.generation_, std::move(response));
+        };
+    const auto verify_unselected = [results]() {
+        QVERIFY(!results->currentIndex().isValid());
+        QVERIFY(!results->selectionModel()->hasSelection());
+        QCOMPARE(results->selectionModel()->selectedRows().size(), 0);
+    };
+
+    query->setFocus();
+    QTRY_VERIFY(query->hasFocus());
+    goldendict::core::FullTextResponse successful;
+    successful.results = {MakeResult("first", "same", 1U),
+                          MakeResult("second", "second", 2U)};
+    finish_current(successful);
+    QCOMPARE(model->rowCount(), 2);
+    verify_unselected();
+    QVERIFY(query->hasFocus());
+
+    results->setCurrentIndex(model->index(0, 0));
+    QCOMPARE(results->currentIndex(), model->index(0, 0));
+    const QModelIndexList first_selection{model->index(0, 0)};
+    QCOMPARE(results->selectionModel()->selectedRows(), first_selection);
+    results->setCurrentIndex(model->index(1, 0));
+    QCOMPARE(results->currentIndex(), model->index(1, 0));
+    const QModelIndexList second_selection{model->index(1, 0)};
+    QCOMPARE(results->selectionModel()->selectedRows(), second_selection);
+
+    results->setFocus();
+    QTRY_VERIFY(results->hasFocus());
+    service.response_.partial = true;
+    service.response_.results = {MakeResult("first", "same", 1U)};
+    query->setText(QStringLiteral("replacement"));
+    dialog.SubmitSearch();
+    QCOMPARE(model->rowCount(), 0);
+    verify_unselected();
+    QVERIFY(results->hasFocus());
+    QVERIFY(service.WaitForQueries(1U));
+    QTRY_COMPARE(model->rowCount(), 1);
+    QVERIFY(dialog.response_->partial);
+    QCOMPARE(model->data(model->index(0, 0)).toString(),
+             QStringLiteral("same"));
+    verify_unselected();
+    QVERIFY(results->hasFocus());
+
+    query->setFocus();
+    QTRY_VERIFY(query->hasFocus());
+    goldendict::core::FullTextResponse error_only;
+    error_only.errors.push_back(
+        {goldendict::core::FullTextErrorCode::kMalformedIndex, "broken",
+         "error"});
+    finish_current(error_only);
+    QCOMPARE(model->rowCount(), 0);
+    verify_unselected();
+    QVERIFY(query->hasFocus());
+
+    goldendict::core::FullTextResponse empty;
+    finish_current(empty);
+    QCOMPARE(model->rowCount(), 0);
+    verify_unselected();
+    QVERIFY(query->hasFocus());
+
+    results->setFocus();
+    QTRY_VERIFY(results->hasFocus());
+    query->setText(QStringLiteral("blocked"));
+    dialog.SubmitSearch();
+    QVERIFY(service.WaitForQueries(2U));
+    QCOMPARE(model->rowCount(), 0);
+    verify_unselected();
+    QVERIFY(results->hasFocus());
+    dialog.CancelSearch();
+    QVERIFY(service.WaitForCancellation());
+    service.ReleaseCancelledRequest();
+    QTest::qWait(20);
+    QCoreApplication::processEvents();
+    QCOMPARE(model->rowCount(), 0);
+    verify_unselected();
+    QVERIFY(results->hasFocus());
 }
 
 void FullTextSearchDialogTest::RetainsExactAcceptedScopeForByValueActivation() {
@@ -700,6 +807,8 @@ void FullTextSearchDialogTest::
     QCOMPARE(dialog.response_->results.front().headword,
              std::string("current"));
     QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
+    QVERIFY(!Results(&dialog)->currentIndex().isValid());
+    QVERIFY(!Results(&dialog)->selectionModel()->hasSelection());
     QCOMPARE(ArticlesFound(&dialog)->text(),
              QStringLiteral("Articles found: 1"));
     QCOMPARE(ResponseModel(&dialog)

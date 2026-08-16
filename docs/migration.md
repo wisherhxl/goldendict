@@ -2643,13 +2643,15 @@ and focused tests. It adds no test executable or public/installed interface,
 and the registered Release baseline remains 109 tests.
 No successor after P8-FT-19 is selected or ranked.
 
-### Phase 8 full-text result-list selection contract (selected)
+### Phase 8 full-text result-list selection contract (complete)
 
 The independent post-P8-FT-19 audit is pinned to clean migrated revision
 `a60f258e9226ebc7e1ee2115055d2ee531dc097a` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes
 every remaining full-text workflow surface without advance ranking and selects
-only P8-FT-20, the private result-list selection and reset contract.
+only P8-FT-20, the private result-list selection and reset contract. P8-FT-20
+is complete through dialog-owned deterministic reset behavior and focused
+tests.
 
 P8-FT-10 owns the immutable result snapshot, P8-FT-11 synchronizes only the
 accepted response, P8-FT-12 attaches it to one visible `QListView`, and P8-FT-13
@@ -2668,18 +2670,17 @@ activation remains unchanged and still requires a valid current row. The
 response model continues to own only ordered result data; Core continues to own
 result identity and navigation semantics.
 
-Focused future acceptance extends `full_text_search_dialog_test` for initial,
+Focused acceptance extends `full_text_search_dialog_test` for initial,
 successful, partial, empty, and error-only responses; explicit user selection;
 replacement clearing and same-row non-retention; stale and cancelled
 completion suppression; list-owned and other-widget-owned focus; and unchanged
-activation. The focused future command is
+activation. The focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The full implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
-standalone installed C and C++ consumers. This documentation-only audit
-requires no build or test.
+standalone installed C and C++ consumers.
 
 Exact `document_id` navigation and source-dictionary targeting; non-selection
 decoration, columns, delegates, icons, and additional metadata roles;
