@@ -949,6 +949,11 @@ or private `.gdfts` serialization. Legacy `_FTS` compatibility,
 metadata/resource indexing, highlighting, other adapters, and unrelated
 refactors are excluded. No leaf after P6-FT-8 is selected or ranked.
 
+P6-FT-8 is complete. BGL now contributes one private full-text document per
+referenced nonempty article ordinal with first-retained-record ownership,
+inert assembled text, a sole-container `.gdfts` lifecycle, and deterministic
+eight-format service dispatch. No successor is selected.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

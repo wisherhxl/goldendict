@@ -147,3 +147,6 @@ reference corpora, and concrete adapters remain private to `goldendict_core`;
 private search dependencies do not enter the exported dependency graph. The
 virtual-interface addition is an intentional ABI change identified by Conan's
 exact SCM and package revisions.
+P6-FT-8 is complete. BGL now participates through the same private boundary
+with referenced-article deduplication, first-retained-record ownership, inert
+assembled text, and a sole-container source revision. No successor is selected.

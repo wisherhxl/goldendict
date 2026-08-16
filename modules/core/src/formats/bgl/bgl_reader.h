@@ -10,6 +10,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include "../../dictionary/generated_index.h"
 #include "../../dictionary/ordered_headword_index.h"
 
 namespace goldendict::core::formats::bgl {
@@ -38,6 +39,13 @@ struct Article {
     std::string data;
 };
 
+struct FullTextArticle {
+    std::string headword;
+    std::string data;
+    std::size_t record_ordinal = 0;
+    std::size_t article_ordinal = 0;
+};
+
 class Reader final {
    public:
     static Reader Open(const std::filesystem::path& path);
@@ -51,6 +59,12 @@ class Reader final {
     const std::filesystem::path& dictionary_path() const noexcept {
         return path_;
     }
+
+    const dictionary::SourceSnapshot& source_snapshot() const noexcept {
+        return source_snapshot_;
+    }
+
+    std::vector<FullTextArticle> ReadFullTextArticles() const;
 
     std::vector<Article> LookupExact(
         std::string_view word,
@@ -88,6 +102,7 @@ class Reader final {
     dictionary::OrderedHeadwordIndex enumeration_index_;
     std::vector<std::string> articles_;
     std::unordered_map<std::string, std::string> resources_;
+    dictionary::SourceSnapshot source_snapshot_;
 };
 }  // namespace goldendict::core::formats::bgl
 #endif

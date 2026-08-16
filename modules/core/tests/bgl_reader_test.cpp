@@ -10,6 +10,7 @@ class BglReaderTest : public QObject {
     Q_OBJECT
    private slots:
     void ReadsMetadataEntriesAliasesAndResources();
+    void TraversesFullTextArticlesWithStableOwnership();
     void DecodesDeclaredLegacyCharset();
     void RejectsCorruption();
 };
@@ -34,6 +35,30 @@ void BglReaderTest::ReadsMetadataEntriesAliasesAndResources() {
                 "<b>definition</b>") != std::string::npos);
     QVERIFY(reader.Resource("pixel.png") != nullptr);
     QCOMPARE(*reader.Resource("pixel.png"), "png-data");
+}
+
+void BglReaderTest::TraversesFullTextArticlesWithStableOwnership() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const Reader reader = Reader::Open(test::WriteBglFullTextFixture(
+        std::filesystem::path(directory.path().toStdString())));
+
+    QCOMPARE(reader.article_count(), std::size_t{5});
+    QCOMPARE(reader.headword_count(), std::size_t{6});
+    const auto articles = reader.ReadFullTextArticles();
+    QCOMPARE(articles.size(), std::size_t{3});
+    QCOMPARE(articles[0].headword, "first-owner");
+    QCOMPARE(articles[0].record_ordinal, std::size_t{0});
+    QCOMPARE(articles[0].article_ordinal, std::size_t{0});
+    QCOMPARE(articles[1].headword, "third-owner");
+    QCOMPARE(articles[1].record_ordinal, std::size_t{3});
+    QCOMPARE(articles[1].article_ordinal, std::size_t{2});
+    QCOMPARE(articles[2].headword, "fourth-owner");
+    QCOMPARE(articles[2].record_ordinal, std::size_t{4});
+    QCOMPARE(articles[2].article_ordinal, std::size_t{3});
+    QCOMPARE(reader.LookupExact("fourth-alias").size(), std::size_t{1});
+    QCOMPARE(reader.LookupExact("empty-article").size(), std::size_t{1});
+    QCOMPARE(reader.source_snapshot().size(), std::size_t{1});
 }
 
 void BglReaderTest::DecodesDeclaredLegacyCharset() {

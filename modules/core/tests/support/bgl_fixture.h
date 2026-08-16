@@ -7,8 +7,17 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace goldendict::core::test {
+inline void AppendBglBig(std::size_t value, std::size_t width,
+                         std::string* data) {
+    for (std::size_t shift = width; shift > 0U; --shift) {
+        data->push_back(
+            static_cast<char>((value >> ((shift - 1U) * 8U)) & 0xffU));
+    }
+}
+
 inline void AppendBglBlock(unsigned type, std::string_view data,
                            std::string* stream) {
     if (data.size() <= 11U)
@@ -20,6 +29,35 @@ inline void AppendBglBlock(unsigned type, std::string_view data,
         stream->push_back(static_cast<char>(data.size()));
     }
     stream->append(data);
+}
+
+inline void AppendBglEntry(unsigned type, std::string_view primary,
+                           std::string_view definition,
+                           const std::vector<std::string_view>& alternates,
+                           std::string* stream) {
+    std::string entry;
+    if (type == 11U) {
+        entry.push_back('\0');
+        AppendBglBig(primary.size(), 4U, &entry);
+        entry.append(primary);
+        AppendBglBig(alternates.size(), 4U, &entry);
+        for (const auto alternate : alternates) {
+            AppendBglBig(alternate.size(), 4U, &entry);
+            entry.append(alternate);
+        }
+        AppendBglBig(definition.size(), 4U, &entry);
+        entry.append(definition);
+    } else {
+        entry.push_back(static_cast<char>(primary.size()));
+        entry.append(primary);
+        AppendBglBig(definition.size(), 2U, &entry);
+        entry.append(definition);
+        for (const auto alternate : alternates) {
+            entry.push_back(static_cast<char>(alternate.size()));
+            entry.append(alternate);
+        }
+    }
+    AppendBglBlock(type, entry, stream);
 }
 
 inline std::filesystem::path WriteBglStream(
@@ -83,6 +121,32 @@ inline std::filesystem::path WriteWindows1251BglFixture(
     AppendBglBlock(1U, entry, &stream);
     stream.push_back(4);
     return WriteBglStream(directory, stream, "cp1251.bgl");
+}
+
+inline std::filesystem::path WriteBglFullTextFixture(
+    const std::filesystem::path& directory,
+    std::string_view first_definition =
+        "<b>visible searchable definition</b>"
+        "<a href=\"link-target-secret\">safe label</a>"
+        "<img src=\"resource-name-secret.png\">",
+    std::string_view resource_data = "resource-bytes-secret") {
+    std::string stream;
+    AppendBglBlock(3U, std::string("\0\1Metadata Name Secret", 22U), &stream);
+    AppendBglBlock(3U, std::string("\0\21\0\0\200", 5U), &stream);
+    AppendBglEntry(1U, "", first_definition, {"first-owner"}, &stream);
+    AppendBglEntry(7U, "empty-article", "", {"empty-alias"}, &stream);
+    AppendBglEntry(10U, "third-owner", "third layout searchable", {}, &stream);
+    AppendBglEntry(11U, "fourth-owner", "fourth layout searchable",
+                   {"fourth-alias"}, &stream);
+    AppendBglEntry(1U, "", "unreferenced article secret", {""}, &stream);
+    std::string resource;
+    constexpr std::string_view resource_name = "resource-name-secret.png";
+    resource.push_back(static_cast<char>(resource_name.size()));
+    resource.append(resource_name);
+    resource.append(resource_data);
+    AppendBglBlock(2U, resource, &stream);
+    stream.push_back(4);
+    return WriteBglStream(directory, stream, "full-text.bgl");
 }
 }  // namespace goldendict::core::test
 #endif

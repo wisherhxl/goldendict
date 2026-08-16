@@ -715,7 +715,7 @@ alias-deduplication, inert-assembly, lifecycle, contained-failure,
 seven-format service, Release build/install/package, and installed C/C++
 consumer coverage. No successor is selected.
 
-The selected P6-FT-8 BGL implementation leaf extends only generated fixtures.
+The accepted P6-FT-8 BGL implementation leaf extends only generated fixtures.
 Reader/backend tests must prove complete source-order traversal of supported
 entry-block layouts, one document per referenced article ordinal, first-
 retained-record canonical ownership, primary/alternate alias deduplication,
@@ -744,7 +744,7 @@ consumer, and clean committed exact-SCM `conan create` with the Release Qt
 WebEngine host profile. Dependencies, GUI, Preferences, highlighting, other
 adapters, legacy `_FTS` compatibility, metadata/resource indexing, and private
 serialization changes are excluded. No leaf after P6-FT-8 is selected or
-ranked. Builds are unnecessary for this docs-only readiness audit.
+ranked.
 
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen

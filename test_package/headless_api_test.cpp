@@ -969,6 +969,7 @@ int main() {
         WriteBglFixture(bgl_root);
         goldendict::core::CoreConfiguration bgl_configuration;
         bgl_configuration.dictionary_paths = {bgl_root.string()};
+        bgl_configuration.index_directory = (bgl_root / "indexes").string();
         auto bgl_service =
             goldendict::core::CreateDictionaryService(bgl_configuration);
         const auto bgl_catalog = bgl_service->GetCatalog();
@@ -993,6 +994,20 @@ int main() {
             bgl_resource.size());
         if (bgl_resource_text != "bgl-png") {
             return Fail("installed BGL resource retrieval failed");
+        }
+        full_text_query = {};
+        full_text_query.text = "Installed";
+        full_text_query.dictionary_filter_active = true;
+        full_text_query.dictionary_ids = {bgl_catalog.front().id};
+        const auto bgl_full_text = bgl_service->SearchFullText(full_text_query);
+        if (!bgl_full_text.errors.empty() ||
+            bgl_full_text.results.size() != 1U ||
+            bgl_full_text.results.front().dictionary.id !=
+                bgl_catalog.front().id ||
+            bgl_full_text.results.front().headword != "example" ||
+            bgl_full_text.results.front().document_id != "bgl-index:0:0" ||
+            bgl_full_text.results.front().matches.size() != 1U) {
+            return Fail("installed BGL full-text query failed");
         }
 
         const auto mdict_root = directory.path() / "mdict";

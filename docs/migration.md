@@ -1444,6 +1444,12 @@ unchanged ordering, filtering, global bounds, typed unsupported/unavailable
 errors, no-match behavior, and per-dictionary failure containment. No leaf
 after P6-FT-8 is selected or ranked.
 
+P6-FT-8 is complete. BGL now contributes one private full-text document per
+referenced nonempty article ordinal with first-retained-record ownership,
+exact source/article provenance, inert assembled text, a complete sole-`.bgl`
+revision, and deterministic eight-format service dispatch. No successor is
+selected.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

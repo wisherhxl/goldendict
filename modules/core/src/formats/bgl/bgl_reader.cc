@@ -383,7 +383,29 @@ Reader Reader::Open(const std::filesystem::path& path) {
         Throw(ErrorCode::kInvalidDictionary, path, "BGL contains no entries");
     if (reader.metadata_.name.empty())
         reader.metadata_.name = path.stem().string();
+    try {
+        reader.source_snapshot_ = dictionary::CaptureSourceSnapshot({path});
+    } catch (const dictionary::GeneratedIndexError& error) {
+        Throw(ErrorCode::kMissingFile, path, error.what());
+    }
     return reader;
+}
+
+std::vector<FullTextArticle> Reader::ReadFullTextArticles() const {
+    std::vector<FullTextArticle> result;
+    std::unordered_set<std::size_t> seen;
+    result.reserve(articles_.size());
+    for (std::size_t record_ordinal = 0; record_ordinal < records_.size();
+         ++record_ordinal) {
+        const auto& record = records_[record_ordinal];
+        if (!seen.insert(record.article).second ||
+            articles_[record.article].empty()) {
+            continue;
+        }
+        result.push_back({record.word, articles_[record.article],
+                          record_ordinal, record.article});
+    }
+    return result;
 }
 
 std::vector<const Reader::Record*> Reader::Ranked(
