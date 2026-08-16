@@ -138,5 +138,115 @@ inline std::filesystem::path WriteSlobFixture(
         throw std::runtime_error("cannot write SLOB fixture");
     return path;
 }
+
+inline std::filesystem::path WriteSlobFullTextFixture(
+    const std::filesystem::path& directory,
+    std::string_view first_article =
+        "<b>visible searchable definition</b>"
+        "<a href=\"link-target-secret\">safe label</a>"
+        "<span class=\"raw-markup-secret\">shown text</span>",
+    std::string_view resource_bytes = "resource-bytes-secret",
+    std::string_view compression = "none") {
+    std::filesystem::create_directories(directory);
+    std::string file("\x21\x2d\x31SLOB\x1f", 8U);
+    file.append(16U, '\0');
+    SlobTiny("UTF-8", &file);
+    SlobTiny(compression, &file);
+    file.push_back(2);
+    SlobTiny("name", &file);
+    SlobTiny("Fixture SLOB", &file);
+    SlobTiny("description", &file);
+    SlobTiny("metadata-secret", &file);
+    file.push_back(3);
+    SlobText("text/html; charset=utf-8", &file);
+    SlobText("text/plain", &file);
+    SlobText("image/png", &file);
+
+    struct Ref {
+        std::string key;
+        std::uint32_t item;
+        std::uint16_t bin;
+    };
+
+    const std::vector<Ref> refs = {
+        {"resource-name-secret.png", 0U, 2U},
+        {"first-owner", 0U, 0U},
+        {"first-alias-secret", 0U, 0U},
+        {"plain-owner", 0U, 1U},
+        {"same-bin-other-item", 1U, 0U},
+        {"plain-alias-secret", 0U, 1U},
+        {"owner-2", 2U, 0U},
+        {"owner-3", 3U, 0U},
+        {"owner-4", 4U, 0U},
+        {"owner-5", 5U, 0U},
+        {"owner-6", 6U, 0U},
+        {"owner-7", 7U, 0U},
+        {"owner-8", 8U, 0U},
+        {"owner-9", 9U, 0U},
+        {"owner-10", 10U, 0U},
+        {"owner-10-alias-secret", 10U, 0U},
+    };
+    SlobBe32(static_cast<std::uint32_t>(refs.size()), &file);
+    const auto store_field = file.size();
+    SlobBe64(0U, &file);
+    const auto size_field = file.size();
+    SlobBe64(0U, &file);
+    SlobBe32(static_cast<std::uint32_t>(refs.size()), &file);
+    const auto ref_table = file.size();
+    file.resize(file.size() + refs.size() * 8U, '\0');
+    const auto ref_base = file.size();
+    for (std::size_t i = 0; i < refs.size(); ++i) {
+        SlobSet64(file.size() - ref_base, ref_table + i * 8U, &file);
+        SlobText(refs[i].key, &file);
+        SlobBe32(refs[i].item, &file);
+        SlobBe16(refs[i].bin, &file);
+        SlobTiny("", &file);
+    }
+
+    const auto store = file.size();
+    constexpr std::size_t kItemCount = 11U;
+    SlobBe32(kItemCount, &file);
+    const auto item_table = file.size();
+    file.resize(file.size() + kItemCount * 8U, '\0');
+    const auto item_base = file.size();
+    for (std::size_t item = 0; item < kItemCount; ++item) {
+        SlobSet64(file.size() - item_base, item_table + item * 8U, &file);
+        std::vector<std::string> values;
+        std::vector<unsigned char> types;
+        if (item == 0U) {
+            values = {std::string(first_article),
+                      "plain visible <escaped> & content",
+                      std::string(resource_bytes)};
+            types = {0U, 1U, 2U};
+        } else {
+            values = {"unique searchable article " + std::to_string(item)};
+            types = {0U};
+        }
+        std::string data;
+        std::size_t value_offset = 0;
+        for (const auto& value : values) {
+            SlobBe32(value_offset, &data);
+            value_offset += 4U + value.size();
+        }
+        for (const auto& value : values) {
+            SlobBe32(static_cast<std::uint32_t>(value.size()), &data);
+            data += value;
+        }
+        const auto stored = SlobCompress(data, compression);
+        SlobBe32(static_cast<std::uint32_t>(values.size()), &file);
+        for (const auto type : types)
+            file.push_back(static_cast<char>(type));
+        SlobBe32(static_cast<std::uint32_t>(stored.size()), &file);
+        file += stored;
+    }
+    SlobSet64(store, store_field, &file);
+    SlobSet64(file.size(), size_field, &file);
+    const auto path = directory / "fixture.slob";
+    std::ofstream output(path, std::ios::binary);
+    output.write(file.data(), static_cast<std::streamsize>(file.size()));
+    if (!output)
+        throw std::runtime_error("cannot write full-text SLOB fixture");
+    return path;
+}
 }  // namespace goldendict::core::test
 #endif

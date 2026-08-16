@@ -298,6 +298,7 @@ Reader Reader::Open(const std::filesystem::path& path) {
         return item_cache.emplace(item, std::move(result)).first->second;
     };
     std::map<std::pair<std::uint32_t, std::uint16_t>, std::size_t> articles;
+    std::size_t record_ordinal = 0;
     for (const auto& reference : references) {
         const auto& values = bins(reference.item);
         if (reference.bin >= values.size())
@@ -318,14 +319,20 @@ Reader Reader::Open(const std::filesystem::path& path) {
             const auto key = std::make_pair(reference.item, reference.bin);
             auto [entry, inserted] =
                 articles.emplace(key, reader.articles_.size());
-            if (inserted)
+            if (inserted) {
+                const std::size_t article_ordinal = reader.articles_.size();
                 reader.articles_.push_back(
                     types[type].rfind("text/plain", 0U) == 0U
                         ? "<pre>" + EscapeHtml(decoded) + "</pre>"
                         : decoded);
+                reader.full_text_articles_.push_back(
+                    {reference.key, reader.articles_.back(), record_ordinal,
+                     article_ordinal, reference.item, reference.bin});
+            }
             reader.records_.push_back({reference.key,
                                        foundation::FoldForLookup(reference.key),
                                        entry->second});
+            ++record_ordinal;
         } else {
             reader.resources_.emplace(reference.key, value);
         }
@@ -334,7 +341,16 @@ Reader Reader::Open(const std::filesystem::path& path) {
         Throw(ErrorCode::kInvalidDictionary, path, "SLOB contains no articles");
     if (reader.metadata_.name.empty())
         reader.metadata_.name = path.stem().string();
+    try {
+        reader.source_snapshot_ = dictionary::CaptureSourceSnapshot({path});
+    } catch (const dictionary::GeneratedIndexError& error) {
+        Throw(ErrorCode::kMissingFile, path, error.what());
+    }
     return reader;
+}
+
+std::vector<FullTextArticle> Reader::ReadFullTextArticles() const {
+    return full_text_articles_;
 }
 
 std::vector<const Reader::Record*> Reader::Ranked(

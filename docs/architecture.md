@@ -1008,6 +1008,12 @@ configuration, preference, dependency, GUI/Phase 8 behavior, or private
 metadata/resource indexing, highlighting, other adapters, and unrelated
 refactors are excluded. No leaf after P6-FT-9 is selected or ranked.
 
+P6-FT-9 is complete. SLOB now contributes one private full-text document per
+distinct retained textual `(item_index, bin_index)` pair, with source-order
+retained-reference ordinals, first-reference ownership, exact four-component
+provenance, inert assembled text, a sole-container source revision, and
+deterministic nine-format service dispatch. No successor is selected.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

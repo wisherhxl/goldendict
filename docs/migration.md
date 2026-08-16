@@ -1489,6 +1489,12 @@ grows to nine with unchanged ordering, filtering, global bounds, typed
 unsupported/unavailable errors, no-match behavior, and per-dictionary failure
 containment. No leaf after P6-FT-9 is selected or ranked.
 
+P6-FT-9 is complete. The private SLOB adapter now uses retained-textual
+reference order and first-encounter item/bin ownership to build inert
+documents with exact four-component provenance. Its sole-container lifecycle
+and deterministic nine-format service integration preserve every public and
+installed boundary. No successor is selected.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

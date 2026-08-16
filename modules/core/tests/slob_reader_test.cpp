@@ -11,6 +11,7 @@ class SlobReaderTest : public QObject {
    private slots:
     void ReadsMetadataAliasesArticlesAndResources();
     void ReadsCompressedItems();
+    void ProjectsRetainedTextualReferencesForFullText();
     void RejectsCorruption();
 };
 
@@ -37,7 +38,37 @@ void SlobReaderTest::ReadsCompressedItems() {
             std::filesystem::path(directory.path().toStdString()),
             compression));
         QCOMPARE(reader.LookupExact("example").size(), std::size_t{1});
+        QCOMPARE(reader.ReadFullTextArticles().size(), std::size_t{1});
     }
+}
+
+void SlobReaderTest::ProjectsRetainedTextualReferencesForFullText() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const Reader reader = Reader::Open(test::WriteSlobFullTextFixture(
+        std::filesystem::path(directory.path().toStdString())));
+    const auto articles = reader.ReadFullTextArticles();
+    QCOMPARE(articles.size(), std::size_t{12});
+    QCOMPARE(articles[0].headword, std::string("first-owner"));
+    QCOMPARE(articles[0].first_record_ordinal, std::size_t{0});
+    QCOMPARE(articles[0].article_ordinal, std::size_t{0});
+    QCOMPARE(articles[0].item_index, std::uint32_t{0});
+    QCOMPARE(articles[0].bin_index, std::uint16_t{0});
+    QCOMPARE(articles[1].headword, std::string("plain-owner"));
+    QCOMPARE(articles[1].first_record_ordinal, std::size_t{2});
+    QCOMPARE(articles[1].article_ordinal, std::size_t{1});
+    QCOMPARE(articles[1].item_index, std::uint32_t{0});
+    QCOMPARE(articles[1].bin_index, std::uint16_t{1});
+    QCOMPARE(articles[2].headword, std::string("same-bin-other-item"));
+    QCOMPARE(articles[2].first_record_ordinal, std::size_t{3});
+    QCOMPARE(articles[2].item_index, std::uint32_t{1});
+    QCOMPARE(articles[2].bin_index, std::uint16_t{0});
+    QCOMPARE(articles.back().headword, std::string("owner-10"));
+    QCOMPARE(articles.back().first_record_ordinal, std::size_t{13});
+    QCOMPARE(articles.back().article_ordinal, std::size_t{11});
+    QCOMPARE(articles.back().item_index, std::uint32_t{10});
+    QCOMPARE(articles.back().bin_index, std::uint16_t{0});
+    QCOMPARE(reader.source_snapshot().size(), std::size_t{1});
 }
 
 void SlobReaderTest::RejectsCorruption() {

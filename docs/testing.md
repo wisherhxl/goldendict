@@ -782,6 +782,12 @@ adapters, legacy `_FTS` compatibility, metadata/resource indexing, and private
 serialization changes are excluded. No leaf after P6-FT-9 is selected or
 ranked.
 
+P6-FT-9 is complete with generated SLOB ownership/materialization fixtures,
+private index lifecycle and failure coverage, nine-format mixed-service
+coverage, and installed C++ full-text consumption. The registered suite
+remains 103 tests because coverage extends existing test executables; the
+installed C consumer remains unchanged and passing.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

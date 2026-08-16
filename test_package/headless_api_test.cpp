@@ -1100,6 +1100,7 @@ int main() {
         WriteSlobFixture(slob_root);
         goldendict::core::CoreConfiguration slob_configuration;
         slob_configuration.dictionary_paths = {slob_root.string()};
+        slob_configuration.index_directory = (slob_root / "indexes").string();
         auto slob_service =
             goldendict::core::CreateDictionaryService(slob_configuration);
         const auto slob_catalog = slob_service->GetCatalog();
@@ -1115,6 +1116,22 @@ int main() {
             slob_response.entries.front().article.sanitized_html->find(
                 "Installed SLOB definition.") == std::string::npos) {
             return Fail("installed SLOB lookup failed");
+        }
+        goldendict::core::FullTextQuery slob_full_text_query;
+        slob_full_text_query.text = "Installed";
+        slob_full_text_query.dictionary_filter_active = true;
+        slob_full_text_query.dictionary_ids = {slob_catalog.front().id};
+        const auto slob_full_text =
+            slob_service->SearchFullText(slob_full_text_query);
+        if (!slob_full_text.errors.empty() ||
+            slob_full_text.results.size() != 1U ||
+            slob_full_text.results.front().dictionary.id !=
+                slob_catalog.front().id ||
+            slob_full_text.results.front().headword != "example" ||
+            slob_full_text.results.front().document_id !=
+                "slob-index:0:0:0:0" ||
+            slob_full_text.results.front().matches.size() != 1U) {
+            return Fail("installed SLOB full-text search failed");
         }
 
         const auto epwing_root = directory.path() / "epwing";
