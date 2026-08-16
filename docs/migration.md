@@ -1668,6 +1668,51 @@ coverage, and exact-provenance installed C++ consumption; the installed C
 consumer remains unchanged. EPWING remains unselected and unranked, and no
 successor after P6-FT-12 is selected or ranked.
 
+The final remaining textual-format audit selects only P6-FT-13, the private
+EPWING reader ownership/revision prerequisite. The audit is pinned to legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`: `epwing.cc:138-148`
+in `/home/log/Workspace/GoldenDict` gates full-text support,
+`/home/log/Workspace/GoldenDict/epwing.cc:372-397` owns its rebuild,
+`/home/log/Workspace/GoldenDict/epwing.cc:400-423` reads physical page/offset
+articles, and `/home/log/Workspace/GoldenDict/epwing.cc:954-1023` assembles
+`CATALOGS` plus selected-subbook filenames. The
+migrated reader traverses the catalog and supported word indexes at
+`modules/core/src/formats/epwing/epwing_reader.cc:468-607`, but its
+`epwing_reader.cc:645-655` identity includes the headword and
+`epwing_reader.h:34-81` supplies no complete revision. Both suspected blockers
+remain; the adapter is not decision-complete.
+
+P6-FT-13 will expose a private immutable ingestion view ordered by catalog
+subbook, supported index table, index page, and entry. Records carry
+`record_ordinal`, headword, and headword-independent
+`(text_file_ordinal, page, offset)` identity. The first record for an identity
+owns the canonical headword and `article_ordinal`; later records are aliases.
+Articles carry that ownership, bounded rendered HTML, and checkpoints. Exact
+future provenance is
+`epwing-index:<first-record-ordinal>:<article-ordinal>:<text-file-ordinal>:<page>:<offset>`
+with canonical unsigned base-10 components. Internal references remain inert
+links and neither redirect ownership nor create documents.
+
+The view's complete ordered `dictionary::SourceSnapshot` consists of
+`CATALOGS`, optional decoding-affecting `LANGUAGE`, then every regular
+non-symlink file under every catalog-selected subbook/content tree, with
+subbooks in catalog order and files in relative-path byte order. Mutation,
+replacement, addition, removal, path/order change, topology change, and
+resource-only changes stale the future artifact; unrelated siblings and
+generated/cache files do not. Only inert plain text derived from bounded
+rendering may later be indexed. Empty output, metadata/copyright, resource
+names/bytes, aliases, unindexed reference targets, active markup, scripts,
+media, and gaiji payloads are excluded. Limits, errors, checkpoints,
+cancellation, and deadlines cannot publish a partial view.
+
+This private prerequisite preserves all installed APIs/DTOs, runtime
+interfaces, capabilities, configuration/Preferences, dependencies, GUI/Phase
+8 behavior, `.gdfts` serialization, and eleven completed format adapters. It
+excludes the EPWING adapter, legacy `_FTS`, metadata/resource indexing,
+highlighting, other adapters, builds for this documentation leaf, and unrelated
+refactors. EPWING remains typed unsupported pending a later audit. No adapter,
+successor, or leaf after P6-FT-13 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

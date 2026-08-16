@@ -912,6 +912,41 @@ remains unselected and unranked, and no leaf after P6-FT-12 is selected or
 ranked. The registered suite remains 103 tests because coverage extends
 existing executables; the installed C consumer remains unchanged and passing.
 
+P6-FT-13 future focused coverage extends the existing EPWING reader,
+discovery, dictionary, and application-service executables. Generated fixtures
+must cover catalog/subbook/index source order; duplicate and distinct
+headwords sharing one physical page/offset; equal bytes at different physical
+identities; multiple subbooks and text files; all supported index types;
+internal references; exact multi-digit
+`epwing-index:<first-record-ordinal>:<article-ordinal>:<text-file-ordinal>:<page>:<offset>`
+provenance; empty and excluded materialization; corruption; limits;
+checkpoints; cancellation; and deadlines. Assertions must prove first-record
+ownership, alias retention, headword-independent deduplication, canonical
+unsigned decimal components, inert output, and no partial view after failure.
+
+Revision fixtures must pin `CATALOGS`, optional `LANGUAGE`, and every regular
+non-symlink file in each catalog-selected subbook/content tree. They cover
+mutation or replacement of every member, addition/removal, path and ordering
+changes, selected-tree topology, resource-only changes, symlink exclusion,
+unrelated sibling exclusion, corrupt snapshots/rebuilds, and contained storage
+failures. Reference links must not redirect ownership or create documents;
+copyright/metadata, resource names/bytes, aliases, unindexed targets, active
+markup, scripts, media, and gaiji payloads must not enter inert text.
+
+Mixed-service coverage remains eleven-format and pins dictionary-ID ordering,
+filtering, the global bound, adapted no-match behavior, typed unsupported for
+EPWING and other non-adapted sources, typed unavailable for missing IDs, and
+contained per-dictionary failures. The future implementation gate is focused
+tests, a fresh Linux Release configure/build, full
+`ctest --preset conan-release` with 103 registered tests unless intentionally
+changed, Release install and installed C/C++ consumers, then clean committed
+exact-SCM `conan create` with the Qt WebEngine host profile and packaged
+consumers. This documentation-only audit requires no build. P6-FT-13 changes
+no installed API/DTO, capability, configuration/Preferences, dependency,
+GUI/Phase 8 behavior, `.gdfts` serialization, or completed-format behavior.
+EPWING remains typed unsupported; no adapter, successor, or later leaf is
+selected or ranked.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

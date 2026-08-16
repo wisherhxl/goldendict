@@ -1285,6 +1285,63 @@ own, or reinterpret cache policy. Apply reuses the complete
 validate/prepare/persist/activate transaction above, including facade and
 article-session preservation and the disposable-byte rollback exception.
 
+The final post-P6-FT-12 textual-format readiness audit covers only EPWING. At
+pinned legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`,
+`/home/log/Workspace/GoldenDict/epwing.cc:138-148` gates full-text support,
+`/home/log/Workspace/GoldenDict/epwing.cc:372-397` rebuilds the legacy
+full-text index from the dictionary filename set,
+`/home/log/Workspace/GoldenDict/epwing.cc:400-423` extracts an article by
+physical page/offset, and
+`/home/log/Workspace/GoldenDict/epwing.cc:954-1023` constructs that set from
+`CATALOGS` and the selected subbook files. In the migrated tree,
+`modules/core/src/formats/epwing/epwing_reader.cc:468-607` traverses `CATALOGS`
+subbooks and supported `0x90`/`0x91`/`0x92` indexes, but
+`epwing_reader.cc:645-655` deduplicates by
+`(text-file, headword, page, offset)`. `epwing_reader.h:34-81` exposes neither
+headword-independent physical ownership nor a complete source snapshot.
+Therefore the private adapter is not decision-complete, and only P6-FT-13, the
+private EPWING reader ownership/revision prerequisite, is selected.
+
+P6-FT-13 must provide one private immutable ingestion view. Its source records
+follow `CATALOGS` subbook order, supported index-table order, index-page order,
+and entry order. Every record exposes a zero-based `record_ordinal`, decoded
+headword, and physical `(text_file_ordinal, page, offset)` identity independent
+of the headword. The first record that encounters a physical identity owns its
+canonical headword and zero-based `article_ordinal`; later records for the same
+identity are aliases. Each retained article exposes those ownership fields,
+its physical identity, bounded rendered HTML, and traversal checkpoints. Equal
+bytes at different physical identities remain different articles.
+
+The prerequisite locks exact future provenance as
+`epwing-index:<first-record-ordinal>:<article-ordinal>:<text-file-ordinal>:<page>:<offset>`,
+with canonical unsigned base-10 components without signs or padding. Internal
+EPWING references remain inert article links: they do not redirect physical
+ownership or create documents, and a referenced target may own a future
+document only through its own supported word-index record. Future
+materialization may derive only inert plain text from the existing bounded
+rendering. Empty output, copyright/metadata, resource names and bytes, aliases
+as documents, unindexed reference targets, active markup, scripts, media, and
+gaiji payloads are excluded.
+
+The ingestion view also exposes a `dictionary::SourceSnapshot` captured from
+the complete ordered revision: `CATALOGS`; optional decoding-affecting
+`LANGUAGE`; then every regular, non-symlink file in every catalog-selected
+subbook/content tree, with subbooks in catalog order and files in deterministic
+relative-path byte order. Mutation, replacement, addition, removal, path/order
+change, or selected-tree topology change stales the future artifact, including
+resource-only changes. Unselected sibling trees and generated/cache files are
+outside the revision. Snapshot capture and traversal must honor limits,
+checkpoints, cancellation, and deadlines and must publish no partial view on
+failure.
+
+P6-FT-13 changes no installed API/DTO, runtime interface, capability,
+configuration/Preferences, dependency, GUI/Phase 8 behavior, or private
+`.gdfts` serialization. It excludes an adapter, legacy `_FTS`,
+metadata/resource indexing, highlighting, other adapters, implementation
+outside the private EPWING reader/ownership/revision boundary, and unrelated
+refactors. EPWING remains typed unsupported until a later adapter audit. No
+adapter, successor, or leaf after P6-FT-13 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
