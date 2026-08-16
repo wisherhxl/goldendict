@@ -1370,6 +1370,52 @@ P8-FT-7. Evidence is migrated `full_text_query_composer.h/.cpp`,
 P8-FT-5/P8-FT-6 focused tests, and pinned legacy
 `fulltextsearch.cc:613-659`. No successor after P8-FT-7 is selected or ranked.
 
+## Phase 8 Full-Text Dialog Shell Readiness Gate (Selected)
+
+The documentation-only post-P8-FT-7 audit selects P8-FT-8 as its sole smallest
+dependency-ready leaf: the private modeless full-text dialog shell and
+MainWindow/Search-action integration. The audit is pinned to clean pushed
+migrated revision `1eeea0a73ff29b832f68012bd2b99b7f6208cf87` and unchanged
+clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Focused private Widgets tests must
+verify that `fullTextSearchAction` follows `searchInPageAction` in `menuSearch`
+and has exact text `Full-text search`, shortcut `Ctrl+Shift+F`,
+`WidgetWithChildrenShortcut`, and `TextHeuristicRole`. The action must be
+disabled without a usable facade and enabled when one is attached, without
+consulting persisted full-text enablement or index readiness.
+
+The tests must prove that repeated triggers maintain one non-modal
+MainWindow-owned dialog, showing, raising, and activating the existing
+instance; close destroys it and a later trigger creates a fresh instance. The
+shell has title `Full-text search`, no window-context-help button, and the
+P8-FT-5 composer as its query body. First creation copies the main lookup text
+and selects it. Every show recomputes the P8-FT-7 dictionary projection from
+the current catalog, selected group, muting, and visible dictionary-bar state.
+
+Controller-spy coverage must prove zero submissions and completions, and safe
+detach/stop before dialog close, facade replacement, or MainWindow destruction
+can invalidate the borrowed service. It must also prove that the shell does
+not persist geometry or changed controls. An offscreen MainWindow smoke uses
+the real Search menu, lookup field, group selector, and dictionary bar to
+exercise create, repeat trigger, changed-state reprojection, close, and reopen.
+
+The full implementation gate is the focused tests, Linux Release
+configure/build, full `ctest --preset conan-release` accepting only the
+intentional registered-test delta, then clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile and packaged
+consumers. No install or standalone installed-consumer check is required
+because P8-FT-8 changes no installed interface.
+
+No request submission/cancellation/replacement/completion behavior,
+results/activation, highlighting, Preferences/index policy, index
+visibility/status/background lifecycle, public API, persistence, adapter,
+`.gdfts`, legacy `_FTS`, dependency, or unrelated test belongs to P8-FT-8.
+Evidence is migrated `main_window.cpp:425-433,6064-6086`,
+`full_text_query_composer.h/.cpp`, `full_text_dictionary_projection.h/.cpp`,
+and `full_text_request_controller.cpp:143-197`, plus pinned legacy
+`mainwindow.ui:614-627`, `mainwindow.cc:4754-4791`, and
+`fulltextsearch.cc:195-340`. No successor after P8-FT-8 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

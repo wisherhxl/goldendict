@@ -1805,6 +1805,63 @@ evidence is `full_text_query_composer.h/.cpp`,
 P8-FT-5/P8-FT-6 focused tests. Pinned legacy evidence is
 `fulltextsearch.cc:613-659`. No successor after P8-FT-7 is selected or ranked.
 
+The fresh documentation-only post-P8-FT-7 readiness audit is pinned to clean
+pushed migrated revision `1eeea0a73ff29b832f68012bd2b99b7f6208cf87` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes the remaining
+modeless dialog and MainWindow/Search action integration, request submission,
+cancellation, replacement and completion states, results presentation and
+activation, highlighting, Preferences/index policy, and index
+visibility/status/background lifecycle. Exactly one smallest dependency-ready
+leaf is selected: P8-FT-8, the private modeless full-text dialog shell and
+MainWindow/Search-action integration. No successor after P8-FT-8 is selected
+or ranked.
+
+P8-FT-8 owns only the Widgets host and its MainWindow lifetime. It adds
+`fullTextSearchAction` after `searchInPageAction` in `menuSearch`, with legacy
+text `Full-text search`, `Ctrl+Shift+F`, `WidgetWithChildrenShortcut`, and
+`TextHeuristicRole`. The action is enabled exactly when a usable desktop facade
+is attached; persisted full-text enablement and index readiness do not govern
+it in this leaf. Triggering creates at most one non-modal MainWindow-owned
+dialog, or shows, raises, and activates the existing instance. The dialog title
+is `Full-text search`, the window-context-help button is absent, and the
+completed P8-FT-5 composer is its query-control body. On first creation it
+copies the current main lookup text into the composer and selects the entire
+query. Each show recomputes the completed P8-FT-7 projection from the current
+catalog, selected group, configured muting, and visible dictionary-bar checks.
+
+Closing the dialog destroys that one instance and clears the MainWindow
+reference. Dialog close, MainWindow destruction, and facade replacement first
+detach and stop the P8-FT-1 controller, so its borrowed service cannot outlive
+the facade even though P8-FT-8 never submits work. Re-triggering after close
+creates a fresh shell from current preferences and MainWindow participation
+state. Geometry and control edits are not persisted by this leaf.
+
+Focused private Widgets tests verify the action identity/order/mappings,
+facade-dependent enablement, singleton create/show/raise lifecycle, initial
+query copy and selection, current-state reprojection, close/reopen freshness,
+and safe close/facade-replacement/MainWindow teardown without a service call.
+An offscreen MainWindow smoke exercises the real menu, lookup field, group
+selector, and dictionary bar. The full implementation gate is the focused
+tests, Linux Release configure/build, full `ctest --preset conan-release` with
+only the intentional registered-test delta, then clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile and packaged
+consumers. No install or standalone installed-consumer check is required
+because installed interfaces remain unchanged.
+
+P8-FT-8 affects only the private dialog shell, MainWindow action/composition
+and lifetime wiring, focused tests, smoke, and test registration. Request
+submission/cancellation/replacement/completion UI, results projection and
+presentation, activation, highlighting, Preferences/index policy, index
+visibility/status/background lifecycle, public APIs, configuration
+persistence, adapters, `.gdfts`, legacy `_FTS`, dependencies, and unrelated
+behavior are excluded. Decisive migrated evidence is
+`main_window.cpp:425-433,6064-6086`, `full_text_query_composer.h/.cpp`,
+`full_text_dictionary_projection.h/.cpp`, and
+`full_text_request_controller.cpp:143-197`; pinned legacy evidence is
+`mainwindow.ui:614-627`, `mainwindow.cc:4754-4791`, and
+`fulltextsearch.cc:195-340`. No successor after P8-FT-8 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

@@ -2028,6 +2028,60 @@ behavior are excluded. Evidence is migrated
 legacy `fulltextsearch.cc:613-659`. No successor after P8-FT-7 is selected or
 ranked.
 
+The fresh documentation-only post-P8-FT-7 readiness audit is pinned to clean
+pushed migrated revision `1eeea0a73ff29b832f68012bd2b99b7f6208cf87` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes without preselection
+the remaining modeless dialog/MainWindow Search-action integration, request
+submission/cancellation/replacement/completion states, results presentation
+and activation, highlighting, Preferences/index policy, and index
+visibility/status/background lifecycle. Exactly one smallest dependency-ready
+leaf is selected: P8-FT-8, the private modeless full-text dialog shell and
+MainWindow/Search-action integration. No successor after P8-FT-8 is selected
+or ranked.
+
+P8-FT-8 consumes the completed P8-FT-1 controller lifetime, P8-FT-5 composer,
+P8-FT-7 participation projection, existing MainWindow group/dictionary-bar
+state, and attached desktop facade. It adds `fullTextSearchAction` immediately
+after `searchInPageAction` in `menuSearch`, with the pinned text, shortcut,
+shortcut context, and menu role. The action is enabled only while a usable
+facade is attached; applying persisted full-text enablement or index readiness
+remains excluded. Triggering creates at most one non-modal MainWindow-owned
+dialog or shows, raises, and activates the existing instance. The shell uses
+the pinned title and absent window-context-help button, hosts the existing
+composer, copies and selects the current main lookup text on creation, and
+recomputes the current participation projection on every show.
+
+Closing destroys the instance and clears MainWindow ownership. Close,
+MainWindow destruction, and facade replacement detach and stop the controller
+before its borrowed service can become invalid; reopening creates a fresh
+shell. The leaf submits no query, processes no completion, presents or
+activates no result, hands off no highlight, and persists neither geometry nor
+edited controls.
+
+Focused private Widgets tests and an offscreen MainWindow smoke cover exact
+action placement and properties, facade-dependent enablement, singleton
+show/raise lifecycle, initial query transfer and selection, current-state
+reprojection, close/reopen freshness, and safe close/facade-replacement/window
+teardown with zero service calls. The implementation gate is those tests,
+Linux Release configure/build, full `ctest --preset conan-release` with only
+the intentional test-count delta, and clean committed exact-SCM `conan create`
+with the Release Qt WebEngine host profile and packaged consumers. Installed
+interfaces are unchanged, so install and standalone consumer checks are not
+required.
+
+Affected components are the private Widgets dialog shell, MainWindow
+menu/composition/lifetime wiring, focused tests, smoke, and test registration.
+Request submission/cancellation/replacement/completion UI, results/activation,
+highlighting, Preferences/index policy, index visibility/status/background
+lifecycle, public APIs, persistence, adapters, `.gdfts`, legacy `_FTS`,
+dependencies, and unrelated work are excluded. Evidence is migrated
+`main_window.cpp:425-433,6064-6086`, `full_text_query_composer.h/.cpp`,
+`full_text_dictionary_projection.h/.cpp`, and
+`full_text_request_controller.cpp:143-197`, plus pinned legacy
+`mainwindow.ui:614-627`, `mainwindow.cc:4754-4791`, and
+`fulltextsearch.cc:195-340`. No successor after P8-FT-8 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
