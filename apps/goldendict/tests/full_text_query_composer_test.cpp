@@ -8,8 +8,11 @@
 
 #include <chrono>
 #include <cstdint>
+#include <optional>
 #include <string>
+#include <vector>
 
+#include "full_text_dictionary_projection.h"
 #include "full_text_query_composer.h"
 
 namespace goldendict::app {
@@ -30,6 +33,14 @@ void SelectMode(FullTextQueryComposer& composer,
     selector->setCurrentIndex(index);
 }
 
+goldendict::core::DictionaryIdentity Identity(const std::string& id,
+                                              bool supports_full_text_search) {
+    goldendict::core::DictionaryIdentity identity;
+    identity.id = id;
+    identity.supports_full_text_search = supports_full_text_search;
+    return identity;
+}
+
 }  // namespace
 
 class FullTextQueryComposerTest final : public QObject {
@@ -43,6 +54,10 @@ class FullTextQueryComposerTest final : public QObject {
     void MapsArticleLimitBoundsAndUncheckedState();
     void RetainsValuesAcrossModeTransitions();
     void RepeatedCompositionIsDeterministicAndNonMutating();
+    void ProjectsAllDictionariesInSupportedCatalogOrder();
+    void ProjectsConfiguredGroupOrderMutingAndResolution();
+    void AppliesOnlyVisibleDictionaryBarParticipation();
+    void RecomputesAndPreservesComposedQuery();
 };
 
 void FullTextQueryComposerTest::MapsAllModes_data() {
@@ -221,6 +236,110 @@ void FullTextQueryComposerTest::
              first.maximum_articles_per_dictionary);
     QCOMPARE(second.timeout, first.timeout);
     QVERIFY(preferences == original);
+}
+
+void FullTextQueryComposerTest::
+    ProjectsAllDictionariesInSupportedCatalogOrder() {
+    const std::vector<goldendict::core::DictionaryIdentity> catalog = {
+        Identity("third", true), Identity("unsupported", false),
+        Identity("first", true)};
+    goldendict::core::FullTextQuery query;
+    query.dictionary_ids = {"stale"};
+
+    const auto projected =
+        ProjectFullTextDictionaries(query, catalog, nullptr, false, {});
+
+    QCOMPARE(projected.dictionary_ids,
+             (std::vector<std::string>{"third", "first"}));
+    QVERIFY(projected.dictionary_filter_active);
+}
+
+void FullTextQueryComposerTest::
+    ProjectsConfiguredGroupOrderMutingAndResolution() {
+    const std::vector<goldendict::core::DictionaryIdentity> catalog = {
+        Identity("first", true), Identity("second", true),
+        Identity("unsupported", false)};
+    const goldendict::core::DictionaryGroupConfiguration group{
+        7U,
+        "Group",
+        "",
+        {"second", "missing", "unsupported", "first"},
+        {"second"}};
+
+    const auto projected = ProjectFullTextDictionaries(
+        goldendict::core::FullTextQuery{}, catalog, &group, false, {});
+
+    QCOMPARE(projected.dictionary_ids, (std::vector<std::string>{"first"}));
+    QVERIFY(projected.dictionary_filter_active);
+}
+
+void FullTextQueryComposerTest::AppliesOnlyVisibleDictionaryBarParticipation() {
+    const std::vector<goldendict::core::DictionaryIdentity> catalog = {
+        Identity("first", true), Identity("second", true)};
+    const goldendict::core::DictionaryGroupConfiguration group{
+        7U, "Group", "", {"second", "first"}};
+
+    const auto visible = ProjectFullTextDictionaries(
+        goldendict::core::FullTextQuery{}, catalog, &group, true, {"first"});
+    QCOMPARE(visible.dictionary_ids, (std::vector<std::string>{"first"}));
+    const auto empty = ProjectFullTextDictionaries(
+        goldendict::core::FullTextQuery{}, catalog, &group, true, {});
+    QVERIFY(empty.dictionary_ids.empty());
+    QVERIFY(empty.dictionary_filter_active);
+    const auto hidden = ProjectFullTextDictionaries(
+        goldendict::core::FullTextQuery{}, catalog, &group, false, {});
+    QCOMPARE(hidden.dictionary_ids,
+             (std::vector<std::string>{"second", "first"}));
+}
+
+void FullTextQueryComposerTest::RecomputesAndPreservesComposedQuery() {
+    goldendict::core::ApplicationPreferences preferences;
+    preferences.full_text_search_mode =
+        goldendict::core::FullTextSearchMode::kPlainText;
+    preferences.full_text_match_case = true;
+    preferences.full_text_ignore_diacritics = true;
+    preferences.full_text_ignore_word_order = true;
+    preferences.full_text_use_maximum_word_distance = true;
+    preferences.full_text_maximum_word_distance = 42U;
+    preferences.full_text_use_maximum_articles = true;
+    preferences.full_text_maximum_articles_per_dictionary = 321U;
+    const auto original_preferences = preferences;
+    FullTextQueryComposer composer(preferences);
+    Control<QLineEdit>(composer, "fullTextQueryText")
+        ->setText(QString::fromUtf8("projection Δ"));
+    const auto composed = composer.Compose();
+
+    std::vector<goldendict::core::DictionaryIdentity> catalog = {
+        Identity("first", true), Identity("second", false)};
+    auto projected =
+        ProjectFullTextDictionaries(composed, catalog, nullptr, false, {});
+    QCOMPARE(projected.dictionary_ids, (std::vector<std::string>{"first"}));
+    catalog = {Identity("second", true), Identity("first", false)};
+    projected =
+        ProjectFullTextDictionaries(composed, catalog, nullptr, false, {});
+    QCOMPARE(projected.dictionary_ids, (std::vector<std::string>{"second"}));
+
+    goldendict::core::DictionaryGroupConfiguration group{
+        7U, "Group", "", {"second"}, {"second"}};
+    projected = ProjectFullTextDictionaries(composed, catalog, &group, false,
+                                            {"second"});
+    QVERIFY(projected.dictionary_ids.empty());
+    group.muted_dictionary_ids.clear();
+    projected = ProjectFullTextDictionaries(composed, catalog, &group, false,
+                                            {"second"});
+    QCOMPARE(projected.dictionary_ids, (std::vector<std::string>{"second"}));
+
+    QCOMPARE(projected.text, composed.text);
+    QCOMPARE(projected.mode, composed.mode);
+    QCOMPARE(projected.match_case, composed.match_case);
+    QCOMPARE(projected.ignore_diacritics, composed.ignore_diacritics);
+    QCOMPARE(projected.ignore_word_order, composed.ignore_word_order);
+    QCOMPARE(projected.maximum_word_distance, composed.maximum_word_distance);
+    QCOMPARE(projected.result_limit, composed.result_limit);
+    QCOMPARE(projected.maximum_articles_per_dictionary,
+             composed.maximum_articles_per_dictionary);
+    QCOMPARE(projected.timeout, composed.timeout);
+    QVERIFY(preferences == original_preferences);
 }
 
 }  // namespace goldendict::app

@@ -23,6 +23,10 @@ class ArticleView;
 class ArticleSchemeHandler;
 enum class ArticleLinkDisposition;
 class DictionaryBrowser;
+
+namespace goldendict::app {
+class FullTextQueryComposer;
+}  // namespace goldendict::app
 class QAction;
 class QLabel;
 class QLineEdit;
@@ -174,6 +178,8 @@ class MainWindow final : public QMainWindow {
     void RunArticleTabsSmokeCheck(std::function<void(bool)> completion);
     void RunSuggestionPaneSmokeCheck(std::function<void(bool)> completion);
     void RunDictionaryBarSmokeCheck(std::function<void(bool)> completion);
+    void RunFullTextDictionaryProjectionSmokeCheck(
+        std::function<void(bool)> completion);
     void RunViewMenuSmokeCheck(std::function<void(bool)> completion);
     void RunHistoryMenuSmokeCheck(const QString& path,
                                   std::function<void(bool)> completion);
@@ -273,6 +279,8 @@ class MainWindow final : public QMainWindow {
     void SelectGroup(std::uint32_t group_id);
     void RefreshGroupSelector();
     void RefreshDictionaryBar();
+    goldendict::core::FullTextQuery ComposeFullTextQuery(
+        const goldendict::app::FullTextQueryComposer& composer) const;
     void ApplyDictionaryParticipation();
     std::vector<std::string> ParticipatingDictionaryIds(
         std::uint32_t group_id) const;

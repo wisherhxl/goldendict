@@ -257,7 +257,10 @@ int main(int argc, char* argv[]) {
         configuration.dictionary_paths = {command_line_root.toStdString()};
     }
     if (HasArgument(argc, argv, QStringLiteral("--source-directories-smoke")) ||
-        HasArgument(argc, argv, QStringLiteral("--dictionary-bar-smoke"))) {
+        HasArgument(argc, argv, QStringLiteral("--dictionary-bar-smoke")) ||
+        HasArgument(
+            argc, argv,
+            QStringLiteral("--full-text-dictionary-projection-smoke"))) {
         configuration.mediawiki_sources = {
             {"smoke.wiki", "Smoke Wiki", false, "https://wiki.example.test/w"}};
         configuration.website_sources = {
@@ -1375,6 +1378,13 @@ int main(int argc, char* argv[]) {
                            QStringLiteral("--dictionary-bar-smoke"))) {
         QTimer::singleShot(0, &window, [&window, &app]() {
             window.RunDictionaryBarSmokeCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--full-text-dictionary-projection-smoke"))) {
+        QTimer::singleShot(0, &window, [&window, &app]() {
+            window.RunFullTextDictionaryProjectionSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
     } else if (HasArgument(

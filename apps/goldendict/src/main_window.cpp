@@ -65,6 +65,8 @@
 #include "article_view.h"
 #include "dictionary_browser.h"
 #include "favorites_tree_widget.h"
+#include "full_text_dictionary_projection.h"
+#include "full_text_query_composer.h"
 #include "goldendict/core/desktop_facade.h"
 #include "group_editor.h"
 #include "preferences_dialog.h"
@@ -5768,6 +5770,28 @@ void MainWindow::ApplyDictionaryFilter(
     query->dictionary_ids = ParticipatingDictionaryIds(query->group_id);
 }
 
+goldendict::core::FullTextQuery MainWindow::ComposeFullTextQuery(
+    const goldendict::app::FullTextQueryComposer& composer) const {
+    const auto catalog =
+        facade_ == nullptr ? std::vector<goldendict::core::DictionaryIdentity>{}
+                           : facade_->GetDictionaryService().GetCatalog();
+    const goldendict::core::DictionaryGroupConfiguration* selected_group =
+        nullptr;
+    if (selected_group_id_ != 0U) {
+        const auto group = std::find_if(
+            groups_.begin(), groups_.end(), [this](const auto& candidate) {
+                return candidate.id == selected_group_id_;
+            });
+        if (group != groups_.end()) {
+            selected_group = &*group;
+        }
+    }
+    return goldendict::app::ProjectFullTextDictionaries(
+        composer.Compose(), catalog, selected_group,
+        dictionary_bar_ != nullptr && dictionary_bar_->isVisible(),
+        ParticipatingDictionaryIds(selected_group_id_));
+}
+
 void MainWindow::ApplyDictionaryParticipation() {
     if (restoring_main_window_state_ || facade_ == nullptr ||
         article_tabs_ == nullptr)
@@ -5941,6 +5965,70 @@ void MainWindow::RunDictionaryBarSmokeCheck(
         QTimer::singleShot(10, this, *hidden_poll);
     };
     QTimer::singleShot(10, this, *poll);
+}
+
+void MainWindow::RunFullTextDictionaryProjectionSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (facade_ == nullptr || dictionary_bar_ == nullptr) {
+        completion(false);
+        return;
+    }
+    show();
+    QApplication::processEvents();
+    const auto catalog = facade_->GetDictionaryService().GetCatalog();
+    std::vector<std::string> supported;
+    for (const auto& identity : catalog) {
+        if (identity.supports_full_text_search) {
+            supported.push_back(identity.id);
+        }
+    }
+    if (supported.empty()) {
+        completion(false);
+        return;
+    }
+
+    goldendict::app::FullTextQueryComposer composer(preferences_, this);
+    const auto request_count = requests_.size();
+    SelectGroup(0U);
+    RefreshDictionaryBar();
+    dictionary_bar_->show();
+    QApplication::processEvents();
+    const auto all = ComposeFullTextQuery(composer);
+
+    QAction* supported_action = nullptr;
+    for (auto* action : dictionary_bar_->actions()) {
+        if (action->data().toString().toStdString() == supported.front()) {
+            supported_action = action;
+            break;
+        }
+    }
+    if (supported_action == nullptr) {
+        completion(false);
+        return;
+    }
+    supported_action->trigger();
+    const auto unchecked = ComposeFullTextQuery(composer);
+    dictionary_bar_->hide();
+    QApplication::processEvents();
+    const auto hidden = ComposeFullTextQuery(composer);
+
+    SetDictionaryGroups({{7U,
+                          "Full Text Projection Smoke",
+                          "",
+                          {supported.front(), "unresolved.dictionary"},
+                          {supported.front()}}});
+    SelectGroup(7U);
+    const auto muted = ComposeFullTextQuery(composer);
+    QApplication::processEvents();
+    completion(all.dictionary_filter_active &&
+               all.dictionary_ids == supported &&
+               unchecked.dictionary_filter_active &&
+               std::find(unchecked.dictionary_ids.begin(),
+                         unchecked.dictionary_ids.end(),
+                         supported.front()) == unchecked.dictionary_ids.end() &&
+               hidden.dictionary_ids == supported &&
+               muted.dictionary_filter_active && muted.dictionary_ids.empty() &&
+               requests_.size() == request_count && !composer.isVisible());
 }
 
 void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {

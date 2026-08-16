@@ -1746,7 +1746,7 @@ platform behavior. Decisive migrated evidence is
 Pinned legacy evidence is `fulltextsearch.cc:613-659`. No successor after
 P8-FT-6 is selected or ranked.
 
-### Phase 8 full-text dictionary participation projection
+### Phase 8 full-text dictionary participation projection (complete)
 
 The fresh documentation-only post-P8-FT-6 readiness audit is pinned to clean
 pushed migrated revision `9801ebdb99e09600efc0fad32405bee02dd4971e` and the
@@ -1759,10 +1759,10 @@ visibility/background lifecycle. It selects exactly one smallest dependency-
 ready leaf, P8-FT-7: the private Widgets dictionary-participation projection.
 No successor after P8-FT-7 is selected or ranked.
 
-P8-FT-7 combines only already-owned facts. Core remains the sole owner of
-`DictionaryIdentity::supports_full_text_search`. MainWindow remains the owner
-of the selected group, configured ordered membership and normal-search muting,
-and the per-group ephemeral `dictionaryBar` checks. A private Widgets seam
+P8-FT-7 is complete and combines only already-owned facts. Core remains the
+sole owner of `DictionaryIdentity::supports_full_text_search`. MainWindow
+remains the owner of the selected group, configured ordered membership and
+normal-search muting, and the per-group ephemeral `dictionaryBar` checks. A private Widgets seam
 projects those facts into the P8-FT-5 composer result; it does not inspect a
 private backend or infer index readiness.
 
@@ -1786,12 +1786,13 @@ catalog/group replacement, and preservation of every other composed query
 field. They also prove no controller call and no preference/configuration
 mutation. A focused offscreen MainWindow smoke proves that the real group
 selector and dictionary bar feed the projection without opening a dialog or
-submitting a request. The later implementation gate is the focused tests,
+submitting a request. The implementation gate is the focused tests,
 Linux Release configure/build and full `ctest --preset conan-release` with
 only an intentional registered-test delta, followed by clean committed exact-
 SCM `conan create` with the Release Qt WebEngine host profile and packaged
-consumers. No install or standalone installed-consumer check is required
-unless implementation unexpectedly changes an installed surface.
+consumers. The added smoke raises the registered suite from 105 to 106 tests.
+No install or standalone installed-consumer check is required because no
+installed surface changes.
 
 P8-FT-7 affects only the private Widgets projection seam, its focused tests,
 the MainWindow smoke, and test registration if needed. Modeless dialog/action

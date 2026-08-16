@@ -1991,9 +1991,9 @@ and index visibility/background lifecycle. Exactly one smallest dependency-
 ready leaf is selected: P8-FT-7, the private Widgets dictionary-participation
 projection. No successor after P8-FT-7 is selected or ranked.
 
-P8-FT-7 consumes the completed P8-FT-5 composer, the P8-FT-6 public capability,
-and the accepted MainWindow group and `dictionaryBar` participation state. For
-All Dictionaries it preserves catalog order; for a named group it preserves
+P8-FT-7 is complete. It consumes the completed P8-FT-5 composer, the P8-FT-6
+public capability, and the accepted MainWindow group and `dictionaryBar`
+participation state. For All Dictionaries it preserves catalog order; for a named group it preserves
 configured member order, rejects unresolved IDs, and applies configured
 `muted_dictionary_ids`. Both paths retain only identities with
 `supports_full_text_search == true`. A visible dictionary bar further retains
@@ -2012,12 +2012,13 @@ unchanged P8-FT-5 fields, and absence of controller or persistence effects. A
 focused offscreen MainWindow smoke exercises the real selector and bar without
 opening a dialog or submitting work.
 
-The later implementation gate is focused tests, Linux Release configure/build
+The implementation gate is focused tests, Linux Release configure/build
 and full `ctest --preset conan-release` with only an intentional test-count
 delta, then clean committed exact-SCM `conan create` with the Release Qt
 WebEngine host profile and packaged consumers. Installed interfaces are
-unchanged, so install and standalone consumer checks are required only if the
-implementation unexpectedly changes one. Modeless dialog/action integration,
+unchanged, and the dedicated smoke raises the registered suite from 105 to
+106 tests, so install and standalone consumer checks are unnecessary.
+Modeless dialog/action integration,
 submission/completion UI, results/activation, highlighting, Preferences/index
 policy, index visibility/status/background lifecycle, public APIs,
 persistence, adapters, `.gdfts`, legacy `_FTS`, dependencies, and unrelated

@@ -1331,11 +1331,11 @@ Evidence is migrated `dictionary_service.h:85-96,182-195,256-272`,
 pinned legacy `fulltextsearch.cc:613-659`. No successor after P8-FT-6 is
 selected or ranked.
 
-## Phase 8 Full-Text Dictionary Participation Projection Gate
+## Phase 8 Full-Text Dictionary Participation Projection Gate (Complete)
 
-P8-FT-7 is the sole leaf selected by the documentation-only post-P8-FT-6
-readiness audit. Focused private Widgets tests compose a query and verify that
-All Dictionaries preserves catalog order while a named group preserves
+P8-FT-7 is complete. It was the sole leaf selected by the documentation-only
+post-P8-FT-6 readiness audit. Focused private Widgets tests compose a query and
+verify that All Dictionaries preserves catalog order while a named group preserves
 configured member order, drops unresolved members and configured
 `muted_dictionary_ids`, and that both retain only catalog identities whose
 `supports_full_text_search` value is true.
@@ -1353,13 +1353,13 @@ dictionary bar and inspects the projected query without opening a full-text
 dialog or starting backend work. Controller coverage from P8-FT-1 and composer
 coverage from P8-FT-5 do not substitute for this selection smoke.
 
-The later implementation gate is the focused tests followed by Linux Release
+The implementation gate is the focused tests followed by Linux Release
 configure/build and full `ctest --preset conan-release`, accepting only an
 intentional registered-test delta, then clean committed exact-SCM
 `conan create` with the Release Qt WebEngine host profile and packaged
-consumers. P8-FT-7 changes no installed surface, so install and standalone
-installed-consumer checks are unnecessary unless implementation unexpectedly
-changes one.
+consumers. The dedicated smoke raises the registered suite from 105 to 106
+tests. P8-FT-7 changes no installed surface, so install and standalone
+installed-consumer checks are unnecessary.
 
 No modeless dialog/Search action, request submission/completion UI,
 results/activation, highlighting, Preferences/index policy, index
