@@ -8,7 +8,10 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <optional>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "full_text_response_model.h"
 #include "full_text_search_dialog.h"
@@ -27,6 +30,8 @@ class ControllableDictionaryService final
     goldendict::core::LookupResponse Lookup(
         const goldendict::core::LookupQuery&,
         const goldendict::core::CancellationToken*) const override {
+        const std::lock_guard lock(mutex_);
+        ++lookup_calls_;
         return {};
     }
 
@@ -69,6 +74,8 @@ class ControllableDictionaryService final
 
     std::unique_ptr<goldendict::core::LookupRequest> StartLookup(
         goldendict::core::LookupQuery) const override {
+        const std::lock_guard lock(mutex_);
+        ++lookup_calls_;
         return {};
     }
 
@@ -104,12 +111,18 @@ class ControllableDictionaryService final
         return queries_;
     }
 
+    std::size_t LookupCalls() const {
+        const std::lock_guard lock(mutex_);
+        return lookup_calls_;
+    }
+
     goldendict::core::FullTextResponse response_;
 
    private:
     mutable std::mutex mutex_;
     mutable std::condition_variable changed_;
     mutable std::vector<goldendict::core::FullTextQuery> queries_;
+    mutable std::size_t lookup_calls_ = 0U;
     mutable bool cancellation_seen_ = false;
     mutable bool release_cancelled_ = false;
 };
@@ -138,6 +151,70 @@ QListView* Results(FullTextSearchDialog* dialog) {
         QStringLiteral("fullTextSearchResults"));
 }
 
+goldendict::core::FullTextResult MakeResult(const std::string& id,
+                                            const std::string& headword,
+                                            std::size_t ordinal) {
+    goldendict::core::FullTextResult result;
+    result.dictionary.id = id;
+    result.dictionary.name = "Dictionary " + id;
+    result.dictionary.edition = "edition-" + std::to_string(ordinal);
+    result.dictionary.source = "/source/" + id;
+    result.dictionary.description = "description-" + id;
+    result.dictionary.article_count = 100U + ordinal;
+    result.dictionary.headword_count = 200U + ordinal;
+    result.dictionary.source_language = "en";
+    result.dictionary.target_language = "ja";
+    result.dictionary.supports_headword_enumeration = ordinal % 2U == 0U;
+    result.dictionary.supports_full_text_search = true;
+    result.headword = headword;
+    result.document_id = "document-" + std::to_string(ordinal);
+    result.match.requested_headword = "requested-" + std::to_string(ordinal);
+    result.match.normalized_headword = "normalized-" + std::to_string(ordinal);
+    result.match.mode = goldendict::core::MatchMode::kPrefix;
+    result.match.score = 0.5 + static_cast<double>(ordinal);
+    result.excerpt = "excerpt-" + std::to_string(ordinal);
+    result.matches = {{ordinal, 3U, "one"}, {ordinal + 10U, 7U, "second"}};
+    return result;
+}
+
+void CompareResult(const goldendict::core::FullTextResult& actual,
+                   const goldendict::core::FullTextResult& expected) {
+    QCOMPARE(actual.dictionary.id, expected.dictionary.id);
+    QCOMPARE(actual.dictionary.name, expected.dictionary.name);
+    QCOMPARE(actual.dictionary.edition, expected.dictionary.edition);
+    QCOMPARE(actual.dictionary.source, expected.dictionary.source);
+    QCOMPARE(actual.dictionary.description, expected.dictionary.description);
+    QCOMPARE(actual.dictionary.article_count,
+             expected.dictionary.article_count);
+    QCOMPARE(actual.dictionary.headword_count,
+             expected.dictionary.headword_count);
+    QCOMPARE(actual.dictionary.source_language,
+             expected.dictionary.source_language);
+    QCOMPARE(actual.dictionary.target_language,
+             expected.dictionary.target_language);
+    QCOMPARE(actual.dictionary.supports_headword_enumeration,
+             expected.dictionary.supports_headword_enumeration);
+    QCOMPARE(actual.dictionary.supports_full_text_search,
+             expected.dictionary.supports_full_text_search);
+    QCOMPARE(actual.headword, expected.headword);
+    QCOMPARE(actual.document_id, expected.document_id);
+    QCOMPARE(actual.match.requested_headword,
+             expected.match.requested_headword);
+    QCOMPARE(actual.match.normalized_headword,
+             expected.match.normalized_headword);
+    QCOMPARE(actual.match.mode, expected.match.mode);
+    QCOMPARE(actual.match.score, expected.match.score);
+    QCOMPARE(actual.excerpt, expected.excerpt);
+    QCOMPARE(actual.matches.size(), expected.matches.size());
+    for (std::size_t i = 0; i < expected.matches.size(); ++i) {
+        QCOMPARE(actual.matches[i].byte_offset,
+                 expected.matches[i].byte_offset);
+        QCOMPARE(actual.matches[i].byte_length,
+                 expected.matches[i].byte_length);
+        QCOMPARE(actual.matches[i].text, expected.matches[i].text);
+    }
+}
+
 }  // namespace
 
 class FullTextSearchDialogTest final : public QObject {
@@ -146,10 +223,118 @@ class FullTextSearchDialogTest final : public QObject {
    private slots:
     void SubmitsExactComposedAndProjectedQueryAndRetainsResponse();
     void ProjectsCompleteCurrentResponsesAndReplacesRowsAtomically();
+    void ActivatesExactCurrentResultOnceFromMouseAndKeyboard();
+    void SuppressesDuplicateInvalidStaleAndCancelledActivation();
     void ReplacesRunningAndPendingGenerationsAndSuppressesStaleCompletion();
     void CancellationIsIdempotentAndRestoresIdleState();
     void ServiceReplacementDetachAndDestructionSuppressLateDelivery();
 };
+
+void FullTextSearchDialogTest::
+    ActivatesExactCurrentResultOnceFromMouseAndKeyboard() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog dialog(preferences, &service);
+    auto* model = ResponseModel(&dialog);
+    auto* results = Results(&dialog);
+    const auto expected = MakeResult("exact-id", u8"café", 4U);
+    goldendict::core::FullTextResponse response;
+    response.results.push_back(expected);
+    model->Reset(response);
+
+    std::vector<goldendict::core::FullTextResult> activations;
+    connect(&dialog, &FullTextSearchDialog::ResultActivationRequested, &dialog,
+            [&activations](goldendict::core::FullTextResult result) {
+                activations.push_back(std::move(result));
+            });
+    dialog.show();
+    QTRY_VERIFY(results->isVisible());
+    const QModelIndex index = model->index(0, 0);
+    QVERIFY(index.isValid());
+    const QPoint center = results->visualRect(index).center();
+
+    QTest::mouseClick(results->viewport(), Qt::LeftButton, Qt::NoModifier,
+                      center);
+    QCOMPARE(activations.size(), std::size_t{1});
+    CompareResult(activations.back(), expected);
+
+    results->setCurrentIndex(index);
+    results->setFocus();
+    QTest::keyClick(results, Qt::Key_Return);
+    QCOMPARE(activations.size(), std::size_t{2});
+    CompareResult(activations.back(), expected);
+
+    QTest::keyClick(results, Qt::Key_Enter, Qt::KeypadModifier);
+    QCOMPARE(activations.size(), std::size_t{3});
+    CompareResult(activations.back(), expected);
+    QCOMPARE(service.LookupCalls(), std::size_t{0});
+}
+
+void FullTextSearchDialogTest::
+    SuppressesDuplicateInvalidStaleAndCancelledActivation() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog dialog(preferences, &service);
+    auto* model = ResponseModel(&dialog);
+    auto* results = Results(&dialog);
+    goldendict::core::FullTextResponse first;
+    first.results.push_back(MakeResult("first", "first", 1U));
+    model->Reset(first);
+
+    std::vector<goldendict::core::FullTextResult> activations;
+    connect(&dialog, &FullTextSearchDialog::ResultActivationRequested, &dialog,
+            [&activations](goldendict::core::FullTextResult result) {
+                activations.push_back(std::move(result));
+            });
+    dialog.show();
+    QTRY_VERIFY(results->isVisible());
+    const QModelIndex stale = model->index(0, 0);
+    const QPoint center = results->visualRect(stale).center();
+
+    QTest::mouseClick(results->viewport(), Qt::LeftButton, Qt::NoModifier,
+                      center);
+    QTest::mouseDClick(results->viewport(), Qt::LeftButton, Qt::NoModifier,
+                       center);
+    QCOMPARE(activations.size(), std::size_t{1});
+
+    results->setCurrentIndex({});
+    dialog.ActivateResult({});
+    dialog.ActivateResult(stale);
+    QTest::keyClick(results, Qt::Key_Return);
+    QCOMPARE(activations.size(), std::size_t{1});
+
+    goldendict::core::FullTextResponse replacement;
+    replacement.results.push_back(MakeResult("replacement", "replacement", 2U));
+    model->Reset(replacement);
+    dialog.ActivateResult(stale);
+    QCOMPARE(activations.size(), std::size_t{1});
+
+    FullTextResponseModel foreign_model(replacement);
+    dialog.ActivateResult(foreign_model.index(0, 0));
+    QCOMPARE(activations.size(), std::size_t{1});
+
+    const QModelIndex replacement_index = model->index(0, 0);
+    results->setCurrentIndex(replacement_index);
+    dialog.ActivateResult(replacement_index);
+    QCOMPARE(activations.size(), std::size_t{2});
+    const auto copied = activations.back();
+    model->Reset({});
+    model->Reset(replacement);
+    model->Reset({});
+    CompareResult(copied, replacement.results.front());
+    dialog.ActivateResult(replacement_index);
+    QCOMPARE(activations.size(), std::size_t{2});
+
+    dialog.InitializeQuery(QStringLiteral("blocked"));
+    dialog.SubmitSearch();
+    QVERIFY(service.WaitForQueries(1U));
+    dialog.CancelSearch();
+    QVERIFY(service.WaitForCancellation());
+    QTest::keyClick(results, Qt::Key_Enter, Qt::KeypadModifier);
+    QCOMPARE(activations.size(), std::size_t{2});
+    service.ReleaseCancelledRequest();
+    QCOMPARE(service.LookupCalls(), std::size_t{0});
+}
 
 void FullTextSearchDialogTest::
     SubmitsExactComposedAndProjectedQueryAndRetainsResponse() {

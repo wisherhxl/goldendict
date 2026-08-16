@@ -2092,7 +2092,7 @@ stale and cancelled completions invisible. Widgets owns only the view/model
 attachment; Core remains authoritative for result semantics and index behavior.
 No successor is selected or ranked.
 
-### Phase 8 full-text result activation intent (selected)
+### Phase 8 full-text result activation intent (complete)
 
 The documentation-only post-P8-FT-12 readiness audit is pinned to clean
 migrated revision `32b1fba41ee4b7b8e145acf41256e7c393b2764e` and the unchanged
@@ -2131,6 +2131,14 @@ Evidence is migrated `full_text_search_dialog.h/.cpp`,
 `fulltextsearch.cc:292-293,594-610,664-673` and
 `fulltextsearch.hh:227,232-233`. No successor after P8-FT-13 is selected or
 ranked.
+
+P8-FT-13 is complete. The dialog emits one private by-value
+`FullTextResult` activation intent for a valid primary single click or
+current-row Return/Enter. The result is resolved through `ResultAt()` without
+reinterpreting Core metadata; invalid, reset, stale, and cancelled rows emit
+nothing, and double-click adds no duplicate. No production consumer is
+connected, so lookup construction, dictionary scoping, and navigation remain
+unchanged. No successor is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

@@ -1598,7 +1598,7 @@ or cancelled completions remain invisible. The registered Release baseline
 remains 109 tests. No selection, focus, activation, decoration, count, state
 presentation, or successor is selected or ranked.
 
-## Phase 8 Full-Text Result Activation-Intent Gate (Selected)
+## Phase 8 Full-Text Result Activation-Intent Gate (Complete)
 
 The documentation-only post-P8-FT-12 audit selects P8-FT-13 as the sole
 smallest dependency-ready and independently decision-complete leaf: private
@@ -1637,6 +1637,14 @@ belong to P8-FT-13. Evidence is migrated `full_text_search_dialog.h/.cpp`,
 `full_text_response_model.h/.cpp`, and focused tests plus pinned legacy
 `fulltextsearch.cc:292-293,594-610,664-673` and
 `fulltextsearch.hh:227,232-233`. No successor after P8-FT-13 is selected or
+ranked.
+
+P8-FT-13 is complete. The existing offscreen dialog executable now covers
+exact one-delivery for primary single click, Return, and keypad Enter; exact
+copied result metadata and lifetime; double-click non-duplication; invalid,
+no-current, reset, stale, and cancelled safety; and repeated model resets.
+No test executable or production navigation side effect was added. The
+registered Release baseline remains 109, and no successor is selected or
 ranked.
 
 Use `ctest --preset conan-debug` after a Debug build and

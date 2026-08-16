@@ -2282,7 +2282,7 @@ replacement; and stale/cancelled suppression. The Release suite remains 109
 registered tests, and no public, persistence, adapter, dependency, index, or
 build-system surface changes. No successor is selected or ranked.
 
-### Phase 8 full-text result activation intent (selected)
+### Phase 8 full-text result activation intent (complete)
 
 The independent documentation-only post-P8-FT-12 audit is pinned to clean
 migrated revision `32b1fba41ee4b7b8e145acf41256e7c393b2764e` and unchanged clean
@@ -2328,6 +2328,14 @@ Evidence is migrated `full_text_search_dialog.h/.cpp`,
 `fulltextsearch.cc:292-293,594-610,664-673` and
 `fulltextsearch.hh:227,232-233`. No successor after P8-FT-13 is selected or
 ranked.
+
+P8-FT-13 is complete. `FullTextSearchDialog` now translates a valid primary
+single click or current-row Return/Enter into exactly one private by-value
+activation intent containing the unchanged `FullTextResult` returned by the
+existing model. Invalid, reset, stale, and cancelled rows remain inert, and a
+double click does not add another activation. MainWindow and all lookup,
+dictionary-scope, and navigation behavior remain untouched. The Release test
+baseline remains 109, and no successor is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

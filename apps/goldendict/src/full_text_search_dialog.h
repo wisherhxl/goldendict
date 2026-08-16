@@ -7,6 +7,7 @@
 #include <optional>
 
 #include <QDialog>
+#include <QModelIndex>
 
 #include "full_text_request_controller.h"
 #include "goldendict/core/application.h"
@@ -39,6 +40,12 @@ class FullTextSearchDialog final : public QDialog {
     void SetProjectedQuery(goldendict::core::FullTextQuery query);
     const goldendict::core::FullTextQuery& ProjectedQuery() const noexcept;
 
+   signals:
+    void ResultActivationRequested(goldendict::core::FullTextResult result);
+
+   protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
    private:
     friend class FullTextSearchDialogTest;
 
@@ -46,6 +53,7 @@ class FullTextSearchDialog final : public QDialog {
     void CancelSearch();
     void FinishSearch(std::uint64_t generation,
                       goldendict::core::FullTextResponse response);
+    void ActivateResult(const QModelIndex& index);
     void RestoreIdleState();
 
     FullTextQueryComposer* composer_ = nullptr;

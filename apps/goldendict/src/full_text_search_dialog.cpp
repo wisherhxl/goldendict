@@ -2,7 +2,9 @@
 
 #include "full_text_search_dialog.h"
 
+#include <QEvent>
 #include <QHBoxLayout>
+#include <QKeyEvent>
 #include <QLineEdit>
 #include <QListView>
 #include <QProgressBar>
@@ -42,6 +44,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     results_ = new QListView(this);
     results_->setObjectName(QStringLiteral("fullTextSearchResults"));
     results_->setModel(response_model_);
+    results_->installEventFilter(this);
     layout->addWidget(results_);
 
     progress_ = new QProgressBar(this);
@@ -67,6 +70,8 @@ FullTextSearchDialog::FullTextSearchDialog(
             [this]() { SubmitSearch(); });
     connect(cancel_button_, &QPushButton::clicked, this,
             [this]() { CancelSearch(); });
+    connect(results_, &QListView::clicked, this,
+            [this](const QModelIndex& index) { ActivateResult(index); });
     controller_.SetService(service);
 }
 
@@ -103,6 +108,18 @@ const goldendict::core::FullTextQuery& FullTextSearchDialog::ProjectedQuery()
     return projected_query_;
 }
 
+bool FullTextSearchDialog::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == results_ && event->type() == QEvent::KeyPress) {
+        const auto* key_event = static_cast<QKeyEvent*>(event);
+        if (key_event->key() == Qt::Key_Return ||
+            key_event->key() == Qt::Key_Enter) {
+            ActivateResult(results_->currentIndex());
+            return true;
+        }
+    }
+    return QDialog::eventFilter(watched, event);
+}
+
 void FullTextSearchDialog::SubmitSearch() {
     auto query = composer_->Compose();
     query.dictionary_ids = projected_query_.dictionary_ids;
@@ -131,6 +148,14 @@ void FullTextSearchDialog::FinishSearch(
     response_ = std::move(response);
     response_model_->Reset(*response_);
     RestoreIdleState();
+}
+
+void FullTextSearchDialog::ActivateResult(const QModelIndex& index) {
+    if (!index.isValid() || index != results_->currentIndex())
+        return;
+    const auto* result = response_model_->ResultAt(index);
+    if (result != nullptr)
+        emit ResultActivationRequested(*result);
 }
 
 void FullTextSearchDialog::RestoreIdleState() {
