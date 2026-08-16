@@ -2434,7 +2434,7 @@ P8-FT-13, P8-FT-14, and MainWindow lookup/navigation conventions, plus pinned
 legacy `fulltextsearch.cc:594-610` and `mainwindow.cc:3002-3014`.
 No successor after P8-FT-15 is selected or ranked.
 
-### Phase 8 full-text scoped result navigation connection (selected)
+### Phase 8 full-text scoped result navigation connection (complete)
 
 The independent post-P8-FT-15 audit is pinned to clean migrated revision
 `bb7298ab1fd04c302fb74d2903d3fa92a8c63bc6` and unchanged clean read-only
@@ -2469,7 +2469,7 @@ without tab creation, unchanged main query text, activation-time group capture,
 ordered nonempty and authoritative-empty scopes, successful sequencing,
 history/session identity and replay without widening, and missing-context,
 missing-facade/dialog, invalid-activation/navigation, and tab-limit no-ops. The
-future implementation gate is Linux Release configure/build, full
+completed implementation gate is Linux Release configure/build, full
 `ctest --preset conan-release`, clean exact-SCM `conan create`, packaged
 consumers, Release install, and standalone installed consumers.
 
@@ -2487,6 +2487,9 @@ P8-FT-7, P8-FT-13, P8-FT-14 and its Core tab/session coverage, P8-FT-15, and
 MainWindow `OpenArticleTab`/synchronization/session-mutation/failure-status/
 `StartNavigationLookup` conventions, plus pinned legacy
 `fulltextsearch.cc:594-610` and `mainwindow.cc:3002-3014`.
+P8-FT-16 is complete through a private lifetime-safe MainWindow connection and
+the existing Core-owned current-tab navigation contract. It adds no test
+executable or public/installed interface.
 No successor after P8-FT-16 is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8

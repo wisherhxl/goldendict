@@ -2254,7 +2254,7 @@ the clicked headword and complete matching dictionary-ID list to the current
 article view without synchronizing the main query edit.
 No successor after P8-FT-15 is selected or ranked.
 
-### Phase 8 full-text scoped result navigation connection (selected)
+### Phase 8 full-text scoped result navigation connection (complete)
 
 The independent post-P8-FT-15 documentation audit is pinned to clean migrated
 revision `bb7298ab1fd04c302fb74d2903d3fa92a8c63bc6` and unchanged clean
@@ -2312,6 +2312,11 @@ mutation, failure-status, and `StartNavigationLookup` conventions. Pinned
 legacy `fulltextsearch.cc:594-610` and `mainwindow.cc:3002-3014` pass the exact
 clicked headword and complete matching dictionary-ID list to the current
 article view without synchronizing the main query edit.
+P8-FT-16 is complete. MainWindow owns one lifetime-safe private connection per
+dialog instance and translates accepted activation intent through the existing
+scoped current-tab navigation sequence. Focused application smoke coverage
+pins successful identity and sequencing, replay, dialog replacement, and
+failure no-op behavior without adding a public surface or test executable.
 No successor after P8-FT-16 is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

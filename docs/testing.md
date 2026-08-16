@@ -1736,9 +1736,9 @@ conventions, plus pinned legacy `fulltextsearch.cc:594-610` and
 `mainwindow.cc:3002-3014`.
 No successor after P8-FT-15 is selected or ranked.
 
-## Phase 8 Full-Text Scoped Result Navigation Connection Gate (Selected)
+## Phase 8 Full-Text Scoped Result Navigation Connection Gate (Complete)
 
-The post-P8-FT-15 documentation audit selects only P8-FT-16. P8-FT-13 now
+The post-P8-FT-15 documentation audit selected only P8-FT-16. P8-FT-13 now
 delivers exact result activation, P8-FT-14 retains authoritative optional scope
 through Core navigation history/session/restoration/replay, and P8-FT-15 binds
 immutable submitted scope to the accepted response. The private MainWindow
@@ -1778,6 +1778,10 @@ P8-FT-7, P8-FT-13, P8-FT-14 Core tab/session coverage, P8-FT-15, and MainWindow
 current-tab `OpenArticleTab`, synchronization, session-mutation, failure-status,
 and `StartNavigationLookup` conventions, plus pinned legacy
 `fulltextsearch.cc:594-610` and `mainwindow.cc:3002-3014`.
+P8-FT-16 is complete. The existing dialog smoke exercises ordered and
+authoritative-empty activation, exact current-tab navigation identity,
+sequencing and replay, safe replacement, excluded metadata, and failure no-op
+paths without changing the 109-test baseline.
 No successor after P8-FT-16 is selected or ranked.
 
 Use `ctest --preset conan-debug` after a Debug build and

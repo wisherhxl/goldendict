@@ -28,6 +28,7 @@ class DictionaryBrowser;
 namespace goldendict::app {
 class FullTextQueryComposer;
 class FullTextSearchDialog;
+struct FullTextResultActivationIntent;
 }  // namespace goldendict::app
 class QAction;
 class QLabel;
@@ -283,6 +284,8 @@ class MainWindow final : public QMainWindow {
     void RefreshGroupSelector();
     void RefreshDictionaryBar();
     void ShowFullTextSearch();
+    void NavigateToFullTextResult(
+        goldendict::app::FullTextResultActivationIntent intent);
     goldendict::core::FullTextQuery ComposeFullTextQuery(
         const goldendict::app::FullTextQueryComposer& composer) const;
     void ApplyDictionaryParticipation();
