@@ -798,6 +798,52 @@ article ordinal with first-record ownership, inert assembled text,
 single-source `.gdfts` lifecycle, and deterministic mixed-service dispatch.
 No subsequent leaf is selected.
 
+The fresh post-P6-FT-5 audit covers every remaining migrated textual article
+format. At pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, `dsl.cc:255-257`,
+`bgl.cc:257-259`, `mdx.cc:271-273`, `aard.cc:285-287`, `zim.cc:728-730`,
+`slob.cc:637-639`, and `epwing.cc:144-147` each gate an explicitly supported
+full-text backend; their constructors at `dsl.cc:310`, `bgl.cc:308`,
+`mdx.cc:333`, `aard.cc:332`, `zim.cc:790`, `slob.cc:708`, and `epwing.cc:235`
+initialize that capability. No other migrated textual article format remains:
+LSA, ZIP sounds, and sound directories materialize resource playback rather
+than eligible definition text, and runtime sources have no private per-format
+ingestion contract.
+
+| Candidate | Migrated ownership, materialization, and source readiness | Audit decision |
+| --- | --- | --- |
+| DSL | Optional and tilde-expanded headwords can share articles; bounded plain/compressed decoding, safe HTML, external resource directories, and generated fixtures exist | Resource snapshot and expanded-headword ownership make the leaf larger; unselected |
+| BGL | Primary and alternate records share decoded articles; bounded gzip/block parsing, code pages, safe HTML, embedded resources, and generated fixtures exist | Binary control-record and alias ownership remain larger; unselected |
+| MDict | Key records and folded redirect chains materialize safe HTML; MDX/MDD discovery and generated fixtures exist | Redirect-chain ownership and the multi-file revision are larger; unselected |
+| Aard | Source-order records map directly to deduplicated article ordinals, including redirect-only articles; bounded 32/64-bit indexes, raw/zlib/bzip2 decoding, safe HTML links, one `.aar` source, and generated fixtures exist | Smallest dependency-ready leaf; P6-FT-6 selected |
+| ZIM | Directory records and redirects resolve cluster/blob articles; split-file discovery, bounded decoding, resources, and generated fixtures exist | Redirect/resource namespaces and a split-file revision are larger; unselected |
+| SLOB | References can share item/bin articles; declared encoding, raw/zlib/bzip2 stores, resources, and generated fixtures exist | Reference/item ownership and content-type filtering are larger; unselected |
+| EPWING | Word-index records retain materialized text; bounded decoding, internal references, subbook resources, and generated fixtures exist | Duplicate/grouped-index ownership and the source tree are larger; unselected |
+
+P6-FT-6 therefore adds only the private Aard adapter. Every unique validated
+article ordinal contributes one document, including a redirect-only article
+already materialized as a safe internal link. The first source-order record
+referencing that ordinal supplies the canonical headword; later records are
+aliases and do not duplicate it. Stable provenance is
+`aard-index:<first-record-ordinal>:<article-ordinal>`. Ingestion passes the
+existing sanitized `text/html` article through the inert assembler and indexes
+only bounded plain text. Alias-only headword text, metadata, link targets, raw
+markup, and future multi-volume or icon data are excluded.
+
+The distinct private `.gdfts` artifact uses the sole discovered `.aar` file as
+its complete source revision; mutation or replacement forces a stale rebuild.
+Without a configured index directory Aard remains typed unsupported. Adapted
+results merge in stable dictionary-ID order under the global bound; adapted
+no-match dictionaries add no error, requested non-adapted local or runtime
+sources remain typed unsupported, and missing IDs remain typed unavailable.
+Cancellation, deadlines, corruption, resource limits, and storage failures
+remain contained per dictionary. Installed APIs and DTOs, runtime interfaces,
+public capability flags, preferences, dependencies, GUI/Phase 8 behavior, and
+the private index format stay unchanged. Legacy `_FTS` compatibility,
+metadata/resource indexing, highlighting, other adapters, implementation in
+this audit, and unrelated refactors are excluded. No leaf after P6-FT-6 is
+selected.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

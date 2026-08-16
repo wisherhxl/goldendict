@@ -1320,6 +1320,48 @@ ownership, inert assembled text, single-source `.gdfts` lifecycle,
 mixed-service dispatch, and installed-consumer coverage. No successor is
 selected.
 
+The fresh independent post-P6-FT-5 audit selects P6-FT-6, the private Aard
+adapter, and no later leaf. The complete remaining matrix is DSL, BGL, MDict,
+Aard, ZIM, SLOB, and EPWING; each is explicitly full-text eligible at pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` through its
+format-specific disabled-type gate and `can_FTS` initialization in `dsl.cc`,
+`bgl.cc`, `mdx.cc`, `aard.cc`, `zim.cc`, `slob.cc`, and `epwing.cc`. LSA, ZIP
+sounds, and sound directories are resource-only, while runtime sources have no
+private per-format ingestion contract. Aard is the smallest dependency-ready
+candidate because its migrated source-order records already map directly to
+deduplicated article ordinals, its redirect-only articles are materialized as
+safe internal links, its bounded 32/64-bit and raw/zlib/bzip2 reader is
+complete, and one `.aar` file plus generated fixtures settles its lifecycle.
+DSL resource snapshots, BGL binary aliases, MDict redirect chains and MDDs,
+ZIM split files and namespaces, SLOB item/bin ownership, and EPWING grouped
+indexes remain larger unselected contracts; this is not a successor ranking.
+
+Each unique validated Aard article ordinal contributes exactly one document.
+The first source-order record referencing it supplies the canonical headword;
+later aliases do not duplicate it, and a redirect-only article contributes its
+already-safe target text. The private document ID is
+`aard-index:<first-record-ordinal>:<article-ordinal>`. Only bounded plain text
+from the existing inert assembly of migrated `text/html` is indexed. Metadata,
+alias-only text, link targets, raw markup, icons, resources, and future
+multi-volume data are excluded. The distinct `.gdfts` artifact uses the sole
+discovered `.aar` file as its complete source revision, so mutation or
+replacement forces stale rebuild; no configured index directory leaves Aard
+typed unsupported.
+
+Mixed-service behavior retains stable dictionary-ID ordering, the global
+bound, dictionary filters, adapted no-match behavior, typed unsupported and
+unavailable errors, and contained cancellation, deadline, corruption,
+resource-limit, and storage failures. P6-FT-6 changes no installed
+`SearchFullText` API or DTO, runtime interface, public capability flag,
+configuration, preference, dependency, GUI/Phase 8 workflow, or private
+`.gdfts` format. Implementation code, other adapters, legacy `_FTS`
+compatibility, metadata/resource indexing, highlighting, and unrelated
+refactors are outside this audit. Its implementation gates are focused
+generated-fixture, lifecycle, contained-failure, and six-format mixed-service
+coverage; the unchanged installed consumer; Linux Release build and test;
+install verification; and clean committed exact-SCM Conan package creation.
+No leaf after P6-FT-6 is selected.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

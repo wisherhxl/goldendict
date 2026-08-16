@@ -650,6 +650,37 @@ inert-assembly, lifecycle, contained-failure, mixed-service, Release
 build/install/test, exact-SCM package, and installed-consumer coverage. No
 successor is selected.
 
+The fresh post-P6-FT-5 audit selects only P6-FT-6 Aard. Future focused Aard
+reader/backend coverage extends the generated fixture without downloads and
+exercises 32/64-bit indexes, raw/zlib/bzip2 articles, complete record/article
+traversal, aliases, redirect-only articles, safe links, malformed input, and
+source mutation. It proves one document per unique article ordinal,
+first-record canonical ownership, exact
+`aard-index:<first-record-ordinal>:<article-ordinal>` provenance, and bounded
+plain text from inert assembly of the migrated `text/html`. Metadata,
+alias-only text, link targets, raw markup, icons, resources, and future
+multi-volume data remain excluded.
+
+The private artifact coverage must prove create, reuse, sole-`.aar` source
+stale rebuild, replacement stale rebuild, corrupt rebuild, typed unsupported
+without an index directory, resource limits, cancellation, deadlines, and
+contained storage failures. Application-service coverage combines generated
+StarDict, Dictd, SDict, XDXF, GLS, and Aard fixtures and pins stable
+dictionary-ID ordering, filters, the global bound, adapted no-match behavior,
+typed unsupported errors for requested non-adapted local/runtime sources,
+typed unavailable errors for missing IDs, cancellation, and deadlines. The
+installed consumer returns Aard through the unchanged `SearchFullText` API and
+DTOs.
+
+The implementation gate remains Linux Release configure/build and
+`ctest --preset conan-release`, library install and installed `test_package`
+consumer, then clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile. This audit is documentation-only, so targeted
+cross-document consistency checks and `git diff --check` replace builds.
+Dependencies, GUI, Preferences, highlighting, other adapters, legacy `_FTS`
+compatibility, metadata/resource indexing, and private index evolution are
+excluded. No leaf after P6-FT-6 is selected.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

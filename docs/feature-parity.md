@@ -39,7 +39,7 @@
 | Bounded legacy text encoding conversion | slice | Phase 5 | strict Latin-1, UTF-16, GB18030, and EUC-JP fixtures |
 | Headword suggestions | slice | Phase 5 | bounded ranked suggestion fixtures and installed-consumer tests |
 | Morphology and transliteration | later | Phase 5 | per-language fixtures |
-| Full-text search | slice | Phase 5/6/8 | installed bounded query and private reference-index contract complete; P6-FT-1 StarDict, P6-FT-2 SDict, P6-FT-3 XDXF, P6-FT-4 Dictd, and P6-FT-5 GLS adapters are accepted; no successor is selected before a fresh audit |
+| Full-text search | slice | Phase 5/6/8 | installed bounded query and private reference-index contract complete; P6-FT-1 StarDict, P6-FT-2 SDict, P6-FT-3 XDXF, P6-FT-4 Dictd, and P6-FT-5 GLS adapters are accepted; the fresh full candidate audit selects only P6-FT-6 Aard, with no later leaf selected |
 
 ## Local Dictionary Formats
 
@@ -53,7 +53,7 @@
 | ABBYY Lingvo DSL | slice | text batch | bounded plain/compressed decoding, directives, optional/tilde headwords, common markup/links, and confined directory resources; abbreviations, resource ZIP, nested cards, and full-text parity remain |
 | Babylon BGL | slice | binary batch | bounded signature/gzip/block parsing, metadata and common code pages, aliases, folded lookup/suggestions, sanitized HTML, and embedded resources; advanced control records and full-text parity remain |
 | MDict MDX/MDD | slice | binary batch | bounded 2.x headers/key/record tables, plain/zlib blocks, strict text decoding, styles, redirects, folded lookup/suggestions, sanitized HTML, and companion MDD resources; encryption, LZO, 1.x, and full-text parity remain |
-| Aard | slice | binary batch | bounded 32/64-bit archive indexes, zlib/bzip2/raw articles, metadata, folded lookup/suggestions, redirects, and sanitized article links; multi-volume aggregation, icons, and full-text parity remain |
+| Aard | slice | binary batch | bounded 32/64-bit archive indexes, zlib/bzip2/raw articles, metadata, folded lookup/suggestions, redirects, and sanitized article links; P6-FT-6 is the selected next private full-text leaf with unique-article ingestion, first-record ownership, inert assembled text, and a sole-`.aar` source revision; implementation, multi-volume aggregation, icons, and later parity remain |
 | ZIM | slice | binary batch | bounded header/directory/cluster parsing, consecutive split files, raw/zlib/bzip2 clusters, 32/64-bit blob offsets, metadata, redirects, folded lookup/suggestions, and resources; LZMA2/Zstd, complex link rewriting, icons, and full-text parity remain |
 | SLOB | slice | binary batch | bounded header/reference/item/bin parsing, declared text encoding, metadata tags, aliases, raw/zlib/bzip2 stores, folded lookup/suggestions, sanitized articles, and resources; LZMA2, advanced conversion, icons, and full-text parity remain |
 | EPWING | slice | specialized batch | bounded `CATALOGS`/subbook/index parsing, Latin-1 and JIS X 0208 text, folded lookup/suggestions, internal references, and confined subbook resources; compressed HONMON, mixed GB2312, gaiji/media rendering, grouped indexes, and full-text parity remain |
