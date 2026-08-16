@@ -1461,6 +1461,44 @@ background lifecycle, public API, persistence, adapter, `.gdfts`, legacy
 `fulltextsearch.cc:338-570` and `fulltextsearch.ui:99-238`. No successor after
 P8-FT-9 is selected or ranked.
 
+## Phase 8 Full-Text Per-Document Response Projection Gate (Selected)
+
+The documentation-only post-P8-FT-9 audit selects P8-FT-10 as the sole
+smallest independently dependency-ready prerequisite: a private,
+non-integrated Qt item model that projects one row per ordered
+`FullTextResponse::results` element. No successor after P8-FT-10 is selected or
+ranked.
+
+The future focused offscreen Widgets QTest must verify zero rows for an empty
+response; exact row count and Core order; separate rows for case-insensitively
+equal headwords; UTF-8 headwords through `Qt::DisplayRole`; and field-for-field
+typed access to dictionary identity, headword, document ID, `MatchInfo`,
+excerpt, and every byte match. Reset and replacement must be atomic, the model
+must own an immutable snapshot independent of later source-response mutation,
+and invalid indexes or non-display roles must follow normal Qt model behavior.
+The test must also prove that construction and reset do not submit, cancel, or
+otherwise touch a controller, service, dialog, configuration, or persistence.
+
+The focused gate is the new private model QTest. The full implementation gate
+is Linux Release configure/build, full `ctest --preset conan-release` with only
+the intentional registered-test delta, then clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile and packaged
+consumers. P8-FT-10 changes no installed interface, so install and standalone
+installed-consumer checks are not required.
+
+Visible result-list/table/tree choice, counts, selection, empty/error/partial
+states, article activation/navigation and lookup handoff, highlighting and
+WebEngine behavior, Preferences enablement/index policy, index
+readiness/visibility/status and background lifecycle, public APIs,
+persistence, adapters, `.gdfts`, legacy `_FTS`, dependencies, and unrelated
+tests do not belong to P8-FT-10. Evidence is migrated
+`dictionary_service.h:164-196`,
+`application/dictionary_service.cc:1078-1157`, and
+`full_text_search_dialog.h/.cpp`, plus pinned legacy
+`fulltextsearch.hh:41-65,135-156`,
+`fulltextsearch.cc:129-186,518-610,685-750`, and
+`fulltextsearch.ui:99-238`. No successor after P8-FT-10 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

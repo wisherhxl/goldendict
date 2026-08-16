@@ -1919,6 +1919,63 @@ folded into this leaf. Decisive migrated evidence is
 `fulltextsearch.cc:338-570` and `fulltextsearch.ui:99-238`. No successor after
 P8-FT-9 is selected or ranked.
 
+### Phase 8 full-text per-document response projection prerequisite
+
+The fresh documentation-only post-P8-FT-9 readiness audit is pinned to clean
+migrated revision `ee632c2e470b1f24e73d311dd0eec8727d5b5c15` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks result response
+projection/model, ordering/metadata/error and partial-response presentation,
+result UI and selection states, article activation/lookup handoff,
+highlighting/WebEngine handoff, Preferences enablement/index policy, and index
+readiness/visibility/status/background lifecycle without ranking them in
+advance.
+
+The audit selects exactly one smallest independently dependency-ready
+prerequisite, P8-FT-10: a private, non-integrated Qt item model that projects
+one immutable row for every `FullTextResult` in the completed terminal
+`FullTextResponse`. Rows preserve Core response order and remain distinct even
+when headwords compare equal. `Qt::DisplayRole` exposes the UTF-8 headword as a
+`QString`; private typed access returns the unchanged dictionary identity,
+headword, document ID, match metadata, excerpt, and byte-match vector needed by
+later presentation and activation leaves. Resetting from a response replaces
+the complete snapshot atomically; an empty response produces zero rows.
+
+Core remains authoritative for validation, dictionary ordering, global and
+per-dictionary bounds, match metadata, contained errors, and partial-response
+state. Widgets owns only the lossless row projection and snapshot lifetime.
+The model neither merges legacy case-insensitive duplicate headwords nor
+sorts, filters, localizes, truncates, or interprets result metadata. It retains
+no error or partial state because their visible presentation policy remains a
+separate decision; the dialog continues to retain the terminal response
+unchanged until a later integration leaf.
+
+P8-FT-10 depends only on the installed result DTO and completed P8-FT-9
+terminal-response path. Its future implementation is limited to the private
+model, focused offscreen Widgets QTest, and existing private test registration.
+Acceptance requires exact row count and order, distinct duplicate headwords,
+UTF-8 display conversion, field-for-field typed metadata preservation,
+empty/reset/replacement behavior, source-response independence, and no dialog,
+controller, service, or persistence effects. The focused gate is that model
+QTest; the full gate is Linux Release configure/build, full
+`ctest --preset conan-release` with only its intentional registered-test delta,
+then clean committed exact-SCM `conan create` with the Release Qt WebEngine
+host profile and packaged consumers. Installed interfaces are unchanged, so
+install and standalone installed-consumer checks are not required.
+
+Result-view layout, counts, selection, empty/error/partial states, article
+activation and lookup handoff, highlighting and WebEngine behavior,
+Preferences enablement/index policy, index readiness/visibility/status and
+background indexing lifecycle, public APIs, persistence, adapters, `.gdfts`,
+legacy `_FTS`, dependencies, and unrelated behavior are excluded. Decisive
+migrated evidence is
+`modules/core/include/goldendict/core/dictionary_service.h:164-196`,
+`modules/core/src/application/dictionary_service.cc:1078-1157`, and
+`apps/goldendict/src/full_text_search_dialog.h/.cpp`; pinned legacy evidence is
+`fulltextsearch.hh:41-65,135-156`,
+`fulltextsearch.cc:129-186,518-610,685-750`, and
+`fulltextsearch.ui:99-238`. No successor after P8-FT-10 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

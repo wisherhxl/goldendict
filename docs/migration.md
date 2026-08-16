@@ -2128,6 +2128,50 @@ contract. Evidence is migrated `full_text_request_controller.h/.cpp`,
 `fulltextsearch.cc:338-570` and `fulltextsearch.ui:99-238`. No successor after
 P8-FT-9 is selected or ranked.
 
+The fresh documentation-only post-P8-FT-9 readiness audit is pinned to clean
+migrated revision `ee632c2e470b1f24e73d311dd0eec8727d5b5c15` and unchanged
+clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It audits every remaining
+full-text result projection/presentation, result UI/selection/empty/error,
+activation/navigation/lookup, highlighting/WebEngine, Preferences/index
+policy, and index readiness/visibility/status/background-lifecycle surface
+without advance ranking. Exactly one smallest independent prerequisite is
+selected: P8-FT-10, the private non-integrated per-document response projection
+model. No successor after P8-FT-10 is selected or ranked.
+
+P8-FT-10 projects the completed `FullTextResponse::results` into one immutable
+Qt model row per result, preserving Core order, duplicate headwords, dictionary
+identity, document ID, match metadata, excerpt, and byte matches exactly.
+`Qt::DisplayRole` provides the UTF-8 headword; private typed access provides the
+unchanged result. Atomic reset replaces the snapshot, and an empty response
+has zero rows. Widgets owns only projection and snapshot lifetime; Core retains
+ordering, bounds, errors, and partial-response ownership. The model does not
+merge, sort, filter, truncate, localize, interpret errors, or attach to the
+dialog.
+
+The leaf depends only on the installed result DTO and P8-FT-9 terminal-response
+retention. Acceptance covers exact order/count, distinct equal headwords,
+field-for-field metadata, UTF-8 display, empty/reset/replacement behavior,
+source-response independence, and absence of controller/service/persistence
+effects. Its focused gate is a private offscreen Widgets model QTest; its full
+implementation gate is Linux Release configure/build, full
+`ctest --preset conan-release` with only the intentional registration delta,
+and clean committed exact-SCM `conan create` with the Release Qt WebEngine host
+profile and packaged consumers. Installed surfaces do not change, so install
+and standalone installed-consumer checks are unnecessary.
+
+Result-view layout/counts, selection, empty/error/partial presentation,
+article activation/navigation and lookup handoff, highlighting/WebEngine,
+Preferences enablement/index policy, index readiness/visibility/status and
+background lifecycle, public APIs, persistence, adapters, `.gdfts`, legacy
+`_FTS`, dependencies, and unrelated behavior are excluded. Evidence is
+migrated `dictionary_service.h:164-196`,
+`application/dictionary_service.cc:1078-1157`, and
+`full_text_search_dialog.h/.cpp`, plus pinned legacy
+`fulltextsearch.hh:41-65,135-156`,
+`fulltextsearch.cc:129-186,518-610,685-750`, and
+`fulltextsearch.ui:99-238`. No successor after P8-FT-10 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
