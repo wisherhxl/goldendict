@@ -17,6 +17,22 @@ bool IsBoundedText(const std::string& text) {
            foundation::IsValidUtf8(text);
 }
 
+bool IsValidDictionaryScope(const TabNavigationState& state) {
+    if (!state.dictionary_filter_active) {
+        return state.dictionary_ids.empty();
+    }
+    if (state.dictionary_ids.size() > kMaximumLookupDictionaryFilters) {
+        return false;
+    }
+    return std::all_of(state.dictionary_ids.begin(), state.dictionary_ids.end(),
+                       [](const std::string& id) {
+                           return !id.empty() &&
+                                  id.size() <= kMaximumLookupFilterBytes &&
+                                  id.find('\0') == std::string::npos &&
+                                  foundation::IsValidUtf8(id);
+                       });
+}
+
 }  // namespace
 
 bool IsValidTabNavigation(const TabNavigationState& state) {
@@ -35,15 +51,19 @@ bool IsValidTabNavigation(const TabNavigationState& state) {
                    state.source_dictionary_id.empty() &&
                    state.source_article_id.empty() &&
                    state.target_article_id.empty() &&
-                   state.target_anchor.empty();
+                   state.target_anchor.empty() &&
+                   !state.dictionary_filter_active &&
+                   state.dictionary_ids.empty();
         case TabNavigationKind::kLookup:
             return !state.query.empty() && state.internal_url.empty() &&
                    state.source_dictionary_id.empty() &&
                    state.source_article_id.empty() &&
                    state.target_article_id.empty() &&
-                   state.target_anchor.empty();
+                   state.target_anchor.empty() && IsValidDictionaryScope(state);
         case TabNavigationKind::kInternalLink:
-            return !state.query.empty() && !state.internal_url.empty();
+            return !state.query.empty() && !state.internal_url.empty() &&
+                   !state.dictionary_filter_active &&
+                   state.dictionary_ids.empty();
     }
     return false;
 }

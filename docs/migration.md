@@ -2337,11 +2337,11 @@ double click does not add another activation. MainWindow and all lookup,
 dictionary-scope, and navigation behavior remain untouched. The Release test
 baseline remains 109, and no successor is selected or ranked.
 
-### Phase 8 full-text scoped navigation prerequisite (selected)
+### Phase 8 full-text scoped navigation prerequisite (complete)
 
-The independent post-P8-FT-13 audit is pinned to clean migrated revision
+The independent post-P8-FT-13 audit was pinned to clean migrated revision
 `6ac1912965a60f6d8c9b5614752fa97f3426d80f` and unchanged clean read-only
-legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selected only
 P8-FT-14, the Core-owned scoped lookup-navigation prerequisite. The audit
 rejects a direct activation-to-lookup connection as the next leaf: current
 navigation stores only query and group, so that connection would widen the
@@ -2357,9 +2357,11 @@ the active flag, count, and encoded IDs; existing ten-field records load as
 unscoped, and inconsistent counts are rejected. MainWindow consumes a retained
 scope unchanged when constructing `LookupQuery` and otherwise preserves the
 current dictionary-bar projection behavior. Invalid scoped state fails
-atomically under the existing navigation/session limits. The future leaf's
-only public contract change is the scoped-navigation fields on
-`TabNavigationState`; this audit changes documentation only.
+atomically under the existing navigation/session limits. P8-FT-14 is complete.
+Its only public contract change is the additive `dictionary_filter_active` and
+`dictionary_ids` fields on `TabNavigationState`; the C ABI remains unchanged.
+Core preserves explicit presence, active-empty, and ordered non-empty scope
+through identity, history, session persistence, and restoration.
 
 This prerequisite makes later activation handoff bounded but does not perform
 it. The approved downstream behavior will query the activated result headword
@@ -2374,8 +2376,8 @@ Preferences/index policy, index lifecycle, adapters, index formats and legacy
 Focused acceptance covers scoped navigation validation, active-empty behavior,
 MainWindow lookup-query construction, history back/forward retention, session
 round trips, old-session compatibility, and atomic rejection. Full acceptance
-uses the existing Linux Release build/test/package/install/consumer gate; the
-documentation audit itself does not build. Evidence is migrated
+uses the existing Linux Release build/test/package/install/consumer gate.
+Evidence is migrated
 `desktop_facade.h`, Core tab/session tests, `main_window.cpp` lookup/navigation
 construction, P8-FT-7 projection, and pinned legacy
 `fulltextsearch.cc:594-610` plus `mainwindow.cc:3002-3014`.

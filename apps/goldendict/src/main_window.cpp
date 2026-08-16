@@ -3526,6 +3526,39 @@ void MainWindow::RunDictionaryContextNavigationCheck(
         return;
     }
 
+    goldendict::core::TabNavigationState ordered_navigation;
+    ordered_navigation.kind = goldendict::core::TabNavigationKind::kLookup;
+    ordered_navigation.query = "scoped";
+    ordered_navigation.title = ordered_navigation.query;
+    ordered_navigation.group_id = selected_group_id_;
+    ordered_navigation.dictionary_filter_active = true;
+    ordered_navigation.dictionary_ids = {"second", "first", "second"};
+    goldendict::core::LookupQuery ordered_query;
+    ordered_query.group_id = selected_group_id_;
+    ApplyNavigationDictionaryFilter(&ordered_query, ordered_navigation);
+    auto empty_navigation = ordered_navigation;
+    empty_navigation.dictionary_ids.clear();
+    goldendict::core::LookupQuery empty_query;
+    empty_query.group_id = selected_group_id_;
+    ApplyNavigationDictionaryFilter(&empty_query, empty_navigation);
+    auto ordinary_navigation = ordered_navigation;
+    ordinary_navigation.dictionary_filter_active = false;
+    ordinary_navigation.dictionary_ids.clear();
+    goldendict::core::LookupQuery ordinary_expected;
+    ordinary_expected.group_id = selected_group_id_;
+    ApplyDictionaryFilter(&ordinary_expected);
+    goldendict::core::LookupQuery ordinary_actual;
+    ordinary_actual.group_id = selected_group_id_;
+    ApplyNavigationDictionaryFilter(&ordinary_actual, ordinary_navigation);
+    bool passed =
+        ordered_query.dictionary_filter_active &&
+        ordered_query.dictionary_ids == ordered_navigation.dictionary_ids &&
+        empty_query.dictionary_filter_active &&
+        empty_query.dictionary_ids.empty() &&
+        ordinary_actual.dictionary_filter_active ==
+            ordinary_expected.dictionary_filter_active &&
+        ordinary_actual.dictionary_ids == ordinary_expected.dictionary_ids;
+
     goldendict::core::LookupResponse response;
     const auto append = [&response](std::string id, std::string name) {
         goldendict::core::DictionaryEntry entry;
@@ -3545,8 +3578,8 @@ void MainWindow::RunDictionaryContextNavigationCheck(
     StoreLookupResults(tab_id, response);
     RefreshResultsNavigation();
     auto snapshot = view->DictionaryContextSnapshot();
-    bool passed =
-        snapshot.entries.size() == 20 && snapshot.overflow &&
+    passed =
+        passed && snapshot.entries.size() == 20 && snapshot.overflow &&
         results_list_->count() == 22 &&
         snapshot.entries[0].dictionary_id == QStringLiteral("dictionary-0") &&
         snapshot.entries[0].display_name ==
@@ -5788,6 +5821,17 @@ void MainWindow::ApplyDictionaryFilter(
     query->dictionary_ids = ParticipatingDictionaryIds(query->group_id);
 }
 
+void MainWindow::ApplyNavigationDictionaryFilter(
+    goldendict::core::LookupQuery* query,
+    const goldendict::core::TabNavigationState& navigation) const {
+    if (navigation.dictionary_filter_active) {
+        query->dictionary_filter_active = true;
+        query->dictionary_ids = navigation.dictionary_ids;
+        return;
+    }
+    ApplyDictionaryFilter(query);
+}
+
 void MainWindow::ApplyDictionaryFilter(
     goldendict::core::SuggestionQuery* query) const {
     if (dictionary_bar_ == nullptr || !dictionary_bar_->isVisible())
@@ -7328,7 +7372,7 @@ void MainWindow::StartNavigationLookup(
     goldendict::core::LookupQuery query;
     query.text = navigation.query;
     query.group_id = navigation.group_id;
-    ApplyDictionaryFilter(&query);
+    ApplyNavigationDictionaryFilter(&query, navigation);
     if (record_history) {
         emit LookupSubmitted(QString::fromStdString(navigation.query),
                              navigation.group_id);

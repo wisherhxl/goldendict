@@ -820,6 +820,12 @@ void ApplicationServiceTest::ConfigurationRoundTripsArticleTabSession() {
     lookup.query = "alpha | beta";
     lookup.group_id = 7U;
     lookup.title = "Alpha & Beta";
+    lookup.dictionary_filter_active = true;
+    lookup.dictionary_ids = {"second|dictionary", "first", "second|dictionary"};
+    TabNavigationState empty_scope = lookup;
+    empty_scope.query = "authoritative empty";
+    empty_scope.title = empty_scope.query;
+    empty_scope.dictionary_ids.clear();
     TabNavigationState link;
     link.kind = TabNavigationKind::kInternalLink;
     link.query = "linked";
@@ -830,8 +836,8 @@ void ApplicationServiceTest::ConfigurationRoundTripsArticleTabSession() {
     link.source_article_id = "source/article";
     link.target_article_id = "target:article";
     link.target_anchor = "part 2";
-    expected.article_tab_session =
-        ArticleTabSession{{{7U, {lookup, link}, 1U}, {20U, {lookup}, 0U}}, 20U};
+    expected.article_tab_session = ArticleTabSession{
+        {{7U, {lookup, link}, 1U}, {20U, {empty_scope, lookup}, 0U}}, 20U};
 
     SaveConfiguration(path.string(), expected);
     const std::string canonical = ReadFile(path);
@@ -840,6 +846,17 @@ void ApplicationServiceTest::ConfigurationRoundTripsArticleTabSession() {
     QCOMPARE(*actual.article_tab_session, *expected.article_tab_session);
     SaveConfiguration(path.string(), actual);
     QCOMPARE(ReadFile(path), canonical);
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\nindex_directory=\n"
+                          "article_tab_session=1\narticle_tab=1|0\n"
+                          "article_tab_navigation=1|1|legacy|0|legacy|||||\n");
+    const auto legacy = LoadConfiguration(path.string());
+    QVERIFY(legacy.article_tab_session.has_value());
+    const auto& legacy_navigation =
+        legacy.article_tab_session->tabs.front().history.front();
+    QVERIFY(!legacy_navigation.dictionary_filter_active);
+    QVERIFY(legacy_navigation.dictionary_ids.empty());
 
     test::WriteBinaryFile(path,
                           "goldendict-core-config-v1\nindex_directory=\n");
@@ -878,7 +895,7 @@ void ApplicationServiceTest::
     QCOMPARE(ReadFile(path), original_bytes);
     QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
 
-    const std::vector<std::string> malformed = {
+    std::vector<std::string> malformed = {
         "article_tab=1|0\n",
         "article_tab_session=1\n",
         "article_tab_session=1\narticle_tab_session=1\n",
@@ -892,10 +909,29 @@ void ApplicationServiceTest::
         "article_tab_navigation=2|1|word|0|word|||||\n",
         "article_tab_session=1\narticle_tab=1|0\n"
         "article_tab_navigation=1|99|word|0|word|||||\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||2|0\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||0|1|id\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||1|2|id\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||1|1|\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||1|1|%C3%28\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||1|1|embedded%00nul\n",
         "article_tab_session=18446744073709551615\n"
         "article_tab=18446744073709551615|0\n"
         "article_tab_navigation=18446744073709551615|1|word|0|word|||||\n",
     };
+    malformed.push_back(
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||1|101\n");
+    malformed.push_back(
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||1|1|" +
+        std::string(kMaximumLookupFilterBytes + 1U, 'x') + "\n");
     for (const auto& fields : malformed) {
         test::WriteBinaryFile(path, "goldendict-core-config-v1\n" + fields);
         QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),

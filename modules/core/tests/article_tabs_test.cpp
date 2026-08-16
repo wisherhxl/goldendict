@@ -4,6 +4,7 @@
 
 #include <limits>
 #include <string>
+#include <utility>
 
 #include "goldendict/core/application.h"
 #include "goldendict/core/desktop_facade.h"
@@ -17,6 +18,14 @@ TabNavigationState Lookup(std::string query, std::uint32_t group_id = 0U) {
     state.query = std::move(query);
     state.group_id = group_id;
     state.title = state.query;
+    return state;
+}
+
+TabNavigationState ScopedLookup(std::string query,
+                                std::vector<std::string> dictionary_ids) {
+    auto state = Lookup(std::move(query), 7U);
+    state.dictionary_filter_active = true;
+    state.dictionary_ids = std::move(dictionary_ids);
     return state;
 }
 
@@ -34,7 +43,92 @@ class ArticleTabsTest : public QObject {
     void RejectsInvalidSessionsAtomically();
     void RejectsInputPhrasesByUnicodeScalarWithoutMutation();
     void RejectsLimitsAndInvalidOperationsAtomically();
+    void PreservesScopedNavigationAcrossValueAndHistoryOperations();
+    void RejectsInvalidScopedNavigationAtomically();
 };
+
+void ArticleTabsTest::
+    PreservesScopedNavigationAcrossValueAndHistoryOperations() {
+    const auto scoped = ScopedLookup("scoped", {"second", "first", "second"});
+    const auto empty = ScopedLookup("empty", {});
+    const auto unscoped = Lookup("scoped", 7U);
+    QVERIFY(!(scoped == unscoped));
+    QVERIFY(empty.dictionary_filter_active);
+    QVERIFY(empty.dictionary_ids.empty());
+
+    const TabNavigationState copied = scoped;
+    QCOMPARE(copied, scoped);
+    TabNavigationState moved = copied;
+    TabNavigationState moved_again = std::move(moved);
+    QCOMPARE(moved_again, scoped);
+
+    auto facade = CreateDesktopFacade({});
+    const ArticleTabId id = facade->GetArticleTabsState().active_tab_id;
+    QVERIFY(facade->OpenArticleTab(scoped, TabOpenPolicy::kCurrentTab,
+                                   TabActivationPolicy::kActivate));
+    QVERIFY(facade->OpenArticleTab(empty, TabOpenPolicy::kCurrentTab,
+                                   TabActivationPolicy::kActivate));
+    QVERIFY(facade->GoBackInArticleTab(id));
+    QCOMPARE(facade->GetArticleTabsState().tabs.front().navigation, scoped);
+    QVERIFY(facade->GoForwardInArticleTab(id));
+    QCOMPARE(facade->GetArticleTabsState().tabs.front().navigation, empty);
+
+    const auto session = facade->ExportArticleTabSession();
+    auto restored = CreateDesktopFacade({});
+    QVERIFY(restored->RestoreArticleTabSession(session));
+    QCOMPARE(restored->ExportArticleTabSession(), session);
+    QVERIFY(restored->GoBackInArticleTab(id));
+    QCOMPARE(restored->GetArticleTabsState().tabs.front().navigation, scoped);
+
+    const auto reused = restored->OpenArticleTab(
+        scoped, TabOpenPolicy::kReuseExisting, TabActivationPolicy::kActivate);
+    QCOMPARE(reused.tab_id, id);
+    const auto distinct = restored->OpenArticleTab(
+        ScopedLookup("scoped", {"first", "second", "second"}),
+        TabOpenPolicy::kReuseExisting, TabActivationPolicy::kKeepActive);
+    QVERIFY(distinct.tab_id != id);
+}
+
+void ArticleTabsTest::RejectsInvalidScopedNavigationAtomically() {
+    auto facade = CreateDesktopFacade({});
+    const auto before = facade->ExportArticleTabSession();
+    std::vector<TabNavigationState> invalid;
+    auto inactive = Lookup("inactive");
+    inactive.dictionary_ids = {"unexpected"};
+    invalid.push_back(std::move(inactive));
+    invalid.push_back(ScopedLookup("empty-id", {""}));
+    invalid.push_back(ScopedLookup(
+        "oversized-id", {std::string(kMaximumLookupFilterBytes + 1U, 'x')}));
+    invalid.push_back(
+        ScopedLookup("invalid-utf8", {std::string("bad\xc3\x28")}));
+    invalid.push_back(ScopedLookup("nul", {std::string("embedded\0nul", 12U)}));
+    invalid.push_back(ScopedLookup(
+        "too-many",
+        std::vector<std::string>(kMaximumLookupDictionaryFilters + 1U, "id")));
+    auto empty_navigation = ScopedLookup("not-empty-kind", {});
+    empty_navigation.kind = TabNavigationKind::kEmpty;
+    empty_navigation.query.clear();
+    empty_navigation.group_id = 0U;
+    invalid.push_back(std::move(empty_navigation));
+    auto link = ScopedLookup("link", {});
+    link.kind = TabNavigationKind::kInternalLink;
+    link.internal_url = "goldendict://lookup/link";
+    invalid.push_back(std::move(link));
+
+    for (const auto& navigation : invalid) {
+        QCOMPARE(facade
+                     ->OpenArticleTab(navigation, TabOpenPolicy::kCurrentTab,
+                                      TabActivationPolicy::kActivate)
+                     .error,
+                 TabOperationError::kInvalidNavigation);
+        QCOMPARE(facade->ExportArticleTabSession(), before);
+        ArticleTabSession invalid_session = before;
+        invalid_session.tabs.front().history = {navigation};
+        QCOMPARE(facade->RestoreArticleTabSession(invalid_session).error,
+                 TabOperationError::kInvalidSession);
+        QCOMPARE(facade->ExportArticleTabSession(), before);
+    }
+}
 
 void ArticleTabsTest::RejectsInputPhrasesByUnicodeScalarWithoutMutation() {
     CoreConfiguration configuration;

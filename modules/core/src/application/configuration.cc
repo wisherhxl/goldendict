@@ -1198,7 +1198,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
                 }
                 start = separator + 1U;
             }
-            if (fields.size() != 10U) {
+            if (fields.size() != 10U && fields.size() < 12U) {
                 throw std::runtime_error(
                     "Malformed article tab navigation field");
             }
@@ -1219,6 +1219,26 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
             navigation.source_article_id = Decode(fields[7]);
             navigation.target_article_id = Decode(fields[8]);
             navigation.target_anchor = Decode(fields[9]);
+            if (fields.size() >= 12U) {
+                if (fields[10] != "0" && fields[10] != "1") {
+                    throw std::runtime_error(
+                        "Malformed article tab navigation scope flag");
+                }
+                navigation.dictionary_filter_active = fields[10] == "1";
+                const std::size_t dictionary_count =
+                    ParseInteger<std::size_t>(fields[11]);
+                if (dictionary_count > kMaximumLookupDictionaryFilters ||
+                    fields.size() != 12U + dictionary_count ||
+                    (!navigation.dictionary_filter_active &&
+                     dictionary_count != 0U)) {
+                    throw std::runtime_error(
+                        "Malformed article tab navigation scope count");
+                }
+                navigation.dictionary_ids.reserve(dictionary_count);
+                for (std::size_t index = 12U; index < fields.size(); ++index) {
+                    navigation.dictionary_ids.push_back(Decode(fields[index]));
+                }
+            }
             configuration.article_tab_session->tabs[found->second]
                 .history.push_back(std::move(navigation));
         } else if (line.substr(0, kPreference.size()) == kPreference) {
@@ -1362,7 +1382,13 @@ void SaveConfiguration(const std::string& configuration_path,
                     Encode(navigation.source_dictionary_id) + "|" +
                     Encode(navigation.source_article_id) + "|" +
                     Encode(navigation.target_article_id) + "|" +
-                    Encode(navigation.target_anchor) + "\n";
+                    Encode(navigation.target_anchor) + "|" +
+                    (navigation.dictionary_filter_active ? "1|" : "0|") +
+                    std::to_string(navigation.dictionary_ids.size());
+                for (const auto& dictionary_id : navigation.dictionary_ids) {
+                    contents += "|" + Encode(dictionary_id);
+                }
+                contents += "\n";
             }
         }
     }

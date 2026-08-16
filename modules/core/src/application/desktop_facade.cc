@@ -27,7 +27,9 @@ bool HasSameNavigationIdentity(const TabNavigationState& left,
            left.source_dictionary_id == right.source_dictionary_id &&
            left.source_article_id == right.source_article_id &&
            left.target_article_id == right.target_article_id &&
-           left.target_anchor == right.target_anchor;
+           left.target_anchor == right.target_anchor &&
+           left.dictionary_ids == right.dictionary_ids &&
+           left.dictionary_filter_active == right.dictionary_filter_active;
 }
 
 TabNavigationState EmptyNavigation() {

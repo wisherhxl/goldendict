@@ -46,6 +46,8 @@ struct TabNavigationState {
     std::string source_article_id;
     std::string target_article_id;
     std::string target_anchor;
+    std::vector<std::string> dictionary_ids;
+    bool dictionary_filter_active = false;
 
     bool operator==(const TabNavigationState& other) const noexcept {
         return kind == other.kind && query == other.query &&
@@ -54,7 +56,9 @@ struct TabNavigationState {
                source_dictionary_id == other.source_dictionary_id &&
                source_article_id == other.source_article_id &&
                target_article_id == other.target_article_id &&
-               target_anchor == other.target_anchor;
+               target_anchor == other.target_anchor &&
+               dictionary_ids == other.dictionary_ids &&
+               dictionary_filter_active == other.dictionary_filter_active;
     }
 };
 

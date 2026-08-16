@@ -2140,12 +2140,12 @@ nothing, and double-click adds no duplicate. No production consumer is
 connected, so lookup construction, dictionary scoping, and navigation remain
 unchanged. No successor is selected or ranked.
 
-### Phase 8 full-text scoped navigation prerequisite (selected)
+### Phase 8 full-text scoped navigation prerequisite (complete)
 
-The independent post-P8-FT-13 documentation audit is pinned to clean migrated
+The independent post-P8-FT-13 documentation audit was pinned to clean migrated
 revision `6ac1912965a60f6d8c9b5614752fa97f3426d80f` and unchanged clean
 read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
-It selects exactly one smallest dependency-ready leaf, P8-FT-14: extend the
+It selected exactly one smallest dependency-ready leaf, P8-FT-14: extend the
 Core-owned article navigation contract so a lookup navigation can retain an
 authoritative ordered dictionary scope. This prerequisite is necessary before
 the existing activation intent can produce useful MainWindow behavior without
@@ -2183,9 +2183,12 @@ Evidence is migrated `main_window.cpp` (`StartLookupInTab`,
 `desktop_facade.h` and its tab/session tests, the P8-FT-7 dictionary projection
 contract, and pinned legacy `fulltextsearch.cc:594-610` plus
 `mainwindow.cc:3002-3014`, which passes the clicked headword and its complete
-matching dictionary-ID list into article lookup. The future leaf's only public
-contract change is the two scoped-navigation fields on `TabNavigationState`;
-this audit changes documentation only.
+matching dictionary-ID list into article lookup. P8-FT-14 is complete. Its
+only public contract change is the additive `dictionary_filter_active` and
+`dictionary_ids` fields on `TabNavigationState`; the C ABI is unchanged. Core
+validates and round-trips the presence distinction and ordered IDs, while
+MainWindow copies an explicit scope unchanged into `LookupQuery` and retains
+ordinary dictionary-bar projection for unscoped navigation.
 No successor after P8-FT-14 is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

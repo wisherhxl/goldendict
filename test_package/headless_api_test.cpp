@@ -571,6 +571,26 @@ int main() {
         return 1;
     }
     try {
+        goldendict::core::TabNavigationState unscoped;
+        unscoped.kind = goldendict::core::TabNavigationKind::kLookup;
+        unscoped.query = "ordinary";
+        unscoped.title = unscoped.query;
+        auto authoritative_empty = unscoped;
+        authoritative_empty.dictionary_filter_active = true;
+        auto ordered_scope = unscoped;
+        ordered_scope.dictionary_filter_active = true;
+        ordered_scope.dictionary_ids = {"second", "first", "second"};
+        const auto copied_scope = ordered_scope;
+        auto moved_scope = copied_scope;
+        auto retained_scope = std::move(moved_scope);
+        if (unscoped.dictionary_filter_active ||
+            !unscoped.dictionary_ids.empty() ||
+            !authoritative_empty.dictionary_filter_active ||
+            !authoritative_empty.dictionary_ids.empty() ||
+            retained_scope.dictionary_ids != ordered_scope.dictionary_ids ||
+            !(retained_scope == ordered_scope) || retained_scope == unscoped) {
+            return Fail("installed scoped navigation contract failed");
+        }
         goldendict::core::RuntimeRequestOptions runtime_options;
         goldendict::core::RuntimeDictionaryIdentity runtime_identity;
         runtime_options.ignore_diacritics = true;

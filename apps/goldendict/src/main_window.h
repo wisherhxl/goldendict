@@ -289,6 +289,9 @@ class MainWindow final : public QMainWindow {
     std::vector<std::string> ParticipatingDictionaryIds(
         std::uint32_t group_id) const;
     void ApplyDictionaryFilter(goldendict::core::LookupQuery* query) const;
+    void ApplyNavigationDictionaryFilter(
+        goldendict::core::LookupQuery* query,
+        const goldendict::core::TabNavigationState& navigation) const;
     void ApplyDictionaryFilter(goldendict::core::SuggestionQuery* query) const;
     void RefreshResultsNavigation();
     void RefreshSuggestions();
