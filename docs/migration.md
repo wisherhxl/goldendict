@@ -1668,7 +1668,7 @@ coverage, and exact-provenance installed C++ consumption; the installed C
 consumer remains unchanged. EPWING remains unselected and unranked, and no
 successor after P6-FT-12 is selected or ranked.
 
-The final remaining textual-format audit selects only P6-FT-13, the private
+The final remaining textual-format audit selected only P6-FT-13, the private
 EPWING reader ownership/revision prerequisite. The audit is pinned to legacy
 revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`: `epwing.cc:138-148`
 in `/home/log/Workspace/GoldenDict` gates full-text support,
@@ -1682,7 +1682,7 @@ migrated reader traverses the catalog and supported word indexes at
 `epwing_reader.h:34-81` supplies no complete revision. Both suspected blockers
 remain; the adapter is not decision-complete.
 
-P6-FT-13 will expose a private immutable ingestion view ordered by catalog
+P6-FT-13 is complete with a private immutable ingestion view ordered by catalog
 subbook, supported index table, index page, and entry. Records carry
 `record_ordinal`, headword, and headword-independent
 `(text_file_ordinal, page, offset)` identity. The first record for an identity
@@ -1705,7 +1705,7 @@ names/bytes, aliases, unindexed reference targets, active markup, scripts,
 media, and gaiji payloads are excluded. Limits, errors, checkpoints,
 cancellation, and deadlines cannot publish a partial view.
 
-This private prerequisite preserves all installed APIs/DTOs, runtime
+The accepted private prerequisite preserves all installed APIs/DTOs, runtime
 interfaces, capabilities, configuration/Preferences, dependencies, GUI/Phase
 8 behavior, `.gdfts` serialization, and eleven completed format adapters. It
 excludes the EPWING adapter, legacy `_FTS`, metadata/resource indexing,

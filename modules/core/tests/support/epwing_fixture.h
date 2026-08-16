@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #ifndef GOLDENDICT_CORE_TESTS_SUPPORT_EPWING_FIXTURE_H_
 #define GOLDENDICT_CORE_TESTS_SUPPORT_EPWING_FIXTURE_H_
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -93,6 +94,119 @@ inline std::filesystem::path WriteEpwingFixture(
     }
     EpwingWrite(root / "FIXTURE" / "DATA" / "HONMON", honmon);
     EpwingWrite(root / "FIXTURE" / "GAIJI" / "pixel.png", "png-data");
+    return root / "CATALOGS";
+}
+
+inline std::filesystem::path WriteEpwingOwnershipFixture(
+    const std::filesystem::path& root) {
+    std::string catalog(16U + 164U, '\0');
+    EpwingBe16(1U, &catalog, 0U);
+    EpwingBe16(1U, &catalog, 2U);
+    catalog.replace(18U, 14U, "Ownership Book");
+    catalog.replace(98U, 5U, "OWNER");
+    EpwingBe16(1U, &catalog, 110U);
+    EpwingWrite(root / "CATALOGS", catalog);
+    std::string language(16U, '\0');
+    EpwingBe16(1U, &language, 0U);
+    EpwingWrite(root / "LANGUAGE", language);
+
+    std::string honmon(8U * 2048U, '\0');
+    honmon[1] = 3;
+    const std::array<unsigned char, 3> index_types{0x90U, 0x91U, 0x92U};
+    for (std::size_t index = 0; index < index_types.size(); ++index) {
+        const auto at = 16U + index * 16U;
+        honmon[at] = static_cast<char>(index_types[index]);
+        EpwingBe32(static_cast<std::uint32_t>(2U + index), &honmon, at + 2U);
+        EpwingBe32(1U, &honmon, at + 6U);
+    }
+    const auto add_record = [&](std::size_t page, std::string_view word,
+                                std::uint16_t article_offset,
+                                std::size_t* cursor) {
+        honmon[(*cursor)++] = static_cast<char>(word.size());
+        honmon.replace(*cursor, word.size(), word);
+        *cursor += word.size();
+        EpwingBe32(5U, &honmon, *cursor);
+        EpwingBe16(article_offset, &honmon, *cursor + 4U);
+        EpwingBe32(5U, &honmon, *cursor + 6U);
+        EpwingBe16(article_offset, &honmon, *cursor + 10U);
+        *cursor += 12U;
+        static_cast<void>(page);
+    };
+    std::size_t ordinal = 0;
+    for (std::size_t index = 0; index < 3U; ++index) {
+        const std::size_t page_at = (1U + index) * 2048U;
+        honmon[page_at] = static_cast<char>(0xe0U);
+        EpwingBe16(4U, &honmon, page_at + 2U);
+        std::size_t cursor = page_at + 4U;
+        for (std::size_t entry = 0; entry < 4U; ++entry, ++ordinal) {
+            const std::string word = ordinal == 0U   ? "owner"
+                                     : ordinal == 1U ? "alias"
+                                     : ordinal == 10U
+                                         ? "ten"
+                                         : "word" + std::to_string(ordinal);
+            const auto offset =
+                static_cast<std::uint16_t>(ordinal == 1U ? 0U : ordinal * 64U);
+            add_record(2U + index, word, offset, &cursor);
+        }
+    }
+    for (std::size_t article = 0; article < 12U; ++article) {
+        if (article == 1U)
+            continue;
+        const std::string body = article == 2U ? "same bytes"
+                                 : article == 3U
+                                     ? "same bytes"
+                                     : "article " + std::to_string(article);
+        std::string rendered("\x1f\x02", 2U);
+        rendered += body;
+        rendered.append("\x1f\x03", 2U);
+        honmon.replace(4U * 2048U + article * 64U, rendered.size(), rendered);
+    }
+    EpwingWrite(root / "OWNER" / "DATA" / "HONMON", honmon);
+    EpwingWrite(root / "OWNER" / "GAIJI" / "z.bin", "resource-z");
+    EpwingWrite(root / "OWNER" / "GAIJI" / "a.bin", "resource-a");
+    EpwingWrite(root / "OWNER" / "cache.gdfts", "generated");
+    return root / "CATALOGS";
+}
+
+inline std::filesystem::path WriteEpwingMultiBookFixture(
+    const std::filesystem::path& root) {
+    std::string catalog(16U + 2U * 164U, '\0');
+    EpwingBe16(2U, &catalog, 0U);
+    EpwingBe16(1U, &catalog, 2U);
+    const std::array<std::string, 2> directories{"FIRST", "SECOND"};
+    for (std::size_t book = 0; book < directories.size(); ++book) {
+        const auto at = 16U + book * 164U;
+        catalog.replace(at + 2U, 6U, "Book " + std::to_string(book));
+        catalog.replace(at + 82U, directories[book].size(), directories[book]);
+        EpwingBe16(1U, &catalog, at + 94U);
+        std::string honmon(3U * 2048U, '\0');
+        honmon[1] = 1;
+        honmon[16] = static_cast<char>(0x90U);
+        EpwingBe32(2U, &honmon, 18U);
+        EpwingBe32(1U, &honmon, 22U);
+        honmon[2048U] = static_cast<char>(0xe0U);
+        EpwingBe16(1U, &honmon, 2050U);
+        std::size_t cursor = 2052U;
+        const std::string word = "book" + std::to_string(book);
+        honmon[cursor++] = static_cast<char>(word.size());
+        honmon.replace(cursor, word.size(), word);
+        cursor += word.size();
+        EpwingBe32(3U, &honmon, cursor);
+        EpwingBe16(0U, &honmon, cursor + 4U);
+        EpwingBe32(3U, &honmon, cursor + 6U);
+        EpwingBe16(0U, &honmon, cursor + 10U);
+        std::string article("\x1f\x02", 2U);
+        article += "book article";
+        article.append("\x1f\x03", 2U);
+        honmon.replace(4096U, article.size(), article);
+        EpwingWrite(root / directories[book] / "DATA" / "HONMON", honmon);
+        EpwingWrite(root / directories[book] / "asset.bin",
+                    "asset" + std::to_string(book));
+    }
+    EpwingWrite(root / "CATALOGS", catalog);
+    std::string language(16U, '\0');
+    EpwingBe16(1U, &language, 0U);
+    EpwingWrite(root / "LANGUAGE", language);
     return root / "CATALOGS";
 }
 }  // namespace goldendict::core::test

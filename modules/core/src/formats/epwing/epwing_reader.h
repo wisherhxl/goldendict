@@ -2,6 +2,7 @@
 #ifndef GOLDENDICT_CORE_SRC_FORMATS_EPWING_EPWING_READER_H_
 #define GOLDENDICT_CORE_SRC_FORMATS_EPWING_EPWING_READER_H_
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <limits>
@@ -10,6 +11,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include "../../dictionary/generated_index.h"
 #include "../../dictionary/ordered_headword_index.h"
 
 namespace goldendict::core::formats::epwing {
@@ -36,15 +38,56 @@ struct Article {
     std::string data;
 };
 
+struct PhysicalIdentity {
+    std::size_t text_file_ordinal = 0;
+    std::uint32_t page = 0;
+    std::uint16_t offset = 0;
+
+    friend bool operator==(const PhysicalIdentity& left,
+                           const PhysicalIdentity& right) {
+        return left.text_file_ordinal == right.text_file_ordinal &&
+               left.page == right.page && left.offset == right.offset;
+    }
+};
+
+struct IngestionRecord {
+    std::size_t record_ordinal = 0;
+    std::string headword;
+    PhysicalIdentity physical;
+    std::size_t article_ordinal = 0;
+};
+
+struct IngestionArticle {
+    std::string headword;
+    std::vector<std::string> aliases;
+    std::string html;
+    std::size_t first_record_ordinal = 0;
+    std::size_t article_ordinal = 0;
+    PhysicalIdentity physical;
+};
+
+struct IngestionView {
+    std::vector<IngestionRecord> records;
+    std::vector<IngestionArticle> articles;
+    dictionary::SourceSnapshot source_snapshot;
+};
+
 class Reader final {
    public:
-    static Reader Open(const std::filesystem::path& catalog_path);
+    static Reader Open(const std::filesystem::path& catalog_path,
+                       const std::function<void()>& checkpoint = {});
 
     const Metadata& metadata() const noexcept { return metadata_; }
 
     std::size_t headword_count() const noexcept { return records_.size(); }
 
-    std::size_t article_count() const noexcept { return records_.size(); }
+    std::size_t article_count() const noexcept {
+        return ingestion_view_.articles.size();
+    }
+
+    const IngestionView& ingestion_view() const noexcept {
+        return ingestion_view_;
+    }
 
     const std::filesystem::path& catalog_path() const noexcept { return path_; }
 
@@ -69,7 +112,7 @@ class Reader final {
     struct Record {
         std::string word;
         std::string folded;
-        std::string article;
+        std::size_t article_ordinal = 0;
     };
 
     std::vector<const Record*> Ranked(
@@ -77,6 +120,7 @@ class Reader final {
     std::filesystem::path path_;
     Metadata metadata_;
     std::vector<Record> records_;
+    IngestionView ingestion_view_;
     dictionary::OrderedHeadwordIndex enumeration_index_;
     std::unordered_map<std::string, std::string> resources_;
 };

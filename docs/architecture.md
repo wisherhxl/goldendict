@@ -1302,9 +1302,10 @@ headword-independent physical ownership nor a complete source snapshot.
 Therefore the private adapter is not decision-complete, and only P6-FT-13, the
 private EPWING reader ownership/revision prerequisite, is selected.
 
-P6-FT-13 must provide one private immutable ingestion view. Its source records
-follow `CATALOGS` subbook order, supported index-table order, index-page order,
-and entry order. Every record exposes a zero-based `record_ordinal`, decoded
+P6-FT-13 is complete with one private immutable ingestion view. Its source
+records follow `CATALOGS` subbook order, supported index-table order,
+index-page order, and entry order. Every record exposes a zero-based
+`record_ordinal`, decoded
 headword, and physical `(text_file_ordinal, page, offset)` identity independent
 of the headword. The first record that encounters a physical identity owns its
 canonical headword and zero-based `article_ordinal`; later records for the same
@@ -1323,7 +1324,7 @@ rendering. Empty output, copyright/metadata, resource names and bytes, aliases
 as documents, unindexed reference targets, active markup, scripts, media, and
 gaiji payloads are excluded.
 
-The ingestion view also exposes a `dictionary::SourceSnapshot` captured from
+The ingestion view exposes a `dictionary::SourceSnapshot` captured from
 the complete ordered revision: `CATALOGS`; optional decoding-affecting
 `LANGUAGE`; then every regular, non-symlink file in every catalog-selected
 subbook/content tree, with subbooks in catalog order and files in deterministic
@@ -1334,9 +1335,9 @@ outside the revision. Snapshot capture and traversal must honor limits,
 checkpoints, cancellation, and deadlines and must publish no partial view on
 failure.
 
-P6-FT-13 changes no installed API/DTO, runtime interface, capability,
-configuration/Preferences, dependency, GUI/Phase 8 behavior, or private
-`.gdfts` serialization. It excludes an adapter, legacy `_FTS`,
+The accepted P6-FT-13 implementation changes no installed API/DTO, runtime
+interface, capability, configuration/Preferences, dependency, GUI/Phase 8
+behavior, or private `.gdfts` serialization. It excludes an adapter, legacy `_FTS`,
 metadata/resource indexing, highlighting, other adapters, implementation
 outside the private EPWING reader/ownership/revision boundary, and unrelated
 refactors. EPWING remains typed unsupported until a later adapter audit. No

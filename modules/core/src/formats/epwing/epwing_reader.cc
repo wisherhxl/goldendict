@@ -5,6 +5,7 @@
 #include <cctype>
 #include <cstdint>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -79,6 +80,58 @@ std::optional<std::filesystem::path> ChildCaseInsensitive(
             return it->path();
     }
     return std::nullopt;
+}
+
+bool IsGeneratedArtifact(const std::filesystem::path& path) {
+    const auto extension = Lower(path.extension().string());
+    return extension == ".gdfts" || extension == ".gdidx" ||
+           extension == ".gdindex";
+}
+
+std::vector<std::filesystem::path> OrderedTreeFiles(
+    const std::filesystem::path& root,
+    const std::function<void()>& checkpoint) {
+    std::vector<std::pair<std::string, std::filesystem::path>> ordered;
+    std::error_code error;
+    std::filesystem::recursive_directory_iterator it(
+        root, std::filesystem::directory_options::skip_permission_denied,
+        error),
+        end;
+    if (error)
+        Throw(ErrorCode::kMissingFile, root,
+              "Cannot traverse EPWING subbook tree");
+    while (it != end) {
+        if (checkpoint)
+            checkpoint();
+        const auto path = it->path();
+        const auto link_status = it->symlink_status(error);
+        if (error)
+            Throw(ErrorCode::kMissingFile, path,
+                  "Cannot inspect EPWING subbook member");
+        if (std::filesystem::is_symlink(link_status)) {
+            if (std::filesystem::is_directory(it->status(error)))
+                it.disable_recursion_pending();
+            error.clear();
+        } else if (std::filesystem::is_regular_file(link_status) &&
+                   !IsGeneratedArtifact(path)) {
+            const auto relative =
+                path.lexically_relative(root).generic_string();
+            ordered.emplace_back(relative, path);
+        }
+        it.increment(error);
+        if (error)
+            Throw(ErrorCode::kMissingFile, path,
+                  "Cannot traverse EPWING subbook tree");
+    }
+    std::sort(ordered.begin(), ordered.end(),
+              [](const auto& left, const auto& right) {
+                  return left.first < right.first;
+              });
+    std::vector<std::filesystem::path> files;
+    files.reserve(ordered.size());
+    for (auto& [relative, path] : ordered)
+        files.push_back(std::move(path));
+    return files;
 }
 
 std::string TrimField(std::string_view field) {
@@ -465,9 +518,12 @@ Error::Error(ErrorCode code, std::filesystem::path path, std::string message)
     : std::runtime_error(std::move(message) + ": " + path.string()),
       code_(code) {}
 
-Reader Reader::Open(const std::filesystem::path& catalog_path) {
+Reader Reader::Open(const std::filesystem::path& catalog_path,
+                    const std::function<void()>& checkpoint) {
     Reader reader;
     reader.path_ = catalog_path;
+    if (checkpoint)
+        checkpoint();
     const std::string catalog = ReadFile(catalog_path);
     if (catalog.size() < 16U)
         Throw(ErrorCode::kInvalidDictionary, catalog_path,
@@ -489,12 +545,20 @@ Reader Reader::Open(const std::filesystem::path& catalog_path) {
         Location heading;
         std::shared_ptr<const std::string> file;
         std::filesystem::path file_path;
+        std::size_t text_file_ordinal;
     };
 
     std::vector<Pending> pending;
     const auto root = catalog_path.parent_path();
+    const auto language_path = ChildCaseInsensitive(root, "language");
     const auto character_code = LoadCharacterCode(root);
+    std::vector<std::filesystem::path> selected_subbooks;
+    std::vector<std::filesystem::path> revision_files{catalog_path};
+    if (language_path)
+        revision_files.push_back(*language_path);
     for (std::size_t book = 0; book < count; ++book) {
+        if (checkpoint)
+            checkpoint();
         const auto at = 16U + book * kCatalogEntrySize;
         const std::string title = DecodeBookText(
             TrimField(std::string_view(catalog).substr(at + 2U, 80U)),
@@ -509,6 +573,7 @@ Reader Reader::Open(const std::filesystem::path& catalog_path) {
         if (!subbook || !std::filesystem::is_directory(*subbook))
             Throw(ErrorCode::kMissingFile, root / directory,
                   "Missing EPWING subbook directory");
+        selected_subbooks.push_back(*subbook);
         const auto data_dir = ChildCaseInsensitive(*subbook, "data");
         if (!data_dir || !std::filesystem::is_directory(*data_dir))
             Throw(ErrorCode::kMissingFile, *subbook / "data",
@@ -531,6 +596,7 @@ Reader Reader::Open(const std::filesystem::path& catalog_path) {
                   "Missing EPWING text file");
         const auto text =
             std::make_shared<const std::string>(ReadFile(*text_path));
+        const auto text_file_ordinal = book;
         const std::size_t table =
             (static_cast<std::size_t>(index_page) - 1U) * kPageSize;
         if (table > text->size() || text->size() - table < kPageSize)
@@ -543,6 +609,8 @@ Reader Reader::Open(const std::filesystem::path& catalog_path) {
                   "Invalid EPWING index count");
         std::optional<Location> copyright_location;
         for (std::size_t i = 0; i < index_count; ++i) {
+            if (checkpoint)
+                checkpoint();
             const auto entry = table + 16U + i * 16U;
             const auto id = static_cast<unsigned char>((*text)[entry]);
             if (id == 0x02U) {
@@ -563,6 +631,8 @@ Reader Reader::Open(const std::filesystem::path& catalog_path) {
                       "Invalid EPWING word index range");
             for (std::uint32_t page = start_page;
                  page < start_page + page_count; ++page) {
+                if (checkpoint)
+                    checkpoint();
                 const std::size_t page_at =
                     (static_cast<std::size_t>(page) - 1U) * kPageSize;
                 if (page_at > text->size() ||
@@ -579,6 +649,8 @@ Reader Reader::Open(const std::filesystem::path& catalog_path) {
                 const auto entries = Be16(*text, page_at + 2U, *text_path);
                 std::size_t cursor = page_at + 4U;
                 for (std::size_t n = 0; n < entries; ++n) {
+                    if (checkpoint)
+                        checkpoint();
                     const auto length =
                         fixed == 0U
                             ? static_cast<unsigned char>(text->at(cursor++))
@@ -597,7 +669,7 @@ Reader Reader::Open(const std::filesystem::path& catalog_path) {
                         Be32(*text, cursor + length + 6U, *text_path),
                         Be16(*text, cursor + length + 10U, *text_path)};
                     pending.push_back({word, text_location, heading_location,
-                                       text, *text_path});
+                                       text, *text_path, text_file_ordinal});
                     cursor += length + 12U;
                     if (pending.size() > kMaximumEntries)
                         Throw(ErrorCode::kInvalidDictionary, *text_path,
@@ -624,6 +696,8 @@ Reader Reader::Open(const std::filesystem::path& catalog_path) {
                     resource_error),
              end;
              !resource_error && it != end; it.increment(resource_error)) {
+            if (checkpoint)
+                checkpoint();
             if (it->is_symlink(resource_error))
                 continue;
             if (!it->is_regular_file(resource_error) || resource_error)
@@ -639,20 +713,53 @@ Reader Reader::Open(const std::filesystem::path& catalog_path) {
             reader.resources_.emplace(id, ReadFile(it->path()));
         }
     }
+    for (const auto& subbook : selected_subbooks) {
+        auto files = OrderedTreeFiles(subbook, checkpoint);
+        revision_files.insert(revision_files.end(), files.begin(), files.end());
+    }
+    if (checkpoint) {
+        for (std::size_t file = 0; file < revision_files.size(); ++file)
+            checkpoint();
+    }
+    try {
+        reader.ingestion_view_.source_snapshot =
+            dictionary::CaptureSourceSnapshot(revision_files);
+    } catch (const dictionary::GeneratedIndexError& error) {
+        Throw(ErrorCode::kMissingFile, catalog_path, error.what());
+    }
     std::unordered_map<std::string, std::string> targets;
     for (const auto& item : pending)
         targets.emplace(LocationKey(item.file_path, item.heading), item.word);
-    std::set<std::tuple<std::string, std::string, std::uint32_t, std::uint16_t>>
-        seen;
+    std::map<std::tuple<std::size_t, std::uint32_t, std::uint16_t>, std::size_t>
+        owners;
     for (auto& item : pending) {
-        if (!seen.emplace(item.file_path.string(), item.word, item.text.page,
-                          item.text.offset)
-                 .second)
-            continue;
+        if (checkpoint)
+            checkpoint();
+        const std::size_t record_ordinal = reader.records_.size();
+        const PhysicalIdentity physical{item.text_file_ordinal, item.text.page,
+                                        item.text.offset};
+        const auto key = std::tuple{physical.text_file_ordinal, physical.page,
+                                    physical.offset};
+        auto [owner, inserted] =
+            owners.emplace(key, reader.ingestion_view_.articles.size());
+        const std::size_t article_ordinal = owner->second;
+        if (inserted) {
+            reader.ingestion_view_.articles.push_back(
+                {item.word,
+                 {},
+                 RenderText(*item.file, item.text, item.file_path, targets,
+                            character_code),
+                 record_ordinal,
+                 article_ordinal,
+                 physical});
+        } else {
+            reader.ingestion_view_.articles[article_ordinal].aliases.push_back(
+                item.word);
+        }
+        reader.ingestion_view_.records.push_back(
+            {record_ordinal, item.word, physical, article_ordinal});
         reader.records_.push_back(
-            {item.word, foundation::FoldForLookup(item.word),
-             RenderText(*item.file, item.text, item.file_path, targets,
-                        character_code)});
+            {item.word, foundation::FoldForLookup(item.word), article_ordinal});
     }
     if (reader.records_.empty())
         Throw(ErrorCode::kInvalidDictionary, catalog_path,
@@ -702,7 +809,9 @@ std::vector<Article> Reader::LookupExact(
         if (checkpoint)
             checkpoint();
         if (record.folded == folded && result.size() < limit)
-            result.push_back({record.word, record.article});
+            result.push_back(
+                {record.word,
+                 ingestion_view_.articles[record.article_ordinal].html});
     }
     return result;
 }
@@ -714,7 +823,9 @@ std::vector<Article> Reader::LookupPrefix(
     for (const auto* record : Ranked(prefix, checkpoint)) {
         if (result.size() == limit)
             break;
-        result.push_back({record->word, record->article});
+        result.push_back(
+            {record->word,
+             ingestion_view_.articles[record->article_ordinal].html});
     }
     return result;
 }

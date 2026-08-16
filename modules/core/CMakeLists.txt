@@ -105,6 +105,7 @@ endif()
 
 if(TARGET epwing_reader_test)
   target_sources(epwing_reader_test PRIVATE
+    src/dictionary/generated_index.cc
     src/foundation/text_encoding.cc
     src/foundation/text_folding.cc
     src/foundation/utf8.cc
@@ -116,6 +117,7 @@ endif()
 if(TARGET epwing_dictionary_test)
   target_sources(epwing_dictionary_test PRIVATE
     src/dictionary/dictionary_backend.cc
+    src/dictionary/generated_index.cc
     src/foundation/text_encoding.cc
     src/foundation/text_folding.cc
     src/foundation/utf8.cc
