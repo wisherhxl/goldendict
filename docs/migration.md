@@ -1938,8 +1938,8 @@ persisted-preference immutability. The composer has no service or controller
 dependency and cannot submit work. Its registration intentionally increases
 the suite baseline from 104 to 105 tests. No successor is selected or ranked.
 
-The fresh documentation-only post-P8-FT-5 readiness audit is pinned to clean
-pushed migrated revision `9f5e334dc8815dea6f1f85646429e99a87fb58ec`
+The completed P8-FT-6 implementation started from clean pushed migrated
+revision `ac8a01c6b6212d6313364e2107a3bcb8b13df535`
 and unchanged clean read-only legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes without preselection
 the remaining modeless dialog/action integration, dictionary/group/muting
@@ -1948,7 +1948,7 @@ Preferences/index policy, and index visibility/background lifecycle. It
 selects exactly one smallest dependency-ready prerequisite, P8-FT-6, and
 selects or ranks no successor.
 
-P8-FT-6 adds only additive installed C++ catalog capability
+P8-FT-6 is complete with only the additive installed C++ catalog capability
 `DictionaryIdentity::supports_full_text_search`, default `false`. Core maps it
 to `true` exactly for a backend implementing the private `FullTextBackend`
 contract and keeps the catalog identity and every full-text result identity
@@ -1967,10 +1967,11 @@ backends or probe by submitting a search.
 
 Focused Core tests cover supported/unsupported mappings, catalog/result
 consistency, stable order, and service replacement. The installed C++ consumer
-reads both values; the installed C consumer remains unchanged. Release build
-and full tests, install and standalone installed-consumer checks, and clean
-committed exact-SCM Conan package verification are required when P8-FT-6 is
-implemented. The public DTO expansion is the only authorized ABI change.
+reads both values; the installed C consumer remains unchanged. The registered
+suite remains 105 tests. Release build and full tests, install and standalone
+installed-consumer checks, and clean committed exact-SCM Conan package
+verification complete the implementation gate. The public DTO expansion is
+the only authorized ABI change.
 
 Dialog/action wiring, group and muting application, submission/completion UI,
 results and activation, highlighting, Preferences and index policy, index

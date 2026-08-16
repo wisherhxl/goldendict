@@ -465,7 +465,8 @@ std::string StableId(std::string_view format,
     return output.str();
 }
 
-DictionaryIdentity PublicIdentity(const dictionary::Identity& identity) {
+DictionaryIdentity PublicIdentity(const dictionary::Identity& identity,
+                                  bool supports_full_text_search) {
     DictionaryIdentity result;
     result.id = identity.id;
     result.name = identity.name;
@@ -477,6 +478,7 @@ DictionaryIdentity PublicIdentity(const dictionary::Identity& identity) {
     result.headword_count = identity.headword_count;
     result.supports_headword_enumeration =
         identity.supports_headword_enumeration;
+    result.supports_full_text_search = supports_full_text_search;
     return result;
 }
 
@@ -1076,7 +1078,10 @@ class ServiceState final {
         std::vector<DictionaryIdentity> catalog;
         catalog.reserve(dictionaries_.size());
         for (const auto& dictionary : dictionaries_) {
-            catalog.push_back(PublicIdentity(dictionary->identity()));
+            catalog.push_back(
+                PublicIdentity(dictionary->identity(),
+                               dynamic_cast<const dictionary::FullTextBackend*>(
+                                   dictionary.get()) != nullptr));
         }
         return catalog;
     }
@@ -1155,8 +1160,10 @@ class ServiceState final {
             }
             if (backend_response.results.size() > dictionary_limit)
                 backend_response.results.resize(dictionary_limit);
-            for (auto& result : backend_response.results)
+            for (auto& result : backend_response.results) {
+                result.dictionary.supports_full_text_search = true;
                 response.results.push_back(std::move(result));
+            }
         }
         if (query.dictionary_filter_active)
             for (const auto& id : query.dictionary_ids) {
@@ -1480,7 +1487,10 @@ class ServiceState final {
                     if (!seen_articles.insert(article_key).second)
                         continue;
                     DictionaryEntry entry;
-                    entry.dictionary = PublicIdentity(identity);
+                    entry.dictionary = PublicIdentity(
+                        identity,
+                        dynamic_cast<const dictionary::FullTextBackend*>(
+                            backend) != nullptr);
                     entry.language = {identity.source_language,
                                       identity.target_language};
                     const std::string folded_headword =
@@ -1623,7 +1633,10 @@ class ServiceState final {
                         foundation::FoldForLookup(headword);
                     const bool exact = folded_headword == folded_query;
                     HeadwordSuggestion suggestion;
-                    suggestion.dictionary = PublicIdentity(identity);
+                    suggestion.dictionary = PublicIdentity(
+                        identity,
+                        dynamic_cast<const dictionary::FullTextBackend*>(
+                            backend) != nullptr);
                     suggestion.language = {identity.source_language,
                                            identity.target_language};
                     suggestion.match = {

@@ -2173,6 +2173,16 @@ void ApplicationServiceTest::
         CreateDictionaryService(configuration, std::move(runtime_sources));
     const auto catalog = service->GetCatalog();
     QCOMPARE(catalog.size(), 13U);
+    QCOMPARE(std::count_if(catalog.begin(), catalog.end(),
+                           [](const auto& item) {
+                               return item.supports_full_text_search;
+                           }),
+             12);
+    const auto unsupported_catalog =
+        std::find_if(catalog.begin(), catalog.end(),
+                     [](const auto& item) { return item.id == "inspection"; });
+    QVERIFY(unsupported_catalog != catalog.end());
+    QVERIFY(!unsupported_catalog->supports_full_text_search);
 
     FullTextQuery query;
     query.text = "shared";
@@ -2195,6 +2205,13 @@ void ApplicationServiceTest::
     QCOMPARE(filtered.results.size(), 12U);
     std::vector<std::string> adapted_ids;
     for (const auto& result : filtered.results) {
+        QVERIFY(result.dictionary.supports_full_text_search);
+        const auto catalog_identity = std::find_if(
+            catalog.begin(), catalog.end(),
+            [&](const auto& item) { return item.id == result.dictionary.id; });
+        QVERIFY(catalog_identity != catalog.end());
+        QCOMPARE(result.dictionary.supports_full_text_search,
+                 catalog_identity->supports_full_text_search);
         adapted_ids.push_back(result.dictionary.id);
     }
     QCOMPARE(std::count_if(adapted_ids.begin(), adapted_ids.end(),
@@ -2332,6 +2349,18 @@ void ApplicationServiceTest::
     runtime_sources.push_back(std::make_unique<InspectionRuntimeSource>());
     service =
         CreateDictionaryService(configuration, std::move(runtime_sources));
+    const auto replacement_catalog = service->GetCatalog();
+    QCOMPARE(replacement_catalog.size(), catalog.size());
+    QCOMPARE(
+        std::count_if(
+            replacement_catalog.begin(), replacement_catalog.end(),
+            [](const auto& item) { return item.supports_full_text_search; }),
+        12);
+    const auto replaced_dsl =
+        std::find_if(replacement_catalog.begin(), replacement_catalog.end(),
+                     [&dsl_id](const auto& item) { return item.id == dsl_id; });
+    QVERIFY(replaced_dsl != replacement_catalog.end());
+    QVERIFY(replaced_dsl->supports_full_text_search);
     query = {};
     query.text = "shared";
     const auto contained = service->SearchFullText(query);
@@ -3219,6 +3248,7 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesLsaAudio() {
     QCOMPARE(catalog.size(), std::size_t{1});
     QVERIFY(catalog.front().id.rfind("lsa-", 0) == 0U);
     QVERIFY(catalog.front().supports_headword_enumeration);
+    QVERIFY(!catalog.front().supports_full_text_search);
     HeadwordEnumerationQuery enumeration_query;
     enumeration_query.dictionary_id = catalog.front().id;
     const auto enumeration = service->EnumerateHeadwords(enumeration_query);
@@ -3250,6 +3280,7 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesZipSoundsAudio() {
     QCOMPARE(catalog.size(), std::size_t{1});
     QVERIFY(catalog.front().id.rfind("zipsounds-", 0) == 0U);
     QVERIFY(catalog.front().supports_headword_enumeration);
+    QVERIFY(!catalog.front().supports_full_text_search);
     HeadwordEnumerationQuery enumeration_query;
     enumeration_query.dictionary_id = catalog.front().id;
     const auto enumeration = service->EnumerateHeadwords(enumeration_query);
@@ -3283,6 +3314,7 @@ void ApplicationServiceTest::QueriesExplicitlyConfiguredSoundDirectory() {
     QVERIFY(catalog.front().id.rfind("sounddir-", 0) == 0U);
     QCOMPARE(catalog.front().name, "Fixture sounds");
     QVERIFY(catalog.front().supports_headword_enumeration);
+    QVERIFY(!catalog.front().supports_full_text_search);
     HeadwordEnumerationQuery enumeration_query;
     enumeration_query.dictionary_id = catalog.front().id;
     const auto enumeration = service->EnumerateHeadwords(enumeration_query);

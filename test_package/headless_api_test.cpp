@@ -615,6 +615,7 @@ int main() {
         const auto catalog = service->GetCatalog();
         if (catalog.size() != 1U ||
             catalog.front().name != "Installed Consumer Dictionary" ||
+            !catalog.front().supports_full_text_search ||
             catalog.front().source !=
                 (dictionary_root / "fixture.ifo").string()) {
             return Fail("catalog discovery or provenance failed");
@@ -1259,6 +1260,7 @@ int main() {
             sound_catalog.front().id.rfind("sounddir-", 0) != 0U ||
             sound_catalog.front().name != "Installed sounds" ||
             !sound_catalog.front().supports_headword_enumeration ||
+            sound_catalog.front().supports_full_text_search ||
             sound_enumeration.error.has_value() ||
             sound_enumeration.headwords != std::vector<std::string>{"spoken"} ||
             !sound_enumeration.complete || !sound_response.errors.empty() ||

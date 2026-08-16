@@ -93,6 +93,7 @@ struct DictionaryIdentity {
     std::string source_language;
     std::string target_language;
     bool supports_headword_enumeration = false;
+    bool supports_full_text_search = false;
 };
 
 struct HeadwordEnumerationQuery {
