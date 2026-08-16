@@ -2191,6 +2191,69 @@ MainWindow copies an explicit scope unchanged into `LookupQuery` and retains
 ordinary dictionary-bar projection for unscoped navigation.
 No successor after P8-FT-14 is selected or ranked.
 
+### Phase 8 full-text accepted-response activation context (selected)
+
+The independent post-P8-FT-14 documentation audit is pinned to clean migrated
+revision `e3f2ac70814ea8166af747ffee2e3718b5323ac6` and unchanged clean
+read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It rechecks every remaining full-text workflow surface without advance ranking
+and selects exactly one smallest dependency-ready leaf, P8-FT-15: retain the
+private dictionary-scope context of the generation-current accepted response
+and deliver it with result activation intent.
+
+A direct P8-FT-13-to-MainWindow connection is not yet dependency-ready.
+`ResultActivationRequested` carries only `FullTextResult`, while
+`ProjectedQuery()` is mutable independently of the retained response and its
+rows. Reopening the modeless dialog after group or dictionary participation
+changes can therefore replace the projected scope without replacing the
+visible response. Reading that state during activation could silently widen,
+narrow, or otherwise misidentify the scope that produced the result.
+
+P8-FT-15 snapshots `dictionary_filter_active` and the ordered
+`dictionary_ids` when a search is submitted. Only its generation-current
+accepted completion associates that snapshot with the retained response and
+model rows. Replacement submission clears response, rows, and activation
+context together; stale or cancelled completion, service replacement,
+controller detachment, and teardown cannot restore or emit old context. A
+valid activation continues to carry the exact by-value `FullTextResult` and
+additionally carries the associated immutable submitted scope. An active empty
+scope remains authoritative. The boundary is private to Widgets and adds no
+public Core API or DTO.
+
+The downstream activation-to-navigation contract is fixed but not selected.
+It uses the activated result's exact headword, not the full-text query,
+excerpt, `document_id`, normalized match text, or display reconstruction. It
+opens and activates the current article tab, leaves the main query edit
+unchanged, and constructs a `kLookup` `TabNavigationState` whose query and
+title are the headword, whose group is MainWindow's active group at activation,
+and whose dictionary scope is copied unchanged from the accepted response.
+After successful `OpenArticleTab`, MainWindow follows its existing convention:
+sync tabs, emit `ArticleTabSessionMutated`, and call
+`StartNavigationLookup(..., true)` so tab history, session identity, ordinary
+lookup-history emission, replay, and restoration use that same navigation.
+Authoritative-empty is a successful scoped navigation with no dictionary work
+and never falls back to current dictionary-bar participation. Missing facade
+or activation context, invalid activation or navigation, and tab-limit failure
+start no lookup and cause no history/session mutation; existing MainWindow
+failure status behavior remains authoritative.
+
+Exact `document_id` selection, source-dictionary targeting, match/excerpt
+metadata, highlighting, ignore-diacritics handoff, and WebEngine behavior remain
+deferred. Selection/focus/retention; result decoration; counts and
+empty/error/partial presentation; the activation-to-MainWindow connection;
+Preferences/index policy; index readiness, visibility, status, progress, and
+background lifecycle; adapters and index formats including legacy `_FTS`;
+persistence beyond the existing navigation state; dependencies, build-system
+work, and unrelated parity are separate surfaces.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
+P8-FT-7 dictionary projection, P8-FT-13 activation intent, P8-FT-14 scoped
+navigation, and `main_window.cpp` current-tab lookup/history conventions.
+Pinned legacy `fulltextsearch.cc:594-610` and `mainwindow.cc:3002-3014` pass
+the clicked headword and complete matching dictionary-ID list to the current
+article view without synchronizing the main query edit.
+No successor after P8-FT-15 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
