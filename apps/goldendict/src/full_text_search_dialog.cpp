@@ -79,6 +79,13 @@ FullTextSearchDialog::FullTextSearchDialog(
     UpdateResultCount();
     layout->addWidget(result_count_);
 
+    partial_status_ =
+        new QLabel(QStringLiteral("Results may be incomplete."), this);
+    partial_status_->setObjectName(
+        QStringLiteral("fullTextPartialResponseStatus"));
+    partial_status_->hide();
+    layout->addWidget(partial_status_);
+
     progress_ = new QProgressBar(this);
     progress_->setObjectName(QStringLiteral("fullTextSearchProgress"));
     progress_->setRange(0, 0);
@@ -161,6 +168,7 @@ void FullTextSearchDialog::SubmitSearch() {
     response_.reset();
     ResetResults({});
     UpdateResultCount();
+    UpdatePartialStatus();
     accepted_activation_scope_.reset();
     pending_activation_scope_ =
         ActivationScope{query.dictionary_filter_active, query.dictionary_ids};
@@ -189,6 +197,7 @@ void FullTextSearchDialog::FinishSearch(
     response_ = std::move(response);
     ResetResults(*response_);
     UpdateResultCount();
+    UpdatePartialStatus();
     RestoreIdleState();
 }
 
@@ -212,6 +221,10 @@ void FullTextSearchDialog::ActivateResult(const QModelIndex& index) {
 void FullTextSearchDialog::UpdateResultCount() {
     result_count_->setText(
         tr("Articles found: %1").arg(response_model_->rowCount()));
+}
+
+void FullTextSearchDialog::UpdatePartialStatus() {
+    partial_status_->setVisible(response_.has_value() && response_->partial);
 }
 
 void FullTextSearchDialog::RestoreIdleState() {

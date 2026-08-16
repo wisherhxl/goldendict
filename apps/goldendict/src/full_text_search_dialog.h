@@ -65,12 +65,14 @@ class FullTextSearchDialog final : public QDialog {
     void ResetResults(goldendict::core::FullTextResponse response);
     void ActivateResult(const QModelIndex& index);
     void UpdateResultCount();
+    void UpdatePartialStatus();
     void RestoreIdleState();
 
     FullTextQueryComposer* composer_ = nullptr;
     QLineEdit* query_text_ = nullptr;
     QListView* results_ = nullptr;
     QLabel* result_count_ = nullptr;
+    QLabel* partial_status_ = nullptr;
     QPushButton* search_button_ = nullptr;
     QPushButton* cancel_button_ = nullptr;
     QProgressBar* progress_ = nullptr;

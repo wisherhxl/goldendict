@@ -2759,7 +2759,7 @@ paint path derives direction per displayed string, chooses left or right
 elision accordingly, and preserves an explicit no-elision setting.
 No successor after P8-FT-21 is selected or ranked.
 
-### Phase 8 full-text partial-response status (selected)
+### Phase 8 full-text partial-response status (complete)
 
 The independent post-P8-FT-21 audit is pinned to clean migrated revision
 `b47e96630f2b4f9bb702442b9f563dc0719eec04` and unchanged clean read-only
@@ -2784,19 +2784,19 @@ and teardown cannot introduce or overwrite the current status. Result rows,
 count, selection, focus, activation, response ownership, and accepted-generation
 synchronization remain unchanged.
 
-Focused future acceptance covers initial and replacement reset; complete and
+Focused acceptance covers initial and replacement reset; complete and
 partial responses with zero and nonzero rows; partial responses with and without
 errors; complete error-containing responses; repeated accepted responses; and
 stale, cancelled, detached, replaced-service, and teardown completion safety.
-The focused future command is
+The focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The completed implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. P8-FT-22 adds no test executable or
 public/installed interface, so the registered Release baseline remains 109
-tests. This documentation-only audit requires no build or test.
+tests.
 
 Empty-result messaging; error summaries and details; exact `document_id`
 navigation and source-dictionary targeting; columns, icons, additional metadata
@@ -2813,8 +2813,8 @@ Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
 installed `FullTextResponse` contract, and completed P8-FT-9/P8-FT-11/P8-FT-17.
 Pinned legacy `fulltextsearch.cc:448-449,499-586` silently contains individual
 dictionary failures while updating retained rows and count; it supplies no
-safe structured error-detail presentation contract. No successor after
-P8-FT-22 is selected or ranked.
+safe structured error-detail presentation contract. P8-FT-22 is complete. No
+successor after P8-FT-22 is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

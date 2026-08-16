@@ -2608,7 +2608,7 @@ paint path derives direction per displayed string, chooses left or right
 elision accordingly, and preserves an explicit no-elision setting.
 No successor after P8-FT-21 is selected or ranked.
 
-### Phase 8 full-text partial-response status (selected)
+### Phase 8 full-text partial-response status (complete)
 
 The independent post-P8-FT-21 documentation audit is pinned to clean migrated
 revision `b47e96630f2b4f9bb702442b9f563dc0719eec04` and unchanged clean
@@ -2635,21 +2635,21 @@ does not expose dictionary IDs, backend messages, or error details. Stale or
 cancelled completions, controller detachment, service replacement, and teardown
 cannot introduce or overwrite the current status.
 
-Focused future acceptance covers the initial and replacement-reset states;
+Focused acceptance covers the initial and replacement-reset states;
 complete and partial responses with zero and nonzero retained rows; partial
 responses with and without errors; complete responses containing errors;
 repeated accepted responses; and stale, cancelled, detached, replaced-service,
 and teardown completion safety. Existing result projection, count, selection,
 focus, activation, response ownership, and accepted-generation coverage remains
-green. The focused future command is
+green. The focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The completed implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. P8-FT-22 adds no test executable or
 public/installed interface, so the registered Release baseline remains 109
-tests. This documentation-only audit requires no build or compiled test.
+tests.
 
 Empty-result messaging; error summaries and details; exact `document_id`
 navigation and source-dictionary targeting; columns, icons, additional metadata
@@ -2667,8 +2667,8 @@ installed `FullTextResponse` contract, and completed P8-FT-9/P8-FT-11/P8-FT-17.
 Pinned legacy `fulltextsearch.cc:448-449,499-586` silently contains individual
 dictionary failures while updating retained rows and count; it supplies no
 safe structured error-detail presentation contract. P8-FT-22 therefore exposes
-only the migrated response's bounded partial fact. No successor after P8-FT-22
-is selected or ranked.
+only the migrated response's bounded partial fact. P8-FT-22 is complete. No
+successor after P8-FT-22 is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

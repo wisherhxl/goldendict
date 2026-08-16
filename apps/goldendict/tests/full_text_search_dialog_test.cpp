@@ -182,6 +182,11 @@ QLabel* ArticlesFound(FullTextSearchDialog* dialog) {
         QStringLiteral("fullTextArticlesFoundLabel"));
 }
 
+QLabel* PartialStatus(FullTextSearchDialog* dialog) {
+    return dialog->findChild<QLabel*>(
+        QStringLiteral("fullTextPartialResponseStatus"));
+}
+
 goldendict::core::FullTextResult MakeResult(const std::string& id,
                                             const std::string& headword,
                                             std::size_t ordinal) {
@@ -517,18 +522,24 @@ void FullTextSearchDialogTest::
     auto* response_model = ResponseModel(&dialog);
     auto* results = Results(&dialog);
     auto* articles_found = ArticlesFound(&dialog);
+    auto* partial_status = PartialStatus(&dialog);
     QVERIFY(search != nullptr);
     QVERIFY(cancel != nullptr);
     QVERIFY(progress != nullptr);
     QVERIFY(response_model != nullptr);
     QVERIFY(results != nullptr);
     QVERIFY(articles_found != nullptr);
+    QVERIFY(partial_status != nullptr);
     QCOMPARE(response_model, dialog.response_model_);
     QCOMPARE(results, dialog.results_);
     QCOMPARE(response_model->parent(), &dialog);
     QCOMPARE(results->parent(), &dialog);
     QCOMPARE(articles_found->parent(), &dialog);
+    QCOMPARE(partial_status->parent(), &dialog);
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 0"));
+    QCOMPARE(partial_status->text(),
+             QStringLiteral("Results may be incomplete."));
+    QVERIFY(partial_status->isHidden());
     QCOMPARE(dialog.findChildren<FullTextResponseModel*>().size(), 1);
     QCOMPARE(
         dialog.findChildren<QListView*>(QString(), Qt::FindDirectChildrenOnly)
@@ -551,6 +562,7 @@ void FullTextSearchDialogTest::
     QVERIFY(cancel->isEnabled());
     QVERIFY(!progress->isHidden());
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 0"));
+    QVERIFY(partial_status->isHidden());
     QCOMPARE(progress->minimum(), 0);
     QCOMPARE(progress->maximum(), 0);
     QVERIFY(service.WaitForQueries(1U));
@@ -580,6 +592,12 @@ void FullTextSearchDialogTest::
              std::string("broken"));
     QCOMPARE(response_model->rowCount(), 1);
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 1"));
+    QVERIFY(!partial_status->isHidden());
+    const auto labels = dialog.findChildren<QLabel*>();
+    for (const auto* label : labels) {
+        QVERIFY(!label->text().contains(QStringLiteral("broken")));
+        QVERIFY(!label->text().contains(QStringLiteral("backend error")));
+    }
     QCOMPARE(response_model->data(response_model->index(0, 0)).toString(),
              QStringLiteral("retained"));
     QVERIFY(!results->currentIndex().isValid());
@@ -786,10 +804,13 @@ void FullTextSearchDialogTest::
     auto* model = ResponseModel(&dialog);
     auto* results = Results(&dialog);
     auto* articles_found = ArticlesFound(&dialog);
+    auto* partial_status = PartialStatus(&dialog);
     QVERIFY(model != nullptr);
     QVERIFY(results != nullptr);
+    QVERIFY(partial_status != nullptr);
     QCOMPARE(results->model(), model);
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 0"));
+    QVERIFY(partial_status->isHidden());
 
     const auto finish_current =
         [&dialog](goldendict::core::FullTextResponse response) {
@@ -813,6 +834,7 @@ void FullTextSearchDialogTest::
     QVERIFY(!dialog.response_->partial);
     QCOMPARE(model->rowCount(), 0);
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 0"));
+    QVERIFY(partial_status->isHidden());
 
     goldendict::core::FullTextResponse empty_partial;
     empty_partial.partial = true;
@@ -820,6 +842,7 @@ void FullTextSearchDialogTest::
     QVERIFY(dialog.response_->partial);
     QCOMPARE(model->rowCount(), 0);
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 0"));
+    QVERIFY(!partial_status->isHidden());
 
     goldendict::core::FullTextResponse partial;
     partial.partial = true;
@@ -844,6 +867,12 @@ void FullTextSearchDialogTest::
     QCOMPARE(dialog.response_->results[2].headword, std::string("duplicate"));
     QCOMPARE(model->rowCount(), 3);
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 3"));
+    QVERIFY(!partial_status->isHidden());
+    const auto labels = dialog.findChildren<QLabel*>();
+    for (const auto* label : labels) {
+        QVERIFY(!label->text().contains(QStringLiteral("partial")));
+        QVERIFY(!label->text().contains(QStringLiteral("deadline")));
+    }
     QCOMPARE(model->data(model->index(0, 0)).toString(),
              QString::fromUtf8(u8"café"));
     QCOMPARE(model->data(model->index(1, 0)).toString(),
@@ -863,11 +892,13 @@ void FullTextSearchDialogTest::
     QVERIFY(!dialog.response_.has_value());
     QCOMPARE(model->rowCount(), 0);
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 0"));
+    QVERIFY(partial_status->isHidden());
     QCOMPARE(resets.size(), 1);
     QVERIFY(service.WaitForQueries(1U));
     QTRY_VERIFY(dialog.response_.has_value());
     QCOMPARE(model->rowCount(), 3);
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 3"));
+    QVERIFY(partial_status->isHidden());
     QCOMPARE(resets.size(), 2);
     QCOMPARE(inserted.size(), 0);
     QCOMPARE(removed.size(), 0);
@@ -944,6 +975,7 @@ void FullTextSearchDialogTest::
 
 void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
     ControllableDictionaryService service;
+    service.response_.partial = true;
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
     dialog.InitializeQuery(QStringLiteral("blocked"));
@@ -960,6 +992,7 @@ void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
     QCOMPARE(ResponseModel(&dialog)->rowCount(), 0);
     QCOMPARE(ArticlesFound(&dialog)->text(),
              QStringLiteral("Articles found: 0"));
+    QVERIFY(PartialStatus(&dialog)->isHidden());
     QVERIFY(SearchButton(&dialog)->isEnabled());
     QVERIFY(!CancelButton(&dialog)->isEnabled());
     QVERIFY(Progress(&dialog)->isHidden());
@@ -971,6 +1004,7 @@ void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
     QCOMPARE(ResponseModel(&dialog)->rowCount(), 0);
     QCOMPARE(ArticlesFound(&dialog)->text(),
              QStringLiteral("Articles found: 0"));
+    QVERIFY(PartialStatus(&dialog)->isHidden());
     QCOMPARE(dialog.generation_, 1U);
 }
 
@@ -981,6 +1015,7 @@ void FullTextSearchDialogTest::
     goldendict::core::ApplicationPreferences preferences;
     {
         FullTextSearchDialog dialog(preferences, &first);
+        first.response_.partial = true;
         first.response_.results.resize(1);
         first.response_.results.front().headword = "accepted";
         dialog.InitializeQuery(QStringLiteral("accepted"));
@@ -990,6 +1025,7 @@ void FullTextSearchDialogTest::
         QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
         QCOMPARE(ArticlesFound(&dialog)->text(),
                  QStringLiteral("Articles found: 1"));
+        QVERIFY(!PartialStatus(&dialog)->isHidden());
         QVERIFY(dialog.accepted_activation_scope_.has_value());
         dialog.SetService(&second);
         QVERIFY(dialog.response_.has_value());
@@ -998,17 +1034,20 @@ void FullTextSearchDialogTest::
         QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
         QCOMPARE(ArticlesFound(&dialog)->text(),
                  QStringLiteral("Articles found: 1"));
+        QVERIFY(!PartialStatus(&dialog)->isHidden());
         QVERIFY(dialog.accepted_activation_scope_.has_value());
         QVERIFY(!dialog.pending_activation_scope_.has_value());
         dialog.DetachController();
         dialog.DetachController();
         QVERIFY(dialog.response_.has_value());
         QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
+        QVERIFY(!PartialStatus(&dialog)->isHidden());
         QVERIFY(dialog.accepted_activation_scope_.has_value());
     }
     QCOMPARE(second.Queries().size(), std::size_t{0});
 
     ControllableDictionaryService blocked;
+    blocked.response_.partial = true;
     ControllableDictionaryService replacement;
     {
         FullTextSearchDialog dialog(preferences, &blocked);
@@ -1025,6 +1064,7 @@ void FullTextSearchDialogTest::
         QCOMPARE(ResponseModel(&dialog)->rowCount(), 0);
         QCOMPARE(ArticlesFound(&dialog)->text(),
                  QStringLiteral("Articles found: 0"));
+        QVERIFY(PartialStatus(&dialog)->isHidden());
         QVERIFY(SearchButton(&dialog)->isEnabled());
         dialog.DetachController();
         dialog.DetachController();
