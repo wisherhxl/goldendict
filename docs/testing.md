@@ -1300,6 +1300,42 @@ and pinned legacy `fulltextsearch.ui` plus
 `fulltextsearch.cc:232-315,387-446`. No successor after P8-FT-5 is selected or
 ranked.
 
+## Phase 8 Full-Text Capability-Projection Gate
+
+The documentation-only post-P8-FT-5 audit selects only P8-FT-6, the installed
+catalog capability prerequisite. Its future focused Core test must construct
+at least one completed textual full-text backend and at least one unsupported
+backend and verify exact `supports_full_text_search` true/false values without
+changing catalog order or other identity fields. It must also verify that a
+returned `FullTextResult::dictionary` agrees with the corresponding catalog
+entry and that replacing the service recomputes, rather than persists, the
+capability.
+
+The installed C++ consumer must compile against and read the additive field for
+both supported and unsupported entries. The installed C consumer is unchanged.
+Because P8-FT-6 expands an installed C++ DTO, its implementation gate is the
+focused Core/consumer tests followed by Linux Release configure/build and full
+`ctest --preset conan-release`, install verification, standalone installed
+C++ consumer verification, and clean committed exact-SCM `conan create` with
+the Release Qt WebEngine host profile and packaged consumers.
+
+No Widgets, MainWindow, WebEngine, persistence, controller, index-lifecycle,
+or adapter behavior test belongs to P8-FT-6. Dialog/action integration,
+dictionary/group/muting application, request states, results/activation,
+highlighting, Preferences/index policy, index visibility/background lifecycle,
+`.gdfts`, legacy `_FTS`, dependencies, and unrelated behavior remain excluded.
+Evidence is migrated `dictionary_service.h:85-96,182-195,256-272`,
+`dictionary_service.cc:468-481,1075-1119`, `main_window.cpp:5535-5770`, and
+pinned legacy `fulltextsearch.cc:613-659`. No successor after P8-FT-6 is
+selected or ranked.
+
+For this readiness-audit commit itself, no build or test execution is required
+because only Markdown changes. Its gates are: changed-path allowlist limited to
+`docs/architecture.md`, `docs/migration.md`, `docs/testing.md`, and
+`docs/feature-parity.md`; cross-document agreement on the one selected leaf;
+presence of migrated and pinned-legacy evidence; explicit exclusions; absence
+of any selected or ranked successor; and `git diff --check`.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

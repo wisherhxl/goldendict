@@ -1938,6 +1938,47 @@ persisted-preference immutability. The composer has no service or controller
 dependency and cannot submit work. Its registration intentionally increases
 the suite baseline from 104 to 105 tests. No successor is selected or ranked.
 
+The fresh documentation-only post-P8-FT-5 readiness audit is pinned to clean
+pushed migrated revision `9f5e334dc8815dea6f1f85646429e99a87fb58ec`
+and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes without preselection
+the remaining modeless dialog/action integration, dictionary/group/muting
+projection, request states, results/activation, highlighting,
+Preferences/index policy, and index visibility/background lifecycle. It
+selects exactly one smallest dependency-ready prerequisite, P8-FT-6, and
+selects or ranks no successor.
+
+P8-FT-6 adds only additive installed C++ catalog capability
+`DictionaryIdentity::supports_full_text_search`, default `false`. Core maps it
+to `true` exactly for a backend implementing the private `FullTextBackend`
+contract and keeps the catalog identity and every full-text result identity
+consistent. The twelve completed textual adapters map true; LSA, ZIP sounds,
+sound directories, online sources, external programs, and unsupported future
+backends map false. The value is recomputed with service composition, is not
+persisted, and does not represent private-index ready/building/error state.
+
+This prerequisite is forced by pinned legacy `fulltextsearch.cc:613-659`,
+which filters `canFTS()` before group muting. Migrated
+`dictionary_service.h:85-96` exposes no equivalent, while
+`dictionary_service.cc:1113-1119` discovers support only through a private
+backend cast and `main_window.cpp:5535-5770` can otherwise project group and
+ephemeral dictionary-bar participation. Widgets must not inspect private
+backends or probe by submitting a search.
+
+Focused Core tests cover supported/unsupported mappings, catalog/result
+consistency, stable order, and service replacement. The installed C++ consumer
+reads both values; the installed C consumer remains unchanged. Release build
+and full tests, install and standalone installed-consumer checks, and clean
+committed exact-SCM Conan package verification are required when P8-FT-6 is
+implemented. The public DTO expansion is the only authorized ABI change.
+
+Dialog/action wiring, group and muting application, submission/completion UI,
+results and activation, highlighting, Preferences and index policy, index
+visibility/status/background lifecycle, persistence, adapters, `.gdfts`,
+legacy `_FTS`, dependencies, and unrelated behavior are excluded. A later
+leaf may consume the capability but is neither selected nor ranked here. No
+successor after P8-FT-6 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

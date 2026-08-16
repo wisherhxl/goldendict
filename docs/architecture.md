@@ -1682,6 +1682,69 @@ or service dependency and cannot submit work. Its registration intentionally
 raises the suite baseline from 104 to 105 tests. P8-FT-5 changes no installed
 interface or persistence schema and selects or ranks no successor.
 
+### Phase 8 full-text capability-projection prerequisite
+
+The fresh documentation-only post-P8-FT-5 readiness audit is pinned to clean
+pushed migrated revision `9f5e334dc8815dea6f1f85646429e99a87fb58ec`
+and the unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It independently evaluates the
+remaining modeless dialog/MainWindow action integration,
+dictionary/group/muting projection, request submission/completion states,
+results/activation, highlighting, Preferences/index policy, and index
+visibility/background lifecycle. It selects exactly one smallest prerequisite,
+P8-FT-6: expose full-text search capability through the installed dictionary
+catalog. No later workflow leaf is selected or ranked.
+
+P8-FT-6 is required because pinned legacy selection includes only dictionaries
+whose `canFTS()` is true before applying group muting, while the migrated
+Widgets boundary can currently observe catalog identity and group membership
+but not full-text eligibility. Eligibility is discovered only inside the
+private Core search implementation by testing for `FullTextBackend`; allowing
+Widgets to reproduce that test would violate the shared-library/GUI boundary.
+The installed, transport-neutral `DictionaryIdentity` therefore gains one
+additive boolean, `supports_full_text_search`, defaulting to `false`.
+
+Core is the sole owner of the mapping. `GetCatalog()` reports `true` exactly
+when the composed backend implements the private `FullTextBackend` contract;
+the same public identity carried by every `FullTextResult` reports the same
+value. The twelve completed textual adapters—StarDict, Dictd, SDict, XDXF,
+GLS, DSL, BGL, MDict, Aard, ZIM, SLOB, and EPWING—map to `true`. LSA, ZIP
+sounds, sound directories, online sources, external programs, and any current
+or future backend without that private contract map to `false`. Catalog order,
+identity fields, source redaction, search behavior, index construction, and
+error behavior are unchanged; no caller infers readiness from file existence
+or attempts a search to discover capability.
+
+The field describes whether the current composed dictionary supports the
+installed full-text operation, not whether its private index is presently
+ready, stale, building, or failed. It is recomputed whenever the application
+replaces the dictionary service and has no independent persistence or mutable
+lifecycle. Default `false` preserves source compatibility for aggregate
+initialization, while the installed-struct expansion is an intentional ABI
+change requiring exact-SCM consumer/package verification.
+
+Acceptance requires focused Core tests proving exact true/false mapping,
+catalog/result consistency, stable ordering, and replacement recomputation;
+the installed C++ consumer must read both a supported and unsupported catalog
+entry, and the installed C consumer remains unchanged because this C++ DTO is
+not in its interface. Full Release tests, install verification, standalone
+installed-consumer verification, and clean committed exact-SCM `conan create`
+with packaged consumers are the implementation gates.
+
+P8-FT-6 affects only the installed `DictionaryIdentity` declaration, private
+Core identity projection/catalog composition, focused Core and installed C++
+consumer tests, and build metadata only if needed to register those tests. It
+does not add a dialog or action, apply group membership or muting, submit or
+complete requests, present or activate results, highlight articles, expose
+index readiness/status, start background indexing, apply Preferences policy,
+change persistence, adapters, `.gdfts`, legacy `_FTS`, dependencies, or
+platform behavior. Decisive migrated evidence is
+`dictionary_service.h:85-96,149-160,182-195,256-272`,
+`dictionary_service.cc:468-481,1075-1119`,
+`main_window.cpp:5535-5770`, and the completed P8-FT-1/P8-FT-5 components.
+Pinned legacy evidence is `fulltextsearch.cc:613-659`. No successor after
+P8-FT-6 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
