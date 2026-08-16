@@ -10,6 +10,8 @@
 #include <QListView>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QStyleOptionViewItem>
+#include <QStyledItemDelegate>
 #include <QVBoxLayout>
 
 #include <utility>
@@ -18,6 +20,27 @@
 #include "full_text_response_model.h"
 
 namespace goldendict::app {
+namespace {
+
+class FullTextResultDelegate final : public QStyledItemDelegate {
+   public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+   protected:
+    void initStyleOption(QStyleOptionViewItem* option,
+                         const QModelIndex& index) const override {
+        QStyledItemDelegate::initStyleOption(option, index);
+        const bool is_right_to_left = option->text.isRightToLeft();
+        option->direction =
+            is_right_to_left ? Qt::RightToLeft : Qt::LeftToRight;
+        if (option->textElideMode != Qt::ElideNone) {
+            option->textElideMode =
+                is_right_to_left ? Qt::ElideLeft : Qt::ElideRight;
+        }
+    }
+};
+
+}  // namespace
 
 FullTextSearchDialog::FullTextSearchDialog(
     const goldendict::core::ApplicationPreferences& preferences,
@@ -47,6 +70,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     results_->setSelectionBehavior(QAbstractItemView::SelectRows);
     results_->setSelectionMode(QAbstractItemView::SingleSelection);
     results_->setModel(response_model_);
+    results_->setItemDelegate(new FullTextResultDelegate(results_));
     results_->installEventFilter(this);
     layout->addWidget(results_);
 

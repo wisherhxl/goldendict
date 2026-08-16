@@ -1965,36 +1965,36 @@ P8-FT-10 through P8-FT-13, plus pinned legacy
 `fulltextsearch.ui:99`.
 No successor after P8-FT-20 is selected or ranked.
 
-## Phase 8 Full-Text Bidirectional Result Rendering Gate (Selected)
+## Phase 8 Full-Text Bidirectional Result Rendering Gate (Complete)
 
-The post-P8-FT-20 documentation audit selects only P8-FT-21. The completed
+The post-P8-FT-20 documentation audit selected only P8-FT-21. The completed
 visible result list, exact display and tooltip projection, and deterministic
 selection/reset contract make private per-row bidirectional painting and
 elision independently testable without changing Core or an installed
-interface.
+interface. P8-FT-21 is complete.
 
-Focused coverage must prove that each left-to-right, right-to-left, and mixed
+Focused coverage proves that each left-to-right, right-to-left, and mixed
 Unicode headword independently supplies its Qt-derived direction to painting.
-Right-to-left rows must paint with `Qt::RightToLeft` and `Qt::ElideLeft` when
-elision is enabled; all other rows must paint with `Qt::LeftToRight` and
-`Qt::ElideRight`. An existing `Qt::ElideNone` must remain unchanged.
+Right-to-left rows paint with `Qt::RightToLeft` and `Qt::ElideLeft` when
+elision is enabled; all other rows paint with `Qt::LeftToRight` and
+`Qt::ElideRight`. An existing `Qt::ElideNone` remains unchanged.
 
-Coverage must include duplicate rows and accepted replacement and must prove
+Coverage includes duplicate rows and accepted replacement and proves
 that delegate painting changes no model role or value, row order, tooltip,
 retained-result count, selection, focus, activation, response ownership, or
 accepted-generation synchronization. Existing display/edit/tooltip,
 complete-metadata, count, selection, activation, service-replacement,
 controller-detachment, and teardown coverage must remain green.
 
-The focused future command is
+The focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The full implementation gate remains
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. P8-FT-21 adds no test executable or
 public/installed interface, so the registered Release baseline remains 109
-tests. No build or compiled test is required for this documentation-only audit.
+tests.
 
 Exact `document_id` navigation and source-dictionary targeting; columns,
 icons, additional metadata roles, and non-bidirectional decoration;

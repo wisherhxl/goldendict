@@ -2702,14 +2702,14 @@ clears the model before replacement, adds accepted rows without programmatic
 selection or focus transfer, and activates only a clicked or current valid row.
 No successor after P8-FT-20 is selected or ranked.
 
-### Phase 8 full-text bidirectional result rendering (selected)
+### Phase 8 full-text bidirectional result rendering (complete)
 
 The independent post-P8-FT-20 audit is pinned to clean migrated revision
 `53281651f9f882cfb9364a55a908f7104d760456` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes
-every remaining full-text workflow surface without advance ranking and selects
-only P8-FT-21, private per-row bidirectional painting and elision for the
-existing result list.
+every remaining full-text workflow surface without advance ranking and
+selected only P8-FT-21, private per-row bidirectional painting and elision for
+the existing result list. P8-FT-21 is complete.
 
 P8-FT-12 owns one visible `QListView`, P8-FT-18 and P8-FT-19 expose the exact
 dictionary name and headword roles, and P8-FT-20 fixes selection, current-index,
@@ -2726,18 +2726,18 @@ per-string direction result. Model roles and values, ordering, tooltips,
 retained-result count, selection, focus, activation, response ownership, and
 accepted-generation synchronization remain unchanged.
 
-Focused future acceptance covers left-to-right, right-to-left, and mixed
+Focused acceptance covers left-to-right, right-to-left, and mixed
 Unicode headwords; enabled and disabled elision; duplicate rows; accepted
 replacement; and unchanged tooltips, selection, focus, and activation. The
-focused future command is
+focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The full implementation gate remains
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. P8-FT-21 adds no test executable or
 public/installed interface, so the registered Release baseline remains 109
-tests. This documentation-only audit requires no build or test.
+tests.
 
 Exact `document_id` navigation and source-dictionary targeting; columns,
 icons, additional metadata roles, and non-bidirectional decoration;

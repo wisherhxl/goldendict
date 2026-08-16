@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QImage>
 #include <QItemSelectionModel>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListView>
+#include <QPainter>
 #include <QProgressBar>
+#include <QProxyStyle>
 #include <QPushButton>
+#include <QStyleOptionViewItem>
 #include <QtTest>
 
 #include <condition_variable>
@@ -129,6 +133,26 @@ class ControllableDictionaryService final
     mutable bool release_cancelled_ = false;
 };
 
+class RecordingItemStyle final : public QProxyStyle {
+   public:
+    using QProxyStyle::QProxyStyle;
+
+    void drawControl(ControlElement element, const QStyleOption* option,
+                     QPainter* painter,
+                     const QWidget* widget = nullptr) const override {
+        if (element == CE_ItemViewItem) {
+            const auto* item =
+                qstyleoption_cast<const QStyleOptionViewItem*>(option);
+            if (item != nullptr) {
+                item_options.push_back(*item);
+            }
+        }
+        QProxyStyle::drawControl(element, option, painter, widget);
+    }
+
+    mutable std::vector<QStyleOptionViewItem> item_options;
+};
+
 QPushButton* SearchButton(FullTextSearchDialog* dialog) {
     return dialog->findChild<QPushButton*>(
         QStringLiteral("fullTextSearchButton"));
@@ -238,6 +262,7 @@ class FullTextSearchDialogTest final : public QObject {
 
    private slots:
     void SubmitsExactComposedAndProjectedQueryAndRetainsResponse();
+    void PaintsEachResultWithIndependentDirectionAndElision();
     void KeepsSelectionAndFocusDeterministicAcrossAcceptedResponses();
     void RetainsExactAcceptedScopeForByValueActivation();
     void ProjectsCompleteCurrentResponsesAndReplacesRowsAtomically();
@@ -247,6 +272,100 @@ class FullTextSearchDialogTest final : public QObject {
     void CancellationIsIdempotentAndRestoresIdleState();
     void ServiceReplacementDetachAndDestructionSuppressLateDelivery();
 };
+
+void FullTextSearchDialogTest::
+    PaintsEachResultWithIndependentDirectionAndElision() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog dialog(preferences, &service);
+    auto* model = ResponseModel(&dialog);
+    auto* results = Results(&dialog);
+    QVERIFY(model != nullptr);
+    QVERIFY(results != nullptr);
+
+    const QString left_to_right = QStringLiteral("alpha");
+    const QString right_to_left = QString::fromUtf8(u8"مرحبا");
+    const QString mixed = QString::fromUtf8(u8"مرحبا alpha");
+    QVERIFY(!left_to_right.isRightToLeft());
+    QVERIFY(right_to_left.isRightToLeft());
+    QVERIFY(mixed.isRightToLeft());
+
+    goldendict::core::FullTextResponse response;
+    response.results = {
+        MakeResult("ltr", left_to_right.toStdString(), 1U),
+        MakeResult("rtl", right_to_left.toStdString(), 2U),
+        MakeResult("mixed", mixed.toStdString(), 3U),
+        MakeResult("duplicate", right_to_left.toStdString(), 4U),
+    };
+    dialog.active_generation_ = ++dialog.generation_;
+    dialog.FinishSearch(dialog.generation_, response);
+    QCOMPARE(model->rowCount(), 4);
+    QCOMPARE(ArticlesFound(&dialog)->text(),
+             QStringLiteral("Articles found: 4"));
+    QVERIFY(!results->currentIndex().isValid());
+    QVERIFY(!results->selectionModel()->hasSelection());
+
+    RecordingItemStyle style;
+    results->setStyle(&style);
+    QImage image(320, 80, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    const auto paint_rows = [&](Qt::TextElideMode elide_mode) {
+        style.item_options.clear();
+        for (int row = 0; row < model->rowCount(); ++row) {
+            QStyleOptionViewItem option;
+            option.initFrom(results);
+            option.widget = results;
+            option.rect = QRect(0, row * 20, image.width(), 20);
+            option.textElideMode = elide_mode;
+            results->itemDelegate()->paint(&painter, option,
+                                           model->index(row, 0));
+        }
+        QCOMPARE(style.item_options.size(),
+                 static_cast<std::size_t>(model->rowCount()));
+    };
+
+    paint_rows(Qt::ElideMiddle);
+    QCOMPARE(style.item_options[0].text, left_to_right);
+    QCOMPARE(style.item_options[0].direction, Qt::LeftToRight);
+    QCOMPARE(style.item_options[0].textElideMode, Qt::ElideRight);
+    QCOMPARE(style.item_options[1].text, right_to_left);
+    QCOMPARE(style.item_options[1].direction, Qt::RightToLeft);
+    QCOMPARE(style.item_options[1].textElideMode, Qt::ElideLeft);
+    QCOMPARE(style.item_options[2].text, mixed);
+    QCOMPARE(style.item_options[2].direction, Qt::RightToLeft);
+    QCOMPARE(style.item_options[2].textElideMode, Qt::ElideLeft);
+    QCOMPARE(style.item_options[3].text, right_to_left);
+    QCOMPARE(style.item_options[3].direction, Qt::RightToLeft);
+    QCOMPARE(style.item_options[3].textElideMode, Qt::ElideLeft);
+
+    paint_rows(Qt::ElideNone);
+    for (const auto& option : style.item_options) {
+        QCOMPARE(option.textElideMode, Qt::ElideNone);
+    }
+
+    goldendict::core::FullTextResponse replacement;
+    replacement.results = {
+        MakeResult("replacement", left_to_right.toStdString(), 5U)};
+    dialog.active_generation_ = ++dialog.generation_;
+    dialog.FinishSearch(dialog.generation_, replacement);
+    QCOMPARE(model->rowCount(), 1);
+    QCOMPARE(ArticlesFound(&dialog)->text(),
+             QStringLiteral("Articles found: 1"));
+    QVERIFY(!results->currentIndex().isValid());
+    QVERIFY(!results->selectionModel()->hasSelection());
+    QCOMPARE(model->data(model->index(0, 0), Qt::DisplayRole).toString(),
+             left_to_right);
+    QCOMPARE(model->data(model->index(0, 0), Qt::EditRole).toString(),
+             left_to_right);
+    QCOMPARE(model->data(model->index(0, 0), Qt::ToolTipRole).toString(),
+             QStringLiteral("Dictionary replacement"));
+    paint_rows(Qt::ElideMiddle);
+    QCOMPARE(style.item_options.front().direction, Qt::LeftToRight);
+    QCOMPARE(style.item_options.front().textElideMode, Qt::ElideRight);
+
+    results->setStyle(nullptr);
+}
 
 void FullTextSearchDialogTest::
     ActivatesExactCurrentResultOnceFromMouseAndKeyboard() {
