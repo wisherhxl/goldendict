@@ -574,7 +574,7 @@ missing requested IDs, cancellation, and deadlines. The installed consumer
 returns an XDXF result through the unchanged installed `SearchFullText` API and
 DTOs.
 
-The later implementation gate is the Linux Release configure/build and
+The implementation gate is the Linux Release configure/build and
 `ctest --preset conan-release`, library install and installed `test_package`
 consumer, then clean committed exact-SCM `conan create` with the Release Qt
 WebEngine host profile. GUI, Preferences, highlighting, other adapters, legacy

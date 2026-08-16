@@ -1212,6 +1212,12 @@ per-format leaves because their synonym, optional-headword, redirect,
 multi-source, resource-bearing, or specialized-container semantics require
 larger contracts.
 
+P6-FT-3 is complete. XDXF now contributes one private full-text document per
+validated article ordinal, preserves first-key canonical provenance, excludes
+alias-only and non-article text, and participates in the accepted `.gdfts`
+lifecycle and deterministic mixed-service dispatch without changing installed
+or runtime-source surfaces.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

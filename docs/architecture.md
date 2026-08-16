@@ -711,6 +711,9 @@ dispatch; all other formats retain typed unsupported behavior. Installed
 `SearchFullText` APIs and DTOs, runtime-source interfaces, public capability
 flags, preferences, dependencies, and the private index format remain
 unchanged.
+The leaf is complete with generated source-order, alias-deduplication,
+inert-assembly, lifecycle, contained-failure, mixed-service, and installed-
+consumer coverage.
 
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core

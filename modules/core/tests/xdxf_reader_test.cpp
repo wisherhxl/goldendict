@@ -16,6 +16,7 @@ class XdxfReaderTest : public QObject {
    private slots:
     void ReadsMetadataAliasesRankedMatchesAndMarkup();
     void ReadsCompressedXmlAndInvokesCheckpoints();
+    void TraversesFullTextArticlesInSourceOrder();
     void RejectsCorruptCompressedXml();
     void ReadsStandardDocumentTypeAndRejectsMalformedInput();
 };
@@ -59,6 +60,31 @@ void XdxfReaderTest::ReadsCompressedXmlAndInvokesCheckpoints() {
 
     QCOMPARE(result.front().headword, "example");
     QVERIFY(checkpoints > 0);
+}
+
+void XdxfReaderTest::TraversesFullTextArticlesInSourceOrder() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto path = test::WriteXdxfFixture(
+        root, {{{"canonical", "alias"}, "<def>first</def>"},
+               {{"second"}, "<def>second</def>"}});
+    const Reader reader = Reader::Open(path);
+    int checkpoints = 0;
+
+    const auto articles =
+        reader.ReadFullTextArticles([&checkpoints]() { ++checkpoints; });
+
+    QCOMPARE(articles.size(), std::size_t{2});
+    QCOMPARE(articles[0].record_ordinal, std::size_t{0});
+    QCOMPARE(articles[0].article_ordinal, std::size_t{0});
+    QCOMPARE(articles[0].headword, std::string("canonical"));
+    QCOMPARE(articles[1].record_ordinal, std::size_t{2});
+    QCOMPARE(articles[1].article_ordinal, std::size_t{1});
+    QCOMPARE(articles[1].headword, std::string("second"));
+    QCOMPARE(checkpoints, 3);
+    QCOMPARE(reader.source_snapshot().size(), std::size_t{1});
+    QCOMPARE(reader.source_snapshot().front().path, path.string());
 }
 
 void XdxfReaderTest::RejectsCorruptCompressedXml() {

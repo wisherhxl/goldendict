@@ -155,7 +155,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsMalformedConfiguration();
     void CatalogSanitizesInspectionMetadata();
     void DiscoversAndQueriesARealFixture();
-    void SearchesStarDictAndSdictFullTextWithMixedFormatErrors();
+    void SearchesStarDictSdictAndXdxfFullTextWithMixedFormatErrors();
     void EnumeratesStarDictHeadwordsWithStableCursors();
     void ExportsCompleteHeadwordListsAtomically();
     void ReturnsCanonicalFoldedMatchInformation();
@@ -1915,17 +1915,21 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
 }
 
 void ApplicationServiceTest::
-    SearchesStarDictAndSdictFullTextWithMixedFormatErrors() {
+    SearchesStarDictSdictAndXdxfFullTextWithMixedFormatErrors() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     const auto root = TemporaryPath(directory);
     std::filesystem::create_directories(root / "first");
     std::filesystem::create_directories(root / "sdict");
+    std::filesystem::create_directories(root / "xdxf");
     std::filesystem::create_directories(root / "dictd");
     test::WriteStardictFixture(root / "first",
                                {{"Alpha", "shared searchable first"}});
     test::WriteSdictFixture(root / "sdict",
                             {{"Beta", "shared searchable second"}});
+    test::WriteXdxfFixture(
+        root / "xdxf",
+        {{{"Gamma", "Gamma alias"}, "<def>shared searchable third</def>"}});
     test::WriteDictdFixture(root / "dictd",
                             {{"Unsupported", "searchable unsupported", ""}});
     CoreConfiguration configuration;
@@ -1936,7 +1940,7 @@ void ApplicationServiceTest::
     auto service =
         CreateDictionaryService(configuration, std::move(runtime_sources));
     const auto catalog = service->GetCatalog();
-    QCOMPARE(catalog.size(), 4U);
+    QCOMPARE(catalog.size(), 5U);
 
     FullTextQuery query;
     query.text = "searchable";
@@ -1958,23 +1962,31 @@ void ApplicationServiceTest::
     query.dictionary_ids.push_back("unavailable");
     query.result_limit = kMaximumFullTextResults;
     const auto filtered = service->SearchFullText(query);
-    QCOMPARE(filtered.results.size(), 2U);
+    QCOMPARE(filtered.results.size(), 3U);
     std::vector<std::string> adapted_ids;
     for (const auto& result : filtered.results) {
         adapted_ids.push_back(result.dictionary.id);
     }
-    std::sort(adapted_ids.begin(), adapted_ids.end());
-    QVERIFY(adapted_ids[0].rfind("sdict-", 0U) == 0U ||
-            adapted_ids[0].rfind("stardict-", 0U) == 0U);
-    QVERIFY(adapted_ids[1].rfind("sdict-", 0U) == 0U ||
-            adapted_ids[1].rfind("stardict-", 0U) == 0U);
-    QVERIFY(adapted_ids[0].substr(0U, adapted_ids[0].find('-')) !=
-            adapted_ids[1].substr(0U, adapted_ids[1].find('-')));
+    QCOMPARE(std::count_if(adapted_ids.begin(), adapted_ids.end(),
+                           [](const auto& id) {
+                               return id.rfind("stardict-", 0U) == 0U;
+                           }),
+             1);
+    QCOMPARE(std::count_if(
+                 adapted_ids.begin(), adapted_ids.end(),
+                 [](const auto& id) { return id.rfind("sdict-", 0U) == 0U; }),
+             1);
+    QCOMPARE(std::count_if(
+                 adapted_ids.begin(), adapted_ids.end(),
+                 [](const auto& id) { return id.rfind("xdxf-", 0U) == 0U; }),
+             1);
     const auto repeated = service->SearchFullText(query);
     QCOMPARE(repeated.results[0].dictionary.id,
              filtered.results[0].dictionary.id);
     QCOMPARE(repeated.results[1].dictionary.id,
              filtered.results[1].dictionary.id);
+    QCOMPARE(repeated.results[2].dictionary.id,
+             filtered.results[2].dictionary.id);
     QCOMPARE(filtered.results.front().match.mode, MatchMode::kFullText);
     QCOMPARE(filtered.results.front().matches.size(), 1U);
     QCOMPARE(filtered.errors.size(), 3U);

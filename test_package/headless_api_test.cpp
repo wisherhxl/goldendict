@@ -815,6 +815,8 @@ int main() {
         WriteXdxfFixture(xdxf_root);
         goldendict::core::CoreConfiguration xdxf_configuration;
         xdxf_configuration.dictionary_paths = {xdxf_root.string()};
+        xdxf_configuration.index_directory =
+            (directory.path() / "xdxf-indexes").string();
         auto xdxf_service =
             goldendict::core::CreateDictionaryService(xdxf_configuration);
         const auto xdxf_catalog = xdxf_service->GetCatalog();
@@ -840,6 +842,21 @@ int main() {
             xdxf_resource.size());
         if (xdxf_resource_text != "xdxf-png") {
             return Fail("installed XDXF resource retrieval failed");
+        }
+        full_text_query = {};
+        full_text_query.text = "Installed";
+        full_text_query.dictionary_filter_active = true;
+        full_text_query.dictionary_ids = {xdxf_catalog.front().id};
+        const auto xdxf_full_text =
+            xdxf_service->SearchFullText(full_text_query);
+        if (!xdxf_full_text.errors.empty() ||
+            xdxf_full_text.results.size() != 1U ||
+            xdxf_full_text.results.front().dictionary.id !=
+                xdxf_catalog.front().id ||
+            xdxf_full_text.results.front().headword != "example" ||
+            xdxf_full_text.results.front().document_id != "xdxf-index:0:0" ||
+            xdxf_full_text.results.front().matches.size() != 1U) {
+            return Fail("installed XDXF full-text query failed");
         }
 
         const auto gls_root = directory.path() / "gls";
