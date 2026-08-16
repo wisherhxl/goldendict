@@ -1746,6 +1746,64 @@ platform behavior. Decisive migrated evidence is
 Pinned legacy evidence is `fulltextsearch.cc:613-659`. No successor after
 P8-FT-6 is selected or ranked.
 
+### Phase 8 full-text dictionary participation projection
+
+The fresh documentation-only post-P8-FT-6 readiness audit is pinned to clean
+pushed migrated revision `9801ebdb99e09600efc0fad32405bee02dd4971e` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It independently decomposes the
+remaining modeless dialog/MainWindow action integration, dictionary/group and
+muting projection, request submission/completion states, results presentation
+and activation, highlighting, Preferences/index policy, and index
+visibility/background lifecycle. It selects exactly one smallest dependency-
+ready leaf, P8-FT-7: the private Widgets dictionary-participation projection.
+No successor after P8-FT-7 is selected or ranked.
+
+P8-FT-7 combines only already-owned facts. Core remains the sole owner of
+`DictionaryIdentity::supports_full_text_search`. MainWindow remains the owner
+of the selected group, configured ordered membership and normal-search muting,
+and the per-group ephemeral `dictionaryBar` checks. A private Widgets seam
+projects those facts into the P8-FT-5 composer result; it does not inspect a
+private backend or infer index readiness.
+
+Projection starts in catalog order for All Dictionaries and configured member
+order for a named group, drops unresolved IDs and every identity whose public
+full-text capability is false, and drops the named group's configured
+`muted_dictionary_ids`. When `dictionaryBar` is visible, only its currently
+checked IDs remain, preserving the applicable catalog/group order. When it is
+hidden, its ephemeral checks are not an active filter and the capability-
+filtered baseline applies. The projection always writes the ordered IDs to
+`FullTextQuery::dictionary_ids` and sets `dictionary_filter_active = true`,
+including when the result is empty; an empty selection therefore cannot widen
+into an unfiltered service request. Catalog replacement, group changes, muting
+changes, and bar changes are recomputed from current state and never persisted
+by this seam.
+
+Focused private Widgets tests cover All Dictionaries and named-group order,
+capability filtering, configured muting, unresolved members, visible checked
+and unchecked bar state, hidden-bar baseline behavior, an active empty filter,
+catalog/group replacement, and preservation of every other composed query
+field. They also prove no controller call and no preference/configuration
+mutation. A focused offscreen MainWindow smoke proves that the real group
+selector and dictionary bar feed the projection without opening a dialog or
+submitting a request. The later implementation gate is the focused tests,
+Linux Release configure/build and full `ctest --preset conan-release` with
+only an intentional registered-test delta, followed by clean committed exact-
+SCM `conan create` with the Release Qt WebEngine host profile and packaged
+consumers. No install or standalone installed-consumer check is required
+unless implementation unexpectedly changes an installed surface.
+
+P8-FT-7 affects only the private Widgets projection seam, its focused tests,
+the MainWindow smoke, and test registration if needed. Modeless dialog/action
+integration, request submission/completion UI, results and activation,
+highlighting, Preferences/index policy, index visibility/status/background
+lifecycle, public APIs, persistence, adapters, `.gdfts`, legacy `_FTS`,
+dependencies, and unrelated behavior remain excluded. Decisive migrated
+evidence is `full_text_query_composer.h/.cpp`,
+`dictionary_service.h:85-96,149-160`, `main_window.cpp:5535-5770`, and the
+P8-FT-5/P8-FT-6 focused tests. Pinned legacy evidence is
+`fulltextsearch.cc:613-659`. No successor after P8-FT-7 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

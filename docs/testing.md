@@ -1331,6 +1331,45 @@ Evidence is migrated `dictionary_service.h:85-96,182-195,256-272`,
 pinned legacy `fulltextsearch.cc:613-659`. No successor after P8-FT-6 is
 selected or ranked.
 
+## Phase 8 Full-Text Dictionary Participation Projection Gate
+
+P8-FT-7 is the sole leaf selected by the documentation-only post-P8-FT-6
+readiness audit. Focused private Widgets tests compose a query and verify that
+All Dictionaries preserves catalog order while a named group preserves
+configured member order, drops unresolved members and configured
+`muted_dictionary_ids`, and that both retain only catalog identities whose
+`supports_full_text_search` value is true.
+
+The tests exercise visible `dictionaryBar` checks as a further ordered filter
+and prove that hidden-bar ephemeral state does not filter the baseline. They
+also cover an empty projection with `dictionary_filter_active == true`, catalog
+and group replacement recomputation, and exact preservation of query text,
+mode, booleans, optionals, limits, and timeout from P8-FT-5. A fake controller
+and immutable preference/configuration fixtures prove that projection neither
+submits a request nor mutates persisted state.
+
+A focused offscreen MainWindow smoke drives the real group selector and
+dictionary bar and inspects the projected query without opening a full-text
+dialog or starting backend work. Controller coverage from P8-FT-1 and composer
+coverage from P8-FT-5 do not substitute for this selection smoke.
+
+The later implementation gate is the focused tests followed by Linux Release
+configure/build and full `ctest --preset conan-release`, accepting only an
+intentional registered-test delta, then clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile and packaged
+consumers. P8-FT-7 changes no installed surface, so install and standalone
+installed-consumer checks are unnecessary unless implementation unexpectedly
+changes one.
+
+No modeless dialog/Search action, request submission/completion UI,
+results/activation, highlighting, Preferences/index policy, index
+visibility/status/background lifecycle, public API, persistence, adapter,
+`.gdfts`, legacy `_FTS`, dependency, or unrelated behavior test belongs to
+P8-FT-7. Evidence is migrated `full_text_query_composer.h/.cpp`,
+`dictionary_service.h:85-96,149-160`, `main_window.cpp:5535-5770`, the
+P8-FT-5/P8-FT-6 focused tests, and pinned legacy
+`fulltextsearch.cc:613-659`. No successor after P8-FT-7 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

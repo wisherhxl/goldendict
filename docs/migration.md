@@ -1980,6 +1980,53 @@ legacy `_FTS`, dependencies, and unrelated behavior are excluded. A later
 leaf may consume the capability but is neither selected nor ranked here. No
 successor after P8-FT-6 is selected or ranked.
 
+The fresh documentation-only post-P8-FT-6 readiness audit is pinned to clean
+pushed migrated revision `9801ebdb99e09600efc0fad32405bee02dd4971e` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes without preselection
+the remaining dictionary/group selection and muting projection, modeless
+dialog/MainWindow action integration, request submission/completion states,
+results presentation and activation, highlighting, Preferences/index policy,
+and index visibility/background lifecycle. Exactly one smallest dependency-
+ready leaf is selected: P8-FT-7, the private Widgets dictionary-participation
+projection. No successor after P8-FT-7 is selected or ranked.
+
+P8-FT-7 consumes the completed P8-FT-5 composer, the P8-FT-6 public capability,
+and the accepted MainWindow group and `dictionaryBar` participation state. For
+All Dictionaries it preserves catalog order; for a named group it preserves
+configured member order, rejects unresolved IDs, and applies configured
+`muted_dictionary_ids`. Both paths retain only identities with
+`supports_full_text_search == true`. A visible dictionary bar further retains
+only checked IDs in that same order; when the bar is hidden, its ephemeral
+checks do not filter the baseline. The projection always sets
+`dictionary_filter_active = true` and supplies the resulting ordered IDs,
+including an empty vector. It recomputes current state and changes no
+configuration or preference.
+
+MainWindow owns selection, group membership/muting, and ephemeral bar state;
+Core owns capability and service-side filtering; the new seam owns only their
+private Widgets-to-query mapping. Focused tests cover both scopes, order,
+unsupported and unresolved dictionaries, configured muting, visible and
+hidden bar behavior, empty active filtering, current-state recomputation,
+unchanged P8-FT-5 fields, and absence of controller or persistence effects. A
+focused offscreen MainWindow smoke exercises the real selector and bar without
+opening a dialog or submitting work.
+
+The later implementation gate is focused tests, Linux Release configure/build
+and full `ctest --preset conan-release` with only an intentional test-count
+delta, then clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile and packaged consumers. Installed interfaces are
+unchanged, so install and standalone consumer checks are required only if the
+implementation unexpectedly changes one. Modeless dialog/action integration,
+submission/completion UI, results/activation, highlighting, Preferences/index
+policy, index visibility/status/background lifecycle, public APIs,
+persistence, adapters, `.gdfts`, legacy `_FTS`, dependencies, and unrelated
+behavior are excluded. Evidence is migrated
+`full_text_query_composer.h/.cpp`, `dictionary_service.h:85-96,149-160`,
+`main_window.cpp:5535-5770`, the P8-FT-5/P8-FT-6 focused tests, and pinned
+legacy `fulltextsearch.cc:613-659`. No successor after P8-FT-7 is selected or
+ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
