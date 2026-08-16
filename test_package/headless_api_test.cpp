@@ -1014,6 +1014,7 @@ int main() {
         WriteMdictFixture(mdict_root);
         goldendict::core::CoreConfiguration mdict_configuration;
         mdict_configuration.dictionary_paths = {mdict_root.string()};
+        mdict_configuration.index_directory = (mdict_root / "indexes").string();
         auto mdict_service =
             goldendict::core::CreateDictionaryService(mdict_configuration);
         const auto mdict_catalog = mdict_service->GetCatalog();
@@ -1039,6 +1040,25 @@ int main() {
             mdict_resource.size());
         if (mdict_resource_text != "mdict-png") {
             return Fail("installed MDict resource retrieval failed");
+        }
+        full_text_query = {};
+        full_text_query.text = "Installed";
+        full_text_query.dictionary_filter_active = true;
+        full_text_query.dictionary_ids = {mdict_catalog.front().id};
+        const auto mdict_full_text =
+            mdict_service->SearchFullText(full_text_query);
+        const std::string mdict_article =
+            "<b>Installed MDict definition.</b><img src=\"pixel.png\">";
+        const std::string mdict_provenance =
+            "mdict-index:0:0:0:0:" + std::to_string(mdict_article.size());
+        if (!mdict_full_text.errors.empty() ||
+            mdict_full_text.results.size() != 1U ||
+            mdict_full_text.results.front().dictionary.id !=
+                mdict_catalog.front().id ||
+            mdict_full_text.results.front().headword != "example" ||
+            mdict_full_text.results.front().document_id != mdict_provenance ||
+            mdict_full_text.results.front().matches.size() != 1U) {
+            return Fail("installed MDict full-text search failed");
         }
 
         const auto aard_root = directory.path() / "aard";

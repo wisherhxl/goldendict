@@ -1641,8 +1641,9 @@ unselected and unranked because its current physical deduplication includes
 the headword and it exposes no complete mutable `CATALOGS`/subbook-tree
 revision.
 
-P6-FT-12 consumes the prerequisite without revising it: one document per
-distinct terminal `(terminal-key-ordinal, record-offset, record-size)`, owned
+P6-FT-12 is complete and consumes the prerequisite without revising it: one
+document per distinct terminal
+`(terminal-key-ordinal, record-offset, record-size)`, owned
 by the first resolving source, with aliases retained and zero-based
 first-encounter `article_ordinal`. Provenance is exactly
 `mdict-index:<first-record-ordinal>:<article-ordinal>:<terminal-key-ordinal>:<record-offset>:<record-size>`
@@ -1659,10 +1660,13 @@ retain ordering, filtering, global bounds, adapted no-match behavior, typed
 unsupported for EPWING and other non-adapted sources, typed unavailable for
 missing IDs, and contained failures. Public APIs/DTOs, runtime interfaces,
 capability flags, configuration/preferences, dependencies, GUI/Phase 8, and
-private `.gdfts` serialization remain unchanged. Implementation, legacy
-`_FTS`, metadata/resource indexing, highlighting, other formats, dependencies,
-and unrelated refactors are excluded. No successor after P6-FT-12 is selected
-or ranked.
+private `.gdfts` serialization remain unchanged. Legacy `_FTS`,
+metadata/resource indexing, highlighting, other formats, dependencies, and
+unrelated refactors are excluded. The accepted implementation provides
+generated adapter/lifecycle coverage, deterministic eleven-format service
+coverage, and exact-provenance installed C++ consumption; the installed C
+consumer remains unchanged. EPWING remains unselected and unranked, and no
+successor after P6-FT-12 is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

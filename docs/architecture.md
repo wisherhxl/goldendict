@@ -1149,7 +1149,7 @@ set at `epwing.cc:372-397`, and exposes physical article page/offset at
 | MDict | P6-FT-11 supplies source ordinals, explicit terminal/missing/cycle outcomes, folded redirect resolution, exact terminal key/range identity, first-source/article ownership, aliases, checkpoints, safe bounded materialization, and the complete ordered MDX/consecutive-MDD snapshot | Decision-complete; select only P6-FT-12, the private MDict adapter |
 | EPWING | Current migrated deduplication still includes the headword in `(text-file, headword, page, offset)`, and neither `CATALOGS` nor the complete mutable subbook tree is exposed as a revision | Not decision-complete; unselected and unranked |
 
-P6-FT-12 adds only the private MDict full-text adapter. It traverses the
+P6-FT-12 is complete as the private MDict full-text adapter. It traverses the
 immutable P6-FT-11 ingestion view in `record_ordinal` order and creates one
 document for each first encounter of a distinct terminal
 `(terminal-key-ordinal, record-offset, record-size)` identity. The first
@@ -1175,9 +1175,13 @@ EPWING and requested non-adapted local or runtime sources, typed unavailable
 for missing IDs, and contained per-dictionary failures. P6-FT-12 changes no
 installed `SearchFullText` API or DTO, runtime interface, public capability,
 configuration, preference, dependency, GUI/Phase 8 behavior, or private
-`.gdfts` serialization. This audit excludes implementation, legacy `_FTS`,
-metadata/resource indexing, highlighting, other formats, dependencies, and
-unrelated refactors. No adapter or leaf after P6-FT-12 is selected or ranked.
+`.gdfts` serialization. Legacy `_FTS`, metadata/resource indexing,
+highlighting, other formats, dependencies, and
+unrelated refactors. The accepted implementation adds MDict as the eleventh
+adapted format with generated ownership, materialization, lifecycle,
+mixed-service, and installed-consumer coverage. EPWING remains typed
+unsupported and unselected, and no adapter or leaf after P6-FT-12 is selected
+or ranked.
 
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
