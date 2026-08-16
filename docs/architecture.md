@@ -629,6 +629,20 @@ Phase 6, and the Phase 8 workflow remains downstream. Adding the virtual
 operation intentionally changes the core ABI; the exact SCM/package revision
 identifies compatible consumers.
 
+The first Phase 6 full-text adapter leaf is StarDict. It is the smallest
+representative article backend because it already combines validated primary
+and synonym records, generated-index lifecycle, plain and HTML article
+assembly, stable provenance, and installed-consumer fixtures. P6-FT-1 adds a
+private full-text capability implemented by StarDict and dispatched by the
+application service; it does not extend installed headers or runtime-source
+interfaces. Each validated primary `.idx` record contributes one document,
+while `.syn` aliases do not duplicate the referenced article. Searchable text
+comes from the existing inert article-assembly policy, and a distinct private
+artifact under the configured index directory covers `.ifo`, `.idx`,
+`.dict`/`.dict.dz`, and optional `.syn` source revision. This private
+ingestion, lifecycle, and service-aggregation pattern is the prerequisite for
+later per-format adapters.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

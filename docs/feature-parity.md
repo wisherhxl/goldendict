@@ -39,13 +39,13 @@
 | Bounded legacy text encoding conversion | slice | Phase 5 | strict Latin-1, UTF-16, GB18030, and EUC-JP fixtures |
 | Headword suggestions | slice | Phase 5 | bounded ranked suggestion fixtures and installed-consumer tests |
 | Morphology and transliteration | later | Phase 5 | per-language fixtures |
-| Full-text search | contract | Phase 5/6/8 | installed bounded query plus private generated-index lifecycle and corpus tests complete; per-format and UI workflow tests follow |
+| Full-text search | contract | Phase 5/6/8 | installed bounded query and private reference-index contract complete; P6-FT-1 selects private StarDict ingestion/service integration before later formats and the Phase 8 workflow |
 
 ## Local Dictionary Formats
 
 | Format/source | Status | Batch | Required verification |
 | --- | --- | --- | --- |
-| StarDict | slice | vertical slice | discover/index/search/article/resource |
+| StarDict | slice | vertical slice | discover/index/search/article/resource accepted; P6-FT-1 full-text adapter selected with primary-only ingestion, assembled plain text, private lifecycle, and installed-service coverage pending |
 | Dictd | slice | text batch | strict `.index` + bounded plain/dictzip data, folded lookup, suggestions, and corruption tests |
 | SDict | slice | text batch | bounded `.dct` parsing, plain/zlib/bzip2 fields, folded search/suggestions, sanitized HTML/link conversion, and corruption tests |
 | XDXF | slice | text batch | bounded XML/compressed XML, folded lookup/suggestions, sanitized markup/links, and confined directory resources; resource ZIP and full-text parity remain |

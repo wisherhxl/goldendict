@@ -1110,6 +1110,26 @@ deterministic provenance, limits, cancellation, deadlines, and malformed or
 oversized input. Index paths, serialization, ingestion, and lifecycle state
 remain private. No Phase 6 adapter or Phase 8 workflow/control is wired.
 
+The first Phase 6 full-text task is P6-FT-1, the private StarDict adapter. Its
+prerequisites are the completed Phase 5 contract and StarDict's accepted
+discovery, generated-index, primary/synonym record, article-assembly,
+enumeration, provenance, and generated-fixture seams. The adapter ingests one
+document per validated primary `.idx` record, derives plain text through the
+existing article assembler for both supported `sametypesequence` forms, and
+excludes `.syn` aliases from duplicate document creation. A distinct private
+artifact in the configured index directory tracks every applicable StarDict
+source and exercises create, reuse, stale rebuild, and corrupt rebuild. The
+application service dispatches and deterministically merges only private
+full-text-capable backends while preserving bounded results and typed
+unsupported or unavailable errors.
+
+P6-FT-1 changes no installed API, public capability flag, preference, widget,
+or presentation behavior. Other formats, resource and metadata text, legacy
+full-text index compatibility, highlighting, dependency additions, and
+unrelated refactors are excluded. Later per-format adapters depend on the
+private capability and service-aggregation pattern established by this leaf;
+the Phase 8 full-text workflow remains downstream.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

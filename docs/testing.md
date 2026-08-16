@@ -514,6 +514,20 @@ application service retains typed unsupported results until Phase 6 adapters
 provide private ingestion, while `headless_api_test` compiles and runs the new
 installed operation and its active-empty filter behavior.
 
+P6-FT-1 is the selected first Phase 6 adapter and extends the generated
+StarDict fixture rather than adding downloaded data. Focused StarDict coverage
+must prove that plain and HTML articles yield searchable assembled plain text;
+primary records produce stable dictionary, headword, and record-derived
+document provenance; synonym aliases do not duplicate documents; and source
+changes or corruption produce create, reuse, stale-rebuild, and corrupt-rebuild
+states for the distinct private full-text artifact. Application-service tests
+must exercise installed `SearchFullText` filtering, deterministic bounds,
+cancellation and deadlines, successful StarDict results alongside typed
+unsupported errors from non-adapted formats, and unavailable requested IDs.
+The installed consumer must demonstrate StarDict full-text results without any
+public contract change. No GUI, Preferences, highlighting, other-format,
+resource-text, metadata-text, or legacy-index coverage belongs to this leaf.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,
