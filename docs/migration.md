@@ -1267,8 +1267,53 @@ P6-FT-4 is complete. Dictd now contributes one private full-text document per
 distinct validated non-metadata article range, with source-record canonical
 provenance, alias deduplication, inert plain-text assembly, two-source
 `.gdfts` lifecycle, and deterministic mixed-service dispatch. No subsequent
-format adapter is selected; that choice requires a fresh independent readiness
-audit after this implementation.
+format adapter was selected by that implementation.
+
+The fresh independent post-P6-FT-4 audit selects P6-FT-5, the private GLS
+adapter, rather than following migration order. Pinned legacy `gls.cc` at
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` explicitly creates and searches
+`_FTS`, initializes `can_FTS`, and
+honors the `GLS` disabled-type gate. The migrated reader retains complete
+source-order headword records and materialized articles: pipe-separated aliases
+share one article index and primary headword. It also provides bounded
+UTF-8/UTF-16 and plain/gzip decoding, sanitized `text/html`, stable single-file
+identity, and generated fixtures. DSL, BGL, MDict, Aard, ZIM, SLOB, and EPWING
+remain later because expanded-headword, binary alias, redirect-chain,
+multi-volume, resource-namespace, item/bin, or grouped-index ownership makes
+their contracts larger. No additional migrated textual article format is
+eligible; runtime sources lack a per-format ingestion contract, while LSA, ZIP
+sounds, and sound directories are resource-only and remain excluded.
+
+Each validated GLS article ordinal contributes exactly one document. The first
+source-order record referencing it supplies the canonical primary headword;
+later pipe-separated aliases do not duplicate it. The private document ID is
+`gls-index:<first-record-ordinal>:<article-ordinal>`. Ingestion passes the
+existing sanitized `text/html` through the inert article assembler and indexes
+only its bounded plain text. Alias-only headword text, glossary metadata,
+resource paths and bytes, image/link targets, raw markup, `.files` contents,
+and future resource ZIP contents are excluded.
+
+P6-FT-5 owns a distinct private `.gdfts` artifact in the configured index
+directory. Its complete source revision is the discovered `.gls` or `.gls.dz`
+file; source mutation or switching the discovered plain/compressed file forces
+a stale rebuild, while external resource changes do not. No configured index
+directory leaves GLS typed unsupported. In a mixed service, StarDict, Dictd,
+SDict, XDXF, and GLS merge in existing backend order under the global bound;
+adapted no-match dictionaries add no error, requested non-adapted local or
+runtime sources remain typed unsupported, and missing requested IDs remain
+typed unavailable. Per-dictionary cancellation, deadlines, corruption,
+resource limits, and storage failures remain contained.
+
+The leaf changes no installed `SearchFullText` API or DTO, runtime-source
+interface, public capability flag, configuration, preference, dependency, or
+private `.gdfts` format. Other adapters, legacy `_FTS` compatibility, metadata
+or resource indexing, highlighting, the Phase 8 workflow, and unrelated
+refactors are excluded. The implementation gate is focused generated-fixture,
+lifecycle, contained-failure, and five-format mixed-service coverage; the
+unchanged installed consumer; Linux Release build and
+`ctest --preset conan-release`; library install and installed `test_package`
+consumer; and clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile. No leaf after P6-FT-5 is selected.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

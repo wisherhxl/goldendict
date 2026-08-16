@@ -739,9 +739,59 @@ preferences, dependencies, and the private index format remain unchanged.
 P6-FT-4 is complete. Dictd now contributes range-deduplicated private
 full-text documents from validated non-metadata source records, tracks the
 selected two-file source revision, and participates in the accepted mixed
-service dispatch without changing installed or runtime-source surfaces. The
-next format adapter remains unselected pending a fresh independent readiness
-audit.
+service dispatch without changing installed or runtime-source surfaces.
+
+The fresh post-P6-FT-4 readiness audit selects P6-FT-5, the private GLS
+adapter, as the smallest dependency-ready remaining leaf. Pinned legacy
+`gls.cc` at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` creates and searches
+`_FTS`, initializes `can_FTS`, and
+applies the `GLS` full-text preference gate. The migrated reader already
+retains every source-order headword record, makes pipe-separated aliases share
+one article and primary headword, bounds UTF-8/UTF-16 and plain/gzip decoding,
+returns sanitized `text/html`, owns one discovered source, and has generated
+reader, backend, and installed-consumer fixtures. The audit finds no other
+migrated textual article backend outside the remaining formats below; runtime
+sources have no per-format ingestion contract.
+
+| Remaining format | Complete records and dedup model | Assembly/provenance and readiness |
+| --- | --- | --- |
+| GLS | Source-order records explicitly share one materialized article and primary headword | Single plain/compressed source, safe HTML assembly, fixtures, and pinned legacy support; selected |
+| DSL | Optional and tilde-expanded headwords share articles | Safe HTML is reusable, but expanded-headword canonical ownership needs a dedicated rule; later |
+| BGL | Primary and alias records share decoded articles | Binary control records and code pages complicate alias provenance; later |
+| MDict | Key records resolve folded redirect chains | Redirect target ownership spans MDX and optional MDD resources; later |
+| Aard | Index records map to article objects and redirects | Redirect ownership and outstanding multi-volume behavior require a larger contract; later |
+| ZIM | Directory records and redirects resolve cluster/blob articles | Redirect/resource namespaces and split-volume ownership interact; later |
+| SLOB | References can share item/bin-backed articles | Reference-to-item deduplication and store variants need a dedicated rule; later |
+| EPWING | Word-index records retain article text | Duplicate/grouped-index ownership and the specialized source tree are not explicit; later |
+| LSA / ZIP sounds / sound directories | Records identify audio resources, not textual definitions | Playback HTML and resource bytes are ineligible for textual ingestion; excluded |
+
+P6-FT-5 creates one private document per validated GLS article ordinal. The
+first source-order record referencing the article supplies the canonical
+primary headword; later pipe-separated headwords sharing it are aliases and do
+not duplicate the document. Stable provenance is
+`gls-index:<first-record-ordinal>:<article-ordinal>`. Searchable text is only
+the bounded plain text produced by passing the existing sanitized `text/html`
+article through the inert assembler. Alias-only headword text, glossary
+metadata, resource paths and bytes, image and link targets, raw markup,
+`.files` contents, and future resource ZIP contents are excluded.
+
+The distinct private `.gdfts` artifact under the configured index directory
+uses the discovered `.gls` or `.gls.dz` file as its complete source revision.
+Source mutation or switching the discovered plain/compressed file forces a
+stale rebuild; external resource changes do not. With no configured index
+directory GLS remains typed unsupported. StarDict, Dictd, SDict, XDXF, and GLS
+reuse the accepted private capability and service dispatch in existing backend
+order under the global result bound. Adapted no-match dictionaries add no
+error, requested non-adapted local or runtime sources remain typed unsupported,
+and missing requested IDs remain typed unavailable. Cancellation, deadlines,
+corruption, resource limits, and storage failures remain contained per
+dictionary.
+
+P6-FT-5 changes no installed `SearchFullText` API or DTO, runtime-source
+interface, public capability flag, configuration, preference, dependency, or
+private index format. Other adapters, legacy `_FTS` compatibility, metadata or
+resource indexing, highlighting, the Phase 8 workflow, and unrelated
+refactors are excluded. No leaf after P6-FT-5 is selected.
 
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core

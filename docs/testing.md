@@ -612,8 +612,38 @@ private index-format evolution are excluded.
 
 P6-FT-4 is accepted with the focused generated-fixture, lifecycle,
 contained-failure, mixed-service, Release build/install/test, exact-SCM Conan
-package, and installed C/C++ consumer coverage described above. Selection of a
-subsequent adapter requires a fresh independent readiness audit.
+package, and installed C/C++ consumer coverage described above. The required
+fresh independent readiness audit selects P6-FT-5 below.
+
+P6-FT-5 extends the generated GLS fixtures without downloaded data. Focused
+reader/backend coverage exercises plain and `.gls.dz` sources, supported
+UTF-8/UTF-16 decoding, complete source-order record and article traversal,
+multiple articles, pipe-separated aliases, safe markup, links and images,
+resource exclusion, malformed input, and source mutation. It proves one
+document per validated article ordinal, first-record canonical primary
+headword selection, exact
+`gls-index:<first-record-ordinal>:<article-ordinal>` provenance, and bounded
+plain text from the existing inert assembler. Alias-only text, glossary
+metadata, resource paths and bytes, image/link targets, raw markup, `.files`
+contents, and future resource ZIP contents are excluded.
+
+The GLS private artifact tests cover create, reuse, source-stamp stale rebuild,
+plain/compressed discovery changes, corrupt rebuild, disabled indexing without
+a configured index directory, resource limits, cancellation, deadlines, and
+contained storage failures. Resource-only changes must not stale the artifact.
+Application-service coverage combines generated StarDict, Dictd, SDict, XDXF,
+and GLS fixtures and pins existing backend ordering, dictionary filters, the
+global result bound, adapted no-match behavior, typed unsupported errors for
+every requested non-adapted local or runtime source, typed unavailable errors
+for missing IDs, cancellation, and deadlines. The installed consumer returns
+a GLS result through the unchanged installed `SearchFullText` API and DTOs.
+
+The implementation gate is the Linux Release configure/build and
+`ctest --preset conan-release`, library install and installed `test_package`
+consumer, then clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile. GUI, Preferences, highlighting, other adapters, legacy
+`_FTS` compatibility, metadata or resource indexing, dependency changes, and
+private index-format evolution are excluded. No later adapter is preselected.
 
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
