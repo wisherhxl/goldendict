@@ -1078,6 +1078,59 @@ first-source ownership, exact five-component provenance, inert assembled text,
 complete ordered split-volume lifecycle, and deterministic ten-format service
 dispatch. No successor is selected.
 
+The fresh post-P6-FT-10 audit covers the complete remaining migrated textual
+registry: MDict and EPWING. At pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, MDict gates full-text support at
+`mdx.cc:264-274`, uses its complete dictionary filename set for lifecycle
+rebuilds at `mdx.cc:489-517`, and extracts article text at `mdx.cc:519-533`;
+EPWING gates support at `epwing.cc:138-148`, uses its complete dictionary
+filename set at `epwing.cc:372-397`, and extracts the physical page/offset at
+`epwing.cc:400-420`.
+
+| Candidate | Migrated traversal and ownership | Materialization, revision, and audit decision |
+| --- | --- | --- |
+| MDict | MDX keys retain source order, but each key receives a separate article slot before bounded folded `@@@LINK=` resolution | Bounded decoded/styled HTML, MDX plus consecutive MDD discovery, and generated fixtures exist. Terminal physical ownership and exact MDX/MDD revision semantics are not exposed; select only P6-FT-11, the MDict ownership prerequisite |
+| EPWING | `CATALOGS` order, subbooks, and supported `0x90`/`0x91`/`0x92` word indexes are traversed, but deduplication includes the headword in `(text-file, headword, page, offset)` | Bounded safe rendering and generated fixtures exist. Headword-independent physical ownership and the complete mutable `CATALOGS`/subbook-tree revision are not exposed; unselected and unranked |
+
+P6-FT-11 is only a private MDict reader-ownership prerequisite, not an
+adapter. Its future immutable ingestion view assigns a zero-based
+`record_ordinal` to every accepted nonempty MDX key in source order before
+redirect resolution. Missing-target and cyclic redirects still consume their
+source ordinal; MDD entries never consume one. Bounded folded `@@@LINK=`
+resolution reports terminal, missing-target, and cycle outcomes explicitly.
+Each terminal exposes its zero-based MDX key ordinal plus exact decoded record
+offset and size as physical identity. Deduplication uses only that terminal
+identity, never a headword, folded spelling, or equal content.
+
+The first source-order key that resolves to a terminal owns its canonical
+headword and `first_record_ordinal`; later resolving keys are aliases. A
+zero-based `article_ordinal` follows first-terminal encounter order. This
+prerequisite locks the following adapter audit to exact provenance
+`mdict-index:<first-record-ordinal>:<article-ordinal>:<terminal-key-ordinal>:<record-offset>:<record-size>`.
+Every component is canonical unsigned base-10 without signs or padding. The
+logical first owner, deduplicated ordinal, terminal key, and exact record range
+make the string collision-safe within the complete dictionary revision.
+
+The ingestion view supplies only the resolved terminal article's existing
+bounded decoded/styled HTML for later inert plain-text assembly. Missing
+targets, cycles, unresolved redirect payloads, empty inert output, metadata,
+MDD resource names or bytes, and alias headwords as independent content are
+excluded. Its complete ordered source revision is the discovered MDX followed
+by the base MDD and every consecutive `.1.mdd`, `.2.mdd`, and later companion.
+Mutation or replacement of any member, or addition or removal of a companion,
+changes the revision. MDD companions affect revision only and never own text
+documents.
+
+Until a later audit accepts an adapter, MDict and EPWING remain typed
+unsupported without changing mixed-service ordering, dictionary filtering,
+the global bound, unavailable errors, or contained per-dictionary failures.
+P6-FT-11 changes no installed `SearchFullText` API or DTO, runtime interface,
+public capability, configuration, preference, dependency, GUI/Phase 8
+behavior, or private `.gdfts` serialization. This audit excludes prerequisite
+or adapter implementation, legacy `_FTS`, metadata/resource indexing,
+highlighting, other formats, dependencies, and unrelated refactors. No adapter
+or leaf after the prerequisite is selected or ranked.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

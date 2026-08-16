@@ -832,6 +832,44 @@ mixed-service coverage, and installed C++ exact-provenance consumption. The
 registered suite remains 103 tests because coverage extends existing test
 executables; the installed C consumer remains unchanged and passing.
 
+The selected P6-FT-11 work is only the private MDict ownership prerequisite,
+not an adapter. Focused reader and generated-fixture tests must prove complete
+source-order traversal and zero-based `record_ordinal` assignment before
+redirect resolution. Direct, chained, missing-target, and cyclic folded
+`@@@LINK=` cases pin explicit resolution outcomes; failed resolutions retain
+their source ordinal but yield no terminal document. MDD entries never consume
+an ordinal.
+
+Ownership tests must deduplicate only by the terminal zero-based MDX key
+ordinal plus exact decoded record offset and size. They cover first-resolving
+source headword and `first_record_ordinal` ownership, alias retention, folded
+headword collisions, duplicate aliases, equal bytes in distinct physical
+ranges, zero-based first-encounter `article_ordinal`, empty inert output, and
+multi-digit components. The following adapter audit must consume exact
+`mdict-index:<first-record-ordinal>:<article-ordinal>:<terminal-key-ordinal>:<record-offset>:<record-size>`
+provenance with canonical unsigned base-10 components without signs or
+padding.
+
+Materialization-contract tests limit output to the resolved terminal's bounded
+decoded/styled HTML and exclude missing/cyclic redirect payloads, metadata,
+MDD resource names and bytes, and alias headwords as independent content.
+Revision tests pin the ordered MDX, base MDD, and consecutive numbered MDD
+set, including mutation or replacement of each member, companion addition and
+removal, and resource-only MDD changes. Checkpoint and cancellation coverage
+must show that traversal and redirect resolution terminate without publishing
+a partial immutable view.
+
+The prerequisite acceptance gate is its focused Debug tests, then Linux
+Release configure/build and `ctest --preset conan-release`, install plus the
+installed `test_package` consumer, and clean committed exact-SCM `conan create`
+with the Release Qt WebEngine host profile. The installed consumer and mixed
+service remain behaviorally unchanged because neither MDict nor EPWING is
+adapted. APIs/DTOs, runtime interfaces, capability flags, configuration,
+Preferences, dependencies, GUI, `.gdfts` serialization, legacy `_FTS`,
+metadata/resource indexing, highlighting, other adapters, and unrelated
+refactors are excluded. No adapter or leaf after P6-FT-11 is selected or
+ranked. This documentation-only audit requires no build.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

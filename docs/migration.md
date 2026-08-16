@@ -1565,6 +1565,63 @@ exact five-component provenance, inert assembled text, complete ordered ZIM
 source revisions, deterministic ten-format dispatch, and installed-consumer
 coverage. No successor is selected.
 
+The fresh independent post-P6-FT-10 audit covers the exact remaining migrated
+textual registry: MDict and EPWING. At pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, MDict gates full-text support at
+`mdx.cc:264-274`, rebuilds against its dictionary filename set at
+`mdx.cc:489-517`, and extracts text at `mdx.cc:519-533`; EPWING gates support
+at `epwing.cc:138-148`, rebuilds against its dictionary filename set at
+`epwing.cc:372-397`, and extracts physical article page/offset at
+`epwing.cc:400-420`.
+
+Neither adapter is decision-complete. Migrated MDict parses source-order MDX
+keys, bounded record ranges, folded redirects, styles, and consecutive MDD
+companions, but assigns per-key article slots before redirect resolution and
+does not expose terminal physical ownership or an exact MDX/MDD revision.
+Migrated EPWING traverses `CATALOGS`, subbooks, and supported word indexes and
+renders bounded safe text, but deduplicates by a tuple that includes the
+headword and does not expose the complete mutable `CATALOGS`/subbook tree.
+EPWING remains unselected and unranked.
+
+The sole selection is P6-FT-11, the bounded private MDict ownership
+prerequisite; it is not the MDict adapter. Its immutable reader view must
+assign zero-based `record_ordinal` values to accepted nonempty MDX keys in
+source order before bounded folded `@@@LINK=` resolution. Missing-target and
+cyclic redirects consume an ordinal but report explicit nonterminal outcomes;
+MDD entries consume none. Successful resolution exposes the terminal
+zero-based MDX key ordinal and exact decoded record offset and size. That
+physical identity alone controls deduplication. The first resolving source
+owns the canonical headword and `first_record_ordinal`, later resolving keys
+are aliases, and zero-based `article_ordinal` follows first-terminal encounter
+order.
+
+The following adapter audit is locked to exact provenance
+`mdict-index:<first-record-ordinal>:<article-ordinal>:<terminal-key-ordinal>:<record-offset>:<record-size>`.
+All components are canonical unsigned base-10 without signs or padding, making
+the logical and physical identity collision-safe within the revision. The
+view supplies only the resolved terminal's existing bounded decoded/styled
+HTML for later inert assembly. It excludes missing targets, cycles, unresolved
+redirect text, empty inert output, metadata, MDD resource names/bytes, and
+aliases as separate searchable content.
+
+The complete ordered revision is MDX followed by the discovered base MDD and
+every consecutive numbered MDD companion. Mutation or replacement of any
+member and companion addition or removal changes the revision, including a
+resource-only MDD change; MDD files never own text documents. Generated
+fixtures must prove direct and chained redirects, folded collisions, duplicate
+aliases, distinct physical records with equal content, missing targets,
+cycles, empty materialization, multi-digit identity components, consecutive
+MDD topology, and checkpoints/cancellation.
+
+Until a separate adapter audit, both remaining formats stay typed unsupported
+and the existing ten-format mixed service remains unchanged. P6-FT-11 does not
+change installed APIs/DTOs, runtime interfaces, capability flags,
+configuration/preferences, dependencies, GUI/Phase 8 behavior, or private
+`.gdfts` serialization. This audit excludes implementation, legacy `_FTS`,
+metadata/resource indexing, highlighting, other formats, dependency work, and
+unrelated refactors. No adapter or successor after this prerequisite is
+selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
