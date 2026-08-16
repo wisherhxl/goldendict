@@ -2274,6 +2274,14 @@ P8-FT-10/P8-FT-11 contracts, plus pinned legacy
 choice without coupling activation or status policy.
 No successor after P8-FT-12 is selected or ranked.
 
+P8-FT-12 is complete. The dialog now owns one private visible `QListView`
+attached to its existing response model. Focused offscreen coverage proves
+initial, replacement-pending, empty, and error-only zero-row behavior; exact
+Core-order UTF-8 success and partial rows including duplicates; atomic repeated
+replacement; and stale/cancelled suppression. The Release suite remains 109
+registered tests, and no public, persistence, adapter, dependency, index, or
+build-system surface changes. No successor is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

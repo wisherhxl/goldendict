@@ -2031,7 +2031,7 @@ completion. The retained response continues to own complete error and partial
 state while the model owns its independent ordered result snapshot. No visible
 result view or successor is selected or ranked.
 
-### Phase 8 full-text visible result-list prerequisite (selected)
+### Phase 8 full-text visible result-list attachment (complete)
 
 The fresh documentation-only post-P8-FT-11 readiness audit is pinned to clean
 migrated revision `649e5001712a50c719b681fba11565f2bcef4c71` and the
@@ -2082,6 +2082,15 @@ the completed P8-FT-10/P8-FT-11 contracts. Pinned legacy evidence is
 `fulltextsearch.ui:99-238`: it establishes a `QListView` while leaving
 activation and status behavior separable.
 No successor after P8-FT-12 is selected or ranked.
+
+P8-FT-12 is complete. `FullTextSearchDialog` owns one private visible
+`QListView` attached directly to its existing child `FullTextResponseModel`.
+The view exposes the model's exact ordered UTF-8 display rows, including
+duplicates, while initial, replacement-pending, empty, and error-only states
+remain zero-row lists. Existing generation checks and atomic model resets keep
+stale and cancelled completions invisible. Widgets owns only the view/model
+attachment; Core remains authoritative for result semantics and index behavior.
+No successor is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

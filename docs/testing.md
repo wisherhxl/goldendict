@@ -1548,7 +1548,7 @@ stale and cancelled suppression, service replacement and detach safety, and
 the absence of a visible result view. The registered Release baseline remains
 109 tests. No successor is selected or ranked.
 
-## Phase 8 Full-Text Visible Result-List Gate (Selected)
+## Phase 8 Full-Text Visible Result-List Gate (Complete)
 
 The documentation-only post-P8-FT-11 audit selects P8-FT-12 as the sole
 smallest dependency-ready and independently decision-complete leaf: private
@@ -1588,6 +1588,15 @@ Evidence is migrated `full_text_search_dialog.h/.cpp`,
 P8-FT-10/P8-FT-11 coverage, plus pinned legacy
 `fulltextsearch.hh:135-156`, `fulltextsearch.cc:518-610,685-750`, and
 `fulltextsearch.ui:99-238`. No successor after P8-FT-12 is selected or ranked.
+
+P8-FT-12 is complete. The existing offscreen dialog QTest proves exactly one
+dialog-owned visible result list uses the existing child response model;
+initial, replacement-pending, empty, and error-only responses expose zero rows;
+current successful and partial responses expose exact ordered UTF-8 rows,
+including duplicates; repeated response replacement remains atomic; and stale
+or cancelled completions remain invisible. The registered Release baseline
+remains 109 tests. No selection, focus, activation, decoration, count, state
+presentation, or successor is selected or ranked.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

@@ -13,6 +13,7 @@
 #include "goldendict/core/dictionary_service.h"
 
 class QLineEdit;
+class QListView;
 class QProgressBar;
 class QPushButton;
 
@@ -49,6 +50,7 @@ class FullTextSearchDialog final : public QDialog {
 
     FullTextQueryComposer* composer_ = nullptr;
     QLineEdit* query_text_ = nullptr;
+    QListView* results_ = nullptr;
     QPushButton* search_button_ = nullptr;
     QPushButton* cancel_button_ = nullptr;
     QProgressBar* progress_ = nullptr;

@@ -4,6 +4,7 @@
 
 #include <QHBoxLayout>
 #include <QLineEdit>
+#include <QListView>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -37,6 +38,11 @@ FullTextSearchDialog::FullTextSearchDialog(
 
     auto* layout = new QVBoxLayout(this);
     layout->addWidget(composer_);
+
+    results_ = new QListView(this);
+    results_->setObjectName(QStringLiteral("fullTextSearchResults"));
+    results_->setModel(response_model_);
+    layout->addWidget(results_);
 
     progress_ = new QProgressBar(this);
     progress_->setObjectName(QStringLiteral("fullTextSearchProgress"));
