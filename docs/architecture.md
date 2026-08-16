@@ -1484,6 +1484,51 @@ errors, exception containment and redaction, stale and detached completion
 rejection, service replacement, destruction, and shutdown join. No successor
 after P8-FT-1 is selected or ranked.
 
+### Phase 8 full-text query-mode persistence prerequisite
+
+The documentation-only post-P8-FT-1 readiness audit is pinned to migrated
+revision `66c53d263ebfb735f898b950786bc43f9081821b` and legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks exactly the modeless
+dialog shell/query controls, dictionary/group/muting selection, result
+model/presentation/activation, article-highlighting handoff, persistent
+Preferences controls, and index availability/status/background lifecycle.
+Selection still requires a group/muting policy; presentation and highlighting
+require activation and WebEngine contracts; Preferences requires index policy;
+and index visibility requires lifecycle APIs. The dialog/query leaf is nearest
+but exposes one smaller independent persistence prerequisite.
+
+Pinned legacy `fulltextsearch.cc:232-285,387-398` and `config.hh:156-181`
+persist four modes in UI order: whole words `0`, plain text `1`, wildcards `2`,
+and regular expression `3`. Migrated `ApplicationPreferences` currently
+persists only whole words `0`, wildcard `1`, and regular expression `2`, while
+the installed `FullTextQueryMode` already supports all four. Reusing legacy
+ordinals directly would reinterpret existing migrated configuration.
+
+P8-FT-2 selects only the nonvisual four-mode persistence prerequisite. Future
+implementation adds the authorized installed/public
+`FullTextSearchMode::kPlainText = 3` enumerator while preserving the enum's
+underlying type, the existing `ApplicationPreferences` field, DTO layout, and
+scalar configuration wire shape. Migrated meanings remain `0` whole words,
+`1` wildcard, `2` regular expression, and become `3` plain text. The legacy
+XML importer translates its distinct historical ordinals explicitly: `0`
+whole words, `1` plain text, `2` wildcard, and `3` regular expression.
+
+Configuration loading, validation, and serialization own this mapping. The
+input is persisted query-mode state; the output is the typed application
+preference; migrated serialization emits the migrated ordinal. Unknown
+current or legacy values remain atomic configuration errors. Existing
+match-case, word-distance, article-limit, word-order, diacritic and all other
+full-text fields retain their current validation and wire behavior.
+
+P8-FT-2 starts no request, owns no service or controller, and has no
+asynchronous lifetime, cancellation, visible error, action, dialog, query
+widget, or query-construction behavior. It excludes dictionary/group/muting
+selection, results, activation and highlighting, Preferences widgets or policy
+application, index availability/status/background lifecycle, adapter or
+`.gdfts` changes, legacy `_FTS` binary compatibility, metadata/resource
+indexing, dependencies, platform work, and unrelated Phase 8/9/10 behavior.
+No successor after P8-FT-2 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

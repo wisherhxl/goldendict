@@ -1783,6 +1783,36 @@ indexing, platform integration and unrelated Phase 7/8/9/10 work remain out of
 scope. Its focused private QTest accepts the intentional registered-test
 increase from 103 to 104. No successor after P8-FT-1 is selected or ranked.
 
+The fresh documentation-only post-P8-FT-1 audit is pinned to migrated revision
+`66c53d263ebfb735f898b950786bc43f9081821b` and the unchanged legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It compares exactly the modeless
+dialog shell/query controls, dictionary/group/muting selection, result
+model/presentation/activation, article-highlighting handoff, persistent
+Preferences controls, and index availability/status/background lifecycle.
+It selects P8-FT-2, the smallest independent prerequisite: lossless four-mode
+query-mode persistence. No visible workflow leaf or successor is selected or
+ranked.
+
+P8-FT-2 authorizes only the additive installed/public
+`FullTextSearchMode::kPlainText = 3` enumerator. Existing migrated meanings
+remain `0` whole words, `1` wildcard and `2` regular expression; migrated `3`
+means plain text. Legacy XML's distinct `0` whole words, `1` plain text, `2`
+wildcard and `3` regular expression are translated explicitly. The enum
+underlying type, existing DTO field and layout, and scalar configuration wire
+shape remain unchanged. Unknown current or legacy values remain atomic load
+errors.
+
+The future implementation is limited to the enum, current configuration
+validation, legacy translation, and focused fixtures/tests. It changes no
+installed full-text query/result DTO, controller behavior, other persisted
+full-text field, twelve private adapters, `.gdfts`, or dependency. It has no
+request, asynchronous lifecycle, cancellation or visible behavior and excludes
+action/menu, dialog/query widgets and query construction, selection,
+presentation, activation, highlighting, Preferences UI/policy application,
+index status/background lifecycle, legacy `_FTS` compatibility,
+metadata/resource indexing, platform work, and unrelated Phase 8/9/10
+behavior. No successor after P8-FT-2 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
