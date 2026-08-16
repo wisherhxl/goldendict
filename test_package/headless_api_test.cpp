@@ -1018,6 +1018,7 @@ int main() {
         WriteAardFixture(aard_root);
         goldendict::core::CoreConfiguration aard_configuration;
         aard_configuration.dictionary_paths = {aard_root.string()};
+        aard_configuration.index_directory = (aard_root / "indexes").string();
         auto aard_service =
             goldendict::core::CreateDictionaryService(aard_configuration);
         const auto aard_catalog = aard_service->GetCatalog();
@@ -1035,6 +1036,18 @@ int main() {
             aard_response.entries.front().article.sanitized_html->find(
                 "Installed Aard definition.") == std::string::npos) {
             return Fail("installed Aard lookup failed");
+        }
+        full_text_query = {};
+        full_text_query.text = "Installed";
+        full_text_query.dictionary_filter_active = true;
+        full_text_query.dictionary_ids = {aard_catalog.front().id};
+        const auto aard_full_text =
+            aard_service->SearchFullText(full_text_query);
+        if (!aard_full_text.errors.empty() ||
+            aard_full_text.results.size() != 1U ||
+            aard_full_text.results.front().headword != "example" ||
+            aard_full_text.results.front().document_id != "aard-index:0:0") {
+            return Fail("installed Aard full-text query failed");
         }
 
         const auto zim_root = directory.path() / "zim";

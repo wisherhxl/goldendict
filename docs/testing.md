@@ -650,8 +650,8 @@ inert-assembly, lifecycle, contained-failure, mixed-service, Release
 build/install/test, exact-SCM package, and installed-consumer coverage. No
 successor is selected.
 
-The fresh post-P6-FT-5 audit selects only P6-FT-6 Aard. Future focused Aard
-reader/backend coverage extends the generated fixture without downloads and
+P6-FT-6 Aard is accepted. Focused Aard reader/backend coverage extends the
+generated fixture without downloads and
 exercises 32/64-bit indexes, raw/zlib/bzip2 articles, complete record/article
 traversal, aliases, redirect-only articles, safe links, malformed input, and
 source mutation. It proves one document per unique article ordinal,
@@ -672,11 +672,10 @@ typed unavailable errors for missing IDs, cancellation, and deadlines. The
 installed consumer returns Aard through the unchanged `SearchFullText` API and
 DTOs.
 
-The implementation gate remains Linux Release configure/build and
+The acceptance gate is Linux Release configure/build and
 `ctest --preset conan-release`, library install and installed `test_package`
 consumer, then clean committed exact-SCM `conan create` with the Release Qt
-WebEngine host profile. This audit is documentation-only, so targeted
-cross-document consistency checks and `git diff --check` replace builds.
+WebEngine host profile.
 Dependencies, GUI, Preferences, highlighting, other adapters, legacy `_FTS`
 compatibility, metadata/resource indexing, and private index evolution are
 excluded. No leaf after P6-FT-6 is selected.

@@ -155,7 +155,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsMalformedConfiguration();
     void CatalogSanitizesInspectionMetadata();
     void DiscoversAndQueriesARealFixture();
-    void SearchesFiveLocalFormatsFullTextWithMixedFormatErrors();
+    void SearchesSixLocalFormatsFullTextWithMixedFormatErrors();
     void EnumeratesStarDictHeadwordsWithStableCursors();
     void ExportsCompleteHeadwordListsAtomically();
     void ReturnsCanonicalFoldedMatchInformation();
@@ -1915,7 +1915,7 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
 }
 
 void ApplicationServiceTest::
-    SearchesFiveLocalFormatsFullTextWithMixedFormatErrors() {
+    SearchesSixLocalFormatsFullTextWithMixedFormatErrors() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     const auto root = TemporaryPath(directory);
@@ -1924,6 +1924,7 @@ void ApplicationServiceTest::
     std::filesystem::create_directories(root / "xdxf");
     std::filesystem::create_directories(root / "dictd");
     std::filesystem::create_directories(root / "gls");
+    std::filesystem::create_directories(root / "aard");
     test::WriteStardictFixture(root / "first",
                                {{"Alpha", "shared searchable first"}});
     test::WriteSdictFixture(root / "sdict",
@@ -1935,6 +1936,9 @@ void ApplicationServiceTest::
                             {{"Delta", "shared searchable fourth", ""}});
     test::WriteGlsFixture(root / "gls", {{{"Epsilon", "Epsilon alias"},
                                           "<b>shared searchable fifth</b>"}});
+    test::WriteAardFixture(root / "aard", "fixture.aar", false, false, false,
+                           "[\"<b>shared searchable sixth</b>"
+                           "<a href=\\\"w:alias\\\">alias</a>\"]");
     CoreConfiguration configuration;
     configuration.dictionary_paths = {root.string()};
     configuration.index_directory = (root / "indexes").string();
@@ -1943,7 +1947,7 @@ void ApplicationServiceTest::
     auto service =
         CreateDictionaryService(configuration, std::move(runtime_sources));
     const auto catalog = service->GetCatalog();
-    QCOMPARE(catalog.size(), 6U);
+    QCOMPARE(catalog.size(), 7U);
 
     FullTextQuery query;
     query.text = "searchable";
@@ -1963,7 +1967,7 @@ void ApplicationServiceTest::
     query.dictionary_ids.push_back("unavailable");
     query.result_limit = kMaximumFullTextResults;
     const auto filtered = service->SearchFullText(query);
-    QCOMPARE(filtered.results.size(), 5U);
+    QCOMPARE(filtered.results.size(), 6U);
     std::vector<std::string> adapted_ids;
     for (const auto& result : filtered.results) {
         adapted_ids.push_back(result.dictionary.id);
@@ -1989,6 +1993,10 @@ void ApplicationServiceTest::
                  adapted_ids.begin(), adapted_ids.end(),
                  [](const auto& id) { return id.rfind("gls-", 0U) == 0U; }),
              1);
+    QCOMPARE(std::count_if(
+                 adapted_ids.begin(), adapted_ids.end(),
+                 [](const auto& id) { return id.rfind("aard-", 0U) == 0U; }),
+             1);
     const auto repeated = service->SearchFullText(query);
     QCOMPARE(repeated.results[0].dictionary.id,
              filtered.results[0].dictionary.id);
@@ -2000,6 +2008,8 @@ void ApplicationServiceTest::
              filtered.results[3].dictionary.id);
     QCOMPARE(repeated.results[4].dictionary.id,
              filtered.results[4].dictionary.id);
+    QCOMPARE(repeated.results[5].dictionary.id,
+             filtered.results[5].dictionary.id);
     QCOMPARE(filtered.results.front().match.mode, MatchMode::kFullText);
     QCOMPARE(filtered.results.front().matches.size(), 1U);
     QCOMPARE(filtered.errors.size(), 2U);

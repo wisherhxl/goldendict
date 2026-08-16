@@ -52,7 +52,9 @@ inline std::string AardBzip2(std::string_view input) {
 inline std::filesystem::path WriteAardFixture(
     const std::filesystem::path& directory,
     std::string_view filename = "fixture.aar", bool bzip2 = false,
-    bool index64 = false, bool raw_articles = false) {
+    bool index64 = false, bool raw_articles = false,
+    std::string_view primary_article_json =
+        "[\"<b>definition</b><a href=\\\"w:alias\\\">alias</a>\"]") {
     std::filesystem::create_directories(directory);
     const auto compress = [bzip2](std::string_view value) {
         return bzip2 ? AardBzip2(value) : AardZlib(value);
@@ -67,8 +69,7 @@ inline std::filesystem::path WriteAardFixture(
         return raw_articles ? std::string(value) : compress(value);
     };
     const std::vector<std::string> articles = {
-        encode_article(
-            "[\"<b>definition</b><a href=\\\"w:alias\\\">alias</a>\"]"),
+        encode_article(primary_article_json),
         encode_article("[\"\",{\"r\":\"example\"}]")};
 
     std::string word_data;

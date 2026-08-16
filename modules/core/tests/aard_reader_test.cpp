@@ -24,6 +24,15 @@ void AardReaderTest::ReadsMetadataAliasesArticlesAndRedirects() {
     QCOMPARE(reader.metadata().source_language, "en");
     QCOMPARE(reader.metadata().target_language, "de");
     QCOMPARE(reader.metadata().article_count, std::size_t{2});
+    QCOMPARE(reader.source_snapshot().size(), std::size_t{1});
+    const auto full_text = reader.ReadFullTextArticles();
+    QCOMPARE(full_text.size(), std::size_t{2});
+    QCOMPARE(full_text[0].record_ordinal, std::size_t{0});
+    QCOMPARE(full_text[0].headword, "example");
+    QCOMPARE(full_text[0].article_ordinal, std::size_t{0});
+    QCOMPARE(full_text[1].record_ordinal, std::size_t{2});
+    QCOMPARE(full_text[1].headword, "redirect");
+    QCOMPARE(full_text[1].article_ordinal, std::size_t{1});
     QCOMPARE(reader.LookupExact("EXAMPLE").size(), std::size_t{1});
     QCOMPARE(reader.LookupExact("alias").size(), std::size_t{1});
     QCOMPARE(reader.SuggestPrefix("exa").front(), "example");

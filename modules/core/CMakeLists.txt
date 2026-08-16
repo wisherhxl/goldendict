@@ -127,6 +127,7 @@ endif()
 
 if(TARGET aard_reader_test)
   target_sources(aard_reader_test PRIVATE
+    src/dictionary/generated_index.cc
     src/foundation/text_folding.cc
     src/foundation/utf8.cc
     src/formats/aard/aard_reader.cc
@@ -192,7 +193,12 @@ endif()
 
 if(TARGET aard_dictionary_test)
   target_sources(aard_dictionary_test PRIVATE
+    src/article/article_assembler.cc
+    src/article/article_document.cc
+    src/article/internal_url.cc
     src/dictionary/dictionary_backend.cc
+    src/dictionary/full_text_index.cc
+    src/dictionary/generated_index.cc
     src/foundation/text_folding.cc
     src/foundation/utf8.cc
     src/formats/aard/aard_dictionary.cc

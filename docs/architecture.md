@@ -840,9 +840,10 @@ Cancellation, deadlines, corruption, resource limits, and storage failures
 remain contained per dictionary. Installed APIs and DTOs, runtime interfaces,
 public capability flags, preferences, dependencies, GUI/Phase 8 behavior, and
 the private index format stay unchanged. Legacy `_FTS` compatibility,
-metadata/resource indexing, highlighting, other adapters, implementation in
-this audit, and unrelated refactors are excluded. No leaf after P6-FT-6 is
-selected.
+metadata/resource indexing, highlighting, other adapters, and unrelated
+refactors are excluded. P6-FT-6 is complete with unique-article ingestion,
+first-record provenance, inert assembled text, single-source lifecycle, and
+deterministic mixed-service dispatch. No leaf after P6-FT-6 is selected.
 
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core

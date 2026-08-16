@@ -472,7 +472,30 @@ Reader Reader::Open(const std::filesystem::path& path) {
     if (reader.records_.empty())
         Throw(ErrorCode::kInvalidDictionary, path, "Aard contains no entries");
     reader.metadata_.article_count = reader.articles_.size();
+    try {
+        reader.source_snapshot_ = dictionary::CaptureSourceSnapshot({path});
+    } catch (const dictionary::GeneratedIndexError& error) {
+        Throw(ErrorCode::kMissingFile, path, error.what());
+    }
     return reader;
+}
+
+std::vector<FullTextArticle> Reader::ReadFullTextArticles(
+    const std::function<void()>& checkpoint) const {
+    std::vector<FullTextArticle> result;
+    result.reserve(articles_.size());
+    std::vector<bool> seen(articles_.size(), false);
+    for (std::size_t ordinal = 0U; ordinal < records_.size(); ++ordinal) {
+        if (checkpoint)
+            checkpoint();
+        const auto& record = records_[ordinal];
+        if (seen[record.article])
+            continue;
+        seen[record.article] = true;
+        result.push_back(
+            {ordinal, record.word, record.article, articles_[record.article]});
+    }
+    return result;
 }
 
 std::vector<const Reader::Record*> Reader::Ranked(

@@ -1354,13 +1354,12 @@ unavailable errors, and contained cancellation, deadline, corruption,
 resource-limit, and storage failures. P6-FT-6 changes no installed
 `SearchFullText` API or DTO, runtime interface, public capability flag,
 configuration, preference, dependency, GUI/Phase 8 workflow, or private
-`.gdfts` format. Implementation code, other adapters, legacy `_FTS`
-compatibility, metadata/resource indexing, highlighting, and unrelated
-refactors are outside this audit. Its implementation gates are focused
-generated-fixture, lifecycle, contained-failure, and six-format mixed-service
-coverage; the unchanged installed consumer; Linux Release build and test;
-install verification; and clean committed exact-SCM Conan package creation.
-No leaf after P6-FT-6 is selected.
+`.gdfts` format. Other adapters, legacy `_FTS` compatibility,
+metadata/resource indexing, highlighting, and unrelated refactors remain
+excluded. P6-FT-6 is complete with unique-article ingestion, first-record
+provenance, inert assembled text, sole-source lifecycle, deterministic
+six-format dispatch, and installed-consumer coverage. No leaf after P6-FT-6
+is selected.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
