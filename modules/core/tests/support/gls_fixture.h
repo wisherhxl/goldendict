@@ -69,6 +69,28 @@ inline std::filesystem::path WriteUtf16LeGlsFixture(
     return path;
 }
 
+inline std::filesystem::path WriteUtf16BeGlsFixture(
+    const std::filesystem::path& directory) {
+    std::filesystem::create_directories(directory);
+    constexpr std::string_view text =
+        "### Glossary title: UTF16 BE GLS\n"
+        "### Source language: eng\n"
+        "### Target language: deu\n"
+        "### Glossary section:\n\n"
+        "example\n"
+        "<b>definition</b>\n";
+    std::string encoded{"\xfe\xff", 2U};
+    encoded.reserve(2U + text.size() * 2U);
+    for (const unsigned char character : text) {
+        encoded.push_back('\0');
+        encoded.push_back(static_cast<char>(character));
+    }
+    const auto path = directory / "utf16be.gls";
+    std::ofstream output(path, std::ios::binary);
+    output.write(encoded.data(), static_cast<std::streamsize>(encoded.size()));
+    return path;
+}
+
 inline std::filesystem::path CompressGlsFixture(
     const std::filesystem::path& path) {
     std::ifstream input(path, std::ios::binary);

@@ -881,6 +881,8 @@ int main() {
         WriteGlsFixture(gls_root);
         goldendict::core::CoreConfiguration gls_configuration;
         gls_configuration.dictionary_paths = {gls_root.string()};
+        gls_configuration.index_directory =
+            (directory.path() / "gls-indexes").string();
         auto gls_service =
             goldendict::core::CreateDictionaryService(gls_configuration);
         const auto gls_catalog = gls_service->GetCatalog();
@@ -905,6 +907,20 @@ int main() {
             gls_resource.size());
         if (gls_resource_text != "gls-png") {
             return Fail("installed GLS resource retrieval failed");
+        }
+        full_text_query = {};
+        full_text_query.text = "Installed";
+        full_text_query.dictionary_filter_active = true;
+        full_text_query.dictionary_ids = {gls_catalog.front().id};
+        const auto gls_full_text = gls_service->SearchFullText(full_text_query);
+        if (!gls_full_text.errors.empty() ||
+            gls_full_text.results.size() != 1U ||
+            gls_full_text.results.front().dictionary.id !=
+                gls_catalog.front().id ||
+            gls_full_text.results.front().headword != "example" ||
+            gls_full_text.results.front().document_id != "gls-index:0:0" ||
+            gls_full_text.results.front().matches.size() != 1U) {
+            return Fail("installed GLS full-text query failed");
         }
 
         const auto dsl_root = directory.path() / "dsl";

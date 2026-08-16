@@ -799,10 +799,17 @@ class ServiceState final {
         }
         for (const auto& dictionary_path : gls_discovery.dictionary_files) {
             const std::string id = StableId("gls", dictionary_path);
+            std::optional<std::filesystem::path> full_text_index_path;
+            if (!configuration.index_directory.empty()) {
+                full_text_index_path =
+                    std::filesystem::u8path(configuration.index_directory) /
+                    (id + ".gdfts");
+            }
             try {
                 dictionaries_.push_back(
                     std::make_unique<formats::gls::Dictionary>(
-                        formats::gls::Dictionary::Open(id, dictionary_path)));
+                        formats::gls::Dictionary::Open(
+                            id, dictionary_path, full_text_index_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});

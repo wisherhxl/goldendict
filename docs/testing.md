@@ -645,6 +645,11 @@ WebEngine host profile. GUI, Preferences, highlighting, other adapters, legacy
 `_FTS` compatibility, metadata or resource indexing, dependency changes, and
 private index-format evolution are excluded. No later adapter is preselected.
 
+P6-FT-5 is accepted with generated encoding, compressed-source, alias,
+inert-assembly, lifecycle, contained-failure, mixed-service, Release
+build/install/test, exact-SCM package, and installed-consumer coverage. No
+successor is selected.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,

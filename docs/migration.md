@@ -1315,6 +1315,11 @@ unchanged installed consumer; Linux Release build and
 consumer; and clean committed exact-SCM `conan create` with the Release Qt
 WebEngine host profile. No leaf after P6-FT-5 is selected.
 
+P6-FT-5 is complete with per-article GLS ingestion, first-record canonical
+ownership, inert assembled text, single-source `.gdfts` lifecycle,
+mixed-service dispatch, and installed-consumer coverage. No successor is
+selected.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

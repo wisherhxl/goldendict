@@ -326,7 +326,33 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path) {
         const auto suffix = HasCompressedSuffix(dictionary_path) ? 7U : 4U;
         reader.metadata_.name = filename.substr(0, filename.size() - suffix);
     }
+    try {
+        reader.source_snapshot_ =
+            dictionary::CaptureSourceSnapshot({dictionary_path});
+    } catch (const dictionary::GeneratedIndexError& error) {
+        Throw(ErrorCode::kMissingFile, dictionary_path, error.what());
+    }
     return reader;
+}
+
+std::vector<FullTextArticle> Reader::ReadFullTextArticles(
+    const std::function<void()>& checkpoint) const {
+    std::vector<FullTextArticle> result;
+    result.reserve(articles_.size());
+    std::vector<bool> seen(articles_.size(), false);
+    for (std::size_t ordinal = 0U; ordinal < records_.size(); ++ordinal) {
+        if (checkpoint) {
+            checkpoint();
+        }
+        const auto& record = records_[ordinal];
+        if (seen[record.article]) {
+            continue;
+        }
+        seen[record.article] = true;
+        result.push_back({ordinal, record.headword, record.article,
+                          articles_[record.article]});
+    }
+    return result;
 }
 
 std::pair<std::vector<std::string>, bool> Reader::EnumerateHeadwords(

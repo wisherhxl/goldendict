@@ -64,6 +64,16 @@ void GlsReaderTest::ReadsCompressedAndUtf16TextAndInvokesCheckpoints() {
         Reader::Open(test::WriteUtf16LeGlsFixture(root / "utf16"));
     QCOMPARE(utf16.metadata().name, "UTF16 GLS");
     QCOMPARE(utf16.LookupExact("example").front().headword, "example");
+
+    const Reader utf16_be =
+        Reader::Open(test::WriteUtf16BeGlsFixture(root / "utf16be"));
+    QCOMPARE(utf16_be.metadata().name, "UTF16 BE GLS");
+    QCOMPARE(utf16_be.LookupExact("example").front().headword, "example");
+
+    const auto full_text = compressed.ReadFullTextArticles();
+    QCOMPARE(full_text.size(), std::size_t{1});
+    QCOMPARE(full_text.front().record_ordinal, std::size_t{0});
+    QCOMPARE(full_text.front().article_ordinal, std::size_t{0});
 }
 
 void GlsReaderTest::RejectsMalformedOrCorruptInput() {

@@ -793,6 +793,11 @@ private index format. Other adapters, legacy `_FTS` compatibility, metadata or
 resource indexing, highlighting, the Phase 8 workflow, and unrelated
 refactors are excluded. No leaf after P6-FT-5 is selected.
 
+P6-FT-5 is complete. GLS now contributes one private document per validated
+article ordinal with first-record ownership, inert assembled text,
+single-source `.gdfts` lifecycle, and deterministic mixed-service dispatch.
+No subsequent leaf is selected.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and
