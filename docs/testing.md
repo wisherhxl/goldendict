@@ -1911,6 +1911,59 @@ the P8-FT-10/P8-FT-11/P8-FT-12 model ownership, synchronization, and attachment,
 plus pinned legacy `fulltextsearch.cc:690-721`.
 No successor after P8-FT-19 is selected or ranked.
 
+## Phase 8 Full-Text Result-List Selection Gate (Selected)
+
+The post-P8-FT-19 documentation audit selects only P8-FT-20. Completed model
+ownership, accepted-response synchronization, visible list attachment, and
+current-row activation make the private result list's selection and reset
+contract independently testable without changing Core or an installed
+interface.
+
+Focused dialog coverage must prove that the list has at most one current and
+selected row; initial, empty, and error-only states have neither; and a
+generation-current successful or partial response does not select a row or
+steal keyboard focus. Ordinary user interaction may establish one current and
+selected row. Starting a replacement must clear rows, current index, and
+selection atomically, and its accepted response must remain unselected even
+when the same headword or row position returns. Stale and cancelled completions
+must not restore selection, current index, or focus.
+
+Coverage must separately begin with the list and another widget owning keyboard
+focus and prove that reset preserves that ownership. Existing click, Return,
+and Enter activation remains unchanged and requires a valid current row.
+Existing ordered projection, duplicate rows, display/edit/tooltip roles,
+complete metadata, accepted-generation synchronization, retained-result count,
+service replacement, controller detachment, and teardown coverage remains
+green.
+
+The focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-20 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. No build or compiled test is required for this documentation-only audit.
+
+Exact `document_id` navigation and source-dictionary targeting; non-selection
+decoration, columns, delegates, icons, and additional metadata roles;
+empty/error/partial messaging beyond the numeric retained-result count; match
+ranges and excerpt presentation; highlighting, ignore-diacritics transfer, and
+WebEngine handoff; Preferences enablement, format exclusions, size/index policy,
+and persistence; index readiness, visibility, status, progress, background
+lifecycle, rebuild, and failure UI; adapters, `.gdfts`, legacy `_FTS`, index
+formats, dependencies, build work, and unrelated suites are excluded and remain
+separately decomposed without ranking. No public API, DTO, persistence, Core,
+adapter, index, dependency, or build surface belongs to P8-FT-20.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`,
+`full_text_response_model.h/.cpp`, their focused tests, and completed
+P8-FT-10 through P8-FT-13, plus pinned legacy
+`fulltextsearch.cc:287-315,448-449,567-579,662-673` and
+`fulltextsearch.ui:99`.
+No successor after P8-FT-20 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

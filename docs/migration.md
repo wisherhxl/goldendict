@@ -2643,6 +2643,64 @@ and focused tests. It adds no test executable or public/installed interface,
 and the registered Release baseline remains 109 tests.
 No successor after P8-FT-19 is selected or ranked.
 
+### Phase 8 full-text result-list selection contract (selected)
+
+The independent post-P8-FT-19 audit is pinned to clean migrated revision
+`a60f258e9226ebc7e1ee2115055d2ee531dc097a` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes
+every remaining full-text workflow surface without advance ranking and selects
+only P8-FT-20, the private result-list selection and reset contract.
+
+P8-FT-10 owns the immutable result snapshot, P8-FT-11 synchronizes only the
+accepted response, P8-FT-12 attaches it to one visible `QListView`, and P8-FT-13
+requires a valid current row for activation. P8-FT-20 therefore stays within
+the private Widgets dialog: the list has at most one current and selected row;
+initial, empty, and error-only states have neither; and a generation-current
+successful or partial response does not select a row or steal keyboard focus.
+Ordinary user interaction may establish one current and selected row.
+
+Starting a replacement clears rows, current index, and selection atomically.
+The accepted replacement remains unselected even when it contains the same
+headword or row position. Stale or cancelled completions cannot restore
+selection, current index, or focus. Reset preserves whether the list or another
+widget already owns keyboard focus. Existing click, Return, and Enter
+activation remains unchanged and still requires a valid current row. The
+response model continues to own only ordered result data; Core continues to own
+result identity and navigation semantics.
+
+Focused future acceptance extends `full_text_search_dialog_test` for initial,
+successful, partial, empty, and error-only responses; explicit user selection;
+replacement clearing and same-row non-retention; stale and cancelled
+completion suppression; list-owned and other-widget-owned focus; and unchanged
+activation. The focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. This documentation-only audit
+requires no build or test.
+
+Exact `document_id` navigation and source-dictionary targeting; non-selection
+decoration, columns, delegates, icons, and additional metadata roles;
+empty/error/partial messaging beyond the numeric retained-result count; match
+ranges and excerpt presentation; highlighting, ignore-diacritics transfer, and
+WebEngine handoff; Preferences enablement, format exclusions, size/index policy,
+and persistence; index readiness, visibility, status, progress, background
+lifecycle, rebuild, and failure UI; adapters, `.gdfts`, legacy `_FTS`, index
+formats, dependencies, builds, and unrelated parity remain independent and
+unranked. No public API, DTO, persistence, Core, adapter, index, dependency, or
+build-system surface belongs to P8-FT-20.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`,
+`full_text_response_model.h/.cpp`, their focused tests, and completed
+P8-FT-10 through P8-FT-13, plus pinned legacy
+`fulltextsearch.cc:287-315,448-449,567-579,662-673` and
+`fulltextsearch.ui:99`. The legacy dialog attaches one list model and delegate,
+clears the model before replacement, adds accepted rows without programmatic
+selection or focus transfer, and activates only a clicked or current valid row.
+No successor after P8-FT-20 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
