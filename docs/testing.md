@@ -1416,23 +1416,23 @@ and `full_text_request_controller.cpp:143-197`, plus pinned legacy
 `mainwindow.ui:614-627`, `mainwindow.cc:4754-4791`, and
 `fulltextsearch.cc:195-340`. No successor after P8-FT-8 is selected or ranked.
 
-## Phase 8 Full-Text Request-State Readiness Gate (Selected)
+## Phase 8 Full-Text Request-State Gate (Complete)
 
-The documentation-only post-P8-FT-8 audit selects P8-FT-9 as its sole
-smallest independently dependency-ready leaf: private dialog request
-submission, cancellation, replacement and terminal-state integration. The
-audit is pinned to clean pushed migrated revision
-`586c481cd009caed0d0386e2b5c4c7a2f3e840ce` and unchanged clean read-only
-legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+P8-FT-9 completes private dialog request submission, cancellation,
+replacement and terminal-state integration. It is based on clean migrated
+revision `750177f4f8a2d9fd709a2c27efe3e254505308d6` and unchanged clean
+read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+No successor after P8-FT-9 is selected or ranked.
 
-Focused private Widgets tests must prove that Search composes the current
+Focused private Widgets tests prove that Search composes the current
 P8-FT-5 controls, reapplies the latest P8-FT-7 dictionary IDs and active-filter
 flag, clears the prior private terminal response, advances a monotonically
 increasing generation and submits exactly once through P8-FT-1. They must
-cover a later submission replacing running and pending work, current-generation
-terminal delivery, and suppression of stale or cancelled completions.
+cover a later private submission replacing running and pending work while the
+visible Search control is disabled, current-generation terminal delivery, and
+suppression of stale or cancelled completions.
 
-State tests must verify an indeterminate progress indicator and available
+State tests verify an indeterminate progress indicator and available
 cancellation while running; idempotent Cancel invalidating the active
 generation and restoring idle Search state; current completion retaining the
 unchanged structured response privately, hiding progress and restoring idle;
@@ -1440,7 +1440,9 @@ and P8-FT-8 close, facade replacement and MainWindow destruction stopping and
 detaching safely. The offscreen dialog/MainWindow smoke exercises the real
 composer, current projection, Search and Cancel controls and terminal state.
 
-The implementation gate is the focused tests, Linux Release configure/build,
+P8-FT-9 extends the existing focused test and offscreen smoke registrations,
+so the registered Release baseline remains 108 tests. The implementation gate
+is the focused tests, Linux Release configure/build,
 full `ctest --preset conan-release` accepting only the intentional registered-
 test delta, then clean committed exact-SCM `conan create` with the Release Qt
 WebEngine host profile and packaged consumers. No install or standalone

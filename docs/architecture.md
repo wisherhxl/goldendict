@@ -1863,18 +1863,12 @@ behavior are excluded. Decisive migrated evidence is
 `mainwindow.ui:614-627`, `mainwindow.cc:4754-4791`, and
 `fulltextsearch.cc:195-340`. No successor after P8-FT-8 is selected or ranked.
 
-The fresh documentation-only post-P8-FT-8 readiness audit is pinned to clean
-pushed migrated revision `586c481cd009caed0d0386e2b5c4c7a2f3e840ce`
-and the unchanged clean read-only legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It audits without preselection
-request submission, cancellation/replacement and terminal state; result
-projection, ordering, metadata, selection and article activation; highlighting
-handoff and article-view behavior; Preferences enablement and full-text/index
-policy; index readiness, visibility, status and background lifecycle; and
-their prerequisites. Exactly one smallest independently dependency-ready leaf
-is selected: P8-FT-9, the private dialog request submission, cancellation,
-replacement and terminal-state integration. No successor after P8-FT-9 is
-selected or ranked.
+P8-FT-9 is complete as the private dialog request submission, cancellation,
+replacement and terminal-state integration leaf selected by the post-P8-FT-8
+audit. Its implementation is based on clean migrated revision
+`750177f4f8a2d9fd709a2c27efe3e254505308d6` and the unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. No successor after
+P8-FT-9 is selected or ranked.
 
 P8-FT-9 consumes the completed P8-FT-1 request controller, P8-FT-5 query
 composer, P8-FT-7 authoritative dictionary projection and P8-FT-8 dialog
@@ -1882,7 +1876,9 @@ lifetime. Search composes the current controls, reapplies the latest projected
 dictionary IDs and active-filter flag, assigns a monotonically increasing
 dialog generation, clears the prior private terminal response, and submits
 through the controller. A newer submission replaces running or pending work;
-only the current generation may change dialog state. Cancel is idempotent,
+the private submission entry point remains callable for replacement while the
+visible Search button is disabled, and only the current generation may change
+dialog state. Cancel is idempotent,
 cancels the controller, invalidates the active generation and returns the
 dialog to idle without accepting a cancelled or stale completion.
 
@@ -1899,7 +1895,9 @@ Focused private Widgets tests and an offscreen dialog/MainWindow smoke verify
 exact current composition plus projection, increasing generations, running
 state, replacement cancellation, explicit idempotent cancellation, stale and
 cancelled completion suppression, unchanged current response retention,
-terminal idle restoration and safe teardown. The implementation gate is the
+terminal idle restoration and safe teardown. P8-FT-9 extends existing test
+registrations, so the registered Release suite remains 108 tests. The
+implementation gate is the
 focused tests, Linux Release configure/build, full
 `ctest --preset conan-release` with only the intentional registered-test delta,
 then clean committed exact-SCM `conan create` with the Release Qt WebEngine

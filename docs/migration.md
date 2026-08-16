@@ -2083,23 +2083,20 @@ dependencies, and unrelated work are excluded. Evidence is migrated
 `mainwindow.ui:614-627`, `mainwindow.cc:4754-4791`, and
 `fulltextsearch.cc:195-340`. No successor after P8-FT-8 is selected or ranked.
 
-The fresh documentation-only post-P8-FT-8 audit is pinned to clean pushed
-migrated revision `586c481cd009caed0d0386e2b5c4c7a2f3e840ce` and the
-unchanged clean read-only legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes without
-preselection request submission/cancellation/replacement/terminal UI;
-result projection, ordering, metadata, selection and activation; highlighting
-handoff and article-view behavior; Preferences enablement and index policy;
-index readiness/visibility/status/background lifecycle; and prerequisites.
-The sole smallest independently dependency-ready leaf is P8-FT-9, private
-dialog request submission, cancellation, replacement and terminal-state
-integration. No successor after P8-FT-9 is selected or ranked.
+P8-FT-9 is complete as the private dialog request submission, cancellation,
+replacement and terminal-state integration leaf selected by the post-P8-FT-8
+audit. Its implementation is based on clean migrated revision
+`750177f4f8a2d9fd709a2c27efe3e254505308d6` and the unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. No successor after
+P8-FT-9 is selected or ranked.
 
 P8-FT-9 uses only completed contracts. Search composes current P8-FT-5
 controls, reapplies the latest P8-FT-7 dictionary projection, clears any prior
 private terminal response, advances a dialog-owned generation and submits via
 P8-FT-1. A later submission replaces running or pending work, and generation
-matching prevents stale completion from changing the dialog. Explicit Cancel
+matching prevents stale completion from changing the dialog. The private
+submission entry point supports replacement while the visible Search control
+is disabled. Explicit Cancel
 is idempotent, invalidates the active generation and restores idle state.
 Active work shows indeterminate progress and exposes cancellation; a current
 terminal completion stores the unchanged response privately, hides progress
@@ -2110,7 +2107,8 @@ Focused private Widgets tests and an offscreen dialog/MainWindow smoke cover
 exact composed/projected queries, monotonically increasing generations,
 running state, replacement, cancellation, stale/cancelled completion
 suppression, unchanged response retention, terminal restoration and safe
-teardown. The implementation gate is focused tests, Linux Release build, full
+teardown. P8-FT-9 extends existing registrations, so the Release suite remains
+108 tests. The implementation gate is focused tests, Linux Release build, full
 Release CTest with only the intentional test delta, and clean committed
 exact-SCM Conan creation with packaged consumers. No install or standalone
 consumer gate is needed because installed interfaces do not change.

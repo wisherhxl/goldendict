@@ -17,6 +17,7 @@
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QDockWidget>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -39,6 +40,7 @@
 #include <QPrintDialog>
 #include <QPrintPreviewDialog>
 #include <QPrinter>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QSaveFile>
 #include <QScopedValueRollback>
@@ -6142,6 +6144,34 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     QApplication::processEvents();
     passed = passed && first->ProjectedQuery().dictionary_filter_active &&
              first->ProjectedQuery().dictionary_ids.empty();
+    auto* search_button =
+        first->findChild<QPushButton*>(QStringLiteral("fullTextSearchButton"));
+    auto* cancel_button =
+        first->findChild<QPushButton*>(QStringLiteral("fullTextCancelButton"));
+    auto* progress = first->findChild<QProgressBar*>(
+        QStringLiteral("fullTextSearchProgress"));
+    passed = passed && search_button != nullptr && cancel_button != nullptr &&
+             progress != nullptr && search_button->isEnabled() &&
+             !cancel_button->isEnabled() && progress->isHidden();
+    if (search_button != nullptr && cancel_button != nullptr &&
+        progress != nullptr) {
+        search_button->click();
+        passed = passed && !search_button->isEnabled() &&
+                 cancel_button->isEnabled() && !progress->isHidden() &&
+                 progress->minimum() == 0 && progress->maximum() == 0;
+        cancel_button->click();
+        passed = passed && search_button->isEnabled() &&
+                 !cancel_button->isEnabled() && progress->isHidden();
+
+        search_button->click();
+        QElapsedTimer terminal_wait;
+        terminal_wait.start();
+        while (!search_button->isEnabled() && terminal_wait.elapsed() < 2000) {
+            QApplication::processEvents(QEventLoop::AllEvents, 20);
+        }
+        passed = passed && search_button->isEnabled() &&
+                 !cancel_button->isEnabled() && progress->isHidden();
+    }
     auto* first_mode =
         first->findChild<QComboBox*>(QStringLiteral("fullTextQueryMode"));
     if (first_mode != nullptr) {
