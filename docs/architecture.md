@@ -1817,7 +1817,8 @@ leaf is selected: P8-FT-8, the private modeless full-text dialog shell and
 MainWindow/Search-action integration. No successor after P8-FT-8 is selected
 or ranked.
 
-P8-FT-8 owns only the Widgets host and its MainWindow lifetime. It adds
+P8-FT-8 is complete and owns only the Widgets host and its MainWindow
+lifetime. It adds
 `fullTextSearchAction` after `searchInPageAction` in `menuSearch`, with legacy
 text `Full-text search`, `Ctrl+Shift+F`, `WidgetWithChildrenShortcut`, and
 `TextHeuristicRole`. The action is enabled exactly when a usable desktop facade

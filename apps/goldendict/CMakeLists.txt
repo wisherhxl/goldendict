@@ -74,12 +74,35 @@ add_test(NAME full_text_query_composer_test
 set_tests_properties(full_text_query_composer_test PROPERTIES
   ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+ti_add_executable(full_text_search_dialog_test
+  tests/full_text_search_dialog_test.cpp
+  src/full_text_search_dialog.cpp
+  src/full_text_query_composer.cpp
+  src/full_text_request_controller.cpp)
+target_include_directories(full_text_search_dialog_test PRIVATE src)
+ti_target_include_modules_recurse(full_text_search_dialog_test
+  goldendict_core)
+ti_target_link_libraries(full_text_search_dialog_test
+  goldendict_core ${QT_NAMESPACE}::Test ${QT_NAMESPACE}::Widgets)
+add_test(NAME full_text_search_dialog_test
+  COMMAND full_text_search_dialog_test)
+set_tests_properties(full_text_search_dialog_test PROPERTIES
+  ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 add_test(NAME goldendict_full_text_dictionary_projection_smoke
   COMMAND $<TARGET_FILE:goldendict> --full-text-dictionary-projection-smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
 set_tests_properties(goldendict_full_text_dictionary_projection_smoke PROPERTIES
   ENVIRONMENT
     "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dictionary-projection-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dictionary-projection-test-home/cache"
+  TIMEOUT 20)
+
+add_test(NAME goldendict_full_text_dialog_smoke
+  COMMAND $<TARGET_FILE:goldendict> --full-text-dialog-smoke
+    --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
+set_tests_properties(goldendict_full_text_dialog_smoke PROPERTIES
+  ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dialog-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dialog-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_smoke COMMAND $<TARGET_FILE:goldendict> --smoke)

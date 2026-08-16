@@ -67,6 +67,7 @@
 #include "favorites_tree_widget.h"
 #include "full_text_dictionary_projection.h"
 #include "full_text_query_composer.h"
+#include "full_text_search_dialog.h"
 #include "goldendict/core/desktop_facade.h"
 #include "group_editor.h"
 #include "preferences_dialog.h"
@@ -431,6 +432,17 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     search_in_page_action_->setShortcutContext(Qt::WindowShortcut);
     search_in_page_action_->setMenuRole(QAction::TextHeuristicRole);
     search_menu->addAction(search_in_page_action_);
+    full_text_search_action_ =
+        new QAction(QStringLiteral("Full-text search"), this);
+    full_text_search_action_->setObjectName(
+        QStringLiteral("fullTextSearchAction"));
+    full_text_search_action_->setShortcut(
+        QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F));
+    full_text_search_action_->setShortcutContext(
+        Qt::WidgetWithChildrenShortcut);
+    full_text_search_action_->setMenuRole(QAction::TextHeuristicRole);
+    full_text_search_action_->setEnabled(false);
+    search_menu->addAction(full_text_search_action_);
     auto* history_menu = app_menu_bar->addMenu(QStringLiteral("H&istory"));
     history_menu->setObjectName(QStringLiteral("menuHistory"));
     history_menu->addAction(history_dock->toggleViewAction());
@@ -705,6 +717,8 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
         article_search_->setFocus();
         article_search_->selectAll();
     });
+    connect(full_text_search_action_, &QAction::triggered, this,
+            &MainWindow::ShowFullTextSearch);
     connect(visit_homepage_action_, &QAction::triggered, this, [this]() {
         DispatchSafeExternalUrl(
             QUrl(QStringLiteral("https://goldendict.org/")));
@@ -3010,8 +3024,8 @@ void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
             QStringLiteral("menuHistory") &&
         findChildren<QMenu*>(QStringLiteral("menuSearch")).size() == 1 &&
         search_menu->title() == QStringLiteral("Search") &&
-        actions.size() == 1 && actions[0] == search_in_page_action_ &&
-        !actions[0]->isSeparator() &&
+        actions.size() == 2 && actions[0] == search_in_page_action_ &&
+        actions[1] == full_text_search_action_ && !actions[0]->isSeparator() &&
         search_in_page_action_->objectName() ==
             QStringLiteral("searchInPageAction") &&
         search_in_page_action_->text() == QStringLiteral("Search in page") &&
@@ -3019,8 +3033,16 @@ void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
         search_in_page_action_->shortcutContext() == Qt::WindowShortcut &&
         search_in_page_action_->menuRole() == QAction::TextHeuristicRole &&
         search_in_page_action_->isEnabled() &&
-        findChildren<QAction*>(QStringLiteral("fullTextSearchAction"))
-            .empty() &&
+        full_text_search_action_->objectName() ==
+            QStringLiteral("fullTextSearchAction") &&
+        full_text_search_action_->text() ==
+            QStringLiteral("Full-text search") &&
+        full_text_search_action_->shortcut() ==
+            QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F) &&
+        full_text_search_action_->shortcutContext() ==
+            Qt::WidgetWithChildrenShortcut &&
+        full_text_search_action_->menuRole() == QAction::TextHeuristicRole &&
+        full_text_search_action_->isEnabled() &&
         std::count_if(all_actions.cbegin(), all_actions.cend(),
                       [](const QAction* action) {
                           return action->shortcuts().contains(
@@ -4944,6 +4966,8 @@ void MainWindow::RunDictionaryBrowserExportSmokeCheck(
 
 MainWindow::~MainWindow() {
     qApp->removeEventFilter(this);
+    if (full_text_search_dialog_ != nullptr)
+        full_text_search_dialog_->DetachController();
     StopSuggestionWorker();
     for (auto& [id, request] : requests_) {
         static_cast<void>(id);
@@ -5792,6 +5816,24 @@ goldendict::core::FullTextQuery MainWindow::ComposeFullTextQuery(
         ParticipatingDictionaryIds(selected_group_id_));
 }
 
+void MainWindow::ShowFullTextSearch() {
+    if (facade_ == nullptr)
+        return;
+    if (full_text_search_dialog_ == nullptr) {
+        full_text_search_dialog_ = new goldendict::app::FullTextSearchDialog(
+            preferences_, &facade_->GetDictionaryService(), this);
+        full_text_search_dialog_->InitializeQuery(query_->text());
+    }
+    auto* composer = full_text_search_dialog_
+                         ->findChild<goldendict::app::FullTextQueryComposer*>(
+                             QStringLiteral("fullTextQueryComposer"));
+    full_text_search_dialog_->SetProjectedQuery(
+        ComposeFullTextQuery(*composer));
+    full_text_search_dialog_->show();
+    full_text_search_dialog_->raise();
+    full_text_search_dialog_->activateWindow();
+}
+
 void MainWindow::ApplyDictionaryParticipation() {
     if (restoring_main_window_state_ || facade_ == nullptr ||
         article_tabs_ == nullptr)
@@ -6031,6 +6073,119 @@ void MainWindow::RunFullTextDictionaryProjectionSmokeCheck(
                requests_.size() == request_count && !composer.isVisible());
 }
 
+void MainWindow::RunFullTextDialogSmokeCheck(
+    std::function<void(bool)> completion) {
+    auto* search_menu = findChild<QMenu*>(QStringLiteral("menuSearch"));
+    if (facade_ == nullptr || search_menu == nullptr ||
+        full_text_search_action_ == nullptr || dictionary_bar_ == nullptr) {
+        completion(false);
+        return;
+    }
+    show();
+    QApplication::processEvents();
+    const auto catalog = facade_->GetDictionaryService().GetCatalog();
+    std::vector<std::string> supported;
+    for (const auto& identity : catalog) {
+        if (identity.supports_full_text_search)
+            supported.push_back(identity.id);
+    }
+    if (supported.empty()) {
+        completion(false);
+        return;
+    }
+
+    const auto actions = search_menu->actions();
+    const auto preferences_before = preferences_;
+    bool passed =
+        actions.size() == 2 && actions[0] == search_in_page_action_ &&
+        actions[1] == full_text_search_action_ &&
+        full_text_search_action_->text() ==
+            QStringLiteral("Full-text search") &&
+        full_text_search_action_->shortcut() ==
+            QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F) &&
+        full_text_search_action_->shortcutContext() ==
+            Qt::WidgetWithChildrenShortcut &&
+        full_text_search_action_->menuRole() == QAction::TextHeuristicRole &&
+        full_text_search_action_->isEnabled();
+
+    SelectGroup(0U);
+    dictionary_bar_->hide();
+    query_->setText(QStringLiteral("first shell query"));
+    full_text_search_action_->trigger();
+    QApplication::processEvents();
+    auto* first = full_text_search_dialog_.data();
+    auto* query =
+        first == nullptr
+            ? nullptr
+            : first->findChild<QLineEdit*>(QStringLiteral("fullTextQueryText"));
+    passed = passed && first != nullptr && first->isVisible() &&
+             !first->isModal() &&
+             first->windowTitle() == QStringLiteral("Full-text search") &&
+             !(first->windowFlags() & Qt::WindowContextHelpButtonHint) &&
+             query != nullptr &&
+             query->text() == QStringLiteral("first shell query") &&
+             query->selectedText() == QStringLiteral("first shell query") &&
+             first->ProjectedQuery().dictionary_ids == supported;
+
+    full_text_search_action_->trigger();
+    QApplication::processEvents();
+    passed = passed && full_text_search_dialog_.data() == first &&
+             first->isVisible();
+
+    SetDictionaryGroups({{7U,
+                          "Full Text Dialog Smoke",
+                          "",
+                          {supported.front()},
+                          {supported.front()}}});
+    SelectGroup(7U);
+    full_text_search_action_->trigger();
+    QApplication::processEvents();
+    passed = passed && first->ProjectedQuery().dictionary_filter_active &&
+             first->ProjectedQuery().dictionary_ids.empty();
+    auto* first_mode =
+        first->findChild<QComboBox*>(QStringLiteral("fullTextQueryMode"));
+    if (first_mode != nullptr) {
+        first_mode->setCurrentIndex((first_mode->currentIndex() + 1) %
+                                    first_mode->count());
+    }
+
+    auto* current_facade = facade_;
+    SetFacade(current_facade);
+    passed = passed && full_text_search_dialog_.data() == first &&
+             full_text_search_action_->isEnabled();
+    first->close();
+    QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    QApplication::processEvents();
+    passed = passed && full_text_search_dialog_ == nullptr;
+
+    query_->setText(QStringLiteral("fresh shell query"));
+    full_text_search_action_->trigger();
+    QApplication::processEvents();
+    auto* reopened = full_text_search_dialog_.data();
+    auto* reopened_query = reopened == nullptr
+                               ? nullptr
+                               : reopened->findChild<QLineEdit*>(
+                                     QStringLiteral("fullTextQueryText"));
+    auto* reopened_mode = reopened == nullptr
+                              ? nullptr
+                              : reopened->findChild<QComboBox*>(
+                                    QStringLiteral("fullTextQueryMode"));
+    passed =
+        passed && reopened != nullptr && reopened_query != nullptr &&
+        reopened_mode != nullptr &&
+        reopened_mode->currentData().toInt() ==
+            static_cast<int>(preferences_.full_text_search_mode) &&
+        reopened_query->text() == QStringLiteral("fresh shell query") &&
+        reopened_query->selectedText() == QStringLiteral("fresh shell query");
+    if (reopened != nullptr)
+        reopened->close();
+    QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    passed = passed && preferences_ == preferences_before;
+    SetFacade(nullptr);
+    passed = passed && !full_text_search_action_->isEnabled();
+    completion(passed);
+}
+
 void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     const QSignalBlocker tab_signal_blocker(article_tabs_);
     StopSuggestionWorker();
@@ -6061,7 +6216,13 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     }
     article_view_ = nullptr;
     article_page_ = nullptr;
+    if (full_text_search_dialog_ != nullptr)
+        full_text_search_dialog_->SetService(nullptr);
     facade_ = facade;
+    if (full_text_search_dialog_ != nullptr && facade_ != nullptr) {
+        full_text_search_dialog_->SetService(&facade_->GetDictionaryService());
+    }
+    full_text_search_action_->setEnabled(facade_ != nullptr);
     ReconcileMruTabIds(true);
     RefreshDictionaryBar();
     scheme_handler_->SetFacade(facade);

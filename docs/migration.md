@@ -2040,7 +2040,8 @@ leaf is selected: P8-FT-8, the private modeless full-text dialog shell and
 MainWindow/Search-action integration. No successor after P8-FT-8 is selected
 or ranked.
 
-P8-FT-8 consumes the completed P8-FT-1 controller lifetime, P8-FT-5 composer,
+P8-FT-8 is complete. It consumes the completed P8-FT-1 controller lifetime,
+P8-FT-5 composer,
 P8-FT-7 participation projection, existing MainWindow group/dictionary-bar
 state, and attached desktop facade. It adds `fullTextSearchAction` immediately
 after `searchInPageAction` in `menuSearch`, with the pinned text, shortcut,

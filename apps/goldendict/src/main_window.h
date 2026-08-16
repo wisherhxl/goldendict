@@ -13,6 +13,7 @@
 #include <QList>
 #include <QMainWindow>
 #include <QPointF>
+#include <QPointer>
 #include <QStringList>
 
 #include "goldendict/core/application.h"
@@ -26,6 +27,7 @@ class DictionaryBrowser;
 
 namespace goldendict::app {
 class FullTextQueryComposer;
+class FullTextSearchDialog;
 }  // namespace goldendict::app
 class QAction;
 class QLabel;
@@ -180,6 +182,7 @@ class MainWindow final : public QMainWindow {
     void RunDictionaryBarSmokeCheck(std::function<void(bool)> completion);
     void RunFullTextDictionaryProjectionSmokeCheck(
         std::function<void(bool)> completion);
+    void RunFullTextDialogSmokeCheck(std::function<void(bool)> completion);
     void RunViewMenuSmokeCheck(std::function<void(bool)> completion);
     void RunHistoryMenuSmokeCheck(const QString& path,
                                   std::function<void(bool)> completion);
@@ -279,6 +282,7 @@ class MainWindow final : public QMainWindow {
     void SelectGroup(std::uint32_t group_id);
     void RefreshGroupSelector();
     void RefreshDictionaryBar();
+    void ShowFullTextSearch();
     goldendict::core::FullTextQuery ComposeFullTextQuery(
         const goldendict::app::FullTextQueryComposer& composer) const;
     void ApplyDictionaryParticipation();
@@ -392,6 +396,8 @@ class MainWindow final : public QMainWindow {
     QAction* dictionaries_action_ = nullptr;
     QAction* preferences_action_ = nullptr;
     QAction* search_in_page_action_ = nullptr;
+    QAction* full_text_search_action_ = nullptr;
+    QPointer<goldendict::app::FullTextSearchDialog> full_text_search_dialog_;
     QAction* visit_homepage_action_ = nullptr;
     QAction* open_config_folder_action_ = nullptr;
     QAction* about_action_ = nullptr;

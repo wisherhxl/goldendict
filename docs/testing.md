@@ -1370,9 +1370,9 @@ P8-FT-7. Evidence is migrated `full_text_query_composer.h/.cpp`,
 P8-FT-5/P8-FT-6 focused tests, and pinned legacy
 `fulltextsearch.cc:613-659`. No successor after P8-FT-7 is selected or ranked.
 
-## Phase 8 Full-Text Dialog Shell Readiness Gate (Selected)
+## Phase 8 Full-Text Dialog Shell Gate (Complete)
 
-The documentation-only post-P8-FT-7 audit selects P8-FT-8 as its sole smallest
+The completed P8-FT-8 leaf implements the post-P8-FT-7 audit's sole smallest
 dependency-ready leaf: the private modeless full-text dialog shell and
 MainWindow/Search-action integration. The audit is pinned to clean pushed
 migrated revision `1eeea0a73ff29b832f68012bd2b99b7f6208cf87` and unchanged
