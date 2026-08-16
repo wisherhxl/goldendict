@@ -2031,6 +2031,58 @@ completion. The retained response continues to own complete error and partial
 state while the model owns its independent ordered result snapshot. No visible
 result view or successor is selected or ranked.
 
+### Phase 8 full-text visible result-list prerequisite (selected)
+
+The fresh documentation-only post-P8-FT-11 readiness audit is pinned to clean
+migrated revision `649e5001712a50c719b681fba11565f2bcef4c71` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking: visible result presentation
+and decoration; selection; counts and empty/error/partial states;
+activation/navigation/lookup; highlighting and WebEngine handoff; Preferences
+enablement/index policy; and index readiness, visibility, status, and background
+lifecycle.
+
+The audit selects exactly one smallest dependency-ready and independently
+decision-complete leaf, P8-FT-12: private attachment of one visible `QListView`
+to the completed dialog-owned `FullTextResponseModel`. The existing model's
+ordered UTF-8 display rows become visible without changing their data or
+ownership. Replacement submission immediately presents zero rows through the
+P8-FT-11 reset; only a generation-current completion presents its synchronized
+rows. Empty and error-only responses remain zero-row lists, while successful
+and partial responses show every projected result in Core order, including
+duplicate headwords.
+
+P8-FT-12 depends only on P8-FT-10 projection and P8-FT-11 synchronization.
+Widgets owns the list and model attachment; Core remains authoritative for
+ordering, bounds, metadata, errors, partial-state meaning, and index behavior.
+Acceptance requires exactly one dialog-owned visible result list using the
+existing child model; initial, replacement-pending, empty, and error-only
+zero-row behavior; exact ordered UTF-8 rows for current successful and partial
+responses; atomic repeated replacement; stale/cancelled suppression; and no
+new controller, service, configuration, or persistence effect.
+
+Result decoration such as dictionary tooltips, columns, additional roles, and
+richer delegates remains separate. Initial/current selection, keyboard focus,
+and selection retention remain separate. Counts and empty/error/partial
+presentation remain separate. Click, double-click, Return/Enter activation,
+article lookup construction, dictionary scoping, and MainWindow navigation
+remain separate. Highlighting remains downstream of activation and a reviewed
+WebEngine handoff. Preferences enablement, format exclusions, size policy, and
+persistence remain behind a product-policy decision; index readiness,
+visibility, status, progress, and background lifecycle remain behind a Core
+lifecycle contract. Public APIs/DTOs, adapters, `.gdfts`, legacy `_FTS`,
+dependencies, build-system changes, and unrelated behavior are excluded.
+
+Decisive migrated evidence is
+`apps/goldendict/src/full_text_search_dialog.h/.cpp`,
+`apps/goldendict/src/full_text_response_model.h/.cpp`, their focused tests, and
+the completed P8-FT-10/P8-FT-11 contracts. Pinned legacy evidence is
+`fulltextsearch.hh:135-156`, `fulltextsearch.cc:518-610,685-750`, and
+`fulltextsearch.ui:99-238`: it establishes a `QListView` while leaving
+activation and status behavior separable.
+No successor after P8-FT-12 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

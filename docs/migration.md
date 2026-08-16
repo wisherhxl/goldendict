@@ -2226,6 +2226,54 @@ snapshots, and stale or cancelled completions update neither. Complete retained
 response errors and partial state remain unchanged, projected results preserve
 Core order, and no visible result view or successor is selected or ranked.
 
+The fresh documentation-only post-P8-FT-11 readiness audit is pinned to clean
+migrated revision `649e5001712a50c719b681fba11565f2bcef4c71` and unchanged
+clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It audits every remaining
+full-text workflow surface without advance ranking: visible result presentation
+and decoration; selection; counts and empty/error/partial states;
+activation/navigation/lookup; highlighting/WebEngine; Preferences/index
+policy; and index readiness/visibility/status/background lifecycle.
+
+Exactly one smallest dependency-ready and independently decision-complete leaf
+is selected: P8-FT-12, private attachment of one visible `QListView` to the
+completed dialog-owned `FullTextResponseModel`. It depends only on P8-FT-10
+projection and P8-FT-11 synchronization. Widgets owns the view and attachment;
+Core retains ordering, bounds, result metadata, errors, partial-state meaning,
+and index behavior. The list exposes the model's existing ordered UTF-8
+headwords, including duplicates. Replacement submission presents zero rows
+immediately; only a generation-current completion presents synchronized rows.
+
+Acceptance requires exactly one dialog-owned visible list using the existing
+child model; zero rows initially and for replacement-pending, empty, and
+error-only responses; exact Core-order rows for current successful and partial
+responses; atomic repeated replacement; stale/cancelled suppression; and no
+controller, service, configuration, or persistence change. The focused future
+gate extends the existing offscreen dialog QTest, so the Release baseline stays
+109 tests. The full future gate is Linux Release configure/build, full
+`ctest --preset conan-release` without registration drift, clean exact-SCM
+`conan create` with the Qt WebEngine host profile and packaged consumers,
+Release install, and standalone installed C and C++ consumer checks.
+
+Dictionary tooltip/name decoration, columns, extra roles, richer delegates,
+selection/focus/retention, counts, and empty/error/partial presentation are
+separate surfaces. Activation by click, double-click, or Return/Enter; lookup
+construction, dictionary scoping, and MainWindow navigation are separate.
+Highlighting remains downstream of activation and reviewed WebEngine handoff.
+Preferences enablement, format exclusions, size policy, and persistence remain
+behind product policy. Index readiness, visibility, status, progress, and
+background lifecycle remain behind a Core lifecycle contract. Public APIs and
+DTOs, adapters, `.gdfts`, legacy `_FTS`, dependencies, build-system changes,
+and unrelated behavior are excluded.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`,
+`full_text_response_model.h/.cpp`, their focused tests, and completed
+P8-FT-10/P8-FT-11 contracts, plus pinned legacy
+`fulltextsearch.hh:135-156`, `fulltextsearch.cc:518-610,685-750`, and
+`fulltextsearch.ui:99-238`. The legacy list view establishes the presentation
+choice without coupling activation or status policy.
+No successor after P8-FT-12 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

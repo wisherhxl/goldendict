@@ -1548,6 +1548,47 @@ stale and cancelled suppression, service replacement and detach safety, and
 the absence of a visible result view. The registered Release baseline remains
 109 tests. No successor is selected or ranked.
 
+## Phase 8 Full-Text Visible Result-List Gate (Selected)
+
+The documentation-only post-P8-FT-11 audit selects P8-FT-12 as the sole
+smallest dependency-ready and independently decision-complete leaf: private
+attachment of one visible `QListView` to the dialog-owned
+`FullTextResponseModel`. It depends only on completed P8-FT-10 projection and
+P8-FT-11 synchronization. No public interface, persistence, adapter,
+dependency, or index behavior changes.
+
+The focused offscreen dialog QTest must verify exactly one visible result list
+whose model is the existing child response model; zero rows initially and while
+a replacement is pending; zero rows for empty and error-only responses; exact
+Core-order UTF-8 rows, including duplicates, for generation-current successful
+and partial responses; atomic repeated replacement; and no visible update from
+stale or cancelled completions. Existing coverage must continue to prove
+unchanged retained errors/partial state, request behavior, service replacement,
+controller detachment, teardown safety, and no configuration or persistence
+effect. No selection or activation behavior is asserted in this leaf.
+
+The focused gate extends the existing private dialog QTest and registration, so
+the Release baseline remains 109 tests. The full future implementation gate is
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean committed exact-SCM `conan create` with
+the Release Qt WebEngine host profile and packaged consumers, Release install,
+and standalone installed C and C++ consumer checks.
+
+Dictionary tooltip/name decoration, columns, extra roles, richer delegates,
+selection/focus/retention, counts, and empty/error/partial presentation remain
+separate. Click, double-click, and Return/Enter activation; article lookup,
+dictionary scoping, and MainWindow navigation remain separate. Highlighting
+and WebEngine handoff, Preferences enablement/index policy, index
+readiness/visibility/status/background lifecycle, public APIs/DTOs,
+persistence, adapters, `.gdfts`, legacy `_FTS`, dependencies, build-system
+changes, and unrelated tests do not belong to P8-FT-12.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`,
+`full_text_response_model.h/.cpp`, their focused tests, and completed
+P8-FT-10/P8-FT-11 coverage, plus pinned legacy
+`fulltextsearch.hh:135-156`, `fulltextsearch.cc:518-610,685-750`, and
+`fulltextsearch.ui:99-238`. No successor after P8-FT-12 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
