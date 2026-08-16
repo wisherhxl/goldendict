@@ -86,6 +86,11 @@ FullTextSearchDialog::FullTextSearchDialog(
     partial_status_->hide();
     layout->addWidget(partial_status_);
 
+    empty_status_ = new QLabel(QStringLiteral("No matches"), this);
+    empty_status_->setObjectName(QStringLiteral("fullTextEmptyResponseStatus"));
+    empty_status_->hide();
+    layout->addWidget(empty_status_);
+
     progress_ = new QProgressBar(this);
     progress_->setObjectName(QStringLiteral("fullTextSearchProgress"));
     progress_->setRange(0, 0);
@@ -169,6 +174,7 @@ void FullTextSearchDialog::SubmitSearch() {
     ResetResults({});
     UpdateResultCount();
     UpdatePartialStatus();
+    UpdateEmptyStatus();
     accepted_activation_scope_.reset();
     pending_activation_scope_ =
         ActivationScope{query.dictionary_filter_active, query.dictionary_ids};
@@ -198,6 +204,7 @@ void FullTextSearchDialog::FinishSearch(
     ResetResults(*response_);
     UpdateResultCount();
     UpdatePartialStatus();
+    UpdateEmptyStatus();
     RestoreIdleState();
 }
 
@@ -225,6 +232,12 @@ void FullTextSearchDialog::UpdateResultCount() {
 
 void FullTextSearchDialog::UpdatePartialStatus() {
     partial_status_->setVisible(response_.has_value() && response_->partial);
+}
+
+void FullTextSearchDialog::UpdateEmptyStatus() {
+    empty_status_->setVisible(response_.has_value() &&
+                              response_->results.empty() &&
+                              !response_->partial && response_->errors.empty());
 }
 
 void FullTextSearchDialog::RestoreIdleState() {
