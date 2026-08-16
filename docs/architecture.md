@@ -1068,9 +1068,15 @@ non-adapted local or runtime sources, typed unavailable for missing IDs, and
 contained per-dictionary failures. P6-FT-10 changes no installed
 `SearchFullText` API or DTO, runtime interface, public capability flag,
 configuration, preference, dependency, GUI/Phase 8 behavior, or private
-`.gdfts` serialization. Implementation, legacy `_FTS` compatibility,
-metadata/resource indexing, highlighting, other adapters, and unrelated
+`.gdfts` serialization. Legacy `_FTS` compatibility, metadata/resource
+indexing, highlighting, other adapters, and unrelated
 refactors are excluded. No leaf after P6-FT-10 is selected or ranked.
+
+P6-FT-10 is complete. ZIM now contributes one private full-text document per
+distinct eligible terminal directory entry, with retained-source ordinals,
+first-source ownership, exact five-component provenance, inert assembled text,
+complete ordered split-volume lifecycle, and deterministic ten-format service
+dispatch. No successor is selected.
 
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core

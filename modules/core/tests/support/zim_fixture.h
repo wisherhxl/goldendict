@@ -60,7 +60,9 @@ inline std::string ZimCompress(std::string_view input, unsigned compression) {
 inline std::filesystem::path WriteZimFixture(
     const std::filesystem::path& directory,
     std::string_view filename = "fixture.zim", unsigned compression = 1U,
-    bool offsets64 = false) {
+    bool offsets64 = false,
+    std::string_view html = "<b>definition</b><img src=\"I/pixel.png\">",
+    std::string_view resource = "png-data") {
     std::filesystem::create_directories(directory);
 
     struct Item {
@@ -74,8 +76,8 @@ inline std::filesystem::path WriteZimFixture(
     };
 
     const std::vector<std::string> blobs = {
-        "<b>definition</b><img src=\"I/pixel.png\">", "png-data", "Fixture ZIM",
-        "en", "plain <unsafe>"};
+        std::string(html), std::string(resource), "Fixture ZIM", "en",
+        "plain <unsafe>"};
     const std::vector<Item> items = {
         {0U, 'A', "example", "Example", 0U},
         {0xffffU, 'A', "alias", "Alias", 0U, true, 0U},

@@ -12,6 +12,7 @@ class ZimReaderTest : public QObject {
     void ReadsArticlesRedirectsMetadataAndResources();
     void ReadsCompressedAndWideClusters();
     void ReadsSplitArchives();
+    void ProjectsOwnedTerminalArticlesForFullText();
     void RejectsCorruption();
 };
 
@@ -62,6 +63,28 @@ void ZimReaderTest::ReadsSplitArchives() {
                static_cast<std::streamsize>(data.size() - middle));
     const Reader reader = Reader::Open({first, {first, second}});
     QCOMPARE(reader.LookupExact("example").size(), std::size_t{1});
+}
+
+void ZimReaderTest::ProjectsOwnedTerminalArticlesForFullText() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = test::WriteZimFixture(
+        std::filesystem::path(directory.path().toStdString()));
+    const Reader reader = Reader::Open({path, {path}});
+    const auto articles = reader.ReadFullTextArticles();
+    QCOMPARE(articles.size(), std::size_t{2});
+    QCOMPARE(articles[0].headword, std::string("Example"));
+    QCOMPARE(articles[0].first_record_ordinal, std::size_t{0});
+    QCOMPARE(articles[0].article_ordinal, std::size_t{0});
+    QCOMPARE(articles[0].target_entry_index, std::size_t{0});
+    QCOMPARE(articles[0].cluster_index, std::uint32_t{0});
+    QCOMPARE(articles[0].blob_index, std::uint32_t{0});
+    QCOMPARE(articles[1].headword, std::string("Plain"));
+    QCOMPARE(articles[1].first_record_ordinal, std::size_t{2});
+    QCOMPARE(articles[1].article_ordinal, std::size_t{1});
+    QCOMPARE(articles[1].target_entry_index, std::size_t{5});
+    QCOMPARE(articles[1].blob_index, std::uint32_t{4});
+    QCOMPARE(reader.source_snapshot().size(), std::size_t{1});
 }
 
 void ZimReaderTest::RejectsCorruption() {

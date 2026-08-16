@@ -1555,10 +1555,15 @@ per-dictionary failures.
 
 P6-FT-10 preserves installed `SearchFullText` APIs and DTOs, runtime
 interfaces, public capability flags, configuration/preferences, dependencies,
-GUI/Phase 8 behavior, and private `.gdfts` serialization. Implementation,
-legacy `_FTS` compatibility, metadata/resource indexing, highlighting, other
+GUI/Phase 8 behavior, and private `.gdfts` serialization. Legacy `_FTS`
+compatibility, metadata/resource indexing, highlighting, other
 adapters, and unrelated refactors are excluded.
 No leaf after P6-FT-10 is selected or ranked.
+
+P6-FT-10 is complete with terminal-entry deduplication, first-source ownership,
+exact five-component provenance, inert assembled text, complete ordered ZIM
+source revisions, deterministic ten-format dispatch, and installed-consumer
+coverage. No successor is selected.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

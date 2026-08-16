@@ -1081,6 +1081,7 @@ int main() {
         WriteZimFixture(zim_root);
         goldendict::core::CoreConfiguration zim_configuration;
         zim_configuration.dictionary_paths = {zim_root.string()};
+        zim_configuration.index_directory = (zim_root / "indexes").string();
         auto zim_service =
             goldendict::core::CreateDictionaryService(zim_configuration);
         const auto zim_catalog = zim_service->GetCatalog();
@@ -1094,6 +1095,21 @@ int main() {
             zim_response.entries.front().article.sanitized_html->find(
                 "Installed ZIM definition.") == std::string::npos) {
             return Fail("installed ZIM lookup failed");
+        }
+        full_text_query = {};
+        full_text_query.text = "Installed";
+        full_text_query.dictionary_filter_active = true;
+        full_text_query.dictionary_ids = {zim_catalog.front().id};
+        const auto zim_full_text = zim_service->SearchFullText(full_text_query);
+        if (!zim_full_text.errors.empty() ||
+            zim_full_text.results.size() != 1U ||
+            zim_full_text.results.front().dictionary.id !=
+                zim_catalog.front().id ||
+            zim_full_text.results.front().headword != "Example" ||
+            zim_full_text.results.front().document_id !=
+                "zim-index:0:0:0:0:0" ||
+            zim_full_text.results.front().matches.size() != 1U) {
+            return Fail("installed ZIM full-text search failed");
         }
 
         const auto slob_root = directory.path() / "slob";

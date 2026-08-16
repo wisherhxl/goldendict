@@ -957,10 +957,17 @@ class ServiceState final {
         }
         for (const auto& files : zim_discovery.dictionaries) {
             const std::string id = StableId("zim", files.primary);
+            std::optional<std::filesystem::path> full_text_index_path;
+            if (!configuration.index_directory.empty()) {
+                full_text_index_path =
+                    std::filesystem::u8path(configuration.index_directory) /
+                    (id + ".gdfts");
+            }
             try {
                 dictionaries_.push_back(
                     std::make_unique<formats::zim::Dictionary>(
-                        formats::zim::Dictionary::Open(id, files)));
+                        formats::zim::Dictionary::Open(id, files,
+                                                       full_text_index_path)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});

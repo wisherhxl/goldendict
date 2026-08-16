@@ -312,6 +312,7 @@ Reader Reader::Open(const Files& files) {
     };
     std::map<std::size_t, std::size_t> article_map;
     const bool new_namespaces = major > 6U || (major == 6U && minor >= 1U);
+    std::size_t record_ordinal = 0;
     for (std::size_t i = 0; i < entries.size(); ++i) {
         const auto target = resolve(i);
         const auto& source = entries[i];
@@ -339,13 +340,18 @@ Reader Reader::Open(const Files& files) {
             auto [position, inserted] =
                 article_map.emplace(target, reader.articles_.size());
             if (inserted) {
+                const std::size_t article_ordinal = reader.articles_.size();
                 reader.articles_.push_back(
                     mimes[entry.mime].rfind("text/plain", 0U) == 0U
                         ? "<pre>" + EscapeHtml(data) + "</pre>"
                         : data);
+                reader.full_text_articles_.push_back(
+                    {word, reader.articles_.back(), record_ordinal,
+                     article_ordinal, target, entry.cluster, entry.blob});
             }
             reader.records_.push_back(
                 {word, foundation::FoldForLookup(word), position->second});
+            ++record_ordinal;
         } else if (source.name_space == 'M') {
             if (!foundation::IsValidUtf8(data))
                 Throw(ErrorCode::kInvalidDictionary, path,
@@ -366,7 +372,17 @@ Reader Reader::Open(const Files& files) {
         Throw(ErrorCode::kInvalidDictionary, path, "ZIM contains no articles");
     if (reader.metadata_.name.empty())
         reader.metadata_.name = path.stem().string();
+    try {
+        reader.source_snapshot_ =
+            dictionary::CaptureSourceSnapshot(reader.files_.parts);
+    } catch (const dictionary::GeneratedIndexError& error) {
+        Throw(ErrorCode::kMissingFile, path, error.what());
+    }
     return reader;
+}
+
+std::vector<FullTextArticle> Reader::ReadFullTextArticles() const {
+    return full_text_articles_;
 }
 
 std::vector<const Reader::Record*> Reader::Ranked(

@@ -788,7 +788,7 @@ coverage, and installed C++ full-text consumption. The registered suite
 remains 103 tests because coverage extends existing test executables; the
 installed C consumer remains unchanged and passing.
 
-The selected P6-FT-10 ZIM implementation leaf extends only generated fixtures.
+The P6-FT-10 ZIM implementation extends only generated fixtures.
 Reader/backend tests must prove complete directory-table traversal, old
 namespace `A` and ZIM 6.1+ namespace `C` eligibility, terminal `text/html*` or
 `text/plain*` filtering, interleaved exclusions, and bounded direct and chained
@@ -825,6 +825,12 @@ WebEngine host profile. Dependencies, GUI, Preferences, highlighting, other
 adapters, legacy `_FTS` compatibility, metadata/resource indexing, and private
 serialization changes are excluded. No leaf after P6-FT-10 is selected or
 ranked.
+
+P6-FT-10 is complete with generated ZIM ownership/materialization fixtures,
+complete split-volume index lifecycle and failure coverage, ten-format
+mixed-service coverage, and installed C++ exact-provenance consumption. The
+registered suite remains 103 tests because coverage extends existing test
+executables; the installed C consumer remains unchanged and passing.
 
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
