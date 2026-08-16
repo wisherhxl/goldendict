@@ -1636,8 +1636,9 @@ visibility/status/background lifecycle. Only P8-FT-5, the private Widgets
 query composer, is dependency-ready and selected. It is a non-integrated
 prerequisite rather than inert application UI.
 
-P8-FT-5 owns deterministic conversion from private controls and persisted
-defaults to one `FullTextQuery`. UTF-8 text is copied unchanged. Persisted whole
+P8-FT-5 is complete as a private, non-integrated Widgets query composer. It
+deterministically converts private controls initialized from persisted defaults
+to one `FullTextQuery`. UTF-8 text is copied unchanged. Persisted whole
 words, plain text, wildcard, and regular-expression modes map explicitly to
 `kWholeWords`, `kPlainText`, `kWildcard`, and `kRegularExpression`; match case,
 ignore diacritics, and ignore word order map directly. A checked word-distance
@@ -1671,6 +1672,15 @@ window action integration, selection/muting, request completion UI,
 results/activation, highlighting, Preferences enablement and index policy,
 index visibility/background lifecycle, `.gdfts`, legacy `_FTS`, and unrelated
 behavior are excluded. No successor after P8-FT-5 is selected or ranked.
+
+The focused offscreen Widgets QTest covers all four mode mappings, direct
+booleans, exact optional bounds and unchecked states, retained values through
+mode transitions, the fixed independent global cap, unchanged timeout and
+unfiltered dictionary state, UTF-8 text, repeated deterministic composition,
+and persisted-preference immutability. The private component has no controller
+or service dependency and cannot submit work. Its registration intentionally
+raises the suite baseline from 104 to 105 tests. P8-FT-5 changes no installed
+interface or persistence schema and selects or ranks no successor.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

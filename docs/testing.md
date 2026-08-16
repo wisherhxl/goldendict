@@ -1257,9 +1257,8 @@ selects or ranks no successor.
 
 ## Phase 8 Full-Text Query Composer Gate
 
-The documentation-only post-P8-FT-4 readiness audit selects P8-FT-5, the
-private non-integrated Widgets query composer, as the sole dependency-ready
-leaf. Focused Qt Widgets QTests construct the private controls from persisted
+P8-FT-5 is complete as the private non-integrated Widgets query composer.
+Focused Qt Widgets QTests construct the private controls from persisted
 defaults and verify deterministic `FullTextQuery` composition for UTF-8 text
 and all four explicit mode mappings: whole words to `kWholeWords`, plain text
 to `kPlainText`, wildcard to `kWildcard`, and regular expression to
@@ -1281,9 +1280,10 @@ distance without losing retained values across mode changes. P8-FT-1 controller
 tests do not substitute for this coverage. No main-window or WebEngine smoke
 belongs to this non-integrated prerequisite.
 
-The later implementation gate is the focused composer QTest followed by Linux
-Release configure/build and full `ctest --preset conan-release`, accepting only
-an intentional registered-test delta, then clean committed exact-SCM
+The accepted implementation gate is the focused composer QTest followed by
+Linux Release configure/build and full `ctest --preset conan-release`. The new
+focused executable intentionally raises the registered suite baseline from 104
+to 105 tests. The final package gate is clean committed exact-SCM
 `conan create` with the Release Qt WebEngine host profile and packaged
 consumers. Install and standalone installed-consumer checks are unnecessary
 unless implementation unexpectedly changes an installed surface; the selected

@@ -1897,7 +1897,8 @@ visibility/status/background lifecycle. P8-FT-5 selects only the private
 Widgets query composer as the smallest dependency-ready prerequisite; no
 visible application entry point or inert result workflow is added.
 
-P8-FT-5 composes one `FullTextQuery` without changing an installed interface.
+P8-FT-5 is complete. Its private, non-integrated Widgets composer constructs
+one `FullTextQuery` without changing an installed interface.
 It copies UTF-8 query text; explicitly maps persisted whole words, plain text,
 wildcard, and regular-expression modes to the corresponding query enum; and
 maps match case, ignore diacritics, and ignore word order directly. Checked
@@ -1928,6 +1929,14 @@ results/activation, highlighting, Preferences enablement/index policy, index
 visibility/status/background lifecycle, public DTO or persistence changes,
 adapters, `.gdfts`, legacy `_FTS`, dependencies, and unrelated behavior remain
 excluded. No successor after P8-FT-5 is selected or ranked.
+
+The focused offscreen Widgets QTest verifies all four modes, direct booleans,
+checked and unchecked optionals at their exact bounds, retained values across
+mode transitions, the fixed independent global cap, UTF-8 preservation,
+unchanged timeout and dictionary-filter defaults, repeated composition, and
+persisted-preference immutability. The composer has no service or controller
+dependency and cannot submit work. Its registration intentionally increases
+the suite baseline from 104 to 105 tests. No successor is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

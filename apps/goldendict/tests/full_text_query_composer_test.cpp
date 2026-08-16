@@ -1,0 +1,230 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include <QCheckBox>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QSpinBox>
+#include <QtTest>
+
+#include <chrono>
+#include <cstdint>
+#include <string>
+
+#include "full_text_query_composer.h"
+
+namespace goldendict::app {
+namespace {
+
+template <typename Widget>
+Widget* Control(FullTextQueryComposer& composer, const char* name) {
+    auto* control = composer.findChild<Widget*>(QString::fromLatin1(name));
+    Q_ASSERT(control != nullptr);
+    return control;
+}
+
+void SelectMode(FullTextQueryComposer& composer,
+                goldendict::core::FullTextSearchMode mode) {
+    auto* selector = Control<QComboBox>(composer, "fullTextQueryMode");
+    const int index = selector->findData(static_cast<int>(mode));
+    QVERIFY(index >= 0);
+    selector->setCurrentIndex(index);
+}
+
+}  // namespace
+
+class FullTextQueryComposerTest final : public QObject {
+    Q_OBJECT
+
+   private slots:
+    void MapsAllModes_data();
+    void MapsAllModes();
+    void MapsTextBooleansAndFixedDefaults();
+    void MapsWordDistanceBoundsAndUncheckedState();
+    void MapsArticleLimitBoundsAndUncheckedState();
+    void RetainsValuesAcrossModeTransitions();
+    void RepeatedCompositionIsDeterministicAndNonMutating();
+};
+
+void FullTextQueryComposerTest::MapsAllModes_data() {
+    QTest::addColumn<int>("persisted_mode");
+    QTest::addColumn<int>("query_mode");
+
+    using goldendict::core::FullTextQueryMode;
+    using goldendict::core::FullTextSearchMode;
+    QTest::newRow("whole-words")
+        << static_cast<int>(FullTextSearchMode::kWholeWords)
+        << static_cast<int>(FullTextQueryMode::kWholeWords);
+    QTest::newRow("plain-text")
+        << static_cast<int>(FullTextSearchMode::kPlainText)
+        << static_cast<int>(FullTextQueryMode::kPlainText);
+    QTest::newRow("wildcard") << static_cast<int>(FullTextSearchMode::kWildcard)
+                              << static_cast<int>(FullTextQueryMode::kWildcard);
+    QTest::newRow("regular-expression")
+        << static_cast<int>(FullTextSearchMode::kRegularExpression)
+        << static_cast<int>(FullTextQueryMode::kRegularExpression);
+}
+
+void FullTextQueryComposerTest::MapsAllModes() {
+    QFETCH(int, persisted_mode);
+    QFETCH(int, query_mode);
+
+    goldendict::core::ApplicationPreferences preferences;
+    preferences.full_text_search_mode =
+        static_cast<goldendict::core::FullTextSearchMode>(persisted_mode);
+    FullTextQueryComposer composer(preferences);
+
+    QCOMPARE(static_cast<int>(composer.Compose().mode), query_mode);
+}
+
+void FullTextQueryComposerTest::MapsTextBooleansAndFixedDefaults() {
+    goldendict::core::ApplicationPreferences preferences;
+    preferences.full_text_match_case = true;
+    preferences.full_text_ignore_diacritics = true;
+    preferences.full_text_ignore_word_order = true;
+    FullTextQueryComposer composer(preferences);
+
+    const QString text = QString::fromUtf8("Straße 日本語 café 😀");
+    Control<QLineEdit>(composer, "fullTextQueryText")->setText(text);
+    const auto query = composer.Compose();
+
+    const QByteArray expected = text.toUtf8();
+    QCOMPARE(query.text,
+             std::string(expected.constData(),
+                         static_cast<std::size_t>(expected.size())));
+    QVERIFY(query.match_case);
+    QVERIFY(query.ignore_diacritics);
+    QVERIFY(query.ignore_word_order);
+    QCOMPARE(query.result_limit, 100000U);
+    QVERIFY(query.dictionary_ids.empty());
+    QVERIFY(!query.dictionary_filter_active);
+    QCOMPARE(query.timeout, std::chrono::seconds(5));
+
+    Control<QCheckBox>(composer, "fullTextMatchCase")->setChecked(false);
+    Control<QCheckBox>(composer, "fullTextIgnoreDiacritics")->setChecked(false);
+    Control<QCheckBox>(composer, "fullTextIgnoreWordOrder")->setChecked(false);
+    const auto cleared = composer.Compose();
+    QVERIFY(!cleared.match_case);
+    QVERIFY(!cleared.ignore_diacritics);
+    QVERIFY(!cleared.ignore_word_order);
+}
+
+void FullTextQueryComposerTest::MapsWordDistanceBoundsAndUncheckedState() {
+    goldendict::core::ApplicationPreferences preferences;
+    preferences.full_text_use_maximum_word_distance = true;
+    FullTextQueryComposer composer(preferences);
+    auto* distance = Control<QSpinBox>(composer, "fullTextMaximumWordDistance");
+    auto* enabled =
+        Control<QCheckBox>(composer, "fullTextUseMaximumWordDistance");
+
+    QCOMPARE(distance->minimum(), 0);
+    QCOMPARE(distance->maximum(), 1000);
+    distance->setValue(0);
+    QVERIFY(composer.Compose().maximum_word_distance.has_value());
+    QCOMPARE(*composer.Compose().maximum_word_distance, std::uint32_t{0});
+    distance->setValue(1000);
+    QCOMPARE(*composer.Compose().maximum_word_distance, std::uint32_t{1000});
+    enabled->setChecked(false);
+    QVERIFY(!composer.Compose().maximum_word_distance.has_value());
+}
+
+void FullTextQueryComposerTest::MapsArticleLimitBoundsAndUncheckedState() {
+    goldendict::core::ApplicationPreferences preferences;
+    preferences.full_text_use_maximum_articles = true;
+    FullTextQueryComposer composer(preferences);
+    auto* limit =
+        Control<QSpinBox>(composer, "fullTextMaximumArticlesPerDictionary");
+    auto* enabled = Control<QCheckBox>(composer, "fullTextUseMaximumArticles");
+
+    QCOMPARE(limit->minimum(), 1);
+    QCOMPARE(limit->maximum(), 100000);
+    limit->setValue(1);
+    QVERIFY(composer.Compose().maximum_articles_per_dictionary.has_value());
+    QCOMPARE(*composer.Compose().maximum_articles_per_dictionary,
+             std::size_t{1});
+    QCOMPARE(composer.Compose().result_limit, 100000U);
+    limit->setValue(100000);
+    QCOMPARE(*composer.Compose().maximum_articles_per_dictionary,
+             std::size_t{100000});
+    QCOMPARE(composer.Compose().result_limit, 100000U);
+    enabled->setChecked(false);
+    QVERIFY(!composer.Compose().maximum_articles_per_dictionary.has_value());
+    QCOMPARE(composer.Compose().result_limit, 100000U);
+}
+
+void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
+    goldendict::core::ApplicationPreferences preferences;
+    preferences.full_text_search_mode =
+        goldendict::core::FullTextSearchMode::kWholeWords;
+    preferences.full_text_ignore_word_order = true;
+    preferences.full_text_use_maximum_word_distance = true;
+    preferences.full_text_maximum_word_distance = 37U;
+    FullTextQueryComposer composer(preferences);
+    auto* ignore_order =
+        Control<QCheckBox>(composer, "fullTextIgnoreWordOrder");
+    auto* use_distance =
+        Control<QCheckBox>(composer, "fullTextUseMaximumWordDistance");
+    auto* distance = Control<QSpinBox>(composer, "fullTextMaximumWordDistance");
+
+    for (const auto mode :
+         {goldendict::core::FullTextSearchMode::kWildcard,
+          goldendict::core::FullTextSearchMode::kRegularExpression}) {
+        SelectMode(composer, mode);
+        QVERIFY(!ignore_order->isEnabled());
+        QVERIFY(!use_distance->isEnabled());
+        QVERIFY(!distance->isEnabled());
+        QVERIFY(!composer.Compose().ignore_word_order);
+        QVERIFY(!composer.Compose().maximum_word_distance.has_value());
+        QVERIFY(ignore_order->isChecked());
+        QVERIFY(use_distance->isChecked());
+        QCOMPARE(distance->value(), 37);
+    }
+
+    for (const auto mode :
+         {goldendict::core::FullTextSearchMode::kPlainText,
+          goldendict::core::FullTextSearchMode::kWholeWords}) {
+        SelectMode(composer, mode);
+        QVERIFY(ignore_order->isEnabled());
+        QVERIFY(use_distance->isEnabled());
+        QVERIFY(distance->isEnabled());
+        QVERIFY(composer.Compose().ignore_word_order);
+        QCOMPARE(*composer.Compose().maximum_word_distance, std::uint32_t{37});
+    }
+}
+
+void FullTextQueryComposerTest::
+    RepeatedCompositionIsDeterministicAndNonMutating() {
+    goldendict::core::ApplicationPreferences preferences;
+    preferences.full_text_search_mode =
+        goldendict::core::FullTextSearchMode::kPlainText;
+    preferences.full_text_match_case = true;
+    preferences.full_text_ignore_diacritics = true;
+    preferences.full_text_ignore_word_order = true;
+    preferences.full_text_use_maximum_word_distance = true;
+    preferences.full_text_maximum_word_distance = 9U;
+    preferences.full_text_use_maximum_articles = true;
+    preferences.full_text_maximum_articles_per_dictionary = 1234U;
+    const auto original = preferences;
+    FullTextQueryComposer composer(preferences);
+    Control<QLineEdit>(composer, "fullTextQueryText")
+        ->setText(QString::fromUtf8("repeatable Δ"));
+
+    const auto first = composer.Compose();
+    const auto second = composer.Compose();
+    QCOMPARE(second.text, first.text);
+    QCOMPARE(second.mode, first.mode);
+    QCOMPARE(second.match_case, first.match_case);
+    QCOMPARE(second.ignore_diacritics, first.ignore_diacritics);
+    QCOMPARE(second.ignore_word_order, first.ignore_word_order);
+    QCOMPARE(second.maximum_word_distance, first.maximum_word_distance);
+    QCOMPARE(second.result_limit, first.result_limit);
+    QCOMPARE(second.maximum_articles_per_dictionary,
+             first.maximum_articles_per_dictionary);
+    QCOMPARE(second.timeout, first.timeout);
+    QVERIFY(preferences == original);
+}
+
+}  // namespace goldendict::app
+
+QTEST_MAIN(goldendict::app::FullTextQueryComposerTest)
+
+#include "full_text_query_composer_test.moc"

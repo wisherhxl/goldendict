@@ -60,6 +60,19 @@ ti_target_link_libraries(full_text_request_controller_test
 add_test(NAME full_text_request_controller_test
   COMMAND full_text_request_controller_test)
 
+ti_add_executable(full_text_query_composer_test
+  tests/full_text_query_composer_test.cpp
+  src/full_text_query_composer.cpp)
+target_include_directories(full_text_query_composer_test PRIVATE src)
+ti_target_include_modules_recurse(full_text_query_composer_test
+  goldendict_core)
+ti_target_link_libraries(full_text_query_composer_test
+  goldendict_core ${QT_NAMESPACE}::Test ${QT_NAMESPACE}::Widgets)
+add_test(NAME full_text_query_composer_test
+  COMMAND full_text_query_composer_test)
+set_tests_properties(full_text_query_composer_test PROPERTIES
+  ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 add_test(NAME goldendict_smoke COMMAND $<TARGET_FILE:goldendict> --smoke)
 
 if(UNIX AND NOT APPLE AND TIGER_INSTALL_RUNTIME_DEPENDENCIES)
