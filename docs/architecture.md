@@ -2734,6 +2734,71 @@ already uses exact text `No matches` for a conclusive zero-match article search
 at `main_window.cpp:5122-5136,7706-7723`. P8-FT-23 is complete. No successor
 after P8-FT-23 is selected or ranked.
 
+### Phase 8 full-text terminal failure status (selected)
+
+The independent documentation-only post-P8-FT-23 readiness audit is pinned to
+clean migrated revision `3b67ce9413cba3555115779ddd48d70e927a7fd4` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-24: present an unambiguous terminal
+failure for a generation-current accepted response.
+
+P8-FT-24 is dependency-ready because P8-FT-9 accepts only the current terminal
+generation, P8-FT-11 retains the complete response, P8-FT-17 presents its
+retained-result count, P8-FT-22 presents authoritative partiality, and
+P8-FT-23 distinguishes a conclusive empty response. One private Widgets-owned
+status consumes only the existing response's result count, `partial` flag, and
+error collection. Core remains authoritative for all three facts. No public
+API, DTO, persistence, dependency, adapter, index-format, or build-system
+change is required.
+
+The status reads `Full-text search failed` exactly when a generation-current
+accepted response has zero retained results, `partial == false`, and one or
+more errors. Initial state and replacement submission hide it. Conclusive
+empty, nonempty, and partial responses hide it, so Widgets neither labels
+retained or incomplete work as a terminal failure nor exposes dictionary IDs,
+error codes, backend messages, or raw details. The result count, partial
+status, and empty status remain independent. Stale or cancelled completions,
+controller detachment, service replacement, and teardown cannot introduce or
+overwrite the current status. Result rows, selection, focus, activation,
+response ownership, and accepted-generation synchronization remain unchanged.
+
+Focused future acceptance covers initial and replacement reset; terminal
+error-only responses with each existing error-code category and multiple
+errors; conclusive empty, nonempty, partial-empty, partial-nonempty, and
+result-plus-error responses; repeated accepted transitions; and stale,
+cancelled, detached, replaced-service, and teardown completion safety. The
+focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-24 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or compiled test.
+
+Result-plus-error and partial-error summaries and all error details; exact
+`document_id` navigation and source-dictionary targeting; columns, icons,
+additional metadata roles, and other decoration; match ranges and excerpt
+presentation; highlighting, ignore-diacritics transfer, and WebEngine handoff;
+Preferences enablement, format exclusions, size/index policy, and persistence;
+index readiness, visibility, status, progress, background lifecycle, rebuild,
+and failure UI; adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies,
+builds, and unrelated parity remain independent surfaces. They are decomposed
+only; none is selected or ranked. No public API, DTO, persistence, Core,
+adapter, index, dependency, or build surface belongs to P8-FT-24.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
+installed `FullTextResponse` contract, completed
+P8-FT-9/P8-FT-11/P8-FT-17/P8-FT-22/P8-FT-23, and the migrated generic
+`Suggestion lookup failed` presentation in `main_window.cpp:6776-6791`.
+Pinned legacy `fulltextsearch.cc:499-586` silently contains individual
+dictionary failures and supplies no safe structured error-detail presentation
+contract. P8-FT-24 therefore presents only the migrated response's bounded,
+terminal failure fact. No successor after P8-FT-24 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

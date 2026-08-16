@@ -2877,6 +2877,68 @@ accepted zero count for an empty result. Migrated
 a conclusive zero-match article search. P8-FT-23 is complete. No successor
 after P8-FT-23 is selected or ranked.
 
+### Phase 8 full-text terminal failure status (selected)
+
+The independent documentation-only post-P8-FT-23 readiness audit is pinned to
+clean migrated revision `3b67ce9413cba3555115779ddd48d70e927a7fd4` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes every remaining
+full-text workflow surface without advance ranking and selects only P8-FT-24,
+private presentation of a terminal failed accepted response.
+
+P8-FT-9 accepts only the current terminal generation, P8-FT-11 retains the
+complete response, P8-FT-17 presents its retained-result count, P8-FT-22
+presents authoritative partiality, and P8-FT-23 distinguishes conclusive
+empty work. P8-FT-24 therefore adds only one private Widgets status. It reads
+`Full-text search failed` exactly when an accepted response has zero retained
+results, `partial == false`, and one or more errors. Initial state and
+replacement submission hide it. Conclusive empty, nonempty, and partial
+responses hide it.
+
+Core remains authoritative for results, partiality, and errors. Widgets does
+not label retained or incomplete work as a terminal failure and does not
+display dictionary IDs, error codes, backend messages, or raw details. The
+result count, partial status, and empty status remain independent. Stale or
+cancelled completions, controller detachment, service replacement, and
+teardown cannot introduce or overwrite the current status. Result rows,
+selection, focus, activation, response ownership, and accepted-generation
+synchronization remain unchanged.
+
+Focused future acceptance covers initial and replacement reset; terminal
+error-only responses with each existing error-code category and multiple
+errors; conclusive empty, nonempty, partial-empty, partial-nonempty, and
+result-plus-error responses; repeated accepted transitions; and stale,
+cancelled, detached, replaced-service, and teardown completion safety. The
+focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-24 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or test.
+
+Result-plus-error and partial-error summaries and all error details; exact
+`document_id` navigation and source-dictionary targeting; columns, icons,
+additional metadata roles, and other decoration; match ranges and excerpt
+presentation; highlighting, ignore-diacritics transfer, and WebEngine handoff;
+Preferences enablement, format exclusions, size/index policy, and persistence;
+index readiness, visibility, status, progress, background lifecycle, rebuild,
+and failure UI; adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies,
+builds, and unrelated parity remain independent and unranked. No public API,
+DTO, persistence, Core, adapter, index, dependency, or build-system surface
+belongs to P8-FT-24.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
+installed `FullTextResponse` contract, completed
+P8-FT-9/P8-FT-11/P8-FT-17/P8-FT-22/P8-FT-23, and the migrated generic
+`Suggestion lookup failed` presentation in `main_window.cpp:6776-6791`.
+Pinned legacy `fulltextsearch.cc:499-586` silently contains individual
+dictionary failures and supplies no safe structured error-detail presentation
+contract. P8-FT-24 therefore presents only the migrated response's bounded,
+terminal failure fact. No successor after P8-FT-24 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
