@@ -845,6 +845,59 @@ refactors are excluded. P6-FT-6 is complete with unique-article ingestion,
 first-record provenance, inert assembled text, single-source lifecycle, and
 deterministic mixed-service dispatch. No leaf after P6-FT-6 is selected.
 
+The fresh post-P6-FT-6 audit revalidates every remaining migrated textual
+article format against pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Legacy `dsl.cc:255-257`,
+`bgl.cc:257-259`, `mdx.cc:271-273`, `zim.cc:728-730`, `slob.cc:637-639`, and
+`epwing.cc:144-147` apply format-specific full-text preference gates, while
+their constructors at `dsl.cc:310`, `bgl.cc:308`, `mdx.cc:333`, `zim.cc:790`,
+`slob.cc:708`, and `epwing.cc:235` initialize `can_FTS`. DSL additionally owns
+legacy `_FTS` creation and traversal at `dsl.cc:1337` and `dsl.cc:1368`, then
+dispatches search through `FtsHelpers::FTSResultsRequest` at `dsl.cc:2094`.
+Registration inspection confirms that these six formats,
+and no unreviewed migrated textual backend, remain after the accepted
+StarDict, SDict, XDXF, Dictd, GLS, and Aard adapters.
+
+| Candidate | Complete migrated traversal and ownership | Materialization, sources, and readiness | Audit decision |
+| --- | --- | --- | --- |
+| DSL | Every source article receives one ordinal; optional and tilde expansions plus alternate headword lines retain source order and share that article | Bounded UTF-8/UTF-16, plain/gzip decoding, sanitized HTML, one selected `.dsl`/`.dsl.dz`, and generated fixtures are complete; annotations and resource directories do not contribute article text | Smallest dependency-ready leaf; P6-FT-7 selected |
+| BGL | Primary and alternate binary records share article ordinals, but control-record ownership still spans code-page decoding | One `.bgl` also owns embedded resources; fixtures exist, but alias/control provenance needs a separate contract | Unselected |
+| MDict | Source-order keys can redirect through folded chains to record data | MDX plus optional MDD volumes and redirect-target ownership make the complete revision and dedup contract larger | Unselected |
+| ZIM | Directory records and redirect chains resolve cluster/blob objects across article and resource namespaces | Consecutive split volumes and namespace-sensitive target ownership require a larger snapshot contract | Unselected |
+| SLOB | Source-order references can share item/bin-backed objects | Declared encodings, content-type filtering, stores, and reference/item ownership require a dedicated contract | Unselected |
+| EPWING | Subbook word-index records retain materialized article text | Duplicate/grouped-index ownership and the complete `CATALOGS`/subbook source tree remain unsettled | Unselected |
+
+P6-FT-7 adds only the private DSL adapter. Each validated DSL article ordinal
+contributes one document. The first expanded record produced from the first
+source-order headword line supplies the canonical headword; its remaining
+optional expansions, tilde expansions, and later alternate headword lines are
+aliases and do not duplicate the document. Stable provenance is
+`dsl-index:<first-record-ordinal>:<article-ordinal>`. Searchable content is only
+bounded plain text produced by passing the existing sanitized `text/html`
+article through the inert assembler. Alias-only text, directives, annotations,
+resource paths and bytes, link and image targets, raw DSL or HTML markup,
+unsupported abbreviation dictionaries, future resource ZIPs, and unsupported
+nested-card behavior are excluded.
+
+The distinct private `.gdfts` artifact uses the selected `.dsl` or `.dsl.dz`
+file as its complete source revision; content mutation, replacement, or a
+switch between the discovered plain and compressed source forces a stale
+rebuild. `.ann` files and `.files` trees affect metadata or resource retrieval
+only and are outside the revision. Without a configured index directory DSL
+remains typed unsupported. The seven adapted formats merge in stable
+dictionary-ID order under the global bound; adapted no-match dictionaries add
+no error, requested non-adapted local or runtime sources remain typed
+unsupported, and missing requested IDs remain typed unavailable. Cancellation,
+deadlines, corruption, resource limits, and storage failures remain contained
+per dictionary.
+
+P6-FT-7 changes no installed `SearchFullText` API or DTO, runtime-source
+interface, public capability flag, configuration, preference, dependency,
+GUI/Phase 8 behavior, or private `.gdfts` serialization. Legacy `_FTS`
+compatibility, metadata/resource indexing, highlighting, implementation code,
+other adapters, and unrelated refactors are excluded. No leaf after P6-FT-7 is
+selected.
+
 The dependent Phase 8 Preferences leaf reuses the installed transport-neutral
 `maximum_dictionary_references` field without changing the DTO layout. Core
 owns its legacy-compatible `0..9999` validation, current persistence, and

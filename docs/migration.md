@@ -1361,6 +1361,49 @@ provenance, inert assembled text, sole-source lifecycle, deterministic
 six-format dispatch, and installed-consumer coverage. No leaf after P6-FT-6
 is selected.
 
+The fresh independent post-P6-FT-6 audit selects P6-FT-7, the private DSL
+adapter, and no later leaf. The complete remaining matrix is DSL, BGL, MDict,
+ZIM, SLOB, and EPWING. Each remains explicitly full-text eligible at pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`: its format source
+contains both the full-text preference gate and `can_FTS` initialization, and
+legacy DSL additionally implements `_FTS` creation and article traversal at
+`dsl.cc:1337` and `dsl.cc:1368`, with search dispatch at `dsl.cc:2094`. Actual
+migrated registration confirms that no other textual local format remains.
+BGL control records, MDict redirect/MDD ownership, ZIM split
+volumes and namespaces, SLOB reference/item content types, and EPWING grouped
+subbook indexes remain larger unselected contracts; this is not a successor
+ranking.
+
+DSL is decision-complete because the migrated reader traverses all articles
+and expanded records in source order, assigns exactly one ordinal to each
+materialized sanitized article, and makes optional expansions, tilde
+expansions, and alternate headword lines reference that ordinal. P6-FT-7
+creates one document per article ordinal. The first expanded record from the
+first headword line owns the canonical headword; all other records for that
+article are aliases. Provenance is
+`dsl-index:<first-record-ordinal>:<article-ordinal>`. Only bounded plain text
+from inert assembly of the existing `text/html` article is searchable.
+Directives, annotations, alias-only text, resource paths/bytes, link and image
+targets, raw markup, abbreviation dictionaries, future resource ZIPs, and
+unsupported nested cards are excluded.
+
+The distinct private `.gdfts` artifact snapshots only the selected `.dsl` or
+`.dsl.dz` source. Mutation, replacement, or switching the discovered
+plain/compressed file forces a stale rebuild; `.ann` and `.files` changes do
+not because they provide metadata and resources rather than article text.
+Without an index directory DSL remains typed unsupported. StarDict, SDict,
+XDXF, Dictd, GLS, Aard, and DSL retain stable dictionary-ID aggregation under
+the global bound, no error for adapted no-match dictionaries, typed
+unsupported for requested non-adapted local/runtime sources, typed unavailable
+for missing IDs, and per-dictionary containment of cancellation, deadline,
+corruption, resource-limit, and storage failures.
+
+P6-FT-7 changes no installed API/DTO, runtime interface, public capability,
+configuration, preference, dependency, GUI/Phase 8 workflow, or private
+serialization. Implementation code, legacy `_FTS` compatibility,
+metadata/resource indexing, highlighting, other adapters, and unrelated
+refactors are excluded. No leaf after P6-FT-7 is selected.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

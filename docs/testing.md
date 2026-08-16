@@ -680,6 +680,37 @@ Dependencies, GUI, Preferences, highlighting, other adapters, legacy `_FTS`
 compatibility, metadata/resource indexing, and private index evolution are
 excluded. No leaf after P6-FT-6 is selected.
 
+The selected P6-FT-7 DSL implementation leaf extends only generated fixtures.
+Reader/backend tests must prove complete source-order article and headword
+traversal, one document per article ordinal, first-expanded-record canonical
+ownership, optional/tilde/alternate-headword alias deduplication, exact
+`dsl-index:<first-record-ordinal>:<article-ordinal>` provenance, multiple
+articles, UTF-8 and UTF-16 decoding, and plain and gzip sources. Inert-assembly
+checks must accept visible article text while excluding directives,
+annotations, alias-only text, resource paths and bytes, link/image targets,
+raw DSL/HTML markup, abbreviation dictionaries, future resource ZIPs, and
+unsupported nested cards.
+
+Private lifecycle tests must cover create, reuse, selected-source mutation and
+replacement, switching between `.dsl` and `.dsl.dz`, corrupt rebuild, typed
+unsupported without an index directory, resource limits, cancellation,
+deadlines, and contained storage failures. They must also prove that `.ann`
+and `.files` changes do not stale the article-text index. Application-service
+coverage combines StarDict, SDict, XDXF, Dictd, GLS, Aard, and DSL fixtures and
+pins stable dictionary-ID ordering, filtering, the global bound, adapted
+no-match behavior, typed unsupported for requested non-adapted local/runtime
+sources, typed unavailable for missing IDs, and contained failures. The
+installed consumer returns DSL through unchanged `SearchFullText` APIs and
+DTOs.
+
+The implementation acceptance gate remains Linux Release configure/build and
+`ctest --preset conan-release`, install plus the installed `test_package`
+consumer, and clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile. This readiness audit is documentation-only, so no
+build is required. Dependencies, GUI, Preferences, highlighting, other
+adapters, legacy `_FTS` compatibility, metadata/resource indexing, and private
+serialization changes are excluded. No leaf after P6-FT-7 is selected.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,
