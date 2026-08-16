@@ -6350,9 +6350,14 @@ void MainWindow::RunFullTextDialogSmokeCheck(
         first->findChild<QPushButton*>(QStringLiteral("fullTextCancelButton"));
     auto* progress = first->findChild<QProgressBar*>(
         QStringLiteral("fullTextSearchProgress"));
+    auto* articles_found =
+        first->findChild<QLabel*>(QStringLiteral("fullTextArticlesFoundLabel"));
     passed = passed && search_button != nullptr && cancel_button != nullptr &&
-             progress != nullptr && search_button->isEnabled() &&
-             !cancel_button->isEnabled() && progress->isHidden();
+             progress != nullptr && articles_found != nullptr &&
+             articles_found->parent() == first &&
+             articles_found->text() == QStringLiteral("Articles found: 0") &&
+             search_button->isEnabled() && !cancel_button->isEnabled() &&
+             progress->isHidden();
     if (search_button != nullptr && cancel_button != nullptr &&
         progress != nullptr) {
         search_button->click();

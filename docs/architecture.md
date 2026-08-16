@@ -2319,7 +2319,7 @@ pins successful identity and sequencing, replay, dialog replacement, and
 failure no-op behavior without adding a public surface or test executable.
 No successor after P8-FT-16 is selected or ranked.
 
-### Phase 8 full-text accepted-result count presentation (selected)
+### Phase 8 full-text accepted-result count presentation (complete)
 
 The independent post-P8-FT-16 documentation audit is pinned to clean migrated
 revision `b7cfd864b85df4a7ee36d4e08e36287c4fabfd7b` and unchanged clean
@@ -2349,7 +2349,7 @@ Focused acceptance covers initial zero, replacement reset, nonempty success,
 duplicate rows, empty and contained-error responses, partial responses with
 and without retained rows, repeated accepted responses, and stale/cancelled or
 detached completion safety. The existing private dialog test and application
-smoke are the focused future implementation gate; the established Linux
+smoke are the focused implementation gate; the established Linux
 Release build, full tests, package, install, and installed-consumer workflow
 remains the full gate.
 
@@ -2369,6 +2369,10 @@ Evidence is migrated `full_text_search_dialog.cpp`,
 `fulltextsearch.cc:290,448-449,570-571` and
 `fulltextsearch.ui:99-129`, which initialize and update the visible
 `articlesFoundLabel` from retained result count.
+P8-FT-17 is complete through the private dialog-owned label and the existing
+accepted-response/model synchronization contract. It adds no test executable
+or public/installed interface, and the registered Release baseline remains 109
+tests.
 No successor after P8-FT-17 is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

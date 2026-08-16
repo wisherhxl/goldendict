@@ -16,6 +16,7 @@
 #include "goldendict/core/dictionary_service.h"
 
 class QLineEdit;
+class QLabel;
 class QListView;
 class QProgressBar;
 class QPushButton;
@@ -62,11 +63,13 @@ class FullTextSearchDialog final : public QDialog {
     void FinishSearch(std::uint64_t generation,
                       goldendict::core::FullTextResponse response);
     void ActivateResult(const QModelIndex& index);
+    void UpdateResultCount();
     void RestoreIdleState();
 
     FullTextQueryComposer* composer_ = nullptr;
     QLineEdit* query_text_ = nullptr;
     QListView* results_ = nullptr;
+    QLabel* result_count_ = nullptr;
     QPushButton* search_button_ = nullptr;
     QPushButton* cancel_button_ = nullptr;
     QProgressBar* progress_ = nullptr;

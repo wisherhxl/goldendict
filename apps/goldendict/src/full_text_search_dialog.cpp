@@ -5,6 +5,7 @@
 #include <QEvent>
 #include <QHBoxLayout>
 #include <QKeyEvent>
+#include <QLabel>
 #include <QLineEdit>
 #include <QListView>
 #include <QProgressBar>
@@ -46,6 +47,11 @@ FullTextSearchDialog::FullTextSearchDialog(
     results_->setModel(response_model_);
     results_->installEventFilter(this);
     layout->addWidget(results_);
+
+    result_count_ = new QLabel(this);
+    result_count_->setObjectName(QStringLiteral("fullTextArticlesFoundLabel"));
+    UpdateResultCount();
+    layout->addWidget(result_count_);
 
     progress_ = new QProgressBar(this);
     progress_->setObjectName(QStringLiteral("fullTextSearchProgress"));
@@ -128,6 +134,7 @@ void FullTextSearchDialog::SubmitSearch() {
     query.dictionary_filter_active = projected_query_.dictionary_filter_active;
     response_.reset();
     response_model_->Reset({});
+    UpdateResultCount();
     accepted_activation_scope_.reset();
     pending_activation_scope_ =
         ActivationScope{query.dictionary_filter_active, query.dictionary_ids};
@@ -155,6 +162,7 @@ void FullTextSearchDialog::FinishSearch(
     pending_activation_scope_.reset();
     response_ = std::move(response);
     response_model_->Reset(*response_);
+    UpdateResultCount();
     RestoreIdleState();
 }
 
@@ -167,6 +175,11 @@ void FullTextSearchDialog::ActivateResult(const QModelIndex& index) {
             *result, accepted_activation_scope_->dictionary_filter_active,
             accepted_activation_scope_->dictionary_ids});
     }
+}
+
+void FullTextSearchDialog::UpdateResultCount() {
+    result_count_->setText(
+        tr("Articles found: %1").arg(response_model_->rowCount()));
 }
 
 void FullTextSearchDialog::RestoreIdleState() {

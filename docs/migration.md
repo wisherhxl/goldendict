@@ -2492,7 +2492,7 @@ the existing Core-owned current-tab navigation contract. It adds no test
 executable or public/installed interface.
 No successor after P8-FT-16 is selected or ranked.
 
-### Phase 8 full-text accepted-result count presentation (selected)
+### Phase 8 full-text accepted-result count presentation (complete)
 
 The independent post-P8-FT-16 audit is pinned to clean migrated revision
 `b7cfd864b85df4a7ee36d4e08e36287c4fabfd7b` and unchanged clean read-only
@@ -2514,7 +2514,7 @@ errors, and `partial` semantics.
 Focused acceptance covers initial and replacement zero, nonempty and duplicate
 success, empty and contained-error responses, partial responses with and
 without rows, repeated accepted responses, and stale/cancelled or detached
-completion safety. The focused future gate extends the existing private dialog
+completion safety. The focused gate extends the existing private dialog
 test and application smoke. The full implementation gate remains Linux Release
 configure/build, full `ctest --preset conan-release`, clean exact-SCM
 `conan create`, packaged consumers, Release install, and standalone installed
@@ -2536,6 +2536,10 @@ Evidence is migrated `full_text_search_dialog.cpp`,
 `fulltextsearch.cc:290,448-449,570-571` and
 `fulltextsearch.ui:99-129`, where `articlesFoundLabel` is initialized and
 updated from retained result count.
+P8-FT-17 is complete through the private dialog-owned label and the retained
+accepted-response/model contract. It adds no test executable or
+public/installed interface, and the registered Release baseline remains 109
+tests.
 No successor after P8-FT-17 is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
