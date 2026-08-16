@@ -636,8 +636,9 @@ std::optional<std::string> ValidateQuery(const FullTextQuery& query) {
         query.timeout <= std::chrono::milliseconds::zero()) {
         return "Full-text text, result limit, and timeout must be valid";
     }
-    if (query.maximum_articles_per_dictionary == 0U ||
-        query.maximum_articles_per_dictionary > 100000U) {
+    if (query.maximum_articles_per_dictionary.has_value() &&
+        (*query.maximum_articles_per_dictionary == 0U ||
+         *query.maximum_articles_per_dictionary > 100000U)) {
         return "Full-text maximum articles per dictionary must be between 1 "
                "and 100000";
     }
@@ -1135,7 +1136,10 @@ class ServiceState final {
             auto backend_query = query;
             const auto remaining = query.result_limit - response.results.size();
             const auto dictionary_limit =
-                std::min(query.maximum_articles_per_dictionary, remaining);
+                query.maximum_articles_per_dictionary.has_value()
+                    ? std::min(*query.maximum_articles_per_dictionary,
+                               remaining)
+                    : remaining;
             backend_query.result_limit = dictionary_limit;
             backend_query.timeout =
                 std::chrono::duration_cast<std::chrono::milliseconds>(deadline -

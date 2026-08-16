@@ -1221,38 +1221,39 @@ DTO, it includes install and installed-consumer checks plus exact-SCM Conan
 package and packaged-consumer verification from the implementation revision.
 No successor after P8-FT-3 is selected or ranked.
 
-P8-FT-4 is the sole next leaf selected by the documentation-only post-P8-FT-3
-audit. Its focused Core and application-service QTests must preserve the
+P8-FT-4 completes the sole next leaf selected by the documentation-only
+post-P8-FT-3 audit. Its focused Core and application-service QTests preserve the
 installed defaults `result_limit == 20` and engaged
 `maximum_articles_per_dictionary == 100`; accept global limits `1` and
 `1000000` while rejecting `0` and values above `1000000`; and accept engaged
 per-dictionary values `1..100000` while rejecting values outside that range.
 
-Aggregator coverage must prove that an engaged per-dictionary limit requests
+Aggregator coverage proves that an engaged per-dictionary limit requests
 at most the minimum of that value and remaining global capacity, while a
 disengaged optional requests at most the remaining global capacity. Multiple
-selected dictionaries must demonstrate that the global cap remains
+selected dictionaries demonstrate that the global cap remains
 independent, always terminates aggregation, and is never multiplied by
 dictionary count or the per-dictionary value. Existing deterministic ordering,
 filtering, cancellation, deadlines, typed errors, contained failures, and
 partial-response behavior remain covered and unchanged.
 
-The installed C++ consumer must construct and observe both engaged and
+The installed C++ consumer constructs and observes both engaged and
 disengaged forms of the expanded DTO; the installed C consumer remains
-unchanged. The implementation gate is focused QTests followed by Linux Release
-configure/build and `ctest --preset conan-release`, Release install and the
-installed consumers, then clean committed exact-SCM `conan create` with the
-Release Qt WebEngine host profile. The public ABI expansion authorizes the
-consumer rebuild and package revision. No widget/offscreen test belongs to
-P8-FT-4 because it adds no visible behavior; the later dialog-composer leaf
-must cover checked-to-engaged, unchecked-to-`std::nullopt`, and fixed global
-cap `100000` mapping with focused offscreen tests.
+unchanged. The completed implementation gate is focused QTests followed by
+Linux Release configure/build and `ctest --preset conan-release`, Release
+install and the installed consumers, then clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile. The public ABI
+expansion authorizes the consumer rebuild and package revision. No
+widget/offscreen test belongs to P8-FT-4 because it adds no visible behavior;
+the later dialog-composer leaf must cover checked-to-engaged,
+unchecked-to-`std::nullopt`, and fixed global cap `100000` mapping with focused
+offscreen tests.
 
-This documentation-only audit requires no build. P8-FT-4 excludes dialog
+P8-FT-4 excludes dialog
 composition, selection/muting, results/activation, highlighting, Preferences
 and index policy, index visibility/background lifecycle, adapters, `.gdfts`,
-legacy `_FTS`, dependencies, and unrelated behavior. No successor after
-P8-FT-4 is selected or ranked.
+legacy `_FTS`, dependencies, and unrelated behavior. The completed P8-FT-4
+selects or ranks no successor.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

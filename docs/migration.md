@@ -1853,9 +1853,9 @@ unchanged read-only legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks exactly the
 modeless dialog/query controls, dictionary/group/muting selection, results and
 activation, highlighting, Preferences integration, and index
-visibility/status/background lifecycle. It selects P8-FT-4, the installed
-DTO, validation, and aggregator contract prerequisite, as the sole next leaf.
-Current evidence is `dictionary_service.h:28,151-161` and
+visibility/status/background lifecycle. P8-FT-4 completes the installed DTO,
+validation, and aggregator contract prerequisite selected as the sole next
+leaf. Current evidence is `dictionary_service.h:28,151-161` and
 `dictionary_service.cc:633-655,1136-1153`; pinned legacy evidence is
 `config.hh:156-176` and
 `fulltextsearch.cc:249-256,387-394,438-446`.
@@ -1878,14 +1878,14 @@ unchecked to `std::nullopt`, and uses a fixed application global cap of
 `100000`, independent of dictionary count and the per-dictionary value.
 
 The optional installed field and widened validation range are an authorized
-public ABI expansion requiring consumer rebuild, install checks, and exact-SCM
-package verification. P8-FT-4 adds no UI and changes no controller,
+public ABI expansion verified through consumer rebuild, install checks, and
+exact-SCM package verification. P8-FT-4 adds no UI and changes no controller,
 persistence mapping, adapter, private `.gdfts` format, or dependency. It
 excludes dialog composition, dictionary/group/muting policy,
 results/activation, highlighting, Preferences widgets and index policy, index
 visibility/background lifecycle, legacy `_FTS`, metadata/resource indexing,
-platform work, and unrelated migration behavior. No successor after P8-FT-4
-is selected or ranked.
+platform work, and unrelated migration behavior. The completed P8-FT-4 selects
+or ranks no successor.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

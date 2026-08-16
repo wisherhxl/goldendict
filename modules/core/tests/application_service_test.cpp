@@ -2035,7 +2035,8 @@ void ApplicationServiceTest::AppliesIndependentFullTextQueryLimits() {
 
     FullTextQuery query;
     QCOMPARE(query.result_limit, std::size_t{20});
-    QCOMPARE(query.maximum_articles_per_dictionary, std::size_t{100});
+    QVERIFY(query.maximum_articles_per_dictionary.has_value());
+    QCOMPARE(*query.maximum_articles_per_dictionary, std::size_t{100});
     query.text = "shared";
     query.dictionary_filter_active = true;
     query.dictionary_ids = {catalog[0].id};
@@ -2065,8 +2066,19 @@ void ApplicationServiceTest::AppliesIndependentFullTextQueryLimits() {
     QCOMPARE(global_precedence.results[1].dictionary.id, catalog[0].id);
     QCOMPARE(global_precedence.results[2].dictionary.id, catalog[0].id);
 
+    query.result_limit = 4U;
+    query.maximum_articles_per_dictionary = std::nullopt;
+    const auto unlimited_per_dictionary = service->SearchFullText(query);
+    QCOMPARE(unlimited_per_dictionary.results.size(), std::size_t{4});
+    QCOMPARE(unlimited_per_dictionary.results[0].dictionary.id, catalog[0].id);
+    QCOMPARE(unlimited_per_dictionary.results[1].dictionary.id, catalog[0].id);
+    QCOMPARE(unlimited_per_dictionary.results[2].dictionary.id, catalog[0].id);
+    QCOMPARE(unlimited_per_dictionary.results[3].dictionary.id, catalog[1].id);
+
     query.result_limit = 1U;
     query.maximum_articles_per_dictionary = 1U;
+    QVERIFY(service->SearchFullText(query).errors.empty());
+    query.maximum_articles_per_dictionary = 100000U;
     QVERIFY(service->SearchFullText(query).errors.empty());
     query.maximum_articles_per_dictionary = 0U;
     const auto zero_dictionary_limit = service->SearchFullText(query);
@@ -2079,7 +2091,9 @@ void ApplicationServiceTest::AppliesIndependentFullTextQueryLimits() {
     QCOMPARE(excessive_dictionary_limit.errors.front().code,
              FullTextErrorCode::kInvalidQuery);
 
-    query.maximum_articles_per_dictionary = 1U;
+    query.maximum_articles_per_dictionary = std::nullopt;
+    query.result_limit = 1000000U;
+    QVERIFY(service->SearchFullText(query).errors.empty());
     query.result_limit = 0U;
     QCOMPARE(service->SearchFullText(query).errors.front().code,
              FullTextErrorCode::kInvalidQuery);
@@ -2087,6 +2101,9 @@ void ApplicationServiceTest::AppliesIndependentFullTextQueryLimits() {
     QCOMPARE(service->SearchFullText(query).errors.front().code,
              FullTextErrorCode::kInvalidQuery);
 
+    query.result_limit = 1U;
+    QVERIFY(service->SearchFullText(query).errors.empty());
+    query.maximum_articles_per_dictionary = 1U;
     query.result_limit = kMaximumFullTextResults;
     query.dictionary_ids.push_back("unavailable");
     const auto preserved_error = service->SearchFullText(query);

@@ -26,7 +26,7 @@ inline constexpr std::size_t kMaximumHeadwordEnumerationCursorBytes = 256U;
 inline constexpr std::size_t kMaximumHeadwordEnumerationResponseBytes =
     1024U * 1024U;
 inline constexpr std::size_t kMaximumFullTextQueryBytes = 4096U;
-inline constexpr std::size_t kMaximumFullTextResults = 100U;
+inline constexpr std::size_t kMaximumFullTextResults = 1000000U;
 inline constexpr std::size_t kMaximumFullTextMatchesPerResult = 32U;
 inline constexpr std::size_t kMaximumFullTextExcerptBytes = 4096U;
 inline constexpr std::uint32_t kMaximumFullTextWordDistance = 1000U;
@@ -156,7 +156,7 @@ struct FullTextQuery {
     bool ignore_word_order = false;
     std::optional<std::uint32_t> maximum_word_distance;
     std::size_t result_limit = 20U;
-    std::size_t maximum_articles_per_dictionary = 100U;
+    std::optional<std::size_t> maximum_articles_per_dictionary = 100U;
     std::chrono::milliseconds timeout = std::chrono::seconds(5);
 };
 

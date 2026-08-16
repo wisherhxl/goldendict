@@ -622,7 +622,8 @@ int main() {
 
         goldendict::core::FullTextQuery full_text_query;
         if (full_text_query.result_limit != 20U ||
-            full_text_query.maximum_articles_per_dictionary != 100U) {
+            !full_text_query.maximum_articles_per_dictionary.has_value() ||
+            *full_text_query.maximum_articles_per_dictionary != 100U) {
             return Fail("installed full-text query defaults changed");
         }
         full_text_query.text = "caf\xc3\xa9";
@@ -648,6 +649,11 @@ int main() {
         full_text_query.maximum_articles_per_dictionary = 100U;
         if (service->SearchFullText(full_text_query).results.size() != 2U) {
             return Fail("installed full-text global limit contract failed");
+        }
+        full_text_query.maximum_articles_per_dictionary = std::nullopt;
+        if (full_text_query.maximum_articles_per_dictionary.has_value() ||
+            service->SearchFullText(full_text_query).results.size() != 2U) {
+            return Fail("installed optional full-text limit contract failed");
         }
         full_text_query.dictionary_ids.clear();
         if (!service->SearchFullText(full_text_query).errors.empty()) {

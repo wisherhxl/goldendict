@@ -1593,7 +1593,7 @@ legacy evidence is `config.hh:156-176` for the separate value and enablement
 fields and `fulltextsearch.cc:249-256,387-394,438-446` for checkbox loading,
 persistence, and unchecked `-1` request behavior.
 
-The audit selects P8-FT-4 as the sole next dependency-ready leaf: the
+P8-FT-4 completes the sole dependency-ready leaf selected by the audit: the
 installed DTO, validation, and aggregator prerequisite needed to express the
 legacy per-dictionary-limit toggle without a sentinel. Core changes
 `FullTextQuery::maximum_articles_per_dictionary` to
@@ -1617,14 +1617,14 @@ independent of the selected dictionary count and per-dictionary value. Core
 owns the optional installed field, both bounds, validation, and aggregation;
 Widgets will own only that later UI-to-query mapping.
 
-P8-FT-4 is an authorized installed/public ABI expansion and requires consumer
-rebuild, install verification, and exact-SCM package verification. It changes
-no controller, persistence mapping, adapter, private `.gdfts` format, or
-dependency and adds no visible UI. Dialog composition, dictionary/group/muting
-policy, results/activation, highlighting, Preferences widgets and index
-policy, index visibility/status/background lifecycle, legacy `_FTS`,
-metadata/resource indexing, platform work, and unrelated migration behavior
-remain excluded. No successor after P8-FT-4 is selected or ranked.
+P8-FT-4 is an authorized installed/public ABI expansion verified through a
+consumer rebuild, install verification, and exact-SCM package verification. It
+changes no controller, persistence mapping, adapter, private `.gdfts` format,
+or dependency and adds no visible UI. Dialog composition,
+dictionary/group/muting policy, results/activation, highlighting, Preferences
+widgets and index policy, index visibility/status/background lifecycle, legacy
+`_FTS`, metadata/resource indexing, platform work, and unrelated migration
+behavior remain excluded. The completed P8-FT-4 selects or ranks no successor.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
