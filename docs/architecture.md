@@ -1863,6 +1863,64 @@ behavior are excluded. Decisive migrated evidence is
 `mainwindow.ui:614-627`, `mainwindow.cc:4754-4791`, and
 `fulltextsearch.cc:195-340`. No successor after P8-FT-8 is selected or ranked.
 
+The fresh documentation-only post-P8-FT-8 readiness audit is pinned to clean
+pushed migrated revision `586c481cd009caed0d0386e2b5c4c7a2f3e840ce`
+and the unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It audits without preselection
+request submission, cancellation/replacement and terminal state; result
+projection, ordering, metadata, selection and article activation; highlighting
+handoff and article-view behavior; Preferences enablement and full-text/index
+policy; index readiness, visibility, status and background lifecycle; and
+their prerequisites. Exactly one smallest independently dependency-ready leaf
+is selected: P8-FT-9, the private dialog request submission, cancellation,
+replacement and terminal-state integration. No successor after P8-FT-9 is
+selected or ranked.
+
+P8-FT-9 consumes the completed P8-FT-1 request controller, P8-FT-5 query
+composer, P8-FT-7 authoritative dictionary projection and P8-FT-8 dialog
+lifetime. Search composes the current controls, reapplies the latest projected
+dictionary IDs and active-filter flag, assigns a monotonically increasing
+dialog generation, clears the prior private terminal response, and submits
+through the controller. A newer submission replaces running or pending work;
+only the current generation may change dialog state. Cancel is idempotent,
+cancels the controller, invalidates the active generation and returns the
+dialog to idle without accepting a cancelled or stale completion.
+
+While a request is active, the dialog shows an indeterminate progress
+indicator and exposes cancellation. Current-generation completion stores the
+unchanged `FullTextResponse` privately for a later presentation leaf, hides
+progress and restores idle Search state. Close, facade replacement and
+MainWindow teardown retain P8-FT-8 detach/stop ordering. This leaf does not
+project, merge, sort, display, select or activate results; display counts,
+beeps, user-facing validation/error/partial-response policy, highlighting,
+persistence and indexing UI remain unselected.
+
+Focused private Widgets tests and an offscreen dialog/MainWindow smoke verify
+exact current composition plus projection, increasing generations, running
+state, replacement cancellation, explicit idempotent cancellation, stale and
+cancelled completion suppression, unchanged current response retention,
+terminal idle restoration and safe teardown. The implementation gate is the
+focused tests, Linux Release configure/build, full
+`ctest --preset conan-release` with only the intentional registered-test delta,
+then clean committed exact-SCM `conan create` with the Release Qt WebEngine
+host profile and packaged consumers. Installed interfaces remain unchanged,
+so install and standalone installed-consumer checks are not required.
+
+Result model/presentation, ordering/metadata, selection/article activation,
+highlighting handoff/article-view behavior, Preferences enablement and
+full-text/index policy, index readiness/visibility/status/background
+lifecycle, public APIs, persistence, adapters, `.gdfts`, legacy `_FTS`,
+dependencies and unrelated behavior are excluded. Those presentation surfaces
+depend on the completed response path; highlighting additionally depends on
+activation and a reviewed WebEngine handoff. Preferences and indexing remain
+blocked on product policy and a Core lifecycle contract rather than being
+folded into this leaf. Decisive migrated evidence is
+`full_text_request_controller.h/.cpp`, `full_text_query_composer.h/.cpp`,
+`full_text_dictionary_projection.h/.cpp` and
+`full_text_search_dialog.h/.cpp`; pinned legacy evidence is
+`fulltextsearch.cc:338-570` and `fulltextsearch.ui:99-238`. No successor after
+P8-FT-9 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

@@ -2083,6 +2083,53 @@ dependencies, and unrelated work are excluded. Evidence is migrated
 `mainwindow.ui:614-627`, `mainwindow.cc:4754-4791`, and
 `fulltextsearch.cc:195-340`. No successor after P8-FT-8 is selected or ranked.
 
+The fresh documentation-only post-P8-FT-8 audit is pinned to clean pushed
+migrated revision `586c481cd009caed0d0386e2b5c4c7a2f3e840ce` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes without
+preselection request submission/cancellation/replacement/terminal UI;
+result projection, ordering, metadata, selection and activation; highlighting
+handoff and article-view behavior; Preferences enablement and index policy;
+index readiness/visibility/status/background lifecycle; and prerequisites.
+The sole smallest independently dependency-ready leaf is P8-FT-9, private
+dialog request submission, cancellation, replacement and terminal-state
+integration. No successor after P8-FT-9 is selected or ranked.
+
+P8-FT-9 uses only completed contracts. Search composes current P8-FT-5
+controls, reapplies the latest P8-FT-7 dictionary projection, clears any prior
+private terminal response, advances a dialog-owned generation and submits via
+P8-FT-1. A later submission replaces running or pending work, and generation
+matching prevents stale completion from changing the dialog. Explicit Cancel
+is idempotent, invalidates the active generation and restores idle state.
+Active work shows indeterminate progress and exposes cancellation; a current
+terminal completion stores the unchanged response privately, hides progress
+and restores Search. P8-FT-8 close, facade-replacement and teardown ordering is
+preserved.
+
+Focused private Widgets tests and an offscreen dialog/MainWindow smoke cover
+exact composed/projected queries, monotonically increasing generations,
+running state, replacement, cancellation, stale/cancelled completion
+suppression, unchanged response retention, terminal restoration and safe
+teardown. The implementation gate is focused tests, Linux Release build, full
+Release CTest with only the intentional test delta, and clean committed
+exact-SCM Conan creation with packaged consumers. No install or standalone
+consumer gate is needed because installed interfaces do not change.
+
+P8-FT-9 does not define result projection, merging, ordering, metadata,
+counts, selection, article activation, highlighting, beeps, or user-facing
+validation/error/partial-response policy. It excludes Preferences and index
+policy, index readiness/visibility/status/background lifecycle, persistence,
+public APIs, adapters, `.gdfts`, legacy `_FTS`, dependencies and unrelated
+behavior. Results and activation remain downstream of this response path;
+highlighting additionally needs activation and a reviewed WebEngine handoff.
+Preferences/index work still requires product policy and a Core lifecycle
+contract. Evidence is migrated `full_text_request_controller.h/.cpp`,
+`full_text_query_composer.h/.cpp`,
+`full_text_dictionary_projection.h/.cpp` and
+`full_text_search_dialog.h/.cpp`, plus pinned legacy
+`fulltextsearch.cc:338-570` and `fulltextsearch.ui:99-238`. No successor after
+P8-FT-9 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

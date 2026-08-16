@@ -1416,6 +1416,49 @@ and `full_text_request_controller.cpp:143-197`, plus pinned legacy
 `mainwindow.ui:614-627`, `mainwindow.cc:4754-4791`, and
 `fulltextsearch.cc:195-340`. No successor after P8-FT-8 is selected or ranked.
 
+## Phase 8 Full-Text Request-State Readiness Gate (Selected)
+
+The documentation-only post-P8-FT-8 audit selects P8-FT-9 as its sole
+smallest independently dependency-ready leaf: private dialog request
+submission, cancellation, replacement and terminal-state integration. The
+audit is pinned to clean pushed migrated revision
+`586c481cd009caed0d0386e2b5c4c7a2f3e840ce` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+
+Focused private Widgets tests must prove that Search composes the current
+P8-FT-5 controls, reapplies the latest P8-FT-7 dictionary IDs and active-filter
+flag, clears the prior private terminal response, advances a monotonically
+increasing generation and submits exactly once through P8-FT-1. They must
+cover a later submission replacing running and pending work, current-generation
+terminal delivery, and suppression of stale or cancelled completions.
+
+State tests must verify an indeterminate progress indicator and available
+cancellation while running; idempotent Cancel invalidating the active
+generation and restoring idle Search state; current completion retaining the
+unchanged structured response privately, hiding progress and restoring idle;
+and P8-FT-8 close, facade replacement and MainWindow destruction stopping and
+detaching safely. The offscreen dialog/MainWindow smoke exercises the real
+composer, current projection, Search and Cancel controls and terminal state.
+
+The implementation gate is the focused tests, Linux Release configure/build,
+full `ctest --preset conan-release` accepting only the intentional registered-
+test delta, then clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile and packaged consumers. No install or standalone
+installed-consumer check is required because P8-FT-9 changes no installed
+interface.
+
+No result model/projection, merge/order/metadata/count presentation,
+selection/article activation, highlighting handoff/article-view behavior,
+beep, user-facing validation/error/partial-response policy,
+Preferences/full-text/index policy, index readiness/visibility/status or
+background lifecycle, public API, persistence, adapter, `.gdfts`, legacy
+`_FTS`, dependency or unrelated test belongs to P8-FT-9. Evidence is migrated
+`full_text_request_controller.h/.cpp`, `full_text_query_composer.h/.cpp`,
+`full_text_dictionary_projection.h/.cpp` and
+`full_text_search_dialog.h/.cpp`, plus pinned legacy
+`fulltextsearch.cc:338-570` and `fulltextsearch.ui:99-238`. No successor after
+P8-FT-9 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
