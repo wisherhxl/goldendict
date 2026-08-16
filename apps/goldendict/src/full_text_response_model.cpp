@@ -28,7 +28,7 @@ QVariant FullTextResponseModel::data(const QModelIndex& index, int role) const {
     if (result == nullptr) {
         return {};
     }
-    if (role == Qt::DisplayRole) {
+    if (role == Qt::DisplayRole || role == Qt::EditRole) {
         return QString::fromUtf8(result->headword.data(),
                                  static_cast<int>(result->headword.size()));
     }

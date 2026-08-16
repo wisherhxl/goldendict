@@ -1869,7 +1869,7 @@ the P8-FT-11/P8-FT-12 dialog synchronization and attachment, plus pinned legacy
 `fulltextsearch.cc:690-721`.
 No successor after P8-FT-18 is selected or ranked.
 
-## Phase 8 Full-Text Result Edit-Role Projection Gate (Selected)
+## Phase 8 Full-Text Result Edit-Role Projection Gate (Complete)
 
 The post-P8-FT-18 documentation audit selects only P8-FT-19. The complete
 immutable result snapshot, accepted-response synchronization, and direct list
@@ -1886,14 +1886,13 @@ display-role, tooltip, ordering, duplicate, complete-metadata, activation,
 dialog synchronization, count, selection, focus, and retention coverage
 remains green.
 
-The focused future command is
+The focused command is
 `ctest --preset conan-release -R '^full_text_response_model_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The full implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release`, clean
 exact-SCM `conan create`, packaged consumers, Release install, and standalone
 installed consumers. P8-FT-19 adds no test executable or public/installed
-interface. No build or compiled test is required for this documentation-only
-audit.
+interface, and the registered Release baseline remains 109 tests.
 
 Exact `document_id` navigation and source-dictionary targeting; initial/current
 selection, keyboard focus, and selection retention; non-edit-role decoration,

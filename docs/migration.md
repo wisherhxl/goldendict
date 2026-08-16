@@ -2593,7 +2593,7 @@ focused tests. It adds no test executable or public/installed interface, and
 the registered Release baseline remains 109 tests.
 No successor after P8-FT-18 is selected or ranked.
 
-### Phase 8 full-text result edit-role projection (selected)
+### Phase 8 full-text result edit-role projection (complete)
 
 The independent post-P8-FT-18 audit is pinned to clean migrated revision
 `d7d2f76a397f5adf0a546ef3885216b35f82753c` and unchanged clean read-only
@@ -2611,15 +2611,15 @@ nonzero-column, and unsupported-role requests return no value. Display,
 tooltip, order, duplicates, metadata, activation, synchronization, count,
 selection, focus, and retention behavior remain unchanged.
 
-Focused future acceptance covers exact Unicode edit-role headwords, duplicate
+Focused acceptance covers exact Unicode edit-role headwords, duplicate
 rows, equality with the display role, copied/moved response lifetime,
 deterministic reset replacement, invalid and foreign indexes, unsupported
-roles, and unchanged tooltip and result metadata. The focused future command is
+roles, and unchanged tooltip and result metadata. The focused command is
 `ctest --preset conan-release -R '^full_text_response_model_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The full implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release`, clean
 exact-SCM `conan create`, packaged consumers, Release install, and standalone
-installed consumers. This documentation-only audit requires no build or test.
+installed consumers.
 
 Exact `document_id` navigation and source-dictionary targeting; initial/current
 selection, keyboard focus, and selection retention; non-edit-role decoration,
@@ -2638,6 +2638,9 @@ the P8-FT-10/P8-FT-11/P8-FT-12 model ownership, synchronization, and attachment,
 plus pinned legacy `fulltextsearch.cc:690-721`, where
 `HeadwordsListModel::data()` supplies the exact headword through both
 `Qt::DisplayRole` and `Qt::EditRole`.
+P8-FT-19 is complete through the private response-model edit-role projection
+and focused tests. It adds no test executable or public/installed interface,
+and the registered Release baseline remains 109 tests.
 No successor after P8-FT-19 is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
