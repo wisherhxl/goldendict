@@ -1713,6 +1713,43 @@ highlighting, other adapters, builds for this documentation leaf, and unrelated
 refactors. EPWING remains typed unsupported pending a later audit. No adapter,
 successor, or leaf after P6-FT-13 is selected or ranked.
 
+The bounded post-prerequisite audit is complete. It rechecked pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` at `epwing.cc:138-148`,
+`epwing.cc:372-423`, and `epwing.cc:954-1023` against migrated revision
+`1935cc2c7f11efa64f597621bc375ca71402dd56`. P6-FT-13 now exposes both the
+headword-independent physical owner and complete ordered immutable revision;
+no blocker remains. The audit therefore selects exactly P6-FT-14, the private
+EPWING full-text adapter, and selects or ranks no successor.
+
+P6-FT-14 creates one document per retained physical ingestion article whose
+bounded rendered HTML assembles to non-empty inert plain text. First-record
+ownership supplies the canonical headword, aliases, `first_record_ordinal`,
+`article_ordinal`, `text_file_ordinal`, page, and offset. Aliases are not
+documents, and equal content at different physical identities remains
+distinct. Provenance is exactly
+`epwing-index:<first-record-ordinal>:<article-ordinal>:<text-file-ordinal>:<page>:<offset>`
+with canonical unsigned decimal components. Internal references remain inert
+and cannot redirect ownership or create documents.
+
+The generated artifact uses the ingestion view's complete `SourceSnapshot`:
+`CATALOGS`, optional decoding-affecting `LANGUAGE`, and every regular
+non-symlink file in each selected subbook tree, ordered by catalog then
+relative-path bytes. All selected-member, order, path, and topology changes,
+including resource-only changes, stale it; unselected siblings and
+generated/cache files do not. Creation, reuse, stale/corrupt rebuild,
+reader/index/storage failures, limits, checkpoints, cancellation, and
+deadlines are contained and publish no partial state.
+
+Application composition dispatches EPWING as the twelfth adapted format while
+preserving dictionary ordering/filtering, the global bound, adapted no-match,
+typed unavailable IDs, and contained failures. Generated fixtures and the
+installed C++ consumer pin exact provenance; the installed C consumer remains
+unchanged. The leaf preserves installed APIs/DTOs, capabilities,
+configuration/Preferences, dependencies, GUI/Phase 8, `.gdfts`
+serialization, and eleven completed adapters. It excludes legacy `_FTS`,
+metadata/resource indexing, highlighting, other adapters, unsupported EPWING
+parity, and unrelated refactors.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

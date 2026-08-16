@@ -1343,6 +1343,55 @@ outside the private EPWING reader/ownership/revision boundary, and unrelated
 refactors. EPWING remains typed unsupported until a later adapter audit. No
 adapter, successor, or leaf after P6-FT-13 is selected or ranked.
 
+The post-prerequisite readiness audit confirms that P6-FT-13 removed both
+EPWING blockers. At current revision
+`1935cc2c7f11efa64f597621bc375ca71402dd56`, the private ingestion view now
+provides the complete ordered source revision and headword-independent
+physical ownership required by the pinned legacy behavior above. The adapter
+is decision-complete, so the audit selects exactly P6-FT-14, the private
+EPWING full-text adapter. It selects and ranks no successor.
+
+P6-FT-14 retains exactly one document for each ingestion article with
+non-empty assembled text, in retained physical-article order. The first record
+for `(text_file_ordinal, page, offset)` supplies the canonical headword,
+`first_record_ordinal`, and `article_ordinal`; later records for that identity
+remain aliases and never become documents. Equal rendered bytes at different
+physical identities remain separate documents. The exact collision-safe
+provenance is
+`epwing-index:<first-record-ordinal>:<article-ordinal>:<text-file-ordinal>:<page>:<offset>`,
+using canonical unsigned base-10 components without signs or padding.
+
+Materialization passes each retained article's bounded rendered HTML through
+the established article assembler and indexes only its non-empty inert plain
+text. Internal EPWING references remain inert links and neither redirect
+physical ownership nor create documents. Empty output, aliases as documents,
+copyright and metadata, resource names or bytes, unindexed reference targets,
+active markup, scripts, media, and gaiji payloads are excluded.
+
+The adapter opens or rebuilds the private generated full-text artifact against
+the ingestion view's complete ordered `SourceSnapshot`: `CATALOGS`, optional
+decoding-affecting `LANGUAGE`, then every regular non-symlink file in each
+catalog-selected subbook tree in catalog and relative-path byte order.
+Mutation, replacement, addition, removal, path or order change, selected-tree
+topology change, and resource-only change make the artifact stale; unselected
+sibling trees and generated/cache files do not. Reuse, stale and corrupt
+rebuilds, limits, reader/index/storage errors, checkpoints, cancellation, and
+deadlines remain typed and publish no partial adapter state.
+
+Service composition supplies the generated-index path and dispatches EPWING
+as the twelfth adapted format. Stable dictionary-ID ordering and filtering,
+the global result bound, adapted no-match behavior, typed unavailable IDs, and
+contained per-dictionary failures remain unchanged. The installed C++
+consumer must observe an exact-provenance EPWING result; the installed C
+consumer remains unchanged.
+
+P6-FT-14 preserves every installed API and DTO, runtime interface, capability,
+configuration and Preferences field, dependency, GUI/Phase 8 behavior,
+private `.gdfts` serialization, and the eleven completed adapter behaviors.
+Legacy `_FTS` compatibility, metadata/resource indexing, highlighting, other
+adapters, compressed or otherwise unsupported EPWING parity, and unrelated
+refactors are excluded.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

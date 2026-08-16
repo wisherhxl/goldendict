@@ -947,6 +947,35 @@ GUI/Phase 8 behavior, `.gdfts` serialization, or completed-format behavior.
 EPWING remains typed unsupported; no adapter, successor, or later leaf is
 selected or ranked.
 
+The P6-FT-14 implementation gate extends the generated EPWING fixtures to the
+private adapter and lifecycle. It proves one document per retained physical
+article, first-record canonical headword and aliases, distinct equal-content
+identities, empty-output exclusion, inert plain text assembled from bounded
+HTML, inert references, and exact canonical unsigned-decimal
+`epwing-index:<first-record-ordinal>:<article-ordinal>:<text-file-ordinal>:<page>:<offset>`
+provenance, including multi-digit ordinals. Copyright/metadata, resource
+names/bytes, aliases, unindexed targets, active markup, scripts, media, and
+gaiji payloads must remain absent.
+
+Lifecycle cases cover create, reuse, stale rebuild, corrupt rebuild, and
+contained reader/index/storage failure against the complete ordered
+`SourceSnapshot`. Fixtures mutate, replace, add, remove, rename, and reorder
+selected files and topology, including `CATALOGS`, optional `LANGUAGE`, and
+resource-only members; they also prove non-symlink ordering, symlink and
+unselected-sibling exclusion, bounded document/corpus limits, checkpoints,
+cancellation, deadlines, and no partial publication.
+
+Mixed-service coverage becomes twelve-format and retains dictionary-ID order,
+filtering, the global result bound, adapted no-match behavior, typed
+unavailable requested IDs, and contained per-dictionary failures. Installed
+C++ coverage requires an exact-provenance EPWING result; installed C coverage
+remains unchanged. Future implementation must run focused tests, a fresh Linux
+Release configure/build, full `ctest --preset conan-release` with 103
+registered tests unless an intentional delta is justified, Release install
+and installed C/C++ consumers, and a clean committed exact-SCM `conan create`
+with the Qt WebEngine host profile and packaged consumers. This documentation
+audit runs no build. No successor after P6-FT-14 is selected or ranked.
+
 P8-PREF-7 configuration coverage pins current and strict legacy persistence at
 zero and the `9999` maximum plus atomic rejection above it. Its offscreen
 Preferences and WebEngine coverage pins the exact label, tooltip, range, step,
