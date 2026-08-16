@@ -1887,6 +1887,48 @@ visibility/background lifecycle, legacy `_FTS`, metadata/resource indexing,
 platform work, and unrelated migration behavior. The completed P8-FT-4 selects
 or ranks no successor.
 
+The fresh documentation-only post-P8-FT-4 readiness audit is pinned to clean
+pushed revision `e594de3fc6c0b6e912387d78f873eb9dd3e5a749` and the unchanged
+read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It reviews and separates private query composition, modeless dialog/action
+integration, dictionary/group/muting selection, results and activation,
+highlighting, Preferences/index policy, and index
+visibility/status/background lifecycle. P8-FT-5 selects only the private
+Widgets query composer as the smallest dependency-ready prerequisite; no
+visible application entry point or inert result workflow is added.
+
+P8-FT-5 composes one `FullTextQuery` without changing an installed interface.
+It copies UTF-8 query text; explicitly maps persisted whole words, plain text,
+wildcard, and regular-expression modes to the corresponding query enum; and
+maps match case, ignore diacritics, and ignore word order directly. Checked
+word distance produces an engaged `maximum_word_distance` in `0..1000`, and
+unchecked produces `std::nullopt`. Checked maximum articles per dictionary
+produces the engaged persisted value in `1..100000`, and unchecked produces
+`std::nullopt`. Every composed request uses the independent fixed global cap
+`result_limit = 100000` and the existing default timeout. Until a separate selection leaf, it supplies no
+dictionary IDs and leaves `dictionary_filter_active` false.
+
+Whole-word and plain-text modes enable word-order and optional-distance
+controls. Wildcard and regular-expression modes compose
+`ignore_word_order = false` and `maximum_word_distance = std::nullopt` while
+retaining their private values for a later mode change. Repeated composition is
+deterministic, does not mutate persisted configuration, and does not submit
+backend work. Widgets owns only this control-to-DTO mapping;
+Core continues to own validation, search semantics, ordering, filtering,
+errors, cancellation, deadlines, and aggregation, and the completed private
+controller remains the later submission boundary.
+
+Current evidence is `dictionary_service.h:28-32,47-52,149-160`,
+`application.h:193-198,268-277`, and
+`apps/goldendict/src/full_text_request_controller.h/.cpp` with its focused
+test. Pinned legacy evidence is `fulltextsearch.ui` and
+`fulltextsearch.cc:232-315,387-446`. The modeless dialog and Search-menu action,
+group/dictionary/muting projection, submission/completion presentation,
+results/activation, highlighting, Preferences enablement/index policy, index
+visibility/status/background lifecycle, public DTO or persistence changes,
+adapters, `.gdfts`, legacy `_FTS`, dependencies, and unrelated behavior remain
+excluded. No successor after P8-FT-5 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

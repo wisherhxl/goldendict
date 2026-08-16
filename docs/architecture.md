@@ -1626,6 +1626,52 @@ widgets and index policy, index visibility/status/background lifecycle, legacy
 `_FTS`, metadata/resource indexing, platform work, and unrelated migration
 behavior remain excluded. The completed P8-FT-4 selects or ranks no successor.
 
+The fresh documentation-only post-P8-FT-4 readiness audit is pinned to
+`e594de3fc6c0b6e912387d78f873eb9dd3e5a749` and the unchanged read-only legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes the remaining
+Phase 8 full-text workflow into private query composition, modeless dialog and
+action integration, dictionary/group/muting projection, result presentation
+and activation, highlighting, Preferences/index policy, and index
+visibility/status/background lifecycle. Only P8-FT-5, the private Widgets
+query composer, is dependency-ready and selected. It is a non-integrated
+prerequisite rather than inert application UI.
+
+P8-FT-5 owns deterministic conversion from private controls and persisted
+defaults to one `FullTextQuery`. UTF-8 text is copied unchanged. Persisted whole
+words, plain text, wildcard, and regular-expression modes map explicitly to
+`kWholeWords`, `kPlainText`, `kWildcard`, and `kRegularExpression`; match case,
+ignore diacritics, and ignore word order map directly. A checked word-distance
+control maps its `0..1000` value to `maximum_word_distance`, while unchecked
+maps to `std::nullopt`. A checked per-dictionary control maps its persisted
+`1..100000` value to `maximum_articles_per_dictionary`, while unchecked maps
+to `std::nullopt`. The independent application global `result_limit` is always
+`100000`; the existing default timeout is retained. Until the separate
+selection leaf, dictionary IDs remain empty and `dictionary_filter_active`
+remains false.
+
+Whole-word and plain-text modes enable word-order and optional-distance
+controls. Wildcard and regular-expression modes disable their effective query
+mapping by composing `ignore_word_order = false` and
+`maximum_word_distance = std::nullopt`, without destroying retained control
+values. Construction and repeated composition neither mutate persisted
+configuration nor start backend work.
+Core remains authoritative for bounds, validation, search semantics, ordering,
+filtering, typed errors, cancellation, deadlines, and aggregation. The
+installed API, persistence schema, facade, controller, adapters, dependencies,
+and private index format remain unchanged.
+
+Migrated evidence is `dictionary_service.h:28-32,47-52,149-160` for query
+fields and bounds, `application.h:193-198,268-277` for persisted defaults, and
+`full_text_request_controller.h/.cpp` plus
+`full_text_request_controller_test.cpp` for the accepted downstream submission
+boundary. Pinned legacy evidence is `fulltextsearch.ui` and
+`fulltextsearch.cc:232-315,387-446` for control identities, mode-dependent
+enablement, retained values, and optional-limit behavior. Modeless dialog/main-
+window action integration, selection/muting, request completion UI,
+results/activation, highlighting, Preferences enablement and index policy,
+index visibility/background lifecycle, `.gdfts`, legacy `_FTS`, and unrelated
+behavior are excluded. No successor after P8-FT-5 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

@@ -1255,6 +1255,51 @@ and index policy, index visibility/background lifecycle, adapters, `.gdfts`,
 legacy `_FTS`, dependencies, and unrelated behavior. The completed P8-FT-4
 selects or ranks no successor.
 
+## Phase 8 Full-Text Query Composer Gate
+
+The documentation-only post-P8-FT-4 readiness audit selects P8-FT-5, the
+private non-integrated Widgets query composer, as the sole dependency-ready
+leaf. Focused Qt Widgets QTests construct the private controls from persisted
+defaults and verify deterministic `FullTextQuery` composition for UTF-8 text
+and all four explicit mode mappings: whole words to `kWholeWords`, plain text
+to `kPlainText`, wildcard to `kWildcard`, and regular expression to
+`kRegularExpression`. Match case, ignore diacritics, and ignore word order map
+directly.
+
+The focused tests cover checked word distance at the `0` and `1000` boundaries
+and unchecked to `std::nullopt`; checked maximum articles per dictionary at the
+`1` and `100000` boundaries and unchecked to `std::nullopt`; and the fixed
+independent `result_limit == 100000`. They also prove
+that the existing default timeout is retained, dictionary IDs are empty with
+`dictionary_filter_active == false`, and repeated composition does not mutate
+persisted preferences or invoke a fake service/controller.
+
+Offscreen widget coverage verifies that whole-word and plain-text modes enable
+word-order and optional-distance controls, while wildcard and regular-
+expression modes compose `ignore_word_order == false` and a disengaged word
+distance without losing retained values across mode changes. P8-FT-1 controller
+tests do not substitute for this coverage. No main-window or WebEngine smoke
+belongs to this non-integrated prerequisite.
+
+The later implementation gate is the focused composer QTest followed by Linux
+Release configure/build and full `ctest --preset conan-release`, accepting only
+an intentional registered-test delta, then clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile and packaged
+consumers. Install and standalone installed-consumer checks are unnecessary
+unless implementation unexpectedly changes an installed surface; the selected
+leaf is specified not to do so.
+
+P8-FT-5 excludes modeless dialog/main-window action integration,
+dictionary/group/muting selection, request completion UI, results/activation,
+highlighting, Preferences enablement and index policy, index
+visibility/background lifecycle, public API or persistence changes, adapters,
+`.gdfts`, legacy `_FTS`, dependencies, and unrelated behavior. Evidence is the
+migrated `dictionary_service.h:28-32,47-52,149-160`,
+`application.h:193-198,268-277`, the completed private controller and its test,
+and pinned legacy `fulltextsearch.ui` plus
+`fulltextsearch.cc:232-315,387-446`. No successor after P8-FT-5 is selected or
+ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
