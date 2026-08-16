@@ -2759,6 +2759,63 @@ paint path derives direction per displayed string, chooses left or right
 elision accordingly, and preserves an explicit no-elision setting.
 No successor after P8-FT-21 is selected or ranked.
 
+### Phase 8 full-text partial-response status (selected)
+
+The independent post-P8-FT-21 audit is pinned to clean migrated revision
+`b47e96630f2b4f9bb702442b9f563dc0719eec04` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It decomposes
+every remaining full-text workflow surface without advance ranking and selects
+only P8-FT-22, private presentation of the generation-current accepted
+response's authoritative partial state.
+
+P8-FT-9 accepts only the current terminal generation, P8-FT-11 retains the
+complete response, and P8-FT-17 presents its retained-result count. P8-FT-22
+therefore adds only one private Widgets status label. It reads
+`Results may be incomplete.` exactly when the accepted response has
+`partial == true`. Initial state and replacement submission hide it. Complete
+responses keep it hidden even when empty or error-containing; partial responses
+show it with zero or nonzero retained rows and with or without errors.
+
+Core remains authoritative for the partial flag, results, ordering, and errors.
+Widgets does not infer partiality from counts, errors, cancellation, or error
+codes and does not display dictionary IDs, backend messages, or error details.
+Stale or cancelled completions, controller detachment, service replacement,
+and teardown cannot introduce or overwrite the current status. Result rows,
+count, selection, focus, activation, response ownership, and accepted-generation
+synchronization remain unchanged.
+
+Focused future acceptance covers initial and replacement reset; complete and
+partial responses with zero and nonzero rows; partial responses with and without
+errors; complete error-containing responses; repeated accepted responses; and
+stale, cancelled, detached, replaced-service, and teardown completion safety.
+The focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-22 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or test.
+
+Empty-result messaging; error summaries and details; exact `document_id`
+navigation and source-dictionary targeting; columns, icons, additional metadata
+roles, and other decoration; match ranges and excerpt presentation;
+highlighting, ignore-diacritics transfer, and WebEngine handoff; Preferences
+enablement, format exclusions, size/index policy, and persistence; index
+readiness, visibility, status, progress, background lifecycle, rebuild, and
+failure UI; adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies,
+builds, and unrelated parity remain independent and unranked. No public API,
+DTO, persistence, Core, adapter, index, dependency, or build-system surface
+belongs to P8-FT-22.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
+installed `FullTextResponse` contract, and completed P8-FT-9/P8-FT-11/P8-FT-17.
+Pinned legacy `fulltextsearch.cc:448-449,499-586` silently contains individual
+dictionary failures while updating retained rows and count; it supplies no
+safe structured error-detail presentation contract. No successor after
+P8-FT-22 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

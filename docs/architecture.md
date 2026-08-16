@@ -2608,6 +2608,68 @@ paint path derives direction per displayed string, chooses left or right
 elision accordingly, and preserves an explicit no-elision setting.
 No successor after P8-FT-21 is selected or ranked.
 
+### Phase 8 full-text partial-response status (selected)
+
+The independent post-P8-FT-21 documentation audit is pinned to clean migrated
+revision `b47e96630f2b4f9bb702442b9f563dc0719eec04` and unchanged clean
+read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It rechecks every remaining full-text workflow surface without advance ranking
+and selects exactly one smallest dependency-ready leaf, P8-FT-22: present the
+generation-current accepted response's authoritative partial state.
+
+P8-FT-22 is dependency-ready because P8-FT-9 accepts only a
+generation-current terminal response, P8-FT-11 retains that complete response,
+and P8-FT-17 presents its retained-result count. One private Widgets-owned
+status label consumes only the existing transport-neutral
+`FullTextResponse::partial` fact. Core continues to own response semantics,
+errors, results, and ordering. No public API, DTO, persistence, dependency,
+adapter, index-format, or build-system change is required.
+
+The status reads `Results may be incomplete.` exactly when the accepted
+response has `partial == true`. Initial state and replacement submission hide
+it. An accepted complete response keeps it hidden even when it has no results
+or contains errors. An accepted partial response shows it with zero or nonzero
+retained rows and with or without errors. Widgets does not infer partiality from
+the result count, error collection, cancellation, or individual error codes and
+does not expose dictionary IDs, backend messages, or error details. Stale or
+cancelled completions, controller detachment, service replacement, and teardown
+cannot introduce or overwrite the current status.
+
+Focused future acceptance covers the initial and replacement-reset states;
+complete and partial responses with zero and nonzero retained rows; partial
+responses with and without errors; complete responses containing errors;
+repeated accepted responses; and stale, cancelled, detached, replaced-service,
+and teardown completion safety. Existing result projection, count, selection,
+focus, activation, response ownership, and accepted-generation coverage remains
+green. The focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-22 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or compiled test.
+
+Empty-result messaging; error summaries and details; exact `document_id`
+navigation and source-dictionary targeting; columns, icons, additional metadata
+roles, and other decoration; match ranges and excerpt presentation;
+highlighting, ignore-diacritics transfer, and WebEngine handoff; Preferences
+enablement, format exclusions, size/index policy, and persistence; index
+readiness, visibility, status, progress, background lifecycle, rebuild, and
+failure UI; adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies,
+builds, and unrelated parity remain independent surfaces. They are decomposed
+only; none is selected or ranked. No public API, DTO, persistence, Core,
+adapter, index, dependency, or build surface belongs to P8-FT-22.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
+installed `FullTextResponse` contract, and completed P8-FT-9/P8-FT-11/P8-FT-17.
+Pinned legacy `fulltextsearch.cc:448-449,499-586` silently contains individual
+dictionary failures while updating retained rows and count; it supplies no
+safe structured error-detail presentation contract. P8-FT-22 therefore exposes
+only the migrated response's bounded partial fact. No successor after P8-FT-22
+is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
