@@ -1762,10 +1762,10 @@ legacy dialog separately composes request lifetime, query options, group and
 muting selection, result presentation and activation, highlighting, persisted
 format/size policy, index readiness, and background indexing.
 
-Only P8-FT-1, the private cancellable asynchronous full-text request
-controller, is independently ready. The existing synchronous installed call
-and cancellation token are sufficient, and the migrated private suggestion
-worker supplies the applicable Widgets lifetime pattern. The future controller
+P8-FT-1, the private cancellable asynchronous full-text request controller, is
+complete. The existing synchronous installed call and cancellation token are
+sufficient, and the migrated private suggestion worker supplies the applicable
+Widgets lifetime pattern. The controller
 accepts an immutable query and generation, replaces older work by
 cancellation, runs the service call off the GUI thread, converts a boundary
 exception to a terminal internal error, returns the unchanged response to the
@@ -1780,7 +1780,8 @@ application, index availability and background lifecycle. It also preserves
 installed APIs/DTOs, configuration compatibility, dependencies, all twelve
 adapters and private `.gdfts` serialization. Legacy `_FTS`, metadata/resource
 indexing, platform integration and unrelated Phase 7/8/9/10 work remain out of
-scope. No successor after P8-FT-1 is selected or ranked.
+scope. Its focused private QTest accepts the intentional registered-test
+increase from 103 to 104. No successor after P8-FT-1 is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

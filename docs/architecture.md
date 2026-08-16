@@ -1445,8 +1445,8 @@ The candidate comparison therefore has explicit dependencies:
 | Persistent Preferences controls | Persistence exists, but applying enablement, format exclusions and size limits affects index composition/lifecycle policy | Deferred and not ranked |
 | Index availability/lifecycle visibility | Current installed identity and response DTOs expose neither capability nor lifecycle state; background build ownership is a separate prerequisite | Deferred and not ranked |
 
-P8-FT-1 is a private cancellable asynchronous full-text request controller in
-Widgets. It accepts an immutable `FullTextQuery`, a borrowed
+P8-FT-1 is complete as a private cancellable asynchronous full-text request
+controller in Widgets. It accepts an immutable `FullTextQuery`, a borrowed
 `DictionaryService` whose lifetime is guarded by its owner, and a monotonically
 increasing request generation. One private worker owns at most one pending and
 one running request and a cancellation token for each accepted request. A new
@@ -1478,7 +1478,11 @@ private `.gdfts` serialization or adapter. Legacy `_FTS` compatibility,
 metadata/resource indexing, platform integration, unrelated UI parity and
 refactors remain excluded.
 
-No successor after P8-FT-1 is selected or ranked.
+The focused private QTest covers off-GUI-thread execution, GUI-thread terminal
+delivery, replacement and explicit cancellation, unchanged partial and typed
+errors, exception containment and redaction, stale and detached completion
+rejection, service replacement, destruction, and shutdown join. No successor
+after P8-FT-1 is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
