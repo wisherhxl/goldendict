@@ -1089,11 +1089,11 @@ filename set at `epwing.cc:372-397`, and extracts the physical page/offset at
 
 | Candidate | Migrated traversal and ownership | Materialization, revision, and audit decision |
 | --- | --- | --- |
-| MDict | MDX keys retain source order, but each key receives a separate article slot before bounded folded `@@@LINK=` resolution | Bounded decoded/styled HTML, MDX plus consecutive MDD discovery, and generated fixtures exist. Terminal physical ownership and exact MDX/MDD revision semantics are not exposed; select only P6-FT-11, the MDict ownership prerequisite |
+| MDict | MDX keys retain source order and the private immutable view resolves bounded folded `@@@LINK=` chains to terminal physical identities with first-source ownership | Bounded decoded/styled HTML, complete ordered MDX/consecutive-MDD revision, and generated ownership fixtures are accepted by P6-FT-11; no adapter is selected or ranked |
 | EPWING | `CATALOGS` order, subbooks, and supported `0x90`/`0x91`/`0x92` word indexes are traversed, but deduplication includes the headword in `(text-file, headword, page, offset)` | Bounded safe rendering and generated fixtures exist. Headword-independent physical ownership and the complete mutable `CATALOGS`/subbook-tree revision are not exposed; unselected and unranked |
 
-P6-FT-11 is only a private MDict reader-ownership prerequisite, not an
-adapter. Its future immutable ingestion view assigns a zero-based
+P6-FT-11 is complete as a private MDict reader-ownership prerequisite, not an
+adapter. Its immutable ingestion view assigns a zero-based
 `record_ordinal` to every accepted nonempty MDX key in source order before
 redirect resolution. Missing-target and cyclic redirects still consume their
 source ordinal; MDD entries never consume one. Bounded folded `@@@LINK=`
@@ -1121,13 +1121,17 @@ Mutation or replacement of any member, or addition or removal of a companion,
 changes the revision. MDD companions affect revision only and never own text
 documents.
 
+Generated ownership and lifecycle fixtures pin the redirect, identity,
+ownership, materialization, consecutive-companion, mutation, checkpoint, and
+cancellation rules without publishing partial state.
+
 Until a later audit accepts an adapter, MDict and EPWING remain typed
 unsupported without changing mixed-service ordering, dictionary filtering,
 the global bound, unavailable errors, or contained per-dictionary failures.
 P6-FT-11 changes no installed `SearchFullText` API or DTO, runtime interface,
 public capability, configuration, preference, dependency, GUI/Phase 8
-behavior, or private `.gdfts` serialization. This audit excludes prerequisite
-or adapter implementation, legacy `_FTS`, metadata/resource indexing,
+behavior, or private `.gdfts` serialization. This prerequisite excludes an
+adapter implementation, legacy `_FTS`, metadata/resource indexing,
 highlighting, other formats, dependencies, and unrelated refactors. No adapter
 or leaf after the prerequisite is selected or ranked.
 

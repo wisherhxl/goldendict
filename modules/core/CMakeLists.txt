@@ -221,6 +221,7 @@ endif()
 
 if(TARGET mdict_reader_test)
   target_sources(mdict_reader_test PRIVATE
+    src/dictionary/generated_index.cc
     src/foundation/text_encoding.cc
     src/foundation/text_folding.cc
     src/foundation/utf8.cc
@@ -234,13 +235,22 @@ endif()
 
 if(TARGET mdict_discovery_test)
   target_sources(mdict_discovery_test PRIVATE
+    src/dictionary/generated_index.cc
+    src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
+    src/foundation/utf8.cc
     src/formats/mdict/mdict_discovery.cc
+    src/formats/mdict/mdict_reader.cc
+  )
+  target_link_libraries(mdict_discovery_test
+    PRIVATE expat::expat ICU::uc ZLIB::ZLIB
   )
 endif()
 
 if(TARGET mdict_dictionary_test)
   target_sources(mdict_dictionary_test PRIVATE
     src/dictionary/dictionary_backend.cc
+    src/dictionary/generated_index.cc
     src/foundation/text_encoding.cc
     src/foundation/text_folding.cc
     src/foundation/utf8.cc

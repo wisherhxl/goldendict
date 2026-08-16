@@ -14,6 +14,7 @@
 #include <iterator>
 #include <map>
 #include <set>
+#include <tuple>
 #include <unordered_set>
 #include <utility>
 
@@ -43,6 +44,8 @@ struct Header {
 struct RawEntry {
     std::string word;
     std::string value;
+    std::size_t offset = 0;
+    std::size_t size = 0;
 };
 
 struct ParsedContainer {
@@ -534,8 +537,8 @@ ParsedContainer ParseContainer(const std::filesystem::path& path,
         if (!resources)
             value = ApplyStyles(
                 Decode(value, parsed.header.encoding, path, "record"), styles);
-        parsed.entries.push_back(
-            {std::move(keys[index].word), std::move(value)});
+        parsed.entries.push_back({std::move(keys[index].word), std::move(value),
+                                  start, end - start});
     }
     return parsed;
 }
@@ -605,7 +608,8 @@ Reader Reader::Open(const DictionaryFiles& files) {
         }
         const std::size_t article = reader.articles_.size();
         reader.articles_.push_back(entry.value);
-        reader.records_.push_back({entry.word, folded, article});
+        reader.records_.push_back(
+            {entry.word, folded, article, entry.offset, entry.size});
         reader.article_by_folded_word_.emplace(std::move(folded), article);
     }
     if (reader.records_.empty())
@@ -619,7 +623,74 @@ Reader Reader::Open(const DictionaryFiles& files) {
                 reader.resources_.emplace(std::move(id), entry.value);
         }
     }
+    std::vector<std::filesystem::path> sources{files.mdx};
+    sources.insert(sources.end(), files.mdd.begin(), files.mdd.end());
+    try {
+        reader.source_snapshot_ = dictionary::CaptureSourceSnapshot(sources);
+    } catch (const dictionary::GeneratedIndexError& error) {
+        Throw(ErrorCode::kMissingFile, files.mdx, error.what());
+    }
     return reader;
+}
+
+IngestionView Reader::ReadIngestionView(
+    const std::function<void()>& checkpoint) const {
+    IngestionView view;
+    view.records.reserve(records_.size());
+    view.articles.reserve(records_.size());
+    view.source_snapshot = source_snapshot_;
+    using Identity = std::tuple<std::size_t, std::size_t, std::size_t>;
+    std::map<Identity, std::size_t> article_by_identity;
+
+    for (std::size_t source = 0U; source < records_.size(); ++source) {
+        if (checkpoint)
+            checkpoint();
+        IngestionRecord output{source, records_[source].word,
+                               ResolutionOutcome::kMissingTarget, std::nullopt};
+        std::set<std::size_t> seen;
+        std::size_t terminal = source;
+        while (articles_[terminal].compare(0U, 8U, "@@@LINK=") == 0) {
+            if (checkpoint)
+                checkpoint();
+            if (!seen.insert(terminal).second) {
+                output.outcome = ResolutionOutcome::kCycle;
+                break;
+            }
+            const std::string target = Trim(articles_[terminal].substr(8U));
+            const auto found =
+                article_by_folded_word_.find(foundation::FoldForLookup(target));
+            if (found == article_by_folded_word_.end()) {
+                output.outcome = ResolutionOutcome::kMissingTarget;
+                break;
+            }
+            terminal = found->second;
+        }
+        if (articles_[terminal].compare(0U, 8U, "@@@LINK=") != 0) {
+            output.outcome = ResolutionOutcome::kTerminal;
+            const auto& target = records_[terminal];
+            output.terminal = TerminalIdentity{terminal, target.record_offset,
+                                               target.record_size};
+            const Identity identity{terminal, target.record_offset,
+                                    target.record_size};
+            if (!articles_[terminal].empty()) {
+                auto [position, inserted] =
+                    article_by_identity.emplace(identity, view.articles.size());
+                if (inserted) {
+                    view.articles.push_back({records_[source].word,
+                                             {},
+                                             articles_[terminal],
+                                             source,
+                                             view.articles.size(),
+                                             *output.terminal});
+                } else {
+                    view.articles[position->second].aliases.push_back(
+                        records_[source].word);
+                }
+            }
+        }
+        view.records.push_back(std::move(output));
+    }
+    return view;
 }
 
 std::vector<const Reader::Record*> Reader::Ranked(

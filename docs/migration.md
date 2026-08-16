@@ -1583,9 +1583,9 @@ renders bounded safe text, but deduplicates by a tuple that includes the
 headword and does not expose the complete mutable `CATALOGS`/subbook tree.
 EPWING remains unselected and unranked.
 
-The sole selection is P6-FT-11, the bounded private MDict ownership
-prerequisite; it is not the MDict adapter. Its immutable reader view must
-assign zero-based `record_ordinal` values to accepted nonempty MDX keys in
+P6-FT-11 is complete as the bounded private MDict ownership prerequisite; it
+is not the MDict adapter. Its immutable reader view assigns zero-based
+`record_ordinal` values to accepted nonempty MDX keys in
 source order before bounded folded `@@@LINK=` resolution. Missing-target and
 cyclic redirects consume an ordinal but report explicit nonterminal outcomes;
 MDD entries consume none. Successful resolution exposes the terminal
@@ -1608,7 +1608,7 @@ The complete ordered revision is MDX followed by the discovered base MDD and
 every consecutive numbered MDD companion. Mutation or replacement of any
 member and companion addition or removal changes the revision, including a
 resource-only MDD change; MDD files never own text documents. Generated
-fixtures must prove direct and chained redirects, folded collisions, duplicate
+fixtures prove direct and chained redirects, folded collisions, duplicate
 aliases, distinct physical records with equal content, missing targets,
 cycles, empty materialization, multi-digit identity components, consecutive
 MDD topology, and checkpoints/cancellation.
@@ -1617,7 +1617,8 @@ Until a separate adapter audit, both remaining formats stay typed unsupported
 and the existing ten-format mixed service remains unchanged. P6-FT-11 does not
 change installed APIs/DTOs, runtime interfaces, capability flags,
 configuration/preferences, dependencies, GUI/Phase 8 behavior, or private
-`.gdfts` serialization. This audit excludes implementation, legacy `_FTS`,
+`.gdfts` serialization. This completed prerequisite excludes adapter
+implementation, legacy `_FTS`,
 metadata/resource indexing, highlighting, other formats, dependency work, and
 unrelated refactors. No adapter or successor after this prerequisite is
 selected or ranked.

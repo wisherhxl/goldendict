@@ -7,11 +7,13 @@
 #include <filesystem>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include "../../dictionary/generated_index.h"
 #include "../../dictionary/ordered_headword_index.h"
 
 #include "mdict_discovery.h"
@@ -40,6 +42,43 @@ struct Metadata {
 struct Article {
     std::string headword;
     std::string data;
+};
+
+enum class ResolutionOutcome { kTerminal, kMissingTarget, kCycle };
+
+struct TerminalIdentity {
+    std::size_t terminal_key_ordinal = 0;
+    std::size_t record_offset = 0;
+    std::size_t record_size = 0;
+
+    friend bool operator==(const TerminalIdentity& left,
+                           const TerminalIdentity& right) {
+        return left.terminal_key_ordinal == right.terminal_key_ordinal &&
+               left.record_offset == right.record_offset &&
+               left.record_size == right.record_size;
+    }
+};
+
+struct IngestionRecord {
+    std::size_t record_ordinal = 0;
+    std::string headword;
+    ResolutionOutcome outcome = ResolutionOutcome::kMissingTarget;
+    std::optional<TerminalIdentity> terminal;
+};
+
+struct IngestionArticle {
+    std::string headword;
+    std::vector<std::string> aliases;
+    std::string html;
+    std::size_t first_record_ordinal = 0;
+    std::size_t article_ordinal = 0;
+    TerminalIdentity terminal;
+};
+
+struct IngestionView {
+    std::vector<IngestionRecord> records;
+    std::vector<IngestionArticle> articles;
+    dictionary::SourceSnapshot source_snapshot;
 };
 
 class Reader final {
@@ -72,12 +111,16 @@ class Reader final {
         std::size_t offset, std::size_t result_limit, std::size_t byte_limit,
         const std::function<void()>& checkpoint = {}) const;
     const std::string* Resource(std::string_view id) const;
+    IngestionView ReadIngestionView(
+        const std::function<void()>& checkpoint = {}) const;
 
    private:
     struct Record {
         std::string word;
         std::string folded;
         std::size_t article = 0;
+        std::size_t record_offset = 0;
+        std::size_t record_size = 0;
     };
 
     std::vector<const Record*> Ranked(
@@ -91,6 +134,7 @@ class Reader final {
     std::vector<std::string> articles_;
     std::unordered_map<std::string, std::size_t> article_by_folded_word_;
     std::unordered_map<std::string, std::string> resources_;
+    dictionary::SourceSnapshot source_snapshot_;
 };
 
 }  // namespace goldendict::core::formats::mdict
