@@ -141,13 +141,14 @@ registration baseline remains exactly 109 tests, and installed C and C++
 consumers remain unchanged and source-compatible. No successor after P8-FT-37
 is selected or ranked.
 
-The documentation-only post-P8-FT-37 audit supersedes that historical closure
-and selects P8-FT-38 as the sole next leaf. Pinned legacy
+The completed P8-FT-38 implementation supersedes that historical closure.
+Pinned legacy
 `fulltextsearch.ui:274-285` defines the consecutive named forward tab sequence
 from the query field through results, word-distance controls, mode,
 article-limit controls, Match Case, Search, and Cancel; current Widgets has no
-equivalent dialog-level order. The eventual leaf is limited to that private
-connection and the existing focused dialog test. It leaves initial/transferred
+equivalent dialog-level order. Widgets now establishes that exact private
+connection once, and the focused dialog test pins it across construction and
+request transitions. The leaf leaves initial/transferred
 focus, focus policies, endpoints/wraparound, omitted-control placement, key
 dispatch, public/Core and installed contracts, and all unrelated parity
 excluded and unranked. The Release registration baseline remains exactly 109

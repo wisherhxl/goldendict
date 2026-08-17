@@ -146,6 +146,35 @@ FullTextSearchDialog::FullTextSearchDialog(
     buttons->addStretch();
     layout->addLayout(buttons);
 
+    QWidget::setTabOrder(query_text_, results_);
+    QWidget::setTabOrder(results_,
+                         composer_->findChild<QWidget*>(
+                             QStringLiteral("fullTextUseMaximumWordDistance")));
+    QWidget::setTabOrder(composer_->findChild<QWidget*>(
+                             QStringLiteral("fullTextUseMaximumWordDistance")),
+                         composer_->findChild<QWidget*>(
+                             QStringLiteral("fullTextMaximumWordDistance")));
+    QWidget::setTabOrder(
+        composer_->findChild<QWidget*>(
+            QStringLiteral("fullTextMaximumWordDistance")),
+        composer_->findChild<QWidget*>(QStringLiteral("fullTextQueryMode")));
+    QWidget::setTabOrder(
+        composer_->findChild<QWidget*>(QStringLiteral("fullTextQueryMode")),
+        composer_->findChild<QWidget*>(
+            QStringLiteral("fullTextUseMaximumArticles")));
+    QWidget::setTabOrder(composer_->findChild<QWidget*>(
+                             QStringLiteral("fullTextUseMaximumArticles")),
+                         composer_->findChild<QWidget*>(QStringLiteral(
+                             "fullTextMaximumArticlesPerDictionary")));
+    QWidget::setTabOrder(
+        composer_->findChild<QWidget*>(
+            QStringLiteral("fullTextMaximumArticlesPerDictionary")),
+        composer_->findChild<QWidget*>(QStringLiteral("fullTextMatchCase")));
+    QWidget::setTabOrder(
+        composer_->findChild<QWidget*>(QStringLiteral("fullTextMatchCase")),
+        search_button_);
+    QWidget::setTabOrder(search_button_, cancel_button_);
+
     help_action_ = new QAction(this);
     help_action_->setObjectName(QStringLiteral("fullTextHelpAction"));
     help_action_->setShortcut(QKeySequence(Qt::Key_F1));

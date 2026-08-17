@@ -3695,7 +3695,7 @@ so compiled verification is intentionally skipped; exact four-file scope,
 cross-document consistency, Phase terminology, successor language, and
 `git diff --check` are its verification gate.
 
-### Phase 8 full-text dialog tab sequence (selected)
+### Phase 8 full-text dialog tab sequence (complete)
 
 The independent documentation-only post-P8-FT-37 audit is pinned to clean
 migrated revision `9be9e1d8928c25f312b075fdda1674bb44d96013`, its identical
@@ -3716,8 +3716,9 @@ prerequisites. The shared-library/GUI boundary keeps this policy private to
 Widgets and leaves Core, composition-root, public, and installed contracts
 unchanged.
 
-The chain remains stable through construction, idle, submission, completion,
-and active cancellation, including while controls are temporarily disabled.
+The completed implementation establishes the chain once at dialog construction
+and keeps it stable through idle, submission, completion, and active
+cancellation, including while controls are temporarily disabled.
 Initial or transferred focus, focus policies, traversal endpoints and
 wraparound, the placement of Ignore Diacritics, Ignore Word Order, Help, or
 other omitted controls, Return/Enter behavior, shortcuts, button default
@@ -3725,7 +3726,7 @@ policy, search/result behavior, index lifecycle/UI, Preferences/index policy,
 adapters/index formats, dependencies/builds, and unrelated parity remain
 excluded and unranked. No successor after P8-FT-38 is selected or ranked.
 
-Focused implementation acceptance extends only
+Completed focused acceptance extends only
 `full_text_search_dialog_test` with exact forward-chain inspection across the
 stated transitions and regressions for initial query focus, Search default
 policy, Cancel, Help, and request lifecycle. The focused Release command is
@@ -3736,15 +3737,10 @@ WebEngine host profile and packaged consumers, Release install, and unchanged
 standalone installed C and C++ consumers. No executable, registration,
 installed interface, dependency, export, or Conan requirement changes.
 
-Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
-control mapping or tab-sequence evidence, any requirement to define omitted
-control order, focus policies, endpoints, wraparound, initial/transferred
-focus, key dispatch or shortcuts, public/Core or composition-root expansion,
-dependency or installed-surface change, an architectural decision requiring
-HTTP GET policy, or scope expansion. This audit changes documentation only, so
-compiled verification is intentionally skipped; exact four-file scope,
-cross-document consistency, Phase terminology, successor language, and
-`git diff --check` are its verification gate.
+No successor after P8-FT-38 is selected or ranked. Omitted-control order, focus
+policies, endpoints, wraparound, initial/transferred focus, key dispatch,
+shortcuts, public/Core or composition-root expansion, dependencies, installed
+surfaces, and unrelated parity remain separately reviewed and unranked.
 
 ### Phase 9 — Linux Integration And Release Quality
 

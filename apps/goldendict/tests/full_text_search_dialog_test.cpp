@@ -15,6 +15,7 @@
 #include <QStyleOptionViewItem>
 #include <QtTest>
 
+#include <algorithm>
 #include <condition_variable>
 #include <mutex>
 #include <optional>
@@ -175,6 +176,54 @@ void VerifySearchButtonDefaultPolicy(FullTextSearchDialog* dialog) {
     QVERIFY(!search->autoDefault());
 }
 
+void VerifyExactForwardTabChain(FullTextSearchDialog* dialog) {
+    const std::vector<QString> object_names = {
+        QStringLiteral("fullTextQueryText"),
+        QStringLiteral("fullTextSearchResults"),
+        QStringLiteral("fullTextUseMaximumWordDistance"),
+        QStringLiteral("fullTextMaximumWordDistance"),
+        QStringLiteral("fullTextQueryMode"),
+        QStringLiteral("fullTextUseMaximumArticles"),
+        QStringLiteral("fullTextMaximumArticlesPerDictionary"),
+        QStringLiteral("fullTextMatchCase"),
+        QStringLiteral("fullTextSearchButton"),
+        QStringLiteral("fullTextCancelButton")};
+    std::vector<QWidget*> controls;
+    controls.reserve(object_names.size());
+    for (const auto& object_name : object_names) {
+        const auto matches = dialog->findChildren<QWidget*>(
+            object_name, Qt::FindChildrenRecursively);
+        QCOMPARE(matches.size(), 1);
+        controls.push_back(matches.front());
+    }
+
+    const qsizetype focus_chain_bound =
+        dialog->window()->findChildren<QWidget*>().size() + 1;
+    for (std::size_t index = 0; index + 1U < controls.size(); ++index) {
+        QWidget* current = controls[index];
+        std::vector<QWidget*> visited = {current};
+        for (qsizetype step = 0; step < focus_chain_bound; ++step) {
+            current = current->nextInFocusChain();
+            QVERIFY(current != nullptr);
+            QVERIFY2(
+                std::find(visited.cbegin(), visited.cend(), current) ==
+                    visited.cend(),
+                "focus chain contains a cycle before the next named control");
+            visited.push_back(current);
+
+            const auto named =
+                std::find(controls.cbegin(), controls.cend(), current);
+            if (named == controls.cend())
+                continue;
+
+            QCOMPARE(current, controls[index + 1U]);
+            break;
+        }
+        QVERIFY2(current == controls[index + 1U],
+                 "next named control is missing from the bounded focus chain");
+    }
+}
+
 QPushButton* CancelButton(FullTextSearchDialog* dialog) {
     return dialog->findChild<QPushButton*>(
         QStringLiteral("fullTextCancelButton"));
@@ -321,6 +370,7 @@ class FullTextSearchDialogTest final : public QObject {
     Q_OBJECT
 
    private slots:
+    void PreservesExactForwardTabChainAcrossRequestTransitions();
     void SubmitsExactComposedAndProjectedQueryAndRetainsResponse();
     void PaintsEachResultWithIndependentDirectionAndElision();
     void KeepsSelectionAndFocusDeterministicAcrossAcceptedResponses();
@@ -341,6 +391,43 @@ class FullTextSearchDialogTest final : public QObject {
     void IdleCancelDismissesThroughDialogLifecycle();
     void ServiceReplacementDetachAndDestructionSuppressLateDelivery();
 };
+
+void FullTextSearchDialogTest::
+    PreservesExactForwardTabChainAcrossRequestTransitions() {
+    ControllableDictionaryService service;
+    service.response_.results = {MakeResult("dictionary", "result", 1U)};
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog dialog(preferences, &service);
+
+    VerifyExactForwardTabChain(&dialog);
+    VerifySearchButtonDefaultPolicy(&dialog);
+    dialog.InitializeQuery(QStringLiteral("complete"));
+    dialog.show();
+    QTRY_VERIFY(dialog.query_text_->hasFocus());
+    VerifyExactForwardTabChain(&dialog);
+
+    dialog.SubmitSearch();
+    QVERIFY(service.WaitForQueries(1U));
+    QVERIFY(!SearchButton(&dialog)->isEnabled());
+    VerifySearchButtonDefaultPolicy(&dialog);
+    VerifyExactForwardTabChain(&dialog);
+    QTRY_VERIFY(dialog.response_.has_value());
+    QVERIFY(SearchButton(&dialog)->isEnabled());
+    VerifySearchButtonDefaultPolicy(&dialog);
+    VerifyExactForwardTabChain(&dialog);
+
+    dialog.InitializeQuery(QStringLiteral("blocked"));
+    dialog.SubmitSearch();
+    QVERIFY(service.WaitForQueries(2U));
+    QVERIFY(!SearchButton(&dialog)->isEnabled());
+    VerifyExactForwardTabChain(&dialog);
+    dialog.CancelSearch();
+    QVERIFY(service.WaitForCancellation());
+    QVERIFY(SearchButton(&dialog)->isEnabled());
+    VerifySearchButtonDefaultPolicy(&dialog);
+    VerifyExactForwardTabChain(&dialog);
+    service.ReleaseCancelledRequest();
+}
 
 void FullTextSearchDialogTest::
     EmitsHelpIntentWithoutMutatingIdleOrActiveState() {

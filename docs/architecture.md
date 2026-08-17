@@ -3577,7 +3577,7 @@ or keyboard-policy choice, public/Core or composition-root expansion,
 dependency or installed-surface change, an architectural decision requiring
 HTTP GET policy, or scope expansion.
 
-### Phase 8 full-text dialog tab sequence (selected)
+### Phase 8 full-text dialog tab sequence (complete)
 
 The independent documentation-only post-P8-FT-37 audit is pinned to clean
 migrated revision `9be9e1d8928c25f312b075fdda1674bb44d96013`, its identical
@@ -3597,7 +3597,8 @@ P8-FT-37 owns the Search button's default policy. Widgets therefore owns the
 complete correction; Core, the composition root, and installed consumers do
 not acquire a focus or keyboard contract.
 
-P8-FT-38 establishes this consecutive forward chain:
+The completed P8-FT-38 implementation establishes this consecutive forward
+chain:
 `fullTextQueryText`, `fullTextSearchResults`,
 `fullTextUseMaximumWordDistance`, `fullTextMaximumWordDistance`,
 `fullTextQueryMode`, `fullTextUseMaximumArticles`,
@@ -3615,7 +3616,7 @@ formats, dependencies, builds, and unrelated parity also remain independently
 decomposed, unselected, and unranked. No successor after P8-FT-38 is selected
 or ranked.
 
-Focused implementation acceptance extends only
+Completed focused acceptance extends only
 `full_text_search_dialog_test` to inspect the exact named forward chain across
 the stated transitions and retain regressions for initial query focus, Search
 default policy, Cancel behavior, Help activation, and request lifecycle. The
@@ -3629,12 +3630,11 @@ P8-FT-38 adds no executable, registration, installed header, DTO, ABI,
 dependency, CMake export, or Conan requirement, so both consumers remain
 unchanged and source-compatible.
 
-Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
-control mapping or sequence evidence, any need to change focus policies or
-order omitted controls, traversal endpoints or wraparound, initial/transferred
-focus, Return/Enter or shortcut behavior, public/Core or composition-root
-contracts, dependencies or installed surfaces, an architectural decision
-requiring HTTP GET policy, or scope expansion.
+No successor after P8-FT-38 is selected or ranked. Any future work requiring
+focus-policy changes, ordering omitted controls, traversal endpoints or
+wraparound, initial/transferred focus, Return/Enter or shortcut behavior,
+public/Core or composition-root contracts, dependencies, or installed surfaces
+remains separately reviewed and unranked.
 
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
