@@ -338,6 +338,7 @@ int main(int argc, char* argv[]) {
         QString::fromStdString(network_runtime->cache_directory()));
     window.RestoreMainWindowGeometry(configuration.main_window_geometry);
     window.RestoreMainWindowState(configuration.main_window_state);
+    window.SetFullTextDialogGeometry(configuration.full_text_dialog_geometry);
     window.SetDictionaryGroups(configuration.dictionary_groups);
     window.SetSourceDirectories(configuration.dictionary_paths,
                                 configuration.sound_directories);
@@ -358,6 +359,25 @@ int main(int argc, char* argv[]) {
     };
     QObject::connect(&window, &MainWindow::ArticleTabSessionMutated, &window,
                      persist_article_tab_session);
+    QObject::connect(
+        &window, &MainWindow::FullTextDialogGeometryCaptured, &window,
+        [&](const std::string& geometry) {
+            auto updated = configuration;
+            updated.full_text_dialog_geometry = geometry;
+            updated.article_tab_session = facade->ExportArticleTabSession();
+            updated.main_window_geometry = window.CaptureMainWindowGeometry();
+            updated.main_window_state = window.CaptureMainWindowState();
+            try {
+                goldendict::core::SaveConfiguration(
+                    configuration_path.toStdString(), updated);
+                configuration = std::move(updated);
+                window.SetFullTextDialogGeometry(
+                    configuration.full_text_dialog_geometry);
+            } catch (const std::exception& error) {
+                QMessageBox::warning(&window, QStringLiteral("GoldenDict"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+        });
     QObject::connect(&app, &QApplication::aboutToQuit, &window,
                      persist_article_tab_session);
     const auto refresh_history = [&window, &history]() {
@@ -1390,9 +1410,19 @@ int main(int argc, char* argv[]) {
         });
     } else if (HasArgument(argc, argv,
                            QStringLiteral("--full-text-dialog-smoke"))) {
-        QTimer::singleShot(0, &window, [&window, &app]() {
-            window.RunFullTextDialogSmokeCheck(
-                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        QTimer::singleShot(0, &window, [&window, &app, &configuration_path]() {
+            window.RunFullTextDialogSmokeCheck([&app, &configuration_path](
+                                                   bool passed) {
+                try {
+                    const auto persisted = goldendict::core::LoadConfiguration(
+                        configuration_path.toStdString());
+                    passed =
+                        passed && !persisted.full_text_dialog_geometry.empty();
+                } catch (const std::exception&) {
+                    passed = false;
+                }
+                app.exit(passed ? 0 : 1);
+            });
         });
     } else if (HasArgument(
                    argc, argv,

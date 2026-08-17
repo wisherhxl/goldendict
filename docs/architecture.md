@@ -3313,7 +3313,7 @@ adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies, builds, and
 unrelated parity remain independent surfaces. They are decomposed only; none
 is selected or ranked. No successor after P8-FT-32 is selected or ranked.
 
-### Phase 8 full-text dialog geometry Widgets connection (selected)
+### Phase 8 full-text dialog geometry Widgets connection (complete)
 
 The independent documentation-only post-P8-FT-32 audit is pinned to clean
 migrated revision `6ff78e84f2b5f0395283a00f0632174672828625` and unchanged
@@ -3321,7 +3321,7 @@ clean read-only legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
 full-text workflow surface without advance ranking and selects exactly one
 smallest dependency-ready leaf, P8-FT-33: connect P8-FT-32's bounded opaque
-dialog geometry to the existing modeless Widgets dialog.
+dialog geometry to the existing modeless Widgets dialog. P8-FT-33 is complete.
 
 The prerequisite chain is complete: `CoreConfiguration` owns bounded atomic
 persistence and exact legacy migration, `FullTextSearchDialog` owns the Qt
@@ -3331,7 +3331,7 @@ construction and captures it when the dialog finishes. Under the shared-
 library/GUI rule, Core retains uninterpreted bytes, Widgets alone calls Qt
 geometry APIs, and composition alone joins captured bytes to configuration.
 
-On new-dialog creation, Widgets attempts one restore only for a nonempty
+On new-dialog creation, Widgets now attempts one restore only for a nonempty
 value. Absence preserves default geometry. Qt rejection also preserves the
 default without rewriting the stored value or adding screen, topology,
 placement, or fallback policy. Idle Cancel and window-manager close capture
@@ -3363,9 +3363,8 @@ semantics, excerpts, exact document/source targeting, decoration,
 Preferences/index policy, index lifecycle, adapters/index formats,
 dependencies, builds, and unrelated parity remain independently decomposed,
 unselected, and unranked. No successor after P8-FT-33 is selected or ranked.
-Implementation must stop before editing on ref/worktree drift, legacy
-dirtiness, ambiguous ownership or behavior, any architectural choice requiring
-HTTP GET policy, or any expansion beyond this bounded connection.
+The implementation remains bounded to the private Widgets/application
+connection, its existing tests, and the four governing documents.
 
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

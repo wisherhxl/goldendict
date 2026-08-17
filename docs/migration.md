@@ -3450,7 +3450,7 @@ unrelated parity remain separately decomposed and unranked. P8-FT-32 completes
 only the persistence prerequisite. No successor after P8-FT-32 is selected or
 ranked.
 
-### Phase 8 full-text dialog geometry Widgets connection (selected)
+### Phase 8 full-text dialog geometry Widgets connection (complete)
 
 The independent documentation-only post-P8-FT-32 audit is pinned to clean
 migrated revision `6ff78e84f2b5f0395283a00f0632174672828625` and unchanged
@@ -3458,11 +3458,11 @@ clean read-only legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After rechecking all remaining
 full-text parity gaps and prerequisites without advance ranking, it selects
 exactly P8-FT-33: connect the persisted bounded opaque geometry to the existing
-modeless full-text dialog.
+modeless full-text dialog. P8-FT-33 is complete.
 
 Core already owns bounded atomic persistence and exact legacy migration, the
 dialog owns Qt geometry, and the composition root owns configuration saves.
-The shared-library/GUI rule therefore keeps Core opaque: Widgets attempts one
+The shared-library/GUI rule therefore keeps Core opaque: Widgets now attempts one
 restore for a nonempty value at new-dialog creation, preserves default geometry
 on absence or Qt rejection without rewriting the stored bytes, and adds no
 placement policy. Idle Cancel and window-manager close capture exact geometry
@@ -3484,18 +3484,14 @@ and standalone installed C and C++ consumers. P8-FT-33 adds no installed
 interface, executable, dependency, or test registration; installed consumers
 remain unchanged and source-compatible but are retained as the stronger gate.
 
-This audit changes only the four governing documents, so compiled builds,
-tests, install, and Conan creation are intentionally not run. They verify the
-future implementation, not this selection audit. Screen/topology
+The implementation changes only the bounded private Widgets/application
+connection, its existing tests, and these governing documents. Screen/topology
 normalization, placement fallback, other dialog state, query semantics,
 excerpts, exact document/source targeting, decoration, Preferences/index
 policy, index lifecycle, adapters/index formats, dependencies, builds, and
 unrelated parity remain independently decomposed, unselected, and unranked.
 No successor after P8-FT-33 is selected or ranked.
-Implementation must stop before editing on ref/worktree drift, legacy
-dirtiness, ambiguity, an architectural choice requiring HTTP GET policy, or
-scope expansion. The same pinned-state checks must pass again before its
-commit and push.
+The Release registration baseline remains exactly 109 tests.
 
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8

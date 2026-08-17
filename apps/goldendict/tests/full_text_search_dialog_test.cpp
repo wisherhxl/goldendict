@@ -311,6 +311,7 @@ class FullTextSearchDialogTest final : public QObject {
     void SuppressesDuplicateInvalidStaleAndCancelledActivation();
     void ReplacesRunningAndPendingGenerationsAndSuppressesStaleCompletion();
     void ActiveCancellationRestoresIdleStateWithoutDismissal();
+    void RestoresAndCapturesGeometryOnlyForIdleDismissal();
     void IdleCancelDismissesThroughDialogLifecycle();
     void ServiceReplacementDetachAndDestructionSuppressLateDelivery();
 };
@@ -1673,6 +1674,87 @@ void FullTextSearchDialogTest::IdleCancelDismissesThroughDialogLifecycle() {
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     QCoreApplication::processEvents();
     QVERIFY(dialog.isNull());
+}
+
+void FullTextSearchDialogTest::
+    RestoresAndCapturesGeometryOnlyForIdleDismissal() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+
+    FullTextSearchDialog default_dialog(preferences, &service);
+    default_dialog.show();
+    QCoreApplication::processEvents();
+    const QRect default_geometry = default_dialog.geometry();
+
+    FullTextSearchDialog absent_dialog(preferences, &service);
+    absent_dialog.show();
+    QCoreApplication::processEvents();
+    QCOMPARE(absent_dialog.geometry(), default_geometry);
+
+    FullTextSearchDialog invalid_dialog(preferences, &service,
+                                        "not-qt-geometry");
+    invalid_dialog.show();
+    QCoreApplication::processEvents();
+    QCOMPARE(invalid_dialog.geometry(), default_geometry);
+
+    default_dialog.resize(default_geometry.width() + 73,
+                          default_geometry.height() + 41);
+    default_dialog.move(default_geometry.topLeft() + QPoint(29, 31));
+    const QByteArray saved = default_dialog.saveGeometry();
+    const std::string saved_bytes(saved.constData(),
+                                  static_cast<std::size_t>(saved.size()));
+
+    QPointer<FullTextSearchDialog> restored_dialog =
+        new FullTextSearchDialog(preferences, &service, saved_bytes);
+    restored_dialog->show();
+    QCoreApplication::processEvents();
+    QCOMPARE(restored_dialog->saveGeometry(), saved);
+
+    std::vector<std::string> captures;
+    connect(restored_dialog, &FullTextSearchDialog::GeometryCaptured,
+            restored_dialog, [&captures](std::string geometry) {
+                captures.push_back(std::move(geometry));
+            });
+    const QByteArray idle_cancel_geometry = restored_dialog->saveGeometry();
+    CancelButton(restored_dialog)->click();
+    QCOMPARE(captures.size(), std::size_t{1});
+    QCOMPARE(
+        captures.front(),
+        std::string(idle_cancel_geometry.constData(),
+                    static_cast<std::size_t>(idle_cancel_geometry.size())));
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    QVERIFY(restored_dialog.isNull());
+
+    auto* close_dialog = new FullTextSearchDialog(preferences, &service);
+    std::vector<std::string> close_captures;
+    connect(close_dialog, &FullTextSearchDialog::GeometryCaptured, close_dialog,
+            [&close_captures](std::string geometry) {
+                close_captures.push_back(std::move(geometry));
+            });
+    close_dialog->show();
+    QCoreApplication::processEvents();
+    const QByteArray close_geometry = close_dialog->saveGeometry();
+    close_dialog->close();
+    QCOMPARE(close_captures.size(), std::size_t{1});
+    QCOMPARE(close_captures.front(),
+             std::string(close_geometry.constData(),
+                         static_cast<std::size_t>(close_geometry.size())));
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+
+    FullTextSearchDialog active_dialog(preferences, &service);
+    std::size_t active_captures = 0U;
+    connect(&active_dialog, &FullTextSearchDialog::GeometryCaptured,
+            &active_dialog,
+            [&active_captures](const std::string&) { ++active_captures; });
+    active_dialog.show();
+    active_dialog.InitializeQuery(QStringLiteral("blocked"));
+    SearchButton(&active_dialog)->click();
+    QVERIFY(service.WaitForQueries(1U));
+    CancelButton(&active_dialog)->click();
+    QVERIFY(service.WaitForCancellation());
+    QCOMPARE(active_captures, std::size_t{0});
+    QVERIFY(active_dialog.isVisible());
+    service.ReleaseCancelledRequest();
 }
 
 void FullTextSearchDialogTest::

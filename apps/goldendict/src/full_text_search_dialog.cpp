@@ -3,6 +3,7 @@
 #include "full_text_search_dialog.h"
 
 #include <QApplication>
+#include <QCloseEvent>
 #include <QEvent>
 #include <QHBoxLayout>
 #include <QKeyEvent>
@@ -45,7 +46,8 @@ class FullTextResultDelegate final : public QStyledItemDelegate {
 
 FullTextSearchDialog::FullTextSearchDialog(
     const goldendict::core::ApplicationPreferences& preferences,
-    const goldendict::core::DictionaryService* service, QWidget* parent)
+    const goldendict::core::DictionaryService* service,
+    const std::string& geometry, QWidget* parent)
     : QDialog(parent),
       completion_notifier_([]() { QApplication::beep(); }),
       controller_([this](std::uint64_t generation,
@@ -145,6 +147,10 @@ FullTextSearchDialog::FullTextSearchDialog(
     connect(results_, &QListView::clicked, this,
             [this](const QModelIndex& index) { ActivateResult(index); });
     controller_.SetService(service);
+    if (!geometry.empty()) {
+        restoreGeometry(QByteArray(geometry.data(),
+                                   static_cast<qsizetype>(geometry.size())));
+    }
 }
 
 FullTextSearchDialog::~FullTextSearchDialog() {
@@ -182,6 +188,16 @@ void FullTextSearchDialog::SetProjectedQuery(
 const goldendict::core::FullTextQuery& FullTextSearchDialog::ProjectedQuery()
     const noexcept {
     return projected_query_;
+}
+
+void FullTextSearchDialog::closeEvent(QCloseEvent* event) {
+    if (!active_generation_.has_value() && !geometry_captured_) {
+        const QByteArray geometry = saveGeometry();
+        geometry_captured_ = true;
+        emit GeometryCaptured(std::string(
+            geometry.constData(), static_cast<std::size_t>(geometry.size())));
+    }
+    QDialog::closeEvent(event);
 }
 
 bool FullTextSearchDialog::eventFilter(QObject* watched, QEvent* event) {

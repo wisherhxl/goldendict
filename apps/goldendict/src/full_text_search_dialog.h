@@ -21,6 +21,7 @@ class QLabel;
 class QListView;
 class QProgressBar;
 class QPushButton;
+class QCloseEvent;
 
 namespace goldendict::app {
 
@@ -43,7 +44,7 @@ class FullTextSearchDialog final : public QDialog {
     explicit FullTextSearchDialog(
         const goldendict::core::ApplicationPreferences& preferences,
         const goldendict::core::DictionaryService* service,
-        QWidget* parent = nullptr);
+        const std::string& geometry = {}, QWidget* parent = nullptr);
     ~FullTextSearchDialog() override;
 
     void SetService(const goldendict::core::DictionaryService* service);
@@ -54,8 +55,10 @@ class FullTextSearchDialog final : public QDialog {
 
    signals:
     void ResultActivationRequested(FullTextResultActivationIntent intent);
+    void GeometryCaptured(std::string geometry);
 
    protected:
+    void closeEvent(QCloseEvent* event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;
 
    private:
@@ -111,6 +114,7 @@ class FullTextSearchDialog final : public QDialog {
     std::optional<ActivationContext> accepted_activation_context_;
     std::optional<std::uint64_t> active_generation_;
     std::uint64_t generation_ = 0U;
+    bool geometry_captured_ = false;
 };
 
 }  // namespace goldendict::app

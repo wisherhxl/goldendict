@@ -97,6 +97,7 @@ class MainWindow final : public QMainWindow {
     void SetNetworkCacheDirectory(const QString& directory);
     bool RestoreMainWindowGeometry(const std::string& geometry);
     std::string CaptureMainWindowGeometry() const;
+    void SetFullTextDialogGeometry(std::string geometry);
     bool RestoreMainWindowState(const std::string& state);
     std::string CaptureMainWindowState() const;
     void SetHistoryWords(const QStringList& words);
@@ -220,6 +221,7 @@ class MainWindow final : public QMainWindow {
     void ImportHistoryRequested(const QString& path, std::uint32_t group_id);
     void DictionaryGroupsEdited();
     void ArticleTabSessionMutated();
+    void FullTextDialogGeometryCaptured(std::string geometry);
 
    private slots:
     void EditSourceDirectories();
@@ -407,6 +409,7 @@ class MainWindow final : public QMainWindow {
     QAction* search_in_page_action_ = nullptr;
     QAction* full_text_search_action_ = nullptr;
     QPointer<goldendict::app::FullTextSearchDialog> full_text_search_dialog_;
+    std::string full_text_dialog_geometry_;
     QAction* visit_homepage_action_ = nullptr;
     QAction* open_config_folder_action_ = nullptr;
     QAction* about_action_ = nullptr;

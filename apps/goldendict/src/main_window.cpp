@@ -5965,11 +5965,17 @@ void MainWindow::ShowFullTextSearch() {
         return;
     if (full_text_search_dialog_ == nullptr) {
         full_text_search_dialog_ = new goldendict::app::FullTextSearchDialog(
-            preferences_, &facade_->GetDictionaryService(), this);
+            preferences_, &facade_->GetDictionaryService(),
+            full_text_dialog_geometry_, this);
         connect(
             full_text_search_dialog_,
             &goldendict::app::FullTextSearchDialog::ResultActivationRequested,
             this, &MainWindow::NavigateToFullTextResult);
+        connect(full_text_search_dialog_,
+                &goldendict::app::FullTextSearchDialog::GeometryCaptured, this,
+                [this](std::string geometry) {
+                    emit FullTextDialogGeometryCaptured(std::move(geometry));
+                });
         full_text_search_dialog_->InitializeQuery(query_->text());
     }
     auto* composer = full_text_search_dialog_
@@ -5980,6 +5986,10 @@ void MainWindow::ShowFullTextSearch() {
     full_text_search_dialog_->show();
     full_text_search_dialog_->raise();
     full_text_search_dialog_->activateWindow();
+}
+
+void MainWindow::SetFullTextDialogGeometry(std::string geometry) {
+    full_text_dialog_geometry_ = std::move(geometry);
 }
 
 void MainWindow::NavigateToFullTextResult(
@@ -6291,6 +6301,12 @@ void MainWindow::RunFullTextDialogSmokeCheck(
 
     const auto actions = search_menu->actions();
     const auto preferences_before = preferences_;
+    std::vector<std::string> captured_geometries;
+    const auto geometry_connection =
+        connect(this, &MainWindow::FullTextDialogGeometryCaptured, this,
+                [&captured_geometries](std::string geometry) {
+                    captured_geometries.push_back(std::move(geometry));
+                });
     bool passed =
         actions.size() == 2 && actions[0] == search_in_page_action_ &&
         actions[1] == full_text_search_action_ &&
@@ -6511,7 +6527,8 @@ void MainWindow::RunFullTextDialogSmokeCheck(
         cancel_button->click();
         passed = passed && search_button->isEnabled() &&
                  cancel_button->isEnabled() && progress->isHidden() &&
-                 full_text_search_dialog_.data() == first;
+                 full_text_search_dialog_.data() == first &&
+                 captured_geometries.empty();
 
         search_button->click();
         QElapsedTimer terminal_wait;
@@ -6532,11 +6549,20 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     auto* current_facade = facade_;
     SetFacade(current_facade);
     passed = passed && full_text_search_dialog_.data() == first &&
-             full_text_search_action_->isEnabled();
+             full_text_search_action_->isEnabled() &&
+             captured_geometries.empty();
+    first->resize(first->width() + 71, first->height() + 43);
+    first->move(first->pos() + QPoint(23, 29));
+    const QByteArray idle_cancel_geometry = first->saveGeometry();
     cancel_button->click();
     QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     QApplication::processEvents();
-    passed = passed && full_text_search_dialog_ == nullptr;
+    passed =
+        passed && full_text_search_dialog_ == nullptr &&
+        captured_geometries.size() == 1U &&
+        captured_geometries.front() ==
+            std::string(idle_cancel_geometry.constData(),
+                        static_cast<std::size_t>(idle_cancel_geometry.size()));
 
     query_->setText(QStringLiteral("fresh shell query"));
     full_text_search_action_->trigger();
@@ -6553,6 +6579,7 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     passed =
         passed && reopened != nullptr && reopened_query != nullptr &&
         reopened_mode != nullptr &&
+        reopened->saveGeometry() == idle_cancel_geometry &&
         reopened_mode->currentData().toInt() ==
             static_cast<int>(preferences_.full_text_search_mode) &&
         reopened_query->text() == QStringLiteral("fresh shell query") &&
@@ -6595,15 +6622,24 @@ void MainWindow::RunFullTextDialogSmokeCheck(
                 session_before_limit_failure &&
             status_->text() == QStringLiteral("Unable to update article state");
     }
-    if (reopened != nullptr)
+    QByteArray window_close_geometry;
+    if (reopened != nullptr) {
+        window_close_geometry = reopened->saveGeometry();
         reopened->close();
+    }
     QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
-    passed = passed && preferences_ == preferences_before;
+    passed =
+        passed && preferences_ == preferences_before &&
+        captured_geometries.size() == 2U &&
+        captured_geometries.back() ==
+            std::string(window_close_geometry.constData(),
+                        static_cast<std::size_t>(window_close_geometry.size()));
     activation_events.clear();
     NavigateToFullTextResult(ordered_intent);
     passed = passed && activation_events.empty() && requests_.empty();
     disconnect(session_connection);
     disconnect(lookup_connection);
+    disconnect(geometry_connection);
     SetFacade(nullptr);
     activation_events.clear();
     NavigateToFullTextResult(ordered_intent);
