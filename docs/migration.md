@@ -3074,6 +3074,70 @@ migrated response's bounded partial-without-results fact. P8-FT-26 is complete.
 No successor after
 P8-FT-26 is selected or ranked.
 
+### Phase 8 full-text accepted-error count presentation (selected)
+
+The independent documentation-only post-P8-FT-26 readiness audit is pinned to
+clean migrated revision `e6c85cb99f350eb1b82bd83ad138d4f2695b8bfe` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-27: privately present the authoritative
+accepted full-text error count.
+
+P8-FT-27 is dependency-ready because P8-FT-9 accepts only the current terminal
+generation and P8-FT-11 retains its complete `FullTextResponse`, including the
+bounded ordered error collection. One private Widgets-owned status consumes
+only that collection's size. Core remains authoritative for the collection.
+No public API, DTO, persistence, dependency, adapter, index-format, or build-
+system change is required.
+
+The status reads `Errors: %1` with `%1` replaced by the decimal error count
+exactly when a generation-current accepted response contains one or more
+errors. Initial state, replacement submission, and accepted error-free
+responses hide it. It may coexist with the terminal-failure, mixed-result,
+partial, or partial-empty statuses without changing their predicates or the
+authoritative `partial` flag. Widgets neither deduplicates errors nor infers a
+dictionary count and exposes no dictionary ID, error code, backend message, or
+raw detail. Stale or cancelled completions, controller detachment, service
+replacement, and teardown cannot introduce or overwrite the current status.
+Results, ordering, selection, focus, activation, count, response ownership,
+and existing status behavior remain unchanged.
+
+Focused future acceptance covers zero, one, and multiple accepted errors
+across every existing error-code category; error-only, mixed-result, partial-
+empty, partial-nonempty, and error-free responses; repeated accepted
+transitions and replacement reset; and stale, cancelled, detached, replaced-
+service, and teardown completion safety. It also proves that no dictionary ID,
+error code, backend message, or raw detail is displayed. The focused future
+command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-27 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or compiled test.
+
+Error-detail contents; exact `document_id` navigation and source-dictionary
+targeting; columns, icons, additional metadata roles, and other decoration;
+match ranges and excerpt presentation; highlighting, ignore-diacritics
+transfer, and WebEngine handoff; Preferences enablement, format exclusions,
+size/index policy, and persistence; index readiness, visibility, status,
+progress, background lifecycle, rebuild, and failure UI; adapters, `.gdfts`,
+legacy `_FTS`, index formats, dependencies, builds, and unrelated parity remain
+independent surfaces. They are decomposed only; none is selected or ranked. No
+public API, DTO, persistence, Core, adapter, index, dependency, or build surface
+belongs to P8-FT-27.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
+installed `FullTextResponse` contract, and completed P8-FT-9/P8-FT-11/P8-FT-22
+through P8-FT-26. Pinned legacy `fulltextsearch.cc:448-449,499-586` reports only
+the aggregate result count and silently contains individual dictionary
+failures, so it supplies no error-detail presentation contract. P8-FT-27
+therefore presents only the migrated response's bounded aggregate error count.
+No successor after P8-FT-27 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
