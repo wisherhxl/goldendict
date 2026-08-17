@@ -2630,6 +2630,41 @@ legacy dirtiness, ambiguous sizing evidence or acceptance behavior, an
 architectural choice requiring HTTP GET policy, or scope expansion; pinned
 checks repeat before commit and push.
 
+### Phase 8 full-text dialog initial-size acceptance
+
+The documentation-only post-P8-FT-34 audit selects P8-FT-35 as the sole next
+leaf. Pinned legacy `fulltextsearch.ui:5-12` requires the private Widgets dialog
+to initialize at exactly 492 by 593 logical pixels when stored geometry is
+absent or rejected by Qt. P8-FT-34's 430-by-450 minimum is established first,
+and P8-FT-33's valid one-time restore continues to override the initial size.
+
+Extend `full_text_search_dialog_test`; add no executable or registered test.
+Coverage must prove exact `size() == QSize(492, 593)` for absent and rejected
+geometry, valid larger restoration, undersized restoration clamping, and later
+resizing to another valid size. Existing geometry capture, dismissal,
+cancellation, completion, activation, replacement, service replacement,
+detachment, teardown, and minimum-size coverage remain unchanged.
+
+The focused command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release build. The full implementation gate is Linux Release configure/build,
+exactly 109 registered tests and full `ctest --preset conan-release`, clean
+committed exact-SCM `conan create` with the Release Qt WebEngine host profile
+and packaged consumers, Release install, and standalone installed C and C++
+consumers. P8-FT-35 changes no installed interface, so both consumers remain
+unchanged and source-compatible but are retained as the stronger package gate.
+
+This audit is documentation-only, so no compiled build or test is run. Help
+integration, maximum/aspect constraints, screen/topology normalization,
+placement fallback, DPI policy beyond Qt logical sizing, other dialog state,
+query semantics, excerpts, document/source targeting, decoration,
+Preferences/index policy, index lifecycle, adapters/index formats,
+dependencies, builds, and unrelated suites remain excluded and unranked. No
+successor after P8-FT-35 is selected or ranked. Implementation must stop on
+ref/worktree drift, legacy dirtiness, ambiguous sizing evidence or acceptance,
+an architectural choice requiring HTTP GET policy, or scope expansion; pinned
+checks repeat before commit and push.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

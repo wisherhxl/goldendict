@@ -3421,6 +3421,53 @@ sets the exact minimum before the existing one-time geometry restore, leaving
 Qt to enforce the private logical-size constraint without adding placement or
 normalization policy.
 
+### Phase 8 full-text dialog initial-size contract (selected)
+
+The independent documentation-only post-P8-FT-34 audit is pinned to clean
+migrated revision `7ff83942ab6b71dda1a0a798eb0dcbe8ef1ccd24` and unchanged
+clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-35: preserve the legacy full-text
+dialog's private Widgets initial logical size.
+
+P8-FT-7 owns the modeless dialog and layout, P8-FT-33 owns one-time geometry
+restoration, and P8-FT-34 owns the 430-by-450 minimum. Pinned legacy
+`fulltextsearch.ui:5-12` supplies the exact independent contract: absent stored
+geometry initializes the dialog to 492 logical pixels wide and 593 logical
+pixels high. Under the shared-library/GUI rule, Widgets alone owns this size;
+Core, the composition root, and installed consumers do not interpret it.
+
+Every newly constructed dialog must have `size() == QSize(492, 593)` after
+layout construction when stored geometry is absent or rejected by Qt. Widgets
+establishes that size after the P8-FT-34 minimum and before P8-FT-33's restore.
+Valid restored geometry continues to win, undersized restored geometry remains
+clamped, and later direct resizing and all persistence and lifecycle behavior
+remain unchanged.
+
+P8-FT-35 changes no Core contract, installed header, public DTO, dependency,
+adapter, index format, persistence, or build surface. Focused implementation
+acceptance extends `full_text_search_dialog_test` with exact absent and
+Qt-rejected initialization, valid larger restoration, undersized restoration
+clamping, later direct resizing, and P8-FT-33/P8-FT-34 regressions. The focused
+Release command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built.
+
+The full implementation gate is Linux Release configure/build, exactly 109
+registered tests and full `ctest --preset conan-release`, clean committed
+exact-SCM `conan create` with the Release Qt WebEngine host profile and
+packaged consumers, Release install, and standalone installed C and C++
+consumers. They remain unchanged and source-compatible because P8-FT-35 adds
+no installed interface, and remain the stronger package gate.
+
+Help integration; maximum size and aspect ratio; screen/topology normalization,
+placement fallback, and DPI policy beyond Qt logical sizing; other dialog
+state; query semantics; excerpts; exact document/source targeting; decoration;
+Preferences/index policy; index lifecycle; adapters/index formats;
+dependencies; builds; and unrelated parity remain independently decomposed,
+unselected, and unranked. No successor after P8-FT-35 is selected or ranked.
+
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
