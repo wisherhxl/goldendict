@@ -3206,6 +3206,82 @@ activation intentionally consumes neither today. P8-FT-28 completes only the
 accepted private prerequisite; it does not select a consumer. No successor
 after P8-FT-28 is selected or ranked.
 
+### Phase 8 full-text accepted-query article-search handoff (selected)
+
+The independent documentation-only post-P8-FT-28 readiness audit is pinned to
+clean migrated revision `c6c8a8cc6943de8ef2ecd85a0dc152e0c6459f05` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-29: privately hand the exact accepted
+query text to the existing per-tab article-search and Qt WebEngine
+presentation after full-text result activation.
+
+P8-FT-29 is dependency-ready because P8-FT-28 delivers the accepted query text
+by value with the exact result and immutable dictionary scope, P8-FT-16 opens
+that result through current-tab scoped navigation, and MainWindow already owns
+per-tab article-search state and literal `QWebEngineView::findText` dispatch.
+The handoff remains private to Widgets. No public API, DTO, persistence, Core,
+dependency, adapter, index-format, or build-system change is required.
+
+After successful activation and navigation acceptance, the target tab replaces
+any prior article-search query and status with the exact accepted UTF-8 query
+text. Only successful loading of that activation's nonempty lookup page may
+dispatch the same text through Qt WebEngine's existing literal find operation.
+The dispatch is bound to the target tab, lookup/presentation generation, and
+live `ArticleView`; a stale load or callback cannot highlight or report status
+for a later page, another tab, or a replacement view. The resulting match count
+uses the existing article-search status behavior and the active tab projects
+that private per-tab state through the existing search-in-page controls.
+
+Navigation rejection leaves existing article-search state unchanged. Failed or
+empty lookup, tab closure or replacement, facade replacement, and teardown
+cannot dispatch or revive the pending full-text query. Ordinary lookup,
+internal-link navigation, history replay, session restoration, and manual
+search-in-page keep their existing behavior and do not infer full-text context.
+The main query edit, full-text dialog state, navigation identity and history,
+dictionary scope, article composition, result metadata, selection, focus,
+counts, and response statuses remain unchanged.
+
+Focused future acceptance covers exact UTF-8 query transfer; replacement of a
+prior per-tab article-search query and status; one post-load literal find on the
+activated current tab; match and no-match status projection; inactive-tab
+isolation; and stale lookup, stale load, stale find callback, closed/replaced
+view, failed navigation, failed/empty lookup, facade replacement, and teardown
+safety. Existing full-text activation, scoped navigation, article search,
+WebEngine interaction, tab, history, and session coverage remains green. The
+focused future command is
+`ctest --preset conan-release -R '^(goldendict_full_text_dialog_smoke|goldendict_webengine_interaction_smoke)$'`
+after the Release target has been built. The full future implementation gate
+remains Linux Release configure/build, full `ctest --preset conan-release`
+without an unintended registration delta, clean exact-SCM `conan create` with
+the Release Qt WebEngine host profile and packaged consumers, Release install,
+and standalone installed C and C++ consumers. P8-FT-29 adds no test executable
+or public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or compiled test.
+
+The authoritative `ignore_diacritics` value remains delivered but unconsumed:
+Qt WebEngine's literal find interface exposes no matching diacritics policy,
+and P8-FT-29 does not emulate one or claim legacy regular-expression
+equivalence. Ignore-diacritics semantics, legacy search-expression/regular-
+expression construction, match-range or excerpt rendering, and exact
+`document_id` navigation or source-dictionary targeting remain independent
+successors. Columns, icons, additional metadata roles, and other decoration;
+Preferences enablement, format exclusions, size/index policy, and persistence;
+index readiness, visibility, status, progress, background lifecycle, rebuild,
+and failure UI; adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies,
+builds, and unrelated parity also remain separate. They are decomposed only;
+none is selected or ranked.
+
+Evidence is completed P8-FT-16/P8-FT-28, migrated
+`full_text_search_dialog.h/.cpp`, `main_window.cpp:5887-5920,7556-7730`, the
+existing full-text-dialog and WebEngine interaction smokes, and pinned legacy
+`fulltextsearch.cc:499-586`. Legacy activation transfers a regular expression
+and ignore-diacritics choice into article presentation; the migrated tree has
+only a private literal per-tab article-search boundary ready independently.
+P8-FT-29 selects that bounded handoff only. No successor after P8-FT-29 is
+selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a

@@ -2378,6 +2378,55 @@ P8-FT-9/P8-FT-11/P8-FT-13/P8-FT-15/P8-FT-16, migrated
 `main_window.cpp:5887-5920`, and pinned legacy
 `fulltextsearch.cc:499-586`. No successor after P8-FT-28 is selected or ranked.
 
+## Phase 8 Full-Text Accepted-Query Article-Search Handoff Gate (Selected)
+
+The post-P8-FT-28 documentation audit selects only P8-FT-29. Completed exact
+accepted-query delivery and current-tab scoped navigation make a private
+handoff to MainWindow's existing per-tab article-search state and literal Qt
+WebEngine find operation independently testable without changing Core or an
+installed interface.
+
+Focused future coverage must prove that successful full-text activation and
+navigation acceptance replace the target tab's prior article-search query and
+status with the exact accepted UTF-8 query text. Successful loading of the
+corresponding nonempty lookup page must dispatch that same text exactly once
+through the existing literal find operation. Match and no-match callbacks must
+update only the generation-current per-tab status and project it through the
+search-in-page controls only while that tab is active.
+
+Coverage must isolate inactive tabs and reject stale lookup, load, and find
+callbacks by tab ID, lookup/presentation generation, and live `ArticleView`.
+Failed navigation must preserve existing article-search state. Failed or empty
+lookup, tab closure or replacement, facade replacement, and teardown must not
+dispatch, retain, revive, or project the pending full-text query. Ordinary
+lookup, internal-link navigation, history/session replay, and manual
+search-in-page behavior must remain unchanged, as must existing full-text
+activation, dictionary scope, navigation identity, and main-query preservation.
+
+The focused future command is
+`ctest --preset conan-release -R '^(goldendict_full_text_dialog_smoke|goldendict_webengine_interaction_smoke)$'`
+after the Release target has been built. The full future implementation gate
+remains Linux Release configure/build, full `ctest --preset conan-release`
+without an unintended registration delta, clean exact-SCM `conan create` with
+the Release Qt WebEngine host profile and packaged consumers, Release install,
+and standalone installed C and C++ consumers. P8-FT-29 adds no test executable
+or public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or compiled test.
+
+The delivered `ignore_diacritics` value is excluded because Qt WebEngine's
+literal find interface exposes no corresponding policy. Legacy regular-
+expression equivalence, match ranges and excerpts, exact `document_id`
+navigation and source targeting, decoration, Preferences and index lifecycle,
+adapters and index formats, dependencies, build work, and unrelated suites are
+excluded and remain separately decomposed without ranking. No public API, DTO,
+persistence, Core, adapter, index, dependency, or build surface belongs to
+P8-FT-29.
+
+Evidence is completed P8-FT-16/P8-FT-28, migrated
+`full_text_search_dialog.h/.cpp`, `main_window.cpp:5887-5920,7556-7730`, the
+existing full-text-dialog and WebEngine interaction smokes, and pinned legacy
+`fulltextsearch.cc:499-586`. No successor after P8-FT-29 is selected or ranked.
+
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
