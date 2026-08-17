@@ -3230,19 +3230,20 @@ is exact four-file scope, cross-document consistency, Phase terminology,
 successor neutrality, the exact Conan command, `git diff --check`, and clean
 pinned refs and worktrees.
 
-## Phase 8 Full-Text Regular-Expression Mode-Text Gate (Selected)
+## Phase 8 Full-Text Regular-Expression Mode-Text Gate (Complete)
 
 The documentation-only post-P8-FT-47 audit selects P8-FT-48 as the sole next
 leaf. Pinned legacy `fulltextsearch.cc:232-236` gives the fourth item of the
 unique search-mode selector exact translatable text `RegExp` and maps it to
-regular-expression mode. Current `full_text_query_composer.cpp:60-75` maps the
-same fourth item of the unique private `fullTextQueryMode` selector to
-`FullTextSearchMode::kRegularExpression` but displays `Regular expression`.
+regular-expression mode. Before P8-FT-48,
+`full_text_query_composer.cpp:60-75` mapped the same fourth item of the unique
+private `fullTextQueryMode` selector to
+`FullTextSearchMode::kRegularExpression` but displayed `Regular expression`.
 P8-FT-1 through P8-FT-47 supply the selector, four-item order and values,
 persistence, query composition, containing layout, focus/tab behavior, and
 request-lifecycle prerequisites.
 
-Focused acceptance will extend only `full_text_query_composer_test`. It must
+Completed focused acceptance extends only `full_text_query_composer_test`. It
 prove that the unique selector's fourth item has exact text `RegExp` and
 retains its `FullTextSearchMode::kRegularExpression` data through construction,
 every mode and option transition, and repeated composition. Existing dialog
@@ -3275,20 +3276,19 @@ index formats, dependencies/builds, public/Core or composition-root changes,
 HTTP GET policy, and unrelated tests are excluded and unranked. No successor
 after P8-FT-48 is selected or ranked.
 
-Its future implementation is limited to the private composer, its existing
-focused test, and these four governing documents. Implementation must stop on
-ref/worktree drift, legacy dirtiness, ambiguous mapping or acceptance
-semantics, any second item, label, or behavior, caption-bound policy, broader
+P8-FT-48 is complete. Its implementation is limited to the private composer,
+its existing focused test, and these four governing documents. Implementation
+must stop on ref/worktree drift, legacy dirtiness, ambiguous mapping or
+acceptance semantics, any second item, label, or behavior, caption-bound policy, broader
 layout work, mnemonic or translation-catalog work, public/Core or
 composition-root expansion, dependency or installed-surface change, an
 architectural decision requiring HTTP GET policy, discovery of another
 required file, or scope expansion. This documentation audit's gate is exact
 four-file scope, cross-document consistency, Phase terminology, successor
 neutrality, the exact Conan command, `git diff --check`, and clean pinned refs
-and worktrees. No production or test file changes in this documentation-only
-audit; builds and tests are intentionally skipped. Any later stateful
-WebEngine smoke must run from freshly quarantined repository-owned build-tree
-`HOME` and XDG state, never real user configuration.
+and worktrees. Any later stateful WebEngine smoke must run from freshly
+quarantined repository-owned build-tree `HOME` and XDG state, never real user
+configuration.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

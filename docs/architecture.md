@@ -4218,7 +4218,7 @@ is exact four-file scope, cross-document consistency, Phase terminology,
 successor neutrality, the exact Conan command, `git diff --check`, and clean
 pinned refs and worktrees.
 
-### Phase 8 full-text regular-expression mode-text parity (selected)
+### Phase 8 full-text regular-expression mode-text parity (complete)
 
 The independent documentation-only post-P8-FT-47 audit is pinned to clean
 migrated revision `f4bf4d3fc40de94913563d49f1fa824261c3c1d4`, its identical
@@ -4231,17 +4231,19 @@ P8-FT-48: restore the private regular-expression query-mode item text.
 The shared-library/GUI boundary governs this leaf. Pinned legacy
 `fulltextsearch.cc:232-236` adds the fourth item of the unique search-mode
 selector with exact translatable text `RegExp` and maps it to the legacy
-regular-expression mode. Current `full_text_query_composer.cpp:60-75` maps the
-same fourth item of the unique private `fullTextQueryMode` selector to
-`FullTextSearchMode::kRegularExpression` but displays `Regular expression`.
+regular-expression mode. Before P8-FT-48,
+`full_text_query_composer.cpp:60-75` mapped the same fourth item of the unique
+private `fullTextQueryMode` selector to
+`FullTextSearchMode::kRegularExpression` but displayed `Regular expression`.
 P8-FT-1 through P8-FT-47 already own the selector, its four-item order and
 values, persistence, query composition, containing layout, focus and tab
 behavior, and request lifecycle. Widgets therefore owns the complete one-item
 correction; Core, the composition root, and installed consumers acquire no
 presentation contract.
 
-P8-FT-48 changes only the fourth selector item's displayed text to exactly
-`RegExp`. Selector identity, parentage, four-item count and order, enum data,
+The completed implementation changes only the fourth selector item's displayed
+text to exactly `RegExp`. Selector identity, parentage, four-item count and
+order, enum data,
 selected index, persisted mode, query composition, option enablement, focus
 and tab behavior, submission, responses, geometry, and lifecycle behavior
 remain unchanged. The exact text, unique selector, and regular-expression data
@@ -4257,8 +4259,9 @@ Preferences, adapters and index formats, dependencies/builds, public/Core or
 composition-root changes, HTTP GET policy, and unrelated parity are excluded
 and remain unranked. No successor after P8-FT-48 is selected or ranked.
 
-Focused acceptance will extend only `full_text_query_composer_test` to prove
-that the unique selector's fourth item has exact text `RegExp` and retains its
+Completed focused acceptance extends only `full_text_query_composer_test` to
+prove that the unique selector's fourth item has exact text `RegExp` and
+retains its
 `FullTextSearchMode::kRegularExpression` data through construction, mode and
 option transitions, and repeated composition. Existing dialog tests retain
 submission, completion, cancellation, replacement, service replacement,
@@ -4276,11 +4279,11 @@ conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h bu
 ```
 
 P8-FT-48 adds no executable, registration, installed header, DTO, ABI,
-dependency, CMake export, or Conan requirement. Its future implementation is
+dependency, CMake export, or Conan requirement. Its implementation is
 limited to the private composer, its existing focused test, and these four
 governing documents.
 
-No production or test file changes in this documentation-only audit.
+P8-FT-48 is complete. No later successor is selected or ranked.
 Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
 mapping or acceptance semantics, any second item, label, or behavior,
 caption-bound policy, broader layout work, mnemonic or translation-catalog
@@ -4289,8 +4292,7 @@ surface change, an architectural decision requiring HTTP GET policy, discovery
 of another required file, or scope expansion. This audit's gate is exact
 four-file scope, cross-document consistency, Phase terminology, successor
 neutrality, the exact Conan command, `git diff --check`, and clean pinned refs
-and worktrees. Builds and tests are intentionally skipped for this
-documentation-only audit.
+and worktrees.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

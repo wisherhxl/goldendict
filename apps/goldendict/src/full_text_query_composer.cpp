@@ -69,7 +69,7 @@ FullTextQueryComposer::FullTextQueryComposer(
                    QVariant::fromValue(static_cast<int>(
                        goldendict::core::FullTextSearchMode::kWildcard)));
     mode_->addItem(
-        tr("Regular expression"),
+        tr("RegExp"),
         QVariant::fromValue(static_cast<int>(
             goldendict::core::FullTextSearchMode::kRegularExpression)));
 

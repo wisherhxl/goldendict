@@ -47,7 +47,7 @@ void VerifyModeSelector(FullTextQueryComposer& composer) {
 
     const std::array<QString, 4> expected_texts = {
         QStringLiteral("Whole words"), QStringLiteral("Plain text"),
-        QStringLiteral("Wildcards"), QStringLiteral("Regular expression")};
+        QStringLiteral("Wildcards"), QStringLiteral("RegExp")};
     const std::array<FullTextSearchMode, 4> expected_modes = {
         FullTextSearchMode::kWholeWords, FullTextSearchMode::kPlainText,
         FullTextSearchMode::kWildcard, FullTextSearchMode::kRegularExpression};
@@ -59,6 +59,10 @@ void VerifyModeSelector(FullTextQueryComposer& composer) {
     QCOMPARE(selector->findText(QStringLiteral("Wildcards")), 2);
     QCOMPARE(
         selector->findData(static_cast<int>(FullTextSearchMode::kWildcard)), 2);
+    QCOMPARE(selector->findText(QStringLiteral("RegExp")), 3);
+    QCOMPARE(selector->findData(
+                 static_cast<int>(FullTextSearchMode::kRegularExpression)),
+             3);
 }
 
 goldendict::core::DictionaryIdentity Identity(const std::string& id,
@@ -276,6 +280,9 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
           goldendict::core::FullTextSearchMode::kRegularExpression}) {
         SelectMode(composer, mode);
         VerifyModeSelector(composer);
+        QCOMPARE(mode_selector->currentIndex(),
+                 mode_selector->findData(static_cast<int>(mode)));
+        QCOMPARE(mode_selector->currentData().toInt(), static_cast<int>(mode));
         QCOMPARE(Control<QComboBox>(composer, "fullTextQueryMode"),
                  mode_selector);
         QCOMPARE(form->labelForField(mode_selector), mode_label);
@@ -351,10 +358,20 @@ void FullTextQueryComposerTest::
     QVERIFY(mode_label != nullptr);
     QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
     query_field->setText(QString::fromUtf8("repeatable Δ"));
+    SelectMode(composer,
+               goldendict::core::FullTextSearchMode::kRegularExpression);
+    QCOMPARE(mode_selector->currentIndex(),
+             mode_selector->findData(static_cast<int>(
+                 goldendict::core::FullTextSearchMode::kRegularExpression)));
+    QCOMPARE(mode_selector->currentData().toInt(),
+             static_cast<int>(
+                 goldendict::core::FullTextSearchMode::kRegularExpression));
 
     const auto first = composer.Compose();
     const auto second = composer.Compose();
     VerifyModeSelector(composer);
+    QCOMPARE(first.mode,
+             goldendict::core::FullTextQueryMode::kRegularExpression);
     QCOMPARE(second.text, first.text);
     QCOMPARE(second.mode, first.mode);
     QCOMPARE(second.match_case, first.match_case);
