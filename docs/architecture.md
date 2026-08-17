@@ -3366,7 +3366,7 @@ unselected, and unranked. No successor after P8-FT-33 is selected or ranked.
 The implementation remains bounded to the private Widgets/application
 connection, its existing tests, and the four governing documents.
 
-### Phase 8 full-text dialog minimum-size contract (selected)
+### Phase 8 full-text dialog minimum-size contract (complete)
 
 The independent documentation-only post-P8-FT-33 audit is pinned to clean
 migrated revision `eb4911bd8fd82402f0dc5b861da65aecb0927633` and unchanged
@@ -3415,8 +3415,11 @@ dialog state, query semantics, excerpts, exact document/source targeting,
 decoration, Preferences/index policy, index lifecycle, adapters/index formats,
 dependencies, builds, and unrelated parity remain independently decomposed,
 unselected, and unranked. No successor after P8-FT-34 is selected or ranked.
-Future implementation remains bounded to the private Widgets dialog, its
-existing focused test, and the four governing documents.
+The completed implementation remains bounded to the private Widgets dialog,
+its existing focused test, and the four governing documents. The constructor
+sets the exact minimum before the existing one-time geometry restore, leaving
+Qt to enforce the private logical-size constraint without adding placement or
+normalization policy.
 
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

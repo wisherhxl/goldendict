@@ -2592,7 +2592,7 @@ Preferences/index policy, index lifecycle, adapters/index formats,
 dependencies, builds, and unrelated suites remain excluded, unselected, and
 unranked. No successor after P8-FT-33 is selected or ranked.
 
-## Phase 8 Full-Text Dialog Minimum-Size Gate (Selected)
+## Phase 8 Full-Text Dialog Minimum-Size Gate (Complete)
 
 The post-P8-FT-33 documentation audit selects only P8-FT-34. The existing
 private modeless dialog and Widgets-owned geometry restoration make the pinned
@@ -2618,9 +2618,8 @@ and standalone installed C and C++ consumers. P8-FT-34 changes no installed
 interface, so both consumers remain unchanged and source-compatible; they are
 still required as the stronger package gate.
 
-This audit is documentation-only. Compiled builds, tests, install, and Conan
-creation are intentionally not run; those commands are the future
-implementation gate. Default or initial size, maximum size, aspect ratio,
+The completed implementation extends the existing test executable without a
+registration change. Default or initial size, maximum size, aspect ratio,
 screen/topology normalization, placement fallback, DPI policy beyond Qt
 logical sizing, other dialog state, query semantics, excerpts, exact
 document/source targeting, decoration, Preferences/index policy, index

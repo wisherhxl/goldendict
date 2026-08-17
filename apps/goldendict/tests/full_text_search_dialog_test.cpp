@@ -311,6 +311,7 @@ class FullTextSearchDialogTest final : public QObject {
     void SuppressesDuplicateInvalidStaleAndCancelledActivation();
     void ReplacesRunningAndPendingGenerationsAndSuppressesStaleCompletion();
     void ActiveCancellationRestoresIdleStateWithoutDismissal();
+    void EnforcesPinnedMinimumAcrossResizeAndRestore();
     void RestoresAndCapturesGeometryOnlyForIdleDismissal();
     void IdleCancelDismissesThroughDialogLifecycle();
     void ServiceReplacementDetachAndDestructionSuppressLateDelivery();
@@ -1674,6 +1675,37 @@ void FullTextSearchDialogTest::IdleCancelDismissesThroughDialogLifecycle() {
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     QCoreApplication::processEvents();
     QVERIFY(dialog.isNull());
+}
+
+void FullTextSearchDialogTest::EnforcesPinnedMinimumAcrossResizeAndRestore() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+
+    FullTextSearchDialog dialog(preferences, &service);
+    QCOMPARE(dialog.minimumWidth(), 430);
+    QCOMPARE(dialog.minimumHeight(), 450);
+
+    dialog.resize(1, 1);
+    QCOMPARE(dialog.width(), 430);
+    QCOMPARE(dialog.height(), 450);
+
+    QDialog undersized_source;
+    undersized_source.resize(311, 277);
+    undersized_source.show();
+    QCoreApplication::processEvents();
+    const QByteArray undersized_geometry = undersized_source.saveGeometry();
+    const std::string undersized_bytes(
+        undersized_geometry.constData(),
+        static_cast<std::size_t>(undersized_geometry.size()));
+
+    FullTextSearchDialog restored_dialog(preferences, &service,
+                                         undersized_bytes);
+    restored_dialog.show();
+    QCoreApplication::processEvents();
+    QCOMPARE(restored_dialog.minimumWidth(), 430);
+    QCOMPARE(restored_dialog.minimumHeight(), 450);
+    QVERIFY(restored_dialog.width() >= 430);
+    QVERIFY(restored_dialog.height() >= 450);
 }
 
 void FullTextSearchDialogTest::

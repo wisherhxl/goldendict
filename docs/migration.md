@@ -3493,7 +3493,7 @@ unrelated parity remain independently decomposed, unselected, and unranked.
 No successor after P8-FT-33 is selected or ranked.
 The Release registration baseline remains exactly 109 tests.
 
-### Phase 8 full-text dialog minimum-size contract (selected)
+### Phase 8 full-text dialog minimum-size contract (complete)
 
 The independent documentation-only post-P8-FT-33 audit is pinned to clean
 migrated revision `eb4911bd8fd82402f0dc5b861da65aecb0927633` and unchanged
@@ -3525,9 +3525,10 @@ consumers. P8-FT-34 adds no installed interface, executable, dependency, or
 test registration; installed consumers remain unchanged and source-compatible
 but are retained as the stronger package gate.
 
-This audit changes only the four governing documents, so compiled builds,
-tests, install, and Conan creation are intentionally not run; those commands
-are the future implementation gate. Default or initial size, maximum size,
+The completed implementation sets the exact private Widgets minimum before the
+existing one-time geometry restoration and extends only the existing focused
+dialog test. It changes no persistence or public surface. Default or initial
+size, maximum size,
 aspect ratio, screen/topology normalization, placement fallback, DPI policy
 beyond Qt logical sizing, other dialog state, query semantics, excerpts, exact
 document/source targeting, decoration, Preferences/index policy, index

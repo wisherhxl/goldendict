@@ -59,6 +59,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setAttribute(Qt::WA_DeleteOnClose);
     setModal(false);
+    setMinimumSize(430, 450);
 
     composer_ = new FullTextQueryComposer(preferences, this);
     composer_->setObjectName(QStringLiteral("fullTextQueryComposer"));
