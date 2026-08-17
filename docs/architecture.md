@@ -3577,6 +3577,65 @@ or keyboard-policy choice, public/Core or composition-root expansion,
 dependency or installed-surface change, an architectural decision requiring
 HTTP GET policy, or scope expansion.
 
+### Phase 8 full-text dialog tab sequence (selected)
+
+The independent documentation-only post-P8-FT-37 audit is pinned to clean
+migrated revision `9be9e1d8928c25f312b075fdda1674bb44d96013`, its identical
+upstream and live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After rechecking the four
+governing migration documents and relevant current and pinned legacy code
+without advance ranking, it selects exactly one smallest dependency-ready
+leaf, P8-FT-38: restore the private full-text dialog's explicit keyboard tab
+sequence.
+
+The shared-library/GUI boundary governs this leaf. Pinned legacy
+`fulltextsearch.ui:274-285` supplies the exact ordered chain, while current
+`full_text_search_dialog.cpp:65-169` composes the corresponding controls across
+the dialog and nested query composer without a dialog-level tab order. P8-FT-7
+owns the private modeless dialog, P8-FT-31 owns Cancel lifecycle behavior, and
+P8-FT-37 owns the Search button's default policy. Widgets therefore owns the
+complete correction; Core, the composition root, and installed consumers do
+not acquire a focus or keyboard contract.
+
+P8-FT-38 establishes this consecutive forward chain:
+`fullTextQueryText`, `fullTextSearchResults`,
+`fullTextUseMaximumWordDistance`, `fullTextMaximumWordDistance`,
+`fullTextQueryMode`, `fullTextUseMaximumArticles`,
+`fullTextMaximumArticlesPerDictionary`, `fullTextMatchCase`,
+`fullTextSearchButton`, and `fullTextCancelButton`. The chain is stable after
+construction and through idle, submission, completion, and active cancellation;
+temporarily disabled controls do not cause Widgets to rewrite it.
+
+Initial or transferred focus, focus policies, traversal after Cancel or before
+the query field, and the relative placement of omitted controls including
+Ignore Diacritics, Ignore Word Order, and Help are excluded. Return/Enter
+dispatch, shortcuts, button default policies, search and response behavior,
+index lifecycle and presentation, Preferences/index policy, adapters/index
+formats, dependencies, builds, and unrelated parity also remain independently
+decomposed, unselected, and unranked. No successor after P8-FT-38 is selected
+or ranked.
+
+Focused implementation acceptance extends only
+`full_text_search_dialog_test` to inspect the exact named forward chain across
+the stated transitions and retain regressions for initial query focus, Search
+default policy, Cancel behavior, Help activation, and request lifecycle. The
+focused Release command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
+implementation gate remains Linux Release configure/build, exactly 109
+registered tests and full Release CTest, clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile and packaged
+consumers, Release install, and standalone installed C and C++ consumers.
+P8-FT-38 adds no executable, registration, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement, so both consumers remain
+unchanged and source-compatible.
+
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+control mapping or sequence evidence, any need to change focus policies or
+order omitted controls, traversal endpoints or wraparound, initial/transferred
+focus, Return/Enter or shortcut behavior, public/Core or composition-root
+contracts, dependencies or installed surfaces, an architectural decision
+requiring HTTP GET policy, or scope expansion.
+
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

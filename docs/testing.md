@@ -2745,6 +2745,50 @@ This selection audit changes documentation only, so it intentionally skips
 compiled verification. Its gate is exact four-file scope, cross-document
 consistency, Phase terminology, successor language, and `git diff --check`.
 
+### Phase 8 full-text dialog tab-sequence acceptance (selected)
+
+The documentation-only post-P8-FT-37 audit selects P8-FT-38 as the sole next
+leaf. Pinned legacy `fulltextsearch.ui:274-285` authenticates one consecutive
+forward tab chain through the mapped private Widgets controls:
+`fullTextQueryText`, `fullTextSearchResults`,
+`fullTextUseMaximumWordDistance`, `fullTextMaximumWordDistance`,
+`fullTextQueryMode`, `fullTextUseMaximumArticles`,
+`fullTextMaximumArticlesPerDictionary`, `fullTextMatchCase`,
+`fullTextSearchButton`, and `fullTextCancelButton`.
+
+Focused implementation acceptance extends only
+`full_text_search_dialog_test`. It inspects the exact named forward chain after
+construction and through idle, submission, completion, and active cancellation,
+including transitions that temporarily disable controls. It also retains
+regressions for initial query focus, Search default/non-auto-default policy,
+Cancel behavior, Help activation, and request lifecycle. The focused Release
+command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built.
+
+The implementation gate remains Linux Release configure/build, exactly 109
+registered tests and full `ctest --preset conan-release`, clean committed
+exact-SCM `conan create` with the Release Qt WebEngine host profile and
+packaged consumers, Release install, and standalone installed C and C++
+consumers. P8-FT-38 adds no executable, registration, installed interface,
+dependency, CMake export, or Conan requirement; both consumers remain
+unchanged and source-compatible.
+
+Initial/transferred focus, focus-policy changes, traversal before the query or
+after Cancel, wraparound, and placement of Ignore Diacritics, Ignore Word
+Order, Help, or other omitted controls are outside acceptance. Return/Enter
+dispatch, shortcuts, button default policies, search behavior, and unrelated
+tests are also excluded and unranked. No successor after P8-FT-38 is selected
+or ranked. Implementation must stop on ref/worktree drift, legacy dirtiness,
+ambiguous control mapping or sequence evidence, broader keyboard/focus policy,
+public/Core or composition-root expansion, dependency or installed-surface
+change, HTTP GET policy, or scope expansion.
+
+This audit changes only the four governing documents, so compiled verification
+is intentionally skipped. Validate exact four-file scope, cross-document
+consistency, Phase terminology, sole-leaf and successor language, and
+`git diff --check`.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
