@@ -266,6 +266,32 @@ Standalone installed C and C++ consumers remain unchanged and source-
 compatible. P8-FT-44 is complete. No successor after P8-FT-44 is selected or
 ranked.
 
+P8-FT-45 supersedes that historical closure and selects only the private
+full-text query-mode label parity leaf. Pinned legacy
+`fulltextsearch.ui:41-53` associates exact translatable text `Mode:` with the
+unique search-mode selector, while current
+`full_text_query_composer.cpp:60-74,131-134` maps that selector to the unique
+private `fullTextQueryMode` combo box but labels its form row `Mode`. The future
+leaf changes only that associated label after P8-FT-1 through P8-FT-44,
+preserving the association, selector identity, values, ordering, state,
+focus/tab behavior, persistence, query composition, request/response lifecycle,
+geometry, public/Core and installed contracts, dependencies, and test
+registration. The exact label stays stable across relevant control and
+request/lifecycle transitions. Layout restructuring, any other label, mnemonic
+policy, translation-catalog work, indexing lifecycle/UI, Preferences,
+adapters/index formats, dependencies/builds, HTTP GET policy, and unrelated
+parity remain excluded and unranked. The Release baseline remains exactly 109
+tests; exact-SCM creation uses:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Standalone installed C and C++ consumers remain unchanged and source-
+compatible. This documentation-only selection changes exactly the four
+governing documents and intentionally skips compiled builds and tests. No
+successor after P8-FT-45 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

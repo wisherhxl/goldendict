@@ -4004,6 +4004,73 @@ expansion. Its gate is exact six-file scope, cross-document consistency, Phase
 terminology, successor neutrality, and the full Release, install, consumer,
 and exact-SCM verification described above.
 
+### Phase 8 full-text query-mode label parity (selected)
+
+The independent documentation-only post-P8-FT-44 audit is pinned to clean
+migrated revision `c771e6a47bf8fda61d57dd241d751c6ead8ce454`, its identical
+upstream and fresh live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After rechecking the four
+governing migration documents and relevant current and pinned legacy code
+without advance ranking, it selects exactly one smallest dependency-ready
+leaf, P8-FT-45: restore the private full-text query-mode label.
+
+The shared-library/GUI boundary governs this leaf. Pinned legacy
+`fulltextsearch.ui:41-53` gives the label associated with the unique search-mode
+selector the exact translatable text `Mode:`. Current
+`full_text_query_composer.cpp:60-74,131-134` maps that selector to the unique
+private `fullTextQueryMode` combo box but gives its `QFormLayout` label the text
+`Mode`. P8-FT-1 through P8-FT-44 already own the selector's persistence, four
+modes, query composition, control behavior, containing layout, focus and tab
+behavior, and request lifecycle. Widgets therefore owns the complete text-only
+correction; Core, the composition root, and installed consumers acquire no
+label or presentation contract.
+
+P8-FT-45 changes only the `QFormLayout` label associated with the unique
+`fullTextQueryMode` selector to exactly `Mode:`. The label-field association,
+selector identity, values, ordering, current and enabled state, focus and tab
+behavior, persistence, query composition, submission, responses, geometry,
+and lifecycle behavior remain unchanged. The exact label and association
+remain stable through construction, mode and option transitions, repeated
+composition, submission, generation-current accepted completion, active
+cancellation, replacement, service replacement, and controller detachment.
+
+Layout restructuring, any other label, mnemonic policy, translation-catalog
+work, grammar modernization, indexing lifecycle or UI, Preferences, adapters
+and index formats, dependencies/builds, public/Core or composition-root
+changes, HTTP GET policy, and unrelated parity are excluded and remain
+unranked. No successor after P8-FT-45 is selected or ranked.
+
+Future focused acceptance extends only `full_text_query_composer_test` to use
+`QFormLayout::labelForField()` to prove the unique selector has exactly one
+associated label with exact text `Mode:` and to preserve selector identity,
+values, state, mode transitions, and composition semantics. Existing dialog
+tests retain submission, generation-current completion, cancellation,
+replacement, service replacement, controller detachment, response, geometry,
+and lifecycle regressions. The focused Release command is
+`ctest --preset conan-release -R '^full_text_query_composer_test$'`. The full
+future implementation gate remains Linux Release configure/build, exactly 109
+registered tests and full Release CTest, Release install, packaged consumers,
+standalone installed C and C++ consumers, and clean committed exact-SCM
+creation with:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+P8-FT-45 adds no executable, registration, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement, so both consumers remain
+unchanged and source-compatible. This selection audit changes only these four
+governing documents; compiled builds and tests are intentionally skipped.
+
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+label mapping or acceptance semantics, any second label or behavior change,
+layout restructuring, mnemonic or translation-catalog work, public/Core or
+composition-root expansion, dependency or installed-surface change, an
+architectural decision requiring HTTP GET policy, discovery of another
+required file, or scope expansion. This audit's gate is exact four-file scope,
+cross-document consistency, Phase terminology, successor neutrality,
+`git diff --check`, and clean pinned refs and worktrees.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
