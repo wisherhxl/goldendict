@@ -410,6 +410,45 @@ Full Release CTest, Release install, packaged consumers, and standalone
 installed C and C++ consumer gates remain unchanged. P8-FT-49 is complete. No
 successor after P8-FT-49 is selected or ranked.
 
+P8-FT-50 supersedes that historical closure and is the sole selected next
+leaf. It restores the pinned legacy coupled search-options grid using only the
+existing private composer controls. After the existing full-width unlabeled
+query field, one `QGridLayout` contains word-distance toggle/spin box/mode row
+at coordinates `(0,0)`, `(0,1)`, and `(0,2)`, with the last cell holding the
+existing `Mode:` label then selector in a two-item horizontal layout. Its
+second row contains article-limit toggle/spin box/`Match case` at `(1,0)`,
+`(1,1)`, and `(1,2)`. The completed word-order/diacritics row follows the grid.
+The seven participating widgets remain direct children of the composer, whose
+existing parentage inside the `Search` group is unchanged.
+
+This is layout parity, not semantic rollback. Existing captions, mode texts
+and data, object names, identity, state and enablement, explicit focus/tab
+chain, query composition, persistence, request/response lifecycle, and all
+P8-FT-1 through P8-FT-49 behavior remain unchanged. Word distance retains
+`0..1000`; articles per dictionary retains `1..100000`. Legacy Qt `0..99`
+defaults and range-bearing legacy captions are not restored or synthesized.
+Indexing lifecycle/status UI, Preferences, public/Core/config and installed
+contracts, adapters/index formats, dependencies/builds, layout styling policy,
+new controls or behavior, HTTP GET policy, and unrelated parity are excluded
+and unranked.
+
+Focused future acceptance extends only `full_text_query_composer_test` for the
+unique grid, exact coordinates/order/parentage, unchanged controls, bounds,
+transitions, and repeated composition. Existing dialog coverage retains Search
+group, focus/tab, request, response, geometry, and lifecycle ownership. Add no
+executable or registered test; the Release baseline remains exactly 109.
+Full Release CTest, Release install, packaged consumers, unchanged standalone
+installed C and C++ consumers, and clean committed exact-SCM creation remain
+required:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Stop on ref/worktree or legacy drift, ambiguity, architectural conflict,
+failed validation, another required file, or scope expansion. No successor
+after P8-FT-50 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

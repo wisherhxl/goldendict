@@ -3351,6 +3351,64 @@ and worktrees. Any later stateful
 WebEngine smoke must run from freshly quarantined repository-owned build-tree
 `HOME` and XDG state, never real user configuration.
 
+## Phase 8 Full-Text Coupled Search-Options Grid Gate (Selected)
+
+P8-FT-50 is the sole selected next leaf. Pinned legacy
+`fulltextsearch.ui:28-99` provides the exact grid evidence, and current
+`full_text_query_composer.cpp:56-157` plus its focused tests provide the
+existing control, behavior, and numeric-contract evidence. After the existing
+full-width unlabeled query widget, one unique `QGridLayout` must contain:
+
+- row 0: word-distance toggle at column 0, word-distance spin box at column 1,
+  and a two-item horizontal layout with `Mode:` then the selector at column 2;
+- row 1: article-limit toggle at column 0, article-limit spin box at column 1,
+  and `Match case` at column 2.
+
+The completed ignore-word-order/ignore-diacritics row follows the grid. The
+query, grid, and ignore row are the three ordered items of the composer's
+top-level vertical layout. All seven participating widgets remain unique direct
+child widgets of the composer; only the mode label/selector are nested in the
+grid's row-0/column-2 horizontal layout. The composer and existing `Search`
+group parentage remain unchanged.
+
+Focused future coverage belongs only to `full_text_query_composer_test`. It
+must prove unique grid membership, exact coordinates, nested mode order,
+top-level order and layout parentage, and unchanged widget parentage, identity,
+object names, existing captions, mode texts/data, checked/enabled transitions,
+and repeated `Compose()` results. It must explicitly retain the word-distance
+range `0..1000` and articles-per-dictionary range `1..100000`; legacy Qt
+`0..99` defaults and synthesized legacy range captions are rejected.
+
+Existing `full_text_search_dialog_test` retains Search-group hierarchy,
+explicit focus/tab order, submission, generation-current completion,
+cancellation, replacement, service replacement, controller detachment,
+responses, geometry, and lifecycle regressions. Add no executable or
+registered test. Run the focused Release test with:
+
+```sh
+ctest --preset conan-release -R '^full_text_query_composer_test$'
+```
+
+The full future implementation gate remains Linux Release configure/build,
+exactly 109 registered tests, full Release CTest, Release install, packaged
+consumers, unchanged standalone installed C and C++ consumers, and clean
+committed exact-SCM creation with:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+P8-FT-50 changes no installed interface, but install and consumer checks remain
+the stronger full gate. Existing controls, captions, state, mode behavior,
+composition, persistence, request/response behavior, and P8-FT-1 through
+P8-FT-49 regressions are preserved. Indexing lifecycle/status UI, Preferences,
+adapters/index formats, public/Core/config and installed contracts,
+dependencies/builds, layout styling policy, mnemonic/translation work, new
+controls or behavior, HTTP GET policy, and unrelated tests are excluded and
+unranked. Stop on ref/worktree or legacy drift, ambiguity, architectural
+conflict, failed validation, another required file, or scope expansion. No
+successor after P8-FT-50 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

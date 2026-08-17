@@ -4369,6 +4369,70 @@ gate is exact six-file scope, cross-document consistency, Phase terminology,
 successor neutrality, the exact Conan command, `git diff --check`, and clean
 pinned refs and worktrees.
 
+### Phase 8 full-text coupled search-options grid parity (selected)
+
+The documentation-only post-P8-FT-49 audit is based on clean migrated revision
+`34f2b6903fba45e8a13650057cb7348e70f5be0f`, its identical local branch,
+upstream, and fresh live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. GET's product decision selects
+exactly P8-FT-50: restore the pinned legacy coupled grid topology for the
+existing search-option controls without rolling back migrated semantics.
+
+The shared-library/GUI boundary governs this leaf. Pinned legacy
+`fulltextsearch.ui:28-99` places the full-width query field before one
+`QGridLayout`: row 0 contains the word-distance toggle at column 0, its spin
+box at column 1, and a two-item horizontal layout containing `Mode:` followed
+by the selector at column 2; row 1 contains the article-limit toggle at column
+0, its spin box at column 1, and `Match case` at column 2. The existing
+ignore-word-order/ignore-diacritics horizontal row follows the grid. Current
+`full_text_query_composer.cpp:56-157` already owns all controls, state, query
+composition, and validated bounds, but separates these controls across a form,
+two horizontal rows, and a vertical match-case item.
+
+P8-FT-50 reuses the unique existing controls. The composer's top-level
+`QVBoxLayout` contains the full-width unlabeled query widget first, the unique
+six-cell options grid second, and the completed P8-FT-49 ignore-options row
+third. The grid contains the exact coordinates above; only its row-0/column-2
+cell nests the unique two-item mode-label/selector horizontal layout. All seven
+participating widgets remain direct child widgets of the composer; the composer
+remains the sole direct child of the existing `Search` group layout, and no
+widget is recreated.
+
+The existing captions, `Mode:` label, four mode texts/data, object names,
+identity, checked/enabled state, explicit focus/tab chain, persistence,
+composition, submission, response, cancellation, replacement, geometry, and
+P8-FT-1 through P8-FT-49 behavior remain unchanged. The word-distance spin box
+retains `0..1000` and the articles-per-dictionary spin box retains
+`1..100000`; legacy Qt `0..99` defaults and synthesized range-bearing captions
+are not restored. Indexing lifecycle/status UI, Preferences, adapters/index
+formats, public/Core/config or composition-root contracts, dependencies,
+builds, installed surfaces, spacing/margins/stretch/alignment policy,
+mnemonics, translation-catalog work, additional controls or behavior, HTTP GET
+policy, and unrelated parity are excluded and unranked. No successor after
+P8-FT-50 is selected or ranked.
+
+Focused future acceptance belongs only to `full_text_query_composer_test`: it
+must prove one unique six-item grid, exact coordinates and nested mode-layout
+order, exact query/grid/ignore top-level order and layout parentage, and
+unchanged widget parentage, identity, names, captions, mode texts/data, ranges,
+state transitions, and repeated `Compose()` results. Existing dialog tests
+retain Search-group, focus/tab, request, response, geometry, and lifecycle
+ownership. Add no executable or registration; the Release baseline remains
+exactly 109 tests. The full future implementation gate is focused Release
+composer testing, Linux Release configure/build, exactly 109 registered tests,
+full Release CTest, Release install, packaged consumers, unchanged standalone
+installed C and C++ consumers, and clean committed exact-SCM creation with:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+P8-FT-50 changes no installed interface, but install and consumer checks remain
+the stronger full gate. Implementation must stop on ref/worktree drift, legacy
+dirtiness or movement, ambiguous topology, parentage, caption or acceptance
+semantics, architectural conflict, failed validation, discovery of another
+required file, or scope expansion.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
