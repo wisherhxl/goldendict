@@ -3636,7 +3636,7 @@ wraparound, initial/transferred focus, Return/Enter or shortcut behavior,
 public/Core or composition-root contracts, dependencies, or installed surfaces
 remains separately reviewed and unranked.
 
-### Phase 8 full-text result-count minimum height (selected)
+### Phase 8 full-text result-count minimum height (completed)
 
 The independent documentation-only post-P8-FT-38 audit is pinned to clean
 migrated revision `55777c188049b6de1d84a85db2b2db2b3d71a1e8`, its identical
@@ -3656,7 +3656,8 @@ P8-FT-34/P8-FT-35 own the dialog minimum and initial geometry. Widgets
 therefore owns the complete correction; Core, the composition root, and
 installed consumers acquire no sizing or presentation contract.
 
-P8-FT-39 requires `fullTextArticlesFoundLabel` to retain
+The completed P8-FT-39 implementation makes
+`fullTextArticlesFoundLabel` retain
 `minimumHeight() == 21` after construction and through idle, submission,
 generation-current accepted completion, active cancellation, replacement, and
 service/controller lifecycle transitions. Existing count text and visibility,
@@ -3670,9 +3671,9 @@ behavior, search/result semantics, index lifecycle/UI, Preferences, adapters
 and index formats, dependencies/builds, and unrelated parity are excluded and
 remain unranked. No successor after P8-FT-39 is selected or ranked.
 
-Future focused acceptance extends only `full_text_search_dialog_test` to prove
-the exact minimum after construction and across the stated transitions while
-retaining the listed regressions. The focused Release command is
+Completed focused acceptance extends only `full_text_search_dialog_test` to
+prove the exact minimum after construction and across the stated transitions
+while retaining the listed regressions. The focused Release command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
 implementation gate remains Linux Release configure/build, exactly 109
 registered tests and full Release CTest, clean committed exact-SCM
@@ -3682,14 +3683,10 @@ P8-FT-39 adds no executable, registration, installed header, DTO, ABI,
 dependency, CMake export, or Conan requirement, so both consumers remain
 unchanged and source-compatible.
 
-Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
-minimum-height evidence or acceptance semantics, any broader size/layout/style
-choice, public/Core or composition-root expansion, dependency or installed-
-surface change, an architectural decision requiring HTTP GET policy, or scope
-expansion. This selection audit changes documentation only, so compiled
-verification is intentionally skipped; exact four-file scope, cross-document
-consistency, Phase terminology, successor language, and `git diff --check` are
-its verification gate.
+The implementation changes only private dialog construction, its existing
+focused test, and the four governing documents. The Release registration
+baseline remains exactly 109 tests; no successor after P8-FT-39 is selected or
+ranked.
 
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

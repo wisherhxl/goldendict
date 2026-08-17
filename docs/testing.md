@@ -2783,14 +2783,14 @@ or ranked. Broader keyboard/focus policy, public/Core or composition-root
 expansion, dependencies, installed surfaces, and unrelated coverage remain
 separately reviewed and unranked.
 
-## Phase 8 Full-Text Result-Count Minimum-Height Gate (Selected)
+## Phase 8 Full-Text Result-Count Minimum-Height Gate (Completed)
 
-The documentation-only post-P8-FT-38 audit selects P8-FT-39 as the sole next
+The documentation-only post-P8-FT-38 audit selected P8-FT-39 as the sole next
 leaf. Pinned legacy `fulltextsearch.ui:103-115` gives the result-count label a
 minimum height of 21 logical pixels; the mapped current private
-`fullTextArticlesFoundLabel` has no equivalent minimum.
+`fullTextArticlesFoundLabel` now has the equivalent minimum.
 
-Future focused acceptance extends only `full_text_search_dialog_test`. It
+Completed focused acceptance extends only `full_text_search_dialog_test`. It
 proves `minimumHeight() == 21` after construction and through idle, submission,
 generation-current accepted completion, active cancellation, replacement, and
 service/controller lifecycle transitions. Existing count text and visibility,
@@ -2815,9 +2815,9 @@ search/results, index lifecycle/UI, Preferences, adapters/index formats,
 dependencies/builds, and unrelated tests are excluded and unranked. No
 successor after P8-FT-39 is selected or ranked.
 
-This selection audit changes documentation only, so compiled verification is
-intentionally skipped. Its gate is exact four-file scope, cross-document
-consistency, Phase terminology, successor language, and `git diff --check`.
+The completed implementation extends the existing test executable without a
+registration change. The Release registration baseline remains exactly 109
+tests; no successor after P8-FT-39 is selected or ranked.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

@@ -82,6 +82,7 @@ FullTextSearchDialog::FullTextSearchDialog(
 
     result_count_ = new QLabel(this);
     result_count_->setObjectName(QStringLiteral("fullTextArticlesFoundLabel"));
+    result_count_->setMinimumHeight(21);
     UpdateResultCount();
     layout->addWidget(result_count_);
 
