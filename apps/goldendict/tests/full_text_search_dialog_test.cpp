@@ -7,6 +7,7 @@
 #include <QLineEdit>
 #include <QListView>
 #include <QPainter>
+#include <QPointer>
 #include <QProgressBar>
 #include <QProxyStyle>
 #include <QPushButton>
@@ -309,7 +310,8 @@ class FullTextSearchDialogTest final : public QObject {
     void ActivatesExactCurrentResultOnceFromMouseAndKeyboard();
     void SuppressesDuplicateInvalidStaleAndCancelledActivation();
     void ReplacesRunningAndPendingGenerationsAndSuppressesStaleCompletion();
-    void CancellationIsIdempotentAndRestoresIdleState();
+    void ActiveCancellationRestoresIdleStateWithoutDismissal();
+    void IdleCancelDismissesThroughDialogLifecycle();
     void ServiceReplacementDetachAndDestructionSuppressLateDelivery();
 };
 
@@ -1083,7 +1085,7 @@ void FullTextSearchDialogTest::
     dialog.show();
     QTRY_VERIFY(results->isVisible());
     QVERIFY(search->isEnabled());
-    QVERIFY(!cancel->isEnabled());
+    QVERIFY(cancel->isEnabled());
     QVERIFY(progress->isHidden());
 
     search->click();
@@ -1111,7 +1113,7 @@ void FullTextSearchDialogTest::
 
     QTRY_VERIFY(dialog.response_.has_value());
     QVERIFY(search->isEnabled());
-    QVERIFY(!cancel->isEnabled());
+    QVERIFY(cancel->isEnabled());
     QVERIFY(progress->isHidden());
     QVERIFY(dialog.response_->partial);
     QCOMPARE(dialog.response_->results.size(), std::size_t{1});
@@ -1582,7 +1584,8 @@ void FullTextSearchDialogTest::
     QVERIFY(search->isEnabled());
 }
 
-void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
+void FullTextSearchDialogTest::
+    ActiveCancellationRestoresIdleStateWithoutDismissal() {
     ControllableDictionaryService service;
     service.response_.partial = true;
     goldendict::core::ApplicationPreferences preferences;
@@ -1598,7 +1601,6 @@ void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
     QCOMPARE(notifications, std::size_t{0});
 
     CancelButton(&dialog)->click();
-    dialog.CancelSearch();
     QVERIFY(service.WaitForCancellation());
     QVERIFY(!dialog.active_generation_.has_value());
     QVERIFY(!dialog.pending_activation_scope_.has_value());
@@ -1614,7 +1616,7 @@ void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
     QVERIFY(FailureStatus(&dialog)->isHidden());
     QVERIFY(MixedResultStatus(&dialog)->isHidden());
     QVERIFY(SearchButton(&dialog)->isEnabled());
-    QVERIFY(!CancelButton(&dialog)->isEnabled());
+    QVERIFY(CancelButton(&dialog)->isEnabled());
     QVERIFY(Progress(&dialog)->isHidden());
 
     service.ReleaseCancelledRequest();
@@ -1629,6 +1631,48 @@ void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
     QVERIFY(MixedResultStatus(&dialog)->isHidden());
     QCOMPARE(dialog.generation_, 1U);
     QCOMPARE(notifications, std::size_t{0});
+}
+
+void FullTextSearchDialogTest::IdleCancelDismissesThroughDialogLifecycle() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+
+    auto dismiss_idle_dialog = [&]() {
+        QPointer<FullTextSearchDialog> dialog =
+            new FullTextSearchDialog(preferences, &service);
+        dialog->show();
+        QVERIFY(dialog->isVisible());
+        QVERIFY(CancelButton(dialog)->isEnabled());
+        CancelButton(dialog)->click();
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        QCoreApplication::processEvents();
+        QVERIFY(dialog.isNull());
+    };
+    dismiss_idle_dialog();
+    dismiss_idle_dialog();
+
+    QPointer<FullTextSearchDialog> dialog =
+        new FullTextSearchDialog(preferences, &service);
+    dialog->show();
+    dialog->InitializeQuery(QStringLiteral("blocked"));
+    SearchButton(dialog)->click();
+    QVERIFY(service.WaitForQueries(1U));
+    CancelButton(dialog)->click();
+    QVERIFY(service.WaitForCancellation());
+    QVERIFY(!dialog.isNull());
+    QVERIFY(dialog->isVisible());
+    QVERIFY(SearchButton(dialog)->isEnabled());
+    QVERIFY(CancelButton(dialog)->isEnabled());
+    QVERIFY(Progress(dialog)->isHidden());
+
+    service.ReleaseCancelledRequest();
+    QTest::qWait(20);
+    QCoreApplication::processEvents();
+    QVERIFY(!dialog.isNull());
+    CancelButton(dialog)->click();
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    QCoreApplication::processEvents();
+    QVERIFY(dialog.isNull());
 }
 
 void FullTextSearchDialogTest::

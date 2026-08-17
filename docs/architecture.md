@@ -3196,7 +3196,7 @@ completes only the migrated accepted-completion notification contract. No
 successor after P8-FT-30 is selected or ranked.
 
 
-### Phase 8 full-text idle dialog dismissal (selected)
+### Phase 8 full-text idle dialog dismissal (complete)
 
 The independent documentation-only post-P8-FT-30 readiness audit is pinned to
 clean migrated revision `17b124f79f0dfb1a794b9dabbba4e87804dd885b` and the
@@ -3246,8 +3246,8 @@ Evidence is completed P8-FT-8/P8-FT-9, migrated
 `full_text_search_dialog.cpp:184-218,285-289`, the focused dialog and MainWindow
 full-text tests, and pinned legacy `fulltextsearch.cc:582-592`, where Cancel
 stops active work without closing and otherwise saves and dismisses the dialog.
-P8-FT-31 selects only the migrated idle-dismissal contract. No successor after
-P8-FT-31 is selected or ranked.
+P8-FT-31 completes only the migrated idle-dismissal contract. No successor
+after P8-FT-31 is selected or ranked.
 
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

@@ -131,7 +131,6 @@ FullTextSearchDialog::FullTextSearchDialog(
     search_button_->setDefault(true);
     cancel_button_ = new QPushButton(tr("Cancel"), this);
     cancel_button_->setObjectName(QStringLiteral("fullTextCancelButton"));
-    cancel_button_->setEnabled(false);
     auto* buttons = new QHBoxLayout;
     buttons->addStretch();
     buttons->addWidget(search_button_);
@@ -224,6 +223,10 @@ void FullTextSearchDialog::SubmitSearch() {
 }
 
 void FullTextSearchDialog::CancelSearch() {
+    if (!active_generation_.has_value()) {
+        close();
+        return;
+    }
     active_generation_.reset();
     pending_activation_scope_.reset();
     pending_activation_context_.reset();
@@ -318,7 +321,7 @@ void FullTextSearchDialog::UpdateErrorCountStatus() {
 void FullTextSearchDialog::RestoreIdleState() {
     progress_->hide();
     search_button_->setEnabled(true);
-    cancel_button_->setEnabled(false);
+    cancel_button_->setEnabled(true);
 }
 
 }  // namespace goldendict::app

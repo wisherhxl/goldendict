@@ -2469,9 +2469,9 @@ Evidence is completed P8-FT-9 and the extended focused dialog tests, migrated
 `fulltextsearch.cc:547-579`. P8-FT-30 is complete. No successor after P8-FT-30
 is selected or ranked.
 
-## Phase 8 Full-Text Idle Dialog Dismissal Gate (Selected)
+## Phase 8 Full-Text Idle Dialog Dismissal Gate (Complete)
 
-The post-P8-FT-30 documentation audit selects only P8-FT-31. The completed
+The post-P8-FT-30 documentation audit selected only P8-FT-31. The completed
 modeless-dialog ownership and active-request cancellation boundaries make idle
 dismissal through the existing Cancel control independently testable without
 changing Core or an installed interface.
@@ -2511,7 +2511,7 @@ adapter, index, dependency, or build surface belongs to P8-FT-31.
 Evidence is completed P8-FT-8/P8-FT-9, migrated
 `full_text_search_dialog.cpp:184-218,285-289`, the focused dialog and MainWindow
 full-text tests, and pinned legacy `fulltextsearch.cc:582-592`. P8-FT-31 is
-selected. No successor after P8-FT-31 is selected or ranked.
+complete. No successor after P8-FT-31 is selected or ranked.
 
 
 Use `ctest --preset conan-debug` after a Debug build and

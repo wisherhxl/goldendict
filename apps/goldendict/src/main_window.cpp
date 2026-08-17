@@ -6500,7 +6500,7 @@ void MainWindow::RunFullTextDialogSmokeCheck(
              progress != nullptr && articles_found != nullptr &&
              articles_found->parent() == first &&
              articles_found->text() == QStringLiteral("Articles found: 0") &&
-             search_button->isEnabled() && !cancel_button->isEnabled() &&
+             search_button->isEnabled() && cancel_button->isEnabled() &&
              progress->isHidden();
     if (search_button != nullptr && cancel_button != nullptr &&
         progress != nullptr) {
@@ -6510,7 +6510,8 @@ void MainWindow::RunFullTextDialogSmokeCheck(
                  progress->minimum() == 0 && progress->maximum() == 0;
         cancel_button->click();
         passed = passed && search_button->isEnabled() &&
-                 !cancel_button->isEnabled() && progress->isHidden();
+                 cancel_button->isEnabled() && progress->isHidden() &&
+                 full_text_search_dialog_.data() == first;
 
         search_button->click();
         QElapsedTimer terminal_wait;
@@ -6519,7 +6520,7 @@ void MainWindow::RunFullTextDialogSmokeCheck(
             QApplication::processEvents(QEventLoop::AllEvents, 20);
         }
         passed = passed && search_button->isEnabled() &&
-                 !cancel_button->isEnabled() && progress->isHidden();
+                 cancel_button->isEnabled() && progress->isHidden();
     }
     auto* first_mode =
         first->findChild<QComboBox*>(QStringLiteral("fullTextQueryMode"));
@@ -6532,7 +6533,7 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     SetFacade(current_facade);
     passed = passed && full_text_search_dialog_.data() == first &&
              full_text_search_action_->isEnabled();
-    first->close();
+    cancel_button->click();
     QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
     QApplication::processEvents();
     passed = passed && full_text_search_dialog_ == nullptr;
