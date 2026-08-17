@@ -2940,6 +2940,73 @@ contract. P8-FT-24 therefore presents only the migrated response's bounded,
 terminal failure fact. P8-FT-24 is complete. No successor after P8-FT-24 is
 selected or ranked.
 
++### Phase 8 full-text mixed-result error summary (selected)
+
+The independent documentation-only post-P8-FT-24 readiness audit is pinned to
+clean migrated revision `e76e6ec326ff6cbb8a33969d22fb72327261abbd` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-25: privately summarize accepted work
+that retains results while also containing one or more errors.
+
+P8-FT-25 is dependency-ready because P8-FT-9 accepts only the current terminal
+generation, P8-FT-11 retains the complete response, P8-FT-17 presents its
+retained-result count, P8-FT-22 presents authoritative partiality, and
+P8-FT-24 reserves terminal-failure presentation for result-free, nonpartial
+errors. One private Widgets-owned status consumes only the existing response's
+result and error collections. Core remains authoritative for both collections
+and for `partial`. No public API, DTO, persistence, dependency, adapter,
+index-format, or build-system change is required.
+
+The status reads `Some dictionaries could not be searched` exactly when a
+generation-current accepted response has one or more retained results and one
+or more errors. Initial state and replacement submission hide it. Result-free
+and error-free responses hide it. The status neither infers nor changes
+partiality, so it may coexist with `Results may be incomplete.` only when the
+accepted response's authoritative `partial` flag is true. Widgets exposes no
+dictionary ID, error code, backend message, or raw detail. The result count,
+partial, empty, and terminal-failure statuses remain independent. Stale or
+cancelled completions, controller detachment, service replacement, and
+teardown cannot introduce or overwrite the current status. Result rows,
+selection, focus, activation, response ownership, and accepted-generation
+synchronization remain unchanged.
+
+Focused future acceptance covers initial and replacement reset; one and
+multiple retained results with each existing error-code category and multiple
+errors; authoritative partial true and false combinations; result-only,
+error-only, empty, and conclusive-empty responses; repeated accepted
+transitions; and stale, cancelled, detached, replaced-service, and teardown
+completion safety. The focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-25 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or compiled test.
+
+Partial-without-results summaries and all error details; exact `document_id`
+navigation and source-dictionary targeting; columns, icons, additional
+metadata roles, and other decoration; match ranges and excerpt presentation;
+highlighting, ignore-diacritics transfer, and WebEngine handoff; Preferences
+enablement, format exclusions, size/index policy, and persistence; index
+readiness, visibility, status, progress, background lifecycle, rebuild, and
+failure UI; adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies,
+builds, and unrelated parity remain independent surfaces. They are decomposed
+only; none is selected or ranked. No public API, DTO, persistence, Core,
+adapter, index, dependency, or build surface belongs to P8-FT-25.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
+installed `FullTextResponse` contract, and completed
+P8-FT-9/P8-FT-11/P8-FT-17/P8-FT-22/P8-FT-24. Pinned legacy
+`fulltextsearch.cc:499-586` silently contains individual dictionary failures
+while retaining successful headwords and supplies no safe structured error-
+detail presentation contract. P8-FT-25 therefore presents only the migrated
+response's bounded mixed-result fact. No successor after P8-FT-25 is selected
+or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
