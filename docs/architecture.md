@@ -3866,6 +3866,73 @@ verification is intentionally skipped; exact four-file scope, cross-document
 consistency, Phase terminology, successor neutrality, and `git diff --check`
 are its verification gate.
 
+### Phase 8 full-text Search group-box boundary (selected)
+
+The independent documentation-only post-P8-FT-42 audit is pinned to clean
+migrated revision `a491c72f7d1e2c2fa4b37151addccabdbf1a9b9d`, its identical
+upstream and fresh live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After rechecking the four
+governing migration documents and relevant current and pinned legacy code
+without advance ranking, it selects exactly one smallest dependency-ready
+leaf, P8-FT-43: restore the private full-text Search group-box boundary.
+
+The shared-library/GUI boundary governs this leaf. Pinned legacy
+`fulltextsearch.ui:23-96` places the query field and search-option controls in
+one `QGroupBox` titled exactly `Search`. Current
+`full_text_search_dialog.cpp:65-70` instead adds the mapped private
+`FullTextQueryComposer` directly to the dialog's enclosing vertical layout.
+P8-FT-1 through P8-FT-42 already own query composition and control behavior,
+the exact tab sequence, result presentation, surrounding layout, geometry, and
+request lifecycle. Widgets therefore owns the complete presentation-only
+correction; Core, the composition root, and installed consumers acquire no
+grouping or presentation contract.
+
+P8-FT-43 requires exactly one private `QGroupBox` titled `Search` between the
+enclosing dialog layout and the unique existing `FullTextQueryComposer`. The
+composer is directly contained by that group box, and the relationship remains
+stable after construction and through idle, submission, generation-current
+accepted completion, active cancellation, replacement, service replacement,
+and controller detachment. Existing query values, labels, control ordering and
+enablement, composition semantics, focus and tab chain, submission and
+response behavior, result-count/progress row, statuses, button row, geometry,
+and lifecycle behavior remain unchanged.
+
+Group-box margins, spacing, size policy, alignment, styling, checkability,
+flatness, mnemonic policy, broader composer-layout parity, indexing lifecycle
+or UI, Preferences, adapters and index formats, dependencies/builds,
+public/Core or composition-root changes, HTTP GET policy, and unrelated parity
+are excluded and remain unranked. No successor after P8-FT-43 is selected or
+ranked.
+
+Future focused acceptance extends only `full_text_search_dialog_test` to prove
+the unique group box, exact title, unique directly contained composer,
+attachment to the enclosing dialog layout, unchanged query-control contracts,
+and the stated lifecycle regressions. The focused Release command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
+implementation gate remains Linux Release configure/build, exactly 109
+registered tests and full Release CTest, Release install, packaged consumers,
+standalone installed C and C++ consumers, and clean committed exact-SCM
+creation with:
+
+```sh
+conan create . --build=missing \
+  -pr:h=profiles/qt-webengine -pr:b=default \
+  -s:h build_type=Release
+```
+
+P8-FT-43 adds no executable, registration, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement, so both consumers remain
+unchanged and source-compatible.
+
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+mapping or acceptance semantics, any broader grouping, layout, style, or
+mnemonic choice, public/Core or composition-root expansion, dependency or
+installed-surface change, an architectural decision requiring HTTP GET policy,
+discovery of another required file, or scope expansion. This selection audit
+changes documentation only, so compiled verification is intentionally skipped;
+exact four-file scope, cross-document consistency, Phase terminology,
+successor neutrality, and `git diff --check` are its verification gate.
+
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

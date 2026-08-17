@@ -2952,6 +2952,62 @@ root expansion, dependency or installed-surface change, an architectural
 decision requiring HTTP GET policy, discovery of another required file, or
 scope expansion.
 
+## Phase 8 Full-Text Search Group-Box Boundary Gate (Selected)
+
+The documentation-only post-P8-FT-42 audit selects P8-FT-43 as the sole next
+leaf. Pinned legacy `fulltextsearch.ui:23-96` places the query field and search-
+option controls in one `QGroupBox` titled exactly `Search`; current
+`full_text_search_dialog.cpp:65-70` instead attaches the mapped private
+`FullTextQueryComposer` directly to the dialog's enclosing vertical layout.
+P8-FT-1 through P8-FT-42 supply the complete query, tab-order, presentation,
+layout, geometry, and request-lifecycle prerequisites.
+
+Future focused acceptance extends only `full_text_search_dialog_test`. It
+proves exactly one private group box titled `Search`, the unique existing
+composer directly contained by it, the group box attached once to the
+enclosing dialog layout, and stable identity and hierarchy through
+construction, idle, submission, generation-current accepted completion,
+active cancellation, replacement, service replacement, and controller
+detachment. It also retains regressions for query values, labels, control
+ordering and enablement, composition semantics, focus/tab behavior,
+submission, responses, result-count/progress row, statuses, button row,
+geometry, and lifecycle behavior. Add no executable or registered test.
+
+Run the focused Release test with:
+
+```sh
+ctest --preset conan-release -R '^full_text_search_dialog_test$'
+```
+
+The full future implementation gate remains Linux Release configure/build,
+exactly 109 registered tests, full Release CTest, Release install, packaged
+consumers, standalone installed C and C++ consumers, and clean committed exact-
+SCM creation with the profile's Debug build type explicitly overridden for the
+host after both profiles:
+
+```sh
+conan create . --build=missing \
+  -pr:h=profiles/qt-webengine -pr:b=default \
+  -s:h build_type=Release
+```
+
+P8-FT-43 adds no executable, test registration, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement. Group-box margins, spacing,
+size policy, alignment, styling, checkability, flatness, mnemonic policy,
+broader composer-layout parity, indexing lifecycle/UI, Preferences, adapters
+and index formats, dependencies/builds, public/Core or composition-root
+changes, HTTP GET policy, and unrelated tests are excluded and unranked. No
+successor after P8-FT-43 is selected or ranked.
+
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+mapping or acceptance semantics, any broader grouping, layout, style, or
+mnemonic choice, public/Core or composition-root expansion, dependency or
+installed-surface change, an architectural decision requiring HTTP GET policy,
+discovery of another required file, or scope expansion. This selection audit
+changes documentation only, so compiled verification is intentionally skipped;
+exact four-file scope, cross-document consistency, Phase terminology,
+successor neutrality, and `git diff --check` are its verification gate.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

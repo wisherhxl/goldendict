@@ -214,6 +214,31 @@ excluded and unranked. The Release baseline remains exactly 109 tests, and
 standalone installed C and C++ consumers remain unchanged and source-
 compatible. No successor after P8-FT-42 is selected or ranked.
 
+P8-FT-43 supersedes that historical closure and selects only the private
+full-text Search group-box boundary. Pinned legacy
+`fulltextsearch.ui:23-96` places the query field and search-option controls in
+one `QGroupBox` titled exactly `Search`, while current
+`full_text_search_dialog.cpp:65-70` adds the mapped unique private
+`FullTextQueryComposer` directly to the dialog layout. The future leaf adds
+only that titled intermediate private Widgets container after P8-FT-1 through
+P8-FT-42, keeping the composer relationship stable across construction and
+request/lifecycle transitions. Query values, labels, ordering, enablement,
+composition semantics, focus/tab behavior, workflow, result/status/button
+layout, geometry, public/Core and installed contracts, dependencies, and test
+registration remain unchanged. Group-box margins, spacing, size policy,
+alignment, styling, checkability, flatness, mnemonic policy, broader composer
+layout, indexing UI, and unrelated parity remain excluded and unranked. The
+Release baseline remains exactly 109 tests; exact-SCM creation uses:
+
+```sh
+conan create . --build=missing \
+  -pr:h=profiles/qt-webengine -pr:b=default \
+  -s:h build_type=Release
+```
+
+Standalone installed C and C++ consumers remain unchanged and source-
+compatible. No successor after P8-FT-43 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |
