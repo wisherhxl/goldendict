@@ -2428,6 +2428,47 @@ existing full-text-dialog and WebEngine interaction smokes, and pinned legacy
 `fulltextsearch.cc:499-586`. P8-FT-29 is complete. No successor after P8-FT-29
 is selected or ranked.
 
+## Phase 8 Full-Text Accepted-Completion Notification Gate (Selected)
+
+The post-P8-FT-29 documentation audit selects only P8-FT-30. The completed
+generation-current terminal-response acceptance boundary makes one private
+Widgets completion notification independently testable without changing Core
+or an installed interface.
+
+Focused coverage must prove exactly one `QApplication::beep()` for every
+generation-current accepted response: nonempty success, conclusive empty,
+partial-empty, partial-nonempty, error-only, and mixed-result. It must also
+prove one notification for each later accepted replacement generation without
+duplicating a notification for the same generation.
+
+Initial, pending, progress, and submission states must remain silent. Explicit
+cancellation, stale or duplicate completion, controller detachment, service or
+facade replacement, dialog destruction, and MainWindow teardown must not
+notify. Existing response retention, rows, ordering, selection, focus,
+activation, counts, statuses, navigation, and article-search behavior must
+remain unchanged.
+
+The focused command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full implementation gate is Linux Release
+configure/build, full `ctest --preset conan-release` without an unintended
+registration delta, clean exact-SCM `conan create` with the Release Qt
+WebEngine host profile and packaged consumers, Release install, and standalone
+installed C and C++ consumers. P8-FT-30 adds no test executable or public/
+installed interface, so the registered Release baseline remains 109 tests.
+
+Ignore-diacritics semantics and legacy regular-expression equivalence, match
+ranges and excerpts, exact `document_id` navigation and source targeting,
+decoration, Preferences and index lifecycle, adapters and index formats,
+dependencies, build work, and unrelated suites are excluded and remain
+separately decomposed without ranking. No public API, DTO, persistence, Core,
+adapter, index, dependency, or build surface belongs to P8-FT-30.
+
+Evidence is completed P8-FT-9 and its focused dialog tests, migrated
+`full_text_search_dialog.cpp:203-253`, and pinned legacy
+`fulltextsearch.cc:547-579`. P8-FT-30 is selected. No successor after P8-FT-30
+is selected or ranked.
+
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

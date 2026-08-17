@@ -3282,6 +3282,63 @@ only a private literal per-tab article-search boundary ready independently.
 P8-FT-29 completes that bounded handoff only. No successor after P8-FT-29 is
 selected or ranked.
 
+### Phase 8 full-text accepted-completion notification (selected)
+
+The independent documentation-only post-P8-FT-29 readiness audit is pinned to
+clean migrated revision `d63d6f8cfcdd305166c3974a95811046344d30e2` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-30: privately notify the user once when
+a generation-current full-text response is accepted.
+
+P8-FT-30 is dependency-ready because P8-FT-9 already accepts at most one
+terminal response for the current generation, rejects stale and cancelled
+completions, and restores the dialog to idle only after acceptance. The dialog
+can invoke the existing Widgets-owned `QApplication::beep()` notification at
+that boundary without inspecting or changing response contents. No public API,
+DTO, persistence, Core, dependency, adapter, index-format, or build-system
+change is required.
+
+Every generation-current accepted response produces exactly one beep,
+including nonempty success, conclusive empty, partial-empty, partial-nonempty,
+error-only, and mixed-result responses. Initial state, submission, progress,
+explicit cancellation, stale or duplicate completion, controller detachment,
+service or facade replacement, dialog destruction, and MainWindow teardown
+produce none. A later accepted replacement generation may notify once. The
+notification changes no results, ordering, selection, focus, activation,
+counts, statuses, navigation, article-search state, or response semantics.
+
+Focused acceptance covers each accepted response shape, repeated accepted
+generations, exactly-once delivery, and suppression for initial, pending,
+cancelled, stale, duplicate, detached, replaced-service, destroyed-dialog, and
+teardown paths. The focused command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full implementation gate is Linux Release
+configure/build, full `ctest --preset conan-release` without an unintended
+registration delta, clean exact-SCM `conan create` with the Release Qt
+WebEngine host profile and packaged consumers, Release install, and standalone
+installed C and C++ consumers. P8-FT-30 adds no test executable or installed
+surface, so the registered Release baseline remains 109 tests.
+
+Ignore-diacritics semantics and legacy regular-expression equivalence; match-
+range or excerpt rendering; exact `document_id` navigation and source-
+dictionary targeting; columns, icons, additional metadata roles, and other
+decoration; Preferences enablement, format exclusions, size/index policy, and
+persistence; index readiness, visibility, status, progress, background
+lifecycle, rebuild, and failure UI; adapters, `.gdfts`, legacy `_FTS`, index
+formats, dependencies, builds, and unrelated parity remain independent
+surfaces. They are decomposed only; none is selected or ranked. No public API,
+DTO, persistence, Core, adapter, index, dependency, or build surface belongs
+to P8-FT-30.
+
+Evidence is completed P8-FT-9 and its focused dialog tests, migrated
+`full_text_search_dialog.cpp:203-253`, and pinned legacy
+`fulltextsearch.cc:547-579`, where the dialog beeps after all outstanding
+requests reach terminal completion regardless of retained results. P8-FT-30
+selects only the migrated accepted-completion notification contract. No
+successor after P8-FT-30 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
