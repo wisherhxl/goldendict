@@ -410,8 +410,8 @@ Full Release CTest, Release install, packaged consumers, and standalone
 installed C and C++ consumer gates remain unchanged. P8-FT-49 is complete. No
 successor after P8-FT-49 is selected or ranked.
 
-P8-FT-50 supersedes that historical closure and is the sole selected next
-leaf. It restores the pinned legacy coupled search-options grid using only the
+P8-FT-50 supersedes that historical closure and is complete. It restores the
+pinned legacy coupled search-options grid using only the
 existing private composer controls. After the existing full-width unlabeled
 query field, one `QGridLayout` contains word-distance toggle/spin box/mode row
 at coordinates `(0,0)`, `(0,1)`, and `(0,2)`, with the last cell holding the
@@ -432,7 +432,7 @@ contracts, adapters/index formats, dependencies/builds, layout styling policy,
 new controls or behavior, HTTP GET policy, and unrelated parity are excluded
 and unranked.
 
-Focused future acceptance extends only `full_text_query_composer_test` for the
+Focused acceptance extends only `full_text_query_composer_test` for the
 unique grid, exact coordinates/order/parentage, unchanged controls, bounds,
 transitions, and repeated composition. Existing dialog coverage retains Search
 group, focus/tab, request, response, geometry, and lifecycle ownership. Add no

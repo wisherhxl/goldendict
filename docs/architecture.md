@@ -4384,19 +4384,19 @@ The shared-library/GUI boundary governs this leaf. Pinned legacy
 box at column 1, and a two-item horizontal layout containing `Mode:` followed
 by the selector at column 2; row 1 contains the article-limit toggle at column
 0, its spin box at column 1, and `Match case` at column 2. The existing
-ignore-word-order/ignore-diacritics horizontal row follows the grid. Current
-`full_text_query_composer.cpp:56-157` already owns all controls, state, query
-composition, and validated bounds, but separates these controls across a form,
-two horizontal rows, and a vertical match-case item.
+ignore-word-order/ignore-diacritics horizontal row follows the grid. The
+pre-P8-FT-50 composer already owned all controls, state, query composition, and
+validated bounds, but separated these controls across a form, two horizontal
+rows, and a vertical match-case item.
 
-P8-FT-50 reuses the unique existing controls. The composer's top-level
-`QVBoxLayout` contains the full-width unlabeled query widget first, the unique
-six-cell options grid second, and the completed P8-FT-49 ignore-options row
-third. The grid contains the exact coordinates above; only its row-0/column-2
-cell nests the unique two-item mode-label/selector horizontal layout. All seven
-participating widgets remain direct child widgets of the composer; the composer
-remains the sole direct child of the existing `Search` group layout, and no
-widget is recreated.
+P8-FT-50 is complete and reuses the unique existing controls. The composer's
+top-level `QVBoxLayout` contains the full-width unlabeled query widget first,
+the unique six-cell options grid second, and the completed P8-FT-49
+ignore-options row third. The grid contains the exact coordinates above; only
+its row-0/column-2 cell nests the unique two-item mode-label/selector horizontal
+layout. All seven participating widgets remain direct child widgets of the
+composer; the composer remains the sole direct child of the existing `Search`
+group layout, and no widget is recreated.
 
 The existing captions, `Mode:` label, four mode texts/data, object names,
 identity, checked/enabled state, explicit focus/tab chain, persistence,
@@ -4411,8 +4411,8 @@ mnemonics, translation-catalog work, additional controls or behavior, HTTP GET
 policy, and unrelated parity are excluded and unranked. No successor after
 P8-FT-50 is selected or ranked.
 
-Focused future acceptance belongs only to `full_text_query_composer_test`: it
-must prove one unique six-item grid, exact coordinates and nested mode-layout
+Focused acceptance belongs only to `full_text_query_composer_test`: it proves
+one unique six-item grid, exact coordinates and nested mode-layout
 order, exact query/grid/ignore top-level order and layout parentage, and
 unchanged widget parentage, identity, names, captions, mode texts/data, ranges,
 state transitions, and repeated `Compose()` results. Existing dialog tests
@@ -4427,7 +4427,7 @@ installed C and C++ consumers, and clean committed exact-SCM creation with:
 conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
 ```
 
-P8-FT-50 changes no installed interface, but install and consumer checks remain
+P8-FT-50 changed no installed interface, but install and consumer checks remain
 the stronger full gate. Implementation must stop on ref/worktree drift, legacy
 dirtiness or movement, ambiguous topology, parentage, caption or acceptance
 semantics, architectural conflict, failed validation, discovery of another

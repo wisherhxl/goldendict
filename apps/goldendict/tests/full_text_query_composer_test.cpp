@@ -2,7 +2,7 @@
 
 #include <QCheckBox>
 #include <QComboBox>
-#include <QFormLayout>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "full_text_dictionary_projection.h"
@@ -110,9 +111,87 @@ void VerifyIgnoreOptionsRow(FullTextQueryComposer& composer,
     auto* top_level_layout = qobject_cast<QVBoxLayout*>(composer.layout());
     QVERIFY(top_level_layout != nullptr);
     QCOMPARE(top_level_layout->count(), 3);
-    QCOMPARE(top_level_layout->itemAt(1)->widget(),
-             Control<QCheckBox>(composer, "fullTextMatchCase"));
     QCOMPARE(top_level_layout->itemAt(2)->layout(), ignore_options_layout);
+}
+
+void VerifyOptionsGrid(FullTextQueryComposer& composer) {
+    auto* query = Control<QLineEdit>(composer, "fullTextQueryText");
+    auto* use_distance =
+        Control<QCheckBox>(composer, "fullTextUseMaximumWordDistance");
+    auto* distance = Control<QSpinBox>(composer, "fullTextMaximumWordDistance");
+    auto* use_articles =
+        Control<QCheckBox>(composer, "fullTextUseMaximumArticles");
+    auto* articles =
+        Control<QSpinBox>(composer, "fullTextMaximumArticlesPerDictionary");
+    auto* match_case = Control<QCheckBox>(composer, "fullTextMatchCase");
+    auto* mode = Control<QComboBox>(composer, "fullTextQueryMode");
+
+    QCOMPARE(use_distance->text(), QStringLiteral("Maximum word distance"));
+    QCOMPARE(use_articles->text(),
+             QStringLiteral("Maximum articles per dictionary"));
+    QCOMPARE(match_case->text(), QStringLiteral("Match case"));
+    QCOMPARE(distance->minimum(), 0);
+    QCOMPARE(distance->maximum(), 1000);
+    QCOMPARE(articles->minimum(), 1);
+    QCOMPARE(articles->maximum(), 100000);
+
+    const auto grids = composer.findChildren<QGridLayout*>();
+    QCOMPARE(grids.size(), 1);
+    auto* grid = grids.constFirst();
+    QCOMPARE(grid->count(), 6);
+    QCOMPARE(grid->itemAtPosition(0, 0)->widget(), use_distance);
+    QCOMPARE(grid->itemAtPosition(0, 1)->widget(), distance);
+    QCOMPARE(grid->itemAtPosition(1, 0)->widget(), use_articles);
+    QCOMPARE(grid->itemAtPosition(1, 1)->widget(), articles);
+    QCOMPARE(grid->itemAtPosition(1, 2)->widget(), match_case);
+
+    auto* mode_layout = grid->itemAtPosition(0, 2)->layout();
+    QVERIFY(mode_layout != nullptr);
+    QCOMPARE(mode_layout->count(), 2);
+    auto* mode_label = qobject_cast<QLabel*>(mode_layout->itemAt(0)->widget());
+    QVERIFY(mode_label != nullptr);
+    QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
+    QCOMPARE(mode_layout->itemAt(1)->widget(), mode);
+
+    int matching_mode_labels = 0;
+    for (const auto* label : composer.findChildren<QLabel*>()) {
+        if (label->text() == QStringLiteral("Mode:")) {
+            ++matching_mode_labels;
+            QCOMPARE(label, mode_label);
+        }
+    }
+    QCOMPARE(matching_mode_labels, 1);
+
+    const std::array<QWidget*, 8> direct_widgets = {
+        query,    use_distance, distance, use_articles,
+        articles, match_case,   mode,     mode_label};
+    for (auto* widget : direct_widgets) {
+        QCOMPARE(widget->parentWidget(), &composer);
+    }
+    const std::array<std::pair<QWidget*, QString>, 7> named_widgets = {{
+        {query, QStringLiteral("fullTextQueryText")},
+        {use_distance, QStringLiteral("fullTextUseMaximumWordDistance")},
+        {distance, QStringLiteral("fullTextMaximumWordDistance")},
+        {use_articles, QStringLiteral("fullTextUseMaximumArticles")},
+        {articles, QStringLiteral("fullTextMaximumArticlesPerDictionary")},
+        {match_case, QStringLiteral("fullTextMatchCase")},
+        {mode, QStringLiteral("fullTextQueryMode")},
+    }};
+    for (const auto& [widget, name] : named_widgets) {
+        const auto matches =
+            composer.findChildren<QWidget*>(name, Qt::FindDirectChildrenOnly);
+        QCOMPARE(matches.size(), 1);
+        QCOMPARE(matches.constFirst(), widget);
+        QCOMPARE(widget->objectName(), name);
+    }
+
+    auto* top_level_layout = qobject_cast<QVBoxLayout*>(composer.layout());
+    QVERIFY(top_level_layout != nullptr);
+    QCOMPARE(top_level_layout->count(), 3);
+    QCOMPARE(top_level_layout->itemAt(0)->widget(), query);
+    QCOMPARE(top_level_layout->itemAt(1)->layout(), grid);
+    QCOMPARE(grid->parent(), top_level_layout);
+    QCOMPARE(mode_layout->parent(), grid);
 }
 
 goldendict::core::DictionaryIdentity Identity(const std::string& id,
@@ -288,26 +367,7 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
         composer.findChildren<QComboBox*>(QStringLiteral("fullTextQueryMode"));
     QCOMPARE(mode_selectors.size(), 1);
     auto* mode_selector = mode_selectors.constFirst();
-    auto* form = composer.findChild<QFormLayout*>();
-    QVERIFY(form != nullptr);
-    QCOMPARE(form->rowCount(), 4);
-    QVERIFY(form->labelForField(query_field) == nullptr);
-    int query_row = -1;
-    QFormLayout::ItemRole query_role = QFormLayout::LabelRole;
-    form->getWidgetPosition(query_field, &query_row, &query_role);
-    QCOMPARE(query_row, 0);
-    QCOMPARE(query_role, QFormLayout::SpanningRole);
-    auto* mode_label =
-        qobject_cast<QLabel*>(form->labelForField(mode_selector));
-    QVERIFY(mode_label != nullptr);
-    QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
-    int matching_mode_labels = 0;
-    for (const auto* label : composer.findChildren<QLabel*>()) {
-        if (label->text() == QStringLiteral("Mode:")) {
-            ++matching_mode_labels;
-        }
-    }
-    QCOMPARE(matching_mode_labels, 1);
+    VerifyOptionsGrid(composer);
     const auto ignore_order_controls = composer.findChildren<QCheckBox*>(
         QStringLiteral("fullTextIgnoreWordOrder"));
     QCOMPARE(ignore_order_controls.size(), 1);
@@ -329,7 +389,7 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
     ignore_order->setChecked(false);
     use_distance->setChecked(false);
     QCOMPARE(Control<QLineEdit>(composer, "fullTextQueryText"), query_field);
-    QVERIFY(form->labelForField(query_field) == nullptr);
+    VerifyOptionsGrid(composer);
     QCOMPARE(query_field->text(), QString::fromUtf8("stable query Δ"));
     QVERIFY(!composer.Compose().ignore_word_order);
     QVERIFY(!composer.Compose().maximum_word_distance.has_value());
@@ -346,11 +406,9 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
         QCOMPARE(mode_selector->currentData().toInt(), static_cast<int>(mode));
         QCOMPARE(Control<QComboBox>(composer, "fullTextQueryMode"),
                  mode_selector);
-        QCOMPARE(form->labelForField(mode_selector), mode_label);
-        QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
         QCOMPARE(Control<QLineEdit>(composer, "fullTextQueryText"),
                  query_field);
-        QVERIFY(form->labelForField(query_field) == nullptr);
+        VerifyOptionsGrid(composer);
         QCOMPARE(query_field->text(), QString::fromUtf8("stable query Δ"));
         QCOMPARE(composer.Compose().text, std::string("stable query Δ"));
         QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
@@ -375,11 +433,9 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
         VerifyModeSelector(composer);
         QCOMPARE(Control<QComboBox>(composer, "fullTextQueryMode"),
                  mode_selector);
-        QCOMPARE(form->labelForField(mode_selector), mode_label);
-        QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
         QCOMPARE(Control<QLineEdit>(composer, "fullTextQueryText"),
                  query_field);
-        QVERIFY(form->labelForField(query_field) == nullptr);
+        VerifyOptionsGrid(composer);
         QCOMPARE(query_field->text(), QString::fromUtf8("stable query Δ"));
         QCOMPARE(composer.Compose().text, std::string("stable query Δ"));
         QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
@@ -419,13 +475,7 @@ void FullTextQueryComposerTest::
         Control<QCheckBox>(composer, "fullTextIgnoreWordOrder");
     auto* ignore_diacritics =
         Control<QCheckBox>(composer, "fullTextIgnoreDiacritics");
-    auto* form = composer.findChild<QFormLayout*>();
-    QVERIFY(form != nullptr);
-    QVERIFY(form->labelForField(query_field) == nullptr);
-    auto* mode_label =
-        qobject_cast<QLabel*>(form->labelForField(mode_selector));
-    QVERIFY(mode_label != nullptr);
-    QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
+    VerifyOptionsGrid(composer);
     query_field->setText(QString::fromUtf8("repeatable Δ"));
     SelectMode(composer,
                goldendict::core::FullTextSearchMode::kRegularExpression);
@@ -453,10 +503,8 @@ void FullTextQueryComposerTest::
              first.maximum_articles_per_dictionary);
     QCOMPARE(second.timeout, first.timeout);
     QCOMPARE(Control<QComboBox>(composer, "fullTextQueryMode"), mode_selector);
-    QCOMPARE(form->labelForField(mode_selector), mode_label);
-    QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
     QCOMPARE(Control<QLineEdit>(composer, "fullTextQueryText"), query_field);
-    QVERIFY(form->labelForField(query_field) == nullptr);
+    VerifyOptionsGrid(composer);
     QCOMPARE(query_field->text(), QString::fromUtf8("repeatable Δ"));
     QVERIFY(preferences == original);
 }

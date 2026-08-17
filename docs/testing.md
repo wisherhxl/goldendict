@@ -3351,9 +3351,9 @@ and worktrees. Any later stateful
 WebEngine smoke must run from freshly quarantined repository-owned build-tree
 `HOME` and XDG state, never real user configuration.
 
-## Phase 8 Full-Text Coupled Search-Options Grid Gate (Selected)
+## Phase 8 Full-Text Coupled Search-Options Grid Gate (Complete)
 
-P8-FT-50 is the sole selected next leaf. Pinned legacy
+P8-FT-50 is complete. Pinned legacy
 `fulltextsearch.ui:28-99` provides the exact grid evidence, and current
 `full_text_query_composer.cpp:56-157` plus its focused tests provide the
 existing control, behavior, and numeric-contract evidence. After the existing
@@ -3371,11 +3371,11 @@ child widgets of the composer; only the mode label/selector are nested in the
 grid's row-0/column-2 horizontal layout. The composer and existing `Search`
 group parentage remain unchanged.
 
-Focused future coverage belongs only to `full_text_query_composer_test`. It
-must prove unique grid membership, exact coordinates, nested mode order,
+Focused coverage belongs only to `full_text_query_composer_test`. It proves
+unique grid membership, exact coordinates, nested mode order,
 top-level order and layout parentage, and unchanged widget parentage, identity,
 object names, existing captions, mode texts/data, checked/enabled transitions,
-and repeated `Compose()` results. It must explicitly retain the word-distance
+and repeated `Compose()` results. It explicitly retains the word-distance
 range `0..1000` and articles-per-dictionary range `1..100000`; legacy Qt
 `0..99` defaults and synthesized legacy range captions are rejected.
 
@@ -3389,7 +3389,7 @@ registered test. Run the focused Release test with:
 ctest --preset conan-release -R '^full_text_query_composer_test$'
 ```
 
-The full future implementation gate remains Linux Release configure/build,
+The full implementation gate remains Linux Release configure/build,
 exactly 109 registered tests, full Release CTest, Release install, packaged
 consumers, unchanged standalone installed C and C++ consumers, and clean
 committed exact-SCM creation with:
@@ -3398,7 +3398,7 @@ committed exact-SCM creation with:
 conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
 ```
 
-P8-FT-50 changes no installed interface, but install and consumer checks remain
+P8-FT-50 changed no installed interface, but install and consumer checks remain
 the stronger full gate. Existing controls, captions, state, mode behavior,
 composition, persistence, request/response behavior, and P8-FT-1 through
 P8-FT-49 regressions are preserved. Indexing lifecycle/status UI, Preferences,

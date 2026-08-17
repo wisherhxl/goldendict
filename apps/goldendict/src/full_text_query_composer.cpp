@@ -4,8 +4,9 @@
 
 #include <QCheckBox>
 #include <QComboBox>
-#include <QFormLayout>
+#include <QGridLayout>
 #include <QHBoxLayout>
+#include <QLabel>
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QVBoxLayout>
@@ -120,27 +121,25 @@ FullTextQueryComposer::FullTextQueryComposer(
     maximum_articles_per_dictionary_->setValue(static_cast<int>(
         preferences.full_text_maximum_articles_per_dictionary));
 
-    auto* word_distance_layout = new QHBoxLayout;
-    word_distance_layout->addWidget(use_maximum_word_distance_);
-    word_distance_layout->addWidget(maximum_word_distance_);
+    auto* mode_layout = new QHBoxLayout;
+    mode_layout->addWidget(new QLabel(tr("Mode:"), this));
+    mode_layout->addWidget(mode_);
 
-    auto* article_limit_layout = new QHBoxLayout;
-    article_limit_layout->addWidget(use_maximum_articles_);
-    article_limit_layout->addWidget(maximum_articles_per_dictionary_);
+    auto* options_layout = new QGridLayout;
+    options_layout->addWidget(use_maximum_word_distance_, 0, 0);
+    options_layout->addWidget(maximum_word_distance_, 0, 1);
+    options_layout->addLayout(mode_layout, 0, 2);
+    options_layout->addWidget(use_maximum_articles_, 1, 0);
+    options_layout->addWidget(maximum_articles_per_dictionary_, 1, 1);
+    options_layout->addWidget(match_case_, 1, 2);
 
     auto* ignore_options_layout = new QHBoxLayout;
     ignore_options_layout->addWidget(ignore_word_order_);
     ignore_options_layout->addWidget(ignore_diacritics_);
 
-    auto* form = new QFormLayout;
-    form->addRow(query_text_);
-    form->addRow(tr("Mode:"), mode_);
-    form->addRow(word_distance_layout);
-    form->addRow(article_limit_layout);
-
     auto* layout = new QVBoxLayout(this);
-    layout->addLayout(form);
-    layout->addWidget(match_case_);
+    layout->addWidget(query_text_);
+    layout->addLayout(options_layout);
     layout->addLayout(ignore_options_layout);
 
     connect(mode_, &QComboBox::currentIndexChanged, this,

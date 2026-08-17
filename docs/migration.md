@@ -4427,8 +4427,9 @@ pinned refs and worktrees.
 The fresh documentation-only post-P8-FT-49 audit is based on clean migrated
 revision `34f2b6903fba45e8a13650057cb7348e70f5be0f`, its identical local branch,
 upstream, and fresh live remote, plus unchanged clean read-only legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. GET's product decision selects
-only P8-FT-50: restore the pinned legacy coupled grid topology for the existing
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The clean pushed selection commit
+`919e1ae017a2c57c17cba8ba46158b1a9828742b` authorized only P8-FT-50, now
+complete: restore the pinned legacy coupled grid topology for the existing
 full-text Search options while retaining migrated numeric contracts.
 
 Pinned legacy `fulltextsearch.ui:28-99` establishes the exact topology. The
@@ -4438,10 +4439,10 @@ word-distance toggle at column 0, word-distance spin box at column 1, and a
 two-item horizontal layout with `Mode:` then the mode selector at column 2.
 Grid row 1 contains the article-limit toggle at column 0, article-limit spin
 box at column 1, and `Match case` at column 2. Current private
-`full_text_query_composer.cpp:56-157` supplies every corresponding control and
-behavior; its form and separate rows are the only topology difference.
+The pre-P8-FT-50 private composer supplied every corresponding control and
+behavior; its form and separate rows were the only topology difference.
 
-The future implementation reuses those unique controls. The composer's
+The completed implementation reuses those unique controls. The composer's
 top-level `QVBoxLayout` contains the existing full-width unlabeled query widget
 first, the unique six-cell grid second, and the completed P8-FT-49
 ignore-options row third. Only the grid's row-0/column-2 cell contains a nested
@@ -4461,7 +4462,7 @@ installed surfaces, layout styling policy, mnemonic/translation work, new
 controls or behavior, HTTP GET policy, and unrelated parity are excluded and
 unranked. No successor after P8-FT-50 is selected or ranked.
 
-Focused future acceptance changes only `full_text_query_composer_test` to prove
+Focused acceptance changes only `full_text_query_composer_test` to prove
 the unique six-item grid, exact coordinates and nested mode order, exact
 query/grid/ignore top-level order and parentage, and unchanged widget identity,
 parentage, names, captions, mode data, bounds, state transitions, and repeated
@@ -4471,7 +4472,7 @@ completion, cancellation, replacement, service replacement, controller
 detachment, response, geometry, and lifecycle ownership. Add no executable or
 registration; the Release baseline remains exactly 109 tests.
 
-The full future gate is focused Release composer testing, Linux Release
+The full implementation gate is focused Release composer testing, Linux Release
 configure/build, exactly 109 registered tests, full Release CTest, Release
 install, packaged consumers, unchanged standalone installed C and C++
 consumers, and clean committed exact-SCM creation with:
@@ -4480,7 +4481,7 @@ consumers, and clean committed exact-SCM creation with:
 conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
 ```
 
-P8-FT-50 changes no installed interface, but install and consumer checks remain
+P8-FT-50 changed no installed interface, but install and consumer checks remain
 the stronger full gate. Implementation must stop without commit or push on
 ref/worktree drift, legacy dirtiness or movement, ambiguous topology,
 parentage, caption or acceptance semantics, architectural conflict, failed
