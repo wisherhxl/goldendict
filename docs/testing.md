@@ -2331,6 +2331,53 @@ counts, all error categories, response-status coexistence, replacement and
 lifecycle safety, and raw-detail privacy without changing the 109-test
 registration baseline. No successor is selected or ranked.
 
+## Phase 8 Full-Text Accepted-Query Activation Context Gate (Selected)
+
+The post-P8-FT-27 documentation audit selects only P8-FT-28. Completed current-
+generation acceptance, response retention, immutable activation scope, and
+exact result delivery make the submitted query text and authoritative
+`ignore_diacritics` value independently retainable as private activation
+context without changing Core or an installed interface.
+
+Focused future coverage must prove that each submitted generation captures its
+exact UTF-8 query text and `ignore_diacritics` value and that only acceptance of
+the current terminal generation makes that pair activatable. Activation must
+deliver the accepted pair by value with the existing exact result and ordered,
+authoritative-empty, or absent dictionary scope. Editing the composer or
+projected query after acceptance must not change the delivered context.
+
+Replacement submission must clear the previous accepted pair. Repeated
+accepted generations, copied-lifetime independence, stale and cancelled
+completion, controller detachment, service replacement, and teardown must not
+retain, revive, or overwrite incorrect context. Existing result projection,
+ordering, selection, focus, count, statuses, response synchronization, scope,
+and current scoped-navigation coverage must remain green.
+
+The focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-28 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or compiled test.
+
+Highlighting, ignore-diacritics transfer, WebEngine handoff, match-range or
+excerpt presentation, exact `document_id` navigation and source targeting,
+columns/icons/additional metadata roles and other decoration, Preferences and
+index lifecycle, adapters and index formats, dependencies, build work, and
+unrelated suites are excluded and remain separately decomposed without
+ranking. No navigation, article presentation, WebEngine, public API, DTO,
+persistence, Core, adapter, index, dependency, or build surface belongs to
+P8-FT-28.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
+installed `FullTextQuery` and `FullTextResult` contracts, completed
+P8-FT-9/P8-FT-11/P8-FT-13/P8-FT-15/P8-FT-16, migrated
+`main_window.cpp:5887-5920`, and pinned legacy
+`fulltextsearch.cc:499-586`. No successor after P8-FT-28 is selected or ranked.
+
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

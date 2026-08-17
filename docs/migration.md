@@ -3139,6 +3139,73 @@ therefore presents only the migrated response's bounded aggregate error count.
 P8-FT-27 is complete.
 No successor after P8-FT-27 is selected or ranked.
 
+### Phase 8 full-text accepted-query activation context (selected)
+
+The independent documentation-only post-P8-FT-27 readiness audit is pinned to
+clean migrated revision `e7cac3de2fc190e97ca3340a853f972efab3c528` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-28: privately bind the exact submitted
+query's highlighting-relevant context to the accepted response and deliver it
+by value with result activation.
+
+P8-FT-28 is dependency-ready because P8-FT-9 accepts only the current terminal
+generation, P8-FT-11 retains its complete response, P8-FT-15 already binds
+immutable submitted dictionary scope to that response, and P8-FT-13 delivers
+the exact result by value on activation. The dialog can retain the submitted
+query text and authoritative `ignore_diacritics` value beside the existing
+private activation scope. No public API, DTO, persistence, Core, dependency,
+adapter, index-format, or build-system change is required.
+
+Each generation captures the exact submitted UTF-8 query text and
+`ignore_diacritics` value. Only acceptance of that current terminal generation
+makes the captured pair activatable. Result activation delivers the accepted
+pair by value with the existing exact result and immutable dictionary scope.
+Later composer or projected-query changes cannot rewrite it. Replacement
+submission clears the previously accepted pair before starting work. Stale or
+cancelled completion, controller detachment, service replacement, and teardown
+cannot introduce, restore, or overwrite activation context. Results, ordering,
+selection, focus, count, statuses, response ownership, and current scoped
+navigation behavior remain unchanged.
+
+Focused future acceptance covers distinct submitted and subsequently edited
+query text; `ignore_diacritics` true and false; repeated accepted generations;
+ordered, authoritative-empty, and absent dictionary scope; exact by-value
+result and context delivery; replacement reset; copied-lifetime independence;
+and stale, cancelled, detached, replaced-service, and teardown completion
+safety. The focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-28 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or compiled test.
+
+Consuming the retained context for highlighting or ignore-diacritics transfer,
+WebEngine handoff, match-range or excerpt presentation, and exact `document_id`
+navigation or source-dictionary targeting remain independent successors.
+Columns, icons, additional metadata roles, and other decoration; Preferences
+enablement, format exclusions, size/index policy, and persistence; index
+readiness, visibility, status, progress, background lifecycle, rebuild, and
+failure UI; adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies,
+builds, and unrelated parity also remain separate. They are decomposed only;
+none is selected or ranked. No navigation, article presentation, WebEngine,
+public API, DTO, persistence, Core, adapter, index, dependency, or build surface
+belongs to P8-FT-28.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
+installed `FullTextQuery` and `FullTextResult` contracts, completed
+P8-FT-9/P8-FT-11/P8-FT-13/P8-FT-15/P8-FT-16, migrated
+`main_window.cpp:5887-5920`, and pinned legacy
+`fulltextsearch.cc:499-586`. Legacy activation transfers the search expression
+and ignore-diacritics choice with the selected headword, while the migrated
+activation intentionally consumes neither today. P8-FT-28 retains only the
+accepted private prerequisite; it does not select a consumer. No successor
+after P8-FT-28 is selected or ranked.
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
