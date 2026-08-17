@@ -239,6 +239,31 @@ conan create . --build=missing \
 Standalone installed C and C++ consumers remain unchanged and source-
 compatible. No successor after P8-FT-43 is selected or ranked.
 
+P8-FT-44 supersedes that historical closure and selects only the private
+full-text ignore-words-order label parity leaf. Pinned legacy
+`fulltextsearch.ui:83-89` gives the mapped checkbox the exact translatable text
+`Ignore words order`, while current `full_text_query_composer.cpp:89-92` uses
+`Ignore word order`. The future leaf changes only the unique private
+`fullTextIgnoreWordOrder` checkbox text after P8-FT-1 through P8-FT-43,
+preserving its identity, parentage, checked/enabled state, ordering, focus/tab
+behavior, mode-dependent behavior, query composition, workflow, responses,
+geometry, public/Core and installed contracts, dependencies, and test
+registration. The label stays stable across relevant control and
+request/lifecycle transitions. Layout, mnemonic policy, translation-catalog
+work, other labels, grammar modernization, indexing UI/lifecycle, Preferences,
+adapters/index formats, dependencies/builds, HTTP GET policy, and unrelated
+parity remain excluded and unranked. The Release baseline remains exactly 109
+tests; exact-SCM creation uses:
+
+```sh
+conan create . --build=missing \
+  -pr:h=profiles/qt-webengine -pr:b=default \
+  -s:h build_type=Release
+```
+
+Standalone installed C and C++ consumers remain unchanged and source-
+compatible. No successor after P8-FT-44 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

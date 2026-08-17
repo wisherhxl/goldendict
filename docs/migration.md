@@ -4012,6 +4012,66 @@ six-file scope, cross-document consistency, Phase terminology, successor
 neutrality, and the full Release, install, consumer, and exact-SCM verification
 described above.
 
+### Phase 8 full-text ignore-words-order label parity (selected)
+
+The independent documentation-only post-P8-FT-43 audit is pinned to clean
+migrated revision `f514fde0289fdb9d8139df03c0c4e81c5c6545a7`, its identical
+upstream and fresh live remote, and clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly P8-FT-44:
+restore the private full-text ignore-words-order label.
+
+Pinned legacy `fulltextsearch.ui:83-89` gives the existing checkbox the exact
+translatable text `Ignore words order`; current
+`full_text_query_composer.cpp:89-92` uses `Ignore word order` for the mapped
+unique private `fullTextIgnoreWordOrder` checkbox. P8-FT-1 through P8-FT-43
+supply its query, persistence, control, tab, layout, and request-lifecycle
+prerequisites. The shared-library/GUI boundary keeps this text-only correction
+in private Widgets and leaves Core, composition-root, public, and installed
+contracts unchanged.
+
+The future implementation changes only that checkbox's text to exactly
+`Ignore words order`. Identity, parentage, checked/enabled state, ordering,
+focus/tab behavior, mode-dependent behavior, query composition, submission,
+responses, geometry, and lifecycle behavior remain unchanged. The exact text
+stays stable through construction, mode changes, option toggles, composition,
+submission, generation-current accepted completion, active cancellation,
+replacement, service replacement, and controller detachment.
+
+Layout, mnemonic policy, translation-catalog work, other labels, grammar
+modernization, indexing lifecycle/UI, Preferences, adapters/index formats,
+dependencies/builds, public/Core or composition-root changes, HTTP GET policy,
+and unrelated parity are excluded and unranked. No successor after P8-FT-44
+is selected or ranked.
+
+Focused acceptance extends only `full_text_query_composer_test` to prove the
+unique checkbox's exact text and retain its identity, state, enablement,
+composition semantics, and relevant control-transition regressions. The
+focused Release command is
+`ctest --preset conan-release -R '^full_text_query_composer_test$'`. The full
+gate remains Linux Release configure/build, exactly 109 registered tests, full
+Release CTest, Release install, packaged consumers, unchanged standalone
+installed C and C++ consumers, and clean committed exact-SCM creation with:
+
+```sh
+conan create . --build=missing \
+  -pr:h=profiles/qt-webengine -pr:b=default \
+  -s:h build_type=Release
+```
+
+P8-FT-44 adds no executable, test registration, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement. The future implementation
+changes only the private composer, its existing focused test, and these four
+governing documents.
+
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+text mapping or acceptance semantics, any second label or behavior change,
+layout, mnemonic, translation-catalog, public/Core or composition-root
+expansion, dependency or installed-surface change, an architectural decision
+requiring HTTP GET policy, discovery of another required file, or scope
+expansion. This selection audit is documentation-only, so compiled verification
+is intentionally skipped; exact four-file scope, cross-document consistency,
+Phase terminology, successor neutrality, and `git diff --check` are its gate.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
