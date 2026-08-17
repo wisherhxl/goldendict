@@ -8,6 +8,7 @@
 #include <QSpinBox>
 #include <QtTest>
 
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <optional>
@@ -33,6 +34,31 @@ void SelectMode(FullTextQueryComposer& composer,
     const int index = selector->findData(static_cast<int>(mode));
     QVERIFY(index >= 0);
     selector->setCurrentIndex(index);
+}
+
+void VerifyModeSelector(FullTextQueryComposer& composer) {
+    using goldendict::core::FullTextSearchMode;
+
+    const auto selectors =
+        composer.findChildren<QComboBox*>(QStringLiteral("fullTextQueryMode"));
+    QCOMPARE(selectors.size(), 1);
+    const auto* selector = selectors.constFirst();
+    QCOMPARE(selector->count(), 4);
+
+    const std::array<QString, 4> expected_texts = {
+        QStringLiteral("Whole words"), QStringLiteral("Plain text"),
+        QStringLiteral("Wildcards"), QStringLiteral("Regular expression")};
+    const std::array<FullTextSearchMode, 4> expected_modes = {
+        FullTextSearchMode::kWholeWords, FullTextSearchMode::kPlainText,
+        FullTextSearchMode::kWildcard, FullTextSearchMode::kRegularExpression};
+    for (int index = 0; index < selector->count(); ++index) {
+        QCOMPARE(selector->itemText(index), expected_texts.at(index));
+        QCOMPARE(selector->itemData(index).toInt(),
+                 static_cast<int>(expected_modes.at(index)));
+    }
+    QCOMPARE(selector->findText(QStringLiteral("Wildcards")), 2);
+    QCOMPARE(
+        selector->findData(static_cast<int>(FullTextSearchMode::kWildcard)), 2);
 }
 
 goldendict::core::DictionaryIdentity Identity(const std::string& id,
@@ -90,6 +116,12 @@ void FullTextQueryComposerTest::MapsAllModes() {
         static_cast<goldendict::core::FullTextSearchMode>(persisted_mode);
     FullTextQueryComposer composer(preferences);
 
+    VerifyModeSelector(composer);
+    const auto* mode_selector =
+        Control<QComboBox>(composer, "fullTextQueryMode");
+    QCOMPARE(mode_selector->currentIndex(),
+             mode_selector->findData(persisted_mode));
+    QCOMPARE(mode_selector->currentData().toInt(), persisted_mode);
     QCOMPARE(static_cast<int>(composer.Compose().mode), query_mode);
 }
 
@@ -243,6 +275,7 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
          {goldendict::core::FullTextSearchMode::kWildcard,
           goldendict::core::FullTextSearchMode::kRegularExpression}) {
         SelectMode(composer, mode);
+        VerifyModeSelector(composer);
         QCOMPARE(Control<QComboBox>(composer, "fullTextQueryMode"),
                  mode_selector);
         QCOMPARE(form->labelForField(mode_selector), mode_label);
@@ -269,6 +302,7 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
          {goldendict::core::FullTextSearchMode::kPlainText,
           goldendict::core::FullTextSearchMode::kWholeWords}) {
         SelectMode(composer, mode);
+        VerifyModeSelector(composer);
         QCOMPARE(Control<QComboBox>(composer, "fullTextQueryMode"),
                  mode_selector);
         QCOMPARE(form->labelForField(mode_selector), mode_label);
@@ -303,6 +337,7 @@ void FullTextQueryComposerTest::
     preferences.full_text_maximum_articles_per_dictionary = 1234U;
     const auto original = preferences;
     FullTextQueryComposer composer(preferences);
+    VerifyModeSelector(composer);
     const auto query_fields =
         composer.findChildren<QLineEdit*>(QStringLiteral("fullTextQueryText"));
     QCOMPARE(query_fields.size(), 1);
@@ -319,6 +354,7 @@ void FullTextQueryComposerTest::
 
     const auto first = composer.Compose();
     const auto second = composer.Compose();
+    VerifyModeSelector(composer);
     QCOMPARE(second.text, first.text);
     QCOMPARE(second.mode, first.mode);
     QCOMPARE(second.match_case, first.match_case);

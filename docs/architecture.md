@@ -4146,7 +4146,7 @@ neutrality, the exact Conan command, `git diff --check`, and clean pinned refs
 and worktrees. Builds and tests are intentionally skipped for this
 documentation-only audit.
 
-### Phase 8 full-text wildcard mode-text parity (selected)
+### Phase 8 full-text wildcard mode-text parity (complete)
 
 The independent documentation-only post-P8-FT-46 audit is pinned to clean
 migrated revision `08837e18ecef39bb97ffddc5842fe0560e2d326c`, its identical
@@ -4159,15 +4159,15 @@ P8-FT-47: restore the private wildcard query-mode item text.
 The shared-library/GUI boundary governs this leaf. Pinned legacy
 `fulltextsearch.cc:232-236` adds the third item of the unique search-mode
 selector with exact translatable text `Wildcards` and maps it to the legacy
-wildcard mode. Current `full_text_query_composer.cpp:60-74` maps the same third
+wildcard mode. Before P8-FT-47, `full_text_query_composer.cpp:60-74` mapped the same third
 item of the unique private `fullTextQueryMode` selector to
-`FullTextSearchMode::kWildcard` but displays `Wildcard`. P8-FT-1 through
+`FullTextSearchMode::kWildcard` but displayed `Wildcard`. P8-FT-1 through
 P8-FT-46 already own the selector, its four-item order and values, persistence,
 query composition, containing layout, focus and tab behavior, and request
 lifecycle. Widgets therefore owns the complete one-item correction; Core, the
 composition root, and installed consumers acquire no presentation contract.
 
-The future implementation changes only the third selector item's displayed
+The completed implementation changes only the third selector item's displayed
 text to exactly `Wildcards`. Selector identity, parentage, four-item count and
 order, enum data, selected index, persisted mode, query composition, option
 enablement, focus and tab behavior, submission, responses, geometry, and
@@ -4184,7 +4184,7 @@ Preferences, adapters and index formats, dependencies/builds, public/Core or
 composition-root changes, HTTP GET policy, and unrelated parity are excluded
 and remain unranked. No successor after P8-FT-47 is selected or ranked.
 
-Focused acceptance will extend only `full_text_query_composer_test` to prove
+Completed focused acceptance extends only `full_text_query_composer_test` to prove
 that the unique selector's third item has exact text `Wildcards` and retains
 its `FullTextSearchMode::kWildcard` data through construction, mode and option
 transitions, and repeated composition. Existing dialog tests retain
@@ -4193,7 +4193,7 @@ controller detachment, response, geometry, focus, tab, and lifecycle
 regressions. Add no executable or registered test. The focused Release command
 remains `ctest --preset conan-release -R '^full_text_query_composer_test$'`.
 
-The future implementation gate remains Linux Release configure/build, exactly
+The implementation gate remains Linux Release configure/build, exactly
 109 registered tests, full Release CTest, Release install, packaged consumers,
 unchanged standalone installed C and C++ consumers, and clean committed exact-
 SCM creation with:
@@ -4202,13 +4202,13 @@ SCM creation with:
 conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
 ```
 
-P8-FT-47 will add no executable, registration, installed header, DTO, ABI,
-dependency, CMake export, or Conan requirement. Its future implementation is
+P8-FT-47 adds no executable, registration, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement. Its implementation is
 limited to the private composer, its existing focused test, and these four
 governing documents.
 
-P8-FT-47 is selected for future implementation. No later successor is selected
-or ranked. Implementation must stop on ref/worktree drift, legacy dirtiness,
+P8-FT-47 is complete. No later successor is selected or ranked. Implementation
+must stop on ref/worktree drift, legacy dirtiness,
 ambiguous mapping or acceptance semantics, any second item, label, or behavior,
 caption-bound policy, broader layout work, mnemonic or translation-catalog
 work, public/Core or composition-root expansion, dependency or installed-
@@ -4216,8 +4216,7 @@ surface change, an architectural decision requiring HTTP GET policy, discovery
 of another required file, or scope expansion. This documentation audit's gate
 is exact four-file scope, cross-document consistency, Phase terminology,
 successor neutrality, the exact Conan command, `git diff --check`, and clean
-pinned refs and worktrees. Builds and tests are intentionally skipped for this
-documentation-only audit.
+pinned refs and worktrees.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

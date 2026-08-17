@@ -65,7 +65,7 @@ FullTextQueryComposer::FullTextQueryComposer(
     mode_->addItem(tr("Plain text"),
                    QVariant::fromValue(static_cast<int>(
                        goldendict::core::FullTextSearchMode::kPlainText)));
-    mode_->addItem(tr("Wildcard"),
+    mode_->addItem(tr("Wildcards"),
                    QVariant::fromValue(static_cast<int>(
                        goldendict::core::FullTextSearchMode::kWildcard)));
     mode_->addItem(

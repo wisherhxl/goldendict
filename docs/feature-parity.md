@@ -319,13 +319,13 @@ Full Release CTest, Release install, packaged consumers, and standalone
 installed C and C++ consumer gates remain unchanged. P8-FT-46 is complete. No
 successor after P8-FT-46 is selected or ranked.
 
-P8-FT-47 supersedes that historical closure and selects only the private
+P8-FT-47 supersedes that historical closure and completes only the private
 full-text wildcard mode-text parity leaf. Pinned legacy
 `fulltextsearch.cc:232-236` gives the third item of the unique search-mode
 selector exact translatable text `Wildcards` and maps it to the wildcard mode,
-while current `full_text_query_composer.cpp:60-74` maps the same third item of
+while before P8-FT-47 `full_text_query_composer.cpp:60-74` mapped the same third item of
 the unique private `fullTextQueryMode` selector to
-`FullTextSearchMode::kWildcard` but displays `Wildcard`. The future leaf changes
+`FullTextSearchMode::kWildcard` but displayed `Wildcard`. The completed leaf changes
 only that item's displayed text to `Wildcards` after P8-FT-1 through P8-FT-46,
 preserving selector identity and parentage, four-item count and order, enum
 data, selected index, persistence, query composition, option enablement,
@@ -345,9 +345,8 @@ conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h bu
 ```
 
 Full Release CTest, Release install, packaged consumers, and standalone
-installed C and C++ consumer gates remain unchanged. P8-FT-47 is selected for
-future implementation. No successor after P8-FT-47 is selected or ranked.
-Builds and tests are intentionally skipped for this documentation-only audit.
+installed C and C++ consumer gates remain unchanged. P8-FT-47 is complete. No
+successor after P8-FT-47 is selected or ranked.
 
 ## Resources And Platform Integration
 
