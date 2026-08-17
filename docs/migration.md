@@ -3493,6 +3493,51 @@ unrelated parity remain independently decomposed, unselected, and unranked.
 No successor after P8-FT-33 is selected or ranked.
 The Release registration baseline remains exactly 109 tests.
 
+### Phase 8 full-text dialog minimum-size contract (selected)
+
+The independent documentation-only post-P8-FT-33 audit is pinned to clean
+migrated revision `eb4911bd8fd82402f0dc5b861da65aecb0927633` and unchanged
+clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After rechecking all remaining
+full-text parity gaps and prerequisites without advance ranking, it selects
+exactly P8-FT-34: preserve the legacy full-text dialog's private Widgets
+minimum size.
+
+P8-FT-7 already owns the modeless dialog and its layout, while P8-FT-33 keeps
+Qt geometry interpretation in Widgets. Pinned legacy
+`fulltextsearch.ui:13-18` therefore supplies a dependency-ready exact contract:
+every newly constructed dialog has a minimum width of 430 and minimum height
+of 450 logical pixels. Direct resizing and restored geometry cannot leave the
+dialog below either bound. Larger valid restored geometry, absent or rejected
+geometry, capture, idle dismissal, active cancellation, and all other existing
+workflow and lifecycle behavior remain unchanged.
+
+Acceptance extends `full_text_search_dialog_test` with the exact minimum,
+undersized direct-resize and restored-geometry clamping, larger valid geometry
+preservation, and P8-FT-33 restoration/lifecycle regressions. The focused
+Release command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release build. The full implementation gate is Linux Release configure/build,
+exactly 109 registered tests and full `ctest --preset conan-release`, clean
+committed exact-SCM `conan create` with the Release Qt WebEngine host profile
+and packaged consumers, Release install, and standalone installed C and C++
+consumers. P8-FT-34 adds no installed interface, executable, dependency, or
+test registration; installed consumers remain unchanged and source-compatible
+but are retained as the stronger package gate.
+
+This audit changes only the four governing documents, so compiled builds,
+tests, install, and Conan creation are intentionally not run; those commands
+are the future implementation gate. Default or initial size, maximum size,
+aspect ratio, screen/topology normalization, placement fallback, DPI policy
+beyond Qt logical sizing, other dialog state, query semantics, excerpts, exact
+document/source targeting, decoration, Preferences/index policy, index
+lifecycle, adapters/index formats, dependencies, builds, and unrelated parity
+remain independently decomposed, unselected, and unranked. No successor after
+P8-FT-34 is selected or ranked. Implementation must stop before editing on
+ref/worktree drift, legacy dirtiness, ambiguous sizing evidence or acceptance
+behavior, an architectural choice requiring HTTP GET policy, or scope
+expansion; the same pinned-state checks must pass again before commit and push.
+
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

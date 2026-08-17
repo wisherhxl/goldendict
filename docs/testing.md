@@ -2591,6 +2591,46 @@ query semantics, excerpts, exact document/source targeting, decoration,
 Preferences/index policy, index lifecycle, adapters/index formats,
 dependencies, builds, and unrelated suites remain excluded, unselected, and
 unranked. No successor after P8-FT-33 is selected or ranked.
+
+## Phase 8 Full-Text Dialog Minimum-Size Gate (Selected)
+
+The post-P8-FT-33 documentation audit selects only P8-FT-34. The existing
+private modeless dialog and Widgets-owned geometry restoration make the pinned
+legacy minimum-size contract independently testable without a Core or public
+interface change.
+
+Extend `full_text_search_dialog_test`; add no executable or registered test.
+Coverage must prove every new dialog reports `minimumWidth() == 430` and
+`minimumHeight() == 450`, direct attempts to resize below either bound are
+clamped, and restored geometry below either bound cannot leave the dialog
+undersized. Valid larger geometry must retain its P8-FT-33 behavior. Absence or
+Qt rejection must still preserve the default layout, and geometry capture,
+idle dismissal, active cancellation, completion, activation, replacement,
+service replacement, detachment, and teardown must remain unchanged.
+
+The focused command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full implementation gate is Linux Release
+configure/build, exactly 109 registered tests and full
+`ctest --preset conan-release`, clean committed exact-SCM `conan create` with
+the Release Qt WebEngine host profile and packaged consumers, Release install,
+and standalone installed C and C++ consumers. P8-FT-34 changes no installed
+interface, so both consumers remain unchanged and source-compatible; they are
+still required as the stronger package gate.
+
+This audit is documentation-only. Compiled builds, tests, install, and Conan
+creation are intentionally not run; those commands are the future
+implementation gate. Default or initial size, maximum size, aspect ratio,
+screen/topology normalization, placement fallback, DPI policy beyond Qt
+logical sizing, other dialog state, query semantics, excerpts, exact
+document/source targeting, decoration, Preferences/index policy, index
+lifecycle, adapters/index formats, dependencies, builds, and unrelated suites
+remain excluded, unselected, and unranked. No successor after P8-FT-34 is
+selected or ranked. The implementation gate must stop on ref/worktree drift,
+legacy dirtiness, ambiguous sizing evidence or acceptance behavior, an
+architectural choice requiring HTTP GET policy, or scope expansion; pinned
+checks repeat before commit and push.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
