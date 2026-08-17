@@ -1626,6 +1626,7 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
     expected_preferences.confirm_favorites_deletion = false;
     expected_preferences.limit_input_phrase_length = true;
     expected_preferences.input_phrase_length_limit = 2U;
+    expected_preferences.proxy_type = goldendict::core::ProxyType::kHttpConnect;
     passed = passed && preference_triggers == 3 && preference_dialogs == 3 &&
              preferences_ == expected_preferences &&
              facade_->ExportArticleTabSession() == initial_session;
