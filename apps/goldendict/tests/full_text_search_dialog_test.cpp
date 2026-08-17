@@ -305,12 +305,50 @@ class FullTextSearchDialogTest final : public QObject {
     void ShowsOnlyGenericMixedResultStatusForResponsesWithResultsAndErrors();
     void ShowsOnlyGenericPartialEmptyStatusForPartialResponsesWithoutResults();
     void ShowsAuthoritativeAcceptedErrorCountWithoutDetails();
+    void NotifiesExactlyOnceForEachAcceptedResponseShape();
     void ActivatesExactCurrentResultOnceFromMouseAndKeyboard();
     void SuppressesDuplicateInvalidStaleAndCancelledActivation();
     void ReplacesRunningAndPendingGenerationsAndSuppressesStaleCompletion();
     void CancellationIsIdempotentAndRestoresIdleState();
     void ServiceReplacementDetachAndDestructionSuppressLateDelivery();
 };
+
+void FullTextSearchDialogTest::
+    NotifiesExactlyOnceForEachAcceptedResponseShape() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog dialog(preferences, &service);
+    std::size_t notifications = 0U;
+    dialog.completion_notifier_ = [&notifications]() {
+        ++notifications;
+    };
+    QCOMPARE(notifications, std::size_t{0});
+
+    goldendict::core::FullTextResponse nonempty;
+    nonempty.results = {MakeResult("success", "success", 1U)};
+    goldendict::core::FullTextResponse partial_empty;
+    partial_empty.partial = true;
+    goldendict::core::FullTextResponse partial_nonempty = partial_empty;
+    partial_nonempty.results = {MakeResult("partial", "partial", 2U)};
+    goldendict::core::FullTextResponse error_only;
+    error_only.errors = {{goldendict::core::FullTextErrorCode::kInternal,
+                          "error-only", "private detail"}};
+    goldendict::core::FullTextResponse mixed = error_only;
+    mixed.results = {MakeResult("mixed", "mixed", 3U)};
+
+    std::vector<goldendict::core::FullTextResponse> responses = {
+        nonempty, {}, partial_empty, partial_nonempty, error_only, mixed};
+    for (std::size_t i = 0U; i < responses.size(); ++i) {
+        dialog.active_generation_ = ++dialog.generation_;
+        const std::uint64_t accepted_generation = dialog.generation_;
+        dialog.FinishSearch(accepted_generation, responses[i]);
+        QCOMPARE(notifications, i + 1U);
+
+        dialog.FinishSearch(accepted_generation, responses[i]);
+        dialog.FinishSearch(accepted_generation - 1U, responses[i]);
+        QCOMPARE(notifications, i + 1U);
+    }
+}
 
 void FullTextSearchDialogTest::
     ShowsAuthoritativeAcceptedErrorCountWithoutDetails() {
@@ -1477,6 +1515,10 @@ void FullTextSearchDialogTest::
     service.response_.results.front().headword = "current";
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
+    std::size_t notifications = 0U;
+    dialog.completion_notifier_ = [&notifications]() {
+        ++notifications;
+    };
     auto* query =
         dialog.findChild<QLineEdit*>(QStringLiteral("fullTextQueryText"));
     auto* search = SearchButton(&dialog);
@@ -1489,6 +1531,7 @@ void FullTextSearchDialogTest::
     query->setText(QStringLiteral("blocked"));
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(1U));
+    QCOMPARE(notifications, std::size_t{0});
     QVERIFY(!search->isEnabled());
     goldendict::core::FullTextQuery pending_scope;
     pending_scope.dictionary_filter_active = true;
@@ -1496,6 +1539,7 @@ void FullTextSearchDialogTest::
     dialog.SetProjectedQuery(pending_scope);
     query->setText(QStringLiteral("never starts"));
     dialog.SubmitSearch();
+    QCOMPARE(notifications, std::size_t{0});
     goldendict::core::FullTextQuery replacement_scope;
     replacement_scope.dictionary_ids = {"replacement", "duplicate",
                                         "replacement"};
@@ -1509,6 +1553,7 @@ void FullTextSearchDialogTest::
     service.ReleaseCancelledRequest();
     QVERIFY(service.WaitForQueries(2U));
     QTRY_VERIFY(dialog.response_.has_value());
+    QCOMPARE(notifications, std::size_t{1});
 
     const auto queries = service.Queries();
     QCOMPARE(queries.size(), std::size_t{2});
@@ -1542,9 +1587,15 @@ void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
     service.response_.partial = true;
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
+    std::size_t notifications = 0U;
+    dialog.completion_notifier_ = [&notifications]() {
+        ++notifications;
+    };
+    QCOMPARE(notifications, std::size_t{0});
     dialog.InitializeQuery(QStringLiteral("blocked"));
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(1U));
+    QCOMPARE(notifications, std::size_t{0});
 
     CancelButton(&dialog)->click();
     dialog.CancelSearch();
@@ -1577,6 +1628,7 @@ void FullTextSearchDialogTest::CancellationIsIdempotentAndRestoresIdleState() {
     QVERIFY(EmptyStatus(&dialog)->isHidden());
     QVERIFY(MixedResultStatus(&dialog)->isHidden());
     QCOMPARE(dialog.generation_, 1U);
+    QCOMPARE(notifications, std::size_t{0});
 }
 
 void FullTextSearchDialogTest::
@@ -1584,8 +1636,12 @@ void FullTextSearchDialogTest::
     ControllableDictionaryService first;
     ControllableDictionaryService second;
     goldendict::core::ApplicationPreferences preferences;
+    std::size_t notifications = 0U;
     {
         FullTextSearchDialog dialog(preferences, &first);
+        dialog.completion_notifier_ = [&notifications]() {
+            ++notifications;
+        };
         first.response_.partial = true;
         first.response_.results.resize(1);
         first.response_.results.front().headword = "accepted";
@@ -1596,6 +1652,7 @@ void FullTextSearchDialogTest::
         dialog.SubmitSearch();
         QVERIFY(first.WaitForQueries(1U));
         QTRY_VERIFY(dialog.response_.has_value());
+        QCOMPARE(notifications, std::size_t{1});
         QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
         QCOMPARE(ArticlesFound(&dialog)->text(),
                  QStringLiteral("Articles found: 1"));
@@ -1608,6 +1665,7 @@ void FullTextSearchDialogTest::
         QCOMPARE(dialog.accepted_activation_context_->query_text,
                  std::string("accepted"));
         dialog.SetService(&second);
+        QCOMPARE(notifications, std::size_t{1});
         QVERIFY(dialog.response_.has_value());
         QCOMPARE(dialog.response_->results.front().headword,
                  std::string("accepted"));
@@ -1624,6 +1682,7 @@ void FullTextSearchDialogTest::
         QVERIFY(!dialog.pending_activation_context_.has_value());
         dialog.DetachController();
         dialog.DetachController();
+        QCOMPARE(notifications, std::size_t{1});
         QVERIFY(dialog.response_.has_value());
         QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
         QVERIFY(!PartialStatus(&dialog)->isHidden());
@@ -1633,6 +1692,7 @@ void FullTextSearchDialogTest::
         QVERIFY(dialog.accepted_activation_scope_.has_value());
         QVERIFY(dialog.accepted_activation_context_.has_value());
     }
+    QCOMPARE(notifications, std::size_t{1});
     QCOMPARE(second.Queries().size(), std::size_t{0});
 
     ControllableDictionaryService blocked;
@@ -1640,9 +1700,13 @@ void FullTextSearchDialogTest::
     ControllableDictionaryService replacement;
     {
         FullTextSearchDialog dialog(preferences, &blocked);
+        dialog.completion_notifier_ = [&notifications]() {
+            ++notifications;
+        };
         dialog.InitializeQuery(QStringLiteral("blocked"));
         dialog.SubmitSearch();
         QVERIFY(blocked.WaitForQueries(1U));
+        QCOMPARE(notifications, std::size_t{1});
         blocked.ReleaseCancelledRequest();
         dialog.SetService(&replacement);
         QVERIFY(blocked.WaitForCancellation());
@@ -1663,7 +1727,9 @@ void FullTextSearchDialogTest::
         QVERIFY(SearchButton(&dialog)->isEnabled());
         dialog.DetachController();
         dialog.DetachController();
+        QCOMPARE(notifications, std::size_t{1});
     }
+    QCOMPARE(notifications, std::size_t{1});
     QCOMPARE(replacement.Queries().size(), std::size_t{0});
 }
 

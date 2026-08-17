@@ -2,6 +2,7 @@
 
 #include "full_text_search_dialog.h"
 
+#include <QApplication>
 #include <QEvent>
 #include <QHBoxLayout>
 #include <QKeyEvent>
@@ -46,6 +47,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     const goldendict::core::ApplicationPreferences& preferences,
     const goldendict::core::DictionaryService* service, QWidget* parent)
     : QDialog(parent),
+      completion_notifier_([]() { QApplication::beep(); }),
       controller_([this](std::uint64_t generation,
                          goldendict::core::FullTextResponse response) {
           FinishSearch(generation, std::move(response));
@@ -249,6 +251,7 @@ void FullTextSearchDialog::FinishSearch(
     UpdatePartialEmptyStatus();
     UpdateErrorCountStatus();
     RestoreIdleState();
+    completion_notifier_();
 }
 
 void FullTextSearchDialog::ResetResults(

@@ -4,6 +4,7 @@
 #define GOLDENDICT_APP_FULL_TEXT_SEARCH_DIALOG_H_
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -89,6 +90,7 @@ class FullTextSearchDialog final : public QDialog {
     QPushButton* cancel_button_ = nullptr;
     QProgressBar* progress_ = nullptr;
     FullTextResponseModel* response_model_ = nullptr;
+    std::function<void()> completion_notifier_;
     FullTextRequestController controller_;
     goldendict::core::FullTextQuery projected_query_;
     std::optional<goldendict::core::FullTextResponse> response_;

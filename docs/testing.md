@@ -2428,20 +2428,20 @@ existing full-text-dialog and WebEngine interaction smokes, and pinned legacy
 `fulltextsearch.cc:499-586`. P8-FT-29 is complete. No successor after P8-FT-29
 is selected or ranked.
 
-## Phase 8 Full-Text Accepted-Completion Notification Gate (Selected)
+## Phase 8 Full-Text Accepted-Completion Notification Gate (Complete)
 
-The post-P8-FT-29 documentation audit selects only P8-FT-30. The completed
+The post-P8-FT-29 documentation audit selected only P8-FT-30. The completed
 generation-current terminal-response acceptance boundary makes one private
 Widgets completion notification independently testable without changing Core
 or an installed interface.
 
-Focused coverage must prove exactly one `QApplication::beep()` for every
+Focused coverage proves exactly one `QApplication::beep()` for every
 generation-current accepted response: nonempty success, conclusive empty,
-partial-empty, partial-nonempty, error-only, and mixed-result. It must also
-prove one notification for each later accepted replacement generation without
+partial-empty, partial-nonempty, error-only, and mixed-result. It also proves
+one notification for each later accepted replacement generation without
 duplicating a notification for the same generation.
 
-Initial, pending, progress, and submission states must remain silent. Explicit
+Initial, pending, progress, and submission states remain silent. Explicit
 cancellation, stale or duplicate completion, controller detachment, service or
 facade replacement, dialog destruction, and MainWindow teardown must not
 notify. Existing response retention, rows, ordering, selection, focus,
@@ -2464,9 +2464,9 @@ dependencies, build work, and unrelated suites are excluded and remain
 separately decomposed without ranking. No public API, DTO, persistence, Core,
 adapter, index, dependency, or build surface belongs to P8-FT-30.
 
-Evidence is completed P8-FT-9 and its focused dialog tests, migrated
+Evidence is completed P8-FT-9 and the extended focused dialog tests, migrated
 `full_text_search_dialog.cpp:203-253`, and pinned legacy
-`fulltextsearch.cc:547-579`. P8-FT-30 is selected. No successor after P8-FT-30
+`fulltextsearch.cc:547-579`. P8-FT-30 is complete. No successor after P8-FT-30
 is selected or ranked.
 
 

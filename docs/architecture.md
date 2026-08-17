@@ -3143,7 +3143,7 @@ only a private literal per-tab article-search boundary ready independently.
 P8-FT-29 completes that bounded handoff only. No successor after P8-FT-29 is
 selected or ranked.
 
-### Phase 8 full-text accepted-completion notification (selected)
+### Phase 8 full-text accepted-completion notification (complete)
 
 The independent documentation-only post-P8-FT-29 readiness audit is pinned to
 clean migrated revision `d63d6f8cfcdd305166c3974a95811046344d30e2` and the
@@ -3151,9 +3151,9 @@ unchanged clean read-only legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
 full-text workflow surface without advance ranking and selects exactly one
 smallest dependency-ready leaf, P8-FT-30: privately notify the user once when
-a generation-current full-text response is accepted.
+a generation-current full-text response is accepted. P8-FT-30 is complete.
 
-P8-FT-30 is dependency-ready because P8-FT-9 already accepts at most one
+P8-FT-30 uses the P8-FT-9 boundary, which already accepts at most one
 terminal response for the current generation, rejects stale and cancelled
 completions, and restores the dialog to idle only after acceptance. The dialog
 can invoke the existing Widgets-owned `QApplication::beep()` notification at
@@ -3188,11 +3188,11 @@ lifecycle, rebuild, and failure UI; adapters, `.gdfts`, legacy `_FTS`, index
 formats, dependencies, builds, and unrelated parity remain independent
 surfaces. They are decomposed only; none is selected or ranked.
 
-Evidence is completed P8-FT-9 and its focused dialog tests, migrated
+Evidence is completed P8-FT-9 and the extended focused dialog tests, migrated
 `full_text_search_dialog.cpp:203-253`, and pinned legacy
 `fulltextsearch.cc:547-579`, where the dialog beeps after all outstanding
 requests reach terminal completion regardless of retained results. P8-FT-30
-selects only the migrated accepted-completion notification contract. No
+completes only the migrated accepted-completion notification contract. No
 successor after P8-FT-30 is selected or ranked.
 
 
