@@ -2703,6 +2703,49 @@ destination or transport choice, a public/Core or composition-root contract,
 dependency or installed-surface change, an architectural decision requiring
 HTTP GET policy, or scope expansion.
 
+### Phase 8 full-text Search button default-policy acceptance (selected)
+
+The documentation-only post-P8-FT-36 audit selects P8-FT-37 as the sole next
+leaf. Pinned legacy `fulltextsearch.ui:204-214` makes the Search `OKButton` the
+explicit default and disables its auto-default property. Current
+`full_text_search_dialog.cpp:133-136` preserves the explicit default but not
+the non-auto-default policy, and existing focused coverage pins neither
+property.
+
+Future focused acceptance extends only `full_text_search_dialog_test`. It must
+identify `fullTextSearchButton`, verify `isDefault() == true` and
+`autoDefault() == false` after construction, and prove both remain unchanged
+through idle state, active submission, accepted completion, and active
+cancellation. Existing Search submission, active/idle Cancel, and button/F1
+Help coverage must remain green, while the property correction itself must not
+submit, cancel, close, move focus, or mutate query, response, result model,
+selection, geometry, or configuration.
+
+The focused Release command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, exactly 109 registered tests and full
+`ctest --preset conan-release`, clean committed exact-SCM `conan create` with
+the Release Qt WebEngine host profile and packaged consumers, Release install,
+and standalone installed C and C++ consumers. P8-FT-37 adds no executable or
+test registration and changes no installed header, DTO, ABI, dependency,
+CMake export, or Conan requirement; both consumers remain unchanged and
+source-compatible.
+
+Tab order, focus assignment or transfer, Return/Enter behavior beyond Qt's
+existing explicit-default semantics, other buttons' default policy, help
+consumption, query/result/navigation behavior, index lifecycle/UI,
+Preferences, adapters/index formats, dependencies/builds, and unrelated tests
+are excluded and unranked. No successor after P8-FT-37 is selected or ranked.
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+default-button evidence or acceptance semantics, a broader focus, tab-order,
+or keyboard-policy decision, public/Core or composition-root expansion,
+dependency or installed-surface change, HTTP GET policy, or scope expansion.
+
+This selection audit changes documentation only, so it intentionally skips
+compiled verification. Its gate is exact four-file scope, cross-document
+consistency, Phase terminology, successor language, and `git diff --check`.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

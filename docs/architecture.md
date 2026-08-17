@@ -3526,6 +3526,57 @@ transport, a public/Core or composition-root contract, dependency or installed
 surface change, architectural decision requiring HTTP GET policy, or scope
 expansion.
 
+### Phase 8 full-text Search button default policy (selected)
+
+The independent documentation-only post-P8-FT-36 audit is pinned to clean
+migrated revision `ca6f206f1913a7941d8dcf3599704353e27e3c4e`, its identical
+upstream and live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After rechecking the four
+governing migration documents and relevant current and pinned legacy code
+without advance ranking, it selects exactly one smallest dependency-ready
+leaf, P8-FT-37: preserve the private full-text Search button's default policy.
+
+The shared-library/GUI boundary governs this leaf. Pinned legacy
+`fulltextsearch.ui:204-214` makes `OKButton` the explicit default button while
+setting `autoDefault` false. Current `full_text_search_dialog.cpp:133-136`
+already makes `fullTextSearchButton` the explicit default but leaves Qt's
+auto-default property enabled, and the focused dialog test pins neither
+property. Widgets therefore owns the complete correction; Core, the
+composition root, and installed consumers acquire no button or focus policy.
+
+P8-FT-37 requires `fullTextSearchButton` to retain `isDefault() == true` and
+to report `autoDefault() == false` after construction and throughout idle,
+submission, completion, and active-cancellation transitions. The property
+correction does not independently submit or cancel work, close the dialog,
+move focus, alter the query, accepted response, result model, selection,
+geometry, or configuration, or change Help activation.
+
+Tab order, initial or transferred focus, Return/Enter dispatch beyond Qt's
+established explicit-default behavior, Cancel and Help button default policy,
+help consumption, query semantics, results and navigation, index lifecycle and
+presentation, Preferences/index policy, adapters/index formats, dependencies,
+builds, and unrelated parity remain independently decomposed, unselected, and
+unranked. No successor after P8-FT-37 is selected or ranked.
+
+Focused future acceptance extends only `full_text_search_dialog_test` to prove
+the exact button identity and both properties across the stated transitions,
+plus regressions for Search, Cancel, and Help behavior. The focused Release
+command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full implementation gate remains Linux
+Release configure/build, exactly 109 registered tests and full Release CTest,
+clean committed exact-SCM `conan create` with the Release Qt WebEngine host
+profile and packaged consumers, Release install, and standalone installed C
+and C++ consumers. P8-FT-37 changes no installed header, DTO, ABI, dependency,
+CMake export, Conan requirement, executable, or test registration, so both
+consumers remain unchanged and source-compatible.
+
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+default-button evidence or acceptance semantics, any broader focus, tab-order,
+or keyboard-policy choice, public/Core or composition-root expansion,
+dependency or installed-surface change, an architectural decision requiring
+HTTP GET policy, or scope expansion.
+
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

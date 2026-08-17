@@ -3644,6 +3644,57 @@ help destination or transport, a public/Core or composition-root contract,
 dependency or installed-surface change, an architectural decision requiring
 HTTP GET policy, or scope expansion.
 
+### Phase 8 full-text Search button default policy (selected)
+
+The independent documentation-only post-P8-FT-36 audit is pinned to clean
+migrated revision `ca6f206f1913a7941d8dcf3599704353e27e3c4e`, its identical
+upstream and live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It audits all remaining full-text
+parity gaps without advance ranking and selects exactly one smallest
+dependency-ready leaf, P8-FT-37: preserve the private Search button's explicit
+default and non-auto-default policy.
+
+P8-FT-37 is dependency-ready because the completed dialog shell and request
+workflow already own `fullTextSearchButton`, while P8-FT-31 fixes its active
+and idle behavior. Pinned legacy `fulltextsearch.ui:204-214` sets
+`default == true` and `autoDefault == false`. Current
+`full_text_search_dialog.cpp:133-136` sets the explicit default only, and the
+existing focused test does not cover either property. Under the shared-
+library/GUI boundary, this remains private Widgets behavior.
+
+The future implementation keeps `isDefault() == true`, sets
+`autoDefault() == false`, and preserves both properties across construction,
+idle restoration, submission, completion, and active cancellation. It does
+not independently submit or cancel, close the dialog, change focus, or alter
+query, response, model, selection, geometry, configuration, or Help behavior.
+Tab order, initial/transferred focus, broader Return/Enter dispatch, other
+buttons' default policy, help consumption, query and result semantics,
+navigation, index lifecycle/UI, Preferences/index policy, adapters and index
+formats, dependencies, builds, and unrelated parity remain separately
+decomposed, unselected, and unranked. No successor after P8-FT-37 is selected
+or ranked.
+
+Focused acceptance extends only `full_text_search_dialog_test` with exact
+button identity, both property values across the specified transitions, and
+Search/Cancel/Help regressions. The focused Release command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
+future implementation gate remains Linux Release configure/build, exactly 109
+registered tests, full Release CTest, clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile and packaged
+consumers, Release install, and standalone installed C and C++ consumers. No
+installed header, DTO, ABI, dependency, CMake export, Conan requirement,
+executable, or test registration changes; both consumers remain unchanged and
+source-compatible.
+
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+default-button evidence or acceptance semantics, a broader focus, tab-order,
+or keyboard-policy decision, public/Core or composition-root expansion,
+dependency or installed-surface change, an architectural decision requiring
+HTTP GET policy, or scope expansion. The audit itself is documentation-only,
+so compiled verification is intentionally skipped; exact four-file scope,
+cross-document consistency, Phase terminology, successor language, and
+`git diff --check` are its verification gate.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
