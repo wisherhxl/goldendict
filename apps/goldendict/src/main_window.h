@@ -298,6 +298,9 @@ class MainWindow final : public QMainWindow {
     void ApplyDictionaryFilter(goldendict::core::SuggestionQuery* query) const;
     void RefreshResultsNavigation();
     void RefreshSuggestions();
+    void DispatchArticleSearch(goldendict::core::ArticleTabId tab_id,
+                               ArticleView* view, const QString& text,
+                               std::uint64_t generation, bool backwards);
     void RefreshArticleSearch();
     void StartSuggestionLookup();
     void FinishSuggestionLookup(goldendict::core::ArticleTabId tab_id,
@@ -436,6 +439,16 @@ class MainWindow final : public QMainWindow {
 
     std::map<goldendict::core::ArticleTabId, ArticleSearchPresentation>
         article_search_presentations_;
+
+    struct PendingArticleSearchHandoff {
+        QString query;
+        std::uint64_t lookup_generation = 0U;
+        std::uint64_t search_generation = 0U;
+        QPointer<ArticleView> view;
+    };
+
+    std::map<goldendict::core::ArticleTabId, PendingArticleSearchHandoff>
+        pending_article_search_handoffs_;
     std::map<goldendict::core::ArticleTabId, QPointF>
         pending_article_scroll_restorations_;
 

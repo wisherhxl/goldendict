@@ -3397,26 +3397,123 @@ void MainWindow::RunWebEngineInteractionCheck(
                     const bool interaction_passed =
                         result.numberOfMatches() == 2 &&
                         article_view_->zoomFactor() == 1.25;
-                    article_view_->findText(QString());
-                    article_view_->page()->toHtml(
-                        [this, interaction_passed,
-                         completion = std::move(completion)](
-                            const QString& html) mutable {
-                            article_view_->printToPdf(
-                                [interaction_passed, html,
-                                 completion = std::move(completion)](
-                                    const QByteArray& pdf) mutable {
-                                    completion(interaction_passed &&
-                                               html.contains(
-                                                   QStringLiteral("needle")) &&
-                                               pdf.startsWith("%PDF-"));
-                                });
-                        });
+                    const auto tab_id = TabIdAt(article_tabs_->currentIndex());
+                    auto& presentation = article_search_presentations_[tab_id];
+                    presentation.query = QStringLiteral("needle 😀");
+                    presentation.status.clear();
+                    const std::uint64_t generation = ++presentation.generation;
+                    RefreshArticleSearch();
+                    DispatchArticleSearch(tab_id, article_view_,
+                                          presentation.query, generation,
+                                          false);
+                    auto attempts = std::make_shared<int>(0);
+                    auto poll = std::make_shared<std::function<void()>>();
+                    *poll = [this, tab_id, interaction_passed,
+                             completion = std::move(completion), attempts,
+                             poll]() mutable {
+                        const auto found =
+                            article_search_presentations_.find(tab_id);
+                        if (found != article_search_presentations_.end() &&
+                            found->second.status == QStringLiteral("1 of 2")) {
+                            found->second.query = QStringLiteral("absent 😀");
+                            found->second.status.clear();
+                            const std::uint64_t no_match_generation =
+                                ++found->second.generation;
+                            DispatchArticleSearch(tab_id, article_view_,
+                                                  found->second.query,
+                                                  no_match_generation, false);
+                            auto no_match_attempts = std::make_shared<int>(0);
+                            auto no_match_poll =
+                                std::make_shared<std::function<void()>>();
+                            *no_match_poll = [this, tab_id, interaction_passed,
+                                              completion =
+                                                  std::move(completion),
+                                              no_match_attempts,
+                                              no_match_poll]() mutable {
+                                const auto current =
+                                    article_search_presentations_.find(tab_id);
+                                if (current !=
+                                        article_search_presentations_.end() &&
+                                    current->second.status ==
+                                        QStringLiteral("No matches")) {
+                                    current->second.status =
+                                        QStringLiteral("stable status");
+                                    current->second.query =
+                                        QStringLiteral("needle 😀");
+                                    const std::uint64_t stale_generation =
+                                        ++current->second.generation;
+                                    DispatchArticleSearch(tab_id, article_view_,
+                                                          current->second.query,
+                                                          stale_generation,
+                                                          false);
+                                    current->second.query =
+                                        QStringLiteral("replacement");
+                                    ++current->second.generation;
+                                    QTimer::singleShot(
+                                        100, this,
+                                        [this, tab_id, interaction_passed,
+                                         completion =
+                                             std::move(completion)]() mutable {
+                                            const auto final_search =
+                                                article_search_presentations_
+                                                    .find(tab_id);
+                                            const bool stale_safe =
+                                                final_search !=
+                                                    article_search_presentations_
+                                                        .end() &&
+                                                final_search->second.status ==
+                                                    QStringLiteral(
+                                                        "stable status");
+                                            article_view_->findText(QString());
+                                            article_view_->page()->toHtml(
+                                                [this,
+                                                 passed = interaction_passed &&
+                                                          stale_safe,
+                                                 completion =
+                                                     std::move(completion)](
+                                                    const QString&
+                                                        html) mutable {
+                                                    article_view_->printToPdf(
+                                                        [passed, html,
+                                                         completion = std::move(
+                                                             completion)](
+                                                            const QByteArray&
+                                                                pdf) mutable {
+                                                            completion(
+                                                                passed &&
+                                                                html.contains(
+                                                                    QStringLiteral(
+                                                                        "needl"
+                                                                        "e")) &&
+                                                                pdf.startsWith(
+                                                                    "%PDF-"));
+                                                        });
+                                                });
+                                        });
+                                    return;
+                                }
+                                if (++*no_match_attempts >= 200) {
+                                    completion(false);
+                                    return;
+                                }
+                                QTimer::singleShot(10, this, *no_match_poll);
+                            };
+                            QTimer::singleShot(0, this, *no_match_poll);
+                            return;
+                        }
+                        if (++*attempts >= 200) {
+                            completion(false);
+                            return;
+                        }
+                        QTimer::singleShot(10, this, *poll);
+                    };
+                    QTimer::singleShot(0, this, *poll);
                 });
         },
         Qt::SingleShotConnection);
-    article_view_->setHtml(QStringLiteral(
-        "<!doctype html><html><body><p>needle</p><p>needle</p></body></html>"));
+    article_view_->setHtml(
+        QStringLiteral("<!doctype html><html><body><p>needle 😀</p><p>needle "
+                       "😀</p></body></html>"));
 }
 
 void MainWindow::RunArticleContextMenuCheck(
@@ -5272,6 +5369,7 @@ void MainWindow::SyncArticleTabs() {
             lookup_results_.erase(id);
             suggestions_.erase(id);
             article_search_presentations_.erase(id);
+            pending_article_search_handoffs_.erase(id);
             QWidget* widget = article_tabs_->widget(index);
             article_tabs_->removeTab(index);
             widget->deleteLater();
@@ -5915,6 +6013,20 @@ void MainWindow::NavigateToFullTextResult(
         query_->setSelection(selection_start, selection_length);
     emit ArticleTabSessionMutated();
     StartNavigationLookup(tab_result.tab_id, navigation, true);
+    auto* target_view = ArticleViewForTab(tab_result.tab_id);
+    if (target_view == nullptr)
+        return;
+    auto& search = article_search_presentations_[tab_result.tab_id];
+    search.query =
+        QString::fromUtf8(intent.query_text.data(),
+                          static_cast<qsizetype>(intent.query_text.size()));
+    search.status.clear();
+    const std::uint64_t search_generation = ++search.generation;
+    pending_article_search_handoffs_[tab_result.tab_id] = {
+        search.query, lookup_results_[tab_result.tab_id].generation,
+        search_generation, target_view};
+    if (TabIdAt(article_tabs_->currentIndex()) == tab_result.tab_id)
+        RefreshArticleSearch();
 }
 
 void MainWindow::ApplyDictionaryParticipation() {
@@ -6256,6 +6368,12 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     const int main_query_selection_before_activation = query_->selectionStart();
     const QString main_query_selected_text_before_activation =
         query_->selectedText();
+    auto& prior_article_search =
+        article_search_presentations_[tab_id_before_activation];
+    prior_article_search.query = QStringLiteral("prior article query");
+    prior_article_search.status = QStringLiteral("prior article status");
+    ++prior_article_search.generation;
+    RefreshArticleSearch();
     goldendict::app::FullTextResultActivationIntent ordered_intent;
     ordered_intent.result.headword = u8"Exact activated 😀 headword";
     ordered_intent.result.document_id = "must-not-target-document";
@@ -6264,6 +6382,8 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     ordered_intent.result.matches = {{1U, 2U, "must-not-highlight-match"}};
     ordered_intent.dictionary_filter_active = true;
     ordered_intent.dictionary_ids = {supported.front(), supported.front()};
+    ordered_intent.query_text = u8"exact accepted 😀 query";
+    ordered_intent.ignore_diacritics = true;
     first->ResultActivationRequested(ordered_intent);
     const auto ordered_state = facade_->GetArticleTabsState();
     const auto ordered_session = facade_->ExportArticleTabSession();
@@ -6292,6 +6412,22 @@ void MainWindow::RunFullTextDialogSmokeCheck(
         query_->cursorPosition() == main_query_cursor_before_activation &&
         query_->selectionStart() == main_query_selection_before_activation &&
         query_->selectedText() == main_query_selected_text_before_activation &&
+        article_search_presentations_[tab_id_before_activation].query ==
+            QString::fromStdString(ordered_intent.query_text) &&
+        article_search_presentations_[tab_id_before_activation]
+            .status.isEmpty() &&
+        article_search_->text() ==
+            QString::fromStdString(ordered_intent.query_text) &&
+        article_search_status_->text().isEmpty() &&
+        pending_article_search_handoffs_.count(tab_id_before_activation) ==
+            1U &&
+        pending_article_search_handoffs_[tab_id_before_activation].query ==
+            QString::fromStdString(ordered_intent.query_text) &&
+        pending_article_search_handoffs_[tab_id_before_activation]
+                .lookup_generation ==
+            lookup_results_[tab_id_before_activation].generation &&
+        pending_article_search_handoffs_[tab_id_before_activation].view ==
+            ArticleViewForTab(tab_id_before_activation) &&
         ordered_session.tabs.size() == 1U &&
         ordered_session.tabs.front().history.back() ==
             ordered_state.tabs.front().navigation &&
@@ -6339,10 +6475,18 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     goldendict::app::FullTextResultActivationIntent invalid_intent;
     invalid_intent.dictionary_filter_active = true;
     const auto session_before_invalid = facade_->ExportArticleTabSession();
+    const auto search_before_invalid =
+        article_search_presentations_[tab_id_before_activation];
     first->ResultActivationRequested(invalid_intent);
     passed =
         passed && activation_events.empty() && requests_.empty() &&
         facade_->ExportArticleTabSession() == session_before_invalid &&
+        article_search_presentations_[tab_id_before_activation].query ==
+            search_before_invalid.query &&
+        article_search_presentations_[tab_id_before_activation].status ==
+            search_before_invalid.status &&
+        article_search_presentations_[tab_id_before_activation].generation ==
+            search_before_invalid.generation &&
         status_->text() == QStringLiteral("Unable to update article state");
     auto* search_button =
         first->findChild<QPushButton*>(QStringLiteral("fullTextSearchButton"));
@@ -6479,6 +6623,7 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     }
     requests_.clear();
     lookup_results_.clear();
+    pending_article_search_handoffs_.clear();
     RefreshResultsNavigation();
     pending_article_scroll_restorations_.clear();
     for (int index = 0; index < article_tabs_->count(); ++index) {
@@ -7559,6 +7704,7 @@ void MainWindow::StartNavigationLookup(
     bool record_history) {
     if (facade_ == nullptr || navigation.query.empty())
         return;
+    pending_article_search_handoffs_.erase(tab_id);
     suggestions_.erase(tab_id);
     ++suggestion_generation_;
     if (suggestion_worker_ != nullptr)
@@ -7602,8 +7748,10 @@ void MainWindow::FinishLookup() {
         auto request = std::move(requests_.at(id));
         requests_.erase(id);
         auto* view = ArticleViewForTab(id);
-        if (view == nullptr)
+        if (view == nullptr) {
+            pending_article_search_handoffs_.erase(id);
             continue;
+        }
         const bool active = TabIdAt(article_tabs_->currentIndex()) == id;
         QString navigation_title;
         const auto tabs_state = facade_->GetArticleTabsState();
@@ -7621,15 +7769,32 @@ void MainWindow::FinishLookup() {
                 const auto article = facade_->ComposeLookupPage(response);
                 const std::uint64_t presentation_generation =
                     lookup_results_[id].generation;
+                std::optional<PendingArticleSearchHandoff> search_handoff;
+                if (auto pending = pending_article_search_handoffs_.find(id);
+                    pending != pending_article_search_handoffs_.end()) {
+                    if (pending->second.lookup_generation ==
+                            presentation_generation &&
+                        pending->second.view == view) {
+                        search_handoff = pending->second;
+                    }
+                    pending_article_search_handoffs_.erase(pending);
+                }
                 connect(
                     view, &QWebEngineView::loadFinished, this,
-                    [this, id, view, presentation_generation](bool success) {
+                    [this, id, view, presentation_generation,
+                     search_handoff = std::move(search_handoff)](bool success) {
                         const auto current = lookup_results_.find(id);
                         if (success && current != lookup_results_.end() &&
                             current->second.generation ==
                                 presentation_generation &&
                             ArticleViewForTab(id) == view) {
                             RefreshDictionaryContext(id);
+                            if (search_handoff.has_value() &&
+                                search_handoff->view == view) {
+                                DispatchArticleSearch(
+                                    id, view, search_handoff->query,
+                                    search_handoff->search_generation, false);
+                            }
                         }
                     },
                     Qt::SingleShotConnection);
@@ -7651,6 +7816,7 @@ void MainWindow::FinishLookup() {
                                          .arg(static_cast<qulonglong>(
                                              response.entries.size())));
             } else if (!response.errors.empty()) {
+                pending_article_search_handoffs_.erase(id);
                 lookup_results_[id].rows.clear();
                 view->setHtml(
                     QStringLiteral("<!doctype html><html><body><h1>Lookup "
@@ -7660,6 +7826,7 @@ void MainWindow::FinishLookup() {
                 if (active)
                     status_->setText(QStringLiteral("Lookup failed"));
             } else {
+                pending_article_search_handoffs_.erase(id);
                 lookup_results_[id].rows.clear();
                 view->setHtml(QStringLiteral(
                                   "<!doctype html><html><body><h1>%1</h1><p>No "
@@ -7669,6 +7836,7 @@ void MainWindow::FinishLookup() {
                     status_->setText(QStringLiteral("No result"));
             }
         } catch (const std::exception& error) {
+            pending_article_search_handoffs_.erase(id);
             lookup_results_[id].rows.clear();
             view->setHtml(
                 QStringLiteral("<!doctype html><html><body><h1>Lookup "
@@ -7702,10 +7870,18 @@ void MainWindow::FindInArticle(bool backwards) {
         article_search_status_->clear();
         return;
     }
+    DispatchArticleSearch(tab_id, view, text, generation, backwards);
+}
+
+void MainWindow::DispatchArticleSearch(goldendict::core::ArticleTabId tab_id,
+                                       ArticleView* view, const QString& text,
+                                       std::uint64_t generation,
+                                       bool backwards) {
+    if (view == nullptr || text.isEmpty())
+        return;
     QWebEnginePage::FindFlags flags;
-    if (backwards) {
+    if (backwards)
         flags |= QWebEnginePage::FindBackward;
-    }
     view->findText(
         text, flags,
         [this, tab_id, view, text,

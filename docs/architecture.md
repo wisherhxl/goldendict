@@ -3067,7 +3067,7 @@ activation intentionally consumes neither today. P8-FT-28 completes only the
 accepted private prerequisite; it does not select a consumer. No successor
 after P8-FT-28 is selected or ranked.
 
-### Phase 8 full-text accepted-query article-search handoff (selected)
+### Phase 8 full-text accepted-query article-search handoff (complete)
 
 The independent documentation-only post-P8-FT-28 readiness audit is pinned to
 clean migrated revision `c6c8a8cc6943de8ef2ecd85a0dc152e0c6459f05` and the
@@ -3104,22 +3104,22 @@ The main query edit, full-text dialog state, navigation identity and history,
 dictionary scope, article composition, result metadata, selection, focus,
 counts, and response statuses remain unchanged.
 
-Focused future acceptance covers exact UTF-8 query transfer; replacement of a
+Focused acceptance covers exact UTF-8 query transfer; replacement of a
 prior per-tab article-search query and status; one post-load literal find on the
 activated current tab; match and no-match status projection; inactive-tab
 isolation; and stale lookup, stale load, stale find callback, closed/replaced
 view, failed navigation, failed/empty lookup, facade replacement, and teardown
 safety. Existing full-text activation, scoped navigation, article search,
 WebEngine interaction, tab, history, and session coverage remains green. The
-focused future command is
+focused command is
 `ctest --preset conan-release -R '^(goldendict_full_text_dialog_smoke|goldendict_webengine_interaction_smoke)$'`
-after the Release target has been built. The full future implementation gate
-remains Linux Release configure/build, full `ctest --preset conan-release`
+after the Release target has been built. The completed implementation gate is
+Linux Release configure/build, full `ctest --preset conan-release`
 without an unintended registration delta, clean exact-SCM `conan create` with
 the Release Qt WebEngine host profile and packaged consumers, Release install,
 and standalone installed C and C++ consumers. P8-FT-29 adds no test executable
 or public/installed interface, so the registered Release baseline remains 109
-tests. This documentation-only audit requires no build or compiled test.
+tests.
 
 The authoritative `ignore_diacritics` value remains delivered but unconsumed:
 Qt WebEngine's literal find interface exposes no matching diacritics policy,
@@ -3140,7 +3140,7 @@ existing full-text-dialog and WebEngine interaction smokes, and pinned legacy
 `fulltextsearch.cc:499-586`. Legacy activation transfers a regular expression
 and ignore-diacritics choice into article presentation; the migrated tree has
 only a private literal per-tab article-search boundary ready independently.
-P8-FT-29 selects that bounded handoff only. No successor after P8-FT-29 is
+P8-FT-29 completes that bounded handoff only. No successor after P8-FT-29 is
 selected or ranked.
 
 
