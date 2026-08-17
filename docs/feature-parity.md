@@ -197,6 +197,23 @@ parity remain excluded and unranked. The Release baseline remains exactly 109
 tests, and standalone installed C and C++ consumers remain unchanged and
 source-compatible. No successor after P8-FT-41 is selected or ranked.
 
+The P8-FT-42 audit supersedes that historical closure and selects only the
+private button-row spacer sequence. Pinned legacy
+`fulltextsearch.ui:190-270` places expanding horizontal spacers before Search,
+between Search and Cancel, between Cancel and Help, and after Help, while the
+current mapped private row has only its outer stretches. The future leaf
+restores only the two missing inter-button spacers after P8-FT-36 through
+P8-FT-38, keeping the exact spacer/Search/spacer/Cancel/spacer/Help/spacer item
+sequence stable across construction and request/lifecycle transitions. Button
+identity, text, order and parentage, Search default policy, tab chain, Help
+intent, Cancel lifecycle, workflow, geometry, public/Core and installed
+contracts, dependencies, and test registration remain unchanged. Exact spacer
+size hints, stretch factors, margins, layout spacing, button sizing or
+reordering, broader layout/style work, indexing UI, and unrelated parity remain
+excluded and unranked. The Release baseline remains exactly 109 tests, and
+standalone installed C and C++ consumers remain unchanged and source-
+compatible. No successor after P8-FT-42 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

@@ -2903,6 +2903,54 @@ broader layout choice, public/Core or composition-root expansion, dependency or 
 surface change, an architectural decision requiring HTTP GET policy, discovery
 of another required file, or scope expansion.
 
+## Phase 8 Full-Text Button-Row Spacer Sequence Gate (Selected)
+
+The documentation-only post-P8-FT-41 audit selects P8-FT-42 as the sole next
+leaf. Pinned legacy `fulltextsearch.ui:190-270` places expanding horizontal
+spacers before Search, between Search and Cancel, between Cancel and Help, and
+after Help; the mapped current private row retains only the two outer
+stretches. P8-FT-36 through P8-FT-38 supply the complete Help, Search-default,
+and tab-sequence prerequisites.
+
+Future focused acceptance extends only `full_text_search_dialog_test`. It
+proves one button row attached to the enclosing vertical layout with the exact
+seven-item sequence spacer, `fullTextSearchButton`, spacer,
+`fullTextCancelButton`, spacer, `fullTextHelpButton`, spacer; all four spacers
+expand horizontally, and all three buttons remain unique direct dialog
+children. The relationship is verified after construction and through idle,
+submission, generation-current accepted completion, active cancellation,
+replacement, service replacement, and controller detachment while retaining
+button identity/text/order/parentage, Search default policy, tab chain, Help
+intent, Cancel lifecycle, request/response, and geometry regressions. The
+focused Release command is:
+
+```sh
+ctest --preset conan-release -R '^full_text_search_dialog_test$'
+```
+
+The full implementation gate remains Linux Release configure/build, exactly
+109 registered tests, full Release CTest, clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile and packaged
+consumers, Release install, and unchanged standalone installed C and C++
+consumers. P8-FT-42 adds no executable, test registration, installed header,
+DTO, ABI, dependency, CMake export, or Conan requirement.
+
+Exact spacer size hints, stretch factors, margins, layout spacing, button sizes
+or size policies, button reordering, broader layout/style work, indexing
+lifecycle/UI, Preferences, adapters/index formats, dependencies/builds,
+public/Core or composition-root expansion, HTTP GET policy, and unrelated tests
+are excluded and unranked. No successor after P8-FT-42 is selected or ranked.
+
+This selection audit changes documentation only, so compiled verification is
+intentionally skipped. Its gate is exact four-file scope, cross-document
+consistency, Phase terminology, successor neutrality, and `git diff --check`.
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+layout evidence or acceptance semantics, any exact spacer-size, stretch-factor,
+margin, spacing, style, or broader layout choice, public/Core or composition-
+root expansion, dependency or installed-surface change, an architectural
+decision requiring HTTP GET policy, discovery of another required file, or
+scope expansion.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
