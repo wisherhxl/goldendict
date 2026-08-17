@@ -291,6 +291,35 @@ Standalone installed C and C++ consumers remain unchanged and source-
 compatible. P8-FT-45 is complete. No successor after P8-FT-45 is selected or
 ranked.
 
+P8-FT-46 supersedes that historical closure and selects only the private
+full-text query-field label parity leaf. Pinned legacy
+`fulltextsearch.ui:28-31` places the unique query `QLineEdit` directly in the
+Search group without a label, while current
+`full_text_query_composer.cpp:57-58,131-133` maps it to the unique private
+`fullTextQueryText` line edit but adds a `QFormLayout` label with text `Query`.
+The future leaf changes only that form row to unlabeled full-width placement
+after P8-FT-1 through P8-FT-45, preserving field identity, parentage, value,
+ordering, focus/tab behavior, query composition, request/response lifecycle,
+geometry, public/Core and installed contracts, dependencies, and test
+registration. The absent association and unique field stay stable across
+construction, text mutation, mode/option, composition, and request/lifecycle
+transitions. Any second label or behavior, broader layout restructuring,
+spacing, margins, mnemonic policy, translation-catalog work, indexing
+lifecycle/UI, Preferences, adapters/index formats, dependencies/builds, HTTP
+GET policy, and unrelated parity remain excluded and unranked. Focused
+acceptance extends only `full_text_query_composer_test`; no executable or
+registered test is added. The Release baseline remains exactly 109 tests;
+exact-SCM creation uses:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Full Release CTest, Release install, packaged consumers, and standalone
+installed C and C++ consumer gates remain unchanged. P8-FT-46 is selected for
+future implementation. No successor after P8-FT-46 is selected or ranked.
+Builds and tests are intentionally skipped for this documentation-only audit.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

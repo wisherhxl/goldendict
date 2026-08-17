@@ -3120,6 +3120,61 @@ audit's gate is exact four-file scope, cross-document consistency, Phase
 terminology, successor neutrality, `git diff --check`, and clean pinned refs
 and worktrees.
 
+## Phase 8 Full-Text Query-Field Label Gate (Selected)
+
+The documentation-only post-P8-FT-45 audit selects P8-FT-46 as the sole next
+leaf. Pinned legacy `fulltextsearch.ui:28-31` places the unique query
+`QLineEdit` directly in the Search group without a label. Current
+`full_text_query_composer.cpp:57-58,131-133` maps that field to the unique
+private `fullTextQueryText` line edit but adds a `QFormLayout` label with text
+`Query`. P8-FT-1 through P8-FT-45 supply the field, composition, persistence,
+containing-layout, focus/tab, request-lifecycle, and adjacent mode-label
+prerequisites.
+
+Focused acceptance will extend only `full_text_query_composer_test`. It uses
+`QFormLayout::labelForField()` to prove the unique query field has no associated
+label while preserving identity, parentage, value, text mutation, mode and
+option transitions, and repeated composition. Existing dialog tests retain
+submission, generation-current accepted completion, active cancellation,
+replacement, service replacement, controller detachment, responses, geometry,
+focus, tab, and lifecycle regressions. Add no executable or registered test.
+
+Run the focused Release test with:
+
+```sh
+ctest --preset conan-release -R '^full_text_query_composer_test$'
+```
+
+The future implementation gate remains Linux Release configure/build, exactly
+109 registered tests, full Release CTest, Release install, packaged consumers,
+standalone installed C and C++ consumers, and clean committed exact-SCM
+creation with:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+P8-FT-46 will add no executable, test registration, installed header, DTO,
+ABI, dependency, CMake export, or Conan requirement. Any second label or
+behavior, broader layout restructuring, spacing, margins, mnemonic policy,
+translation-catalog work, indexing lifecycle/UI, Preferences, adapters and
+index formats, dependencies/builds, public/Core or composition-root changes,
+HTTP GET policy, and unrelated tests are excluded and unranked. No successor
+after P8-FT-46 is selected or ranked.
+
+P8-FT-46 is selected for future implementation. Its implementation is limited
+to the private composer, its existing focused test, and these four governing
+documents. Implementation must stop on ref/worktree drift, legacy dirtiness,
+ambiguous mapping or acceptance semantics, any second label or behavior,
+broader layout work, mnemonic or translation-catalog work, public/Core or
+composition-root expansion, dependency or installed-surface change, an
+architectural decision requiring HTTP GET policy, discovery of another
+required file, or scope expansion. This documentation audit's gate is exact
+four-file scope, cross-document consistency, Phase terminology, successor
+neutrality, the exact Conan command, `git diff --check`, and clean pinned refs
+and worktrees. Builds and tests are intentionally skipped for this
+documentation-only audit.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

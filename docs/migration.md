@@ -4139,6 +4139,73 @@ required file, or scope expansion. This audit's gate is exact four-file scope,
 cross-document consistency, Phase terminology, successor neutrality,
 `git diff --check`, and clean pinned refs and worktrees.
 
+### Phase 8 full-text query-field label parity (selected)
+
+The documentation-only post-P8-FT-45 audit is pinned to clean migrated
+revision `05e2f6b7ca3a657d1c0fe57bea7e47e691762054`, its identical upstream and
+fresh live remote, and clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly P8-FT-46:
+remove the private full-text query field's unmatched label.
+
+Pinned legacy `fulltextsearch.ui:28-31` places the unique query `QLineEdit`
+directly in the Search group without a label. Current
+`full_text_query_composer.cpp:57-58,131-133` maps that field to the unique
+private `fullTextQueryText` line edit but adds a `QFormLayout` label with text
+`Query`. P8-FT-1 through P8-FT-45 supply the field, composition, persistence,
+containing-layout, focus/tab, request-lifecycle, and adjacent mode-label
+prerequisites. The shared-library/GUI boundary keeps this one-label correction
+in private Widgets and leaves Core, composition-root, public, and installed
+contracts unchanged.
+
+The future implementation changes only the query field's form row from labeled
+to unlabeled full-width placement while retaining `fullTextQueryText`. Field
+identity, parentage, value, ordering, focus/tab behavior, query composition,
+submission, responses, geometry, and lifecycle remain unchanged. The absent
+association and unique field stay stable through construction, text mutation,
+mode and option transitions, repeated composition, submission, generation-
+current accepted completion, active cancellation, replacement, service
+replacement, and controller detachment.
+
+Any second label or behavior, broader layout restructuring, spacing, margins,
+mnemonic policy, translation-catalog work, indexing lifecycle/UI, Preferences,
+adapters/index formats, dependencies/builds, public/Core or composition-root
+changes, HTTP GET policy, and unrelated parity are excluded and unranked. No
+successor after P8-FT-46 is selected or ranked.
+
+Focused acceptance will extend only `full_text_query_composer_test`. It uses
+`QFormLayout::labelForField()` to prove the unique query field has no associated
+label while preserving identity, parentage, value, text mutation, mode and
+option transitions, and repeated composition. Existing dialog tests retain
+request and lifecycle regressions. Add no executable or registered test. The
+focused Release command remains
+`ctest --preset conan-release -R '^full_text_query_composer_test$'`.
+
+The future implementation gate remains Linux Release configure/build, exactly
+109 registered tests, full Release CTest, Release install, packaged consumers,
+unchanged standalone installed C and C++ consumers, and clean committed exact-
+SCM creation with:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+P8-FT-46 will add no executable, test registration, installed header, DTO,
+ABI, dependency, CMake export, or Conan requirement. Its future implementation
+is limited to the private composer, its existing focused test, and these four
+governing documents.
+
+P8-FT-46 is selected for future implementation. No later successor is selected
+or ranked. Implementation must stop on ref/worktree drift, legacy dirtiness,
+ambiguous mapping or acceptance semantics, any second label or behavior,
+broader layout work, mnemonic or translation-catalog work, public/Core or
+composition-root expansion, dependency or installed-surface change, an
+architectural decision requiring HTTP GET policy, discovery of another
+required file, or scope expansion. This documentation audit's gate is exact
+four-file scope, cross-document consistency, Phase terminology, successor
+neutrality, the exact Conan command, `git diff --check`, and clean pinned refs
+and worktrees. Builds and tests are intentionally skipped for this
+documentation-only audit.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
