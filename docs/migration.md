@@ -3836,6 +3836,61 @@ exactly four governing documentation updates, cross-document consistency,
 Phase terminology, successor language, and the full Release, install,
 consumer, and exact-SCM package verification described above.
 
+### Phase 8 full-text result-count/progress row (selected)
+
+The independent documentation-only post-P8-FT-40 audit is pinned to clean
+migrated revision `0b6a081699947168959884a940870d8a741c1d74`, its identical
+upstream and live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly P8-FT-41:
+restore the private result-count/progress horizontal row.
+
+Pinned legacy `fulltextsearch.ui:102-129` places `articlesFoundLabel` first and
+`searchProgressBar` second in one `QHBoxLayout`. Current
+`full_text_search_dialog.cpp` adds the mapped private
+`fullTextArticlesFoundLabel` and `fullTextSearchProgress` separately to the
+dialog's vertical layout, with response-status widgets between them.
+P8-FT-17, P8-FT-39, and P8-FT-40 already own count presentation, minimum
+height, and progress alignment. The shared-library/GUI boundary keeps this
+correction in private Widgets and leaves Core, composition-root, public, and
+installed contracts unchanged.
+
+The future implementation places one private horizontal layout in the
+enclosing vertical dialog layout, with the unique direct dialog children
+`fullTextArticlesFoundLabel` first and `fullTextSearchProgress` second. The
+relationship remains stable through construction, idle, submission,
+generation-current accepted completion, active cancellation, replacement,
+service replacement, and controller detachment. Count text and minimum height,
+progress alignment/range/visibility, response-status order and behavior,
+request lifecycle, dialog geometry, focus chain, search semantics, and
+cancellation behavior remain unchanged.
+
+Spacing, margins, stretch factors, size policies, widths, status-widget
+rearrangement, broader layout redesign, progress behavior/style, geometry,
+keyboard behavior, indexing lifecycle/UI, Preferences, adapters/index formats,
+dependencies/builds, public/Core or composition-root changes, and unrelated
+parity are excluded and unranked. No successor after P8-FT-41 is selected or
+ranked.
+
+Future focused acceptance extends only `full_text_search_dialog_test` to prove
+the unique horizontal row, exact label-then-progress order, enclosing-layout
+attachment, unchanged widget properties, and lifecycle regressions. The
+focused Release command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
+gate remains Linux Release configure/build, exactly 109 registered tests, full
+Release CTest, clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile and packaged consumers, Release install, and unchanged
+standalone installed C and C++ consumers. No executable, registration,
+installed interface, dependency, export, or Conan requirement changes.
+
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+layout evidence or acceptance semantics, any spacing, style, or broader layout
+choice, public/Core or composition-root expansion, dependency or installed-
+surface change, an architectural decision requiring HTTP GET policy, discovery
+of another required file, or scope expansion. This selection audit is
+documentation-only, so compiled verification is intentionally skipped; exact
+four-file scope, cross-document consistency, Phase terminology, successor
+language, and `git diff --check` are its gate.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

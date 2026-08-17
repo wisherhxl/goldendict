@@ -181,6 +181,22 @@ Release baseline remains exactly 109 tests, and standalone installed C and C++
 consumers remain unchanged and source-compatible. No successor after P8-FT-40
 is selected or ranked.
 
+The P8-FT-41 audit supersedes that historical closure and selects only the
+private result-count/progress horizontal row. Pinned legacy
+`fulltextsearch.ui:102-129` places `articlesFoundLabel` first and
+`searchProgressBar` second in one `QHBoxLayout`, while current mapped private
+widgets are separate vertical-layout items with response-status widgets between
+them. The future leaf restores only that relationship after P8-FT-17,
+P8-FT-39, and P8-FT-40, keeping both widgets unique direct dialog children and
+stable across construction and request/lifecycle transitions. Count text and
+minimum height, progress alignment/range/visibility, status order/behavior,
+workflow, geometry, focus, public/Core and installed contracts, dependencies,
+and test registration remain unchanged. Spacing, margins, stretch factors,
+size policies, widths, broader layout redesign, indexing UI, and unrelated
+parity remain excluded and unranked. The Release baseline remains exactly 109
+tests, and standalone installed C and C++ consumers remain unchanged and
+source-compatible. No successor after P8-FT-41 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

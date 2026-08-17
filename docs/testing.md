@@ -2856,6 +2856,52 @@ four governing documentation updates, cross-document consistency, Phase
 terminology, successor language, and the full Release, install, consumer, and
 exact-SCM package verification described above.
 
+## Phase 8 Full-Text Result-Count/Progress Row Gate (Selected)
+
+The documentation-only post-P8-FT-40 audit selects P8-FT-41 as the sole next
+leaf. Pinned legacy `fulltextsearch.ui:102-129` places the result-count label
+first and progress bar second in one horizontal layout; the mapped current
+private widgets are separate vertical-layout items with response statuses
+between them. P8-FT-17, P8-FT-39, and P8-FT-40 supply the complete presentation
+prerequisites.
+
+Future focused acceptance extends only `full_text_search_dialog_test`. It
+proves one horizontal row attached to the enclosing vertical layout, containing
+the unique direct dialog children `fullTextArticlesFoundLabel` first and
+`fullTextSearchProgress` second, after construction and through idle,
+submission, generation-current accepted completion, active cancellation,
+replacement, service replacement, and controller detachment. It retains count
+text/minimum-height, progress alignment/range/visibility, response-status
+order/behavior, request-lifecycle, geometry, focus-chain, search, and
+cancellation regressions. The focused Release command is:
+
+```sh
+ctest --preset conan-release -R '^full_text_search_dialog_test$'
+```
+
+The full implementation gate remains Linux Release configure/build, exactly
+109 registered tests, full Release CTest, clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile and packaged
+consumers, Release install, and unchanged standalone installed C and C++
+consumers. P8-FT-41 adds no executable, test registration, installed header,
+DTO, ABI, dependency, CMake export, or Conan requirement.
+
+Spacing, margins, stretch factors, size policies, widths, status-widget
+rearrangement, broader layout redesign, progress behavior/style, geometry,
+keyboard behavior, indexing lifecycle/UI, Preferences, adapters/index formats,
+dependencies/builds, public/Core or composition-root expansion, and unrelated
+tests are excluded and unranked. No successor after P8-FT-41 is selected or
+ranked.
+
+This selection audit changes documentation only, so compiled verification is
+intentionally skipped. Its gate is exact four-file scope, cross-document
+consistency, Phase terminology, successor language, and `git diff --check`.
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+layout evidence or acceptance semantics, any spacing, style, or broader layout
+choice, public/Core or composition-root expansion, dependency or installed-
+surface change, an architectural decision requiring HTTP GET policy, discovery
+of another required file, or scope expansion.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
