@@ -3561,13 +3561,13 @@ cross-platform contracts.
 Gate: the Linux application can load, index, search, and render the approved
 dictionary set through the intended user workflows.
 
-### Phase 8 full-text dialog initial-size contract (selected)
+### Phase 8 full-text dialog initial-size contract (complete)
 
-The independent documentation-only post-P8-FT-34 audit is pinned to clean
+The independent documentation-only post-P8-FT-34 audit was pinned to clean
 migrated revision `7ff83942ab6b71dda1a0a798eb0dcbe8ef1ccd24` and unchanged
 clean read-only legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After rechecking all remaining
-full-text parity gaps without advance ranking, it selects exactly P8-FT-35:
+full-text parity gaps without advance ranking, it selected exactly P8-FT-35:
 preserve the legacy full-text dialog's private Widgets initial logical size.
 
 P8-FT-7 owns the dialog and layout, P8-FT-33 owns one-time restoration, and
@@ -3578,8 +3578,9 @@ Widgets sets that size after the 430-by-450 minimum and before restore. Valid
 restored geometry still wins, undersized restored geometry remains clamped,
 and later resizing, persistence, and lifecycle behavior remain unchanged.
 
-Acceptance extends `full_text_search_dialog_test` only, covering exact absent
-and rejected initialization, valid larger restoration, undersized restoration
+The completed implementation extends `full_text_search_dialog_test` only,
+covering exact absent and rejected initialization, valid larger restoration,
+undersized restoration
 clamping, later direct resizing, and P8-FT-33/P8-FT-34 regressions. The focused
 Release command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full

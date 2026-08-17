@@ -148,6 +148,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     connect(results_, &QListView::clicked, this,
             [this](const QModelIndex& index) { ActivateResult(index); });
     controller_.SetService(service);
+    resize(492, 593);
     if (!geometry.empty()) {
         restoreGeometry(QByteArray(geometry.data(),
                                    static_cast<qsizetype>(geometry.size())));

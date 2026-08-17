@@ -1684,10 +1684,36 @@ void FullTextSearchDialogTest::EnforcesPinnedMinimumAcrossResizeAndRestore() {
     FullTextSearchDialog dialog(preferences, &service);
     QCOMPARE(dialog.minimumWidth(), 430);
     QCOMPARE(dialog.minimumHeight(), 450);
+    QCOMPARE(dialog.size(), QSize(492, 593));
+
+    FullTextSearchDialog absent_dialog(preferences, &service, {});
+    QCOMPARE(absent_dialog.size(), QSize(492, 593));
+
+    FullTextSearchDialog rejected_dialog(preferences, &service,
+                                         "not-qt-geometry");
+    QCOMPARE(rejected_dialog.size(), QSize(492, 593));
 
     dialog.resize(1, 1);
     QCOMPARE(dialog.width(), 430);
     QCOMPARE(dialog.height(), 450);
+
+    dialog.resize(617, 701);
+    QCOMPARE(dialog.size(), QSize(617, 701));
+
+    QDialog larger_source;
+    larger_source.resize(641, 733);
+    larger_source.show();
+    QCoreApplication::processEvents();
+    const QByteArray larger_geometry = larger_source.saveGeometry();
+    const std::string larger_bytes(
+        larger_geometry.constData(),
+        static_cast<std::size_t>(larger_geometry.size()));
+
+    FullTextSearchDialog larger_restored_dialog(preferences, &service,
+                                                larger_bytes);
+    larger_restored_dialog.show();
+    QCoreApplication::processEvents();
+    QCOMPARE(larger_restored_dialog.size(), QSize(641, 733));
 
     QDialog undersized_source;
     undersized_source.resize(311, 277);

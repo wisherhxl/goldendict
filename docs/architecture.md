@@ -3421,13 +3421,13 @@ sets the exact minimum before the existing one-time geometry restore, leaving
 Qt to enforce the private logical-size constraint without adding placement or
 normalization policy.
 
-### Phase 8 full-text dialog initial-size contract (selected)
+### Phase 8 full-text dialog initial-size contract (complete)
 
-The independent documentation-only post-P8-FT-34 audit is pinned to clean
+The independent documentation-only post-P8-FT-34 audit was pinned to clean
 migrated revision `7ff83942ab6b71dda1a0a798eb0dcbe8ef1ccd24` and unchanged
 clean read-only legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
-full-text workflow surface without advance ranking and selects exactly one
+full-text workflow surface without advance ranking and selected exactly one
 smallest dependency-ready leaf, P8-FT-35: preserve the legacy full-text
 dialog's private Widgets initial logical size.
 
@@ -3438,14 +3438,14 @@ geometry initializes the dialog to 492 logical pixels wide and 593 logical
 pixels high. Under the shared-library/GUI rule, Widgets alone owns this size;
 Core, the composition root, and installed consumers do not interpret it.
 
-Every newly constructed dialog must have `size() == QSize(492, 593)` after
+Every newly constructed dialog now has `size() == QSize(492, 593)` after
 layout construction when stored geometry is absent or rejected by Qt. Widgets
 establishes that size after the P8-FT-34 minimum and before P8-FT-33's restore.
 Valid restored geometry continues to win, undersized restored geometry remains
 clamped, and later direct resizing and all persistence and lifecycle behavior
 remain unchanged.
 
-P8-FT-35 changes no Core contract, installed header, public DTO, dependency,
+P8-FT-35 changed no Core contract, installed header, public DTO, dependency,
 adapter, index format, persistence, or build surface. Focused implementation
 acceptance extends `full_text_search_dialog_test` with exact absent and
 Qt-rejected initialization, valid larger restoration, undersized restoration

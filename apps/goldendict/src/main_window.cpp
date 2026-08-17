@@ -6554,6 +6554,17 @@ void MainWindow::RunFullTextDialogSmokeCheck(
              captured_geometries.empty();
     first->resize(first->width() + 71, first->height() + 43);
     first->move(first->pos() + QPoint(23, 29));
+    QApplication::processEvents();
+    const QScreen* geometry_screen = first->screen();
+    if (geometry_screen != nullptr) {
+        const QRect available = geometry_screen->availableGeometry();
+        first->move(first->pos() +
+                    (available.center() - first->frameGeometry().center()));
+        QApplication::processEvents();
+        passed = passed && available.contains(first->frameGeometry());
+    } else {
+        passed = false;
+    }
     const QByteArray idle_cancel_geometry = first->saveGeometry();
     cancel_button->click();
     QApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
