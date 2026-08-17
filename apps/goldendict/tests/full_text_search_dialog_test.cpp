@@ -207,6 +207,11 @@ QLabel* PartialEmptyStatus(FullTextSearchDialog* dialog) {
         QStringLiteral("fullTextPartialEmptyResponseStatus"));
 }
 
+QLabel* ErrorCountStatus(FullTextSearchDialog* dialog) {
+    return dialog->findChild<QLabel*>(
+        QStringLiteral("fullTextErrorCountResponseStatus"));
+}
+
 goldendict::core::FullTextResult MakeResult(const std::string& id,
                                             const std::string& headword,
                                             std::size_t ordinal) {
@@ -294,12 +299,126 @@ class FullTextSearchDialogTest final : public QObject {
     void ShowsOnlyGenericTerminalFailureForErrorOnlyResponses();
     void ShowsOnlyGenericMixedResultStatusForResponsesWithResultsAndErrors();
     void ShowsOnlyGenericPartialEmptyStatusForPartialResponsesWithoutResults();
+    void ShowsAuthoritativeAcceptedErrorCountWithoutDetails();
     void ActivatesExactCurrentResultOnceFromMouseAndKeyboard();
     void SuppressesDuplicateInvalidStaleAndCancelledActivation();
     void ReplacesRunningAndPendingGenerationsAndSuppressesStaleCompletion();
     void CancellationIsIdempotentAndRestoresIdleState();
     void ServiceReplacementDetachAndDestructionSuppressLateDelivery();
 };
+
+void FullTextSearchDialogTest::
+    ShowsAuthoritativeAcceptedErrorCountWithoutDetails() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog dialog(preferences, &service);
+    auto* error_count_status = ErrorCountStatus(&dialog);
+    QVERIFY(error_count_status != nullptr);
+    QCOMPARE(error_count_status->parent(), &dialog);
+    QVERIFY(error_count_status->isHidden());
+    QVERIFY(error_count_status->text().isEmpty());
+
+    const auto finish_current =
+        [&dialog](goldendict::core::FullTextResponse response) {
+            dialog.active_generation_ = ++dialog.generation_;
+            dialog.FinishSearch(dialog.generation_, std::move(response));
+        };
+    const std::vector<goldendict::core::FullTextErrorCode> error_codes = {
+        goldendict::core::FullTextErrorCode::kInvalidQuery,
+        goldendict::core::FullTextErrorCode::kDictionaryUnavailable,
+        goldendict::core::FullTextErrorCode::kUnsupported,
+        goldendict::core::FullTextErrorCode::kMalformedIndex,
+        goldendict::core::FullTextErrorCode::kCancelled,
+        goldendict::core::FullTextErrorCode::kDeadlineExceeded,
+        goldendict::core::FullTextErrorCode::kResourceLimit,
+        goldendict::core::FullTextErrorCode::kInternal,
+    };
+
+    finish_current({});
+    QVERIFY(error_count_status->isHidden());
+    QVERIFY(error_count_status->text().isEmpty());
+
+    for (const auto code : error_codes) {
+        goldendict::core::FullTextResponse response;
+        response.errors.push_back(
+            {code, "private-dictionary", "private backend detail"});
+        finish_current(std::move(response));
+        QVERIFY(!error_count_status->isHidden());
+        QCOMPARE(error_count_status->text(), QStringLiteral("Errors: 1"));
+        QVERIFY(!FailureStatus(&dialog)->isHidden());
+    }
+
+    goldendict::core::FullTextResponse multiple;
+    multiple.errors = {
+        {goldendict::core::FullTextErrorCode::kInternal, "duplicate-private-id",
+         "first private detail"},
+        {goldendict::core::FullTextErrorCode::kInternal, "duplicate-private-id",
+         "second private detail"},
+        {goldendict::core::FullTextErrorCode::kMalformedIndex,
+         "third-private-id", "third private detail"},
+    };
+    finish_current(multiple);
+    QVERIFY(!error_count_status->isHidden());
+    QCOMPARE(error_count_status->text(), QStringLiteral("Errors: 3"));
+    QVERIFY(!FailureStatus(&dialog)->isHidden());
+
+    multiple.results = {MakeResult("retained", "retained", 1U)};
+    finish_current(multiple);
+    QCOMPARE(error_count_status->text(), QStringLiteral("Errors: 3"));
+    QVERIFY(!MixedResultStatus(&dialog)->isHidden());
+    QVERIFY(FailureStatus(&dialog)->isHidden());
+
+    multiple.partial = true;
+    finish_current(multiple);
+    QCOMPARE(error_count_status->text(), QStringLiteral("Errors: 3"));
+    QVERIFY(!MixedResultStatus(&dialog)->isHidden());
+    QVERIFY(!PartialStatus(&dialog)->isHidden());
+    QVERIFY(PartialEmptyStatus(&dialog)->isHidden());
+
+    multiple.results.clear();
+    finish_current(multiple);
+    QCOMPARE(error_count_status->text(), QStringLiteral("Errors: 3"));
+    QVERIFY(MixedResultStatus(&dialog)->isHidden());
+    QVERIFY(!PartialStatus(&dialog)->isHidden());
+    QVERIFY(!PartialEmptyStatus(&dialog)->isHidden());
+    QVERIFY(FailureStatus(&dialog)->isHidden());
+
+    for (const auto* label : dialog.findChildren<QLabel*>()) {
+        QVERIFY(!label->text().contains(QStringLiteral("private-id")));
+        QVERIFY(!label->text().contains(QStringLiteral("private detail")));
+        QVERIFY(!label->text().contains(QStringLiteral("Internal")));
+        QVERIFY(!label->text().contains(QStringLiteral("MalformedIndex")));
+    }
+
+    finish_current({});
+    QVERIFY(error_count_status->isHidden());
+    QVERIFY(error_count_status->text().isEmpty());
+
+    finish_current(multiple);
+    const std::uint64_t stale_generation = dialog.generation_;
+    dialog.active_generation_ = ++dialog.generation_;
+    dialog.FinishSearch(stale_generation, {});
+    QCOMPARE(error_count_status->text(), QStringLiteral("Errors: 3"));
+
+    finish_current({});
+    dialog.active_generation_ = ++dialog.generation_;
+    dialog.FinishSearch(dialog.generation_ - 1U, multiple);
+    QVERIFY(error_count_status->isHidden());
+
+    service.response_ = multiple;
+    dialog.InitializeQuery(QStringLiteral("replacement"));
+    dialog.SubmitSearch();
+    QVERIFY(error_count_status->isHidden());
+    QVERIFY(error_count_status->text().isEmpty());
+    QVERIFY(service.WaitForQueries(1U));
+    QTRY_COMPARE(error_count_status->text(), QStringLiteral("Errors: 3"));
+    QVERIFY(!error_count_status->isHidden());
+
+    dialog.SetService(nullptr);
+    QCOMPARE(error_count_status->text(), QStringLiteral("Errors: 3"));
+    dialog.DetachController();
+    QCOMPARE(error_count_status->text(), QStringLiteral("Errors: 3"));
+}
 
 void FullTextSearchDialogTest::
     ShowsOnlyGenericPartialEmptyStatusForPartialResponsesWithoutResults() {

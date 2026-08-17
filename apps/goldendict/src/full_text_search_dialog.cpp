@@ -112,6 +112,12 @@ FullTextSearchDialog::FullTextSearchDialog(
     partial_empty_status_->hide();
     layout->addWidget(partial_empty_status_);
 
+    error_count_status_ = new QLabel(this);
+    error_count_status_->setObjectName(
+        QStringLiteral("fullTextErrorCountResponseStatus"));
+    error_count_status_->hide();
+    layout->addWidget(error_count_status_);
+
     progress_ = new QProgressBar(this);
     progress_->setObjectName(QStringLiteral("fullTextSearchProgress"));
     progress_->setRange(0, 0);
@@ -199,6 +205,7 @@ void FullTextSearchDialog::SubmitSearch() {
     UpdateFailureStatus();
     UpdateMixedResultStatus();
     UpdatePartialEmptyStatus();
+    UpdateErrorCountStatus();
     accepted_activation_scope_.reset();
     pending_activation_scope_ =
         ActivationScope{query.dictionary_filter_active, query.dictionary_ids};
@@ -232,6 +239,7 @@ void FullTextSearchDialog::FinishSearch(
     UpdateFailureStatus();
     UpdateMixedResultStatus();
     UpdatePartialEmptyStatus();
+    UpdateErrorCountStatus();
     RestoreIdleState();
 }
 
@@ -283,6 +291,14 @@ void FullTextSearchDialog::UpdatePartialEmptyStatus() {
     partial_empty_status_->setVisible(response_.has_value() &&
                                       response_->results.empty() &&
                                       response_->partial);
+}
+
+void FullTextSearchDialog::UpdateErrorCountStatus() {
+    const std::size_t error_count =
+        response_.has_value() ? response_->errors.size() : 0U;
+    error_count_status_->setText(
+        error_count == 0U ? QString() : tr("Errors: %1").arg(error_count));
+    error_count_status_->setVisible(error_count != 0U);
 }
 
 void FullTextSearchDialog::RestoreIdleState() {

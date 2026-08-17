@@ -3103,21 +3103,21 @@ replacement, and teardown cannot introduce or overwrite the current status.
 Results, ordering, selection, focus, activation, count, response ownership,
 and existing status behavior remain unchanged.
 
-Focused future acceptance covers zero, one, and multiple accepted errors
+Focused acceptance covers zero, one, and multiple accepted errors
 across every existing error-code category; error-only, mixed-result, partial-
 empty, partial-nonempty, and error-free responses; repeated accepted
 transitions and replacement reset; and stale, cancelled, detached, replaced-
 service, and teardown completion safety. It also proves that no dictionary ID,
-error code, backend message, or raw detail is displayed. The focused future
+error code, backend message, or raw detail is displayed. The focused
 command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The full implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. P8-FT-27 adds no test executable or
 public/installed interface, so the registered Release baseline remains 109
-tests. This documentation-only audit requires no build or compiled test.
+tests.
 
 Error-detail contents; exact `document_id` navigation and source-dictionary
 targeting; columns, icons, additional metadata roles, and other decoration;
@@ -3136,6 +3136,7 @@ through P8-FT-26. Pinned legacy `fulltextsearch.cc:448-449,499-586` reports only
 the aggregate result count and silently contains individual dictionary
 failures, so it supplies no error-detail presentation contract. P8-FT-27
 therefore presents only the migrated response's bounded aggregate error count.
+P8-FT-27 is complete.
 No successor after P8-FT-27 is selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
