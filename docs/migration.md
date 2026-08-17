@@ -3397,7 +3397,7 @@ stops active work without closing and otherwise saves and dismisses the dialog.
 P8-FT-31 completes only the migrated idle-dismissal contract. No successor
 after P8-FT-31 is selected or ranked.
 
-### Phase 8 full-text dialog geometry persistence prerequisite (selected)
+### Phase 8 full-text dialog geometry persistence prerequisite (complete)
 
 The independent documentation-only post-P8-FT-31 readiness audit is pinned to
 clean migrated revision `4bc3184e578d98793d944a6f1eb6c6fd23f637d3` and the
@@ -3407,16 +3407,17 @@ full-text workflow surface without advance ranking and selects exactly one
 smallest dependency-ready leaf, P8-FT-32: the transport-neutral persistence
 prerequisite for the full-text dialog's opaque geometry.
 
-P8-FT-32 extends `CoreConfiguration` with one independently optional opaque
-full-text dialog geometry value. Missing data remains empty. Canonical current
-configuration uses the established binary-value encoding pattern, and legacy
-migration maps exactly `preferences/fullTextSearch/dialogGeometry`. Core
-bounds decoded data at 64 KiB and atomically rejects duplicate, malformed, or
-oversized recognized input. It stores bytes without interpreting Qt geometry.
-This follows the existing main-window geometry boundary and changes no package
-dependency or build surface. The added `CoreConfiguration` field is an
-authorized installed/public ABI expansion identified by Conan's exact SCM and
-package revisions; it changes no runtime interface.
+P8-FT-32 is complete. It extends `CoreConfiguration` with one independently
+optional opaque full-text dialog geometry value. Missing data remains empty.
+Canonical current configuration uses the established binary-value encoding
+pattern, and legacy migration maps exactly
+`preferences/fullTextSearch/dialogGeometry`. Core bounds decoded data at 64
+KiB and atomically rejects duplicate, malformed, or oversized recognized input.
+It stores bytes without interpreting Qt geometry. This follows the existing
+main-window geometry boundary and changes no package dependency or build
+surface. The added `CoreConfiguration` field is an authorized installed/public
+ABI expansion identified by Conan's exact SCM and package revisions; it changes
+no runtime interface.
 
 The leaf deliberately stops before Widgets integration. It does not restore
 geometry when the dialog is created, capture it on idle dismissal or a
@@ -3445,7 +3446,7 @@ current/legacy contract and `application_service_test`, plus pinned legacy
 ignore-diacritics and regular-expression equivalence; excerpts and match
 ranges; exact document/source targeting; decoration; Preferences/index policy;
 index lifecycle UI; adapters/index formats; dependencies, builds, and
-unrelated parity remain separately decomposed and unranked. P8-FT-32 selects
+unrelated parity remain separately decomposed and unranked. P8-FT-32 completes
 only the persistence prerequisite. No successor after P8-FT-32 is selected or
 ranked.
 

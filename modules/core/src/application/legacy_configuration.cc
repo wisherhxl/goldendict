@@ -35,8 +35,11 @@ constexpr std::size_t kMaximumGroupValueBytes = 4096U;
 constexpr std::size_t kMaximumEncodedGroupIconBytes = 64U * 1024U;
 constexpr std::size_t kMaximumPreferenceValueBytes = 4096U;
 constexpr std::size_t kMaximumMainWindowGeometryBytes = 64U * 1024U;
+constexpr std::size_t kMaximumFullTextDialogGeometryBytes = 64U * 1024U;
 constexpr std::size_t kMaximumEncodedMainWindowGeometryBytes =
     ((kMaximumMainWindowGeometryBytes + 2U) / 3U) * 4U;
+constexpr std::size_t kMaximumEncodedFullTextDialogGeometryBytes =
+    ((kMaximumFullTextDialogGeometryBytes + 2U) / 3U) * 4U;
 constexpr std::uint32_t kKnownScanPopupModifierMask = 0x03ffU;
 
 enum class SourceContainer : std::uint8_t {
@@ -64,6 +67,8 @@ struct LegacyParserState {
     std::unordered_set<std::uint32_t> group_ids;
     std::unordered_set<std::string> preference_keys;
     std::string preference_key;
+    bool reading_full_text_dialog_geometry = false;
+    bool has_full_text_dialog_geometry = false;
     bool reading_main_window_geometry = false;
     bool has_main_window_geometry = false;
     bool source_containers[static_cast<std::size_t>(SourceContainer::kCount)] =
@@ -578,12 +583,14 @@ bool IsCanonicalBase64(std::string_view value) {
     return true;
 }
 
-std::string DecodeMainWindowGeometry(std::string_view value) {
+std::string DecodeGeometry(std::string_view value,
+                           std::size_t maximum_encoded_bytes,
+                           std::size_t maximum_decoded_bytes) {
     if (value.empty())
         return {};
-    if (value.size() > kMaximumEncodedMainWindowGeometryBytes ||
-        value.size() % 4U != 0U || !IsCanonicalBase64(value)) {
-        throw std::runtime_error("invalid main-window geometry");
+    if (value.size() > maximum_encoded_bytes || value.size() % 4U != 0U ||
+        !IsCanonicalBase64(value)) {
+        throw std::runtime_error("invalid geometry");
     }
     const auto decode = [](char character) -> unsigned int {
         if (character >= 'A' && character <= 'Z')
@@ -610,14 +617,21 @@ std::string DecodeMainWindowGeometry(std::string_view value) {
             }
         }
     }
-    if (decoded.size() > kMaximumMainWindowGeometryBytes)
-        throw std::runtime_error("main-window geometry is too large");
+    if (decoded.size() > maximum_decoded_bytes)
+        throw std::runtime_error("geometry is too large");
     return decoded;
 }
 
 bool IsMainWindowGeometryElement(const LegacyParserState& state) {
     return state.elements.size() == 2U && state.elements[0] == "config" &&
            state.elements[1] == "mainWindowGeometry";
+}
+
+bool IsFullTextDialogGeometryElement(const LegacyParserState& state) {
+    return state.elements.size() == 4U && state.elements[0] == "config" &&
+           state.elements[1] == "preferences" &&
+           state.elements[2] == "fullTextSearch" &&
+           state.elements[3] == "dialogGeometry";
 }
 
 bool IsPathElement(const LegacyParserState& state) {
@@ -645,7 +659,9 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
     if (IsPathElement(*state) || IsSoundDirectoryElement(*state) ||
         IsSourceRecord(*state) || !state->forvo_field.empty() ||
         CurrentGroupValue(*state) != GroupValue::kNone ||
-        !state->preference_key.empty() || state->reading_main_window_geometry) {
+        !state->preference_key.empty() ||
+        state->reading_full_text_dialog_geometry ||
+        state->reading_main_window_geometry) {
         Fail(state, "Legacy configuration values cannot contain markup");
         return;
     }
@@ -807,6 +823,16 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
         Fail(state, "Legacy source configuration is invalid or unsupported");
         return;
     }
+    if (IsFullTextDialogGeometryElement(*state)) {
+        if (state->has_full_text_dialog_geometry) {
+            Fail(state, "Legacy full-text dialog geometry is duplicated");
+            return;
+        }
+        state->has_full_text_dialog_geometry = true;
+        state->reading_full_text_dialog_geometry = true;
+        state->value.clear();
+        return;
+    }
     if (IsMainWindowGeometryElement(*state)) {
         if (state->has_main_window_geometry) {
             Fail(state, "Legacy main-window geometry is duplicated");
@@ -957,11 +983,14 @@ void XMLCALL CharacterData(void* user_data, const XML_Char* value, int length) {
     if (!IsPathElement(*state) && !IsSoundDirectoryElement(*state) &&
         CurrentGroupValue(*state) == GroupValue::kNone &&
         state->preference_key.empty() && state->forvo_field.empty() &&
+        !state->reading_full_text_dialog_geometry &&
         !state->reading_main_window_geometry) {
         return;
     }
     const std::size_t maximum =
-        state->reading_main_window_geometry
+        state->reading_full_text_dialog_geometry
+            ? kMaximumEncodedFullTextDialogGeometryBytes
+        : state->reading_main_window_geometry
             ? kMaximumEncodedMainWindowGeometryBytes
         : !state->preference_key.empty() || !state->forvo_field.empty()
             ? kMaximumPreferenceValueBytes
@@ -1022,11 +1051,23 @@ void XMLCALL EndElement(void* user_data, const XML_Char*) {
             Fail(state, "Legacy Forvo configuration is incomplete");
             return;
         }
+    } else if (state->reading_full_text_dialog_geometry &&
+               IsFullTextDialogGeometryElement(*state)) {
+        try {
+            state->configuration.full_text_dialog_geometry = DecodeGeometry(
+                state->value, kMaximumEncodedFullTextDialogGeometryBytes,
+                kMaximumFullTextDialogGeometryBytes);
+        } catch (const std::runtime_error&) {
+            Fail(state, "Legacy full-text dialog geometry is invalid");
+            return;
+        }
+        state->reading_full_text_dialog_geometry = false;
     } else if (state->reading_main_window_geometry &&
                IsMainWindowGeometryElement(*state)) {
         try {
-            state->configuration.main_window_geometry =
-                DecodeMainWindowGeometry(state->value);
+            state->configuration.main_window_geometry = DecodeGeometry(
+                state->value, kMaximumEncodedMainWindowGeometryBytes,
+                kMaximumMainWindowGeometryBytes);
         } catch (const std::runtime_error&) {
             Fail(state, "Legacy main-window geometry is invalid");
             return;

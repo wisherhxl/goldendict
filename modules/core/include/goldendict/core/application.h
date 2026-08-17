@@ -389,6 +389,7 @@ struct CoreConfiguration {
     std::vector<DictionaryGroupConfiguration> dictionary_groups;
     ApplicationPreferences preferences;
     std::optional<ArticleTabSession> article_tab_session;
+    std::string full_text_dialog_geometry;
     std::string main_window_geometry;
     std::string main_window_state;
 };

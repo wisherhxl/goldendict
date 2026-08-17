@@ -607,6 +607,8 @@ int main() {
 
         goldendict::core::CoreConfiguration configuration;
         configuration.preferences.maximum_dictionary_references = 0U;
+        configuration.full_text_dialog_geometry =
+            std::string("opaque\0dialog%geometry", 22U);
         configuration.dictionary_paths = {dictionary_root.string()};
         configuration.index_directory = (directory.path() / "indexes").string();
         configuration.external_program_sources = {
@@ -625,6 +627,8 @@ int main() {
         if (loaded.dictionary_paths != configuration.dictionary_paths ||
             loaded.index_directory != configuration.index_directory ||
             loaded.sound_directories != configuration.sound_directories ||
+            loaded.full_text_dialog_geometry !=
+                configuration.full_text_dialog_geometry ||
             loaded.preferences.maximum_dictionary_references != 0U ||
             loaded.external_program_sources !=
                 configuration.external_program_sources) {

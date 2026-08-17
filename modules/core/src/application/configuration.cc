@@ -31,6 +31,7 @@ constexpr std::size_t kMaximumDictionariesPerGroup = 256U;
 constexpr std::size_t kMaximumGroupValueBytes = 4096U;
 constexpr std::size_t kMaximumEncodedGroupIconBytes = 64U * 1024U;
 constexpr std::size_t kMaximumPreferenceStringBytes = 4096U;
+constexpr std::size_t kMaximumFullTextDialogGeometryBytes = 64U * 1024U;
 constexpr std::size_t kMaximumMainWindowGeometryBytes = 64U * 1024U;
 constexpr std::size_t kMaximumMainWindowStateBytes = 64U * 1024U;
 constexpr std::size_t kMaximumOnlineIdBytes = 128U;
@@ -584,6 +585,10 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
             }
         }
     }
+    if (configuration.full_text_dialog_geometry.size() >
+        kMaximumFullTextDialogGeometryBytes) {
+        throw std::runtime_error("Full-text dialog geometry is too large");
+    }
     if (configuration.main_window_geometry.size() >
         kMaximumMainWindowGeometryBytes) {
         throw std::runtime_error("Main-window geometry is too large");
@@ -830,6 +835,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
     std::unordered_set<std::string> preference_names;
     std::unordered_map<ArticleTabId, std::size_t> tab_indexes;
     bool has_article_tab_session = false;
+    bool has_full_text_dialog_geometry = false;
     bool has_main_window_geometry = false;
     bool has_main_window_state = false;
     bool has_index_directory = false;
@@ -861,6 +867,8 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         constexpr std::string_view kDictionaryGroupMetadata =
             "dictionary_group_metadata=";
         constexpr std::string_view kPreference = "preference=";
+        constexpr std::string_view kFullTextDialogGeometry =
+            "full_text_dialog_geometry=";
         constexpr std::string_view kMainWindowGeometry =
             "main_window_geometry=";
         constexpr std::string_view kMainWindowState = "main_window_state=";
@@ -874,7 +882,16 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
             throw std::runtime_error(
                 "External program arguments must follow their parent");
         }
-        if (line.substr(0, kMainWindowState.size()) == kMainWindowState) {
+        if (line.substr(0, kFullTextDialogGeometry.size()) ==
+            kFullTextDialogGeometry) {
+            if (has_full_text_dialog_geometry) {
+                throw std::runtime_error("Duplicate full-text dialog geometry");
+            }
+            has_full_text_dialog_geometry = true;
+            configuration.full_text_dialog_geometry =
+                Decode(line.substr(kFullTextDialogGeometry.size()));
+        } else if (line.substr(0, kMainWindowState.size()) ==
+                   kMainWindowState) {
             if (has_main_window_state) {
                 throw std::runtime_error("Duplicate main-window state");
             }
@@ -1391,6 +1408,10 @@ void SaveConfiguration(const std::string& configuration_path,
                 contents += "\n";
             }
         }
+    }
+    if (!configuration.full_text_dialog_geometry.empty()) {
+        contents += "full_text_dialog_geometry=" +
+                    Encode(configuration.full_text_dialog_geometry) + "\n";
     }
     if (!configuration.main_window_geometry.empty()) {
         contents += "main_window_geometry=" +

@@ -2513,14 +2513,14 @@ Evidence is completed P8-FT-8/P8-FT-9, migrated
 full-text tests, and pinned legacy `fulltextsearch.cc:582-592`. P8-FT-31 is
 complete. No successor after P8-FT-31 is selected or ranked.
 
-## Phase 8 Full-Text Dialog Geometry Persistence Gate (Selected)
+## Phase 8 Full-Text Dialog Geometry Persistence Gate (Complete)
 
 The post-P8-FT-31 documentation audit selects only P8-FT-32. The existing
 bounded opaque main-window geometry contract makes an independent full-text
 dialog geometry persistence prerequisite testable before any Widgets capture
 or restoration behavior is selected.
 
-`application_service_test` must cover an empty default when current and legacy
+`application_service_test` covers an empty default when current and legacy
 data are absent, exact current-format round-trip and canonical save, and exact
 legacy migration from `preferences/fullTextSearch/dialogGeometry`. The decoded
 value must accept the 64 KiB boundary and reject a larger value. Duplicate,
@@ -2528,11 +2528,12 @@ malformed, and oversized recognized current or legacy input must reject the
 complete operation atomically without modifying the legacy source, emitting a
 partial current file, or changing unrelated configuration fields.
 
-Installed C and C++ consumer checks must compile and access the expanded
-transport-neutral configuration DTO. Core tests must prove that persistence
-does not interpret the opaque value. No dialog test or Widgets smoke may claim
-capture, restore, save-on-close, placement, screen validation, or fallback
-behavior in this leaf.
+Installed C and C++ consumer checks compile against the expanded installed
+surface, and the C++ consumer accesses the transport-neutral configuration
+DTO; the C consumer's version-header contract is unchanged. Core tests prove
+that persistence does not interpret the opaque value. No dialog test or Widgets
+smoke may claim capture, restore, save-on-close, placement, screen validation,
+or fallback behavior in this leaf.
 
 The focused command is
 `ctest --preset conan-release -R '^application_service_test$'` after the
@@ -2553,7 +2554,7 @@ decomposed without ranking.
 Evidence is the current and legacy main-window geometry coverage in
 `application_service_test` and pinned legacy `config.hh:156-181`,
 `config.cc:1008-1044,1990-2027`, and
-`fulltextsearch.cc:195-221,387-399`. P8-FT-32 is selected. No successor after
+`fulltextsearch.cc:195-221,387-399`. P8-FT-32 is complete. No successor after
 P8-FT-32 is selected or ranked.
 
 

@@ -143,6 +143,7 @@ class ApplicationServiceTest : public QObject {
     void ConfigurationRoundTripsPreferencesDeterministically();
     void ConfigurationRoundTripsAllFullTextSearchModes();
     void ConfigurationRejectsUnknownFullTextSearchModeAtomically();
+    void ConfigurationRoundTripsBoundedFullTextDialogGeometry();
     void ConfigurationRoundTripsBoundedMainWindowGeometry();
     void ConfigurationRoundTripsBoundedMainWindowState();
     void ConfigurationRejectsMalformedPreferencesAtomically();
@@ -153,6 +154,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsUnsupportedLegacyOnlineSourcesAtomically();
     void MissingLegacyPreferencesRetainCurrentDefaults();
     void MigratesAllLegacyFullTextSearchModes();
+    void MigratesBoundedLegacyFullTextDialogGeometry();
     void RejectsMalformedLegacyPreferencesAtomically();
     void CurrentConfigurationTakesPrecedenceOverLegacy();
     void RejectsMalformedLegacyWithoutCreatingCurrent();
@@ -216,6 +218,7 @@ void ApplicationServiceTest::MissingConfigurationIsACleanProfile() {
     QVERIFY(configuration.dictionary_paths.empty());
     QVERIFY(configuration.index_directory.empty());
     QVERIFY(configuration.dictionary_groups.empty());
+    QVERIFY(configuration.full_text_dialog_geometry.empty());
     QCOMPARE(
         configuration.forvo_sources,
         (std::vector<ForvoSourceConfiguration>{{"forvo",
@@ -1178,6 +1181,64 @@ void ApplicationServiceTest::
 }
 
 void ApplicationServiceTest::
+    ConfigurationRoundTripsBoundedFullTextDialogGeometry() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration expected;
+    expected.dictionary_paths = {"/preserved"};
+    expected.full_text_dialog_geometry.assign(64U * 1024U, '\0');
+    expected.full_text_dialog_geometry[1] = '%';
+    expected.full_text_dialog_geometry[2] = '\n';
+
+    SaveConfiguration(path.string(), expected);
+    QCOMPARE(LoadConfiguration(path.string()).full_text_dialog_geometry,
+             expected.full_text_dialog_geometry);
+    const std::string canonical = ReadFile(path);
+    QVERIFY(canonical.find("full_text_dialog_geometry=%00%25%0A") !=
+            std::string::npos);
+
+    const std::string original = canonical;
+    expected.full_text_dialog_geometry.push_back('x');
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), expected),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original);
+    QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\n"
+                          "dictionary_path=/unchanged\n"
+                          "full_text_dialog_geometry=first\n"
+                          "full_text_dialog_geometry=second\n");
+    QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                             std::runtime_error);
+
+    for (const std::string malformed : {"%", "%GG"}) {
+        test::WriteBinaryFile(path,
+                              "goldendict-core-config-v1\n"
+                              "dictionary_path=/unchanged\n"
+                              "full_text_dialog_geometry=" +
+                                  malformed + "\n");
+        QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                                 std::runtime_error);
+    }
+
+    test::WriteBinaryFile(path,
+                          "goldendict-core-config-v1\n"
+                          "dictionary_path=/unchanged\n"
+                          "full_text_dialog_geometry=" +
+                              std::string(64U * 1024U + 1U, 'x') + "\n");
+    QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                             std::runtime_error);
+
+    CoreConfiguration empty;
+    SaveConfiguration(path.string(), empty);
+    QVERIFY(ReadFile(path).find("full_text_dialog_geometry=") ==
+            std::string::npos);
+    QVERIFY(LoadConfiguration(path.string()).full_text_dialog_geometry.empty());
+}
+
+void ApplicationServiceTest::
     ConfigurationRoundTripsBoundedMainWindowGeometry() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -1491,7 +1552,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<fullTextSearch><searchMode>3</searchMode><matchCase>1</matchCase>"
         "<maxDistanceBetweenWords>9</maxDistanceBetweenWords>"
         "<disabledTypes>audio|images</disabledTypes>"
-        "<dialogGeometry>excluded</dialogGeometry></fullTextSearch>"
+        "<dialogGeometry>ZnRzLWdlb21ldHJ5</dialogGeometry></fullTextSearch>"
         "</preferences><mainWindowGeometry>Z2VvbWV0cnk=</mainWindowGeometry>"
         "</config>";
     test::WriteBinaryFile(legacy_path, legacy);
@@ -1562,6 +1623,7 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.full_text_disabled_types, "audio|images");
     QCOMPARE(preferences.confirm_favorites_deletion, false);
     QCOMPARE(preferences.always_expand_optional_parts, true);
+    QCOMPARE(migrated.full_text_dialog_geometry, "fts-geometry");
     QCOMPARE(migrated.main_window_geometry, "geometry");
     QVERIFY(std::filesystem::exists(current_path));
     std::ifstream legacy_input(legacy_path, std::ios::binary);
@@ -1573,6 +1635,8 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(round_trip.sound_directories, migrated.sound_directories);
     QCOMPARE(round_trip.dictionary_groups, migrated.dictionary_groups);
     QCOMPARE(round_trip.preferences, migrated.preferences);
+    QCOMPARE(round_trip.full_text_dialog_geometry,
+             migrated.full_text_dialog_geometry);
     QCOMPARE(round_trip.main_window_geometry, migrated.main_window_geometry);
 }
 
@@ -1782,6 +1846,7 @@ void ApplicationServiceTest::MissingLegacyPreferencesRetainCurrentDefaults() {
     defaults.interface_language = "de_DE";
 
     QCOMPARE(migrated.preferences, defaults);
+    QVERIFY(migrated.full_text_dialog_geometry.empty());
     QVERIFY(migrated.main_window_geometry.empty());
     QVERIFY(migrated.main_window_state.empty());
     QCOMPARE(LoadConfiguration(current_path.string()).preferences, defaults);
@@ -1815,6 +1880,56 @@ void ApplicationServiceTest::MigratesAllLegacyFullTextSearchModes() {
                  mode);
         QCOMPARE(ReadFile(legacy_path), legacy);
         std::filesystem::remove(current_path);
+    }
+}
+
+void ApplicationServiceTest::MigratesBoundedLegacyFullTextDialogGeometry() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto legacy_path = root / "config";
+    const auto current_path = root / "core.conf";
+    const std::string boundary(64U * 1024U, '\0');
+    const std::string encoded_boundary =
+        QByteArray(boundary.data(), static_cast<qsizetype>(boundary.size()))
+            .toBase64()
+            .toStdString();
+    const std::string valid =
+        "<config><preferences><fullTextSearch><dialogGeometry>" +
+        encoded_boundary +
+        "</dialogGeometry></fullTextSearch></preferences></config>";
+    test::WriteBinaryFile(legacy_path, valid);
+
+    const auto migrated = LoadOrMigrateConfiguration(
+        current_path.string(), legacy_path.string(), "/indexes");
+    QCOMPARE(migrated.full_text_dialog_geometry, boundary);
+    QCOMPARE(LoadConfiguration(current_path.string()).full_text_dialog_geometry,
+             boundary);
+    QCOMPARE(ReadFile(legacy_path), valid);
+
+    std::filesystem::remove(current_path);
+    const std::vector<std::string> invalid = {
+        "<dialogGeometry>not-base64</dialogGeometry>",
+        "<dialogGeometry>Zg=</dialogGeometry>",
+        "<dialogGeometry>Zh==</dialogGeometry>",
+        "<dialogGeometry>Zg==<nested/></dialogGeometry>",
+        "<dialogGeometry>Zg==</dialogGeometry>"
+        "<dialogGeometry>Zg==</dialogGeometry>",
+        "<dialogGeometry>" + std::string(87384U, 'A') + "AAAA</dialogGeometry>",
+    };
+    for (const auto& geometry : invalid) {
+        const std::string legacy =
+            "<config><preferences><interfaceLanguage>de_DE</interfaceLanguage>"
+            "<fullTextSearch>" +
+            geometry + "</fullTextSearch></preferences></config>";
+        test::WriteBinaryFile(legacy_path, legacy);
+        QVERIFY_EXCEPTION_THROWN(
+            LoadOrMigrateConfiguration(current_path.string(),
+                                       legacy_path.string(), "/indexes"),
+            std::runtime_error);
+        QVERIFY(!std::filesystem::exists(current_path));
+        QVERIFY(!std::filesystem::exists(current_path.string() + ".tmp"));
+        QCOMPARE(ReadFile(legacy_path), legacy);
     }
 }
 

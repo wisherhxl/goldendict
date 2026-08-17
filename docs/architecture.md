@@ -3249,7 +3249,7 @@ stops active work without closing and otherwise saves and dismisses the dialog.
 P8-FT-31 completes only the migrated idle-dismissal contract. No successor
 after P8-FT-31 is selected or ranked.
 
-### Phase 8 full-text dialog geometry persistence prerequisite (selected)
+### Phase 8 full-text dialog geometry persistence prerequisite (complete)
 
 The independent documentation-only post-P8-FT-31 readiness audit is pinned to
 clean migrated revision `4bc3184e578d98793d944a6f1eb6c6fd23f637d3` and the
@@ -3268,7 +3268,7 @@ another opaque Qt byte sequence stored under the full-text preferences. The
 transport-neutral configuration boundary can retain those bytes without
 interpreting Qt geometry or adding a dependency.
 
-The future implementation adds one independently optional full-text dialog
+The completed implementation adds one independently optional full-text dialog
 geometry value to `CoreConfiguration`. Missing current or legacy data yields
 an empty value. Canonical current saves use the existing binary-value encoding
 pattern. Legacy migration maps exactly the recognized
@@ -3281,10 +3281,11 @@ The `CoreConfiguration` field is an authorized installed/public ABI expansion
 identified by Conan's exact SCM and package revisions. It adds no runtime
 interface, dependency, adapter, index-format, or build-system surface.
 
-P8-FT-32 does not capture, restore, apply, or save geometry in Widgets. Dialog
-creation, initialization, idle dismissal, window-manager close, active-request
-cancellation, service replacement, teardown, requests, results, selection,
-activation, navigation, article search, and notification remain unchanged.
+P8-FT-32 is complete and does not capture, restore, apply, or save geometry in
+Widgets. Dialog creation, initialization, idle dismissal, window-manager close,
+active-request cancellation, service replacement, teardown, requests, results,
+selection, activation, navigation, article search, and notification remain
+unchanged.
 The later Widgets connection may consume the persisted value only through a
 separately reviewed leaf; it is decomposed but remains unselected and unranked.
 
