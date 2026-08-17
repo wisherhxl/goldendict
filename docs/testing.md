@@ -2557,6 +2557,46 @@ Evidence is the current and legacy main-window geometry coverage in
 `fulltextsearch.cc:195-221,387-399`. P8-FT-32 is complete. No successor after
 P8-FT-32 is selected or ranked.
 
+## Phase 8 Full-Text Dialog Geometry Widgets Connection Gate (Selected)
+
+The post-P8-FT-32 documentation audit selects only P8-FT-33. Existing bounded
+Core persistence, the modeless dialog's Qt ownership, and the composition
+root's atomic save path make the Widgets connection independently testable.
+
+Extend `full_text_search_dialog_test` and
+`goldendict_full_text_dialog_smoke`; add no executable or registered test.
+Coverage must prove absent geometry preserves the default, valid geometry is
+restored exactly once on new-dialog creation, and Qt-invalid geometry leaves
+the default intact without rewriting stored bytes. Idle Cancel and window-
+manager close must capture exact `saveGeometry()` bytes before destruction,
+and application reconstruction must restore them. Active Cancel remains
+cancellation-only and must not capture, save, or dismiss. Completion,
+activation, replacement, service replacement, detachment, and teardown must
+not independently save geometry; existing workflow assertions remain green.
+
+The focused command is
+`ctest --preset conan-release -R '^(full_text_search_dialog_test|goldendict_full_text_dialog_smoke)$'`
+after the Release target has been built. The full implementation gate is Linux
+Release configure/build, exactly 109 registered tests and full
+`ctest --preset conan-release`, clean committed exact-SCM `conan create` with
+the Release Qt WebEngine host profile and packaged consumers, Release install,
+and standalone installed C and C++ consumers. P8-FT-33 changes no installed
+interface, so both consumers remain unchanged and source-compatible; they are
+still required as the stronger package gate and continue to exercise the
+P8-FT-32 installed configuration surface.
+
+This audit is documentation-only. Compiled builds, tests, install, and Conan
+creation are intentionally not run; those commands are the future
+implementation gate. The Release registration baseline remains exactly 109
+tests. Screen/topology normalization, placement fallback, other dialog state,
+query semantics, excerpts, exact document/source targeting, decoration,
+Preferences/index policy, index lifecycle, adapters/index formats,
+dependencies, builds, and unrelated suites remain excluded, unselected, and
+unranked. No successor after P8-FT-33 is selected or ranked.
+The implementation gate must stop on ref/worktree drift, legacy dirtiness,
+ambiguous ownership or acceptance behavior, an architectural choice requiring
+HTTP GET policy, or scope expansion; pinned checks repeat before commit/push.
+
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

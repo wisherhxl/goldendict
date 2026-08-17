@@ -3313,6 +3313,60 @@ adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies, builds, and
 unrelated parity remain independent surfaces. They are decomposed only; none
 is selected or ranked. No successor after P8-FT-32 is selected or ranked.
 
+### Phase 8 full-text dialog geometry Widgets connection (selected)
+
+The independent documentation-only post-P8-FT-32 audit is pinned to clean
+migrated revision `6ff78e84f2b5f0395283a00f0632174672828625` and unchanged
+clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-33: connect P8-FT-32's bounded opaque
+dialog geometry to the existing modeless Widgets dialog.
+
+The prerequisite chain is complete: `CoreConfiguration` owns bounded atomic
+persistence and exact legacy migration, `FullTextSearchDialog` owns the Qt
+window, and the application composition root owns configuration saves. Pinned
+legacy `fulltextsearch.cc:195-225,387-399` restores nonempty geometry at
+construction and captures it when the dialog finishes. Under the shared-
+library/GUI rule, Core retains uninterpreted bytes, Widgets alone calls Qt
+geometry APIs, and composition alone joins captured bytes to configuration.
+
+On new-dialog creation, Widgets attempts one restore only for a nonempty
+value. Absence preserves default geometry. Qt rejection also preserves the
+default without rewriting the stored value or adding screen, topology,
+placement, or fallback policy. Idle Cancel and window-manager close capture
+the exact `saveGeometry()` bytes before destruction for the next established
+atomic save. Active Cancel remains cancellation-only: it neither closes the
+dialog nor captures or saves geometry. Completion, activation, replacement,
+service replacement, controller detachment, and teardown do not independently
+persist it.
+
+P8-FT-33 changes no Core contract, installed header, public DTO, dependency,
+adapter, index format, or build surface. Focused acceptance extends the
+existing dialog test and full-text application smoke with absent, valid, and
+Qt-invalid restore; exact capture on both idle dismissal paths; reconstruction
+round-trip; active-cancellation exclusion; and regression coverage for the
+existing workflow and lifecycle. The focused Release command is
+`ctest --preset conan-release -R '^(full_text_search_dialog_test|goldendict_full_text_dialog_smoke)$'`
+after the Release target has been built.
+
+The full implementation gate is Linux Release configure/build, exactly 109
+registered tests and full `ctest --preset conan-release`, clean committed
+exact-SCM `conan create` with the Release Qt WebEngine host profile and
+packaged consumers, Release install, and standalone installed C and C++
+consumers. Those consumers remain source-compatible and unchanged because
+P8-FT-33 adds no installed interface; they remain the stronger package gate
+and continue to cover P8-FT-32's installed configuration field.
+
+Screen/topology normalization, placement fallback, other dialog state, query
+semantics, excerpts, exact document/source targeting, decoration,
+Preferences/index policy, index lifecycle, adapters/index formats,
+dependencies, builds, and unrelated parity remain independently decomposed,
+unselected, and unranked. No successor after P8-FT-33 is selected or ranked.
+Implementation must stop before editing on ref/worktree drift, legacy
+dirtiness, ambiguous ownership or behavior, any architectural choice requiring
+HTTP GET policy, or any expansion beyond this bounded connection.
+
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
