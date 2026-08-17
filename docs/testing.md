@@ -2469,6 +2469,50 @@ Evidence is completed P8-FT-9 and the extended focused dialog tests, migrated
 `fulltextsearch.cc:547-579`. P8-FT-30 is complete. No successor after P8-FT-30
 is selected or ranked.
 
+## Phase 8 Full-Text Idle Dialog Dismissal Gate (Selected)
+
+The post-P8-FT-30 documentation audit selects only P8-FT-31. The completed
+modeless-dialog ownership and active-request cancellation boundaries make idle
+dismissal through the existing Cancel control independently testable without
+changing Core or an installed interface.
+
+Focused coverage must prove that Cancel is available initially and after every
+return to idle. Activating it initially, after a generation-current accepted
+response, or after explicit active-request cancellation must close and destroy
+the dialog, clear MainWindow's guarded ownership, and allow a later Search-menu
+trigger to create a fresh dialog with the established initialization behavior.
+
+Activating the same control while a generation is active must cancel only that
+request, restore idle controls, and leave the dialog open. Submission,
+generation-current completion, stale or duplicate completion, service or
+facade replacement, controller detachment, and teardown must not dismiss it.
+Repeated cancellation or dismissal commands and destroyed-dialog callbacks
+must remain safe. Existing window-manager close, response, row, ordering,
+selection, focus, activation, count, status, notification, navigation, and
+article-search behavior must remain unchanged.
+
+The focused command is
+`ctest --preset conan-release -R '^(full_text_search_dialog_test|goldendict_full_text_dialog_smoke)$'`
+after the Release targets have been built. The full implementation gate is
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-31 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests.
+
+Ignore-diacritics semantics and legacy regular-expression equivalence, match
+ranges and excerpts, exact `document_id` navigation and source targeting,
+decoration, Preferences and index lifecycle, adapters and index formats,
+dependencies, build work, and unrelated suites are excluded and remain
+separately decomposed without ranking. No public API, DTO, persistence, Core,
+adapter, index, dependency, or build surface belongs to P8-FT-31.
+
+Evidence is completed P8-FT-8/P8-FT-9, migrated
+`full_text_search_dialog.cpp:184-218,285-289`, the focused dialog and MainWindow
+full-text tests, and pinned legacy `fulltextsearch.cc:582-592`. P8-FT-31 is
+selected. No successor after P8-FT-31 is selected or ranked.
+
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

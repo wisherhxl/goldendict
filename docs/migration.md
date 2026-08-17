@@ -3339,6 +3339,65 @@ requests reach terminal completion regardless of retained results. P8-FT-30
 completes only the migrated accepted-completion notification contract. No
 successor after P8-FT-30 is selected or ranked.
 
+### Phase 8 full-text idle dialog dismissal (selected)
+
+The independent documentation-only post-P8-FT-30 readiness audit is pinned to
+clean migrated revision `17b124f79f0dfb1a794b9dabbba4e87804dd885b` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-31: privately dismiss the modeless full-
+text dialog through its existing Cancel control while no request is active.
+
+P8-FT-31 is dependency-ready because P8-FT-8 already owns the modeless dialog,
+singleton MainWindow lifetime, close/destruction path, and safe controller
+detach, while P8-FT-9 already distinguishes active request cancellation from
+idle state. The existing control can therefore dispatch either behavior from
+Widgets without changing Core or an installed interface.
+
+The Cancel control remains available while idle. Activating it initially,
+after an accepted completion, or after explicit request cancellation closes
+the dialog through the completed P8-FT-8 destruction path, clears MainWindow's
+guarded ownership, and permits a later action trigger to create a fresh dialog.
+While a generation is active, the same control retains P8-FT-9 semantics: it
+cancels only that request, restores idle state, and leaves the dialog open.
+Submission, accepted completion, stale or duplicate completion, service or
+facade replacement, controller detachment, and teardown cannot themselves
+dismiss the dialog. Window-manager close behavior, results, notification,
+navigation, article-search, and response semantics remain unchanged.
+
+Focused acceptance covers initial idle dismissal; dismissal after accepted
+completion and after active cancellation; active cancellation without
+dismissal; repeated commands; MainWindow ownership clearing and clean reopen;
+and stale, detached, service-replacement, destroyed-dialog, and teardown
+safety. The focused command is
+`ctest --preset conan-release -R '^(full_text_search_dialog_test|goldendict_full_text_dialog_smoke)$'`
+after the Release targets have been built. The full implementation gate is
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-31 adds no test executable or
+installed surface, so the registered Release baseline remains 109 tests.
+
+Ignore-diacritics semantics and legacy regular-expression equivalence; match-
+range or excerpt rendering; exact `document_id` navigation and source-
+dictionary targeting; columns, icons, additional metadata roles, and other
+decoration; Preferences enablement, format exclusions, size/index policy, and
+persistence; index readiness, visibility, status, progress, background
+lifecycle, rebuild, and failure UI; adapters, `.gdfts`, legacy `_FTS`, index
+formats, dependencies, builds, and unrelated parity remain independent
+surfaces. They are decomposed only; none is selected or ranked. No public API,
+DTO, persistence, Core, adapter, index, dependency, or build surface belongs
+to P8-FT-31.
+
+Evidence is completed P8-FT-8/P8-FT-9, migrated
+`full_text_search_dialog.cpp:184-218,285-289`, the focused dialog and MainWindow
+full-text tests, and pinned legacy `fulltextsearch.cc:582-592`, where Cancel
+stops active work without closing and otherwise saves and dismisses the dialog.
+P8-FT-31 selects only the migrated idle-dismissal contract. No successor after
+P8-FT-31 is selected or ranked.
+
+
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
 but typed resources do not yet settle ownership between WebEngine delivery, a
