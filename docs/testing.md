@@ -2165,7 +2165,7 @@ P8-FT-9/P8-FT-11/P8-FT-17/P8-FT-22/P8-FT-23, migrated
 `fulltextsearch.cc:499-586`. P8-FT-24 is complete. No successor after P8-FT-24
 is selected or ranked.
 
-+## Phase 8 Full-Text Mixed-Result Error Summary Gate (Selected)
+## Phase 8 Full-Text Mixed-Result Error Summary Gate (Complete)
 
 The post-P8-FT-24 documentation audit selects only P8-FT-25. Completed current-
 generation acceptance, complete-response retention, retained-result count,
@@ -2174,34 +2174,34 @@ accepted response containing both retained results and errors independently
 presentable through one private Widgets status without changing Core or an
 installed interface.
 
-Focused future coverage must prove that exact text
+Focused coverage proves that exact text
 `Some dictionaries could not be searched` is visible only for a generation-
 current accepted response with one or more retained results and one or more
-errors. Initial state and replacement submission must hide it. Result-free,
-error-free, empty, conclusive-empty, and terminal error-only responses must
-hide it. One and multiple results with each existing error-code category and
-multiple errors must produce the same generic status without exposing
+errors. Initial state and replacement submission hide it. Result-free,
+error-free, empty, conclusive-empty, and terminal error-only responses hide
+it. One and multiple results with each existing error-code category and
+multiple errors produce the same generic status without exposing
 dictionary IDs, error codes, backend messages, or raw details.
 
-Authoritative `partial == true` and `partial == false` combinations must prove
+Authoritative `partial == true` and `partial == false` combinations prove
 that Widgets does not infer or change partiality. The mixed-result status may
 coexist with `Results may be incomplete.` only when `partial == true`. The
-result count, empty status, and terminal-failure status must remain
+result count, empty status, and terminal-failure status remain
 independently correct. Repeated accepted transitions and stale, cancelled,
-detached, replaced-service, and teardown completions must not leave or
+detached, replaced-service, and teardown completions do not leave or
 introduce an incorrect mixed-result status. Existing response/model
 synchronization, selection, focus, activation, service-replacement,
-controller-detachment, and teardown coverage must remain green.
+controller-detachment, and teardown coverage remains green.
 
-The focused future command is
+The focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The completed implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. P8-FT-25 adds no test executable or
 public/installed interface, so the registered Release baseline remains 109
-tests. No build or compiled test is required for this documentation-only audit.
+tests.
 
 Partial-without-results summaries and all error details; exact `document_id`
 navigation and source-dictionary targeting; columns, icons, additional
@@ -2217,7 +2217,8 @@ dependency, or build surface belongs to P8-FT-25.
 Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
 installed `FullTextResponse` contract, completed
 P8-FT-9/P8-FT-11/P8-FT-17/P8-FT-22/P8-FT-24, and pinned legacy
-`fulltextsearch.cc:499-586`. No successor after P8-FT-25 is selected or ranked.
+`fulltextsearch.cc:499-586`. P8-FT-25 is complete. No successor after P8-FT-25
+is selected or ranked.
 
 
 Use `ctest --preset conan-debug` after a Debug build and
