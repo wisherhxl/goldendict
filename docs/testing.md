@@ -2819,6 +2819,43 @@ The completed implementation extends the existing test executable without a
 registration change. The Release registration baseline remains exactly 109
 tests; no successor after P8-FT-39 is selected or ranked.
 
+## Phase 8 Full-Text Progress-Bar Alignment Gate (Selected)
+
+The documentation-only post-P8-FT-39 audit selects P8-FT-40 as the sole next
+leaf. Pinned legacy `fulltextsearch.ui:117-128` gives the progress bar the
+explicit alignment `Qt::AlignCenter`; the mapped current private
+`fullTextSearchProgress` establishes its indeterminate range without
+preserving that alignment.
+
+Future focused acceptance extends only `full_text_search_dialog_test`. It
+proves `alignment() == Qt::AlignCenter` after construction and through idle,
+submission, generation-current accepted completion, active cancellation,
+replacement, and service/controller lifecycle transitions. It also retains
+the existing indeterminate range, visibility, request lifecycle,
+result/count/status, layout, geometry, search, and cancellation regressions.
+The focused Release command is:
+
+```sh
+ctest --preset conan-release -R '^full_text_search_dialog_test$'
+```
+
+The full implementation gate remains Linux Release configure/build, exactly
+109 registered tests, full Release CTest, clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile and packaged
+consumers, Release install, and unchanged standalone installed C and C++
+consumers. P8-FT-40 adds no executable, test registration, installed header,
+DTO, ABI, dependency, CMake export, or Conan requirement.
+
+Progress text/format and text visibility, value/range policy, orientation,
+inversion, style/animation, size policy, layout rearrangement, indexing
+progress UI/lifecycle, platform-specific styling, public/Core or
+composition-root expansion, dependencies/builds, and unrelated tests are
+excluded and unranked. No successor after P8-FT-40 is selected or ranked.
+
+This selection audit changes documentation only, so compiled verification is
+intentionally skipped. Its gate is exact four-file scope, cross-document
+consistency, Phase terminology, successor language, and `git diff --check`.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

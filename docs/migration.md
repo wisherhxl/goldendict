@@ -3786,6 +3786,56 @@ focused test, and the four governing documents. The Release registration
 baseline remains exactly 109 tests; no successor after P8-FT-39 is selected or
 ranked.
 
+### Phase 8 full-text progress-bar alignment (selected)
+
+The independent documentation-only post-P8-FT-39 audit is pinned to clean
+migrated revision `6dc40e40038395ecb8f1c912aab720ada078ee93`, its identical
+upstream and live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly P8-FT-40:
+preserve the private full-text search progress bar's explicit centered
+alignment.
+
+Pinned legacy `fulltextsearch.ui:117-128` gives `searchProgressBar` the
+explicit alignment `Qt::AlignCenter`. Current
+`full_text_search_dialog.cpp:128-132` creates the mapped
+`fullTextSearchProgress` and sets its indeterminate range without preserving
+that alignment. The completed private dialog and request workflow already own
+the widget and its lifecycle. The shared-library/GUI boundary keeps this
+correction in private Widgets and leaves Core, composition-root, public, and
+installed contracts unchanged.
+
+The future implementation retains
+`fullTextSearchProgress->alignment() == Qt::AlignCenter` after construction
+and through idle, submission, generation-current accepted completion, active
+cancellation, replacement, and service/controller lifecycle transitions.
+Existing indeterminate range, visibility, request lifecycle,
+result/count/status presentation, layout ownership, dialog geometry, search
+semantics, and cancellation behavior remain unchanged.
+
+Progress text/format and text visibility, value/range policy, orientation,
+inversion, style/animation, size policy, layout rearrangement, indexing
+progress UI/lifecycle, platform-specific styling, public/Core contracts,
+dependencies/builds, and unrelated parity are excluded and unranked. No
+successor after P8-FT-40 is selected or ranked.
+
+Future focused acceptance extends only `full_text_search_dialog_test` across
+the stated transitions while retaining progress range/visibility and workflow
+regressions. The focused Release command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
+gate remains Linux Release configure/build, exactly 109 registered tests, full
+Release CTest, clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile and packaged consumers, Release install, and unchanged
+standalone installed C and C++ consumers. No executable, registration,
+installed interface, dependency, export, or Conan requirement changes.
+
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+alignment evidence or acceptance semantics, any broader progress, layout, or
+style choice, public/Core or composition-root expansion, dependency or
+installed-surface change, an architectural decision requiring HTTP GET policy,
+or scope expansion. This audit is documentation-only, so compiled verification
+is intentionally skipped; exact four-file scope, cross-document consistency,
+Phase terminology, successor language, and `git diff --check` are its gate.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

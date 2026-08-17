@@ -167,6 +167,20 @@ registration. The Release baseline remains exactly 109 tests, and standalone
 installed C and C++ consumers remain unchanged and source-compatible. No
 successor after P8-FT-39 is selected or ranked.
 
+The P8-FT-40 audit supersedes that historical closure and selects only the
+private full-text search progress bar's explicit centered alignment. Pinned
+legacy `fulltextsearch.ui:117-128` requires `Qt::AlignCenter`, while current
+`fullTextSearchProgress` establishes its indeterminate range without the
+equivalent explicit alignment. The future leaf keeps the alignment stable
+across construction and request/lifecycle transitions without changing range,
+visibility, workflow, result/count/status presentation, layout, geometry,
+public/Core or installed contracts, dependencies, or test registration.
+Progress text/format, value/range policy, orientation, style/animation,
+indexing progress, and unrelated parity remain excluded and unranked. The
+Release baseline remains exactly 109 tests, and standalone installed C and C++
+consumers remain unchanged and source-compatible. No successor after P8-FT-40
+is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |
