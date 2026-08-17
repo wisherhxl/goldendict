@@ -4074,7 +4074,7 @@ expansion. Its gate is exact six-file scope, cross-document consistency, Phase
 terminology, successor neutrality, and the full Release, install, consumer,
 and exact-SCM verification described above.
 
-### Phase 8 full-text query-mode label parity (selected)
+### Phase 8 full-text query-mode label parity (complete)
 
 The documentation-only post-P8-FT-44 audit is pinned to clean migrated
 revision `c771e6a47bf8fda61d57dd241d751c6ead8ce454`, its identical upstream and
@@ -4083,15 +4083,15 @@ fresh live remote, and clean read-only legacy revision
 restore the private full-text query-mode label.
 
 Pinned legacy `fulltextsearch.ui:41-53` associates exact translatable text
-`Mode:` with the unique search-mode selector. Current
+`Mode:` with the unique search-mode selector. Before P8-FT-45,
 `full_text_query_composer.cpp:60-74,131-134` maps that selector to the unique
-private `fullTextQueryMode` combo box but labels its `QFormLayout` row `Mode`.
+private `fullTextQueryMode` combo box but labeled its `QFormLayout` row `Mode`.
 P8-FT-1 through P8-FT-44 supply its persistence, four modes, query composition,
 control, layout, focus/tab, and request-lifecycle prerequisites. The shared-
 library/GUI boundary keeps this text-only correction in private Widgets and
 leaves Core, composition-root, public, and installed contracts unchanged.
 
-The future implementation changes only the associated form label to exactly
+The implementation changes only the associated form label to exactly
 `Mode:`. Label-field association, selector identity, values, ordering,
 current/enabled state, focus/tab behavior, persistence, query composition,
 submission, responses, geometry, and lifecycle behavior remain unchanged. The
@@ -4106,7 +4106,7 @@ adapters/index formats, dependencies/builds, public/Core or composition-root
 changes, HTTP GET policy, and unrelated parity are excluded and unranked. No
 successor after P8-FT-45 is selected or ranked.
 
-Future focused acceptance extends only `full_text_query_composer_test`. It uses
+Completed focused acceptance extends only `full_text_query_composer_test`. It uses
 `QFormLayout::labelForField()` to prove the unique selector has exactly one
 associated label with exact text `Mode:` and preserves selector identity,
 values, state, mode transitions, and query composition. Existing dialog tests
@@ -4114,7 +4114,7 @@ retain request and lifecycle regressions. Add no executable or registered
 test. The focused Release command is
 `ctest --preset conan-release -R '^full_text_query_composer_test$'`.
 
-The full future implementation gate remains Linux Release configure/build,
+The full implementation gate remains Linux Release configure/build,
 exactly 109 registered tests, full Release CTest, Release install, packaged
 consumers, unchanged standalone installed C and C++ consumers, and clean
 committed exact-SCM creation with:
@@ -4124,9 +4124,11 @@ conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h bu
 ```
 
 P8-FT-45 adds no executable, test registration, installed header, DTO, ABI,
-dependency, CMake export, or Conan requirement. This documentation-only audit
-changes exactly these four governing documents, so compiled builds and tests
-are intentionally skipped.
+dependency, CMake export, or Conan requirement. The implementation changes only
+the private composer, its existing focused test, and these four governing
+documents.
+
+P8-FT-45 is complete. No successor is selected or ranked.
 
 Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
 label mapping or acceptance semantics, any second label or behavior change,

@@ -2,6 +2,8 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QFormLayout>
+#include <QLabel>
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QtTest>
@@ -181,6 +183,23 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
     preferences.full_text_use_maximum_word_distance = true;
     preferences.full_text_maximum_word_distance = 37U;
     FullTextQueryComposer composer(preferences);
+    const auto mode_selectors =
+        composer.findChildren<QComboBox*>(QStringLiteral("fullTextQueryMode"));
+    QCOMPARE(mode_selectors.size(), 1);
+    auto* mode_selector = mode_selectors.constFirst();
+    auto* form = composer.findChild<QFormLayout*>();
+    QVERIFY(form != nullptr);
+    auto* mode_label =
+        qobject_cast<QLabel*>(form->labelForField(mode_selector));
+    QVERIFY(mode_label != nullptr);
+    QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
+    int matching_mode_labels = 0;
+    for (const auto* label : composer.findChildren<QLabel*>()) {
+        if (label->text() == QStringLiteral("Mode:")) {
+            ++matching_mode_labels;
+        }
+    }
+    QCOMPARE(matching_mode_labels, 1);
     const auto ignore_order_controls = composer.findChildren<QCheckBox*>(
         QStringLiteral("fullTextIgnoreWordOrder"));
     QCOMPARE(ignore_order_controls.size(), 1);
@@ -201,6 +220,10 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
          {goldendict::core::FullTextSearchMode::kWildcard,
           goldendict::core::FullTextSearchMode::kRegularExpression}) {
         SelectMode(composer, mode);
+        QCOMPARE(Control<QComboBox>(composer, "fullTextQueryMode"),
+                 mode_selector);
+        QCOMPARE(form->labelForField(mode_selector), mode_label);
+        QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
         QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
                  ignore_order);
         QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
@@ -218,6 +241,10 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
          {goldendict::core::FullTextSearchMode::kPlainText,
           goldendict::core::FullTextSearchMode::kWholeWords}) {
         SelectMode(composer, mode);
+        QCOMPARE(Control<QComboBox>(composer, "fullTextQueryMode"),
+                 mode_selector);
+        QCOMPARE(form->labelForField(mode_selector), mode_label);
+        QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
         QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
                  ignore_order);
         QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
@@ -243,6 +270,13 @@ void FullTextQueryComposerTest::
     preferences.full_text_maximum_articles_per_dictionary = 1234U;
     const auto original = preferences;
     FullTextQueryComposer composer(preferences);
+    auto* mode_selector = Control<QComboBox>(composer, "fullTextQueryMode");
+    auto* form = composer.findChild<QFormLayout*>();
+    QVERIFY(form != nullptr);
+    auto* mode_label =
+        qobject_cast<QLabel*>(form->labelForField(mode_selector));
+    QVERIFY(mode_label != nullptr);
+    QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
     Control<QLineEdit>(composer, "fullTextQueryText")
         ->setText(QString::fromUtf8("repeatable Δ"));
 
@@ -258,6 +292,9 @@ void FullTextQueryComposerTest::
     QCOMPARE(second.maximum_articles_per_dictionary,
              first.maximum_articles_per_dictionary);
     QCOMPARE(second.timeout, first.timeout);
+    QCOMPARE(Control<QComboBox>(composer, "fullTextQueryMode"), mode_selector);
+    QCOMPARE(form->labelForField(mode_selector), mode_label);
+    QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
     QVERIFY(preferences == original);
 }
 

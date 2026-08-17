@@ -266,14 +266,14 @@ Standalone installed C and C++ consumers remain unchanged and source-
 compatible. P8-FT-44 is complete. No successor after P8-FT-44 is selected or
 ranked.
 
-P8-FT-45 supersedes that historical closure and selects only the private
+P8-FT-45 supersedes that historical closure and completes only the private
 full-text query-mode label parity leaf. Pinned legacy
 `fulltextsearch.ui:41-53` associates exact translatable text `Mode:` with the
-unique search-mode selector, while current
+unique search-mode selector, while before P8-FT-45
 `full_text_query_composer.cpp:60-74,131-134` maps that selector to the unique
-private `fullTextQueryMode` combo box but labels its form row `Mode`. The future
-leaf changes only that associated label after P8-FT-1 through P8-FT-44,
-preserving the association, selector identity, values, ordering, state,
+private `fullTextQueryMode` combo box but labeled its form row `Mode`. The
+completed leaf changes only that associated label after P8-FT-1 through
+P8-FT-44, preserving the association, selector identity, values, ordering, state,
 focus/tab behavior, persistence, query composition, request/response lifecycle,
 geometry, public/Core and installed contracts, dependencies, and test
 registration. The exact label stays stable across relevant control and
@@ -288,9 +288,8 @@ conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h bu
 ```
 
 Standalone installed C and C++ consumers remain unchanged and source-
-compatible. This documentation-only selection changes exactly the four
-governing documents and intentionally skips compiled builds and tests. No
-successor after P8-FT-45 is selected or ranked.
+compatible. P8-FT-45 is complete. No successor after P8-FT-45 is selected or
+ranked.
 
 ## Resources And Platform Integration
 

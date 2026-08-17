@@ -130,7 +130,7 @@ FullTextQueryComposer::FullTextQueryComposer(
 
     auto* form = new QFormLayout;
     form->addRow(tr("Query"), query_text_);
-    form->addRow(tr("Mode"), mode_);
+    form->addRow(tr("Mode:"), mode_);
     form->addRow(word_distance_layout);
     form->addRow(article_limit_layout);
 

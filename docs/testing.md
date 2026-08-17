@@ -3065,17 +3065,17 @@ six-file scope, cross-document consistency, Phase terminology, successor
 neutrality, and the full Release, install, consumer, and exact-SCM verification
 described above.
 
-## Phase 8 Full-Text Query-Mode Label Gate (Selected)
+## Phase 8 Full-Text Query-Mode Label Gate (Complete)
 
 The documentation-only post-P8-FT-44 audit selects P8-FT-45 as the sole next
 leaf. Pinned legacy `fulltextsearch.ui:41-53` associates the exact translatable
-text `Mode:` with the unique search-mode selector. Current
+text `Mode:` with the unique search-mode selector. Before P8-FT-45,
 `full_text_query_composer.cpp:60-74,131-134` maps that selector to the unique
-private `fullTextQueryMode` combo box but labels its `QFormLayout` row `Mode`.
+private `fullTextQueryMode` combo box but labeled its `QFormLayout` row `Mode`.
 P8-FT-1 through P8-FT-44 supply its complete persistence, mode, composition,
 control, containing-layout, focus/tab, and request-lifecycle prerequisites.
 
-Future focused acceptance extends only `full_text_query_composer_test`. It uses
+Completed focused acceptance extends only `full_text_query_composer_test`. It uses
 `QFormLayout::labelForField()` to prove exactly one label is associated with
 the unique selector and has exact text `Mode:`. It preserves selector identity,
 values, ordering, current/enabled state, focus/tab behavior, all four mode
@@ -3091,7 +3091,7 @@ Run the focused Release test with:
 ctest --preset conan-release -R '^full_text_query_composer_test$'
 ```
 
-The full future implementation gate remains Linux Release configure/build,
+The full implementation gate remains Linux Release configure/build,
 exactly 109 registered tests, full Release CTest, Release install, packaged
 consumers, standalone installed C and C++ consumers, and clean committed exact-
 SCM creation with:
@@ -3108,9 +3108,10 @@ dependencies/builds, public/Core or composition-root changes, HTTP GET policy,
 and unrelated tests are excluded and unranked. No successor after P8-FT-45 is
 selected or ranked.
 
-This audit changes exactly these four governing documents. Compiled builds and
-tests are intentionally skipped. Implementation must stop on ref/worktree
-drift, legacy dirtiness, ambiguous label mapping or acceptance semantics, any
+P8-FT-45 is complete. The implementation changes only the private composer,
+its existing focused test, and these four governing documents. Implementation
+must stop on ref/worktree drift, legacy dirtiness, ambiguous label mapping or
+acceptance semantics, any
 second label or behavior change, layout restructuring, mnemonic or
 translation-catalog work, public/Core or composition-root expansion,
 dependency or installed-surface change, an architectural decision requiring
