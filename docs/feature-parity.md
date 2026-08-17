@@ -319,6 +319,36 @@ Full Release CTest, Release install, packaged consumers, and standalone
 installed C and C++ consumer gates remain unchanged. P8-FT-46 is complete. No
 successor after P8-FT-46 is selected or ranked.
 
+P8-FT-47 supersedes that historical closure and selects only the private
+full-text wildcard mode-text parity leaf. Pinned legacy
+`fulltextsearch.cc:232-236` gives the third item of the unique search-mode
+selector exact translatable text `Wildcards` and maps it to the wildcard mode,
+while current `full_text_query_composer.cpp:60-74` maps the same third item of
+the unique private `fullTextQueryMode` selector to
+`FullTextSearchMode::kWildcard` but displays `Wildcard`. The future leaf changes
+only that item's displayed text to `Wildcards` after P8-FT-1 through P8-FT-46,
+preserving selector identity and parentage, four-item count and order, enum
+data, selected index, persistence, query composition, option enablement,
+focus/tab behavior, request/response lifecycle, geometry, public/Core and
+installed contracts, dependencies, and test registration. The exact text and
+wildcard mapping stay stable across construction, mode/option, composition,
+and request/lifecycle transitions. The regular-expression item, any other
+label or behavior, captions and bounds, layout, mnemonic or translation-
+catalog work, indexing lifecycle/UI, Preferences, adapters/index formats,
+dependencies/builds, HTTP GET policy, and unrelated parity remain excluded and
+unranked. Focused acceptance extends only `full_text_query_composer_test`; no
+executable or registered test is added. The Release baseline remains exactly
+109 tests; exact-SCM creation uses:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Full Release CTest, Release install, packaged consumers, and standalone
+installed C and C++ consumer gates remain unchanged. P8-FT-47 is selected for
+future implementation. No successor after P8-FT-47 is selected or ranked.
+Builds and tests are intentionally skipped for this documentation-only audit.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |
