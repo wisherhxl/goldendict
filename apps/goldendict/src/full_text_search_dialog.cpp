@@ -105,6 +105,13 @@ FullTextSearchDialog::FullTextSearchDialog(
     mixed_result_status_->hide();
     layout->addWidget(mixed_result_status_);
 
+    partial_empty_status_ =
+        new QLabel(QStringLiteral("No matches in searched dictionaries"), this);
+    partial_empty_status_->setObjectName(
+        QStringLiteral("fullTextPartialEmptyResponseStatus"));
+    partial_empty_status_->hide();
+    layout->addWidget(partial_empty_status_);
+
     progress_ = new QProgressBar(this);
     progress_->setObjectName(QStringLiteral("fullTextSearchProgress"));
     progress_->setRange(0, 0);
@@ -191,6 +198,7 @@ void FullTextSearchDialog::SubmitSearch() {
     UpdateEmptyStatus();
     UpdateFailureStatus();
     UpdateMixedResultStatus();
+    UpdatePartialEmptyStatus();
     accepted_activation_scope_.reset();
     pending_activation_scope_ =
         ActivationScope{query.dictionary_filter_active, query.dictionary_ids};
@@ -223,6 +231,7 @@ void FullTextSearchDialog::FinishSearch(
     UpdateEmptyStatus();
     UpdateFailureStatus();
     UpdateMixedResultStatus();
+    UpdatePartialEmptyStatus();
     RestoreIdleState();
 }
 
@@ -268,6 +277,12 @@ void FullTextSearchDialog::UpdateMixedResultStatus() {
     mixed_result_status_->setVisible(response_.has_value() &&
                                      !response_->results.empty() &&
                                      !response_->errors.empty());
+}
+
+void FullTextSearchDialog::UpdatePartialEmptyStatus() {
+    partial_empty_status_->setVisible(response_.has_value() &&
+                                      response_->results.empty() &&
+                                      response_->partial);
 }
 
 void FullTextSearchDialog::RestoreIdleState() {

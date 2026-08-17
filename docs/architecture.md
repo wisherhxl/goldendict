@@ -2868,7 +2868,7 @@ detail presentation contract. P8-FT-25 therefore presents only the migrated
 response's bounded mixed-result fact. P8-FT-25 is complete. No successor after
 P8-FT-25 is selected or ranked.
 
-### Phase 8 full-text partial-without-results status (selected)
+### Phase 8 full-text partial-without-results status (complete)
 
 The independent documentation-only post-P8-FT-25 readiness audit is pinned to
 clean migrated revision `6796df215f28404ccb4f1cc04c6bb7538320ae27` and the
@@ -2899,20 +2899,20 @@ service replacement, and teardown cannot introduce or overwrite the current
 status. Result rows, selection, focus, activation, response ownership, and
 accepted-generation synchronization remain unchanged.
 
-Focused future acceptance covers initial and replacement reset; zero-result
+Focused acceptance covers initial and replacement reset; zero-result
 partial responses with no, one, and multiple errors across each existing
 error-code category; nonempty partial responses; complete empty, error-only,
 result-only, and mixed-result responses; repeated accepted transitions; and
 stale, cancelled, detached, replaced-service, and teardown completion safety.
-The focused future command is
+The focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The completed implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. P8-FT-26 adds no test executable or
 public/installed interface, so the registered Release baseline remains 109
-tests. This documentation-only audit requires no build or compiled test.
+tests.
 
 All error details; exact `document_id` navigation and source-dictionary
 targeting; columns, icons, additional metadata roles, and other decoration;
@@ -2931,7 +2931,8 @@ P8-FT-9/P8-FT-11/P8-FT-17/P8-FT-22/P8-FT-23. Pinned legacy
 `fulltextsearch.cc:448-449,499-586` reports only the aggregate result count and
 silently contains individual dictionary failures, so it supplies no safe
 partial-empty presentation contract. P8-FT-26 therefore presents only the
-migrated response's bounded partial-without-results fact. No successor after
+migrated response's bounded partial-without-results fact. P8-FT-26 is complete.
+No successor after
 P8-FT-26 is selected or ranked.
 
 
