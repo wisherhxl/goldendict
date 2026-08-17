@@ -155,6 +155,17 @@ excluded and unranked. The Release registration baseline remains exactly 109
 tests, and standalone installed C and C++ consumers remain unchanged and
 source-compatible. No successor after P8-FT-38 is selected or ranked.
 
+The P8-FT-39 audit supersedes that historical closure and selects only the
+private result-count label's explicit minimum height. Pinned legacy
+`fulltextsearch.ui:103-115` requires 21 logical pixels, while current
+`fullTextArticlesFoundLabel` has no equivalent minimum. The future leaf keeps
+that minimum stable across construction and request/lifecycle transitions
+without changing count text, response/progress behavior, layout, dialog
+geometry, public/Core or installed contracts, dependencies, or test
+registration. The Release baseline remains exactly 109 tests, and standalone
+installed C and C++ consumers remain unchanged and source-compatible. No
+successor after P8-FT-39 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

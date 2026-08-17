@@ -3636,6 +3636,61 @@ wraparound, initial/transferred focus, Return/Enter or shortcut behavior,
 public/Core or composition-root contracts, dependencies, or installed surfaces
 remains separately reviewed and unranked.
 
+### Phase 8 full-text result-count minimum height (selected)
+
+The independent documentation-only post-P8-FT-38 audit is pinned to clean
+migrated revision `55777c188049b6de1d84a85db2b2db2b3d71a1e8`, its identical
+upstream and live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After rechecking the four
+governing migration documents and relevant current and pinned legacy code
+without advance ranking, it selects exactly one smallest dependency-ready
+leaf, P8-FT-39: preserve the private full-text result-count label's explicit
+minimum height.
+
+The shared-library/GUI boundary governs this leaf. Pinned legacy
+`fulltextsearch.ui:103-115` gives `articlesFoundLabel` a minimum height of 21
+logical pixels, while current `full_text_search_dialog.cpp:82-86` creates the
+mapped private `fullTextArticlesFoundLabel` without an equivalent minimum.
+P8-FT-17 already owns the accepted result-count presentation and
+P8-FT-34/P8-FT-35 own the dialog minimum and initial geometry. Widgets
+therefore owns the complete correction; Core, the composition root, and
+installed consumers acquire no sizing or presentation contract.
+
+P8-FT-39 requires `fullTextArticlesFoundLabel` to retain
+`minimumHeight() == 21` after construction and through idle, submission,
+generation-current accepted completion, active cancellation, replacement, and
+service/controller lifecycle transitions. Existing count text and visibility,
+response statuses, progress behavior, layout ownership, sizing above the
+minimum, and P8-FT-34/P8-FT-35 geometry behavior remain unchanged.
+
+Result-count wording or localization, width policy, fixed or maximum height,
+font/style/DPI policy, rearranging the count and progress widgets, response-
+status layout, progress behavior or alignment, dialog geometry, focus/tab/key
+behavior, search/result semantics, index lifecycle/UI, Preferences, adapters
+and index formats, dependencies/builds, and unrelated parity are excluded and
+remain unranked. No successor after P8-FT-39 is selected or ranked.
+
+Future focused acceptance extends only `full_text_search_dialog_test` to prove
+the exact minimum after construction and across the stated transitions while
+retaining the listed regressions. The focused Release command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
+implementation gate remains Linux Release configure/build, exactly 109
+registered tests and full Release CTest, clean committed exact-SCM
+`conan create` with the Release Qt WebEngine host profile and packaged
+consumers, Release install, and standalone installed C and C++ consumers.
+P8-FT-39 adds no executable, registration, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement, so both consumers remain
+unchanged and source-compatible.
+
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+minimum-height evidence or acceptance semantics, any broader size/layout/style
+choice, public/Core or composition-root expansion, dependency or installed-
+surface change, an architectural decision requiring HTTP GET policy, or scope
+expansion. This selection audit changes documentation only, so compiled
+verification is intentionally skipped; exact four-file scope, cross-document
+consistency, Phase terminology, successor language, and `git diff --check` are
+its verification gate.
+
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

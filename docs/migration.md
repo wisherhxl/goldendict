@@ -3742,6 +3742,53 @@ policies, endpoints, wraparound, initial/transferred focus, key dispatch,
 shortcuts, public/Core or composition-root expansion, dependencies, installed
 surfaces, and unrelated parity remain separately reviewed and unranked.
 
+### Phase 8 full-text result-count minimum height (selected)
+
+The independent documentation-only post-P8-FT-38 audit is pinned to clean
+migrated revision `55777c188049b6de1d84a85db2b2db2b3d71a1e8`, its identical
+upstream and live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly P8-FT-39:
+preserve the private full-text result-count label's explicit minimum height.
+
+Pinned legacy `fulltextsearch.ui:103-115` gives `articlesFoundLabel` a minimum
+height of 21 logical pixels. Current `full_text_search_dialog.cpp:82-86`
+creates the mapped `fullTextArticlesFoundLabel` without that minimum.
+Completed P8-FT-17 owns its count presentation, while P8-FT-34/P8-FT-35 own
+the enclosing dialog's minimum and initial geometry. The shared-library/GUI
+boundary keeps this correction in private Widgets and leaves Core,
+composition-root, public, and installed contracts unchanged.
+
+The future implementation retains
+`fullTextArticlesFoundLabel->minimumHeight() == 21` after construction and
+through idle, submission, accepted completion, active cancellation,
+replacement, and service/controller lifecycle transitions. Count text and
+visibility, response statuses, progress behavior, layout ownership, sizing
+above the minimum, and established dialog geometry remain unchanged.
+
+Wording/localization, width policy, fixed or maximum height, font/style/DPI
+policy, count/progress rearrangement, response-status layout, progress
+alignment, dialog geometry, focus/tab/key behavior, search/results, index
+lifecycle/UI, Preferences, adapters/index formats, dependencies/builds, and
+unrelated parity are excluded and unranked. No successor after P8-FT-39 is
+selected or ranked.
+
+Future focused acceptance extends only `full_text_search_dialog_test` across
+the stated transitions. The focused Release command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
+gate remains Linux Release configure/build, exactly 109 registered tests, full
+Release CTest, clean committed exact-SCM `conan create` with the Release Qt
+WebEngine host profile and packaged consumers, Release install, and unchanged
+standalone installed C and C++ consumers. No executable, registration,
+installed interface, dependency, export, or Conan requirement changes.
+
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+minimum-height evidence or acceptance semantics, any broader size/layout/style
+choice, public/Core or composition-root expansion, dependency or installed-
+surface change, an architectural decision requiring HTTP GET policy, or scope
+expansion. This audit is documentation-only, so compiled verification is
+intentionally skipped; exact four-file scope, cross-document consistency,
+Phase terminology, successor language, and `git diff --check` are its gate.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
