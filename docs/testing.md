@@ -3230,6 +3230,66 @@ is exact four-file scope, cross-document consistency, Phase terminology,
 successor neutrality, the exact Conan command, `git diff --check`, and clean
 pinned refs and worktrees.
 
+## Phase 8 Full-Text Regular-Expression Mode-Text Gate (Selected)
+
+The documentation-only post-P8-FT-47 audit selects P8-FT-48 as the sole next
+leaf. Pinned legacy `fulltextsearch.cc:232-236` gives the fourth item of the
+unique search-mode selector exact translatable text `RegExp` and maps it to
+regular-expression mode. Current `full_text_query_composer.cpp:60-75` maps the
+same fourth item of the unique private `fullTextQueryMode` selector to
+`FullTextSearchMode::kRegularExpression` but displays `Regular expression`.
+P8-FT-1 through P8-FT-47 supply the selector, four-item order and values,
+persistence, query composition, containing layout, focus/tab behavior, and
+request-lifecycle prerequisites.
+
+Focused acceptance will extend only `full_text_query_composer_test`. It must
+prove that the unique selector's fourth item has exact text `RegExp` and
+retains its `FullTextSearchMode::kRegularExpression` data through construction,
+every mode and option transition, and repeated composition. Existing dialog
+tests retain submission, generation-current accepted completion, active
+cancellation, replacement, service replacement, controller detachment,
+responses, geometry, focus, tab, and lifecycle regressions. Add no executable
+or registered test.
+
+Run the focused Release test with:
+
+```sh
+ctest --preset conan-release -R '^full_text_query_composer_test$'
+```
+
+The implementation gate remains Linux Release configure/build, exactly
+109 registered tests, full Release CTest, Release install, packaged consumers,
+standalone installed C and C++ consumers, and clean committed exact-SCM
+creation with:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+P8-FT-48 adds no executable, test registration, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement. The wildcard item, any other
+label or behavior, maximum-distance or article-limit captions and bounds,
+broader layout restructuring, spacing, margins, mnemonic policy,
+translation-catalog work, indexing lifecycle/UI, Preferences, adapters and
+index formats, dependencies/builds, public/Core or composition-root changes,
+HTTP GET policy, and unrelated tests are excluded and unranked. No successor
+after P8-FT-48 is selected or ranked.
+
+Its future implementation is limited to the private composer, its existing
+focused test, and these four governing documents. Implementation must stop on
+ref/worktree drift, legacy dirtiness, ambiguous mapping or acceptance
+semantics, any second item, label, or behavior, caption-bound policy, broader
+layout work, mnemonic or translation-catalog work, public/Core or
+composition-root expansion, dependency or installed-surface change, an
+architectural decision requiring HTTP GET policy, discovery of another
+required file, or scope expansion. This documentation audit's gate is exact
+four-file scope, cross-document consistency, Phase terminology, successor
+neutrality, the exact Conan command, `git diff --check`, and clean pinned refs
+and worktrees. No production or test file changes in this documentation-only
+audit; builds and tests are intentionally skipped. Any later stateful
+WebEngine smoke must run from freshly quarantined repository-owned build-tree
+`HOME` and XDG state, never real user configuration.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

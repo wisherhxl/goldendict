@@ -348,6 +348,37 @@ Full Release CTest, Release install, packaged consumers, and standalone
 installed C and C++ consumer gates remain unchanged. P8-FT-47 is complete. No
 successor after P8-FT-47 is selected or ranked.
 
+P8-FT-48 supersedes that historical closure and selects only the private
+full-text regular-expression mode-text parity leaf. Pinned legacy
+`fulltextsearch.cc:232-236` gives the fourth item of the unique search-mode
+selector exact translatable text `RegExp` and maps it to regular-expression
+mode, while current `full_text_query_composer.cpp:60-75` maps the same fourth
+item of the unique private `fullTextQueryMode` selector to
+`FullTextSearchMode::kRegularExpression` but displays `Regular expression`.
+The selected leaf will change only that item's displayed text to `RegExp`
+after P8-FT-1 through P8-FT-47, preserving selector identity and parentage,
+four-item count and order, enum data, selected index, persistence, query
+composition, option enablement, focus/tab behavior, request/response lifecycle,
+geometry, public/Core and installed contracts, dependencies, and test
+registration. The exact text and regular-expression mapping must stay stable
+across construction, mode/option, composition, and request/lifecycle
+transitions. The wildcard item, any other label or behavior, captions and
+bounds, layout, mnemonic or translation-catalog work, indexing lifecycle/UI,
+Preferences, adapters/index formats, dependencies/builds, HTTP GET policy, and
+unrelated parity remain excluded and unranked. Focused acceptance will extend
+only `full_text_query_composer_test`; no executable or registered test is
+added. The Release baseline remains exactly 109 tests; exact-SCM creation uses:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Full Release CTest, Release install, packaged consumers, and standalone
+installed C and C++ consumer gates remain unchanged. This documentation-only
+audit changes no production or test file, and builds/tests are intentionally
+skipped. P8-FT-48 is selected. No successor after P8-FT-48 is selected or
+ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |
