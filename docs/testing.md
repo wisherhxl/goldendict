@@ -2819,15 +2819,14 @@ The completed implementation extends the existing test executable without a
 registration change. The Release registration baseline remains exactly 109
 tests; no successor after P8-FT-39 is selected or ranked.
 
-## Phase 8 Full-Text Progress-Bar Alignment Gate (Selected)
+## Phase 8 Full-Text Progress-Bar Alignment Gate (Complete)
 
-The documentation-only post-P8-FT-39 audit selects P8-FT-40 as the sole next
+The documentation-only post-P8-FT-39 audit selected P8-FT-40 as the sole next
 leaf. Pinned legacy `fulltextsearch.ui:117-128` gives the progress bar the
 explicit alignment `Qt::AlignCenter`; the mapped current private
-`fullTextSearchProgress` establishes its indeterminate range without
-preserving that alignment.
+`fullTextSearchProgress` now preserves it alongside the indeterminate range.
 
-Future focused acceptance extends only `full_text_search_dialog_test`. It
+Completed focused acceptance extends only `full_text_search_dialog_test`. It
 proves `alignment() == Qt::AlignCenter` after construction and through idle,
 submission, generation-current accepted completion, active cancellation,
 replacement, and service/controller lifecycle transitions. It also retains
@@ -2852,9 +2851,10 @@ progress UI/lifecycle, platform-specific styling, public/Core or
 composition-root expansion, dependencies/builds, and unrelated tests are
 excluded and unranked. No successor after P8-FT-40 is selected or ranked.
 
-This selection audit changes documentation only, so compiled verification is
-intentionally skipped. Its gate is exact four-file scope, cross-document
-consistency, Phase terminology, successor language, and `git diff --check`.
+The implementation gate is exact production and focused-test scope, exactly
+four governing documentation updates, cross-document consistency, Phase
+terminology, successor language, and the full Release, install, consumer, and
+exact-SCM package verification described above.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

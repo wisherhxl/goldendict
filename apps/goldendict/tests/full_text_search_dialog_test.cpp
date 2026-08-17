@@ -244,6 +244,22 @@ QProgressBar* Progress(FullTextSearchDialog* dialog) {
         QStringLiteral("fullTextSearchProgress"));
 }
 
+void VerifyProgressAlignmentContract(FullTextSearchDialog* dialog) {
+    const auto matches = dialog->findChildren<QProgressBar*>(
+        QStringLiteral("fullTextSearchProgress"), Qt::FindDirectChildrenOnly);
+    QCOMPARE(matches.size(), 1);
+    auto* progress = Progress(dialog);
+    QVERIFY(progress != nullptr);
+    QCOMPARE(progress, matches.front());
+    QCOMPARE(progress->parent(), dialog);
+    QCOMPARE(progress->objectName(), QStringLiteral("fullTextSearchProgress"));
+    QCOMPARE(progress->alignment(), Qt::AlignCenter);
+    QCOMPARE(progress->minimum(), 0);
+    QCOMPARE(progress->maximum(), 0);
+    QVERIFY(dialog->layout() != nullptr);
+    QVERIFY(dialog->layout()->indexOf(progress) >= 0);
+}
+
 FullTextResponseModel* ResponseModel(FullTextSearchDialog* dialog) {
     return dialog->findChild<FullTextResponseModel*>();
 }
@@ -415,7 +431,7 @@ void FullTextSearchDialogTest::
     service.response_.results = {MakeResult("dictionary", "result", 1U)};
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
-
+    VerifyProgressAlignmentContract(&dialog);
     VerifyResultCountMinimumHeight(&dialog);
     VerifyExactForwardTabChain(&dialog);
     VerifySearchButtonDefaultPolicy(&dialog);
@@ -427,11 +443,13 @@ void FullTextSearchDialogTest::
 
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(1U));
+    VerifyProgressAlignmentContract(&dialog);
     VerifyResultCountMinimumHeight(&dialog);
     QVERIFY(!SearchButton(&dialog)->isEnabled());
     VerifySearchButtonDefaultPolicy(&dialog);
     VerifyExactForwardTabChain(&dialog);
     QTRY_VERIFY(dialog.response_.has_value());
+    VerifyProgressAlignmentContract(&dialog);
     VerifyResultCountMinimumHeight(&dialog);
     QVERIFY(SearchButton(&dialog)->isEnabled());
     VerifySearchButtonDefaultPolicy(&dialog);
@@ -440,11 +458,13 @@ void FullTextSearchDialogTest::
     dialog.InitializeQuery(QStringLiteral("blocked"));
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(2U));
+    VerifyProgressAlignmentContract(&dialog);
     VerifyResultCountMinimumHeight(&dialog);
     QVERIFY(!SearchButton(&dialog)->isEnabled());
     VerifyExactForwardTabChain(&dialog);
     dialog.CancelSearch();
     QVERIFY(service.WaitForCancellation());
+    VerifyProgressAlignmentContract(&dialog);
     VerifyResultCountMinimumHeight(&dialog);
     QVERIFY(SearchButton(&dialog)->isEnabled());
     VerifySearchButtonDefaultPolicy(&dialog);
@@ -875,6 +895,7 @@ void FullTextSearchDialogTest::
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
     auto* mixed_result_status = MixedResultStatus(&dialog);
+    VerifyProgressAlignmentContract(&dialog);
     QVERIFY(mixed_result_status != nullptr);
     QCOMPARE(mixed_result_status->parent(), &dialog);
     QCOMPARE(mixed_result_status->text(),
@@ -1381,6 +1402,7 @@ void FullTextSearchDialogTest::
     VerifySearchButtonDefaultPolicy(&dialog);
 
     search->click();
+    VerifyProgressAlignmentContract(&dialog);
     QVERIFY(!search->isEnabled());
     QVERIFY(cancel->isEnabled());
     QVERIFY(!progress->isHidden());
@@ -1405,6 +1427,7 @@ void FullTextSearchDialogTest::
     QVERIFY(submitted.dictionary_filter_active);
 
     QTRY_VERIFY(dialog.response_.has_value());
+    VerifyProgressAlignmentContract(&dialog);
     QVERIFY(search->isEnabled());
     QVERIFY(cancel->isEnabled());
     QVERIFY(progress->isHidden());
@@ -1437,6 +1460,7 @@ void FullTextSearchDialogTest::
     ControllableDictionaryService service;
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
+    VerifyProgressAlignmentContract(&dialog);
     VerifySearchButtonDefaultPolicy(&dialog);
     auto* query =
         dialog.findChild<QLineEdit*>(QStringLiteral("fullTextQueryText"));
@@ -1484,6 +1508,7 @@ void FullTextSearchDialogTest::
     service.response_.results = {MakeResult("first", "same", 1U)};
     query->setText(QStringLiteral("replacement"));
     dialog.SubmitSearch();
+    VerifyProgressAlignmentContract(&dialog);
     QCOMPARE(model->rowCount(), 0);
     verify_unselected();
     QVERIFY(results->hasFocus());
@@ -1548,6 +1573,7 @@ void FullTextSearchDialogTest::
     dialog.InitializeQuery(QString::fromUtf8(u8"ordered café"));
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(1U));
+    VerifyProgressAlignmentContract(&dialog);
     VerifySearchButtonDefaultPolicy(&dialog);
     QTRY_COMPARE(model->rowCount(), 1);
     QVERIFY(dialog.accepted_activation_scope_.has_value());
@@ -1789,6 +1815,7 @@ void FullTextSearchDialogTest::
     QCOMPARE(resets.size(), 1);
     QVERIFY(service.WaitForQueries(1U));
     QTRY_VERIFY(dialog.response_.has_value());
+    VerifyProgressAlignmentContract(&dialog);
     QCOMPARE(model->rowCount(), 3);
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 3"));
     QVERIFY(partial_status->isHidden());
@@ -1813,6 +1840,7 @@ void FullTextSearchDialogTest::
     service.response_.results.front().headword = "current";
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
+    VerifyProgressAlignmentContract(&dialog);
     std::size_t notifications = 0U;
     dialog.completion_notifier_ = [&notifications]() {
         ++notifications;
@@ -1829,6 +1857,7 @@ void FullTextSearchDialogTest::
     query->setText(QStringLiteral("blocked"));
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(1U));
+    VerifyProgressAlignmentContract(&dialog);
     QCOMPARE(notifications, std::size_t{0});
     QVERIFY(!search->isEnabled());
     goldendict::core::FullTextQuery pending_scope;
@@ -1845,6 +1874,7 @@ void FullTextSearchDialogTest::
     dialog.SetProjectedQuery(replacement_scope);
     query->setText(QStringLiteral("replacement"));
     dialog.SubmitSearch();
+    VerifyProgressAlignmentContract(&dialog);
     QCOMPARE(dialog.generation_, 3U);
     QCOMPARE(dialog.active_generation_, std::optional<std::uint64_t>(3U));
     VerifyResultCountMinimumHeight(&dialog);
@@ -1852,6 +1882,7 @@ void FullTextSearchDialogTest::
     service.ReleaseCancelledRequest();
     QVERIFY(service.WaitForQueries(2U));
     QTRY_VERIFY(dialog.response_.has_value());
+    VerifyProgressAlignmentContract(&dialog);
     VerifyResultCountMinimumHeight(&dialog);
     QCOMPARE(notifications, std::size_t{1});
 
@@ -1904,6 +1935,7 @@ void FullTextSearchDialogTest::
 
     CancelButton(&dialog)->click();
     QVERIFY(service.WaitForCancellation());
+    VerifyProgressAlignmentContract(&dialog);
     VerifyResultCountMinimumHeight(&dialog);
     QVERIFY(!dialog.active_generation_.has_value());
     QVERIFY(!dialog.pending_activation_scope_.has_value());
@@ -2126,6 +2158,7 @@ void FullTextSearchDialogTest::
     std::size_t notifications = 0U;
     {
         FullTextSearchDialog dialog(preferences, &first);
+        VerifyProgressAlignmentContract(&dialog);
         VerifyResultCountMinimumHeight(&dialog);
         dialog.completion_notifier_ = [&notifications]() {
             ++notifications;
@@ -2140,6 +2173,7 @@ void FullTextSearchDialogTest::
         dialog.SubmitSearch();
         QVERIFY(first.WaitForQueries(1U));
         QTRY_VERIFY(dialog.response_.has_value());
+        VerifyProgressAlignmentContract(&dialog);
         QCOMPARE(notifications, std::size_t{1});
         QCOMPARE(ResponseModel(&dialog)->rowCount(), 1);
         QCOMPARE(ArticlesFound(&dialog)->text(),
@@ -2153,6 +2187,7 @@ void FullTextSearchDialogTest::
         QCOMPARE(dialog.accepted_activation_context_->query_text,
                  std::string("accepted"));
         dialog.SetService(&second);
+        VerifyProgressAlignmentContract(&dialog);
         VerifyResultCountMinimumHeight(&dialog);
         QCOMPARE(notifications, std::size_t{1});
         QVERIFY(dialog.response_.has_value());
@@ -2171,6 +2206,7 @@ void FullTextSearchDialogTest::
         QVERIFY(!dialog.pending_activation_context_.has_value());
         dialog.DetachController();
         dialog.DetachController();
+        VerifyProgressAlignmentContract(&dialog);
         VerifyResultCountMinimumHeight(&dialog);
         QCOMPARE(notifications, std::size_t{1});
         QVERIFY(dialog.response_.has_value());
@@ -2190,6 +2226,7 @@ void FullTextSearchDialogTest::
     ControllableDictionaryService replacement;
     {
         FullTextSearchDialog dialog(preferences, &blocked);
+        VerifyProgressAlignmentContract(&dialog);
         VerifyResultCountMinimumHeight(&dialog);
         dialog.completion_notifier_ = [&notifications]() {
             ++notifications;
@@ -2197,10 +2234,12 @@ void FullTextSearchDialogTest::
         dialog.InitializeQuery(QStringLiteral("blocked"));
         dialog.SubmitSearch();
         QVERIFY(blocked.WaitForQueries(1U));
+        VerifyProgressAlignmentContract(&dialog);
         QCOMPARE(notifications, std::size_t{1});
         blocked.ReleaseCancelledRequest();
         dialog.SetService(&replacement);
         QVERIFY(blocked.WaitForCancellation());
+        VerifyProgressAlignmentContract(&dialog);
         VerifyResultCountMinimumHeight(&dialog);
         QVERIFY(!dialog.active_generation_.has_value());
         QVERIFY(!dialog.pending_activation_scope_.has_value());
@@ -2219,6 +2258,7 @@ void FullTextSearchDialogTest::
         QVERIFY(SearchButton(&dialog)->isEnabled());
         dialog.DetachController();
         dialog.DetachController();
+        VerifyProgressAlignmentContract(&dialog);
         VerifyResultCountMinimumHeight(&dialog);
         QCOMPARE(notifications, std::size_t{1});
     }

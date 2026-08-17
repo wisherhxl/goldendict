@@ -127,6 +127,7 @@ FullTextSearchDialog::FullTextSearchDialog(
 
     progress_ = new QProgressBar(this);
     progress_->setObjectName(QStringLiteral("fullTextSearchProgress"));
+    progress_->setAlignment(Qt::AlignCenter);
     progress_->setRange(0, 0);
     progress_->hide();
     layout->addWidget(progress_);

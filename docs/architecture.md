@@ -3688,7 +3688,7 @@ focused test, and the four governing documents. The Release registration
 baseline remains exactly 109 tests; no successor after P8-FT-39 is selected or
 ranked.
 
-### Phase 8 full-text progress-bar alignment (selected)
+### Phase 8 full-text progress-bar alignment (complete)
 
 The independent documentation-only post-P8-FT-39 audit is pinned to clean
 migrated revision `6dc40e40038395ecb8f1c912aab720ada078ee93`, its identical
@@ -3701,14 +3701,14 @@ centered alignment.
 
 The shared-library/GUI boundary governs this leaf. Pinned legacy
 `fulltextsearch.ui:117-128` gives `searchProgressBar` the explicit alignment
-`Qt::AlignCenter`, while current `full_text_search_dialog.cpp:128-132` creates
-the mapped private `fullTextSearchProgress` and establishes its indeterminate
-range without preserving that alignment. The completed private dialog and
+`Qt::AlignCenter`; `full_text_search_dialog.cpp` now creates the mapped private
+`fullTextSearchProgress`, preserves that alignment, and establishes its
+indeterminate range. The completed private dialog and
 request workflow already own the progress widget and all lifecycle behavior.
 Widgets therefore owns the complete correction; Core, the composition root,
 and installed consumers acquire no progress or presentation contract.
 
-P8-FT-40 requires `fullTextSearchProgress->alignment() == Qt::AlignCenter`
+P8-FT-40 preserves `fullTextSearchProgress->alignment() == Qt::AlignCenter`
 after construction and through idle, submission, generation-current accepted
 completion, active cancellation, replacement, and service/controller
 lifecycle transitions. Its existing indeterminate range, visibility, request
@@ -3721,9 +3721,9 @@ progress UI and lifecycle, platform-specific styling, public/Core contracts,
 dependencies and builds, and unrelated parity are excluded and remain
 unranked. No successor after P8-FT-40 is selected or ranked.
 
-Future focused acceptance extends only `full_text_search_dialog_test` to prove
-the exact alignment after construction and across the stated transitions while
-retaining progress range/visibility and surrounding workflow regressions. The
+Completed focused acceptance extends only `full_text_search_dialog_test` to
+prove the exact alignment after construction and across the stated transitions
+while retaining progress range/visibility and surrounding workflow regressions. The
 focused Release command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
 implementation gate remains Linux Release configure/build, exactly 109
@@ -3734,14 +3734,14 @@ P8-FT-40 adds no executable, registration, installed header, DTO, ABI,
 dependency, CMake export, or Conan requirement, so both consumers remain
 unchanged and source-compatible.
 
-Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+The implementation stops on ref/worktree drift, legacy dirtiness, ambiguous
 alignment evidence or acceptance semantics, any broader progress, layout, or
 style choice, public/Core or composition-root expansion, dependency or
 installed-surface change, an architectural decision requiring HTTP GET policy,
-or scope expansion. This selection audit changes documentation only, so
-compiled verification is intentionally skipped; exact four-file scope,
-cross-document consistency, Phase terminology, successor language, and
-`git diff --check` are its verification gate.
+or scope expansion. The implementation gate is exact production and focused
+test scope, exactly four governing documentation updates, cross-document
+consistency, Phase terminology, successor language, and the full Release,
+install, consumer, and exact-SCM package verification described above.
 
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
