@@ -3743,7 +3743,7 @@ test scope, exactly four governing documentation updates, cross-document
 consistency, Phase terminology, successor language, and the full Release,
 install, consumer, and exact-SCM package verification described above.
 
-### Phase 8 full-text result-count/progress row (selected)
+### Phase 8 full-text result-count/progress row (complete)
 
 The independent documentation-only post-P8-FT-40 audit is pinned to clean
 migrated revision `0b6a081699947168959884a940870d8a741c1d74`, its identical
@@ -3764,8 +3764,8 @@ height, and progress alignment. Widgets therefore owns the complete layout
 correction; Core, the composition root, and installed consumers acquire no
 layout or presentation contract.
 
-P8-FT-41 requires one private horizontal layout in the enclosing vertical
-dialog layout, containing the unique direct dialog children
+P8-FT-41 is complete with one private horizontal layout in the enclosing
+vertical dialog layout, containing the unique direct dialog children
 `fullTextArticlesFoundLabel` first and `fullTextSearchProgress` second. That
 relationship remains stable after construction and through idle, submission,
 generation-current accepted completion, active cancellation, replacement,
@@ -3781,9 +3781,9 @@ formats, dependencies/builds, public/Core or composition-root changes, and
 unrelated parity are excluded and remain unranked. No successor after
 P8-FT-41 is selected or ranked.
 
-Future focused acceptance extends only `full_text_search_dialog_test` to prove
-the unique horizontal row, exact label-then-progress order, enclosing-layout
-attachment, unchanged widget properties, and the stated lifecycle regressions.
+Completed focused acceptance extends only `full_text_search_dialog_test` to
+prove the unique horizontal row, exact label-then-progress order, enclosing-
+layout attachment, unchanged widget properties, and the stated lifecycle regressions.
 The focused Release command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
 implementation gate remains Linux Release configure/build, exactly 109
@@ -3794,14 +3794,15 @@ P8-FT-41 adds no executable, registration, installed header, DTO, ABI,
 dependency, CMake export, or Conan requirement, so both consumers remain
 unchanged and source-compatible.
 
-Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+The implementation stops on ref/worktree drift, legacy dirtiness, ambiguous
 layout evidence or acceptance semantics, any spacing, style, or broader layout
 choice, public/Core or composition-root expansion, dependency or installed-
 surface change, an architectural decision requiring HTTP GET policy, discovery
-of another required file, or scope expansion. This selection audit changes
-documentation only, so compiled verification is intentionally skipped; exact
-four-file scope, cross-document consistency, Phase terminology, successor
-language, and `git diff --check` are its verification gate.
+of another required file, or scope expansion. The completed implementation
+changes only private dialog construction, its existing focused test, and the
+four governing documents; its gate is exact scope, cross-document consistency,
+Phase terminology, successor language, and the full Release, install, consumer,
+and exact-SCM verification described above.
 
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

@@ -84,7 +84,17 @@ FullTextSearchDialog::FullTextSearchDialog(
     result_count_->setObjectName(QStringLiteral("fullTextArticlesFoundLabel"));
     result_count_->setMinimumHeight(21);
     UpdateResultCount();
-    layout->addWidget(result_count_);
+
+    progress_ = new QProgressBar(this);
+    progress_->setObjectName(QStringLiteral("fullTextSearchProgress"));
+    progress_->setAlignment(Qt::AlignCenter);
+    progress_->setRange(0, 0);
+    progress_->hide();
+
+    auto* result_count_progress = new QHBoxLayout;
+    result_count_progress->addWidget(result_count_);
+    result_count_progress->addWidget(progress_);
+    layout->addLayout(result_count_progress);
 
     partial_status_ =
         new QLabel(QStringLiteral("Results may be incomplete."), this);
@@ -124,13 +134,6 @@ FullTextSearchDialog::FullTextSearchDialog(
         QStringLiteral("fullTextErrorCountResponseStatus"));
     error_count_status_->hide();
     layout->addWidget(error_count_status_);
-
-    progress_ = new QProgressBar(this);
-    progress_->setObjectName(QStringLiteral("fullTextSearchProgress"));
-    progress_->setAlignment(Qt::AlignCenter);
-    progress_->setRange(0, 0);
-    progress_->hide();
-    layout->addWidget(progress_);
 
     search_button_ = new QPushButton(tr("Search"), this);
     search_button_->setObjectName(QStringLiteral("fullTextSearchButton"));

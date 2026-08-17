@@ -2856,7 +2856,7 @@ four governing documentation updates, cross-document consistency, Phase
 terminology, successor language, and the full Release, install, consumer, and
 exact-SCM package verification described above.
 
-## Phase 8 Full-Text Result-Count/Progress Row Gate (Selected)
+## Phase 8 Full-Text Result-Count/Progress Row Gate (Complete)
 
 The documentation-only post-P8-FT-40 audit selects P8-FT-41 as the sole next
 leaf. Pinned legacy `fulltextsearch.ui:102-129` places the result-count label
@@ -2865,7 +2865,7 @@ private widgets are separate vertical-layout items with response statuses
 between them. P8-FT-17, P8-FT-39, and P8-FT-40 supply the complete presentation
 prerequisites.
 
-Future focused acceptance extends only `full_text_search_dialog_test`. It
+Completed focused acceptance extends only `full_text_search_dialog_test`. It
 proves one horizontal row attached to the enclosing vertical layout, containing
 the unique direct dialog children `fullTextArticlesFoundLabel` first and
 `fullTextSearchProgress` second, after construction and through idle,
@@ -2893,12 +2893,13 @@ dependencies/builds, public/Core or composition-root expansion, and unrelated
 tests are excluded and unranked. No successor after P8-FT-41 is selected or
 ranked.
 
-This selection audit changes documentation only, so compiled verification is
-intentionally skipped. Its gate is exact four-file scope, cross-document
-consistency, Phase terminology, successor language, and `git diff --check`.
-Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
-layout evidence or acceptance semantics, any spacing, style, or broader layout
-choice, public/Core or composition-root expansion, dependency or installed-
+The completed implementation changes only private dialog construction, its
+existing focused test, and these four governing documents. Its gate is exact
+scope, cross-document consistency, Phase terminology, successor language, and
+the full Release, install, consumer, and exact-SCM verification described
+above. The implementation stops on ref/worktree drift, legacy dirtiness,
+ambiguous layout evidence or acceptance semantics, any spacing, style, or
+broader layout choice, public/Core or composition-root expansion, dependency or installed-
 surface change, an architectural decision requiring HTTP GET policy, discovery
 of another required file, or scope expansion.
 
