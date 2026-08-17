@@ -2703,16 +2703,15 @@ destination or transport choice, a public/Core or composition-root contract,
 dependency or installed-surface change, an architectural decision requiring
 HTTP GET policy, or scope expansion.
 
-### Phase 8 full-text Search button default-policy acceptance (selected)
+### Phase 8 full-text Search button default-policy acceptance (complete)
 
 The documentation-only post-P8-FT-36 audit selects P8-FT-37 as the sole next
 leaf. Pinned legacy `fulltextsearch.ui:204-214` makes the Search `OKButton` the
-explicit default and disables its auto-default property. Current
-`full_text_search_dialog.cpp:133-136` preserves the explicit default but not
-the non-auto-default policy, and existing focused coverage pins neither
-property.
+explicit default and disables its auto-default property. The pre-P8-FT-37
+`full_text_search_dialog.cpp:133-136` preserved the explicit default but not
+the non-auto-default policy, and focused coverage pinned neither property.
 
-Future focused acceptance extends only `full_text_search_dialog_test`. It must
+Completed focused acceptance extends only `full_text_search_dialog_test`. It
 identify `fullTextSearchButton`, verify `isDefault() == true` and
 `autoDefault() == false` after construction, and prove both remain unchanged
 through idle state, active submission, accepted completion, and active
@@ -2723,7 +2722,7 @@ selection, geometry, or configuration.
 
 The focused Release command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The full implementation gate remains
 Linux Release configure/build, exactly 109 registered tests and full
 `ctest --preset conan-release`, clean committed exact-SCM `conan create` with
 the Release Qt WebEngine host profile and packaged consumers, Release install,

@@ -3526,7 +3526,7 @@ transport, a public/Core or composition-root contract, dependency or installed
 surface change, architectural decision requiring HTTP GET policy, or scope
 expansion.
 
-### Phase 8 full-text Search button default policy (selected)
+### Phase 8 full-text Search button default policy (complete)
 
 The independent documentation-only post-P8-FT-36 audit is pinned to clean
 migrated revision `ca6f206f1913a7941d8dcf3599704353e27e3c4e`, its identical
@@ -3538,14 +3538,14 @@ leaf, P8-FT-37: preserve the private full-text Search button's default policy.
 
 The shared-library/GUI boundary governs this leaf. Pinned legacy
 `fulltextsearch.ui:204-214` makes `OKButton` the explicit default button while
-setting `autoDefault` false. Current `full_text_search_dialog.cpp:133-136`
-already makes `fullTextSearchButton` the explicit default but leaves Qt's
-auto-default property enabled, and the focused dialog test pins neither
-property. Widgets therefore owns the complete correction; Core, the
+setting `autoDefault` false. The pre-P8-FT-37
+`full_text_search_dialog.cpp:133-136` made `fullTextSearchButton` the explicit
+default but left Qt's auto-default property enabled, and the focused dialog
+test pinned neither property. Widgets therefore owns the complete correction; Core, the
 composition root, and installed consumers acquire no button or focus policy.
 
-P8-FT-37 requires `fullTextSearchButton` to retain `isDefault() == true` and
-to report `autoDefault() == false` after construction and throughout idle,
+P8-FT-37 keeps `fullTextSearchButton` at `isDefault() == true` and makes it
+report `autoDefault() == false` after construction and throughout idle,
 submission, completion, and active-cancellation transitions. The property
 correction does not independently submit or cancel work, close the dialog,
 move focus, alter the query, accepted response, result model, selection,
@@ -3558,7 +3558,7 @@ presentation, Preferences/index policy, adapters/index formats, dependencies,
 builds, and unrelated parity remain independently decomposed, unselected, and
 unranked. No successor after P8-FT-37 is selected or ranked.
 
-Focused future acceptance extends only `full_text_search_dialog_test` to prove
+Completed focused acceptance extends only `full_text_search_dialog_test` to prove
 the exact button identity and both properties across the stated transitions,
 plus regressions for Search, Cancel, and Help behavior. The focused Release
 command is

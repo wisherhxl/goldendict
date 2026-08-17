@@ -161,6 +161,20 @@ QPushButton* SearchButton(FullTextSearchDialog* dialog) {
         QStringLiteral("fullTextSearchButton"));
 }
 
+void VerifySearchButtonDefaultPolicy(FullTextSearchDialog* dialog) {
+    const auto matches = dialog->findChildren<QPushButton*>(
+        QStringLiteral("fullTextSearchButton"), Qt::FindDirectChildrenOnly);
+    QCOMPARE(matches.size(), 1);
+    auto* search = SearchButton(dialog);
+    QVERIFY(search != nullptr);
+    QCOMPARE(search, matches.front());
+    QCOMPARE(search->parent(), dialog);
+    QCOMPARE(search->objectName(), QStringLiteral("fullTextSearchButton"));
+    QCOMPARE(search->text(), QStringLiteral("Search"));
+    QVERIFY(search->isDefault());
+    QVERIFY(!search->autoDefault());
+}
+
 QPushButton* CancelButton(FullTextSearchDialog* dialog) {
     return dialog->findChild<QPushButton*>(
         QStringLiteral("fullTextCancelButton"));
@@ -1209,6 +1223,8 @@ void FullTextSearchDialogTest::
     auto* empty_status = EmptyStatus(&dialog);
     auto* failure_status = FailureStatus(&dialog);
     auto* mixed_result_status = MixedResultStatus(&dialog);
+    VerifySearchButtonDefaultPolicy(&dialog);
+    QCOMPARE(search, dialog.search_button_);
     QVERIFY(search != nullptr);
     QVERIFY(cancel != nullptr);
     QVERIFY(progress != nullptr);
@@ -1252,11 +1268,13 @@ void FullTextSearchDialogTest::
     QVERIFY(search->isEnabled());
     QVERIFY(cancel->isEnabled());
     QVERIFY(progress->isHidden());
+    VerifySearchButtonDefaultPolicy(&dialog);
 
     search->click();
     QVERIFY(!search->isEnabled());
     QVERIFY(cancel->isEnabled());
     QVERIFY(!progress->isHidden());
+    VerifySearchButtonDefaultPolicy(&dialog);
     QCOMPARE(articles_found->text(), QStringLiteral("Articles found: 0"));
     QVERIFY(partial_status->isHidden());
     QVERIFY(empty_status->isHidden());
@@ -1280,6 +1298,7 @@ void FullTextSearchDialogTest::
     QVERIFY(search->isEnabled());
     QVERIFY(cancel->isEnabled());
     QVERIFY(progress->isHidden());
+    VerifySearchButtonDefaultPolicy(&dialog);
     QVERIFY(dialog.response_->partial);
     QCOMPARE(dialog.response_->results.size(), std::size_t{1});
     QCOMPARE(dialog.response_->results.front().headword,
@@ -1308,6 +1327,7 @@ void FullTextSearchDialogTest::
     ControllableDictionaryService service;
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
+    VerifySearchButtonDefaultPolicy(&dialog);
     auto* query =
         dialog.findChild<QLineEdit*>(QStringLiteral("fullTextQueryText"));
     auto* model = ResponseModel(&dialog);
@@ -1418,6 +1438,7 @@ void FullTextSearchDialogTest::
     dialog.InitializeQuery(QString::fromUtf8(u8"ordered café"));
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(1U));
+    VerifySearchButtonDefaultPolicy(&dialog);
     QTRY_COMPARE(model->rowCount(), 1);
     QVERIFY(dialog.accepted_activation_scope_.has_value());
     QVERIFY(dialog.accepted_activation_scope_->dictionary_filter_active);
@@ -1755,6 +1776,7 @@ void FullTextSearchDialogTest::
     service.response_.partial = true;
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
+    VerifySearchButtonDefaultPolicy(&dialog);
     std::size_t notifications = 0U;
     dialog.completion_notifier_ = [&notifications]() {
         ++notifications;
@@ -1763,6 +1785,7 @@ void FullTextSearchDialogTest::
     dialog.InitializeQuery(QStringLiteral("blocked"));
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(1U));
+    VerifySearchButtonDefaultPolicy(&dialog);
     QCOMPARE(notifications, std::size_t{0});
 
     CancelButton(&dialog)->click();
@@ -1783,6 +1806,7 @@ void FullTextSearchDialogTest::
     QVERIFY(SearchButton(&dialog)->isEnabled());
     QVERIFY(CancelButton(&dialog)->isEnabled());
     QVERIFY(Progress(&dialog)->isHidden());
+    VerifySearchButtonDefaultPolicy(&dialog);
 
     service.ReleaseCancelledRequest();
     QTest::qWait(20);
@@ -1796,6 +1820,7 @@ void FullTextSearchDialogTest::
     QVERIFY(MixedResultStatus(&dialog)->isHidden());
     QCOMPARE(dialog.generation_, 1U);
     QCOMPARE(notifications, std::size_t{0});
+    VerifySearchButtonDefaultPolicy(&dialog);
 }
 
 void FullTextSearchDialogTest::IdleCancelDismissesThroughDialogLifecycle() {

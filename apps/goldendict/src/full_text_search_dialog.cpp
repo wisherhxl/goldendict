@@ -133,6 +133,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     search_button_ = new QPushButton(tr("Search"), this);
     search_button_->setObjectName(QStringLiteral("fullTextSearchButton"));
     search_button_->setDefault(true);
+    search_button_->setAutoDefault(false);
     cancel_button_ = new QPushButton(tr("Cancel"), this);
     cancel_button_->setObjectName(QStringLiteral("fullTextCancelButton"));
     help_button_ = new QPushButton(tr("Help"), this);

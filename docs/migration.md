@@ -3644,7 +3644,7 @@ help destination or transport, a public/Core or composition-root contract,
 dependency or installed-surface change, an architectural decision requiring
 HTTP GET policy, or scope expansion.
 
-### Phase 8 full-text Search button default policy (selected)
+### Phase 8 full-text Search button default policy (complete)
 
 The independent documentation-only post-P8-FT-36 audit is pinned to clean
 migrated revision `ca6f206f1913a7941d8dcf3599704353e27e3c4e`, its identical
@@ -3657,12 +3657,12 @@ default and non-auto-default policy.
 P8-FT-37 is dependency-ready because the completed dialog shell and request
 workflow already own `fullTextSearchButton`, while P8-FT-31 fixes its active
 and idle behavior. Pinned legacy `fulltextsearch.ui:204-214` sets
-`default == true` and `autoDefault == false`. Current
-`full_text_search_dialog.cpp:133-136` sets the explicit default only, and the
-existing focused test does not cover either property. Under the shared-
+`default == true` and `autoDefault == false`. The pre-P8-FT-37
+`full_text_search_dialog.cpp:133-136` set the explicit default only, and the
+focused test did not cover either property. Under the shared-
 library/GUI boundary, this remains private Widgets behavior.
 
-The future implementation keeps `isDefault() == true`, sets
+The completed implementation keeps `isDefault() == true`, sets
 `autoDefault() == false`, and preserves both properties across construction,
 idle restoration, submission, completion, and active cancellation. It does
 not independently submit or cancel, close the dialog, change focus, or alter
@@ -3674,11 +3674,11 @@ formats, dependencies, builds, and unrelated parity remain separately
 decomposed, unselected, and unranked. No successor after P8-FT-37 is selected
 or ranked.
 
-Focused acceptance extends only `full_text_search_dialog_test` with exact
+Completed focused acceptance extends only `full_text_search_dialog_test` with exact
 button identity, both property values across the specified transitions, and
 Search/Cancel/Help regressions. The focused Release command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
-future implementation gate remains Linux Release configure/build, exactly 109
+implementation gate remains Linux Release configure/build, exactly 109
 registered tests, full Release CTest, clean committed exact-SCM
 `conan create` with the Release Qt WebEngine host profile and packaged
 consumers, Release install, and standalone installed C and C++ consumers. No
