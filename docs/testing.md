@@ -2220,6 +2220,60 @@ P8-FT-9/P8-FT-11/P8-FT-17/P8-FT-22/P8-FT-24, and pinned legacy
 `fulltextsearch.cc:499-586`. P8-FT-25 is complete. No successor after P8-FT-25
 is selected or ranked.
 
+## Phase 8 Full-Text Partial-Without-Results Status Gate (Selected)
+
+The post-P8-FT-25 documentation audit selects only P8-FT-26. Completed current-
+generation acceptance, complete-response retention, retained-result count,
+partial-status presentation, and conclusive-empty presentation make an
+accepted partial response with no retained results independently presentable
+through one private Widgets status without changing Core or an installed
+interface.
+
+Focused future coverage must prove that exact text
+`No matches in searched dictionaries` is visible only for a generation-current
+accepted response with zero retained results and authoritative
+`partial == true`. Initial state and replacement submission hide it. Complete
+and nonempty responses hide it. Zero-result partial responses with no, one, and
+multiple errors across each existing error-code category produce the same
+generic status without exposing dictionary IDs, error codes, backend messages,
+or raw details.
+
+The status coexists with `Results may be incomplete.` and does not infer or
+change authoritative partiality. The result count, conclusive-empty,
+terminal-failure, and mixed-result statuses remain independently correct.
+Repeated accepted transitions and stale, cancelled, detached, replaced-
+service, and teardown completions do not leave or introduce an incorrect
+partial-without-results status. Existing response/model synchronization,
+selection, focus, activation, service-replacement, controller-detachment, and
+teardown coverage remains green.
+
+The focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built. The full future implementation gate remains
+Linux Release configure/build, full `ctest --preset conan-release` without an
+unintended registration delta, clean exact-SCM `conan create` with the Release
+Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. P8-FT-26 adds no test executable or
+public/installed interface, so the registered Release baseline remains 109
+tests. This documentation-only audit requires no build or compiled test.
+
+All error details; exact `document_id` navigation and source-dictionary
+targeting; columns, icons, additional metadata roles, and other decoration;
+match ranges and excerpt presentation; highlighting, ignore-diacritics
+transfer, and WebEngine handoff; Preferences enablement, format exclusions,
+size/index policy, and persistence; index readiness, visibility, status,
+progress, background lifecycle, rebuild, and failure UI; adapters, `.gdfts`,
+legacy `_FTS`, index formats, dependencies, build work, and unrelated suites
+are excluded and remain separately decomposed without ranking. No public API,
+DTO, persistence, Core, adapter, index, dependency, or build surface belongs to
+P8-FT-26.
+
+Evidence is migrated `full_text_search_dialog.h/.cpp`, its focused tests, the
+installed `FullTextResponse` contract, completed
+P8-FT-9/P8-FT-11/P8-FT-17/P8-FT-22/P8-FT-23, and pinned legacy
+`fulltextsearch.cc:448-449,499-586`. No successor after P8-FT-26 is selected or
+ranked.
+
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
