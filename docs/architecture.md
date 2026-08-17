@@ -3249,6 +3249,69 @@ stops active work without closing and otherwise saves and dismisses the dialog.
 P8-FT-31 completes only the migrated idle-dismissal contract. No successor
 after P8-FT-31 is selected or ranked.
 
+### Phase 8 full-text dialog geometry persistence prerequisite (selected)
+
+The independent documentation-only post-P8-FT-31 readiness audit is pinned to
+clean migrated revision `4bc3184e578d98793d944a6f1eb6c6fd23f637d3` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-32: persist one bounded opaque full-text
+dialog geometry value without yet connecting it to Widgets.
+
+P8-FT-32 is dependency-ready because the current `CoreConfiguration` already
+persists independently optional opaque main-window geometry, validates its
+decoded size at 64 KiB, and imports the pinned legacy geometry atomically.
+Pinned legacy `config.hh:156-181`, `config.cc:1008-1044,1990-2027`, and
+`fulltextsearch.cc:195-221,387-399` establish that full-text dialog geometry is
+another opaque Qt byte sequence stored under the full-text preferences. The
+transport-neutral configuration boundary can retain those bytes without
+interpreting Qt geometry or adding a dependency.
+
+The future implementation adds one independently optional full-text dialog
+geometry value to `CoreConfiguration`. Missing current or legacy data yields
+an empty value. Canonical current saves use the existing binary-value encoding
+pattern. Legacy migration maps exactly the recognized
+`preferences/fullTextSearch/dialogGeometry` value. Decoded data is bounded at
+64 KiB; duplicate, malformed, or oversized recognized input rejects the
+complete load or migration atomically. Core validates and persists the opaque
+bytes but never calls Qt geometry APIs.
+
+The `CoreConfiguration` field is an authorized installed/public ABI expansion
+identified by Conan's exact SCM and package revisions. It adds no runtime
+interface, dependency, adapter, index-format, or build-system surface.
+
+P8-FT-32 does not capture, restore, apply, or save geometry in Widgets. Dialog
+creation, initialization, idle dismissal, window-manager close, active-request
+cancellation, service replacement, teardown, requests, results, selection,
+activation, navigation, article search, and notification remain unchanged.
+The later Widgets connection may consume the persisted value only through a
+separately reviewed leaf; it is decomposed but remains unselected and unranked.
+
+Focused acceptance covers missing/default current and legacy data; current
+round-trip and canonical save; valid legacy migration; duplicate, malformed,
+and oversized current and legacy values; the exact 64 KiB boundary; atomic
+failure without source modification or partial current output; and installed
+C and C++ consumer access to the expanded configuration DTO. The focused
+command is
+`ctest --preset conan-release -R '^application_service_test$'` after the
+Release target has been built. The full implementation gate is Linux Release
+configure/build, full `ctest --preset conan-release` without an unintended
+registration delta, clean exact-SCM `conan create` with the Release Qt
+WebEngine host profile and packaged consumers, Release install, and standalone
+installed C and C++ consumers. P8-FT-32 adds no test executable or dependency,
+so the registered Release baseline remains 109 tests.
+
+Widgets geometry capture/restoration; ignore-diacritics semantics and legacy
+regular-expression equivalence; match-range or excerpt rendering; exact
+`document_id` navigation and source-dictionary targeting; columns, icons,
+additional metadata roles, and other decoration; Preferences enablement,
+format exclusions, size/index policy, and persistence; index readiness,
+visibility, status, progress, background lifecycle, rebuild, and failure UI;
+adapters, `.gdfts`, legacy `_FTS`, index formats, dependencies, builds, and
+unrelated parity remain independent surfaces. They are decomposed only; none
+is selected or ranked. No successor after P8-FT-32 is selected or ranked.
+
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

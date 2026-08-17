@@ -2513,6 +2513,49 @@ Evidence is completed P8-FT-8/P8-FT-9, migrated
 full-text tests, and pinned legacy `fulltextsearch.cc:582-592`. P8-FT-31 is
 complete. No successor after P8-FT-31 is selected or ranked.
 
+## Phase 8 Full-Text Dialog Geometry Persistence Gate (Selected)
+
+The post-P8-FT-31 documentation audit selects only P8-FT-32. The existing
+bounded opaque main-window geometry contract makes an independent full-text
+dialog geometry persistence prerequisite testable before any Widgets capture
+or restoration behavior is selected.
+
+`application_service_test` must cover an empty default when current and legacy
+data are absent, exact current-format round-trip and canonical save, and exact
+legacy migration from `preferences/fullTextSearch/dialogGeometry`. The decoded
+value must accept the 64 KiB boundary and reject a larger value. Duplicate,
+malformed, and oversized recognized current or legacy input must reject the
+complete operation atomically without modifying the legacy source, emitting a
+partial current file, or changing unrelated configuration fields.
+
+Installed C and C++ consumer checks must compile and access the expanded
+transport-neutral configuration DTO. Core tests must prove that persistence
+does not interpret the opaque value. No dialog test or Widgets smoke may claim
+capture, restore, save-on-close, placement, screen validation, or fallback
+behavior in this leaf.
+
+The focused command is
+`ctest --preset conan-release -R '^application_service_test$'` after the
+Release target has been built. The full implementation gate is Linux Release
+configure/build, full `ctest --preset conan-release` without an unintended
+registration delta, clean exact-SCM `conan create` with the Release Qt
+WebEngine host profile and packaged consumers, Release install, and standalone
+installed C and C++ consumers. P8-FT-32 adds no test executable or dependency,
+so the registered Release baseline remains 109 tests.
+
+Widgets geometry capture/restoration, dialog behavior, requests, response
+presentation, activation, navigation, article search, ignore-diacritics and
+regular-expression equivalence, excerpts, exact document/source targeting,
+decoration, Preferences/index policy, index lifecycle, adapters/index formats,
+dependencies, builds, and unrelated suites are excluded and remain separately
+decomposed without ranking.
+
+Evidence is the current and legacy main-window geometry coverage in
+`application_service_test` and pinned legacy `config.hh:156-181`,
+`config.cc:1008-1044,1990-2027`, and
+`fulltextsearch.cc:195-221,387-399`. P8-FT-32 is selected. No successor after
+P8-FT-32 is selected or ranked.
+
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

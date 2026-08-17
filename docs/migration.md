@@ -3397,6 +3397,58 @@ stops active work without closing and otherwise saves and dismisses the dialog.
 P8-FT-31 completes only the migrated idle-dismissal contract. No successor
 after P8-FT-31 is selected or ranked.
 
+### Phase 8 full-text dialog geometry persistence prerequisite (selected)
+
+The independent documentation-only post-P8-FT-31 readiness audit is pinned to
+clean migrated revision `4bc3184e578d98793d944a6f1eb6c6fd23f637d3` and the
+unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks every remaining
+full-text workflow surface without advance ranking and selects exactly one
+smallest dependency-ready leaf, P8-FT-32: the transport-neutral persistence
+prerequisite for the full-text dialog's opaque geometry.
+
+P8-FT-32 extends `CoreConfiguration` with one independently optional opaque
+full-text dialog geometry value. Missing data remains empty. Canonical current
+configuration uses the established binary-value encoding pattern, and legacy
+migration maps exactly `preferences/fullTextSearch/dialogGeometry`. Core
+bounds decoded data at 64 KiB and atomically rejects duplicate, malformed, or
+oversized recognized input. It stores bytes without interpreting Qt geometry.
+This follows the existing main-window geometry boundary and changes no package
+dependency or build surface. The added `CoreConfiguration` field is an
+authorized installed/public ABI expansion identified by Conan's exact SCM and
+package revisions; it changes no runtime interface.
+
+The leaf deliberately stops before Widgets integration. It does not restore
+geometry when the dialog is created, capture it on idle dismissal or a
+window-manager close, or trigger configuration persistence. P8-FT-31
+dismissal/cancellation behavior and every request, response, presentation,
+activation, navigation, article-search, service-replacement, and teardown
+contract remain unchanged. A later private Widgets capture/restore connection
+is decomposed but remains unselected and unranked.
+
+Focused acceptance covers empty defaults, current round-trip and canonical
+save, valid legacy migration, duplicate/malformed/oversized rejection, the
+exact 64 KiB boundary, atomic failure preservation, and installed C and C++
+consumer access to the expanded DTO. The focused command is
+`ctest --preset conan-release -R '^application_service_test$'` after the
+Release target has been built. The full implementation gate is Linux Release
+configure/build, full `ctest --preset conan-release` without an unintended
+registration delta, clean exact-SCM `conan create` with the Release Qt
+WebEngine host profile and packaged consumers, Release install, and standalone
+installed C and C++ consumers. The registered Release baseline remains 109
+tests because P8-FT-32 adds no test executable.
+
+Evidence is the existing bounded `CoreConfiguration::main_window_geometry`
+current/legacy contract and `application_service_test`, plus pinned legacy
+`config.hh:156-181`, `config.cc:1008-1044,1990-2027`, and
+`fulltextsearch.cc:195-221,387-399`. Widgets geometry integration;
+ignore-diacritics and regular-expression equivalence; excerpts and match
+ranges; exact document/source targeting; decoration; Preferences/index policy;
+index lifecycle UI; adapters/index formats; dependencies, builds, and
+unrelated parity remain separately decomposed and unranked. P8-FT-32 selects
+only the persistence prerequisite. No successor after P8-FT-32 is selected or
+ranked.
+
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,
