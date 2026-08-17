@@ -3290,6 +3290,67 @@ and worktrees. Any later stateful WebEngine smoke must run from freshly
 quarantined repository-owned build-tree `HOME` and XDG state, never real user
 configuration.
 
+## Phase 8 Full-Text Ignore-Options Row Gate (Selected)
+
+The documentation-only post-P8-FT-48 audit selects P8-FT-49 as the sole next
+leaf. Pinned legacy `fulltextsearch.ui:75-99` places exactly
+`checkBoxIgnoreWordOrder` followed by `checkBoxIgnoreDiacritics` in one
+`QHBoxLayout`. Current `full_text_query_composer.cpp:84-93,137-141` already
+owns the corresponding private controls and query mappings, but adds them as
+separate vertical items in the opposite order. P8-FT-1 through P8-FT-48 supply
+the composer, both controls, exact text and state, mode behavior, composition,
+containing layout, focus/tab behavior, and request-lifecycle prerequisites.
+
+Focused acceptance will extend only `full_text_query_composer_test`. It must
+prove one unique two-item horizontal layout containing the existing unique
+ignore-word-order control first and ignore-diacritics control second, while
+preserving identity, parentage, object names, text, checked/enabled state, mode
+transitions, and repeated `Compose()` results. Existing dialog tests retain
+submission, generation-current completion, cancellation, replacement, service
+replacement, controller detachment, responses, geometry, focus, tab, and
+lifecycle regressions. Add no executable or registered test.
+
+Run the focused Release test with:
+
+```sh
+ctest --preset conan-release -R '^full_text_query_composer_test$'
+```
+
+The implementation gate remains Linux Release configure/build, exactly
+109 registered tests, full Release CTest, Release install, packaged consumers,
+standalone installed C and C++ consumers, and clean committed exact-SCM
+creation with:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+P8-FT-49 adds no executable, test registration, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement. Match-case/grid relocation;
+distance/article rows; maximum-distance and article-limit captions or bounds;
+spacing, margins, stretch, alignment, mnemonic or translation-catalog policy;
+any third widget or broader layout work; indexing lifecycle/UI; Preferences;
+adapters/index formats; dependencies/builds; public/Core or composition-root
+changes; HTTP GET policy; and unrelated tests are excluded and unranked. The
+legacy caption bounds conflict with current migrated bounds, so neither caption
+is eligible without a new explicit product/Core decision. No successor after
+P8-FT-49 is selected or ranked.
+
+Its future implementation is limited to the private composer, its existing
+focused test, and these four governing documents. Implementation must stop on
+ref/worktree drift, legacy dirtiness, ambiguous membership, order, or
+acceptance semantics, any third widget or second behavior, caption-bound
+policy, broader layout work, mnemonic or translation-catalog work, public/Core
+or composition-root expansion, dependency or installed-surface change, an
+architectural decision requiring HTTP GET policy, discovery of another
+required file, or scope expansion. This documentation audit's gate is exact
+four-file scope, cross-document consistency, Phase terminology, successor
+neutrality, the exact Conan command, `git diff --check`, and clean pinned refs
+and worktrees. No production or test file changes in this documentation-only
+audit; builds and tests are intentionally skipped. Any later stateful
+WebEngine smoke must run from freshly quarantined repository-owned build-tree
+`HOME` and XDG state, never real user configuration.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

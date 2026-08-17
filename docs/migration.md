@@ -4346,6 +4346,81 @@ four-file scope, cross-document consistency, Phase terminology, successor
 neutrality, the exact Conan command, `git diff --check`, and clean pinned refs
 and worktrees.
 
+### Phase 8 full-text ignore-options row parity (selected)
+
+The documentation-only post-P8-FT-48 audit is pinned to clean migrated
+revision `6c3cde5e56542a9f34603ab0a673cabdde4f6636`, its identical upstream and
+fresh live remote, and clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly P8-FT-49:
+restore the private horizontal row and legacy order of the two existing ignore
+options.
+
+Pinned legacy `fulltextsearch.ui:75-99` places exactly
+`checkBoxIgnoreWordOrder` followed by `checkBoxIgnoreDiacritics` in one
+`QHBoxLayout`. Current `full_text_query_composer.cpp:84-93,137-141` already
+owns the corresponding private `fullTextIgnoreWordOrder` and
+`fullTextIgnoreDiacritics` controls and query mappings, but adds them as
+separate vertical items in the opposite order. P8-FT-1 through P8-FT-48 supply
+the composer, both controls, their exact text and state, mode behavior, query
+composition, containing layout, focus/tab behavior, and request lifecycle.
+The shared-library/GUI boundary keeps this presentation correction in private
+Widgets and leaves Core, the composition root, public, and installed contracts
+unchanged.
+
+P8-FT-49 will reuse the existing controls in one private horizontal layout,
+with ignore-word-order first and ignore-diacritics second, and add only that
+row to the existing composer layout. Widget identity, parentage, object names,
+text, checked/enabled state, query composition, mode transitions, submission,
+responses, geometry, focus/tab behavior, cancellation, replacement, service
+replacement, controller detachment, and teardown must remain unchanged. No
+widget is recreated and no behavior is added.
+
+Match-case/grid relocation; distance/article rows; maximum-distance and
+article-limit captions or bounds; spacing, margins, stretch, alignment,
+mnemonic or translation-catalog policy; any third widget or broader layout
+work; indexing lifecycle/UI; Preferences; adapters/index formats;
+dependencies/builds; public/Core or composition-root changes; HTTP GET policy;
+and unrelated parity are excluded and unranked. The legacy caption bounds
+conflict with current migrated bounds, so neither caption is eligible without
+a new explicit product/Core decision. No successor after P8-FT-49 is selected
+or ranked.
+
+Focused acceptance will extend only `full_text_query_composer_test`. It must
+prove one unique two-item horizontal layout containing the existing unique
+ignore-word-order control first and ignore-diacritics control second, while
+preserving identity, parentage, object names, text, state, mode transitions,
+and repeated `Compose()` results. Existing dialog tests retain submission,
+generation-current completion, cancellation, replacement, service replacement,
+controller detachment, response, geometry, focus, tab, and lifecycle
+regressions. Add no executable or registered test. The focused Release command
+remains `ctest --preset conan-release -R '^full_text_query_composer_test$'`.
+
+The implementation gate remains Linux Release configure/build, exactly
+109 registered tests, full Release CTest, Release install, packaged consumers,
+unchanged standalone installed C and C++ consumers, and clean committed exact-
+SCM creation with:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+P8-FT-49 adds no executable, test registration, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement. Its future implementation is
+limited to the private composer, its existing focused test, and these four
+governing documents.
+
+No production or test file changes in this documentation-only audit.
+Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+membership, order, or acceptance semantics, any third widget or second
+behavior, caption-bound policy, broader layout work, mnemonic or translation-
+catalog work, public/Core or composition-root expansion, dependency or
+installed-surface change, an architectural decision requiring HTTP GET policy,
+discovery of another required file, or scope expansion. This audit's gate is
+exact four-file scope, cross-document consistency, Phase terminology,
+successor neutrality, the exact Conan command, `git diff --check`, and clean
+pinned refs and worktrees. Builds and tests are intentionally skipped for this
+documentation-only audit.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

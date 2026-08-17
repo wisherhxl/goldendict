@@ -378,6 +378,40 @@ Full Release CTest, Release install, packaged consumers, and standalone
 installed C and C++ consumer gates remain unchanged. P8-FT-48 is complete. No
 successor after P8-FT-48 is selected or ranked.
 
+P8-FT-49 supersedes that historical closure and selects only the private
+full-text ignore-options horizontal-row parity leaf. Pinned legacy
+`fulltextsearch.ui:75-99` places exactly `checkBoxIgnoreWordOrder` followed by
+`checkBoxIgnoreDiacritics` in one horizontal layout, while current
+`full_text_query_composer.cpp:84-93,137-141` already owns the corresponding
+private controls and mappings but adds them as separate vertical items in the
+opposite order. The selected leaf will reuse both existing controls in one
+private horizontal row, word-order first and diacritics second, after P8-FT-1
+through P8-FT-48. It preserves widget identity, parentage, object names, text,
+state, mode behavior, query composition, focus/tab and request/response
+lifecycle, geometry, public/Core and installed contracts, dependencies, and
+test registration. No widget is recreated and no behavior is added.
+
+Match-case/grid relocation, distance/article rows, captions and bounds,
+spacing/margins/stretch/alignment, any third widget or broader layout work,
+mnemonic or translation-catalog policy, indexing lifecycle/UI, Preferences,
+adapters/index formats, dependencies/builds, HTTP GET policy, and unrelated
+parity remain excluded and unranked. The conflicting legacy and migrated
+caption bounds require a separate explicit product/Core decision. Focused
+acceptance will extend only `full_text_query_composer_test` to prove exact
+two-item membership and order plus unchanged identity, state, mode transitions,
+and repeated composition; no executable or registered test is added. The
+Release baseline remains exactly 109 tests; exact-SCM creation uses:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Full Release CTest, Release install, packaged consumers, and standalone
+installed C and C++ consumer gates remain unchanged. This documentation-only
+audit changes no production or test file, and builds/tests are intentionally
+skipped. P8-FT-49 is selected. No successor after P8-FT-49 is selected or
+ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |
