@@ -6,6 +6,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QEvent>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
@@ -62,14 +63,17 @@ FullTextSearchDialog::FullTextSearchDialog(
     setModal(false);
     setMinimumSize(430, 450);
 
-    composer_ = new FullTextQueryComposer(preferences, this);
+    auto* search_group = new QGroupBox(QStringLiteral("Search"), this);
+    auto* search_group_layout = new QVBoxLayout(search_group);
+    composer_ = new FullTextQueryComposer(preferences, search_group);
     composer_->setObjectName(QStringLiteral("fullTextQueryComposer"));
+    search_group_layout->addWidget(composer_);
     query_text_ =
         composer_->findChild<QLineEdit*>(QStringLiteral("fullTextQueryText"));
     response_model_ = new FullTextResponseModel(this);
 
     auto* layout = new QVBoxLayout(this);
-    layout->addWidget(composer_);
+    layout->addWidget(search_group);
 
     results_ = new QListView(this);
     results_->setObjectName(QStringLiteral("fullTextSearchResults"));

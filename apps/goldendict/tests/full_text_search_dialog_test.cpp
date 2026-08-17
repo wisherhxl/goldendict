@@ -2,6 +2,7 @@
 
 #include <QAction>
 #include <QCheckBox>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QImage>
 #include <QItemSelectionModel>
@@ -26,6 +27,7 @@
 #include <utility>
 #include <vector>
 
+#include "full_text_query_composer.h"
 #include "full_text_response_model.h"
 #include "full_text_search_dialog.h"
 
@@ -225,6 +227,48 @@ void VerifyExactForwardTabChain(FullTextSearchDialog* dialog) {
         QVERIFY2(current == controls[index + 1U],
                  "next named control is missing from the bounded focus chain");
     }
+}
+
+QGroupBox* SearchGroupBox(FullTextSearchDialog* dialog) {
+    const auto groups =
+        dialog->findChildren<QGroupBox*>(QString(), Qt::FindDirectChildrenOnly);
+    return groups.size() == 1 ? groups.front() : nullptr;
+}
+
+void VerifySearchGroupBox(FullTextSearchDialog* dialog,
+                          QGroupBox* expected_group = nullptr,
+                          FullTextQueryComposer* expected_composer = nullptr) {
+    const auto groups =
+        dialog->findChildren<QGroupBox*>(QString(), Qt::FindDirectChildrenOnly);
+    QCOMPARE(groups.size(), 1);
+    auto* group = groups.front();
+    if (expected_group != nullptr)
+        QCOMPARE(group, expected_group);
+    QCOMPARE(group->title(), QStringLiteral("Search"));
+
+    const auto composers = dialog->findChildren<FullTextQueryComposer*>();
+    QCOMPARE(composers.size(), 1);
+    auto* composer = composers.front();
+    if (expected_composer != nullptr)
+        QCOMPARE(composer, expected_composer);
+    QCOMPARE(composer->parent(), group);
+
+    const auto direct_composers = group->findChildren<FullTextQueryComposer*>(
+        QString(), Qt::FindDirectChildrenOnly);
+    QCOMPARE(direct_composers.size(), 1);
+    QCOMPARE(direct_composers.front(), composer);
+
+    auto* group_layout = qobject_cast<QVBoxLayout*>(group->layout());
+    QVERIFY(group_layout != nullptr);
+    QCOMPARE(group_layout->count(), 1);
+    QCOMPARE(group_layout->itemAt(0)->widget(), composer);
+
+    auto* enclosing_layout = qobject_cast<QVBoxLayout*>(dialog->layout());
+    QVERIFY(enclosing_layout != nullptr);
+    QCOMPARE(enclosing_layout->indexOf(group), 0);
+    QCOMPARE(
+        enclosing_layout->itemAt(1)->widget(),
+        dialog->findChild<QListView*>(QStringLiteral("fullTextSearchResults")));
 }
 
 QPushButton* CancelButton(FullTextSearchDialog* dialog) {
@@ -572,6 +616,10 @@ void FullTextSearchDialogTest::
     service.response_.results = {MakeResult("dictionary", "result", 1U)};
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
+    auto* search_group = SearchGroupBox(&dialog);
+    QVERIFY(search_group != nullptr);
+    auto* composer = dialog.composer_;
+    VerifySearchGroupBox(&dialog, search_group, composer);
     auto* button_row = ButtonRow(&dialog);
     QVERIFY(button_row != nullptr);
     VerifyButtonRow(&dialog, button_row);
@@ -583,6 +631,7 @@ void FullTextSearchDialogTest::
     VerifyExactForwardTabChain(&dialog);
     VerifySearchButtonDefaultPolicy(&dialog);
     dialog.InitializeQuery(QStringLiteral("complete"));
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyButtonRow(&dialog, button_row);
     VerifyResultCountProgressRow(&dialog, result_count_progress_row);
     VerifyResultCountMinimumHeight(&dialog);
@@ -592,6 +641,7 @@ void FullTextSearchDialogTest::
 
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(1U));
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyButtonRow(&dialog, button_row);
     VerifyResultCountProgressRow(&dialog, result_count_progress_row);
     VerifyProgressAlignmentContract(&dialog);
@@ -600,6 +650,7 @@ void FullTextSearchDialogTest::
     VerifySearchButtonDefaultPolicy(&dialog);
     VerifyExactForwardTabChain(&dialog);
     QTRY_VERIFY(dialog.response_.has_value());
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyButtonRow(&dialog, button_row);
     VerifyResultCountProgressRow(&dialog, result_count_progress_row);
     VerifyProgressAlignmentContract(&dialog);
@@ -611,6 +662,7 @@ void FullTextSearchDialogTest::
     dialog.InitializeQuery(QStringLiteral("blocked"));
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(2U));
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyButtonRow(&dialog, button_row);
     VerifyResultCountProgressRow(&dialog, result_count_progress_row);
     VerifyProgressAlignmentContract(&dialog);
@@ -619,6 +671,7 @@ void FullTextSearchDialogTest::
     VerifyExactForwardTabChain(&dialog);
     dialog.CancelSearch();
     QVERIFY(service.WaitForCancellation());
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyButtonRow(&dialog, button_row);
     VerifyResultCountProgressRow(&dialog, result_count_progress_row);
     VerifyProgressAlignmentContract(&dialog);
@@ -2013,6 +2066,10 @@ void FullTextSearchDialogTest::
     service.response_.results.front().headword = "current";
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
+    auto* search_group = SearchGroupBox(&dialog);
+    QVERIFY(search_group != nullptr);
+    auto* composer = dialog.composer_;
+    VerifySearchGroupBox(&dialog, search_group, composer);
     auto* button_row = ButtonRow(&dialog);
     QVERIFY(button_row != nullptr);
     VerifyButtonRow(&dialog, button_row);
@@ -2036,6 +2093,7 @@ void FullTextSearchDialogTest::
     query->setText(QStringLiteral("blocked"));
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(1U));
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyButtonRow(&dialog, button_row);
     VerifyResultCountProgressRow(&dialog, result_count_progress_row);
     VerifyProgressAlignmentContract(&dialog);
@@ -2047,6 +2105,7 @@ void FullTextSearchDialogTest::
     dialog.SetProjectedQuery(pending_scope);
     query->setText(QStringLiteral("never starts"));
     dialog.SubmitSearch();
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyButtonRow(&dialog, button_row);
     VerifyResultCountProgressRow(&dialog, result_count_progress_row);
     QCOMPARE(notifications, std::size_t{0});
@@ -2057,6 +2116,7 @@ void FullTextSearchDialogTest::
     dialog.SetProjectedQuery(replacement_scope);
     query->setText(QStringLiteral("replacement"));
     dialog.SubmitSearch();
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyButtonRow(&dialog, button_row);
     VerifyResultCountProgressRow(&dialog, result_count_progress_row);
     VerifyProgressAlignmentContract(&dialog);
@@ -2067,6 +2127,7 @@ void FullTextSearchDialogTest::
     service.ReleaseCancelledRequest();
     QVERIFY(service.WaitForQueries(2U));
     QTRY_VERIFY(dialog.response_.has_value());
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyButtonRow(&dialog, button_row);
     VerifyResultCountProgressRow(&dialog, result_count_progress_row);
     VerifyProgressAlignmentContract(&dialog);
@@ -2106,6 +2167,10 @@ void FullTextSearchDialogTest::
     service.response_.partial = true;
     goldendict::core::ApplicationPreferences preferences;
     FullTextSearchDialog dialog(preferences, &service);
+    auto* search_group = SearchGroupBox(&dialog);
+    QVERIFY(search_group != nullptr);
+    auto* composer = dialog.composer_;
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyResultCountMinimumHeight(&dialog);
     VerifySearchButtonDefaultPolicy(&dialog);
     std::size_t notifications = 0U;
@@ -2116,12 +2181,14 @@ void FullTextSearchDialogTest::
     dialog.InitializeQuery(QStringLiteral("blocked"));
     dialog.SubmitSearch();
     QVERIFY(service.WaitForQueries(1U));
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyResultCountMinimumHeight(&dialog);
     VerifySearchButtonDefaultPolicy(&dialog);
     QCOMPARE(notifications, std::size_t{0});
 
     CancelButton(&dialog)->click();
     QVERIFY(service.WaitForCancellation());
+    VerifySearchGroupBox(&dialog, search_group, composer);
     VerifyProgressAlignmentContract(&dialog);
     VerifyResultCountMinimumHeight(&dialog);
     QVERIFY(!dialog.active_generation_.has_value());
@@ -2345,6 +2412,10 @@ void FullTextSearchDialogTest::
     std::size_t notifications = 0U;
     {
         FullTextSearchDialog dialog(preferences, &first);
+        auto* search_group = SearchGroupBox(&dialog);
+        QVERIFY(search_group != nullptr);
+        auto* composer = dialog.composer_;
+        VerifySearchGroupBox(&dialog, search_group, composer);
         auto* button_row = ButtonRow(&dialog);
         QVERIFY(button_row != nullptr);
         VerifyButtonRow(&dialog, button_row);
@@ -2366,6 +2437,7 @@ void FullTextSearchDialogTest::
         dialog.SubmitSearch();
         QVERIFY(first.WaitForQueries(1U));
         QTRY_VERIFY(dialog.response_.has_value());
+        VerifySearchGroupBox(&dialog, search_group, composer);
         VerifyButtonRow(&dialog, button_row);
         VerifyResultCountProgressRow(&dialog, result_count_progress_row);
         VerifyProgressAlignmentContract(&dialog);
@@ -2382,6 +2454,7 @@ void FullTextSearchDialogTest::
         QCOMPARE(dialog.accepted_activation_context_->query_text,
                  std::string("accepted"));
         dialog.SetService(&second);
+        VerifySearchGroupBox(&dialog, search_group, composer);
         VerifyButtonRow(&dialog, button_row);
         VerifyResultCountProgressRow(&dialog, result_count_progress_row);
         VerifyProgressAlignmentContract(&dialog);
@@ -2403,6 +2476,7 @@ void FullTextSearchDialogTest::
         QVERIFY(!dialog.pending_activation_context_.has_value());
         dialog.DetachController();
         dialog.DetachController();
+        VerifySearchGroupBox(&dialog, search_group, composer);
         VerifyButtonRow(&dialog, button_row);
         VerifyResultCountProgressRow(&dialog, result_count_progress_row);
         VerifyProgressAlignmentContract(&dialog);
@@ -2425,6 +2499,10 @@ void FullTextSearchDialogTest::
     ControllableDictionaryService replacement;
     {
         FullTextSearchDialog dialog(preferences, &blocked);
+        auto* search_group = SearchGroupBox(&dialog);
+        QVERIFY(search_group != nullptr);
+        auto* composer = dialog.composer_;
+        VerifySearchGroupBox(&dialog, search_group, composer);
         auto* button_row = ButtonRow(&dialog);
         QVERIFY(button_row != nullptr);
         VerifyButtonRow(&dialog, button_row);
@@ -2439,6 +2517,7 @@ void FullTextSearchDialogTest::
         dialog.InitializeQuery(QStringLiteral("blocked"));
         dialog.SubmitSearch();
         QVERIFY(blocked.WaitForQueries(1U));
+        VerifySearchGroupBox(&dialog, search_group, composer);
         VerifyButtonRow(&dialog, button_row);
         VerifyResultCountProgressRow(&dialog, result_count_progress_row);
         VerifyProgressAlignmentContract(&dialog);
@@ -2446,6 +2525,7 @@ void FullTextSearchDialogTest::
         blocked.ReleaseCancelledRequest();
         dialog.SetService(&replacement);
         QVERIFY(blocked.WaitForCancellation());
+        VerifySearchGroupBox(&dialog, search_group, composer);
         VerifyButtonRow(&dialog, button_row);
         VerifyResultCountProgressRow(&dialog, result_count_progress_row);
         VerifyProgressAlignmentContract(&dialog);
@@ -2467,6 +2547,7 @@ void FullTextSearchDialogTest::
         QVERIFY(SearchButton(&dialog)->isEnabled());
         dialog.DetachController();
         dialog.DetachController();
+        VerifySearchGroupBox(&dialog, search_group, composer);
         VerifyButtonRow(&dialog, button_row);
         VerifyResultCountProgressRow(&dialog, result_count_progress_row);
         VerifyProgressAlignmentContract(&dialog);

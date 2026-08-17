@@ -3948,7 +3948,7 @@ verification is intentionally skipped; exact four-file scope, cross-document
 consistency, Phase terminology, successor neutrality, and `git diff --check`
 are its verification gate.
 
-### Phase 8 full-text Search group-box boundary (selected)
+### Phase 8 full-text Search group-box boundary (complete)
 
 The independent documentation-only post-P8-FT-42 audit is pinned to clean
 migrated revision `a491c72f7d1e2c2fa4b37151addccabdbf1a9b9d`, its identical
@@ -3966,7 +3966,7 @@ request lifecycle. The shared-library/GUI boundary keeps this presentation-only
 correction in private Widgets and leaves Core, composition-root, public, and
 installed contracts unchanged.
 
-The future implementation adds exactly one private `QGroupBox` titled
+The completed implementation adds exactly one private `QGroupBox` titled
 `Search` between the enclosing dialog layout and the unique existing
 `FullTextQueryComposer`. The composer is directly contained by that group box,
 and the relationship remains stable through construction, idle, submission,
@@ -3982,7 +3982,7 @@ or UI, Preferences, adapters/index formats, dependencies/builds, public/Core or
 composition-root changes, HTTP GET policy, and unrelated parity are excluded
 and unranked. No successor after P8-FT-43 is selected or ranked.
 
-Future focused acceptance extends only `full_text_search_dialog_test` to prove
+Completed focused acceptance extends only `full_text_search_dialog_test` to prove
 the unique group box, exact title, unique directly contained composer,
 attachment to the enclosing dialog layout, unchanged query-control contracts,
 and lifecycle regressions. The focused Release command is
@@ -4000,14 +4000,17 @@ conan create . --build=missing \
 No executable, registration, installed interface, dependency, export, or Conan
 requirement changes.
 
+P8-FT-43 is complete. The implementation changes only private dialog
+construction, its existing focused test, and these four governing documents.
+
 Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
 mapping or acceptance semantics, any broader grouping, layout, style, or
 mnemonic choice, public/Core or composition-root expansion, dependency or
 installed-surface change, an architectural decision requiring HTTP GET policy,
-discovery of another required file, or scope expansion. This selection audit
-is documentation-only, so compiled verification is intentionally skipped;
-exact four-file scope, cross-document consistency, Phase terminology,
-successor neutrality, and `git diff --check` are its verification gate.
+discovery of another required file, or scope expansion. Its gate is exact
+six-file scope, cross-document consistency, Phase terminology, successor
+neutrality, and the full Release, install, consumer, and exact-SCM verification
+described above.
 
 ### Phase 9 — Linux Integration And Release Quality
 

@@ -2952,7 +2952,7 @@ root expansion, dependency or installed-surface change, an architectural
 decision requiring HTTP GET policy, discovery of another required file, or
 scope expansion.
 
-## Phase 8 Full-Text Search Group-Box Boundary Gate (Selected)
+## Phase 8 Full-Text Search Group-Box Boundary Gate (Complete)
 
 The documentation-only post-P8-FT-42 audit selects P8-FT-43 as the sole next
 leaf. Pinned legacy `fulltextsearch.ui:23-96` places the query field and search-
@@ -2962,7 +2962,7 @@ option controls in one `QGroupBox` titled exactly `Search`; current
 P8-FT-1 through P8-FT-42 supply the complete query, tab-order, presentation,
 layout, geometry, and request-lifecycle prerequisites.
 
-Future focused acceptance extends only `full_text_search_dialog_test`. It
+Completed focused acceptance extends only `full_text_search_dialog_test`. It
 proves exactly one private group box titled `Search`, the unique existing
 composer directly contained by it, the group box attached once to the
 enclosing dialog layout, and stable identity and hierarchy through
@@ -2979,7 +2979,7 @@ Run the focused Release test with:
 ctest --preset conan-release -R '^full_text_search_dialog_test$'
 ```
 
-The full future implementation gate remains Linux Release configure/build,
+The full implementation gate remains Linux Release configure/build,
 exactly 109 registered tests, full Release CTest, Release install, packaged
 consumers, standalone installed C and C++ consumers, and clean committed exact-
 SCM creation with the profile's Debug build type explicitly overridden for the
@@ -2999,14 +2999,17 @@ and index formats, dependencies/builds, public/Core or composition-root
 changes, HTTP GET policy, and unrelated tests are excluded and unranked. No
 successor after P8-FT-43 is selected or ranked.
 
+P8-FT-43 is complete. The implementation changes only private dialog
+construction, its existing focused test, and these four governing documents.
+
 Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
 mapping or acceptance semantics, any broader grouping, layout, style, or
 mnemonic choice, public/Core or composition-root expansion, dependency or
 installed-surface change, an architectural decision requiring HTTP GET policy,
-discovery of another required file, or scope expansion. This selection audit
-changes documentation only, so compiled verification is intentionally skipped;
-exact four-file scope, cross-document consistency, Phase terminology,
-successor neutrality, and `git diff --check` are its verification gate.
+discovery of another required file, or scope expansion. Its gate is exact
+six-file scope, cross-document consistency, Phase terminology, successor
+neutrality, and the full Release, install, consumer, and exact-SCM verification
+described above.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
