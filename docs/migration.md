@@ -2877,7 +2877,7 @@ accepted zero count for an empty result. Migrated
 a conclusive zero-match article search. P8-FT-23 is complete. No successor
 after P8-FT-23 is selected or ranked.
 
-### Phase 8 full-text terminal failure status (selected)
+### Phase 8 full-text terminal failure status (complete)
 
 The independent documentation-only post-P8-FT-23 readiness audit is pinned to
 clean migrated revision `3b67ce9413cba3555115779ddd48d70e927a7fd4` and the
@@ -2904,20 +2904,20 @@ teardown cannot introduce or overwrite the current status. Result rows,
 selection, focus, activation, response ownership, and accepted-generation
 synchronization remain unchanged.
 
-Focused future acceptance covers initial and replacement reset; terminal
+Focused acceptance covers initial and replacement reset; terminal
 error-only responses with each existing error-code category and multiple
 errors; conclusive empty, nonempty, partial-empty, partial-nonempty, and
 result-plus-error responses; repeated accepted transitions; and stale,
 cancelled, detached, replaced-service, and teardown completion safety. The
-focused future command is
+focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The completed implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. P8-FT-24 adds no test executable or
 public/installed interface, so the registered Release baseline remains 109
-tests. This documentation-only audit requires no build or test.
+tests.
 
 Result-plus-error and partial-error summaries and all error details; exact
 `document_id` navigation and source-dictionary targeting; columns, icons,
@@ -2937,7 +2937,8 @@ P8-FT-9/P8-FT-11/P8-FT-17/P8-FT-22/P8-FT-23, and the migrated generic
 Pinned legacy `fulltextsearch.cc:499-586` silently contains individual
 dictionary failures and supplies no safe structured error-detail presentation
 contract. P8-FT-24 therefore presents only the migrated response's bounded,
-terminal failure fact. No successor after P8-FT-24 is selected or ranked.
+terminal failure fact. P8-FT-24 is complete. No successor after P8-FT-24 is
+selected or ranked.
 
 Phase 6 per-format full-text support follows that contract, then the Phase 8
 workflow and its Preferences controls. Audio is the next foundation candidate,

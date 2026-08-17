@@ -67,6 +67,7 @@ class FullTextSearchDialog final : public QDialog {
     void UpdateResultCount();
     void UpdatePartialStatus();
     void UpdateEmptyStatus();
+    void UpdateFailureStatus();
     void RestoreIdleState();
 
     FullTextQueryComposer* composer_ = nullptr;
@@ -75,6 +76,7 @@ class FullTextSearchDialog final : public QDialog {
     QLabel* result_count_ = nullptr;
     QLabel* partial_status_ = nullptr;
     QLabel* empty_status_ = nullptr;
+    QLabel* failure_status_ = nullptr;
     QPushButton* search_button_ = nullptr;
     QPushButton* cancel_button_ = nullptr;
     QProgressBar* progress_ = nullptr;

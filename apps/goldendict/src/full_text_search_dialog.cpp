@@ -91,6 +91,13 @@ FullTextSearchDialog::FullTextSearchDialog(
     empty_status_->hide();
     layout->addWidget(empty_status_);
 
+    failure_status_ =
+        new QLabel(QStringLiteral("Full-text search failed"), this);
+    failure_status_->setObjectName(
+        QStringLiteral("fullTextFailureResponseStatus"));
+    failure_status_->hide();
+    layout->addWidget(failure_status_);
+
     progress_ = new QProgressBar(this);
     progress_->setObjectName(QStringLiteral("fullTextSearchProgress"));
     progress_->setRange(0, 0);
@@ -175,6 +182,7 @@ void FullTextSearchDialog::SubmitSearch() {
     UpdateResultCount();
     UpdatePartialStatus();
     UpdateEmptyStatus();
+    UpdateFailureStatus();
     accepted_activation_scope_.reset();
     pending_activation_scope_ =
         ActivationScope{query.dictionary_filter_active, query.dictionary_ids};
@@ -205,6 +213,7 @@ void FullTextSearchDialog::FinishSearch(
     UpdateResultCount();
     UpdatePartialStatus();
     UpdateEmptyStatus();
+    UpdateFailureStatus();
     RestoreIdleState();
 }
 
@@ -238,6 +247,12 @@ void FullTextSearchDialog::UpdateEmptyStatus() {
     empty_status_->setVisible(response_.has_value() &&
                               response_->results.empty() &&
                               !response_->partial && response_->errors.empty());
+}
+
+void FullTextSearchDialog::UpdateFailureStatus() {
+    failure_status_->setVisible(
+        response_.has_value() && response_->results.empty() &&
+        !response_->partial && !response_->errors.empty());
 }
 
 void FullTextSearchDialog::RestoreIdleState() {
