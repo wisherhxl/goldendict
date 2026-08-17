@@ -128,6 +128,10 @@ FullTextQueryComposer::FullTextQueryComposer(
     article_limit_layout->addWidget(use_maximum_articles_);
     article_limit_layout->addWidget(maximum_articles_per_dictionary_);
 
+    auto* ignore_options_layout = new QHBoxLayout;
+    ignore_options_layout->addWidget(ignore_word_order_);
+    ignore_options_layout->addWidget(ignore_diacritics_);
+
     auto* form = new QFormLayout;
     form->addRow(query_text_);
     form->addRow(tr("Mode:"), mode_);
@@ -137,8 +141,7 @@ FullTextQueryComposer::FullTextQueryComposer(
     auto* layout = new QVBoxLayout(this);
     layout->addLayout(form);
     layout->addWidget(match_case_);
-    layout->addWidget(ignore_diacritics_);
-    layout->addWidget(ignore_word_order_);
+    layout->addLayout(ignore_options_layout);
 
     connect(mode_, &QComboBox::currentIndexChanged, this,
             [this]() { UpdateModeDependentControls(); });

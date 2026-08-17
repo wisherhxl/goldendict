@@ -3,9 +3,11 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFormLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QSpinBox>
+#include <QVBoxLayout>
 #include <QtTest>
 
 #include <array>
@@ -63,6 +65,54 @@ void VerifyModeSelector(FullTextQueryComposer& composer) {
     QCOMPARE(selector->findData(
                  static_cast<int>(FullTextSearchMode::kRegularExpression)),
              3);
+}
+
+void VerifyIgnoreOptionsRow(FullTextQueryComposer& composer,
+                            const QCheckBox* expected_ignore_order,
+                            const QCheckBox* expected_ignore_diacritics) {
+    const auto ignore_order_controls = composer.findChildren<QCheckBox*>(
+        QStringLiteral("fullTextIgnoreWordOrder"), Qt::FindDirectChildrenOnly);
+    QCOMPARE(ignore_order_controls.size(), 1);
+    QCOMPARE(ignore_order_controls.constFirst(), expected_ignore_order);
+    QCOMPARE(expected_ignore_order->parentWidget(), &composer);
+    QCOMPARE(expected_ignore_order->objectName(),
+             QStringLiteral("fullTextIgnoreWordOrder"));
+    QCOMPARE(expected_ignore_order->text(),
+             QStringLiteral("Ignore words order"));
+
+    const auto ignore_diacritics_controls = composer.findChildren<QCheckBox*>(
+        QStringLiteral("fullTextIgnoreDiacritics"), Qt::FindDirectChildrenOnly);
+    QCOMPARE(ignore_diacritics_controls.size(), 1);
+    QCOMPARE(ignore_diacritics_controls.constFirst(),
+             expected_ignore_diacritics);
+    QCOMPARE(expected_ignore_diacritics->parentWidget(), &composer);
+    QCOMPARE(expected_ignore_diacritics->objectName(),
+             QStringLiteral("fullTextIgnoreDiacritics"));
+    QCOMPARE(expected_ignore_diacritics->text(),
+             QStringLiteral("Ignore diacritics"));
+
+    QHBoxLayout* ignore_options_layout = nullptr;
+    int matching_layouts = 0;
+    for (auto* candidate : composer.findChildren<QHBoxLayout*>()) {
+        if (candidate->indexOf(expected_ignore_order) >= 0 &&
+            candidate->indexOf(expected_ignore_diacritics) >= 0) {
+            ignore_options_layout = candidate;
+            ++matching_layouts;
+        }
+    }
+    QCOMPARE(matching_layouts, 1);
+    QVERIFY(ignore_options_layout != nullptr);
+    QCOMPARE(ignore_options_layout->count(), 2);
+    QCOMPARE(ignore_options_layout->itemAt(0)->widget(), expected_ignore_order);
+    QCOMPARE(ignore_options_layout->itemAt(1)->widget(),
+             expected_ignore_diacritics);
+
+    auto* top_level_layout = qobject_cast<QVBoxLayout*>(composer.layout());
+    QVERIFY(top_level_layout != nullptr);
+    QCOMPARE(top_level_layout->count(), 3);
+    QCOMPARE(top_level_layout->itemAt(1)->widget(),
+             Control<QCheckBox>(composer, "fullTextMatchCase"));
+    QCOMPARE(top_level_layout->itemAt(2)->layout(), ignore_options_layout);
 }
 
 goldendict::core::DictionaryIdentity Identity(const std::string& id,
@@ -137,8 +187,14 @@ void FullTextQueryComposerTest::MapsTextBooleansAndFixedDefaults() {
     FullTextQueryComposer composer(preferences);
     auto* ignore_order =
         Control<QCheckBox>(composer, "fullTextIgnoreWordOrder");
+    auto* ignore_diacritics =
+        Control<QCheckBox>(composer, "fullTextIgnoreDiacritics");
 
-    QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
+    VerifyIgnoreOptionsRow(composer, ignore_order, ignore_diacritics);
+    QVERIFY(ignore_order->isChecked());
+    QVERIFY(ignore_diacritics->isChecked());
+    QVERIFY(ignore_order->isEnabled());
+    QVERIFY(ignore_diacritics->isEnabled());
 
     const QString text = QString::fromUtf8("Straße 日本語 café 😀");
     Control<QLineEdit>(composer, "fullTextQueryText")->setText(text);
@@ -161,7 +217,9 @@ void FullTextQueryComposerTest::MapsTextBooleansAndFixedDefaults() {
     ignore_order->setChecked(false);
     QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
              ignore_order);
-    QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
+    QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreDiacritics"),
+             ignore_diacritics);
+    VerifyIgnoreOptionsRow(composer, ignore_order, ignore_diacritics);
     const auto cleared = composer.Compose();
     QVERIFY(!cleared.match_case);
     QVERIFY(!cleared.ignore_diacritics);
@@ -255,6 +313,8 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
     QCOMPARE(ignore_order_controls.size(), 1);
     auto* ignore_order =
         Control<QCheckBox>(composer, "fullTextIgnoreWordOrder");
+    auto* ignore_diacritics =
+        Control<QCheckBox>(composer, "fullTextIgnoreDiacritics");
     QCOMPARE(ignore_order_controls.constFirst(), ignore_order);
     QCOMPARE(ignore_order->objectName(),
              QStringLiteral("fullTextIgnoreWordOrder"));
@@ -262,6 +322,7 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
     QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
     QVERIFY(ignore_order->isChecked());
     QVERIFY(ignore_order->isEnabled());
+    VerifyIgnoreOptionsRow(composer, ignore_order, ignore_diacritics);
     auto* use_distance =
         Control<QCheckBox>(composer, "fullTextUseMaximumWordDistance");
     auto* distance = Control<QSpinBox>(composer, "fullTextMaximumWordDistance");
@@ -294,7 +355,9 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
         QCOMPARE(composer.Compose().text, std::string("stable query Δ"));
         QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
                  ignore_order);
-        QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
+        QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreDiacritics"),
+                 ignore_diacritics);
+        VerifyIgnoreOptionsRow(composer, ignore_order, ignore_diacritics);
         QVERIFY(!ignore_order->isEnabled());
         QVERIFY(!use_distance->isEnabled());
         QVERIFY(!distance->isEnabled());
@@ -321,7 +384,9 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
         QCOMPARE(composer.Compose().text, std::string("stable query Δ"));
         QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
                  ignore_order);
-        QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
+        QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreDiacritics"),
+                 ignore_diacritics);
+        VerifyIgnoreOptionsRow(composer, ignore_order, ignore_diacritics);
         QVERIFY(ignore_order->isEnabled());
         QVERIFY(use_distance->isEnabled());
         QVERIFY(distance->isEnabled());
@@ -350,6 +415,10 @@ void FullTextQueryComposerTest::
     QCOMPARE(query_fields.size(), 1);
     auto* query_field = query_fields.constFirst();
     auto* mode_selector = Control<QComboBox>(composer, "fullTextQueryMode");
+    auto* ignore_order =
+        Control<QCheckBox>(composer, "fullTextIgnoreWordOrder");
+    auto* ignore_diacritics =
+        Control<QCheckBox>(composer, "fullTextIgnoreDiacritics");
     auto* form = composer.findChild<QFormLayout*>();
     QVERIFY(form != nullptr);
     QVERIFY(form->labelForField(query_field) == nullptr);
@@ -369,6 +438,7 @@ void FullTextQueryComposerTest::
 
     const auto first = composer.Compose();
     const auto second = composer.Compose();
+    VerifyIgnoreOptionsRow(composer, ignore_order, ignore_diacritics);
     VerifyModeSelector(composer);
     QCOMPARE(first.mode,
              goldendict::core::FullTextQueryMode::kRegularExpression);

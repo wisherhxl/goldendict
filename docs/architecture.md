@@ -4294,20 +4294,20 @@ four-file scope, cross-document consistency, Phase terminology, successor
 neutrality, the exact Conan command, `git diff --check`, and clean pinned refs
 and worktrees.
 
-### Phase 8 full-text ignore-options row parity (selected)
+### Phase 8 full-text ignore-options row parity (complete)
 
-The independent documentation-only post-P8-FT-48 audit is pinned to clean
-migrated revision `6c3cde5e56542a9f34603ab0a673cabdde4f6636`, its identical
+The implementation is based on clean migrated revision
+`5203c9f5730961cf13afb0d57b8523bc011ebafb`, its identical
 upstream and fresh live remote, and unchanged clean read-only legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After rechecking the four
 governing full-text documents and only the relevant current and pinned legacy
-Widgets evidence, it selects exactly one smallest dependency-ready leaf,
+Widgets evidence, it completes exactly one smallest dependency-ready leaf,
 P8-FT-49: restore the private horizontal row and legacy order of the two
 existing ignore options.
 
 The shared-library/GUI boundary governs this leaf. Pinned legacy
 `fulltextsearch.ui:75-99` places exactly `checkBoxIgnoreWordOrder` followed by
-`checkBoxIgnoreDiacritics` in one `QHBoxLayout`. Current
+`checkBoxIgnoreDiacritics` in one `QHBoxLayout`. Before P8-FT-49,
 `full_text_query_composer.cpp:84-93,137-141` already owns the corresponding
 private controls and query mappings, but adds them as separate vertical items
 in the opposite order. P8-FT-1 through P8-FT-48 already own the composer, both
@@ -4316,8 +4316,8 @@ containing layout, focus/tab behavior, and request lifecycle. Widgets owns the
 complete presentation correction; Core, the composition root, and installed
 consumers acquire no presentation contract.
 
-P8-FT-49 will reuse the existing controls in one private horizontal layout,
-with ignore-word-order first and ignore-diacritics second, and add only that
+P8-FT-49 reuses the existing controls in one private horizontal layout,
+with ignore-word-order first and ignore-diacritics second, and adds only that
 row to the existing composer layout. Widget identity, parentage, object names,
 text, checked/enabled state, query composition, mode transitions, submission,
 responses, geometry, focus/tab behavior, cancellation, replacement, service
@@ -4334,7 +4334,7 @@ conflict with current migrated bounds, so neither caption is eligible without
 a new explicit product/Core decision. No successor after P8-FT-49 is selected
 or ranked.
 
-Focused acceptance will extend only `full_text_query_composer_test` to prove
+Focused acceptance extends only `full_text_query_composer_test` to prove
 one unique two-item horizontal layout containing the existing unique ignore-
 word-order control first and ignore-diacritics control second, while preserving
 identity, parentage, object names, text, state, mode transitions, and repeated
@@ -4354,21 +4354,20 @@ conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h bu
 ```
 
 P8-FT-49 adds no executable, registration, installed header, DTO, ABI,
-dependency, CMake export, or Conan requirement. Its future implementation is
+dependency, CMake export, or Conan requirement. Its implementation is
 limited to the private composer, its existing focused test, and these four
 governing documents.
 
-No production or test file changes in this documentation-only audit.
-Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+P8-FT-49 is complete. No successor is selected or ranked. Implementation was
+required to stop on ref/worktree drift, legacy dirtiness, ambiguous
 membership, order, or acceptance semantics, any third widget or second
 behavior, caption-bound policy, broader layout work, mnemonic or translation-
 catalog work, public/Core or composition-root expansion, dependency or
 installed-surface change, an architectural decision requiring HTTP GET policy,
-discovery of another required file, or scope expansion. This audit's gate is
-exact four-file scope, cross-document consistency, Phase terminology,
+discovery of another required file, or scope expansion. The implementation
+gate is exact six-file scope, cross-document consistency, Phase terminology,
 successor neutrality, the exact Conan command, `git diff --check`, and clean
-pinned refs and worktrees. Builds and tests are intentionally skipped for this
-documentation-only audit.
+pinned refs and worktrees.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

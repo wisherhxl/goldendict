@@ -3290,18 +3290,19 @@ and worktrees. Any later stateful WebEngine smoke must run from freshly
 quarantined repository-owned build-tree `HOME` and XDG state, never real user
 configuration.
 
-## Phase 8 Full-Text Ignore-Options Row Gate (Selected)
+## Phase 8 Full-Text Ignore-Options Row Gate (Complete)
 
-The documentation-only post-P8-FT-48 audit selects P8-FT-49 as the sole next
-leaf. Pinned legacy `fulltextsearch.ui:75-99` places exactly
+The implementation completes P8-FT-49 as the sole leaf. Pinned legacy
+`fulltextsearch.ui:75-99` places exactly
 `checkBoxIgnoreWordOrder` followed by `checkBoxIgnoreDiacritics` in one
-`QHBoxLayout`. Current `full_text_query_composer.cpp:84-93,137-141` already
+`QHBoxLayout`. Before P8-FT-49,
+`full_text_query_composer.cpp:84-93,137-141` already
 owns the corresponding private controls and query mappings, but adds them as
 separate vertical items in the opposite order. P8-FT-1 through P8-FT-48 supply
 the composer, both controls, exact text and state, mode behavior, composition,
 containing layout, focus/tab behavior, and request-lifecycle prerequisites.
 
-Focused acceptance will extend only `full_text_query_composer_test`. It must
+Focused acceptance extends only `full_text_query_composer_test`. It must
 prove one unique two-item horizontal layout containing the existing unique
 ignore-word-order control first and ignore-diacritics control second, while
 preserving identity, parentage, object names, text, checked/enabled state, mode
@@ -3336,18 +3337,17 @@ legacy caption bounds conflict with current migrated bounds, so neither caption
 is eligible without a new explicit product/Core decision. No successor after
 P8-FT-49 is selected or ranked.
 
-Its future implementation is limited to the private composer, its existing
-focused test, and these four governing documents. Implementation must stop on
-ref/worktree drift, legacy dirtiness, ambiguous membership, order, or
+Its implementation is limited to the private composer, its existing focused
+test, and these four governing documents. Implementation was required to stop
+on ref/worktree drift, legacy dirtiness, ambiguous membership, order, or
 acceptance semantics, any third widget or second behavior, caption-bound
 policy, broader layout work, mnemonic or translation-catalog work, public/Core
 or composition-root expansion, dependency or installed-surface change, an
 architectural decision requiring HTTP GET policy, discovery of another
-required file, or scope expansion. This documentation audit's gate is exact
-four-file scope, cross-document consistency, Phase terminology, successor
+required file, or scope expansion. The implementation gate is exact
+six-file scope, cross-document consistency, Phase terminology, successor
 neutrality, the exact Conan command, `git diff --check`, and clean pinned refs
-and worktrees. No production or test file changes in this documentation-only
-audit; builds and tests are intentionally skipped. Any later stateful
+and worktrees. Any later stateful
 WebEngine smoke must run from freshly quarantined repository-owned build-tree
 `HOME` and XDG state, never real user configuration.
 
