@@ -22,6 +22,7 @@ class QListView;
 class QProgressBar;
 class QPushButton;
 class QCloseEvent;
+class QAction;
 
 namespace goldendict::app {
 
@@ -54,6 +55,7 @@ class FullTextSearchDialog final : public QDialog {
     const goldendict::core::FullTextQuery& ProjectedQuery() const noexcept;
 
    signals:
+    void HelpRequested();
     void ResultActivationRequested(FullTextResultActivationIntent intent);
     void GeometryCaptured(std::string geometry);
 
@@ -89,8 +91,10 @@ class FullTextSearchDialog final : public QDialog {
     QLabel* mixed_result_status_ = nullptr;
     QLabel* partial_empty_status_ = nullptr;
     QLabel* error_count_status_ = nullptr;
+    QPushButton* help_button_ = nullptr;
     QPushButton* search_button_ = nullptr;
     QPushButton* cancel_button_ = nullptr;
+    QAction* help_action_ = nullptr;
     QProgressBar* progress_ = nullptr;
     FullTextResponseModel* response_model_ = nullptr;
     std::function<void()> completion_notifier_;

@@ -3468,7 +3468,7 @@ Preferences/index policy; index lifecycle; adapters/index formats;
 dependencies; builds; and unrelated parity remain independently decomposed,
 unselected, and unranked. No successor after P8-FT-35 is selected or ranked.
 
-### Phase 8 full-text Help activation intent (selected)
+### Phase 8 full-text Help activation intent (complete)
 
 The independent documentation-only post-P8-FT-35 audit is pinned to clean
 migrated revision `89019d32113e4c68985756aa7a04e158951e1893`, its identical
@@ -3481,10 +3481,10 @@ P8-FT-36: restore the private full-text Help activation intent.
 The shared-library/GUI boundary governs this leaf. Pinned legacy
 `fulltextsearch.ui:250-255` supplies one `Help` button, and
 `fulltextsearch.cc:300-309,676-680` connects that button and an F1 action with
-`Qt::WidgetWithChildrenShortcut` to the same dialog help request. Current
-`full_text_search_dialog.cpp:47-155` has neither control nor action. The
-current application also has no equivalent dependency-ready full-text help
-destination: its Help menu intentionally omits the legacy reference action and
+`Qt::WidgetWithChildrenShortcut` to the same dialog help request. The
+pre-P8-FT-36 `full_text_search_dialog.cpp:47-155` had neither control nor
+action. The current application also has no equivalent dependency-ready
+full-text help destination: its Help menu intentionally omits the legacy reference action and
 F1 shortcut. Widgets therefore owns only intent production; Core and installed
 consumers do not acquire a GUI or help-system contract.
 
@@ -3505,7 +3505,7 @@ adapters/index formats, dependencies, builds, remaining dialog layout/state,
 and unrelated parity also remain independently decomposed, unselected, and
 unranked.
 
-Focused future implementation acceptance extends
+The completed focused implementation acceptance extends
 `full_text_search_dialog_test` to prove the button identity and text, the F1
 shortcut and context, exactly one signal for each activation, deterministic
 repetition, and unchanged idle and active-search state, response, lifecycle,
@@ -3513,7 +3513,7 @@ and geometry behavior. The focused Release command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
 Release target has been built.
 
-The full future implementation gate remains Linux Release configure/build,
+The full implementation gate is Linux Release configure/build,
 exactly 109 registered tests and full `ctest --preset conan-release`, clean
 committed exact-SCM `conan create` with the Release Qt WebEngine host profile
 and packaged consumers, Release install, and standalone installed C and C++

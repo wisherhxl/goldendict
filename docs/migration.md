@@ -3601,7 +3601,7 @@ ref/worktree drift, legacy dirtiness, ambiguous sizing evidence or acceptance,
 an architectural choice requiring HTTP GET policy, or scope expansion; pinned
 checks repeat before commit and push.
 
-### Phase 8 full-text Help activation intent (selected)
+### Phase 8 full-text Help activation intent (complete)
 
 The independent documentation-only post-P8-FT-35 audit is pinned to migrated
 revision `89019d32113e4c68985756aa7a04e158951e1893`, its identical upstream and
@@ -3613,9 +3613,10 @@ selects exactly P8-FT-36: the private full-text Help activation intent.
 Pinned legacy `fulltextsearch.ui:250-255` and
 `fulltextsearch.cc:300-309,676-680` provide the bounded parity contract: one
 `Help` button and one F1 action with `Qt::WidgetWithChildrenShortcut` produce
-the same dialog help request. The current private dialog has neither. Under the
-shared-library/GUI boundary, P8-FT-36 adds those two private Widgets activation
-paths: `fullTextHelpButton` with exact text `Help`, `fullTextHelpAction` with
+the same dialog help request. The pre-P8-FT-36 private dialog had neither.
+Under the shared-library/GUI boundary, P8-FT-36 adds those two private Widgets
+activation paths: `fullTextHelpButton` with exact text `Help`,
+`fullTextHelpAction` with
 exact F1 shortcut and `Qt::WidgetWithChildrenShortcut`, and one argument-free
 private `HelpRequested()` signal. Each activation emits exactly once, leaves
 the modeless dialog open, and does not submit or cancel a search, alter
@@ -3625,13 +3626,14 @@ normal Qt activation, capture geometry, or mutate configuration.
 Actual help content, help-window/engine construction, URLs or dispatch,
 composition-root consumption, Help-menu changes, embedded documentation, HTTP
 GET policy, Core/public contracts, dependencies, installed interfaces, and all
-other full-text or migration parity remain excluded and unranked. The future
+other full-text or migration parity remain excluded and unranked. The completed
 focused acceptance extends `full_text_search_dialog_test` for exact button,
 shortcut/context, single-emission, repeated activation, and idle/active state,
 lifecycle, and geometry regressions.
 
-The full future gate is Linux Release configure/build, exactly 109 registered
-tests, full Release CTest, clean committed exact-SCM `conan create` with the
+The full implementation gate is Linux Release configure/build, exactly 109
+registered tests, full Release CTest, clean committed exact-SCM `conan create`
+with the
 Release Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. There is no test registration,
 installed header, DTO, ABI, dependency, CMake export, or Conan requirement

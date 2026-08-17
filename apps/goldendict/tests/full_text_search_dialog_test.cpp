@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QAction>
 #include <QCheckBox>
 #include <QImage>
 #include <QItemSelectionModel>
@@ -165,6 +166,15 @@ QPushButton* CancelButton(FullTextSearchDialog* dialog) {
         QStringLiteral("fullTextCancelButton"));
 }
 
+QPushButton* HelpButton(FullTextSearchDialog* dialog) {
+    return dialog->findChild<QPushButton*>(
+        QStringLiteral("fullTextHelpButton"));
+}
+
+QAction* HelpAction(FullTextSearchDialog* dialog) {
+    return dialog->findChild<QAction*>(QStringLiteral("fullTextHelpAction"));
+}
+
 QProgressBar* Progress(FullTextSearchDialog* dialog) {
     return dialog->findChild<QProgressBar*>(
         QStringLiteral("fullTextSearchProgress"));
@@ -311,11 +321,164 @@ class FullTextSearchDialogTest final : public QObject {
     void SuppressesDuplicateInvalidStaleAndCancelledActivation();
     void ReplacesRunningAndPendingGenerationsAndSuppressesStaleCompletion();
     void ActiveCancellationRestoresIdleStateWithoutDismissal();
+    void EmitsHelpIntentWithoutMutatingIdleOrActiveState();
     void EnforcesPinnedMinimumAcrossResizeAndRestore();
     void RestoresAndCapturesGeometryOnlyForIdleDismissal();
     void IdleCancelDismissesThroughDialogLifecycle();
     void ServiceReplacementDetachAndDestructionSuppressLateDelivery();
 };
+
+void FullTextSearchDialogTest::
+    EmitsHelpIntentWithoutMutatingIdleOrActiveState() {
+    ControllableDictionaryService idle_service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog idle_dialog(preferences, &idle_service);
+    auto* idle_help_button = HelpButton(&idle_dialog);
+    auto* idle_help_action = HelpAction(&idle_dialog);
+    QVERIFY(idle_help_button != nullptr);
+    QCOMPARE(idle_help_button->parent(), &idle_dialog);
+    QCOMPARE(idle_help_button->objectName(),
+             QStringLiteral("fullTextHelpButton"));
+    QCOMPARE(idle_help_button->text(), QStringLiteral("Help"));
+    QVERIFY(idle_help_action != nullptr);
+    QCOMPARE(idle_help_action->parent(), &idle_dialog);
+    QCOMPARE(idle_help_action->objectName(),
+             QStringLiteral("fullTextHelpAction"));
+    QCOMPARE(idle_help_action->shortcut(), QKeySequence(Qt::Key_F1));
+    QCOMPARE(idle_help_action->shortcutContext(),
+             Qt::WidgetWithChildrenShortcut);
+    QVERIFY(idle_dialog.actions().contains(idle_help_action));
+
+    idle_dialog.InitializeQuery(QStringLiteral("idle-query"));
+    goldendict::core::FullTextQuery projected_query;
+    projected_query.dictionary_filter_active = true;
+    projected_query.dictionary_ids = {"idle-dictionary"};
+    idle_dialog.SetProjectedQuery(projected_query);
+    goldendict::core::FullTextResponse accepted_response;
+    accepted_response.results = {
+        MakeResult("idle-dictionary", "idle-result", 17U)};
+    idle_dialog.pending_activation_scope_ =
+        FullTextSearchDialog::ActivationScope{true, {"idle-dictionary"}};
+    idle_dialog.pending_activation_context_ =
+        FullTextSearchDialog::ActivationContext{"accepted-query", true};
+    idle_dialog.active_generation_ = ++idle_dialog.generation_;
+    std::size_t completion_count = 0U;
+    idle_dialog.completion_notifier_ = [&completion_count]() {
+        ++completion_count;
+    };
+    idle_dialog.FinishSearch(idle_dialog.generation_, accepted_response);
+    const QModelIndex selected_index = ResponseModel(&idle_dialog)->index(0, 0);
+    Results(&idle_dialog)->setCurrentIndex(selected_index);
+    Results(&idle_dialog)
+        ->selectionModel()
+        ->select(selected_index, QItemSelectionModel::ClearAndSelect |
+                                     QItemSelectionModel::Rows);
+    idle_dialog.show();
+    QCoreApplication::processEvents();
+
+    QSignalSpy idle_help_requests(&idle_dialog,
+                                  &FullTextSearchDialog::HelpRequested);
+    QSignalSpy idle_geometry_captures(&idle_dialog,
+                                      &FullTextSearchDialog::GeometryCaptured);
+    const QByteArray idle_geometry = idle_dialog.saveGeometry();
+    const auto idle_projected_query = idle_dialog.ProjectedQuery();
+    const std::uint64_t idle_generation = idle_dialog.generation_;
+
+    idle_help_button->click();
+    QCOMPARE(idle_help_requests.count(), 1);
+    Results(&idle_dialog)->setFocus();
+    QTest::keyClick(Results(&idle_dialog), Qt::Key_F1);
+    QCOMPARE(idle_help_requests.count(), 2);
+    idle_help_button->click();
+    QCOMPARE(idle_help_requests.count(), 3);
+    Results(&idle_dialog)->setFocus();
+    QTest::keyClick(Results(&idle_dialog), Qt::Key_F1);
+    QCOMPARE(idle_help_requests.count(), 4);
+
+    QVERIFY(idle_dialog.isVisible());
+    QVERIFY(!idle_dialog.active_generation_.has_value());
+    QCOMPARE(idle_dialog.generation_, idle_generation);
+    QCOMPARE(idle_service.Queries().size(), std::size_t{0});
+    QCOMPARE(idle_dialog.ProjectedQuery().dictionary_filter_active,
+             idle_projected_query.dictionary_filter_active);
+    QCOMPARE(idle_dialog.ProjectedQuery().dictionary_ids,
+             idle_projected_query.dictionary_ids);
+    QCOMPARE(idle_dialog.query_text_->text(), QStringLiteral("idle-query"));
+    QVERIFY(idle_dialog.response_.has_value());
+    QCOMPARE(idle_dialog.response_->results.size(), std::size_t{1});
+    QCOMPARE(idle_dialog.response_->results.front().headword,
+             std::string("idle-result"));
+    QCOMPARE(ResponseModel(&idle_dialog)->rowCount(), 1);
+    QCOMPARE(Results(&idle_dialog)->currentIndex(), selected_index);
+    QVERIFY(
+        Results(&idle_dialog)->selectionModel()->isSelected(selected_index));
+    QVERIFY(idle_dialog.accepted_activation_scope_.has_value());
+    QVERIFY(idle_dialog.accepted_activation_scope_->dictionary_filter_active);
+    QCOMPARE(idle_dialog.accepted_activation_scope_->dictionary_ids,
+             std::vector<std::string>{"idle-dictionary"});
+    QVERIFY(idle_dialog.accepted_activation_context_.has_value());
+    QCOMPARE(idle_dialog.accepted_activation_context_->query_text,
+             std::string("accepted-query"));
+    QVERIFY(idle_dialog.accepted_activation_context_->ignore_diacritics);
+    QCOMPARE(completion_count, std::size_t{1});
+    QCOMPARE(idle_geometry_captures.count(), 0);
+    QCOMPARE(idle_dialog.saveGeometry(), idle_geometry);
+    idle_dialog.hide();
+
+    ControllableDictionaryService active_service;
+    FullTextSearchDialog active_dialog(preferences, &active_service);
+    active_dialog.InitializeQuery(QStringLiteral("blocked"));
+    active_dialog.show();
+    active_dialog.activateWindow();
+    QCoreApplication::processEvents();
+    active_dialog.SubmitSearch();
+    QVERIFY(active_service.WaitForQueries(1U));
+    QSignalSpy active_help_requests(&active_dialog,
+                                    &FullTextSearchDialog::HelpRequested);
+    QSignalSpy active_geometry_captures(
+        &active_dialog, &FullTextSearchDialog::GeometryCaptured);
+    const QByteArray active_geometry = active_dialog.saveGeometry();
+    const auto active_generation = active_dialog.active_generation_;
+
+    HelpButton(&active_dialog)->click();
+    QCOMPARE(active_help_requests.count(), 1);
+    Results(&active_dialog)->setFocus();
+    QTest::keyClick(Results(&active_dialog), Qt::Key_F1);
+    QCOMPARE(active_help_requests.count(), 2);
+    HelpButton(&active_dialog)->click();
+    QCOMPARE(active_help_requests.count(), 3);
+    Results(&active_dialog)->setFocus();
+    QTest::keyClick(Results(&active_dialog), Qt::Key_F1);
+    QCOMPARE(active_help_requests.count(), 4);
+
+    QVERIFY(active_dialog.isVisible());
+    QCOMPARE(active_dialog.active_generation_, active_generation);
+    QVERIFY(active_dialog.pending_activation_scope_.has_value());
+    QVERIFY(!active_dialog.pending_activation_scope_->dictionary_filter_active);
+    QVERIFY(active_dialog.pending_activation_scope_->dictionary_ids.empty());
+    QVERIFY(active_dialog.pending_activation_context_.has_value());
+    QCOMPARE(active_dialog.pending_activation_context_->query_text,
+             std::string("blocked"));
+    QVERIFY(!active_dialog.accepted_activation_scope_.has_value());
+    QVERIFY(!active_dialog.accepted_activation_context_.has_value());
+    QVERIFY(!active_dialog.response_.has_value());
+    QCOMPARE(ResponseModel(&active_dialog)->rowCount(), 0);
+    QVERIFY(!Results(&active_dialog)->currentIndex().isValid());
+    QVERIFY(!Results(&active_dialog)->selectionModel()->hasSelection());
+    const auto active_queries = active_service.Queries();
+    QCOMPARE(active_queries.size(), std::size_t{1});
+    QCOMPARE(active_queries.front().text, std::string("blocked"));
+    QCOMPARE(active_dialog.query_text_->text(), QStringLiteral("blocked"));
+    QVERIFY(!SearchButton(&active_dialog)->isEnabled());
+    QVERIFY(CancelButton(&active_dialog)->isEnabled());
+    QVERIFY(!Progress(&active_dialog)->isHidden());
+    QCOMPARE(active_geometry_captures.count(), 0);
+    QCOMPARE(active_dialog.saveGeometry(), active_geometry);
+
+    active_dialog.CancelSearch();
+    QVERIFY(active_service.WaitForCancellation());
+    active_service.ReleaseCancelledRequest();
+}
 
 void FullTextSearchDialogTest::
     NotifiesExactlyOnceForEachAcceptedResponseShape() {

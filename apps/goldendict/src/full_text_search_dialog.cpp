@@ -2,6 +2,7 @@
 
 #include "full_text_search_dialog.h"
 
+#include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
 #include <QEvent>
@@ -134,17 +135,30 @@ FullTextSearchDialog::FullTextSearchDialog(
     search_button_->setDefault(true);
     cancel_button_ = new QPushButton(tr("Cancel"), this);
     cancel_button_->setObjectName(QStringLiteral("fullTextCancelButton"));
+    help_button_ = new QPushButton(tr("Help"), this);
+    help_button_->setObjectName(QStringLiteral("fullTextHelpButton"));
     auto* buttons = new QHBoxLayout;
     buttons->addStretch();
     buttons->addWidget(search_button_);
     buttons->addWidget(cancel_button_);
+    buttons->addWidget(help_button_);
     buttons->addStretch();
     layout->addLayout(buttons);
+
+    help_action_ = new QAction(this);
+    help_action_->setObjectName(QStringLiteral("fullTextHelpAction"));
+    help_action_->setShortcut(QKeySequence(Qt::Key_F1));
+    help_action_->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    addAction(help_action_);
 
     connect(search_button_, &QPushButton::clicked, this,
             [this]() { SubmitSearch(); });
     connect(cancel_button_, &QPushButton::clicked, this,
             [this]() { CancelSearch(); });
+    connect(help_button_, &QPushButton::clicked, this,
+            &FullTextSearchDialog::HelpRequested);
+    connect(help_action_, &QAction::triggered, this,
+            &FullTextSearchDialog::HelpRequested);
     connect(results_, &QListView::clicked, this,
             [this](const QModelIndex& index) { ActivateResult(index); });
     controller_.SetService(service);
