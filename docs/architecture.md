@@ -4073,7 +4073,7 @@ required file, or scope expansion. This audit's gate is exact four-file scope,
 cross-document consistency, Phase terminology, successor neutrality,
 `git diff --check`, and clean pinned refs and worktrees.
 
-### Phase 8 full-text query-field label parity (selected)
+### Phase 8 full-text query-field label parity (complete)
 
 The independent documentation-only post-P8-FT-45 audit is pinned to clean
 migrated revision `05e2f6b7ca3a657d1c0fe57bea7e47e691762054`, its identical
@@ -4085,16 +4085,17 @@ P8-FT-46: remove the private full-text query field's unmatched label.
 
 The shared-library/GUI boundary governs this leaf. Pinned legacy
 `fulltextsearch.ui:28-31` places the unique query `QLineEdit` directly in the
-Search group without a label. Current `full_text_query_composer.cpp:57-58,131-133`
-maps that field to the unique private `fullTextQueryText` line edit but adds a
+Search group without a label. Before P8-FT-46,
+`full_text_query_composer.cpp:57-58,131-133` mapped that field to the unique
+private `fullTextQueryText` line edit but added a
 `QFormLayout` label with text `Query`. P8-FT-1 through P8-FT-45 already own the
 field, composition, persistence, containing layout, focus and tab behavior,
 request lifecycle, and adjacent mode label. Widgets therefore owns the
 complete one-label correction; Core, the composition root, and installed
 consumers acquire no presentation contract.
 
-The future implementation changes only the query field's form row from labeled
-to unlabeled full-width placement while retaining the existing
+The completed implementation changes only the query field's form row from
+labeled to unlabeled full-width placement while retaining the existing
 `fullTextQueryText`. Field identity, parentage, value, ordering, focus and tab
 behavior, query composition, submission, responses, geometry, and lifecycle
 behavior remain unchanged. The absent association and unique field remain
@@ -4109,8 +4110,8 @@ Preferences, adapters and index formats, dependencies/builds, public/Core or
 composition-root changes, HTTP GET policy, and unrelated parity are excluded
 and remain unranked. No successor after P8-FT-46 is selected or ranked.
 
-Focused acceptance will extend only `full_text_query_composer_test` to use
-`QFormLayout::labelForField()` to prove that the unique query field has no
+Completed focused acceptance extends only `full_text_query_composer_test` to
+use `QFormLayout::labelForField()` to prove that the unique query field has no
 associated label while preserving its identity, parentage, value, text
 mutation, mode and option transitions, and repeated composition. Existing
 dialog tests retain submission, completion, cancellation, replacement,
@@ -4119,7 +4120,7 @@ and lifecycle regressions. Add no executable or registered test. The focused
 Release command remains
 `ctest --preset conan-release -R '^full_text_query_composer_test$'`.
 
-The future implementation gate remains Linux Release configure/build, exactly
+The implementation gate remains Linux Release configure/build, exactly
 109 registered tests, full Release CTest, Release install, packaged consumers,
 unchanged standalone installed C and C++ consumers, and clean committed exact-
 SCM creation with:
@@ -4128,13 +4129,13 @@ SCM creation with:
 conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
 ```
 
-P8-FT-46 will add no executable, registration, installed header, DTO, ABI,
-dependency, CMake export, or Conan requirement. Its future implementation is
+P8-FT-46 adds no executable, registration, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement. Its implementation is
 limited to the private composer, its existing focused test, and these four
 governing documents.
 
-P8-FT-46 is selected for future implementation. No later successor is selected
-or ranked. Implementation must stop on ref/worktree drift, legacy dirtiness,
+P8-FT-46 is complete. No later successor is selected or ranked. Implementation
+must stop on ref/worktree drift, legacy dirtiness,
 ambiguous mapping or acceptance semantics, any second label or behavior,
 broader layout work, mnemonic or translation-catalog work, public/Core or
 composition-root expansion, dependency or installed-surface change, an

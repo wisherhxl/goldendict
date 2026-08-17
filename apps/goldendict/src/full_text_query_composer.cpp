@@ -129,7 +129,7 @@ FullTextQueryComposer::FullTextQueryComposer(
     article_limit_layout->addWidget(maximum_articles_per_dictionary_);
 
     auto* form = new QFormLayout;
-    form->addRow(tr("Query"), query_text_);
+    form->addRow(query_text_);
     form->addRow(tr("Mode:"), mode_);
     form->addRow(word_distance_layout);
     form->addRow(article_limit_layout);

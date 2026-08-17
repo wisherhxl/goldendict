@@ -183,12 +183,26 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
     preferences.full_text_use_maximum_word_distance = true;
     preferences.full_text_maximum_word_distance = 37U;
     FullTextQueryComposer composer(preferences);
+    const auto query_fields =
+        composer.findChildren<QLineEdit*>(QStringLiteral("fullTextQueryText"));
+    QCOMPARE(query_fields.size(), 1);
+    auto* query_field = query_fields.constFirst();
+    QCOMPARE(query_field->objectName(), QStringLiteral("fullTextQueryText"));
+    QCOMPARE(query_field->parentWidget(), &composer);
+    query_field->setText(QString::fromUtf8("stable query Δ"));
     const auto mode_selectors =
         composer.findChildren<QComboBox*>(QStringLiteral("fullTextQueryMode"));
     QCOMPARE(mode_selectors.size(), 1);
     auto* mode_selector = mode_selectors.constFirst();
     auto* form = composer.findChild<QFormLayout*>();
     QVERIFY(form != nullptr);
+    QCOMPARE(form->rowCount(), 4);
+    QVERIFY(form->labelForField(query_field) == nullptr);
+    int query_row = -1;
+    QFormLayout::ItemRole query_role = QFormLayout::LabelRole;
+    form->getWidgetPosition(query_field, &query_row, &query_role);
+    QCOMPARE(query_row, 0);
+    QCOMPARE(query_role, QFormLayout::SpanningRole);
     auto* mode_label =
         qobject_cast<QLabel*>(form->labelForField(mode_selector));
     QVERIFY(mode_label != nullptr);
@@ -215,6 +229,15 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
     auto* use_distance =
         Control<QCheckBox>(composer, "fullTextUseMaximumWordDistance");
     auto* distance = Control<QSpinBox>(composer, "fullTextMaximumWordDistance");
+    ignore_order->setChecked(false);
+    use_distance->setChecked(false);
+    QCOMPARE(Control<QLineEdit>(composer, "fullTextQueryText"), query_field);
+    QVERIFY(form->labelForField(query_field) == nullptr);
+    QCOMPARE(query_field->text(), QString::fromUtf8("stable query Δ"));
+    QVERIFY(!composer.Compose().ignore_word_order);
+    QVERIFY(!composer.Compose().maximum_word_distance.has_value());
+    ignore_order->setChecked(true);
+    use_distance->setChecked(true);
 
     for (const auto mode :
          {goldendict::core::FullTextSearchMode::kWildcard,
@@ -224,6 +247,11 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
                  mode_selector);
         QCOMPARE(form->labelForField(mode_selector), mode_label);
         QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
+        QCOMPARE(Control<QLineEdit>(composer, "fullTextQueryText"),
+                 query_field);
+        QVERIFY(form->labelForField(query_field) == nullptr);
+        QCOMPARE(query_field->text(), QString::fromUtf8("stable query Δ"));
+        QCOMPARE(composer.Compose().text, std::string("stable query Δ"));
         QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
                  ignore_order);
         QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
@@ -245,6 +273,11 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
                  mode_selector);
         QCOMPARE(form->labelForField(mode_selector), mode_label);
         QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
+        QCOMPARE(Control<QLineEdit>(composer, "fullTextQueryText"),
+                 query_field);
+        QVERIFY(form->labelForField(query_field) == nullptr);
+        QCOMPARE(query_field->text(), QString::fromUtf8("stable query Δ"));
+        QCOMPARE(composer.Compose().text, std::string("stable query Δ"));
         QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
                  ignore_order);
         QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
@@ -270,15 +303,19 @@ void FullTextQueryComposerTest::
     preferences.full_text_maximum_articles_per_dictionary = 1234U;
     const auto original = preferences;
     FullTextQueryComposer composer(preferences);
+    const auto query_fields =
+        composer.findChildren<QLineEdit*>(QStringLiteral("fullTextQueryText"));
+    QCOMPARE(query_fields.size(), 1);
+    auto* query_field = query_fields.constFirst();
     auto* mode_selector = Control<QComboBox>(composer, "fullTextQueryMode");
     auto* form = composer.findChild<QFormLayout*>();
     QVERIFY(form != nullptr);
+    QVERIFY(form->labelForField(query_field) == nullptr);
     auto* mode_label =
         qobject_cast<QLabel*>(form->labelForField(mode_selector));
     QVERIFY(mode_label != nullptr);
     QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
-    Control<QLineEdit>(composer, "fullTextQueryText")
-        ->setText(QString::fromUtf8("repeatable Δ"));
+    query_field->setText(QString::fromUtf8("repeatable Δ"));
 
     const auto first = composer.Compose();
     const auto second = composer.Compose();
@@ -295,6 +332,9 @@ void FullTextQueryComposerTest::
     QCOMPARE(Control<QComboBox>(composer, "fullTextQueryMode"), mode_selector);
     QCOMPARE(form->labelForField(mode_selector), mode_label);
     QCOMPARE(mode_label->text(), QStringLiteral("Mode:"));
+    QCOMPARE(Control<QLineEdit>(composer, "fullTextQueryText"), query_field);
+    QVERIFY(form->labelForField(query_field) == nullptr);
+    QCOMPARE(query_field->text(), QString::fromUtf8("repeatable Δ"));
     QVERIFY(preferences == original);
 }
 
