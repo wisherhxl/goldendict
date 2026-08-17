@@ -3936,7 +3936,7 @@ six-file scope, cross-document consistency, Phase terminology, successor
 neutrality, and the full Release, install, consumer, and exact-SCM verification
 described above.
 
-### Phase 8 full-text ignore-words-order label parity (selected)
+### Phase 8 full-text ignore-words-order label parity (complete)
 
 The independent documentation-only post-P8-FT-43 audit is pinned to clean
 migrated revision `f514fde0289fdb9d8139df03c0c4e81c5c6545a7`, its identical
@@ -3948,8 +3948,9 @@ leaf, P8-FT-44: restore the private full-text ignore-words-order label.
 
 The shared-library/GUI boundary governs this leaf. Pinned legacy
 `fulltextsearch.ui:83-89` gives the existing checkbox the exact translatable
-text `Ignore words order`; current `full_text_query_composer.cpp:89-92` uses
-`Ignore word order` for the mapped unique private
+text `Ignore words order`; before P8-FT-44,
+`full_text_query_composer.cpp:89-92` used `Ignore word order` for the mapped
+unique private
 `fullTextIgnoreWordOrder` checkbox. P8-FT-1 through P8-FT-43 already own its
 query semantics, persisted value, control behavior, tab sequence, containing
 layout, and request lifecycle. Widgets therefore owns the complete text-only
@@ -3970,10 +3971,10 @@ formats, dependencies/builds, public/Core or composition-root changes, HTTP
 GET policy, and unrelated parity are excluded and remain unranked. No
 successor after P8-FT-44 is selected or ranked.
 
-Focused acceptance extends only `full_text_query_composer_test` to prove the
-unique checkbox's exact text and preserve its identity, state, enablement,
-composition semantics, and relevant control-transition regressions. The
-focused Release command is
+Completed focused acceptance extends only `full_text_query_composer_test` to
+prove the unique checkbox's exact text and preserve its identity, state,
+enablement, composition semantics, and relevant control-transition regressions.
+The focused Release command is
 `ctest --preset conan-release -R '^full_text_query_composer_test$'`. The full
 implementation gate remains Linux Release configure/build, exactly 109
 registered tests and full Release CTest, Release install, packaged consumers,
@@ -3988,20 +3989,20 @@ conan create . --build=missing \
 
 P8-FT-44 adds no executable, registration, installed header, DTO, ABI,
 dependency, CMake export, or Conan requirement, so both consumers remain
-unchanged and source-compatible. The future implementation changes only the
+unchanged and source-compatible. The implementation changes only the
 private composer, its existing focused test, and these four governing
 documents.
+
+P8-FT-44 is complete. No successor is selected or ranked.
 
 Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
 text mapping or acceptance semantics, any second label or behavior change,
 layout, mnemonic, translation-catalog, public/Core or composition-root
 expansion, dependency or installed-surface change, an architectural decision
 requiring HTTP GET policy, discovery of another required file, or scope
-expansion. This selection audit changes documentation only, so compiled
-verification is intentionally skipped; exact four-file scope, cross-document
-consistency, Phase terminology, successor neutrality, and `git diff --check`
-are its verification gate.
-
+expansion. Its gate is exact six-file scope, cross-document consistency, Phase
+terminology, successor neutrality, and the full Release, install, consumer,
+and exact-SCM verification described above.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

@@ -97,6 +97,10 @@ void FullTextQueryComposerTest::MapsTextBooleansAndFixedDefaults() {
     preferences.full_text_ignore_diacritics = true;
     preferences.full_text_ignore_word_order = true;
     FullTextQueryComposer composer(preferences);
+    auto* ignore_order =
+        Control<QCheckBox>(composer, "fullTextIgnoreWordOrder");
+
+    QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
 
     const QString text = QString::fromUtf8("Straße 日本語 café 😀");
     Control<QLineEdit>(composer, "fullTextQueryText")->setText(text);
@@ -116,7 +120,10 @@ void FullTextQueryComposerTest::MapsTextBooleansAndFixedDefaults() {
 
     Control<QCheckBox>(composer, "fullTextMatchCase")->setChecked(false);
     Control<QCheckBox>(composer, "fullTextIgnoreDiacritics")->setChecked(false);
-    Control<QCheckBox>(composer, "fullTextIgnoreWordOrder")->setChecked(false);
+    ignore_order->setChecked(false);
+    QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
+             ignore_order);
+    QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
     const auto cleared = composer.Compose();
     QVERIFY(!cleared.match_case);
     QVERIFY(!cleared.ignore_diacritics);
@@ -174,8 +181,18 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
     preferences.full_text_use_maximum_word_distance = true;
     preferences.full_text_maximum_word_distance = 37U;
     FullTextQueryComposer composer(preferences);
+    const auto ignore_order_controls = composer.findChildren<QCheckBox*>(
+        QStringLiteral("fullTextIgnoreWordOrder"));
+    QCOMPARE(ignore_order_controls.size(), 1);
     auto* ignore_order =
         Control<QCheckBox>(composer, "fullTextIgnoreWordOrder");
+    QCOMPARE(ignore_order_controls.constFirst(), ignore_order);
+    QCOMPARE(ignore_order->objectName(),
+             QStringLiteral("fullTextIgnoreWordOrder"));
+    QCOMPARE(ignore_order->parentWidget(), &composer);
+    QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
+    QVERIFY(ignore_order->isChecked());
+    QVERIFY(ignore_order->isEnabled());
     auto* use_distance =
         Control<QCheckBox>(composer, "fullTextUseMaximumWordDistance");
     auto* distance = Control<QSpinBox>(composer, "fullTextMaximumWordDistance");
@@ -184,6 +201,9 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
          {goldendict::core::FullTextSearchMode::kWildcard,
           goldendict::core::FullTextSearchMode::kRegularExpression}) {
         SelectMode(composer, mode);
+        QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
+                 ignore_order);
+        QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
         QVERIFY(!ignore_order->isEnabled());
         QVERIFY(!use_distance->isEnabled());
         QVERIFY(!distance->isEnabled());
@@ -198,6 +218,9 @@ void FullTextQueryComposerTest::RetainsValuesAcrossModeTransitions() {
          {goldendict::core::FullTextSearchMode::kPlainText,
           goldendict::core::FullTextSearchMode::kWholeWords}) {
         SelectMode(composer, mode);
+        QCOMPARE(Control<QCheckBox>(composer, "fullTextIgnoreWordOrder"),
+                 ignore_order);
+        QCOMPARE(ignore_order->text(), QStringLiteral("Ignore words order"));
         QVERIFY(ignore_order->isEnabled());
         QVERIFY(use_distance->isEnabled());
         QVERIFY(distance->isEnabled());

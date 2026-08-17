@@ -3011,17 +3011,17 @@ six-file scope, cross-document consistency, Phase terminology, successor
 neutrality, and the full Release, install, consumer, and exact-SCM verification
 described above.
 
-## Phase 8 Full-Text Ignore-Words-Order Label Gate (Selected)
+## Phase 8 Full-Text Ignore-Words-Order Label Gate (Complete)
 
 The documentation-only post-P8-FT-43 audit selects P8-FT-44 as the sole next
 leaf. Pinned legacy `fulltextsearch.ui:83-89` gives the existing checkbox the
-exact translatable text `Ignore words order`; current
-`full_text_query_composer.cpp:89-92` uses `Ignore word order` for the mapped
+exact translatable text `Ignore words order`; before P8-FT-44,
+`full_text_query_composer.cpp:89-92` used `Ignore word order` for the mapped
 unique private `fullTextIgnoreWordOrder` checkbox. P8-FT-1 through P8-FT-43
 supply its complete query, persistence, control, tab, containing-layout, and
 request-lifecycle prerequisites.
 
-Future focused acceptance extends only `full_text_query_composer_test`. It
+Completed focused acceptance extends only `full_text_query_composer_test`. It
 proves the unique checkbox has exact text `Ignore words order` and preserves
 its identity, parentage, checked/enabled state, ordering, focus/tab behavior,
 mode-dependent behavior, and query composition through relevant control
@@ -3054,16 +3054,16 @@ lifecycle/UI, Preferences, adapters and index formats, dependencies/builds,
 public/Core or composition-root changes, HTTP GET policy, and unrelated tests
 are excluded and unranked. No successor after P8-FT-44 is selected or ranked.
 
-The future implementation changes only the private composer, its existing
-focused test, and these four governing documents. Implementation must stop on
-ref/worktree drift, legacy dirtiness, ambiguous text mapping or acceptance
-semantics, any second label or behavior change, layout, mnemonic,
+P8-FT-44 is complete. The implementation changes only the private composer,
+its existing focused test, and these four governing documents. Implementation
+must stop on ref/worktree drift, legacy dirtiness, ambiguous text mapping or
+acceptance semantics, any second label or behavior change, layout, mnemonic,
 translation-catalog, public/Core or composition-root expansion, dependency or
 installed-surface change, an architectural decision requiring HTTP GET policy,
-discovery of another required file, or scope expansion. This selection audit
-is documentation-only, so compiled verification is intentionally skipped; its
-gate is exact four-file scope, cross-document consistency, Phase terminology,
-successor neutrality, and `git diff --check`.
+discovery of another required file, or scope expansion. Its gate is exact
+six-file scope, cross-document consistency, Phase terminology, successor
+neutrality, and the full Release, install, consumer, and exact-SCM verification
+described above.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

@@ -86,7 +86,7 @@ FullTextQueryComposer::FullTextQueryComposer(
         QStringLiteral("fullTextIgnoreDiacritics"));
     ignore_diacritics_->setChecked(preferences.full_text_ignore_diacritics);
 
-    ignore_word_order_ = new QCheckBox(tr("Ignore word order"), this);
+    ignore_word_order_ = new QCheckBox(tr("Ignore words order"), this);
     ignore_word_order_->setObjectName(
         QStringLiteral("fullTextIgnoreWordOrder"));
     ignore_word_order_->setChecked(preferences.full_text_ignore_word_order);
