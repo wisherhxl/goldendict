@@ -3468,6 +3468,64 @@ Preferences/index policy; index lifecycle; adapters/index formats;
 dependencies; builds; and unrelated parity remain independently decomposed,
 unselected, and unranked. No successor after P8-FT-35 is selected or ranked.
 
+### Phase 8 full-text Help activation intent (selected)
+
+The independent documentation-only post-P8-FT-35 audit is pinned to clean
+migrated revision `89019d32113e4c68985756aa7a04e158951e1893`, its identical
+upstream and live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks the four governing
+migration documents and relevant current and pinned legacy code without
+advance ranking and selects exactly one smallest dependency-ready leaf,
+P8-FT-36: restore the private full-text Help activation intent.
+
+The shared-library/GUI boundary governs this leaf. Pinned legacy
+`fulltextsearch.ui:250-255` supplies one `Help` button, and
+`fulltextsearch.cc:300-309,676-680` connects that button and an F1 action with
+`Qt::WidgetWithChildrenShortcut` to the same dialog help request. Current
+`full_text_search_dialog.cpp:47-155` has neither control nor action. The
+current application also has no equivalent dependency-ready full-text help
+destination: its Help menu intentionally omits the legacy reference action and
+F1 shortcut. Widgets therefore owns only intent production; Core and installed
+consumers do not acquire a GUI or help-system contract.
+
+P8-FT-36 adds one private `fullTextHelpButton` with text `Help` to the existing
+bottom control row and one private `fullTextHelpAction` whose exact shortcut is
+F1 and whose context is `Qt::WidgetWithChildrenShortcut`. Activating either
+emits exactly one argument-free private `HelpRequested()` signal. The dialog
+remains open, and activation does not submit or cancel a search, alter the query,
+accepted response, result model, or selection, impose focus behavior beyond
+normal Qt button/shortcut activation, capture geometry, or mutate
+configuration. Repeated independent activations remain deterministic.
+
+Help-content lookup, a help window or engine, URL selection or dispatch,
+composition-root consumption, Help-menu changes, embedded documentation, and
+HTTP GET policy are excluded. Query semantics, excerpts, exact document/source
+targeting, decoration, Preferences/index policy, index lifecycle,
+adapters/index formats, dependencies, builds, remaining dialog layout/state,
+and unrelated parity also remain independently decomposed, unselected, and
+unranked.
+
+Focused future implementation acceptance extends
+`full_text_search_dialog_test` to prove the button identity and text, the F1
+shortcut and context, exactly one signal for each activation, deterministic
+repetition, and unchanged idle and active-search state, response, lifecycle,
+and geometry behavior. The focused Release command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release target has been built.
+
+The full future implementation gate remains Linux Release configure/build,
+exactly 109 registered tests and full `ctest --preset conan-release`, clean
+committed exact-SCM `conan create` with the Release Qt WebEngine host profile
+and packaged consumers, Release install, and standalone installed C and C++
+consumers. P8-FT-36 adds no test executable, installed header, DTO, ABI,
+dependency, CMake export, or Conan requirement, so both consumers must remain
+unchanged and source-compatible. No successor after P8-FT-36 is selected or
+ranked. Implementation must stop on ref/worktree drift, legacy dirtiness,
+ambiguous help evidence or acceptance, any choice of help destination or
+transport, a public/Core or composition-root contract, dependency or installed
+surface change, architectural decision requiring HTTP GET policy, or scope
+expansion.
+
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

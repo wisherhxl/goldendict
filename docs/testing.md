@@ -2665,6 +2665,48 @@ ref/worktree drift, legacy dirtiness, ambiguous sizing evidence or acceptance,
 an architectural choice requiring HTTP GET policy, or scope expansion; pinned
 checks repeat before commit and push.
 
+### Phase 8 full-text Help activation-intent acceptance (selected)
+
+The documentation-only post-P8-FT-35 audit selects P8-FT-36 as the sole next
+leaf. Pinned legacy `fulltextsearch.ui:250-255` and
+`fulltextsearch.cc:300-309,676-680` require one private `Help` button and one F1
+action with `Qt::WidgetWithChildrenShortcut` to produce the same dialog help
+request. Current Widgets has neither activation path.
+
+Future focused coverage extends `full_text_search_dialog_test`; it adds no
+executable or registered test. It must prove `fullTextHelpButton` and its exact
+`Help` text, `fullTextHelpAction` and its exact F1 shortcut and
+widget-with-children context, exactly one argument-free private
+`HelpRequested()` signal per button or shortcut activation,
+and deterministic repeated independent activations. Both idle and active
+search cases must leave the modeless dialog open and preserve request,
+cancellation, query, accepted response, model, selection, completion,
+geometry capture, configuration, service replacement, detachment, and teardown
+behavior; no focus policy beyond normal Qt button/shortcut activation is added.
+
+The focused future command is
+`ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
+Release build. The full future implementation gate remains Linux Release
+configure/build, exactly 109 registered tests and full
+`ctest --preset conan-release`, clean committed exact-SCM `conan create` with
+the Release Qt WebEngine host profile and packaged consumers, Release install,
+and standalone installed C and C++ consumers. P8-FT-36 changes no installed
+header, DTO, ABI, dependency, CMake export, or Conan requirement, so both
+consumers remain unchanged and source-compatible.
+
+This audit changes documentation only. Compiled builds, tests, package/install
+verification, and standalone consumers are intentionally skipped because no
+production, test, build, dependency, or installed-interface input changes.
+
+Help content, destination and transport, composition-root consumption,
+Help-menu changes, Core/public contracts, dependencies, installed surfaces,
+and every other parity gap remain excluded and unranked. No successor after
+P8-FT-36 is selected or ranked. Implementation must stop on ref/worktree
+drift, legacy dirtiness, ambiguous help evidence or acceptance, any help
+destination or transport choice, a public/Core or composition-root contract,
+dependency or installed-surface change, an architectural decision requiring
+HTTP GET policy, or scope expansion.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

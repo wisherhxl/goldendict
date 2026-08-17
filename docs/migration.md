@@ -3601,6 +3601,47 @@ ref/worktree drift, legacy dirtiness, ambiguous sizing evidence or acceptance,
 an architectural choice requiring HTTP GET policy, or scope expansion; pinned
 checks repeat before commit and push.
 
+### Phase 8 full-text Help activation intent (selected)
+
+The independent documentation-only post-P8-FT-35 audit is pinned to migrated
+revision `89019d32113e4c68985756aa7a04e158951e1893`, its identical upstream and
+live remote, and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After auditing the governing
+documents and current and pinned legacy code without advance ranking, it
+selects exactly P8-FT-36: the private full-text Help activation intent.
+
+Pinned legacy `fulltextsearch.ui:250-255` and
+`fulltextsearch.cc:300-309,676-680` provide the bounded parity contract: one
+`Help` button and one F1 action with `Qt::WidgetWithChildrenShortcut` produce
+the same dialog help request. The current private dialog has neither. Under the
+shared-library/GUI boundary, P8-FT-36 adds those two private Widgets activation
+paths: `fullTextHelpButton` with exact text `Help`, `fullTextHelpAction` with
+exact F1 shortcut and `Qt::WidgetWithChildrenShortcut`, and one argument-free
+private `HelpRequested()` signal. Each activation emits exactly once, leaves
+the modeless dialog open, and does not submit or cancel a search, alter
+query/result/accepted-response state or selection, impose focus behavior beyond
+normal Qt activation, capture geometry, or mutate configuration.
+
+Actual help content, help-window/engine construction, URLs or dispatch,
+composition-root consumption, Help-menu changes, embedded documentation, HTTP
+GET policy, Core/public contracts, dependencies, installed interfaces, and all
+other full-text or migration parity remain excluded and unranked. The future
+focused acceptance extends `full_text_search_dialog_test` for exact button,
+shortcut/context, single-emission, repeated activation, and idle/active state,
+lifecycle, and geometry regressions.
+
+The full future gate is Linux Release configure/build, exactly 109 registered
+tests, full Release CTest, clean committed exact-SCM `conan create` with the
+Release Qt WebEngine host profile and packaged consumers, Release install, and
+standalone installed C and C++ consumers. There is no test registration,
+installed header, DTO, ABI, dependency, CMake export, or Conan requirement
+change; both consumers remain unchanged and source-compatible. No successor
+after P8-FT-36 is selected or ranked. Implementation must stop on ref/worktree
+drift, legacy dirtiness, ambiguous help evidence or acceptance, selection of a
+help destination or transport, a public/Core or composition-root contract,
+dependency or installed-surface change, an architectural decision requiring
+HTTP GET policy, or scope expansion.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

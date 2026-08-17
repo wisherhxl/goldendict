@@ -116,6 +116,20 @@ Legacy configuration, groups, history, and favorites must not be silently
 discarded. Migration may normalize representation only with tested read/upgrade
 behavior and a recoverable failure path.
 
+The independent post-P8-FT-35 audit supersedes the Full-text search row's
+historical no-successor closure and selects exactly P8-FT-36, the private
+full-text Help activation intent. Pinned legacy
+`fulltextsearch.ui:250-255` and `fulltextsearch.cc:300-309,676-680` require one
+`Help` button and one dialog-scoped F1 action to produce the same help request;
+current Widgets has neither. The selected leaf adds only private
+`fullTextHelpButton`, `fullTextHelpAction`, and argument-free
+`HelpRequested()` intent. Help content,
+destination/transport, composition-root consumption, Help-menu changes,
+Core/public or installed contracts, dependencies, and all other parity remain
+excluded and unranked. The Release registration baseline remains exactly 109
+tests, and installed C and C++ consumers remain unchanged and source-compatible.
+No successor after P8-FT-36 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |
