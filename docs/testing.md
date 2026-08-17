@@ -2903,7 +2903,7 @@ broader layout choice, public/Core or composition-root expansion, dependency or 
 surface change, an architectural decision requiring HTTP GET policy, discovery
 of another required file, or scope expansion.
 
-## Phase 8 Full-Text Button-Row Spacer Sequence Gate (Selected)
+## Phase 8 Full-Text Button-Row Spacer Sequence Gate (Complete)
 
 The documentation-only post-P8-FT-41 audit selects P8-FT-42 as the sole next
 leaf. Pinned legacy `fulltextsearch.ui:190-270` places expanding horizontal
@@ -2912,7 +2912,7 @@ after Help; the mapped current private row retains only the two outer
 stretches. P8-FT-36 through P8-FT-38 supply the complete Help, Search-default,
 and tab-sequence prerequisites.
 
-Future focused acceptance extends only `full_text_search_dialog_test`. It
+Completed focused acceptance extends only `full_text_search_dialog_test`. It
 proves one button row attached to the enclosing vertical layout with the exact
 seven-item sequence spacer, `fullTextSearchButton`, spacer,
 `fullTextCancelButton`, spacer, `fullTextHelpButton`, spacer; all four spacers
@@ -2941,10 +2941,11 @@ lifecycle/UI, Preferences, adapters/index formats, dependencies/builds,
 public/Core or composition-root expansion, HTTP GET policy, and unrelated tests
 are excluded and unranked. No successor after P8-FT-42 is selected or ranked.
 
-This selection audit changes documentation only, so compiled verification is
-intentionally skipped. Its gate is exact four-file scope, cross-document
-consistency, Phase terminology, successor neutrality, and `git diff --check`.
-Implementation must stop on ref/worktree drift, legacy dirtiness, ambiguous
+The completed implementation changes only private dialog construction, its
+existing focused test, and these four governing documents. Its gate is exact
+scope, cross-document consistency, Phase terminology, successor neutrality,
+and the full Release, install, consumer, and exact-SCM verification described
+above. Implementation stops on ref/worktree drift, legacy dirtiness, ambiguous
 layout evidence or acceptance semantics, any exact spacer-size, stretch-factor,
 margin, spacing, style, or broader layout choice, public/Core or composition-
 root expansion, dependency or installed-surface change, an architectural

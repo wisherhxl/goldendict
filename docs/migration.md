@@ -3892,7 +3892,7 @@ four governing documents; its gate is exact scope, cross-document consistency,
 Phase terminology, successor language, and the full Release, install, consumer,
 and exact-SCM verification described above.
 
-### Phase 8 full-text button-row spacer sequence (selected)
+### Phase 8 full-text button-row spacer sequence (complete)
 
 The independent documentation-only post-P8-FT-41 audit is pinned to clean
 migrated revision `2a1f8e6dfbcb72368ea8e7a1c27179bb5ff3b5fb`, its identical
@@ -3909,7 +3909,7 @@ Search default policy, and the exact tab sequence. The shared-library/GUI
 boundary keeps this correction in private Widgets and leaves Core,
 composition-root, public, and installed contracts unchanged.
 
-The future implementation retains one private horizontal button layout with
+The completed implementation retains one private horizontal button layout with
 the exact item sequence expanding horizontal spacer,
 `fullTextSearchButton`, expanding horizontal spacer,
 `fullTextCancelButton`, expanding horizontal spacer, `fullTextHelpButton`, and
@@ -3926,10 +3926,11 @@ lifecycle/UI, Preferences, adapters/index formats, dependencies/builds,
 public/Core or composition-root changes, HTTP GET policy, and unrelated parity
 are excluded and unranked. No successor after P8-FT-42 is selected or ranked.
 
-Future focused acceptance extends only `full_text_search_dialog_test` to prove
-the unique button row, exact seven-item spacer/button sequence, horizontal
-expansion of all four spacers, enclosing-layout attachment, unchanged button
-contracts, and lifecycle regressions. The focused Release command is
+Completed focused acceptance extends only `full_text_search_dialog_test` to
+prove the unique button row, exact seven-item spacer/button sequence,
+horizontal expansion of all four spacers, enclosing-layout attachment,
+unchanged button contracts, and lifecycle regressions. The focused Release
+command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'`. The full
 gate remains Linux Release configure/build, exactly 109 registered tests, full
 Release CTest, clean committed exact-SCM `conan create` with the Release Qt

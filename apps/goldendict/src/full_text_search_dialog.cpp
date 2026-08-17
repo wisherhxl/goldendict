@@ -146,7 +146,9 @@ FullTextSearchDialog::FullTextSearchDialog(
     auto* buttons = new QHBoxLayout;
     buttons->addStretch();
     buttons->addWidget(search_button_);
+    buttons->addStretch();
     buttons->addWidget(cancel_button_);
+    buttons->addStretch();
     buttons->addWidget(help_button_);
     buttons->addStretch();
     layout->addLayout(buttons);
