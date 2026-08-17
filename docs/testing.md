@@ -2331,7 +2331,7 @@ counts, all error categories, response-status coexistence, replacement and
 lifecycle safety, and raw-detail privacy without changing the 109-test
 registration baseline. No successor is selected or ranked.
 
-## Phase 8 Full-Text Accepted-Query Activation Context Gate (Selected)
+## Phase 8 Full-Text Accepted-Query Activation Context Gate (Complete)
 
 The post-P8-FT-27 documentation audit selects only P8-FT-28. Completed current-
 generation acceptance, response retention, immutable activation scope, and
@@ -2339,7 +2339,7 @@ exact result delivery make the submitted query text and authoritative
 `ignore_diacritics` value independently retainable as private activation
 context without changing Core or an installed interface.
 
-Focused future coverage must prove that each submitted generation captures its
+Focused coverage proves that each submitted generation captures its
 exact UTF-8 query text and `ignore_diacritics` value and that only acceptance of
 the current terminal generation makes that pair activatable. Activation must
 deliver the accepted pair by value with the existing exact result and ordered,
@@ -2353,15 +2353,15 @@ retain, revive, or overwrite incorrect context. Existing result projection,
 ordering, selection, focus, count, statuses, response synchronization, scope,
 and current scoped-navigation coverage must remain green.
 
-The focused future command is
+The focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The completed implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. P8-FT-28 adds no test executable or
 public/installed interface, so the registered Release baseline remains 109
-tests. This documentation-only audit requires no build or compiled test.
+tests.
 
 Highlighting, ignore-diacritics transfer, WebEngine handoff, match-range or
 excerpt presentation, exact `document_id` navigation and source targeting,

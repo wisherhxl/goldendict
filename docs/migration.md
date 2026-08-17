@@ -3139,7 +3139,7 @@ therefore presents only the migrated response's bounded aggregate error count.
 P8-FT-27 is complete.
 No successor after P8-FT-27 is selected or ranked.
 
-### Phase 8 full-text accepted-query activation context (selected)
+### Phase 8 full-text accepted-query activation context (complete)
 
 The independent documentation-only post-P8-FT-27 readiness audit is pinned to
 clean migrated revision `e7cac3de2fc190e97ca3340a853f972efab3c528` and the
@@ -3169,20 +3169,20 @@ cannot introduce, restore, or overwrite activation context. Results, ordering,
 selection, focus, count, statuses, response ownership, and current scoped
 navigation behavior remain unchanged.
 
-Focused future acceptance covers distinct submitted and subsequently edited
+Focused acceptance covers distinct submitted and subsequently edited
 query text; `ignore_diacritics` true and false; repeated accepted generations;
 ordered, authoritative-empty, and absent dictionary scope; exact by-value
 result and context delivery; replacement reset; copied-lifetime independence;
 and stale, cancelled, detached, replaced-service, and teardown completion
-safety. The focused future command is
+safety. The focused command is
 `ctest --preset conan-release -R '^full_text_search_dialog_test$'` after the
-Release target has been built. The full future implementation gate remains
+Release target has been built. The completed implementation gate is
 Linux Release configure/build, full `ctest --preset conan-release` without an
 unintended registration delta, clean exact-SCM `conan create` with the Release
 Qt WebEngine host profile and packaged consumers, Release install, and
 standalone installed C and C++ consumers. P8-FT-28 adds no test executable or
 public/installed interface, so the registered Release baseline remains 109
-tests. This documentation-only audit requires no build or compiled test.
+tests.
 
 Consuming the retained context for highlighting or ignore-diacritics transfer,
 WebEngine handoff, match-range or excerpt presentation, and exact `document_id`
@@ -3202,7 +3202,7 @@ P8-FT-9/P8-FT-11/P8-FT-13/P8-FT-15/P8-FT-16, migrated
 `main_window.cpp:5887-5920`, and pinned legacy
 `fulltextsearch.cc:499-586`. Legacy activation transfers the search expression
 and ignore-diacritics choice with the selected headword, while the migrated
-activation intentionally consumes neither today. P8-FT-28 retains only the
+activation intentionally consumes neither today. P8-FT-28 completes only the
 accepted private prerequisite; it does not select a consumer. No successor
 after P8-FT-28 is selected or ranked.
 

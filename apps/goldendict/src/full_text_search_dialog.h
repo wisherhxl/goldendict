@@ -27,6 +27,8 @@ struct FullTextResultActivationIntent final {
     goldendict::core::FullTextResult result;
     bool dictionary_filter_active = false;
     std::vector<std::string> dictionary_ids;
+    std::string query_text;
+    bool ignore_diacritics = false;
 };
 
 class FullTextQueryComposer;
@@ -96,8 +98,15 @@ class FullTextSearchDialog final : public QDialog {
         std::vector<std::string> dictionary_ids;
     };
 
+    struct ActivationContext final {
+        std::string query_text;
+        bool ignore_diacritics = false;
+    };
+
     std::optional<ActivationScope> pending_activation_scope_;
     std::optional<ActivationScope> accepted_activation_scope_;
+    std::optional<ActivationContext> pending_activation_context_;
+    std::optional<ActivationContext> accepted_activation_context_;
     std::optional<std::uint64_t> active_generation_;
     std::uint64_t generation_ = 0U;
 };

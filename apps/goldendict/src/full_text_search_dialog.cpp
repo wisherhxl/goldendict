@@ -154,6 +154,7 @@ void FullTextSearchDialog::SetService(
     const goldendict::core::DictionaryService* service) {
     active_generation_.reset();
     pending_activation_scope_.reset();
+    pending_activation_context_.reset();
     RestoreIdleState();
     controller_.SetService(service);
 }
@@ -161,6 +162,7 @@ void FullTextSearchDialog::SetService(
 void FullTextSearchDialog::DetachController() {
     active_generation_.reset();
     pending_activation_scope_.reset();
+    pending_activation_context_.reset();
     RestoreIdleState();
     controller_.DetachConsumer();
 }
@@ -207,8 +209,11 @@ void FullTextSearchDialog::SubmitSearch() {
     UpdatePartialEmptyStatus();
     UpdateErrorCountStatus();
     accepted_activation_scope_.reset();
+    accepted_activation_context_.reset();
     pending_activation_scope_ =
         ActivationScope{query.dictionary_filter_active, query.dictionary_ids};
+    pending_activation_context_ =
+        ActivationContext{query.text, query.ignore_diacritics};
     active_generation_ = ++generation_;
     progress_->show();
     search_button_->setEnabled(false);
@@ -219,6 +224,7 @@ void FullTextSearchDialog::SubmitSearch() {
 void FullTextSearchDialog::CancelSearch() {
     active_generation_.reset();
     pending_activation_scope_.reset();
+    pending_activation_context_.reset();
     controller_.Cancel();
     RestoreIdleState();
 }
@@ -231,6 +237,8 @@ void FullTextSearchDialog::FinishSearch(
     active_generation_.reset();
     accepted_activation_scope_ = std::move(pending_activation_scope_);
     pending_activation_scope_.reset();
+    accepted_activation_context_ = std::move(pending_activation_context_);
+    pending_activation_context_.reset();
     response_ = std::move(response);
     ResetResults(*response_);
     UpdateResultCount();
@@ -253,10 +261,13 @@ void FullTextSearchDialog::ActivateResult(const QModelIndex& index) {
     if (!index.isValid() || index != results_->currentIndex())
         return;
     const auto* result = response_model_->ResultAt(index);
-    if (result != nullptr && accepted_activation_scope_.has_value()) {
+    if (result != nullptr && accepted_activation_scope_.has_value() &&
+        accepted_activation_context_.has_value()) {
         emit ResultActivationRequested(FullTextResultActivationIntent{
             *result, accepted_activation_scope_->dictionary_filter_active,
-            accepted_activation_scope_->dictionary_ids});
+            accepted_activation_scope_->dictionary_ids,
+            accepted_activation_context_->query_text,
+            accepted_activation_context_->ignore_diacritics});
     }
 }
 
