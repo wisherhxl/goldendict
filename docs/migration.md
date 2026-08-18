@@ -4719,6 +4719,52 @@ consumers, exact six-file repository validation, and clean synchronized
 refs/worktrees. Completion unlocks only a fresh independent bounded full-text
 readiness audit; it does not select or rank its outcome.
 
+### Phase 8 full-text empty-status translation (selected)
+
+The fresh documentation-only post-P8-FT-54 audit verified migrated HEAD, local
+branch, upstream, and live remote clean and equal at
+`d0dacfbd2565658ee610cdc8a7a4dda24f32e329`, and the read-only legacy checkout,
+upstream, and live `origin/master` clean and equal at
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly P8-FT-55: the
+existing private empty-response status `No matches` must resolve through the
+`goldendict::app::FullTextSearchDialog` translation context. No successor after
+P8-FT-55 is selected or ranked.
+
+Completed P8-FT-23 owns the exact text, unique widget identity, and
+generation-current conclusive-empty visibility contract. Current
+`full_text_search_dialog.cpp:109-112` constructs it with `QStringLiteral`;
+P8-FT-52 through P8-FT-54 establish dialog-owned translation and focused scoped-
+translator coverage. Pinned legacy full-text sources contain no equivalent
+empty-response status, so no legacy wording or context conflicts with this
+migrated-only presentation.
+
+Implementation must change only `full_text_search_dialog.cpp` and
+`full_text_search_dialog_test.cpp`, constructing the label with dialog-owned
+`tr("No matches")`. Acceptance proves exact-context replacement, English
+fallback, stable widget identity/text, unchanged P8-FT-23 initial, replacement,
+nonempty, partial, error, stale, cancelled, and detached behavior, plus scoped
+translator cleanup. The Shared-Library and GUI Boundary remains governing; no
+catalog, locale loader, executable, registration, public/Core/config/index-
+format/dependency/build/composition-root, ABI, or installed contract changes.
+
+Exact completed translations `Full-text search`, `Search`, and
+`Results may be incomplete.` remain unchanged. Exact
+`Maximum word distance` with control-owned `0..1000` and
+`Maximum articles per dictionary` with control-owned `1..100000` remain locked.
+Other response strings/catalog readiness, accessibility, styling/layout,
+exact-document navigation, match/excerpt presentation, ignore-diacritics
+consumption, adapters/index formats, and unrelated parity remain independent and
+unranked. Index readiness/status/progress/rebuild/failure reporting/background
+lifecycle and full-text Preferences remain blocked on separate Core lifecycle/
+policy work.
+
+This audit changes only the four governing documents, omits compiled gates, and
+retains the exactly 109-test Release baseline. Stop without commit or push on
+drift, ambiguity, architecture/product alternatives, scope expansion, another
+required file, or failed validation not correctable within the allowlist.
+Completing P8-FT-55 unlocks only a fresh independent bounded full-text readiness
+audit.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

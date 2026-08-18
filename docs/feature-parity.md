@@ -617,6 +617,38 @@ refs/worktrees. The exactly 109-test baseline remains unchanged. Completion
 unlocks only a fresh independent bounded full-text readiness audit; no
 successor is selected or ranked.
 
+P8-FT-55 is the sole leaf selected by the fresh documentation-only audit from
+clean synchronized migrated revision
+`d0dacfbd2565658ee610cdc8a7a4dda24f32e329` and unchanged clean read-only legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It moves only the existing
+private `No matches` empty-response status into the exact
+`goldendict::app::FullTextSearchDialog` translation context. P8-FT-23 already
+locks the text, identity, and conclusive-empty lifecycle predicates; current
+`full_text_search_dialog.cpp:109-112` uses `QStringLiteral`, while P8-FT-52
+through P8-FT-54 and the focused dialog test establish the translation and test
+precedents. Pinned legacy has no equivalent status and no conflicting contract.
+
+Future implementation is limited to `full_text_search_dialog.cpp` and its
+focused test, using dialog-owned `tr("No matches")` and proving exact-context
+replacement, English fallback, unchanged identity/text and P8-FT-23 visibility,
+stale/cancelled/detached safety, and scoped translator cleanup. No catalog,
+locale loader, executable, registration, public/Core/config/index-format/
+dependency/build/composition-root, ABI, installed-surface, or test-baseline
+change is authorized. The exactly 109-test Release baseline remains unchanged.
+
+Completed translations `Full-text search`, `Search`, and
+`Results may be incomplete.` remain exact. The locked caption/control policies
+remain `Maximum word distance` with `0..1000` and
+`Maximum articles per dictionary` with `1..100000`. Other response strings and
+catalog readiness, accessibility, styling/layout, exact-document navigation,
+match/excerpt presentation, ignore-diacritics consumption, adapters/index
+formats, and unrelated parity remain independent and unranked. Index readiness,
+status, progress, rebuild/failure UI, background lifecycle, and full-text
+Preferences remain blocked on a separate Core lifecycle/policy boundary. This
+four-document-only selection omits compiled gates. No successor after P8-FT-55
+is selected or ranked; completing it unlocks only a fresh independent bounded
+full-text readiness audit.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

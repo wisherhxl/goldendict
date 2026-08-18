@@ -3605,6 +3605,54 @@ consumers. Final refs and both worktrees must remain synchronized and clean.
 Completion unlocks only a fresh independent bounded full-text readiness audit;
 no successor is selected or ranked.
 
+## Phase 8 Full-Text Empty-Status Translation Selection
+
+The fresh documentation-only audit from clean synchronized migrated revision
+`d0dacfbd2565658ee610cdc8a7a4dda24f32e329` and unchanged clean read-only legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects exactly P8-FT-55. The
+existing `fullTextEmptyResponseStatus` must retain exact source and fallback text
+`No matches` while resolving through
+`goldendict::app::FullTextSearchDialog::tr()`.
+
+P8-FT-23 already supplies the unique identity and generation-current
+conclusive-empty visibility contract. Current
+`full_text_search_dialog.cpp:109-112` uses `QStringLiteral`; P8-FT-52 through
+P8-FT-54 and `full_text_search_dialog_test.cpp` supply the exact context and
+scoped-translator pattern. Pinned legacy contains no equivalent empty-response
+status and therefore no conflicting translation contract.
+
+The implementation gate is limited to `full_text_search_dialog.cpp` and its
+existing focused test. Coverage must install an exact-context translator and
+prove replacement, then prove English fallback after scoped cleanup. The same
+test must retain exact widget identity and text and all P8-FT-23 predicates:
+hidden initially and during replacement; visible only for a generation-current
+accepted response with zero results, `partial == false`, and no errors; hidden
+for nonempty, partial, or error-containing responses; and immune to stale,
+cancelled, and detached completions.
+
+No catalog, locale loader, executable, registration, public/Core/config/index-
+format/dependency/build/composition-root, ABI, installed-interface, or test-
+registration change is authorized. Completed translations `Full-text search`,
+`Search`, and `Results may be incomplete.` remain exact. The locked policies
+remain `Maximum word distance` with control-owned `0..1000` and
+`Maximum articles per dictionary` with control-owned `1..100000`. Other
+response strings/catalog readiness, accessibility, styling/layout, exact-
+document navigation, match/excerpt presentation, ignore-diacritics consumption,
+adapters/index formats, and unrelated tests remain independent and unranked.
+Index readiness/status/progress/rebuild/failure UI/background lifecycle and
+full-text Preferences remain blocked on a separate Core lifecycle/policy
+boundary.
+
+This selection changes only four documents, omits compiled gates, and retains
+the exactly 109-test Release baseline. Documentation acceptance is exact-ref and
+clean-worktree verification, four-file allowlist, cross-document and pinned-
+evidence consistency, locked-policy and no-successor checks, Phase terminology,
+full-diff review, and `git diff --check`. Stop on drift, ambiguity, architecture
+or product alternatives, scope expansion, another required file, or an
+uncorrectable validation failure. No successor after P8-FT-55 is selected or
+ranked; completing it unlocks only a fresh independent bounded full-text
+readiness audit.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
