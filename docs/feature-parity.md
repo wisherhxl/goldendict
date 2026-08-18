@@ -676,8 +676,8 @@ full-text Preferences remain blocked on a separately evidenced Core lifecycle/
 policy boundary. The exactly 109-test Release baseline is preserved. P8-FT-56
 completion unlocks only a fresh independent bounded full-text readiness audit.
 
-P8-FT-57 is the sole leaf selected by the fresh independent bounded
-post-P8-FT-56 audit from clean synchronized migrated revision
+P8-FT-57 is complete. It was the sole leaf selected by the fresh independent
+bounded post-P8-FT-56 audit from clean synchronized migrated revision
 `491d85500d27df280c19d4a62a2adc9e14d55a33` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It translates only
 the existing private mixed-result status through
@@ -686,13 +686,13 @@ text `Some dictionaries could not be searched`.
 
 P8-FT-25 already owns `fullTextMixedResultResponseStatus`, its exact text, and
 its generation-current result-plus-error visibility and partial-status
-coexistence predicates. Current `full_text_search_dialog.cpp` still uses
-`QStringLiteral`; P8-FT-52 through P8-FT-56 establish the exact dialog-owned
-translation context and scoped-translator pattern. Pinned legacy contains no
+coexistence predicates. P8-FT-57 replaces the former `QStringLiteral`
+construction with dialog-owned `tr`; P8-FT-52 through P8-FT-56 establish the
+exact dialog-owned translation context and scoped-translator pattern. Pinned legacy contains no
 equivalent mixed-result status or conflicting contract, so no architecture or
 product choice remains.
 
-The future P8-FT-57 implementation dependency is exactly
+The completed P8-FT-57 implementation changes exactly
 `apps/goldendict/src/full_text_search_dialog.cpp` and
 `apps/goldendict/tests/full_text_search_dialog_test.cpp`. It is limited to
 dialog-owned `tr("Some dictionaries could not be searched")` and focused
@@ -712,8 +712,9 @@ background lifecycle and full-text Preferences remain blocked on separately
 evidenced Core lifecycle/policy work. Exact-document navigation,
 result/match/excerpt presentation, ignore-diacritics consumption,
 adapters/index formats, accessibility, styling/layout, catalogs, and unrelated
-parity remain independent and unranked. No successor after P8-FT-57 is
-selected, ranked, recommended, or named.
+parity remain independent and unranked. P8-FT-57 completion unlocks only a
+fresh independent bounded readiness audit; no successor is selected, ranked,
+recommended, or named.
 
 ## Resources And Platform Integration
 

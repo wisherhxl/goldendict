@@ -117,8 +117,8 @@ FullTextSearchDialog::FullTextSearchDialog(
     failure_status_->hide();
     layout->addWidget(failure_status_);
 
-    mixed_result_status_ = new QLabel(
-        QStringLiteral("Some dictionaries could not be searched"), this);
+    mixed_result_status_ =
+        new QLabel(tr("Some dictionaries could not be searched"), this);
     mixed_result_status_->setObjectName(
         QStringLiteral("fullTextMixedResultResponseStatus"));
     mixed_result_status_->hide();

@@ -4737,28 +4737,28 @@ four governing documents. The Release baseline remains exactly 109 tests.
 P8-FT-56 completion unlocks only a fresh independent bounded full-text
 readiness audit.
 
-### Phase 8 full-text mixed-result-status translation (selected)
+### Phase 8 full-text mixed-result-status translation (complete)
 
-The fresh independent bounded post-P8-FT-56 audit is pinned to clean
+The fresh independent bounded post-P8-FT-56 audit was pinned to clean
 synchronized migrated HEAD, local branch, upstream, and live remote at
 `491d85500d27df280c19d4a62a2adc9e14d55a33`, plus the unchanged clean
 read-only legacy checkout at
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Re-evaluation of every remaining
-visible and private full-text gap selects exactly one smallest independently
-evidence-ready leaf, P8-FT-57: translate the existing private mixed-result
+visible and private full-text gap selected exactly one smallest independently
+evidence-ready leaf, P8-FT-57: translating the existing private mixed-result
 status through the dialog's translation context.
 
 P8-FT-25 already owns the unique `fullTextMixedResultResponseStatus`, exact
 source and fallback text `Some dictionaries could not be searched`, and its
-generation-current mixed-result visibility contract. Current
-`full_text_search_dialog.cpp` still constructs that label with
-`QStringLiteral`, while P8-FT-52 through P8-FT-56 establish the exact private
+generation-current mixed-result visibility contract. P8-FT-57 changes that
+label's former `QStringLiteral` construction to dialog-owned `tr`, while
+P8-FT-52 through P8-FT-56 establish the exact private
 `goldendict::app::FullTextSearchDialog` translation context and focused scoped-
 translator pattern. Pinned legacy has no equivalent mixed-result status, so it
 supplies no conflicting wording or translation-context contract. No
 architecture or product choice remains.
 
-The future P8-FT-57 implementation dependency is exactly
+The completed P8-FT-57 implementation changes exactly
 `apps/goldendict/src/full_text_search_dialog.cpp` and
 `apps/goldendict/tests/full_text_search_dialog_test.cpp`: use dialog-owned
 `tr("Some dictionaries could not be searched")` and prove exact-context
@@ -4780,9 +4780,11 @@ navigation, result/match/excerpt presentation, ignore-diacritics consumption,
 adapters/index formats, accessibility, styling/layout, catalogs, and unrelated
 parity remain independent and unranked.
 
-This audit changes only the four governing documents, omits compiled gates,
-and preserves exactly 109 registered Release tests. No successor after
-P8-FT-57 is selected, ranked, recommended, or named.
+The completed leaf changes only the private dialog, its focused test, and the
+four governing documents. Focused and full Release gates, install and consumer
+checks, and clean exact-SCM package creation preserve exactly 109 registered
+Release tests. P8-FT-57 completion unlocks only a fresh independent bounded
+readiness audit; no successor is selected, ranked, recommended, or named.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

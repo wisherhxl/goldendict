@@ -4793,26 +4793,26 @@ lifecycle/policy boundary. The completed leaf has the exact six-file scope and
 preserves exactly 109 registered Release tests. P8-FT-56 completion unlocks
 only a fresh independent bounded full-text readiness audit.
 
-### Phase 8 full-text mixed-result-status translation (selected)
+### Phase 8 full-text mixed-result-status translation (complete)
 
-The fresh independent bounded post-P8-FT-56 audit is pinned to clean
+The fresh independent bounded post-P8-FT-56 audit was pinned to clean
 synchronized migrated HEAD, local branch, upstream, and live remote at
 `491d85500d27df280c19d4a62a2adc9e14d55a33`, plus unchanged clean read-only
-legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It re-evaluates
-every remaining visible and private full-text gap and selects exactly one
-smallest independently evidence-ready leaf, P8-FT-57: translate the existing
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It re-evaluated
+every remaining visible and private full-text gap and selected exactly one
+smallest independently evidence-ready leaf, P8-FT-57: translating the existing
 private mixed-result status through the dialog's translation context.
 
 Completed P8-FT-25 owns the unique `fullTextMixedResultResponseStatus`, exact
 source and fallback text `Some dictionaries could not be searched`, and the
 generation-current result-plus-error visibility contract without raw error
-details. Current `full_text_search_dialog.cpp` still constructs the label with
-`QStringLiteral`; P8-FT-52 through P8-FT-56 supply the exact private
+details. P8-FT-57 changes the label's former `QStringLiteral` construction to
+dialog-owned `tr`; P8-FT-52 through P8-FT-56 supply the exact private
 `goldendict::app::FullTextSearchDialog` context and scoped-translator test
 pattern. Pinned legacy has no equivalent mixed-result status or conflicting
 translation contract. No unresolved architecture or product choice remains.
 
-The future P8-FT-57 implementation dependency is exactly
+The completed P8-FT-57 implementation changes exactly
 `apps/goldendict/src/full_text_search_dialog.cpp` and
 `apps/goldendict/tests/full_text_search_dialog_test.cpp`. It changes only the
 label construction to dialog-owned
@@ -4835,8 +4835,10 @@ and full-text Preferences remain blocked on a separate fully evidenced Core
 lifecycle/policy boundary. Exact-document navigation, result/match/excerpt
 presentation, ignore-diacritics consumption, adapters/index formats,
 accessibility, styling/layout, catalogs, and unrelated parity remain independent
-and unranked. This documentation-only audit omits compiled gates. No successor
-after P8-FT-57 is selected, ranked, recommended, or named.
+and unranked. Focused and full Release gates, install and consumer checks, and
+clean exact-SCM package creation preserve the 109-test baseline. P8-FT-57
+completion unlocks only a fresh independent bounded readiness audit; no
+successor is selected, ranked, recommended, or named.
 
 ### Phase 9 — Linux Integration And Release Quality
 
