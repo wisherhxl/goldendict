@@ -647,6 +647,35 @@ Release baseline remains exactly 109 tests. No successor after P8-FT-55 is
 selected or ranked; completion unlocks only a fresh independent bounded full-
 text readiness audit.
 
+P8-FT-56 is the sole leaf selected by the independent documentation-only
+post-P8-FT-55 audit at clean synchronized migrated revision
+`1c0cbf5c9b88467cf7eae719eb71f5c1c14580f7` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The existing
+private `fullTextFailureResponseStatus` retains exact source and fallback text
+`Full-text search failed` and all completed P8-FT-24 lifecycle predicates; the
+leaf only moves its construction from `QStringLiteral` to the established
+`goldendict::app::FullTextSearchDialog` translation context.
+
+P8-FT-52 through P8-FT-55 provide the dialog-owned translation and scoped-test
+precedent, and pinned legacy contains no equivalent terminal-failure status.
+The future implementation is restricted to the private dialog source and its
+existing focused test. It adds no catalog, locale loader, executable,
+registration, public/Core/configuration/index-format/dependency/build/
+composition-root, ABI, installed-interface, or test-baseline change. The
+Shared-Library and GUI Boundary governs; no architecture or product decision is
+required.
+
+Completed translations `Full-text search`, `Search`,
+`Results may be incomplete.`, and `No matches` remain exact. The locked
+caption/control policies remain `Maximum word distance` with `0..1000` and
+`Maximum articles per dictionary` with `1..100000`. All other visible and
+private full-text gaps remain independent and unranked. Index readiness,
+status, progress, rebuild/failure reporting, background lifecycle, and
+full-text Preferences remain blocked on a separately evidenced Core lifecycle/
+policy boundary. This docs-only audit preserves the exactly 109-test Release
+baseline and unlocks only P8-FT-56 implementation; no successor beyond that
+leaf is selected, ranked, recommended, or named.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |
