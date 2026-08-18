@@ -3862,10 +3862,10 @@ and excerpts, diacritics, presentation, adapters, and other independent parity
 gaps remain excluded and unranked. No successor is selected or ranked. This
 completed prerequisite unlocks only its dependency boundary.
 
-### P8-FT-61 exact-result activation connection acceptance
+### P8-FT-61 exact-result activation connection acceptance (complete)
 
-The documentation-only audit is pinned to synchronized migrated revision
-`60267f6a8d7fae41e186213628c1cc228b1f5f61` and unchanged clean read-only
+The implementation starts from synchronized migrated revision
+`0394b031031c265c7799386996bcbda22e5b0a3b` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only
 P8-FT-61, the private GUI connection from an accepted full-text result to the
 `ExactArticleTarget` and `TabNavigationState` contract completed by P8-FT-60.
@@ -3890,14 +3890,16 @@ authoritative accepted scope and order, headword/title, main-query text/cursor/
 selection, lookup dispatch, and accepted-query article-search handoff remain
 unchanged. Widgets must not parse IDs or call a backend resolver directly.
 
-The same existing GUI smoke must cover invalid target, unavailable dictionary,
+The same existing GUI smoke covers invalid target, unavailable dictionary,
 missing/stale document, and existing tab-operation failure without tab,
 history/session, request, or article-search mutation, while retaining exactly
 `Unable to update article state` and exposing no raw detail. Cases are added to
 existing test executables only; no test registration is added and the Release
 baseline remains exactly 109 tests.
 
-Documentation acceptance requires the exact four-file allowlist, complete-diff
+Implementation acceptance requires the exact five-file allowlist comprising
+`apps/goldendict/src/main_window.cpp` and these four governing documents,
+complete-diff
 review, current and legacy citations, cross-document consistency, Phase
 terminology, the Shared-Library and GUI Boundary, completed P8-FT-60 foundation,
 locked strings/captions/ranges and completed behavior, unchanged public/

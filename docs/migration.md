@@ -4979,11 +4979,11 @@ behavior and exactly
 109 registered Release tests remain unchanged. No successor is selected or
 ranked. Completion unlocks only its dependency boundary.
 
-### Phase 8 P8-FT-61 exact-result activation connection (selected)
+### Phase 8 P8-FT-61 exact-result activation connection (complete)
 
-The fresh bounded documentation-only audit starts from synchronized migrated
+The implementation starts from synchronized migrated
 HEAD, upstream, and live remote revision
-`60267f6a8d7fae41e186213628c1cc228b1f5f61` and unchanged clean read-only
+`0394b031031c265c7799386996bcbda22e5b0a3b` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The approved
 user-visible exact-result navigation and source-targeting priority selects
 exactly P8-FT-61: wire accepted full-text result activation to the completed
@@ -5028,7 +5028,8 @@ Focused verification extends only the existing MainWindow/full-text dialog
 smoke to prove exact target projection, success persistence, current-tab/group/
 scope/query/article-search preservation, and atomic invalid/unresolved and tab-
 operation failure. It adds no executable or registration; the Release baseline
-remains exactly 109 tests. This documentation-only audit runs no compiled gate.
+remains exactly 109 tests. Release verification covers the focused smoke, full
+suite, install, standalone consumers, and exact-SCM package consumers.
 
 All completed P8-FT behavior, exact strings, captions, ranges, lifecycle and
 privacy guarantees remain unchanged. Public/installed interfaces and ABI,
@@ -5036,8 +5037,8 @@ configuration, headless `DictionaryService`, `RuntimeDictionarySource`, C API,
 dependencies, adapters/index formats, build, catalogs, locale loading,
 highlighting/excerpts, ignore-diacritics semantics, translations, and unrelated
 parity remain excluded and unranked. No successor after P8-FT-61 is selected,
-ranked, recommended, or named. Completion unlocks only implementation of the
-selected activation connection.
+ranked, recommended, or named. Completion unlocks only the dependency boundary
+established by the activation connection.
 
 ### Phase 9 — Linux Integration And Release Quality
 

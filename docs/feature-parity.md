@@ -827,10 +827,10 @@ lifecycle and Preferences, presentation, adapters, and unrelated parity remain
 excluded and unranked. No successor after P8-FT-60 is selected or ranked. The
 completed prerequisite unlocks only its dependency boundary.
 
-### P8-FT-61 exact-result activation connection (selected)
+### P8-FT-61 exact-result activation connection (complete)
 
-The fresh documentation-only audit is pinned to synchronized migrated revision
-`60267f6a8d7fae41e186213628c1cc228b1f5f61` and unchanged clean read-only
+The implementation starts from synchronized migrated revision
+`0394b031031c265c7799386996bcbda22e5b0a3b` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly
 P8-FT-61, the smallest dependent GUI leaf that projects the accepted result's
 authoritative dictionary ID and opaque `document_id` into the
@@ -865,7 +865,8 @@ tests remain unchanged. Public/installed APIs and ABI, configuration, headless
 service/runtime-source/C API, dependencies, adapters/index formats, build,
 catalogs, locale loading, highlighting/excerpts, ignore-diacritics semantics,
 translations, and unrelated parity remain excluded and unranked. No successor
-after P8-FT-61 is selected or ranked.
+after P8-FT-61 is selected or ranked. Completion unlocks only the dependency
+boundary established by this connection.
 
 ## Resources And Platform Integration
 

@@ -6005,6 +6005,8 @@ void MainWindow::NavigateToFullTextResult(
     navigation.title = intent.result.headword;
     navigation.dictionary_filter_active = intent.dictionary_filter_active;
     navigation.dictionary_ids = std::move(intent.dictionary_ids);
+    navigation.exact_target = goldendict::core::ExactArticleTarget{
+        intent.result.dictionary.id, intent.result.document_id};
     const QString main_query = query_->text();
     const int cursor_position = query_->cursorPosition();
     const int selection_start = query_->selectionStart();
@@ -6300,6 +6302,104 @@ void MainWindow::RunFullTextDialogSmokeCheck(
         return;
     }
 
+    class CapturingDesktopFacade final
+        : public goldendict::core::DesktopFacade {
+       public:
+        explicit CapturingDesktopFacade(goldendict::core::DesktopFacade* inner)
+            : inner_(inner) {}
+
+        goldendict::core::DictionaryService& GetDictionaryService() noexcept
+            override {
+            return inner_->GetDictionaryService();
+        }
+
+        const goldendict::core::DictionaryService& GetDictionaryService()
+            const noexcept override {
+            return inner_->GetDictionaryService();
+        }
+
+        std::unique_ptr<goldendict::core::HeadwordExportOperation>
+        StartHeadwordExport(
+            goldendict::core::HeadwordExportRequest request) const override {
+            return inner_->StartHeadwordExport(std::move(request));
+        }
+
+        goldendict::core::ArticleContent ComposeLookupPage(
+            const goldendict::core::LookupResponse& response) const override {
+            return inner_->ComposeLookupPage(response);
+        }
+
+        std::optional<goldendict::core::ArticleUrl> ResolveArticleUrl(
+            const std::string& url) const override {
+            return inner_->ResolveArticleUrl(url);
+        }
+
+        goldendict::core::ResolvedExactArticleTarget ResolveExactArticleTarget(
+            const goldendict::core::ExactArticleTarget& target) const override {
+            return inner_->ResolveExactArticleTarget(target);
+        }
+
+        goldendict::core::ArticleTabsState GetArticleTabsState()
+            const override {
+            return inner_->GetArticleTabsState();
+        }
+
+        goldendict::core::ArticleTabSession ExportArticleTabSession()
+            const override {
+            return inner_->ExportArticleTabSession();
+        }
+
+        goldendict::core::TabOperationResult RestoreArticleTabSession(
+            const goldendict::core::ArticleTabSession& session) override {
+            return inner_->RestoreArticleTabSession(session);
+        }
+
+        goldendict::core::TabOperationResult OpenArticleTab(
+            const goldendict::core::TabNavigationState& navigation,
+            goldendict::core::TabOpenPolicy open_policy,
+            goldendict::core::TabActivationPolicy activation_policy,
+            goldendict::core::TabPlacementPolicy placement_policy) override {
+            last_navigation = navigation;
+            ++open_count;
+            if (forced_error.has_value())
+                return {*forced_error, 0U};
+            return inner_->OpenArticleTab(navigation, open_policy,
+                                          activation_policy, placement_policy);
+        }
+
+        goldendict::core::TabOperationResult ActivateArticleTab(
+            goldendict::core::ArticleTabId tab_id) override {
+            return inner_->ActivateArticleTab(tab_id);
+        }
+
+        goldendict::core::TabOperationResult CloseArticleTab(
+            goldendict::core::ArticleTabId tab_id) override {
+            return inner_->CloseArticleTab(tab_id);
+        }
+
+        goldendict::core::TabOperationResult CloseOtherArticleTabs(
+            goldendict::core::ArticleTabId tab_id) override {
+            return inner_->CloseOtherArticleTabs(tab_id);
+        }
+
+        goldendict::core::TabOperationResult GoBackInArticleTab(
+            goldendict::core::ArticleTabId tab_id) override {
+            return inner_->GoBackInArticleTab(tab_id);
+        }
+
+        goldendict::core::TabOperationResult GoForwardInArticleTab(
+            goldendict::core::ArticleTabId tab_id) override {
+            return inner_->GoForwardInArticleTab(tab_id);
+        }
+
+        goldendict::core::DesktopFacade* inner_ = nullptr;
+        std::optional<goldendict::core::TabOperationError> forced_error;
+        goldendict::core::TabNavigationState last_navigation;
+        std::size_t open_count = 0U;
+    };
+
+    CapturingDesktopFacade capturing_facade(facade_);
+
     const auto actions = search_menu->actions();
     const auto preferences_before = preferences_;
     std::vector<std::string> captured_geometries;
@@ -6391,16 +6491,30 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     prior_article_search.status = QStringLiteral("prior article status");
     ++prior_article_search.generation;
     RefreshArticleSearch();
+    std::optional<goldendict::core::FullTextResult> exact_result;
+    for (const auto& text : {"Fixture", "fruit", "program", "A"}) {
+        goldendict::core::FullTextQuery exact_query;
+        exact_query.text = text;
+        exact_query.mode = goldendict::core::FullTextQueryMode::kPlainText;
+        const auto exact_response =
+            facade_->GetDictionaryService().SearchFullText(exact_query);
+        if (!exact_response.results.empty()) {
+            exact_result = exact_response.results.front();
+            break;
+        }
+    }
+    passed = passed && exact_result.has_value();
     goldendict::app::FullTextResultActivationIntent ordered_intent;
-    ordered_intent.result.headword = u8"Exact activated 😀 headword";
-    ordered_intent.result.document_id = "must-not-target-document";
-    ordered_intent.result.dictionary.id = "must-not-target-source";
+    if (exact_result.has_value())
+        ordered_intent.result = *exact_result;
     ordered_intent.result.excerpt = "must-not-highlight-excerpt";
     ordered_intent.result.matches = {{1U, 2U, "must-not-highlight-match"}};
     ordered_intent.dictionary_filter_active = true;
-    ordered_intent.dictionary_ids = {supported.front(), supported.front()};
+    ordered_intent.dictionary_ids = {ordered_intent.result.dictionary.id,
+                                     ordered_intent.result.dictionary.id};
     ordered_intent.query_text = u8"exact accepted 😀 query";
     ordered_intent.ignore_diacritics = true;
+    facade_ = &capturing_facade;
     first->ResultActivationRequested(ordered_intent);
     const auto ordered_state = facade_->GetArticleTabsState();
     const auto ordered_session = facade_->ExportArticleTabSession();
@@ -6421,6 +6535,13 @@ void MainWindow::RunFullTextDialogSmokeCheck(
         ordered_state.tabs.front().navigation.dictionary_filter_active &&
         ordered_state.tabs.front().navigation.dictionary_ids ==
             ordered_intent.dictionary_ids &&
+        ordered_state.tabs.front().navigation.exact_target ==
+            std::optional<goldendict::core::ExactArticleTarget>(
+                goldendict::core::ExactArticleTarget{
+                    ordered_intent.result.dictionary.id,
+                    ordered_intent.result.document_id}) &&
+        capturing_facade.last_navigation ==
+            ordered_state.tabs.front().navigation &&
         ordered_state.tabs.front().navigation.source_dictionary_id.empty() &&
         ordered_state.tabs.front().navigation.source_article_id.empty() &&
         ordered_state.tabs.front().navigation.target_article_id.empty() &&
@@ -6456,17 +6577,18 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     }
 
     activation_events.clear();
-    auto empty_intent = ordered_intent;
-    empty_intent.result.headword = "authoritative-empty-headword";
-    empty_intent.dictionary_ids.clear();
-    first->ResultActivationRequested(empty_intent);
-    const auto empty_state = facade_->GetArticleTabsState();
+    auto second_intent = ordered_intent;
+    second_intent.result.headword = "second-exact-headword";
+    first->ResultActivationRequested(second_intent);
+    const auto second_state = facade_->GetArticleTabsState();
     passed = passed &&
              activation_events == QStringList{QStringLiteral("session"),
                                               QStringLiteral("lookup")} &&
-             empty_state.tabs.size() == 1U &&
-             empty_state.tabs.front().navigation.dictionary_filter_active &&
-             empty_state.tabs.front().navigation.dictionary_ids.empty() &&
+             second_state.tabs.size() == 1U &&
+             second_state.tabs.front().navigation.exact_target ==
+                 ordered_state.tabs.front().navigation.exact_target &&
+             second_state.tabs.front().navigation.dictionary_ids ==
+                 ordered_intent.dictionary_ids &&
              query_->text() == main_query_before_activation;
     if (auto request = requests_.find(tab_id_before_activation);
         request != requests_.end()) {
@@ -6487,24 +6609,57 @@ void MainWindow::RunFullTextDialogSmokeCheck(
         request->second->Cancel();
         requests_.erase(request);
     }
-
-    activation_events.clear();
-    goldendict::app::FullTextResultActivationIntent invalid_intent;
-    invalid_intent.dictionary_filter_active = true;
-    const auto session_before_invalid = facade_->ExportArticleTabSession();
-    const auto search_before_invalid =
-        article_search_presentations_[tab_id_before_activation];
-    first->ResultActivationRequested(invalid_intent);
-    passed =
-        passed && activation_events.empty() && requests_.empty() &&
-        facade_->ExportArticleTabSession() == session_before_invalid &&
-        article_search_presentations_[tab_id_before_activation].query ==
-            search_before_invalid.query &&
-        article_search_presentations_[tab_id_before_activation].status ==
-            search_before_invalid.status &&
-        article_search_presentations_[tab_id_before_activation].generation ==
-            search_before_invalid.generation &&
-        status_->text() == QStringLiteral("Unable to update article state");
+    const std::array rejection_errors{
+        goldendict::core::TabOperationError::kInvalidExactTarget,
+        goldendict::core::TabOperationError::kExactTargetDictionaryUnavailable,
+        goldendict::core::TabOperationError::kExactTargetDocumentNotFound,
+        goldendict::core::TabOperationError::kInvalidNavigation,
+        goldendict::core::TabOperationError::kTabLimitReached,
+        goldendict::core::TabOperationError::kNavigationLimitReached};
+    for (const auto error : rejection_errors) {
+        activation_events.clear();
+        const auto state_before_rejection = facade_->GetArticleTabsState();
+        const auto session_before_rejection =
+            facade_->ExportArticleTabSession();
+        const auto search_before_rejection =
+            article_search_presentations_[tab_id_before_activation];
+        const auto pending_before_rejection =
+            pending_article_search_handoffs_.count(tab_id_before_activation);
+        const auto request_count_before_rejection = requests_.size();
+        const auto open_count_before_rejection = capturing_facade.open_count;
+        const QString query_before_rejection = query_->text();
+        const int cursor_before_rejection = query_->cursorPosition();
+        const int selection_before_rejection = query_->selectionStart();
+        const QString selected_text_before_rejection = query_->selectedText();
+        capturing_facade.forced_error = error;
+        first->ResultActivationRequested(ordered_intent);
+        capturing_facade.forced_error.reset();
+        passed =
+            passed && activation_events.empty() &&
+            capturing_facade.open_count == open_count_before_rejection + 1U &&
+            facade_->GetArticleTabsState().active_tab_id ==
+                state_before_rejection.active_tab_id &&
+            facade_->GetArticleTabsState().tabs.size() ==
+                state_before_rejection.tabs.size() &&
+            facade_->GetArticleTabsState().tabs.front().navigation ==
+                state_before_rejection.tabs.front().navigation &&
+            facade_->ExportArticleTabSession() == session_before_rejection &&
+            requests_.size() == request_count_before_rejection &&
+            pending_article_search_handoffs_.count(tab_id_before_activation) ==
+                pending_before_rejection &&
+            article_search_presentations_[tab_id_before_activation].query ==
+                search_before_rejection.query &&
+            article_search_presentations_[tab_id_before_activation].status ==
+                search_before_rejection.status &&
+            article_search_presentations_[tab_id_before_activation]
+                    .generation == search_before_rejection.generation &&
+            query_->text() == query_before_rejection &&
+            query_->cursorPosition() == cursor_before_rejection &&
+            query_->selectionStart() == selection_before_rejection &&
+            query_->selectedText() == selected_text_before_rejection &&
+            status_->text() == QStringLiteral("Unable to update article state");
+    }
+    facade_ = capturing_facade.inner_;
     auto* search_button =
         first->findChild<QPushButton*>(QStringLiteral("fullTextSearchButton"));
     auto* cancel_button =

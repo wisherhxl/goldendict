@@ -4946,10 +4946,10 @@ catalogs, locale loading, and unrelated parity are excluded and unranked.
 P8-FT-60 selects no
 successor. Completion unlocks only its dependency boundary.
 
-### Phase 8 exact-result activation connection (selected)
+### Phase 8 exact-result activation connection (complete)
 
-The fresh bounded documentation-only audit is pinned to synchronized migrated
-revision `60267f6a8d7fae41e186213628c1cc228b1f5f61` and unchanged clean
+The implementation starts from synchronized migrated
+revision `0394b031031c265c7799386996bcbda22e5b0a3b` and unchanged clean
 read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
 The approved visible exact-result navigation and source-targeting priority
 selects exactly P8-FT-61: connect an accepted full-text result activation to
@@ -4992,14 +4992,18 @@ history/session behavior, and the completed accepted-query article-search
 handoff.
 
 P8-FT-61 changes only private GUI composition and focused existing GUI smoke
-coverage when implemented. It adds no public API, ABI, configuration, test
+coverage. `MainWindow` attaches the accepted IDs before the single facade call;
+the existing smoke captures that command and covers successful persistence plus
+atomic rejection for every facade error category. It adds no public API, ABI,
+configuration, test
 registration, dependency, build, catalog, locale-loader, installed/service,
 headless `DictionaryService`, `RuntimeDictionarySource`, C API, adapter, or
 index-format change. Highlighting/excerpts, ignore-diacritics consumption,
 translations, and all unrelated parity remain excluded and unranked. All
 completed P8-FT strings, captions, ranges, lifecycle and privacy behavior, and
 the exactly 109-test Release registration baseline remain unchanged. No
-successor after P8-FT-61 is selected, ranked, recommended, or named.
+successor after P8-FT-61 is selected, ranked, recommended, or named. Completion
+unlocks only the dependency boundary established by this connection.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
