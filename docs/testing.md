@@ -3528,26 +3528,25 @@ Packaged C/C++ consumers must pass, and final local/upstream/live-remote refs
 and both worktrees must agree and remain clean. No successor after P8-FT-52 is
 selected or ranked.
 
-## Phase 8 Full-Text Search Group-Box Translation Readiness (Selected)
+## Phase 8 Full-Text Search Group-Box Translation
 
-The fresh independent post-P8-FT-52 documentation-only audit selects only
-P8-FT-53 from clean synchronized migrated revision
-`a6514e6abf645fa8eeaf906e4c35d97d58faf5dd` and clean read-only legacy
+P8-FT-53 is complete from clean synchronized migrated base
+`339d1dd6e8b3540923153628497af23b6fa7208b` and clean read-only legacy
 revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Pinned legacy
 `fulltextsearch.ui:23-27` marks exact group-box title `Search` as translatable;
-current `full_text_search_dialog.cpp:66` supplies the same visible text through
-`QStringLiteral`. Completed P8-FT-52 proves the exact private
+current `full_text_search_dialog.cpp` supplies the same visible text through
+dialog-owned `tr()`. Completed P8-FT-52 proves the exact private
 `goldendict::app::FullTextSearchDialog` translation context.
 
-The future focused change is limited to `full_text_search_dialog.cpp` and
-`full_text_search_dialog_test.cpp`. Existing coverage already finds the sole
-direct-child search group and verifies its English title. Extend that coverage
-to prove exact-context replacement of source `Search`, unchanged English
-fallback without a translator, and automatic scoped translator removal. No
+The focused change is limited to `full_text_search_dialog.cpp` and
+`full_text_search_dialog_test.cpp`. Construction coverage finds the sole
+direct-child search group and proves exact-context replacement of source
+`Search`, unchanged English fallback without a translator, stable group
+identity/title, and automatic scoped translator removal. No
 catalog, locale loader, executable, test registration, or baseline change is
 needed; exactly 109 Release tests remain registered.
 
-The selection changes no public/Core/config/index-format/dependency/build/
+The implementation changes no public/Core/config/index-format/dependency/build/
 composition-root, ABI, or installed contract and preserves the Shared-Library
 and GUI Boundary. It retains exact `Maximum word distance` with spin-box-owned
 `0..1000` and exact `Maximum articles per dictionary` with spin-box-owned
@@ -3557,13 +3556,18 @@ exact-document navigation, match/excerpt presentation, ignore-diacritics
 consumption, adapters/index formats, and unrelated tests remain separate and
 unranked.
 
-Verification for this documentation-only selection is limited to the exact
-four-file allowlist, cross-document policy/evidence and locked-policy
-consistency, no-successor language, Phase terminology, pinned refs/worktrees,
-live-remote agreement, and `git diff --check`. Compiled checks are omitted.
-Stop on drift, ambiguity, design conflict, a required non-documentation or
-fifth documentation file, failed validation, or scope expansion. No successor
-after P8-FT-53 is selected or ranked.
+Verification is the focused Release dialog test, fresh Linux Release dependency
+install/configure/build, exactly 109 registered tests and full Release CTest,
+Release install, standalone installed C/C++ consumers, `git diff --check`, and
+clean committed exact-SCM creation with:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Packaged C/C++ consumers must pass, and final local/upstream/live-remote refs
+and both worktrees must agree and remain clean. No successor after P8-FT-53 is
+selected or ranked.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

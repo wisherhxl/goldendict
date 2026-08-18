@@ -50,6 +50,21 @@ class TitleTranslator final : public QTranslator {
     mutable int matching_requests = 0;
 };
 
+class SearchGroupTranslator final : public QTranslator {
+   public:
+    QString translate(const char* context, const char* source_text, const char*,
+                      int) const override {
+        if (qstrcmp(context, "goldendict::app::FullTextSearchDialog") == 0 &&
+            qstrcmp(source_text, "Search") == 0) {
+            ++matching_requests;
+            return QStringLiteral("Translated Search group");
+        }
+        return {};
+    }
+
+    mutable int matching_requests = 0;
+};
+
 class ScopedTranslatorInstallation final {
    public:
     explicit ScopedTranslatorInstallation(QTranslator* translator)
@@ -269,16 +284,17 @@ QGroupBox* SearchGroupBox(FullTextSearchDialog* dialog) {
     return groups.size() == 1 ? groups.front() : nullptr;
 }
 
-void VerifySearchGroupBox(FullTextSearchDialog* dialog,
-                          QGroupBox* expected_group = nullptr,
-                          FullTextQueryComposer* expected_composer = nullptr) {
+void VerifySearchGroupBox(
+    FullTextSearchDialog* dialog, QGroupBox* expected_group = nullptr,
+    FullTextQueryComposer* expected_composer = nullptr,
+    const QString& expected_title = QStringLiteral("Search")) {
     const auto groups =
         dialog->findChildren<QGroupBox*>(QString(), Qt::FindDirectChildrenOnly);
     QCOMPARE(groups.size(), 1);
     auto* group = groups.front();
     if (expected_group != nullptr)
         QCOMPARE(group, expected_group);
-    QCOMPARE(group->title(), QStringLiteral("Search"));
+    QCOMPARE(group->title(), expected_title);
 
     const auto composers = dialog->findChildren<FullTextQueryComposer*>();
     QCOMPARE(composers.size(), 1);
@@ -623,6 +639,7 @@ class FullTextSearchDialogTest final : public QObject {
 
    private slots:
     void ResolvesWindowTitleThroughPrivateTranslationContext();
+    void ResolvesSearchGroupTitleThroughPrivateTranslationContext();
     void PreservesExactForwardTabChainAcrossRequestTransitions();
     void SubmitsExactComposedAndProjectedQueryAndRetainsResponse();
     void PaintsEachResultWithIndependentDirectionAndElision();
@@ -659,6 +676,33 @@ void FullTextSearchDialogTest::
     QCOMPARE(translated_dialog.windowTitle(),
              QStringLiteral("Translated full-text title"));
     QCOMPARE(translator.matching_requests, 1);
+}
+
+void FullTextSearchDialogTest::
+    ResolvesSearchGroupTitleThroughPrivateTranslationContext() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog default_dialog(preferences, &service);
+    VerifySearchGroupBox(&default_dialog);
+
+    {
+        SearchGroupTranslator translator;
+        const ScopedTranslatorInstallation installation(&translator);
+        QVERIFY(installation.IsInstalled());
+        FullTextSearchDialog translated_dialog(preferences, &service);
+        auto* translated_group = SearchGroupBox(&translated_dialog);
+        QVERIFY(translated_group != nullptr);
+        VerifySearchGroupBox(&translated_dialog, translated_group, nullptr,
+                             QStringLiteral("Translated Search group"));
+        auto* translated_search_button = SearchButton(&translated_dialog);
+        QVERIFY(translated_search_button != nullptr);
+        QCOMPARE(translated_search_button->text(),
+                 QStringLiteral("Translated Search group"));
+        QCOMPARE(translator.matching_requests, 2);
+    }
+
+    FullTextSearchDialog restored_dialog(preferences, &service);
+    VerifySearchGroupBox(&restored_dialog);
 }
 
 void FullTextSearchDialogTest::

@@ -63,7 +63,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     setModal(false);
     setMinimumSize(430, 450);
 
-    auto* search_group = new QGroupBox(QStringLiteral("Search"), this);
+    auto* search_group = new QGroupBox(tr("Search"), this);
     auto* search_group_layout = new QVBoxLayout(search_group);
     composer_ = new FullTextQueryComposer(preferences, search_group);
     composer_->setObjectName(QStringLiteral("fullTextQueryComposer"));
