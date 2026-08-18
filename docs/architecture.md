@@ -4465,6 +4465,50 @@ Stop on ref/worktree drift, ambiguity, architectural conflict, another required
 file, failed validation, or scope expansion. No successor is selected or
 ranked; the next boundary is a fresh post-policy full-text readiness audit.
 
+### Phase 8 full-text articles-per-dictionary caption policy prerequisite (selected)
+
+The fresh bounded post-policy audit is pinned to clean migrated HEAD, local
+branch, upstream, and live remote at
+`66b73596e6b9f2f296c0227933825fba100ba3b2`, plus the unchanged clean read-only
+legacy checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+After rechecking every remaining visible and private full-text gap against
+current architecture and pinned legacy evidence, it selects exactly one
+smallest independently dependency-ready prerequisite, P8-FT-51: decide the
+articles-per-dictionary caption policy. No successor after P8-FT-51 is
+selected or ranked.
+
+Pinned legacy `fulltextsearch.cc:249-256` synthesizes a range-bearing
+`Max articles per dictionary (%1-%2):` caption and assigns the numeric control
+legacy bounds. Current `full_text_query_composer.cpp:109-125` instead displays
+exactly `Maximum articles per dictionary`, while the associated spin box
+solely owns and exposes `1..100000`; focused composer coverage preserves that
+label, range, identity, enablement, and repeated composition. The completed
+word-distance policy does not authorize extending its outcome to this separate
+caption without an explicit product decision.
+
+P8-FT-51 requires GET to choose between retaining the exact current label with
+sole spin-box ownership of `1..100000`, which would create no implementation
+leaf, and adopting a range-bearing caption using the current `1..100000`
+bounds, which would authorize a later private Widgets caption leaf. Restoring
+legacy Qt `0..99` defaults is not an option because it would conflict with the
+current bounded query contract. This audit records the prerequisite only; it
+does not choose an outcome or authorize source or test changes.
+
+Index readiness, visibility, status, progress and background lifecycle UI, and
+full-text Preferences enablement, type exclusions and dictionary-size policy
+remain blocked on separate Core lifecycle or policy work. Exact-document
+navigation, match/excerpt presentation, ignore-diacritics consumption,
+accessibility, styling/layout, translation-catalog work, adapters/index
+formats, public/Core/config or composition-root changes, dependencies, builds,
+installed surfaces, and unrelated parity remain excluded and unranked.
+
+Acceptance is four-document consistency, exact evidence and alternatives,
+preserved public/Core/config/index-format/dependency boundaries, the unchanged
+109-test Release baseline, and explicit no-successor language. Compiled checks
+are omitted. Stop on ref/worktree or legacy drift, ambiguity beyond the stated
+product choice, architectural conflict, another required file, failed
+validation, or scope expansion.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

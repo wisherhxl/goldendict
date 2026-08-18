@@ -473,6 +473,35 @@ remain excluded and unranked. Stop on drift, ambiguity, design conflict,
 another required file, failed validation, or scope expansion. No successor is
 selected or ranked; the next boundary is a fresh post-policy readiness audit.
 
+The fresh post-policy audit selects exactly one smallest independently ready
+prerequisite, P8-FT-51: an explicit product decision for the
+articles-per-dictionary caption. Pinned legacy `fulltextsearch.cc:249-256`
+synthesizes `Max articles per dictionary (%1-%2):` and assigns legacy numeric
+bounds. Current `full_text_query_composer.cpp:109-125` and its focused test
+instead establish exact visible text `Maximum articles per dictionary` and
+sole spin-box ownership/exposure of `1..100000`.
+
+P8-FT-51 does not infer that the completed word-distance decision governs this
+separate caption. GET must choose between retaining the exact current label and
+sole numeric-control ownership, which creates no implementation leaf, or a
+range-bearing caption using the current `1..100000` bounds, which may authorize
+a later private Widgets leaf. Restoring legacy Qt `0..99` defaults is excluded
+as incompatible with the current bounded query contract. This audit chooses no
+outcome and authorizes no source or test change.
+
+Index readiness/status/background lifecycle and full-text Preferences
+enablement, type exclusions and dictionary-size policy remain blocked on
+separate Core lifecycle or policy work. Exact-document navigation,
+match/excerpt presentation, ignore-diacritics consumption, accessibility,
+styling/layout, translation work, public/Core/config/index-format/dependency or
+installed-surface changes, and unrelated parity remain excluded and unranked.
+
+This four-document-only selection preserves P8-FT-1 through P8-FT-50, the
+word-distance policy closure, and the exactly 109-test Release baseline.
+Compiled checks are omitted. Stop on ref/worktree or legacy drift, further
+ambiguity, architectural conflict, another required file, failed validation,
+or scope expansion. No successor after P8-FT-51 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

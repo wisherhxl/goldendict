@@ -4527,6 +4527,50 @@ successor is selected or ranked. The precise next boundary is a fresh bounded
 post-policy full-text readiness audit across all remaining gaps and their then-
 current prerequisites.
 
+### Phase 8 full-text articles-per-dictionary caption policy prerequisite
+
+The fresh independent bounded post-policy audit verified clean migrated HEAD,
+local branch, upstream, and live remote at
+`66b73596e6b9f2f296c0227933825fba100ba3b2`, and the unchanged clean read-only
+legacy checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It rechecked all remaining visible and private full-text gaps without advance
+ranking and selects exactly P8-FT-51, the smallest independently
+dependency-ready prerequisite: settle the articles-per-dictionary caption
+policy. No successor after P8-FT-51 is selected or ranked.
+
+Pinned legacy `fulltextsearch.cc:249-256` dynamically creates
+`Max articles per dictionary (%1-%2):` and owns historical numeric bounds.
+Completed current `full_text_query_composer.cpp:109-125` and focused composer
+coverage instead preserve exact text `Maximum articles per dictionary`, with
+the spin box solely owning and exposing `1..100000`. P8-FT-1 through P8-FT-50
+supply the complete control, persistence, composition, request and presentation
+prerequisites, but the word-distance policy closure does not decide this
+separate caption.
+
+GET must choose either the exact current label and sole spin-box bound
+ownership, producing no caption implementation leaf, or a range-bearing
+caption using current `1..100000` bounds, potentially authorizing a later
+private Widgets leaf. Legacy Qt `0..99` defaults cannot be restored because
+they conflict with the current bounded query contract. P8-FT-51 records only
+this necessary product-policy prerequisite; it chooses neither outcome and
+changes no production or test behavior.
+
+Index lifecycle/readiness/status/progress UI and full-text Preferences
+enablement, format exclusions and dictionary-size policy require separate Core
+lifecycle or policy work and are not dependency-ready. Exact-document
+navigation, match/excerpt presentation, ignore-diacritics consumption,
+accessibility, styling/layout, translation-catalog work, adapters/index
+formats, public/Core/config or composition-root changes, dependencies/builds,
+installed surfaces, and unrelated parity remain excluded and unranked.
+
+Acceptance is limited to consistent updates in these four governing documents,
+the exact evidence and alternatives above, preserved boundaries, the unchanged
+109-test Release baseline, and successor neutrality. Compiled checks are
+omitted for this documentation-only audit. Stop without commit or push on
+ref/worktree or legacy drift, ambiguity beyond the stated choice,
+architectural conflict, another required file, failed validation, or scope
+expansion.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

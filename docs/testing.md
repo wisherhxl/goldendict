@@ -3435,6 +3435,38 @@ Stop on drift, ambiguity, design conflict, another required file, failed
 validation, or scope expansion. No successor is selected or ranked; verification
 after this closure begins only with a fresh bounded post-policy readiness audit.
 
+## Phase 8 Full-Text Articles-Per-Dictionary Caption Policy Prerequisite
+
+The fresh post-policy audit selects only P8-FT-51, the product-policy
+prerequisite for the articles-per-dictionary caption. Pinned legacy
+`fulltextsearch.cc:249-256` builds the range-bearing text
+`Max articles per dictionary (%1-%2):` and assigns legacy bounds. Current
+`full_text_query_composer.cpp:109-125` and existing focused coverage instead
+prove exact label `Maximum articles per dictionary`, spin-box range
+`1..100000`, identity, enablement, state transitions, and repeated composition.
+
+Before any caption implementation can be authorized, GET must choose between
+retaining the exact current label with sole spin-box ownership/exposure of
+`1..100000`, requiring no source or test leaf, and a range-bearing caption
+using those current bounds, potentially requiring a later private composer
+test change. Restoring legacy Qt `0..99` defaults is excluded. P8-FT-51 makes
+no choice and adds no source, test, executable, registration, public interface,
+dependency, or build change.
+
+Index lifecycle and readiness/status/progress coverage, full-text Preferences,
+exact-document navigation, match/excerpt presentation, ignore-diacritics
+consumption, accessibility, styling/layout, translation work, adapters/index
+formats, public/Core/config and installed contracts, dependencies/builds, and
+unrelated tests remain excluded and unranked.
+
+Verification for this four-document-only selection is limited to the exact
+file allowlist, cross-document policy/evidence consistency, no-successor
+language, Phase terminology, pinned ref/worktree checks, and
+`git diff --check`. Compiled checks are omitted and the Release baseline stays
+exactly 109 tests. Stop on drift, further ambiguity, architectural conflict,
+another required file, failed validation, or scope expansion. No successor
+after P8-FT-51 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
