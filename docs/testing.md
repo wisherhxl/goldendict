@@ -3467,6 +3467,30 @@ exactly 109 tests. Stop on drift, further ambiguity, architectural conflict,
 another required file, failed validation, or scope expansion. No successor
 after P8-FT-51 is selected or ranked.
 
+## Phase 8 Full-Text Articles-Per-Dictionary Caption Policy Closure
+
+GET selected P8-FT-51 Option A: retain exact visible label
+`Maximum articles per dictionary`; the spin box solely owns and exposes
+`1..100000`, with no bounds in translatable caption text. The locked
+`Maximum word distance` label and spin-box-owned `0..1000` range remain
+unchanged.
+
+Current `full_text_query_composer.cpp:95-125` and existing focused composer
+coverage already prove both exact labels, both ranges, identity, enablement,
+state transitions, and repeated composition. Pinned legacy
+`fulltextsearch.cc:249-256` remains historical evidence only. No artificial
+source, test, executable, registration, public interface, config/index-format
+contract, dependency, build, or installed-surface change is required.
+
+Verification for this four-document-only closure is limited to the exact
+allowlist, cross-document policy and pinned-evidence consistency,
+no-successor language, Phase terminology, pinned refs/worktrees, live remotes,
+and `git diff --check`. Compiled checks are omitted and the Release baseline
+remains exactly 109 tests. Stop on drift, ambiguity, architectural conflict,
+another required file, failed validation, or scope expansion. No successor is
+selected or ranked; verification resumes with a fresh independent bounded
+full-text readiness audit.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

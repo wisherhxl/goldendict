@@ -502,6 +502,25 @@ Compiled checks are omitted. Stop on ref/worktree or legacy drift, further
 ambiguity, architectural conflict, another required file, failed validation,
 or scope expansion. No successor after P8-FT-51 is selected or ranked.
 
+P8-FT-51 is closed by GET's Option A without a code leaf. Preserve exact
+visible private label `Maximum articles per dictionary`; its spin box solely
+owns and exposes `1..100000`, and bounds are not synthesized into translatable
+caption text. The previously locked `Maximum word distance` label and sole
+spin-box ownership of `0..1000` remain unchanged.
+
+Current `full_text_query_composer.cpp:95-125` and focused composer tests already
+prove both labels, ranges, identity, enablement, transitions, and repeated
+composition. Pinned legacy `fulltextsearch.cc:249-256` is retained as
+historical range-bearing-caption evidence only. No artificial source, test,
+executable, registration, public/Core/config/index-format/dependency, build,
+installed-surface, or Release-baseline change is authorized.
+
+This four-document-only closure omits compiled checks and preserves the
+exactly 109-test Release baseline. Stop on drift, ambiguity, design conflict,
+another required file, failed validation, or scope expansion. No successor is
+selected or ranked; the next boundary is a fresh independent bounded full-text
+readiness audit.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

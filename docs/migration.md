@@ -4571,6 +4571,34 @@ ref/worktree or legacy drift, ambiguity beyond the stated choice,
 architectural conflict, another required file, failed validation, or scope
 expansion.
 
+### Phase 8 full-text articles-per-dictionary caption policy closure
+
+The resumed documentation-only audit verified clean migrated HEAD, local
+branch, upstream, and live remote at
+`456f3e9c68bf9514bfc6ded225d2ddc96f6c9477`, plus the unchanged clean read-only
+legacy checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+GET selected P8-FT-51 Option A: retain exact visible private label
+`Maximum articles per dictionary`. The associated spin box solely owns and
+exposes `1..100000`; bounds are not embedded in translatable caption text. The
+locked `Maximum word distance` / `0..1000` label-and-control policy remains
+unchanged.
+
+Pinned legacy `fulltextsearch.cc:249-256` supplies historical evidence for the
+range-bearing article-limit caption. Current
+`full_text_query_composer.cpp:95-125` and focused composer coverage establish
+that production already satisfies both Option A policies, including exact
+labels, numeric ranges, identity, enablement, state transitions, and repeated
+composition. P8-FT-51 therefore closes without a caption implementation leaf
+and without source or test changes.
+
+All full-text behavior, public/Core/config and index-format boundaries,
+installed contracts, dependencies, builds, and the exactly 109-test Release
+baseline remain unchanged. Compiled checks are omitted. Stop without commit or
+push on ref/worktree or legacy drift, ambiguity, design conflict, another
+required file, failed validation, or scope expansion. No successor is selected
+or ranked. The precise next boundary is a fresh independent bounded full-text
+readiness audit across all remaining gaps and their then-current prerequisites.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

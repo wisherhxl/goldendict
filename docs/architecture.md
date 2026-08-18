@@ -4509,6 +4509,33 @@ are omitted. Stop on ref/worktree or legacy drift, ambiguity beyond the stated
 product choice, architectural conflict, another required file, failed
 validation, or scope expansion.
 
+### Phase 8 full-text articles-per-dictionary caption policy closure
+
+The resumed documentation-only P8-FT-51 audit is pinned to clean migrated
+HEAD, local branch, upstream, and live remote at
+`456f3e9c68bf9514bfc6ded225d2ddc96f6c9477`, plus the unchanged clean read-only
+legacy checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+GET selected P8-FT-51 Option A: the exact private visible label remains
+`Maximum articles per dictionary`; the associated spin box solely owns and
+exposes `1..100000`; bounds must not be embedded in translatable caption text.
+The already locked `Maximum word distance` label and sole spin-box ownership
+of `0..1000` remain unchanged.
+
+This decision intentionally creates no caption implementation leaf. Current
+`full_text_query_composer.cpp:95-125` and focused composer coverage already
+prove both exact labels, both ranges, identity, enablement, state transitions,
+and repeated composition. Pinned legacy `fulltextsearch.cc:249-256` remains
+historical evidence for the article-limit range-bearing caption, not authority
+to restore its obsolete bounds or caption policy.
+
+The closure changes no Widgets behavior, public/Core/config contract,
+index format, installed surface, dependency, build, test registration, or
+Release baseline of exactly 109 tests. Compiled checks are omitted for this
+four-document-only closure. Stop on ref/worktree or legacy drift, ambiguity,
+architectural conflict, another required file, failed validation, or scope
+expansion. No successor is selected or ranked; the precise next boundary is a
+fresh independent bounded full-text readiness audit.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
