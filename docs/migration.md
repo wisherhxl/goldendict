@@ -5226,6 +5226,59 @@ P8-FT-63 behavior, and exactly 109 registered Release tests. No successor after
 P8-FT-64 is selected, ranked, recommended, or named. Completion unlocks only
 the generation-safe rendered-page text extraction dependency boundary.
 
+### Phase 8 P8-FT-65 rendered-text matching-plan facade prerequisite (selected)
+
+The resumed documentation-only audit requires clean migrated HEAD, branch,
+upstream and live remote at
+`c5b47fd0d8d720d93c47cc5e624d7ee8b1d8e44e` and clean read-only legacy at
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. GET selects Option A and exactly
+P8-FT-65: add the installed `DesktopFacade` desktop-orchestration entry point
+for Core-owned rendered-text rematching and plan production. The stateless
+matcher remains private and is shared with indexed full-text search;
+`DictionaryService` and the C API do not change.
+This follows current `desktop_facade.h:167-193`, private matcher evidence in
+`full_text_index.cc:231-319,368-465`, P8-FT-64 transport at
+`main_window.cpp:8312-8356`, and pinned legacy rendered-text behavior at
+`articleview.cc:2569-2788`.
+
+The transport-neutral request carries bounded valid rendered UTF-8, accepted
+query text, `FullTextQueryMode`, match-case, ignore-word-order, optional bounded
+maximum-word-distance and a positive timeout. The synchronous facade operation
+accepts optional `CancellationToken`. It deliberately omits
+`ignore_diacritics`. Existing 4096-byte query and 1000-word-distance bounds and
+new public `kMaximumRenderedTextMatchPlanBytes` of 16 MiB, aligned with the
+private document-text bound, govern validation. The installed DTOs are
+`RenderedTextMatchPlanRequest`, `RenderedTextMatchRange`,
+`RenderedTextMatchPlanError`, and `RenderedTextMatchPlanResult`; the const
+synchronous operation is `DesktopFacade::BuildRenderedTextMatchPlan` with an
+optional cancellation pointer. Error values distinguish none, invalid request,
+malformed pattern, cancellation, deadline, resource limit and contained
+internal failure; diagnostic messages are not UI text. Empty query, invalid UTF-8,
+oversized or incompatible inputs are invalid-request failures; malformed
+patterns, cancellation, deadline, resource exhaustion and contained internal
+failures are distinct typed outcomes and produce no partial plan. Successful
+no-match, including empty rendered text, returns an empty plan.
+
+Each authoritative plan item contains a valid-boundary rendered-text UTF-8 byte
+offset/length and the exact literal bytes at that range. Items are deterministic,
+leftmost-first, non-overlapping and offset-ordered. Adjacent matches are valid,
+identical literals at different ranges remain separate, zero-length matches are
+discarded, and scanning continues from the accepted match's exclusive end.
+This order is sufficient for later first/Previous/Next consumption without
+placing UI state in Core.
+
+Widgets retains P8-FT-63/P8-FT-64 generation, lookup, search, navigation, tab,
+view and page gates and discards stale results. P8-FT-62 indexed-document byte
+ranges, excerpts and match text are never treated as rendered-text or DOM
+coordinates. P8-FT-65 adds no source/test/build work, DOM/JavaScript application,
+highlighting, selection, navigation, status wording or diacritics behavior and
+changes no result-row/tooltip behavior, configuration, C API, index/adapters,
+dependencies, catalogs, generated files, executables, strings/ranges,
+translations or test registration. The Release baseline remains exactly 109.
+No successor after P8-FT-65 is selected, ranked, recommended or named.
+Completion unlocks only the P8-FT-65 `DesktopFacade` matching-plan
+implementation dependency.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

@@ -4077,6 +4077,54 @@ navigation, tab/view/page, facade, cancellation, failure, and teardown
 invalidation. No successor after P8-FT-64 is selected or named; completion
 unlocks only generation-safe rendered-page text extraction.
 
+### P8-FT-65 rendered-text matching-plan facade prerequisite acceptance (selected)
+
+The resumed documentation audit is pinned to migrated/local/upstream/live-
+remote `c5b47fd0d8d720d93c47cc5e624d7ee8b1d8e44e` and legacy
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only P8-FT-65 and the
+GET-approved installed `DesktopFacade` operation; the private stateless Core
+matcher must also serve indexed full-text search so matching semantics have one
+owner.
+Acceptance derives from current `full_text_index_test.cpp:69-319`, installed
+surface coverage in `core_api_test.cpp:1-193` and
+`test_package/headless_api_test.cpp:650-735`, Widgets transport at
+`main_window.cpp:8312-8356`, and pinned legacy
+`articleview.cc:2569-2788`.
+
+Future focused Core acceptance must cover every query mode, match-case,
+word-order and maximum-distance combination accepted by existing full-text
+validation; Unicode normalization and valid UTF-8 boundary mapping; wildcard
+and regular-expression validity; multiple and repeated literals; adjacent
+matches; deterministic leftmost-first non-overlap; zero-length rejection; and
+exact equality between every returned literal and its rendered-text byte range.
+No-match must be successful and empty. P8-FT-62 indexed offsets must not
+participate.
+
+Boundary acceptance must cover empty query, invalid UTF-8 and oversized
+rendered text/query, non-positive timeout, excessive distance and incompatible
+pattern constraints as invalid requests; malformed patterns as their own failure; and
+cancellation, deadline, resource-limit and contained internal failures with no
+partial plan. Cancellation/deadline checks must be exercised during
+normalization, pattern matching and result collection. Installed API tests must
+pin the new request/result defaults and `DesktopFacade` vtable operation while
+preserving `DictionaryService` and C API surfaces.
+
+Installed API coverage must pin the 16 MiB
+`kMaximumRenderedTextMatchPlanBytes`, request/result/range/error defaults,
+five-second default request timeout, null default cancellation, and the const
+`DesktopFacade::BuildRenderedTextMatchPlan` vtable operation. Empty rendered
+text must be covered as successful no-match.
+
+Later Widgets acceptance may consume the plan only after the existing accepted-
+query, lookup, search, navigation, tab, view and page identities all remain
+current. P8-FT-65 itself adds no source or tests and does not test or specify
+DOM/JavaScript application, highlight-all, first selection, Previous/Next UI,
+status wording or ignore-diacritics behavior. Headword-only rows, dictionary-
+name tooltips, locked strings/captions/ranges/translations and exactly 109
+registered Release tests remain unchanged. No successor after P8-FT-65 is
+selected or named; completion unlocks only its `DesktopFacade` matching-plan
+implementation dependency.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

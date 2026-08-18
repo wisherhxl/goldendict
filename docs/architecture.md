@@ -5215,6 +5215,99 @@ registered Release tests remain unchanged. No successor after P8-FT-64 is
 selected, ranked, recommended, or named. Completion unlocks only the
 generation-safe rendered-page text extraction dependency boundary.
 
+### Phase 8 P8-FT-65 rendered-text matching-plan facade prerequisite (selected)
+
+The resumed independent documentation-only audit is pinned to clean synchronized
+migrated HEAD, local branch, upstream, and live remote at
+`c5b47fd0d8d720d93c47cc5e624d7ee8b1d8e44e`, plus the unchanged clean
+read-only legacy checkout at
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. GET selects exactly P8-FT-65:
+expose the smallest Core-owned rendered-text rematching and matching-plan
+operation through the installed `DesktopFacade` desktop-orchestration
+interface. The stateless implementation remains private to `goldendict_core`.
+
+Current `dictionary_service.h:150-160,259-281` owns the accepted full-text
+query vocabulary and headless service operations; `desktop_facade.h:167-193`
+owns the installed desktop orchestration vtable. Current private matching and
+UTF-8 origin mapping are concentrated in
+`full_text_index.cc:231-319,368-465`, while
+`main_window.h:454-484`, `main_window.cpp:6021-6076` and
+`main_window.cpp:8312-8356` preserve the accepted context and generation-safe
+rendered-text transport. Pinned legacy `articleview.cc:2569-2788` globally
+rematches rendered plain text, retains literal occurrences in match order,
+selects the first and drives Previous/Next; it does not provide a reusable
+Core or installed API shape.
+
+The Shared-Library and GUI Boundary governs this choice. `DictionaryService`
+remains the headless dictionary/index operation interface; a free installed
+matching function and a new module would create competing public contracts.
+P8-FT-65 instead intentionally extends the installed C++ `DesktopFacade`
+vtable and adds transport-neutral request/result DTOs. Widgets passes the
+accepted query text, `FullTextQueryMode`, match-case, ignore-word-order and
+optional maximum-word-distance values, plus rendered-page plain text converted
+to valid UTF-8. The request also carries a positive bounded timeout; the facade
+operation accepts an optional `CancellationToken`. `ignore_diacritics` is not a
+request field and remains retained but unconsumed in private Widgets context.
+
+The installed additions are
+`kMaximumRenderedTextMatchPlanBytes` (16 MiB),
+`RenderedTextMatchPlanRequest`, `RenderedTextMatchRange`,
+`RenderedTextMatchPlanError`, and `RenderedTextMatchPlanResult`, plus
+`DesktopFacade::BuildRenderedTextMatchPlan(const
+RenderedTextMatchPlanRequest&, const CancellationToken*) const`. The request
+contains `rendered_text`, `query_text`, `mode`, `match_case`,
+`ignore_word_order`, `maximum_word_distance`, and `timeout`. A range contains
+`byte_offset`, `byte_length`, and `literal`; the result contains the ordered
+range vector, one typed error value, and a diagnostic message. The default
+cancellation pointer is null and the default timeout matches the existing
+five-second full-text query default. Request defaults otherwise match
+`FullTextQuery`: whole words, case-insensitive, ordered words and no distance.
+The error values are `kNone`, `kInvalidRequest`, `kMalformedPattern`,
+`kCancelled`, `kDeadlineExceeded`, `kResourceLimit`, and `kInternal`;
+diagnostic messages are for containment/diagnosis and are not UI status text.
+
+The new rendered-text bound matches the existing private 16 MiB full-text
+document limit, the query is bounded by `kMaximumFullTextQueryBytes`, and
+distance by
+`kMaximumFullTextWordDistance`. An empty query, invalid UTF-8 text or query,
+oversized input, a non-positive timeout, an out-of-range distance, or word-order/distance
+constraints on wildcard or regular-expression modes is an invalid-request
+failure. A malformed wildcard/regular expression is a typed malformed-pattern
+failure. Cancellation, deadline expiry, resource exhaustion and contained
+internal failure remain distinct typed outcomes. Empty rendered text is valid
+and, like any other no-match case, succeeds with an empty plan, not an error or
+UI status.
+
+Core must extract the existing normalization, wildcard/regular-expression,
+whole-word/plain-text, case, word-order and word-distance behavior behind one
+private reusable matcher used by both indexed search and the new facade
+operation; Widgets must not reproduce it. The plan contains ordered rendered-
+text UTF-8 byte ranges and an exact literal byte string for each range. Every
+literal must equal the corresponding valid boundary-aligned substring of the
+supplied rendered text. Matches are deterministic, leftmost-first,
+non-overlapping, and ordered by increasing byte offset; adjacent matches are
+allowed, duplicate literal values at different ranges are retained, and zero-
+length matches are discarded. After accepting a match, scanning resumes at its
+exclusive end, so the ranges directly define later first, Previous and Next
+order without storing UI position.
+
+The operation is synchronous and side-effect free. It polls cancellation and
+the request deadline during normalization, pattern work and result collection,
+and never returns a partial plan on failure. Widgets may accept the result only
+while P8-FT-63/P8-FT-64 accepted-query, lookup, search, navigation, tab, view and
+page identities remain current; stale results are discarded without changing
+presentation. P8-FT-62 indexed-document offsets, excerpts and match text are
+not rendered-text or DOM coordinates and are not inputs to the plan.
+
+P8-FT-65 is documentation-only and changes no source, test, build,
+configuration, C API, index format, adapter, dependency, catalog, generated
+file, executable, UI string/range/translation, or registered test. The Release
+baseline remains exactly 109 tests. DOM/JavaScript or literal application,
+highlight-all behavior, first selection, Previous/Next controls, status wording
+and ignore-diacritics behavior remain outside this leaf. No successor after
+P8-FT-65 is selected, ranked, recommended or named. Completion unlocks only the
+P8-FT-65 `DesktopFacade` matching-plan implementation dependency.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
