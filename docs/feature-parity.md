@@ -1136,6 +1136,38 @@ preserved. Previous/Next commands remain outside this leaf. No successor after
 P8-FT-67 is selected, ranked, recommended or named. Completion will unlock only
 generation-bound ordered applied-range state.
 
+### P8-FT-68 private ordered applied-range navigation command prerequisite (selected)
+
+The fresh independent audit starts from clean synchronized
+migrated/local/upstream/live-remote revision
+`a708b8518bf400d9f0c2a44edf0b214959937d85` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-67's
+historical no-successor closure and selects only the smallest dependency-ready
+consumer of its generation-bound ordered applied-range state. Current
+`article_view.cpp:90-256` owns the private token, ranges and position; current
+`main_window.h:499-523` owns the accepted identity. Pinned legacy
+`articleview.cc:2703-2704,2730-2788` proves one-step, non-wrapping navigation,
+unavailable boundary directions and the inputs for button and status semantics.
+
+P8-FT-68 provides one private asynchronous Previous/Next command. With a
+matching token and current nonempty state, an available direction moves exactly
+one ordered range and atomically changes selection, scroll and zero-based
+position. An unavailable boundary direction returns the unchanged current
+snapshot without effects; missing, empty, stale or token-mismatched state is
+rejected without effects. Its private result distinguishes accepted current
+state from rejection and returns token, position, ordered count and Previous/
+Next availability.
+
+The leaf adds no UI control or binding, status wording, translation, F3 or
+shortcut behavior, ordinary `findText` use, or ignore-diacritics consumption.
+Highlight-all, first selection, ordinary find-in-page, exact activation,
+headword-only rows and exact dictionary-name tooltips remain unchanged. Public,
+Core and C interfaces and DTOs, indexes, configuration, dependencies, catalogs,
+translations, executables, test registration and the exactly 109-test Release
+baseline are preserved. No successor after P8-FT-68 is selected, ranked,
+recommended or named. Completion will unlock only private full-text navigation
+UI/status binding.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

@@ -4217,6 +4217,38 @@ four-document-only audit. No successor after P8-FT-67 is selected, ranked,
 recommended or named. Completion will unlock only generation-bound ordered
 applied-range state.
 
+### P8-FT-68 private ordered applied-range navigation command prerequisite acceptance (selected)
+
+The fresh independent documentation-only audit starts from clean synchronized
+migrated/local/upstream/live-remote revision
+`a708b8518bf400d9f0c2a44edf0b214959937d85` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-67's
+historical no-successor closure and selects only P8-FT-68. Acceptance is
+grounded in current `article_view.cpp:90-256` and `main_window.h:499-523`, plus
+pinned legacy `articleview.cc:2703-2704,2730-2788` for one-step non-wrapping
+navigation, boundary availability and match-position semantics.
+
+Focused coverage in the existing GUI smoke target must prove forward and
+backward one-range movement, atomic selection/scroll/position update, initial
+position zero, first and last boundaries, a one-range plan, empty state, token
+mismatch, stale ownership and lifecycle invalidation. A boundary-unavailable
+command must return the unchanged current snapshot with no DOM, selection,
+scroll or position effect. Missing, empty, stale and token-mismatched state must
+be rejected without effects. The private callback must distinguish accepted
+current state from rejection and report token, zero-based position, ordered
+count, `can_previous` and `can_next` equivalents.
+
+Acceptance must prove no controls or button bindings, status mutation,
+translations, F3/shortcut behavior, `findText` calls or ignore-diacritics
+consumption. It must preserve P8-FT-67 highlighting and first selection,
+ordinary find-in-page, exact activation, headword-only rows and dictionary
+tooltips. No installed/Core/C interface or DTO, index, configuration,
+dependency, catalog, translation, executable or test-registration gate changes;
+exactly 109 registered Release tests remain unchanged. Compiled gates are
+omitted for this four-document-only audit. No successor after P8-FT-68 is
+selected, ranked, recommended or named. Completion will unlock only private
+full-text navigation UI/status binding.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

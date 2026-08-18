@@ -5370,6 +5370,39 @@ remain outside the leaf. No successor after P8-FT-67 is selected, ranked,
 recommended or named. Completion will unlock only generation-bound ordered
 applied-range state.
 
+### Phase 8 P8-FT-68 private ordered applied-range navigation command prerequisite (selected)
+
+The fresh independent readiness audit starts from clean synchronized
+migrated/local/upstream/live-remote revision
+`a708b8518bf400d9f0c2a44edf0b214959937d85` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-67's
+historical no-successor closure and selects only P8-FT-68, the smallest
+dependency-ready consumer of the private ordered ranges and position published
+by current `article_view.cpp:90-256` and retained with accepted identity by
+`main_window.h:499-523`. Pinned legacy `articleview.cc:2703-2704,2730-2788`
+defines one-step, non-wrapping Previous/Next navigation, disabled boundary
+directions and the state used for match-count presentation.
+
+The leaf adds one private, asynchronous `ArticleView` navigation command with
+an expected application token and direction. A current nonempty owner moves
+exactly one range only when that direction is available; selection, scrolling
+and zero-based position update atomically. A boundary-unavailable direction
+returns the unchanged current snapshot and has no presentation effect. Missing,
+empty, stale and token-mismatched state is rejected without effects. The typed
+private result distinguishes current accepted state from rejection and returns
+token, position, ordered count, `can_previous` and `can_next` equivalents for a
+later identity-checked UI consumer.
+
+P8-FT-68 adds no controls, button binding, status mutation, translated strings,
+F3/shortcut behavior or `findText` use, and it does not consume
+`ignore_diacritics`. P8-FT-67 highlighting and initial position zero, ordinary
+find-in-page, result activation, headword-only rows and dictionary tooltips are
+unchanged. No installed/Core/C contract or DTO, index, configuration,
+dependency, catalog, translation, executable or test registration changes;
+the Release baseline remains exactly 109 tests. No successor after P8-FT-68 is
+selected, ranked, recommended or named. Completion will unlock only private
+full-text navigation UI/status binding.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

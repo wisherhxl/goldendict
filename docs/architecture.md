@@ -5420,6 +5420,44 @@ Previous/Next commands and their UI/status behavior remain outside this leaf.
 No successor after P8-FT-67 is selected, ranked, recommended or named.
 Completion will unlock only generation-bound ordered applied-range state.
 
+### Phase 8 P8-FT-68 private ordered applied-range navigation command prerequisite (selected)
+
+The fresh independent readiness audit starts from clean synchronized
+migrated/local/upstream/live-remote revision
+`a708b8518bf400d9f0c2a44edf0b214959937d85` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-67's
+historical no-successor closure and selects only P8-FT-68, the smallest
+dependency-ready consumer of its private generation-bound ordered applied-range
+state. Current `article_view.cpp:90-256` publishes token-owned ordered DOM
+ranges and position zero, while `main_window.h:499-523` retains the complete
+accepted identity and applied result. Pinned legacy `articleview.cc:2703-2704`
+and `articleview.cc:2730-2788` establish one-step, non-wrapping Previous/Next
+behavior and the state later used for boundary enablement and match-count
+status.
+
+P8-FT-68 adds one private `ArticleView` command that accepts the expected
+application token and a backward or forward direction. Against a current,
+nonempty published owner, an available direction moves exactly one ordered
+range, atomically selects and scrolls that range, and updates the zero-based
+published position. An unavailable boundary direction performs no DOM,
+selection, scroll or position change. Missing, empty, stale or token-mismatched
+state is rejected without effects. The private asynchronous result distinguishes
+accepted current state from rejection and returns the token, current position,
+ordered count and whether Previous and Next are available, so the composition
+root can recheck identity and later project legacy UI semantics without
+inferring WebEngine state.
+
+The Shared-Library and GUI Boundary governs this private presentation command.
+It does not add or bind controls, change status text, add F3 or other shortcuts,
+reuse ordinary article `findText`, consume `ignore_diacritics`, or alter the
+P8-FT-67 highlight-all and initial first-range selection. It changes no
+installed/Core/C interface or DTO, index format, configuration, dependency,
+catalog, translation, executable or test registration. Headword-only result
+rows, exact dictionary-name tooltips, exact activation and the exactly 109-test
+Release baseline remain unchanged. No successor after P8-FT-68 is selected,
+ranked, recommended or named. Completion will unlock only private full-text
+navigation UI/status binding.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
