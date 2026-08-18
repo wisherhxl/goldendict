@@ -5310,6 +5310,52 @@ and ignore-diacritics behavior remain outside this leaf. No successor after
 P8-FT-65 is selected, ranked, recommended or named. Completion unlocks only the
 P8-FT-65 `DesktopFacade` matching-plan dependency boundary.
 
+### Phase 8 P8-FT-66 private match-plan worker/controller prerequisite (selected)
+
+The fresh independent documentation-only audit starts from clean synchronized
+migrated/local/upstream/live-remote revision
+`9c9229bce082b2b5e39c6a71e188b12c12a86433` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Completed P8-FT-60 through
+P8-FT-65 provide exact-result navigation and activation, accepted query policy,
+generation-safe rendered-page text, and the installed deterministic matching
+plan. P8-FT-66 supersedes P8-FT-65's historical no-successor closure. GET
+selects exactly the smallest private prerequisite that may consume that plan
+without deciding its presentation.
+Current `full_text_request_controller.cpp:21-188` supplies the established
+cancellable worker/controller ownership pattern, `main_window.cpp:8320-8364`
+supplies the existing GUI identity gates, and pinned legacy
+`articleview.cc:2569-2791` supplies the downstream presentation behavior that
+this prerequisite intentionally does not implement.
+
+P8-FT-66 adds a private Widgets worker/controller around the synchronous
+`DesktopFacade::BuildRenderedTextMatchPlan` operation. The controller accepts
+the complete request and a monotonic work generation by value, invokes the
+facade off the GUI thread with explicit cancellation, and queues the typed
+result back to the GUI thread. It borrows the facade only while attached and
+must cancel and stop running or pending work before facade replacement or
+teardown. Replacement work cancels both the running token and any superseded
+pending request.
+
+The GUI retains GUI-only identity context. Delivery is accepted only while the
+work generation, accepted-query generation and exact query policy, lookup
+presentation generation, article-search generation, navigation generation,
+tab, view and page all remain current. Replacement activation or article
+search, lookup or navigation invalidation, tab/view/page replacement, tab close,
+facade detachment and application teardown cancel or invalidate work. Successful
+empty and nonempty plans and typed failures remain inert private state; stale,
+cancelled, duplicate, detached and teardown completions are discarded without
+presentation effects.
+
+This leaf adds no public or installed interface and changes no Core DTO, C API,
+index format, adapter, configuration, dependency, catalog, translation,
+executable or test registration. It does not call `findText`, apply DOM or
+JavaScript ranges, highlight occurrences, select a match, implement Previous or
+Next navigation, change status text or consume `ignore_diacritics`. Result rows
+remain headword-only with their exact dictionary-name tooltip, and existing
+exact activation remains unchanged. No successor after P8-FT-66 is selected,
+ranked, recommended or named. Completion unlocks only generation-safe private
+match-plan availability.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

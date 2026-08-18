@@ -1057,6 +1057,39 @@ ranges, translations and test registrations remain unchanged; the Release
 baseline stays exactly 109. No successor after P8-FT-65 is selected or named.
 Completion unlocks only its `DesktopFacade` matching-plan dependency boundary.
 
+### P8-FT-66 private match-plan worker/controller prerequisite (selected)
+
+The fresh independent documentation-only audit is pinned to clean synchronized
+migrated/local/upstream/live-remote revision
+`9c9229bce082b2b5e39c6a71e188b12c12a86433` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-66 supersedes P8-FT-65's
+historical no-successor closure. GET's Option B selects exactly P8-FT-66: a
+private cancellable Widgets worker/controller that supplies the
+P8-FT-64 rendered page and P8-FT-63 accepted query policy by value to the
+completed P8-FT-65 facade matcher and queues its typed result to the GUI thread.
+Evidence is current `full_text_request_controller.cpp:21-188` and
+`main_window.cpp:8320-8364`, plus pinned legacy
+`articleview.cc:2569-2791` for the still-excluded presentation behavior.
+
+Delivery requires the same work generation, accepted-query generation and
+exact query policy, lookup presentation generation, article-search generation,
+navigation generation, tab, view and page. Replacement activation or article
+search, lookup/navigation invalidation, tab/view/page replacement, tab close,
+facade detachment and teardown cancel or invalidate work. Successful empty and
+nonempty plans and typed failures may be retained only as inert private state;
+cancelled, stale, duplicate, detached and teardown completions have no UI
+effect.
+
+P8-FT-66 changes no installed interface, Core DTO, C API, index format,
+configuration, dependency, catalog, translation, executable or test
+registration. It preserves the Shared-Library and GUI Boundary, headword-only
+results, exact dictionary tooltip and exact activation. Literal/DOM application,
+highlight-all behavior, first selection, Previous/Next navigation, status
+wording, index lifecycle/Preferences and explicitly deferred ignore-diacritics
+semantics remain outside the leaf and unranked. No successor after P8-FT-66 is
+selected, ranked, recommended or named. Completion unlocks only generation-safe
+private match-plan availability.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

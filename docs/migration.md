@@ -5280,6 +5280,46 @@ No successor after P8-FT-65 is selected, ranked, recommended or named.
 Completion unlocks only the P8-FT-65 `DesktopFacade` matching-plan dependency
 boundary.
 
+### Phase 8 P8-FT-66 private match-plan worker/controller prerequisite (selected)
+
+The fresh independent documentation-only audit starts from clean synchronized
+migrated/local/upstream/live-remote revision
+`9c9229bce082b2b5e39c6a71e188b12c12a86433` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-66 supersedes P8-FT-65's
+historical no-successor closure. GET's Option B selects only P8-FT-66. The
+private Widgets worker/controller accepts a complete
+`RenderedTextMatchPlanRequest` and monotonic work generation by value, calls
+the synchronous P8-FT-65 facade operation off the GUI thread with an explicit
+cancellation token, and queues the typed result to the GUI thread. The facade
+is borrowed only while attached; running and pending work stop before facade
+replacement or teardown, and replacement submission cancels superseded work.
+The implementation shape follows current
+`full_text_request_controller.cpp:21-188`; current
+`main_window.cpp:8320-8364` supplies the identity-gated rendered-text transport,
+while pinned legacy `articleview.cc:2569-2791` remains evidence only for later
+presentation behavior.
+
+Main-window delivery retains GUI-only identity and accepts completion only for
+the same work generation, accepted-query generation and exact query policy,
+lookup presentation generation, article-search generation, navigation
+generation, tab, view and page. Replacement activation or article search,
+lookup/navigation invalidation, tab/view/page replacement, tab close, facade
+detachment and application teardown cancel or invalidate the work. Successful
+empty and nonempty plans and typed errors remain inert private state; cancelled,
+stale, duplicate, detached and teardown completions are silent.
+
+Focused implementation acceptance belongs to existing targets and must cover
+by-value isolation, worker-thread invocation, GUI-thread completion, running and
+pending cancellation, empty/nonempty success and typed error delivery, every
+identity rejection boundary, and the absence of presentation effects. No test
+is registered. P8-FT-66 changes no installed interface, Core DTO, C API, index
+format, configuration, dependency, catalog, translation or executable. It does
+not call `findText`, execute DOM/JavaScript application, highlight, select,
+navigate matches, change status wording or consume `ignore_diacritics`.
+Headword-only rows, dictionary tooltips and exact activation remain unchanged.
+No successor after P8-FT-66 is selected, ranked, recommended or named.
+Completion unlocks only generation-safe private match-plan availability.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

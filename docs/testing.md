@@ -4127,6 +4127,43 @@ the new facade contract while the C consumer remains unchanged. No successor
 after P8-FT-65 is selected or named; completion unlocks only its
 `DesktopFacade` matching-plan dependency boundary.
 
+### P8-FT-66 private match-plan worker/controller prerequisite acceptance (selected)
+
+The documentation-only readiness audit starts from clean synchronized
+migrated/local/upstream/live-remote revision
+`9c9229bce082b2b5e39c6a71e188b12c12a86433` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-66 supersedes P8-FT-65's
+historical no-successor closure. GET's Option B selects only P8-FT-66:
+cancellable worker execution of the synchronous P8-FT-65 facade
+matcher with by-value request input and GUI-thread delivery.
+Acceptance is grounded in current `full_text_request_controller.cpp:21-188`
+and `main_window.cpp:8320-8364`; pinned legacy
+`articleview.cc:2569-2791` defines presentation behavior outside this leaf.
+
+Focused acceptance in existing targets must prove request isolation, monotonic
+replacement, worker-thread invocation, queued GUI-thread completion, explicit
+cancellation of running and superseded pending work, and safe stop before
+facade replacement or teardown. Successful empty and nonempty plans and every
+typed P8-FT-65 failure must be delivered without reinterpretation. Cancelled
+work must not complete as current.
+
+Main-window acceptance must independently invalidate work generation,
+accepted-query generation or exact query policy, lookup presentation
+generation, article-search generation, navigation generation, tab, view and
+page and prove each stale completion is discarded. It must also cover
+replacement activation and article search, lookup/navigation invalidation,
+tab/view/page replacement, tab close, facade detachment, teardown and duplicate
+completion. Accepted output remains inert private state.
+
+Acceptance must prove no `findText`, DOM/JavaScript application, highlighting,
+selection, Previous/Next navigation, status mutation or ignore-diacritics
+consumption. No installed API, Core DTO, C API, index, configuration,
+dependency, catalog, translation, executable or test-registration gate changes;
+the Release baseline remains exactly 109 tests. Compiled gates are omitted for
+this four-document-only audit. No successor after P8-FT-66 is selected, ranked,
+recommended or named. Completion unlocks only generation-safe private match-plan
+availability.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
