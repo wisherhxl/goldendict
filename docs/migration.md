@@ -4979,6 +4979,66 @@ behavior and exactly
 109 registered Release tests remain unchanged. No successor is selected or
 ranked. Completion unlocks only its dependency boundary.
 
+### Phase 8 P8-FT-61 exact-result activation connection (selected)
+
+The fresh bounded documentation-only audit starts from synchronized migrated
+HEAD, upstream, and live remote revision
+`60267f6a8d7fae41e186213628c1cc228b1f5f61` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The approved
+user-visible exact-result navigation and source-targeting priority selects
+exactly P8-FT-61: wire accepted full-text result activation to the completed
+P8-FT-60 exact-target facade/navigation contract. Repository truth durably
+occupies P8-FT-60 with the completed foundation, making P8-FT-61 the next
+stable identifier.
+
+Prerequisites are the completed structured result projection and accepted
+activation context, P8-FT-16 scoped current-tab activation, P8-FT-29 accepted-
+query article-search handoff, and P8-FT-60 target validation/resolution,
+navigation identity, atomic tab mutation, history, and session replay. Current
+`full_text_search_dialog.h:24-35` and
+`full_text_search_dialog.cpp:337-348` already deliver dictionary identity and
+opaque `document_id` by value. Current `main_window.cpp:5996-6040` is the sole
+activation owner but constructs headword-and-scope-only navigation. Current
+`desktop_facade.h:35-85,139-190`, `desktop_facade.cc:156-205`, and
+`application_service_test.cpp:2375-2438` provide the completed exact-target
+contract and atomic failure evidence. Pinned legacy
+`fulltextsearch.cc:596-609` and `mainwindow.cc:3001-3013` confirm only headword
+and dictionary-set activation, so legacy supplies no competing exact-document
+shape.
+
+P8-FT-61 changes only private Widgets composition: MainWindow copies
+`intent.result.dictionary.id` and `intent.result.document_id`, without parsing
+either, into `TabNavigationState::exact_target`; preserves the existing lookup
+kind, exact headword/title, selected group, and immutable accepted dictionary
+scope; and submits the complete command once through
+`DesktopFacade::OpenArticleTab`. Core/facade remains responsible for validation,
+resolution, navigation identity, history, and persisted session replay under
+the Shared-Library and GUI Boundary.
+
+Acceptance requires successful activation to retain current-tab behavior,
+group, accepted scope and ordering, main-query text/cursor/selection, lookup
+dispatch, history/session behavior, and accepted-query article-search handoff,
+while persisting the exact target. Invalid targets, unavailable dictionaries,
+missing or stale documents, invalid navigation, tab-limit failure, and
+navigation-limit failure must leave tabs, history/session, lookup requests, and
+article-search state unchanged. Existing `Unable to update article state`
+presentation suffices and must expose no target or backend detail.
+
+Focused verification extends only the existing MainWindow/full-text dialog
+smoke to prove exact target projection, success persistence, current-tab/group/
+scope/query/article-search preservation, and atomic invalid/unresolved and tab-
+operation failure. It adds no executable or registration; the Release baseline
+remains exactly 109 tests. This documentation-only audit runs no compiled gate.
+
+All completed P8-FT behavior, exact strings, captions, ranges, lifecycle and
+privacy guarantees remain unchanged. Public/installed interfaces and ABI,
+configuration, headless `DictionaryService`, `RuntimeDictionarySource`, C API,
+dependencies, adapters/index formats, build, catalogs, locale loading,
+highlighting/excerpts, ignore-diacritics semantics, translations, and unrelated
+parity remain excluded and unranked. No successor after P8-FT-61 is selected,
+ranked, recommended, or named. Completion unlocks only implementation of the
+selected activation connection.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

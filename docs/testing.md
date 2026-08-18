@@ -3862,6 +3862,51 @@ and excerpts, diacritics, presentation, adapters, and other independent parity
 gaps remain excluded and unranked. No successor is selected or ranked. This
 completed prerequisite unlocks only its dependency boundary.
 
+### P8-FT-61 exact-result activation connection acceptance
+
+The documentation-only audit is pinned to synchronized migrated revision
+`60267f6a8d7fae41e186213628c1cc228b1f5f61` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only
+P8-FT-61, the private GUI connection from an accepted full-text result to the
+`ExactArticleTarget` and `TabNavigationState` contract completed by P8-FT-60.
+P8-FT-60's focused Core resolution, validation, atomic mutation, navigation-
+identity, history, and session tests remain the foundation; no duplicate Core
+contract or new interface is required.
+
+Current focused evidence is `full_text_search_dialog_test.cpp:2299-2394` and
+`2685-2764` for exact accepted result/scope/context activation delivery,
+`main_window.cpp:6394-6520` for the existing current-tab/group/scope/main-query/
+article-search success and atomic failure smoke, and
+`application_service_test.cpp:2375-2438` plus
+`article_tabs_test.cpp:105-153` for P8-FT-60 exact-target resolution and
+failure atomicity. Pinned legacy evidence remains
+`fulltextsearch.cc:596-609` and `mainwindow.cc:3001-3013`.
+
+Focused implementation coverage must prove that a generation-current accepted
+row copies its dictionary ID and opaque `document_id` unchanged into
+`navigation.exact_target`; that successful current-tab activation records that
+exact navigation in facade state and exported session; and that group,
+authoritative accepted scope and order, headword/title, main-query text/cursor/
+selection, lookup dispatch, and accepted-query article-search handoff remain
+unchanged. Widgets must not parse IDs or call a backend resolver directly.
+
+The same existing GUI smoke must cover invalid target, unavailable dictionary,
+missing/stale document, and existing tab-operation failure without tab,
+history/session, request, or article-search mutation, while retaining exactly
+`Unable to update article state` and exposing no raw detail. Cases are added to
+existing test executables only; no test registration is added and the Release
+baseline remains exactly 109 tests.
+
+Documentation acceptance requires the exact four-file allowlist, complete-diff
+review, current and legacy citations, cross-document consistency, Phase
+terminology, the Shared-Library and GUI Boundary, completed P8-FT-60 foundation,
+locked strings/captions/ranges and completed behavior, unchanged public/
+installed/headless/service/runtime-source/C API/dependency/index-format/build
+boundaries, no-successor wording, synchronized refs, clean worktrees, and
+`git diff --check`. Compiled gates are intentionally skipped for this
+documentation-only audit. Highlighting/excerpts, ignore-diacritics semantics,
+translations, and every successor remain excluded and unranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

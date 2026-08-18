@@ -4946,6 +4946,61 @@ catalogs, locale loading, and unrelated parity are excluded and unranked.
 P8-FT-60 selects no
 successor. Completion unlocks only its dependency boundary.
 
+### Phase 8 exact-result activation connection (selected)
+
+The fresh bounded documentation-only audit is pinned to synchronized migrated
+revision `60267f6a8d7fae41e186213628c1cc228b1f5f61` and unchanged clean
+read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+The approved visible exact-result navigation and source-targeting priority
+selects exactly P8-FT-61: connect an accepted full-text result activation to
+the completed P8-FT-60 exact-target navigation contract. P8-FT-61 is the next
+stable ordinal after the durably completed P8-FT-60 foundation.
+
+Current `full_text_search_dialog.h:24-35` and
+`full_text_search_dialog.cpp:337-348` already deliver by value the accepted
+result's authoritative dictionary identity and opaque `document_id`, together
+with immutable accepted scope and query context. Current
+`main_window.cpp:5996-6040` owns conversion of that private Widgets intent into
+the current-tab `TabNavigationState`, but still omits `exact_target`. Current
+`desktop_facade.h:35-85,139-190`, `desktop_facade.cc:156-205`, and the focused
+Core coverage in `application_service_test.cpp:2375-2438` establish that
+P8-FT-60 atomically validates and resolves `ExactArticleTarget`, includes it in
+lookup navigation identity and persisted history/session, and rejects invalid,
+unavailable-dictionary, and missing-document targets before mutation. Pinned
+legacy `fulltextsearch.cc:596-609` and `mainwindow.cc:3001-3013` preserve
+headword and aggregated dictionary targeting only and provide no exact-document
+contract to reproduce.
+
+The Shared-Library and GUI Boundary governs the connection. MainWindow owns
+the application-command projection: it copies `intent.result.dictionary.id`
+and `intent.result.document_id` without inspection into
+`TabNavigationState::exact_target`, retains the existing `kLookup` headword,
+title, selected group, and exact accepted dictionary scope, and submits the
+complete navigation once through `DesktopFacade::OpenArticleTab`. Widgets must
+not parse the opaque ID, resolve a backend, or bypass the facade. Core remains
+the sole owner of target validation/resolution, navigation identity, history,
+and session replay.
+
+Facade rejection, including invalid navigation or target, unavailable
+dictionary, missing or stale document, tab limit, and navigation-history
+limit, must remain atomic: no tab, history/session, lookup request, or article-
+search presentation mutation occurs. The established private status `Unable
+to update article state` is sufficient and exposes no identifier or backend
+detail. Success preserves current-tab activation, selected group, immutable
+accepted scope and ordering, main-query text/cursor/selection, lookup dispatch,
+history/session behavior, and the completed accepted-query article-search
+handoff.
+
+P8-FT-61 changes only private GUI composition and focused existing GUI smoke
+coverage when implemented. It adds no public API, ABI, configuration, test
+registration, dependency, build, catalog, locale-loader, installed/service,
+headless `DictionaryService`, `RuntimeDictionarySource`, C API, adapter, or
+index-format change. Highlighting/excerpts, ignore-diacritics consumption,
+translations, and all unrelated parity remain excluded and unranked. All
+completed P8-FT strings, captions, ranges, lifecycle and privacy behavior, and
+the exactly 109-test Release registration baseline remain unchanged. No
+successor after P8-FT-61 is selected, ranked, recommended, or named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

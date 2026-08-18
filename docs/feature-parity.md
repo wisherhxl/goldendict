@@ -827,6 +827,46 @@ lifecycle and Preferences, presentation, adapters, and unrelated parity remain
 excluded and unranked. No successor after P8-FT-60 is selected or ranked. The
 completed prerequisite unlocks only its dependency boundary.
 
+### P8-FT-61 exact-result activation connection (selected)
+
+The fresh documentation-only audit is pinned to synchronized migrated revision
+`60267f6a8d7fae41e186213628c1cc228b1f5f61` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly
+P8-FT-61, the smallest dependent GUI leaf that projects the accepted result's
+authoritative dictionary ID and opaque `document_id` into the
+`TabNavigationState::exact_target` contract completed by P8-FT-60. P8-FT-60
+remains the Core/facade validation, resolution, navigation-identity, history,
+and session foundation; P8-FT-61 does not extend it.
+
+Current `full_text_search_dialog.h:24-35` and
+`full_text_search_dialog.cpp:337-348` retain and deliver exact accepted result,
+scope, and query context by value. Current `main_window.cpp:5996-6040` owns the
+activation command and preserves current-tab, group, accepted scope, main-query
+selection, lookup, and article-search handoff behavior, but omits the exact
+target. Current `desktop_facade.h:35-85,139-190`,
+`desktop_facade.cc:156-205`, and
+`application_service_test.cpp:2375-2438` prove the completed atomic facade
+contract. Pinned legacy `fulltextsearch.cc:596-609` and
+`mainwindow.cc:3001-3013` target only a headword and aggregated dictionary IDs.
+
+Implementation is confined to private MainWindow projection and focused
+existing GUI smoke cases. MainWindow copies, without parsing, the result
+dictionary ID and `document_id` into `ExactArticleTarget` before the single
+`DesktopFacade::OpenArticleTab` call. Any invalid/unresolved target or other tab
+operation failure retains the existing `Unable to update article state` policy
+and mutates no tab, history/session, lookup request, or article-search state.
+Success preserves the authoritative accepted scope and all completed current-
+tab/group/query/history/session and article-search semantics.
+
+The Shared-Library and GUI Boundary, completed P8-FT behavior and exact strings,
+`Maximum word distance` with spin-box-owned `0..1000`, `Maximum articles per
+dictionary` with spin-box-owned `1..100000`, and exactly 109 registered Release
+tests remain unchanged. Public/installed APIs and ABI, configuration, headless
+service/runtime-source/C API, dependencies, adapters/index formats, build,
+catalogs, locale loading, highlighting/excerpts, ignore-diacritics semantics,
+translations, and unrelated parity remain excluded and unranked. No successor
+after P8-FT-61 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |
