@@ -825,10 +825,13 @@ void ApplicationServiceTest::ConfigurationRoundTripsArticleTabSession() {
     lookup.title = "Alpha & Beta";
     lookup.dictionary_filter_active = true;
     lookup.dictionary_ids = {"second|dictionary", "first", "second|dictionary"};
+    lookup.exact_target =
+        ExactArticleTarget{"first", "opaque|document/identity"};
     TabNavigationState empty_scope = lookup;
     empty_scope.query = "authoritative empty";
     empty_scope.title = empty_scope.query;
     empty_scope.dictionary_ids.clear();
+    empty_scope.exact_target.reset();
     TabNavigationState link;
     link.kind = TabNavigationKind::kInternalLink;
     link.query = "linked";
@@ -860,6 +863,7 @@ void ApplicationServiceTest::ConfigurationRoundTripsArticleTabSession() {
         legacy.article_tab_session->tabs.front().history.front();
     QVERIFY(!legacy_navigation.dictionary_filter_active);
     QVERIFY(legacy_navigation.dictionary_ids.empty());
+    QVERIFY(!legacy_navigation.exact_target.has_value());
 
     test::WriteBinaryFile(path,
                           "goldendict-core-config-v1\nindex_directory=\n");
@@ -924,6 +928,14 @@ void ApplicationServiceTest::
         "article_tab_navigation=1|1|word|0|word|||||1|1|%C3%28\n",
         "article_tab_session=1\narticle_tab=1|0\n"
         "article_tab_navigation=1|1|word|0|word|||||1|1|embedded%00nul\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||1|1|id|1\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||1|1|id|0|extra\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||1|1|id|1||document\n",
+        "article_tab_session=1\narticle_tab=1|0\n"
+        "article_tab_navigation=1|1|word|0|word|||||1|1|id|1|dictionary|\n",
         "article_tab_session=18446744073709551615\n"
         "article_tab=18446744073709551615|0\n"
         "article_tab_navigation=18446744073709551615|1|word|0|word|||||\n",
@@ -2320,6 +2332,7 @@ void ApplicationServiceTest::
     configuration.index_directory = (root / "indexes").string();
     std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources;
     runtime_sources.push_back(std::make_unique<InspectionRuntimeSource>());
+    auto facade = CreateDesktopFacade(configuration);
     auto service =
         CreateDictionaryService(configuration, std::move(runtime_sources));
     const auto catalog = service->GetCatalog();
@@ -2364,7 +2377,69 @@ void ApplicationServiceTest::
         QCOMPARE(result.dictionary.supports_full_text_search,
                  catalog_identity->supports_full_text_search);
         adapted_ids.push_back(result.dictionary.id);
+        const ExactArticleTarget target{result.dictionary.id,
+                                        result.document_id};
+        const auto resolved = facade->ResolveExactArticleTarget(target);
+        QVERIFY(resolved);
+        QCOMPARE(resolved.dictionary.id, result.dictionary.id);
+        QCOMPARE(resolved.document_id, result.document_id);
+        QCOMPARE(resolved.headword, result.headword);
     }
+    QCOMPARE(facade
+                 ->ResolveExactArticleTarget(
+                     {"unavailable", filtered.results.front().document_id})
+                 .error,
+             ExactArticleTargetError::kDictionaryUnavailable);
+    QCOMPARE(facade
+                 ->ResolveExactArticleTarget(
+                     {filtered.results.front().dictionary.id, "stale-document"})
+                 .error,
+             ExactArticleTargetError::kDocumentNotFound);
+    QCOMPARE(facade->ResolveExactArticleTarget({"", "document"}).error,
+             ExactArticleTargetError::kInvalidTarget);
+
+    TabNavigationState exact_navigation;
+    exact_navigation.kind = TabNavigationKind::kLookup;
+    exact_navigation.query = filtered.results.front().headword;
+    exact_navigation.group_id = 17U;
+    exact_navigation.title = "Exact title";
+    exact_navigation.dictionary_filter_active = true;
+    exact_navigation.dictionary_ids = adapted_ids;
+    exact_navigation.exact_target =
+        ExactArticleTarget{filtered.results.front().dictionary.id,
+                           filtered.results.front().document_id};
+    const auto initial_session = facade->ExportArticleTabSession();
+    QVERIFY(facade->OpenArticleTab(exact_navigation, TabOpenPolicy::kCurrentTab,
+                                   TabActivationPolicy::kActivate));
+    const auto exact_session = facade->ExportArticleTabSession();
+    QCOMPARE(exact_session.tabs.front().history.back(), exact_navigation);
+    QVERIFY(facade->GoBackInArticleTab(exact_session.active_tab_id));
+    QVERIFY(facade->GoForwardInArticleTab(exact_session.active_tab_id));
+    QCOMPARE(facade->GetArticleTabsState().tabs.front().navigation,
+             exact_navigation);
+
+    auto restored = CreateDesktopFacade(configuration);
+    QVERIFY(restored->RestoreArticleTabSession(exact_session));
+    QCOMPARE(restored->ExportArticleTabSession(), exact_session);
+
+    auto invalid_navigation = exact_navigation;
+    invalid_navigation.exact_target->document_id = "stale-document";
+    const auto before_invalid = facade->ExportArticleTabSession();
+    QCOMPARE(
+        facade
+            ->OpenArticleTab(invalid_navigation, TabOpenPolicy::kCurrentTab,
+                             TabActivationPolicy::kActivate)
+            .error,
+        TabOperationError::kExactTargetDocumentNotFound);
+    QCOMPARE(facade->ExportArticleTabSession(), before_invalid);
+
+    auto invalid_session = exact_session;
+    invalid_session.tabs.front().history.back() = invalid_navigation;
+    const auto before_restore = restored->ExportArticleTabSession();
+    QCOMPARE(restored->RestoreArticleTabSession(invalid_session).error,
+             TabOperationError::kExactTargetDocumentNotFound);
+    QCOMPARE(restored->ExportArticleTabSession(), before_restore);
+    QVERIFY(!(initial_session == exact_session));
     QCOMPARE(std::count_if(adapted_ids.begin(), adapted_ids.end(),
                            [](const auto& id) {
                                return id.rfind("stardict-", 0U) == 0U;
@@ -2500,6 +2575,17 @@ void ApplicationServiceTest::
     runtime_sources.push_back(std::make_unique<InspectionRuntimeSource>());
     service =
         CreateDictionaryService(configuration, std::move(runtime_sources));
+    const auto dsl_result =
+        std::find_if(filtered.results.begin(), filtered.results.end(),
+                     [&dsl_id](const auto& result) {
+                         return result.dictionary.id == dsl_id;
+                     });
+    QVERIFY(dsl_result != filtered.results.end());
+    auto unavailable_facade = CreateDesktopFacade(configuration);
+    QCOMPARE(unavailable_facade
+                 ->ResolveExactArticleTarget({dsl_id, dsl_result->document_id})
+                 .error,
+             ExactArticleTargetError::kDictionaryUnavailable);
     const auto replacement_catalog = service->GetCatalog();
     QCOMPARE(replacement_catalog.size(), catalog.size());
     QCOMPARE(

@@ -7,6 +7,7 @@
 
 namespace goldendict::core::application {
 
+bool IsValidExactArticleTarget(const ExactArticleTarget& target);
 bool IsValidTabNavigation(const TabNavigationState& state);
 bool ValidateArticleTabSession(const ArticleTabSession& session,
                                ArticleTabId* next_tab_id = nullptr);

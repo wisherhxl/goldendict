@@ -4,7 +4,9 @@
 #define GOLDENDICT_CORE_SRC_DICTIONARY_FULL_TEXT_INDEX_H_
 
 #include <filesystem>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "generated_index.h"
@@ -22,6 +24,12 @@ struct FullTextDocument {
     std::string headword;
     std::string document_id;
     std::string plain_text;
+};
+
+struct ResolvedFullTextDocument {
+    DictionaryIdentity dictionary;
+    std::string document_id;
+    std::string headword;
 };
 
 enum class FullTextIndexState {
@@ -53,6 +61,8 @@ class FullTextIndex final {
     FullTextResponse Search(
         const FullTextQuery& query,
         const CancellationToken* cancellation = nullptr) const;
+    std::optional<ResolvedFullTextDocument> ResolveDocument(
+        std::string_view document_id) const;
 
     FullTextIndexState state() const noexcept { return state_; }
 

@@ -4871,11 +4871,11 @@ formats, and unrelated parity remain independent and unranked. Completion
 unlocks only a fresh independent bounded readiness audit; no successor is
 selected, ranked, recommended, or named.
 
-### Phase 8 exact-result navigation contract prerequisite (selected)
+### Phase 8 exact-result navigation contract prerequisite (complete)
 
 The fresh bounded audit is pinned to clean synchronized migrated HEAD, local
 branch, upstream, and live remote at
-`d81d9cea163e5e0edd1ce3bf8517936c96014fe4`, plus the unchanged clean
+`4cca1e81e1167222d067e475a4053088cf99ba38`, plus the unchanged clean
 read-only legacy checkout at
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The user-approved priority makes
 exact-result navigation and source targeting authoritative over the remaining
@@ -4911,15 +4911,19 @@ legacy `mainwindow.cc:3001-3013` forwards those values to headword definition
 lookup. Legacy therefore supplies source scoping and later highlighting
 evidence, but no exact-document contract.
 
-The Shared-Library and GUI Boundary governs P8-FT-60. Core must validate and
-resolve the transport-neutral dictionary/document target; Widgets may only
-coordinate the command and presentation. The prerequisite must preserve
+The Shared-Library and GUI Boundary governs P8-FT-60. Core validates and
+resolves the transport-neutral dictionary/document target behind
+`DesktopFacade`; Widgets may only coordinate later commands and presentation.
+The prerequisite preserves
 current-tab activation, selected group and authoritative accepted dictionary
 scope, tab history and persisted session replay, main-query text and selection,
 and the completed accepted-query article-search handoff. Invalid, stale,
 missing-dictionary, and missing-document targets must fail without mutating tab
-navigation or history. Any later installed-interface or ABI change must be the
-smallest explicitly reviewed change required by that contract.
+navigation or history. Well-formed stale or removed IDs are document-not-found
+because the accepted target has no source-revision token. The approved change
+intentionally extends the installed C++ `DesktopFacade` vtable and navigation
+DTO ABI; `DictionaryService`, `RuntimeDictionarySource`, and the C ABI remain
+unchanged.
 
 Completed translations `Full-text search`, both `Search` uses, `Results may be
 incomplete.`, `No matches`, `Full-text search failed`, `Some dictionaries
@@ -4927,17 +4931,20 @@ could not be searched`, `No matches in searched dictionaries`, and
 `Errors: %1` remain exact. Locked policies remain `Maximum word distance` with
 spin-box-owned `0..1000` and `Maximum articles per dictionary` with spin-box-
 owned `1..100000`. All completed P8-FT identities, predicates, lifecycle,
-coexistence, and privacy guarantees remain unchanged, as do public/installed
-ABI and Core, configuration, index-format, dependency, build, catalog/locale-
-loader, executable, and registration boundaries. The Release baseline remains
-exactly 109 registered tests.
+coexistence, and privacy guarantees remain unchanged. Configuration adds a
+backward-compatible exact-target session tail; index-format, dependency, build,
+catalog/locale-loader, executable, and registration boundaries remain
+unchanged. The Release baseline remains exactly 109 registered tests.
 
-This audit changes documentation only. Exact-result activation, highlighting
+The implementation changes the desktop Core contract, private resolution for
+the twelve accepted built-ins, session persistence, focused existing tests,
+the packaged C++ consumer, and these documents. Direct exact-result activation,
+highlighting
 and excerpts, ignore-diacritics consumption, translation acceptance, index and
-adapter formats, configuration, dependencies, build behavior, catalogs, locale
-loading, and unrelated parity are excluded and unranked. P8-FT-60 selects no
-successor. This audit unlocks only implementation of the selected P8-FT-60
-prerequisite; exact-result navigation itself remains locked behind it.
+adapter formats, unrelated configuration, dependencies, build behavior,
+catalogs, locale loading, and unrelated parity are excluded and unranked.
+P8-FT-60 selects no
+successor. Completion unlocks only its dependency boundary.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

@@ -114,6 +114,16 @@ void ArticleTabsTest::RejectsInvalidScopedNavigationAtomically() {
     link.kind = TabNavigationKind::kInternalLink;
     link.internal_url = "goldendict://lookup/link";
     invalid.push_back(std::move(link));
+    auto empty_exact_dictionary = Lookup("exact");
+    empty_exact_dictionary.exact_target = ExactArticleTarget{"", "document"};
+    invalid.push_back(std::move(empty_exact_dictionary));
+    auto empty_exact_document = Lookup("exact");
+    empty_exact_document.exact_target = ExactArticleTarget{"dictionary", ""};
+    invalid.push_back(std::move(empty_exact_document));
+    auto oversized_exact_document = Lookup("exact");
+    oversized_exact_document.exact_target = ExactArticleTarget{
+        "dictionary", std::string(kMaximumExactDocumentIdBytes + 1U, 'x')};
+    invalid.push_back(std::move(oversized_exact_document));
 
     for (const auto& navigation : invalid) {
         QCOMPARE(facade
@@ -128,6 +138,18 @@ void ArticleTabsTest::RejectsInvalidScopedNavigationAtomically() {
                  TabOperationError::kInvalidSession);
         QCOMPARE(facade->ExportArticleTabSession(), before);
     }
+
+    auto unavailable = Lookup("exact");
+    unavailable.dictionary_filter_active = true;
+    unavailable.dictionary_ids = {"missing-dictionary"};
+    unavailable.exact_target =
+        ExactArticleTarget{"missing-dictionary", "opaque-document"};
+    QCOMPARE(facade
+                 ->OpenArticleTab(unavailable, TabOpenPolicy::kCurrentTab,
+                                  TabActivationPolicy::kActivate)
+                 .error,
+             TabOperationError::kExactTargetDictionaryUnavailable);
+    QCOMPARE(facade->ExportArticleTabSession(), before);
 }
 
 void ArticleTabsTest::RejectsInputPhrasesByUnicodeScalarWithoutMutation() {

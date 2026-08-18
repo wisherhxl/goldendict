@@ -35,6 +35,17 @@ bool IsValidDictionaryScope(const TabNavigationState& state) {
 
 }  // namespace
 
+bool IsValidExactArticleTarget(const ExactArticleTarget& target) {
+    return !target.dictionary_id.empty() &&
+           target.dictionary_id.size() <= kMaximumLookupFilterBytes &&
+           target.dictionary_id.find('\0') == std::string::npos &&
+           foundation::IsValidUtf8(target.dictionary_id) &&
+           !target.document_id.empty() &&
+           target.document_id.size() <= kMaximumExactDocumentIdBytes &&
+           target.document_id.find('\0') == std::string::npos &&
+           foundation::IsValidUtf8(target.document_id);
+}
+
 bool IsValidTabNavigation(const TabNavigationState& state) {
     if (!IsBoundedText(state.query) || !IsBoundedText(state.title) ||
         !IsBoundedText(state.internal_url) ||
@@ -53,17 +64,27 @@ bool IsValidTabNavigation(const TabNavigationState& state) {
                    state.target_article_id.empty() &&
                    state.target_anchor.empty() &&
                    !state.dictionary_filter_active &&
-                   state.dictionary_ids.empty();
+                   state.dictionary_ids.empty() &&
+                   !state.exact_target.has_value();
         case TabNavigationKind::kLookup:
             return !state.query.empty() && state.internal_url.empty() &&
                    state.source_dictionary_id.empty() &&
                    state.source_article_id.empty() &&
                    state.target_article_id.empty() &&
-                   state.target_anchor.empty() && IsValidDictionaryScope(state);
+                   state.target_anchor.empty() &&
+                   IsValidDictionaryScope(state) &&
+                   (!state.exact_target.has_value() ||
+                    (IsValidExactArticleTarget(*state.exact_target) &&
+                     state.dictionary_filter_active &&
+                     std::find(state.dictionary_ids.begin(),
+                               state.dictionary_ids.end(),
+                               state.exact_target->dictionary_id) !=
+                         state.dictionary_ids.end()));
         case TabNavigationKind::kInternalLink:
             return !state.query.empty() && !state.internal_url.empty() &&
                    !state.dictionary_filter_active &&
-                   state.dictionary_ids.empty();
+                   state.dictionary_ids.empty() &&
+                   !state.exact_target.has_value();
     }
     return false;
 }

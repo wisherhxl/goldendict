@@ -780,10 +780,10 @@ presentation, adapter/index-format, and unrelated parity remain independent
 and unranked. Completion unlocks only a fresh independent bounded readiness
 audit; no successor is selected, ranked, recommended, or named.
 
-### P8-FT-60 exact-result navigation contract prerequisite (selected)
+### P8-FT-60 exact-result navigation contract prerequisite (complete)
 
 The bounded audit is pinned to synchronized migrated revision
-`d81d9cea163e5e0edd1ce3bf8517936c96014fe4` and clean read-only legacy revision
+`4cca1e81e1167222d067e475a4053088cf99ba38` and clean read-only legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The approved priority selects
 exactly P8-FT-60: a narrow Core/facade/navigation prerequisite for consuming an
 accepted result's dictionary identity and opaque `document_id`. Repository
@@ -800,12 +800,14 @@ headword across aggregated dictionary IDs, not an exact document. Widgets
 therefore cannot implement exact targeting without inventing backend-specific
 lookup in violation of the Shared-Library and GUI Boundary.
 
-P8-FT-60 must define Core-owned target validation/resolution and facade/tab
+P8-FT-60 defines Core-owned target validation/resolution behind
+`DesktopFacade` and distinct facade/tab
 navigation identity while preserving current-tab, group and authoritative
 scope behavior, history/session replay, main-query selection, and the existing
 article-search handoff. Invalid or unresolved targets must leave navigation
-and history unchanged. Any interface or ABI change requires a separate narrow
-implementation review.
+and history unchanged. Well-formed stale IDs map to missing document. The
+approved narrow change intentionally extends the installed desktop C++ ABI;
+the headless service, runtime-source contract, and C ABI remain unchanged.
 
 Completed translations `Full-text search`, both `Search` uses, `Results may be
 incomplete.`, `No matches`, `Full-text search failed`, `Some dictionaries
@@ -815,13 +817,15 @@ could not be searched`, `No matches in searched dictionaries`, and
 `1..100000`. All completed P8-FT behavior and exactly 109 registered Release
 tests remain unchanged.
 
-The audit changes documentation only and preserves public/installed ABI, Core,
-configuration, index-format, dependency, build, catalog/locale-loader,
-executable, and registration boundaries. Exact-result activation, highlighting
+The implementation adds backward-compatible session persistence, private
+resolution for twelve accepted built-ins, focused existing-test cases, and
+packaged C++ consumer coverage. Index-format, dependency, build, catalog/
+locale-loader, executable, and registration boundaries remain unchanged.
+Direct exact-result activation, highlighting
 and excerpts, ignore-diacritics consumption, translation acceptance, index
 lifecycle and Preferences, presentation, adapters, and unrelated parity remain
 excluded and unranked. No successor after P8-FT-60 is selected or ranked. The
-audit unlocks only implementation of the P8-FT-60 prerequisite.
+completed prerequisite unlocks only its dependency boundary.
 
 ## Resources And Platform Integration
 

@@ -50,8 +50,23 @@ class FullTextIndexTest : public QObject {
    private slots:
     void Lifecycle();
     void QueryModesAndFilters();
+    void ResolvesOpaqueDocumentIdentity();
     void RejectsMalformedAndBoundedWork();
 };
+
+void FullTextIndexTest::ResolvesOpaqueDocumentIdentity() {
+    TemporaryDirectory directory;
+    auto index = FullTextIndex::OpenOrBuild(
+        directory.path() / "reference.gdfts", {},
+        {Document("a", "Alpha", "first"), Document("b", "Beta", "second")});
+    const auto resolved = index.ResolveDocument("Beta-article");
+    QVERIFY(resolved.has_value());
+    QCOMPARE(resolved->dictionary.id, std::string("b"));
+    QCOMPARE(resolved->document_id, std::string("Beta-article"));
+    QCOMPARE(resolved->headword, std::string("Beta"));
+    QVERIFY(!index.ResolveDocument("missing").has_value());
+    QVERIFY(!index.ResolveDocument("").has_value());
+}
 
 void FullTextIndexTest::Lifecycle() {
     TemporaryDirectory directory;

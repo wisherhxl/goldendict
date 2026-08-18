@@ -3814,20 +3814,20 @@ standalone installed C/C++ consumers, clean committed exact-SCM Conan creation
 with packaged consumers, the exact five-file allowlist, `git diff --check`,
 synchronized refs/remotes, and clean worktrees.
 
-### P8-FT-60 exact-result navigation contract readiness
+### P8-FT-60 exact-result navigation contract acceptance
 
 The documentation-only audit is pinned to synchronized migrated revision
-`d81d9cea163e5e0edd1ce3bf8517936c96014fe4` and unchanged clean read-only
+`4cca1e81e1167222d067e475a4053088cf99ba38` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only
 P8-FT-60, the prerequisite Core/facade/navigation contract for an accepted
 result's dictionary ID and opaque `document_id`. The stable identifier is the
 next unused persisted ordinal after P8-FT-59; the abandoned unpersisted
 accepted-result-count translation-test recommendation reserves nothing.
 
-This audit changes documentation only. Validation omits compiled gates and
-requires the exact four-file allowlist, complete-diff review, current and legacy
-citations, cross-document consistency, the Shared-Library and GUI Boundary,
-public/installed ABI and all Core/configuration/index-format/dependency/build/
+Acceptance requires complete-diff review, current and legacy citations, cross-
+document consistency, the Shared-Library and GUI Boundary, the intentional
+desktop-facade C++ ABI change, unchanged headless service/runtime-source/C ABI,
+and all index-format/dependency/build/
 catalog/locale-loader/executable/registration boundaries, completed P8-FT
 identities, predicates, lifecycle, coexistence, and privacy guarantees, Phase
 terminology, prerequisite-only and no-successor wording, exactly 109 registered
@@ -3839,12 +3839,13 @@ supplies but does not target the result dictionary/document identity while
 pinning scope, history, main-query selection, and search handoff. Pinned legacy
 evidence is `fulltextsearch.cc:596-609` and `mainwindow.cc:3001-3013`.
 
-The later P8-FT-60 implementation must add focused Core tests for bounded exact
+P8-FT-60 adds focused Core tests for bounded exact
 target validation/resolution and atomic invalid or unresolved failure; facade
 tests for navigation identity, current-tab behavior, history, and session
-round-trip/replay; and focused MainWindow activation coverage for exact target
-delivery while preserving group, authoritative accepted scope, main-query
-selection, and the accepted-query article-search handoff. It must also retain
+round-trip/replay. Direct MainWindow/dialog activation coverage is excluded by
+the approved facade-only prerequisite; group, authoritative accepted scope,
+main-query selection, and the existing article-search handoff remain unchanged.
+Existing test registrations retain
 the exactly 109-test registration baseline; adding cases to existing
 executables must not add registrations.
 
@@ -3856,10 +3857,10 @@ could not be searched`, `No matches in searched dictionaries`, and
 `1..100000`. Index readiness/status/progress/rebuild/failure reporting/
 background lifecycle and full-text Preferences remain blocked without
 separately authoritative Core lifecycle/policy resolution. Navigation
-implementation, translation acceptance, accessibility, styling, highlighting
+activation, translation acceptance, accessibility, styling, highlighting
 and excerpts, diacritics, presentation, adapters, and other independent parity
 gaps remain excluded and unranked. No successor is selected or ranked. This
-audit unlocks only implementation of the P8-FT-60 prerequisite.
+completed prerequisite unlocks only its dependency boundary.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

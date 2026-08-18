@@ -35,6 +35,9 @@ class FullTextBackend {
     virtual FullTextResponse SearchFullText(
         const FullTextQuery& query,
         const CancellationToken* cancellation = nullptr) const = 0;
+    virtual std::optional<ResolvedFullTextDocument> ResolveFullTextDocument(
+        std::string_view document_id) const = 0;
+    virtual bool IsFullTextIndexAvailable() const noexcept = 0;
 };
 
 void CheckRequest(const RequestOptions& options);

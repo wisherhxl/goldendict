@@ -11,6 +11,7 @@
 #include "../article/internal_url.h"
 #include "../dictionary/dictionary_backend.h"
 #include "article_tab_session.h"
+#include "exact_article_target_resolver.h"
 #include "goldendict/core/application.h"
 #include "input_phrase.h"
 
@@ -29,7 +30,22 @@ bool HasSameNavigationIdentity(const TabNavigationState& left,
            left.target_article_id == right.target_article_id &&
            left.target_anchor == right.target_anchor &&
            left.dictionary_ids == right.dictionary_ids &&
-           left.dictionary_filter_active == right.dictionary_filter_active;
+           left.dictionary_filter_active == right.dictionary_filter_active &&
+           left.exact_target == right.exact_target;
+}
+
+TabOperationError ToTabOperationError(ExactArticleTargetError error) {
+    switch (error) {
+        case ExactArticleTargetError::kNone:
+            return TabOperationError::kNone;
+        case ExactArticleTargetError::kInvalidTarget:
+            return TabOperationError::kInvalidExactTarget;
+        case ExactArticleTargetError::kDictionaryUnavailable:
+            return TabOperationError::kExactTargetDictionaryUnavailable;
+        case ExactArticleTargetError::kDocumentNotFound:
+            return TabOperationError::kExactTargetDocumentNotFound;
+    }
+    return TabOperationError::kInvalidExactTarget;
 }
 
 TabNavigationState EmptyNavigation() {
@@ -99,6 +115,14 @@ class DesktopFacadeImpl final : public DesktopFacade {
         return result;
     }
 
+    ResolvedExactArticleTarget ResolveExactArticleTarget(
+        const ExactArticleTarget& target) const override {
+        if (!application::IsValidExactArticleTarget(target)) {
+            return {ExactArticleTargetError::kInvalidTarget, {}, {}, {}};
+        }
+        return application::ResolveExactArticleTarget(*service_, target);
+    }
+
     ArticleTabsState GetArticleTabsState() const override {
         ArticleTabsState state;
         state.active_tab_id = active_tab_id_;
@@ -135,6 +159,16 @@ class DesktopFacadeImpl final : public DesktopFacade {
                             })) {
                 return {TabOperationError::kInvalidSession, 0U};
             }
+            for (const auto& navigation : tab.history) {
+                if (!navigation.exact_target.has_value()) {
+                    continue;
+                }
+                const auto resolved =
+                    ResolveExactArticleTarget(*navigation.exact_target);
+                if (!resolved) {
+                    return {ToTabOperationError(resolved.error), 0U};
+                }
+            }
         }
         std::vector<TabRecord> restored;
         restored.reserve(session.tabs.size());
@@ -157,6 +191,13 @@ class DesktopFacadeImpl final : public DesktopFacade {
         if (!application::IsInputPhraseAccepted(navigation.query,
                                                 preferences_)) {
             return {TabOperationError::kInvalidNavigation, 0U};
+        }
+        if (navigation.exact_target.has_value()) {
+            const auto resolved =
+                ResolveExactArticleTarget(*navigation.exact_target);
+            if (!resolved) {
+                return {ToTabOperationError(resolved.error), 0U};
+            }
         }
         if (open_policy == TabOpenPolicy::kReuseExisting) {
             const auto found = std::find_if(

@@ -670,6 +670,26 @@ int main() {
                 "caf\xc3\xa9") {
             return Fail("installed full-text query contract failed");
         }
+        auto desktop = goldendict::core::CreateDesktopFacade(loaded);
+        const goldendict::core::ExactArticleTarget exact_target{
+            full_text_response.results.front().dictionary.id,
+            full_text_response.results.front().document_id};
+        const auto resolved = desktop->ResolveExactArticleTarget(exact_target);
+        if (!resolved || resolved.dictionary.id != exact_target.dictionary_id ||
+            resolved.document_id != exact_target.document_id ||
+            resolved.headword != full_text_response.results.front().headword) {
+            return Fail("installed exact target resolution failed");
+        }
+        auto exact_navigation = authoritative_empty;
+        exact_navigation.dictionary_ids = {exact_target.dictionary_id};
+        exact_navigation.exact_target = exact_target;
+        exact_navigation.query = resolved.headword;
+        exact_navigation.title = resolved.headword;
+        if (!desktop->OpenArticleTab(
+                exact_navigation, goldendict::core::TabOpenPolicy::kCurrentTab,
+                goldendict::core::TabActivationPolicy::kActivate)) {
+            return Fail("installed exact target navigation failed");
+        }
         full_text_query.result_limit = 2U;
         full_text_query.maximum_articles_per_dictionary = 100U;
         if (service->SearchFullText(full_text_query).results.size() != 2U) {

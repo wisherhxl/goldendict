@@ -4921,15 +4921,15 @@ and unrelated parity remain independent and unranked. Completion unlocks only
 a fresh independent bounded readiness audit; no successor is selected, ranked,
 recommended, or named.
 
-### Phase 8 P8-FT-60 exact-result navigation contract prerequisite
+### Phase 8 P8-FT-60 exact-result navigation contract prerequisite (complete)
 
 The bounded audit starts from synchronized migrated revision
-`d81d9cea163e5e0edd1ce3bf8517936c96014fe4` and unchanged clean read-only
+`4cca1e81e1167222d067e475a4053088cf99ba38` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The approved
 priority uniquely selects P8-FT-60: establish the smallest Core, facade, and
 tab-navigation contract that can validate, resolve, persist, and replay an
 accepted full-text result's stable dictionary ID and opaque `document_id`.
-This documentation audit does not implement that contract or activation.
+The contract is complete without direct dialog/MainWindow activation.
 
 The identifier follows repository truth: completed durable numbering ends at
 P8-FT-59 and P8-FT-60 is unused. A prior read-only recommendation for an
@@ -4946,18 +4946,21 @@ internal-link source/article fields for `kLookup`. Pinned legacy
 `fulltextsearch.cc:596-609` and `mainwindow.cc:3001-3013` confirm only headword
 plus dictionary-set targeting, not exact-document targeting.
 
-P8-FT-60 acceptance requires a transport-neutral Core-owned exact target,
+P8-FT-60 implements a transport-neutral Core-owned exact target,
 bounded validation and resolution, facade/tab identity and session replay, and
 atomic failure for invalid, stale, missing-dictionary, or missing-document
-targets. It must preserve current-tab activation, selected group, immutable
+targets. It preserves current-tab activation, selected group, immutable
 accepted dictionary scope, history, main-query text/selection, and completed
 article-search handoff semantics. Widgets must not interpret `document_id` or
-perform backend lookup. The later implementation may change an installed
-interface only when the narrow contract explicitly requires and tests it.
+perform backend lookup. Well-formed stale IDs map to missing-document failure
+because no revision token is carried.
 
-The Shared-Library and GUI Boundary and public/installed ABI remain unchanged,
-as do Core, configuration, index-format, dependency, build, catalog/locale-
-loader, executable, and registration boundaries. Completed translations
+The Shared-Library and GUI Boundary governs the approved facade-only choice.
+The installed C++ `DesktopFacade` and navigation DTO ABI intentionally change;
+the headless `DictionaryService`, runtime-source contract, and C ABI remain
+unchanged. Configuration adds a backward-compatible exact-target tail;
+index-format, dependency, build, catalog/locale-loader, executable, and
+registration boundaries remain unchanged. Completed translations
 `Full-text search`, both `Search` uses, `Results may be incomplete.`, `No
 matches`, `Full-text search failed`, `Some dictionaries could not be searched`,
 `No matches in searched dictionaries`, and `Errors: %1` remain exact. Locked
@@ -4966,13 +4969,15 @@ policies remain `Maximum word distance` with spin-box-owned `0..1000` and
 completed P8-FT identities, predicates, lifecycle, coexistence, and privacy
 guarantees and exactly 109 registered Release tests remain unchanged.
 
-This audit changes only the four governing documents. It excludes navigation
-implementation, highlighting/excerpts, ignore-diacritics semantics,
-translations, backend and index formats, configuration, dependencies, build
-behavior, catalogs, and unrelated presentation. Completed behavior and exactly
+The implementation changes the desktop Core/facade/navigation contract,
+private resolution for twelve built-in full-text indexes, persistence, focused
+existing tests, the packaged C++ consumer, and these documents. It excludes
+direct activation, highlighting/excerpts, ignore-diacritics semantics,
+translations, backend and index formats, unrelated configuration,
+dependencies, build behavior, catalogs, and unrelated presentation. Completed
+behavior and exactly
 109 registered Release tests remain unchanged. No successor is selected or
-ranked. The only dependency unlocked is implementation of P8-FT-60; exact-
-result activation remains dependent on its completion.
+ranked. Completion unlocks only its dependency boundary.
 
 ### Phase 9 — Linux Integration And Release Quality
 

@@ -97,6 +97,12 @@ class EmptyDesktopFacade final : public DesktopFacade {
         return std::nullopt;
     }
 
+    ResolvedExactArticleTarget ResolveExactArticleTarget(
+        const ExactArticleTarget& target) const override {
+        static_cast<void>(target);
+        return {ExactArticleTargetError::kDictionaryUnavailable, {}, {}, {}};
+    }
+
     ArticleTabsState GetArticleTabsState() const override { return {}; }
 
     ArticleTabSession ExportArticleTabSession() const override { return {}; }

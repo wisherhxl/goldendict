@@ -27,6 +27,7 @@ struct ArticleUrl {
 
 inline constexpr std::size_t kMaximumArticleTabs = 32U;
 inline constexpr std::size_t kMaximumTabNavigationEntries = 100U;
+inline constexpr std::size_t kMaximumExactDocumentIdBytes = 4096U;
 
 using ArticleTabId = std::uint64_t;
 
@@ -34,6 +35,34 @@ enum class TabNavigationKind {
     kEmpty,
     kLookup,
     kInternalLink,
+};
+
+struct ExactArticleTarget {
+    std::string dictionary_id;
+    std::string document_id;
+
+    bool operator==(const ExactArticleTarget& other) const noexcept {
+        return dictionary_id == other.dictionary_id &&
+               document_id == other.document_id;
+    }
+};
+
+enum class ExactArticleTargetError {
+    kNone,
+    kInvalidTarget,
+    kDictionaryUnavailable,
+    kDocumentNotFound,
+};
+
+struct ResolvedExactArticleTarget {
+    ExactArticleTargetError error = ExactArticleTargetError::kNone;
+    DictionaryIdentity dictionary;
+    std::string document_id;
+    std::string headword;
+
+    explicit operator bool() const noexcept {
+        return error == ExactArticleTargetError::kNone;
+    }
 };
 
 struct TabNavigationState {
@@ -48,6 +77,7 @@ struct TabNavigationState {
     std::string target_anchor;
     std::vector<std::string> dictionary_ids;
     bool dictionary_filter_active = false;
+    std::optional<ExactArticleTarget> exact_target;
 
     bool operator==(const TabNavigationState& other) const noexcept {
         return kind == other.kind && query == other.query &&
@@ -58,7 +88,8 @@ struct TabNavigationState {
                target_article_id == other.target_article_id &&
                target_anchor == other.target_anchor &&
                dictionary_ids == other.dictionary_ids &&
-               dictionary_filter_active == other.dictionary_filter_active;
+               dictionary_filter_active == other.dictionary_filter_active &&
+               exact_target == other.exact_target;
     }
 };
 
@@ -119,6 +150,9 @@ enum class TabOperationError {
     kNoBackEntry,
     kNoForwardEntry,
     kInvalidSession,
+    kInvalidExactTarget,
+    kExactTargetDictionaryUnavailable,
+    kExactTargetDocumentNotFound,
 };
 
 struct TabOperationResult {
@@ -142,6 +176,8 @@ class GOLDENDICT_EXPORTS DesktopFacade {
         const LookupResponse& response) const = 0;
     virtual std::optional<ArticleUrl> ResolveArticleUrl(
         const std::string& url) const = 0;
+    virtual ResolvedExactArticleTarget ResolveExactArticleTarget(
+        const ExactArticleTarget& target) const = 0;
     virtual ArticleTabsState GetArticleTabsState() const = 0;
     virtual ArticleTabSession ExportArticleTabSession() const = 0;
     virtual TabOperationResult RestoreArticleTabSession(

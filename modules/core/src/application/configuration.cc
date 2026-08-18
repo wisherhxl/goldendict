@@ -1244,8 +1244,12 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
                 navigation.dictionary_filter_active = fields[10] == "1";
                 const std::size_t dictionary_count =
                     ParseInteger<std::size_t>(fields[11]);
-                if (dictionary_count > kMaximumLookupDictionaryFilters ||
-                    fields.size() != 12U + dictionary_count ||
+                if (dictionary_count > kMaximumLookupDictionaryFilters) {
+                    throw std::runtime_error(
+                        "Malformed article tab navigation scope count");
+                }
+                const std::size_t scope_end = 12U + dictionary_count;
+                if (fields.size() < scope_end ||
                     (!navigation.dictionary_filter_active &&
                      dictionary_count != 0U)) {
                     throw std::runtime_error(
@@ -1253,7 +1257,30 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
                 }
                 navigation.dictionary_ids.reserve(dictionary_count);
                 for (std::size_t index = 12U; index < fields.size(); ++index) {
+                    if (index == scope_end) {
+                        break;
+                    }
                     navigation.dictionary_ids.push_back(Decode(fields[index]));
+                }
+                if (fields.size() > scope_end) {
+                    const auto exact_flag = fields[scope_end];
+                    if (exact_flag == "0") {
+                        if (fields.size() != scope_end + 1U) {
+                            throw std::runtime_error(
+                                "Malformed article exact target");
+                        }
+                    } else if (exact_flag == "1") {
+                        if (fields.size() != scope_end + 3U) {
+                            throw std::runtime_error(
+                                "Malformed article exact target");
+                        }
+                        navigation.exact_target =
+                            ExactArticleTarget{Decode(fields[scope_end + 1U]),
+                                               Decode(fields[scope_end + 2U])};
+                    } else {
+                        throw std::runtime_error(
+                            "Malformed article exact target flag");
+                    }
                 }
             }
             configuration.article_tab_session->tabs[found->second]
@@ -1404,6 +1431,12 @@ void SaveConfiguration(const std::string& configuration_path,
                     std::to_string(navigation.dictionary_ids.size());
                 for (const auto& dictionary_id : navigation.dictionary_ids) {
                     contents += "|" + Encode(dictionary_id);
+                }
+                contents += navigation.exact_target.has_value() ? "|1" : "|0";
+                if (navigation.exact_target.has_value()) {
+                    contents +=
+                        "|" + Encode(navigation.exact_target->dictionary_id) +
+                        "|" + Encode(navigation.exact_target->document_id);
                 }
                 contents += "\n";
             }

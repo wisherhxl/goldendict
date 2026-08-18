@@ -58,6 +58,7 @@
 #include "../formats/zipsounds/zipsounds_discovery.h"
 #include "../foundation/text_folding.h"
 #include "../foundation/utf8.h"
+#include "exact_article_target_resolver.h"
 #include "goldendict/core/application.h"
 #include "input_phrase.h"
 
@@ -1695,6 +1696,32 @@ class ServiceState final {
         }
     }
 
+    ResolvedExactArticleTarget ResolveExactArticleTarget(
+        const ExactArticleTarget& target) const {
+        const auto backend =
+            std::find_if(dictionaries_.begin(), dictionaries_.end(),
+                         [&target](const auto& item) {
+                             return item->identity().id == target.dictionary_id;
+                         });
+        if (backend == dictionaries_.end()) {
+            return {
+                ExactArticleTargetError::kDictionaryUnavailable, {}, {}, {}};
+        }
+        const auto* full_text =
+            dynamic_cast<const dictionary::FullTextBackend*>(backend->get());
+        if (full_text == nullptr || !full_text->IsFullTextIndexAvailable()) {
+            return {
+                ExactArticleTargetError::kDictionaryUnavailable, {}, {}, {}};
+        }
+        const auto resolved =
+            full_text->ResolveFullTextDocument(target.document_id);
+        if (!resolved.has_value()) {
+            return {ExactArticleTargetError::kDocumentNotFound, {}, {}, {}};
+        }
+        return {ExactArticleTargetError::kNone, resolved->dictionary,
+                resolved->document_id, resolved->headword};
+    }
+
    private:
     std::vector<const dictionary::Backend*> BackendsForGroup(
         std::uint32_t group_id) const {
@@ -1829,11 +1856,30 @@ class DictionaryServiceImpl final : public DictionaryService {
         return state_->GetResource(resource, cancellation);
     }
 
+    ResolvedExactArticleTarget ResolveExactArticleTarget(
+        const ExactArticleTarget& target) const {
+        return state_->ResolveExactArticleTarget(target);
+    }
+
    private:
     std::shared_ptr<const ServiceState> state_;
 };
 
 }  // namespace
+
+namespace application {
+
+ResolvedExactArticleTarget ResolveExactArticleTarget(
+    const DictionaryService& service, const ExactArticleTarget& target) {
+    const auto* implementation =
+        dynamic_cast<const DictionaryServiceImpl*>(&service);
+    if (implementation == nullptr) {
+        return {ExactArticleTargetError::kDictionaryUnavailable, {}, {}, {}};
+    }
+    return implementation->ResolveExactArticleTarget(target);
+}
+
+}  // namespace application
 
 CancellationToken::~CancellationToken() = default;
 

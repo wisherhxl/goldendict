@@ -41,6 +41,17 @@ class Dictionary final : public dictionary::Backend,
         const FullTextQuery& query,
         const CancellationToken* cancellation = nullptr) const override;
 
+    std::optional<dictionary::ResolvedFullTextDocument> ResolveFullTextDocument(
+        std::string_view document_id) const override {
+        return full_text_index_.has_value()
+                   ? full_text_index_->ResolveDocument(document_id)
+                   : std::nullopt;
+    }
+
+    bool IsFullTextIndexAvailable() const noexcept override {
+        return full_text_index_.has_value();
+    }
+
     std::optional<dictionary::FullTextIndexState> full_text_index_state()
         const noexcept {
         return full_text_index_.has_value()

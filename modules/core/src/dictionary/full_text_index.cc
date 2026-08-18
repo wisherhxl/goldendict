@@ -412,4 +412,18 @@ FullTextResponse FullTextIndex::Search(
     return response;
 }
 
+std::optional<ResolvedFullTextDocument> FullTextIndex::ResolveDocument(
+    std::string_view document_id) const {
+    const auto found =
+        std::find_if(documents_.begin(), documents_.end(),
+                     [document_id](const FullTextDocument& document) {
+                         return document.document_id == document_id;
+                     });
+    if (found == documents_.end()) {
+        return std::nullopt;
+    }
+    return ResolvedFullTextDocument{found->dictionary, found->document_id,
+                                    found->headword};
+}
+
 }  // namespace goldendict::core::dictionary
