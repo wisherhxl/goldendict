@@ -3649,18 +3649,17 @@ SCM Conan creation with packaged consumers, exact six-file validation, and
 `git diff --check`. No successor after P8-FT-55 is selected or ranked;
 completion unlocks only a fresh independent bounded full-text readiness audit.
 
-## Phase 8 Full-Text Terminal-Failure-Status Translation (Selected)
+## Phase 8 Full-Text Terminal-Failure-Status Translation (Complete)
 
-The independent documentation-only post-P8-FT-55 audit selects only P8-FT-56
-from clean synchronized migrated revision
-`1c0cbf5c9b88467cf7eae719eb71f5c1c14580f7` and unchanged clean read-only
+P8-FT-56 is complete from clean synchronized migrated revision
+`7bc3fbeee4af637e25dff8656ce7d22406d8ea2d` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The existing
 `fullTextFailureResponseStatus` retains exact source and fallback text
-`Full-text search failed`; its construction moves from `QStringLiteral` to
+`Full-text search failed`; its construction moved from `QStringLiteral` to
 dialog-owned `tr()` without changing the completed P8-FT-24 behavior.
 
-Extend only `full_text_search_dialog_test.cpp`. An exact-context translator must
-prove replacement in `goldendict::app::FullTextSearchDialog`, English fallback
+The existing `full_text_search_dialog_test.cpp` uses an exact-context translator
+to prove replacement in `goldendict::app::FullTextSearchDialog`, English fallback
 after scoped cleanup, the unique widget identity and parentage, and unchanged
 text and visibility. Existing acceptance remains hidden initially and during
 replacement; visible only for a generation-current response with zero results,
@@ -3669,19 +3668,19 @@ nonempty, partial-empty, partial-nonempty, and result-plus-error responses; and
 safe for repeated, stale, cancelled, detached, replaced-service, and teardown
 completions. Existing result-count, partial, empty, mixed-result, partial-empty,
 error-count, selection, activation, focus, and lifecycle coverage remains
-unchanged. Add no executable or test registration.
+unchanged. No executable or test registration is added.
 
-The future focused command is:
+The focused command is:
 
 ```sh
 ctest --preset conan-release -R '^full_text_search_dialog_test$'
 ```
 
-This audit itself is documentation-only, so compiled gates are omitted. Verify
-the exact four-document allowlist, current and pinned-legacy evidence,
-cross-document consistency, completed translation strings, locked caption/
-control ranges, Shared-Library and GUI Boundary, Phase terminology,
-no-successor language, exactly 109 registered Release tests,
+The implementation gate is the exact six-file allowlist, current and pinned-
+legacy evidence, cross-document consistency, completed translation strings,
+locked caption/control ranges, Shared-Library and GUI Boundary, Phase
+terminology, exactly 109 registered Release tests and 109/109 passing, Release
+install, standalone and packaged C/C++ consumers, exact-SCM Conan creation,
 `git diff --check`, exact refs/remotes, and both clean worktrees.
 
 P8-FT-56 authorizes no catalog, locale loader, executable, registration,
@@ -3692,9 +3691,8 @@ search`, `Search`, `Results may be incomplete.`, and `No matches` remain exact;
 `1..100000` remain locked. All other visible and private full-text gaps remain
 independent and unranked. Index readiness/status/progress/rebuild/failure
 reporting/background lifecycle and full-text Preferences remain blocked on a
-separate fully evidenced Core lifecycle/policy boundary. This audit unlocks
-only P8-FT-56 implementation; no successor beyond it is selected, ranked,
-recommended, or named.
+separate fully evidenced Core lifecycle/policy boundary. P8-FT-56 completion
+unlocks only a fresh independent bounded full-text readiness audit.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

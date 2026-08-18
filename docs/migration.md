@@ -4759,24 +4759,24 @@ The Release baseline remains exactly 109 tests. No successor after P8-FT-55 is
 selected or ranked; completion unlocks only a fresh independent bounded full-
 text readiness audit.
 
-### Phase 8 full-text terminal-failure-status translation (selected)
+### Phase 8 full-text terminal-failure-status translation (complete)
 
-The independent documentation-only post-P8-FT-55 audit uses clean synchronized
-migrated revision `1c0cbf5c9b88467cf7eae719eb71f5c1c14580f7` and the
+P8-FT-56 is complete from clean synchronized migrated revision
+`7bc3fbeee4af637e25dff8656ce7d22406d8ea2d` and the
 unchanged clean read-only legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly P8-FT-56:
-translate the existing private terminal-failure status through
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The existing private terminal-
+failure status now translates through
 `goldendict::app::FullTextSearchDialog::tr()`.
 
 Completed P8-FT-24 owns `fullTextFailureResponseStatus`, exact text
 `Full-text search failed`, and its error-only generation-current visibility.
-The current label alone uses `QStringLiteral`; P8-FT-52 through P8-FT-55 supply
+The label now uses dialog-owned `tr()`; P8-FT-52 through P8-FT-55 supply
 the exact dialog context and scoped-translator test pattern. Pinned legacy has
-no equivalent status or conflicting contract. The implementation may change
+no equivalent status or conflicting contract. The implementation changes
 only `full_text_search_dialog.cpp` and `full_text_search_dialog_test.cpp`, with
 focused coverage for exact-context replacement, English fallback, stable
 identity/text, unchanged lifecycle predicates, stale/cancelled/detached safety,
-and translator cleanup. It must add no executable or registered test.
+and translator cleanup. It adds no executable or registered test.
 
 The Shared-Library and GUI Boundary applies. Public/Core/configuration/index-
 format/dependency/build/composition-root/ABI/installed interfaces, catalogs,
@@ -4789,15 +4789,9 @@ and `Maximum articles per dictionary` / `1..100000`.
 All other visible and private full-text gaps remain independent and unranked.
 Index readiness/status/progress/rebuild/failure reporting/background lifecycle
 and full-text Preferences remain blocked on a separate fully evidenced Core
-lifecycle/policy boundary. This audit is limited to the four governing
-documents, omits compiled gates, and must stop on drift, ambiguity, scope
-expansion, any required non-documentation file, or an uncorrectable validation
-failure. Acceptance requires the exact four-file allowlist, cross-document and
-current/legacy evidence checks, locked policies, Phase terminology, exactly 109
-registered Release tests, no-successor language, `git diff --check`, full-diff
-review, and clean synchronized refs/worktrees. It unlocks only P8-FT-56
-implementation; no successor beyond that leaf is selected, ranked,
-recommended, or named.
+lifecycle/policy boundary. The completed leaf has the exact six-file scope and
+preserves exactly 109 registered Release tests. P8-FT-56 completion unlocks
+only a fresh independent bounded full-text readiness audit.
 
 ### Phase 9 — Linux Integration And Release Quality
 

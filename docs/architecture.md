@@ -4696,28 +4696,28 @@ The Release baseline remains exactly 109 tests. No successor after P8-FT-55 is
 selected or ranked; completion unlocks only a fresh independent bounded full-
 text readiness audit.
 
-### Phase 8 full-text terminal-failure-status translation (selected)
+### Phase 8 full-text terminal-failure-status translation (complete)
 
-The independent documentation-only post-P8-FT-55 audit is pinned to clean
-synchronized migrated revision `1c0cbf5c9b88467cf7eae719eb71f5c1c14580f7`
+P8-FT-56 is complete from clean synchronized migrated revision
+`7bc3fbeee4af637e25dff8656ce7d22406d8ea2d`
 and the unchanged clean read-only legacy checkout at
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Re-evaluation of the remaining
-visible and private full-text gaps selects exactly P8-FT-56: move the existing
-private terminal-failure status into the dialog's translation context.
+visible and private full-text gaps selected exactly the existing private
+terminal-failure status for the dialog's translation context.
 
 P8-FT-24 already owns the unique `fullTextFailureResponseStatus`, exact source
 and fallback text `Full-text search failed`, and its generation-current
-error-only visibility contract. The current dialog still constructs that label
-with `QStringLiteral`, while P8-FT-52 through P8-FT-55 establish dialog-owned
-`tr()` and scoped exact-context translator coverage. Pinned legacy has no
+error-only visibility contract. The dialog now constructs that label with
+dialog-owned `tr()`, while focused scoped-translator coverage proves the exact
+private context and source. Pinned legacy has no
 equivalent terminal-failure status, so it supplies no conflicting wording or
 translation-context contract. No architecture or product choice remains.
 
-The future implementation is limited to `full_text_search_dialog.cpp` and its
-existing focused test. It must use dialog-owned
-`tr("Full-text search failed")` and prove exact-context replacement, English
-fallback, stable identity and text, unchanged P8-FT-24 visibility predicates,
-stale/cancelled/detached safety, and scoped translator cleanup. The
+The implementation is limited to `full_text_search_dialog.cpp` and its existing
+focused test. It uses dialog-owned `tr("Full-text search failed")`; coverage
+proves exact-context replacement, English fallback, stable identity and text,
+unchanged P8-FT-24 visibility predicates, stale/cancelled/detached safety, and
+scoped translator cleanup. The
 Shared-Library and GUI Boundary governs this private Widgets leaf; no catalog,
 locale loader, executable, registration, public/Core/configuration/index-
 format/dependency/build/composition-root, ABI, or installed-interface change is
@@ -4732,13 +4732,10 @@ independent and unranked. Index readiness/status/progress/rebuild/failure
 reporting/background lifecycle and full-text Preferences remain blocked on a
 separate fully evidenced Core lifecycle/policy boundary.
 
-This audit changes only the four governing documents and omits compiled gates.
-Documentation acceptance is the exact four-file allowlist, current/legacy
-evidence, cross-document consistency, locked-policy and Phase-terminology
-checks, the exactly 109-test Release baseline, no-successor language,
-`git diff --check`, and clean synchronized refs/worktrees. P8-FT-56 is the only
-selected leaf, and this audit unlocks only its implementation; no successor
-beyond it is selected, ranked, recommended, or named.
+The completed leaf changes only the private dialog, its focused test, and the
+four governing documents. The Release baseline remains exactly 109 tests.
+P8-FT-56 completion unlocks only a fresh independent bounded full-text
+readiness audit.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

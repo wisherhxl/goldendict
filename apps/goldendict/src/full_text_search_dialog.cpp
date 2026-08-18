@@ -111,8 +111,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     empty_status_->hide();
     layout->addWidget(empty_status_);
 
-    failure_status_ =
-        new QLabel(QStringLiteral("Full-text search failed"), this);
+    failure_status_ = new QLabel(tr("Full-text search failed"), this);
     failure_status_->setObjectName(
         QStringLiteral("fullTextFailureResponseStatus"));
     failure_status_->hide();
