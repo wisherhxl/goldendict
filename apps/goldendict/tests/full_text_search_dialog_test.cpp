@@ -65,6 +65,21 @@ class SearchGroupTranslator final : public QTranslator {
     mutable int matching_requests = 0;
 };
 
+class PartialStatusTranslator final : public QTranslator {
+   public:
+    QString translate(const char* context, const char* source_text, const char*,
+                      int) const override {
+        if (qstrcmp(context, "goldendict::app::FullTextSearchDialog") == 0 &&
+            qstrcmp(source_text, "Results may be incomplete.") == 0) {
+            ++matching_requests;
+            return QStringLiteral("Translated partial status");
+        }
+        return {};
+    }
+
+    mutable int matching_requests = 0;
+};
+
 class ScopedTranslatorInstallation final {
    public:
     explicit ScopedTranslatorInstallation(QTranslator* translator)
@@ -640,6 +655,7 @@ class FullTextSearchDialogTest final : public QObject {
    private slots:
     void ResolvesWindowTitleThroughPrivateTranslationContext();
     void ResolvesSearchGroupTitleThroughPrivateTranslationContext();
+    void ResolvesPartialStatusThroughPrivateTranslationContext();
     void PreservesExactForwardTabChainAcrossRequestTransitions();
     void SubmitsExactComposedAndProjectedQueryAndRetainsResponse();
     void PaintsEachResultWithIndependentDirectionAndElision();
@@ -703,6 +719,62 @@ void FullTextSearchDialogTest::
 
     FullTextSearchDialog restored_dialog(preferences, &service);
     VerifySearchGroupBox(&restored_dialog);
+}
+
+void FullTextSearchDialogTest::
+    ResolvesPartialStatusThroughPrivateTranslationContext() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog default_dialog(preferences, &service);
+    auto* default_status = PartialStatus(&default_dialog);
+    QVERIFY(default_status != nullptr);
+    QCOMPARE(default_status->parent(), &default_dialog);
+    QCOMPARE(default_status->objectName(),
+             QStringLiteral("fullTextPartialResponseStatus"));
+    QCOMPARE(default_status->text(),
+             QStringLiteral("Results may be incomplete."));
+    QVERIFY(default_status->isHidden());
+
+    {
+        PartialStatusTranslator translator;
+        const ScopedTranslatorInstallation installation(&translator);
+        QVERIFY(installation.IsInstalled());
+        FullTextSearchDialog translated_dialog(preferences, &service);
+        auto* translated_status = PartialStatus(&translated_dialog);
+        QVERIFY(translated_status != nullptr);
+        QCOMPARE(translated_status, translated_dialog.partial_status_);
+        QCOMPARE(translated_status->parent(), &translated_dialog);
+        QCOMPARE(translated_status->objectName(),
+                 QStringLiteral("fullTextPartialResponseStatus"));
+        QCOMPARE(translated_status->text(),
+                 QStringLiteral("Translated partial status"));
+        QVERIFY(translated_status->isHidden());
+        QCOMPARE(translated_dialog.windowTitle(),
+                 QStringLiteral("Full-text search"));
+        VerifySearchGroupBox(&translated_dialog);
+        QCOMPARE(translator.matching_requests, 1);
+
+        goldendict::core::FullTextResponse partial;
+        partial.partial = true;
+        translated_dialog.active_generation_ = ++translated_dialog.generation_;
+        translated_dialog.FinishSearch(translated_dialog.generation_, partial);
+        QVERIFY(!translated_status->isHidden());
+        QCOMPARE(translated_status->text(),
+                 QStringLiteral("Translated partial status"));
+
+        translated_dialog.active_generation_ = ++translated_dialog.generation_;
+        translated_dialog.FinishSearch(translated_dialog.generation_, {});
+        QVERIFY(translated_status->isHidden());
+        QCOMPARE(translated_status->text(),
+                 QStringLiteral("Translated partial status"));
+    }
+
+    FullTextSearchDialog restored_dialog(preferences, &service);
+    auto* restored_status = PartialStatus(&restored_dialog);
+    QVERIFY(restored_status != nullptr);
+    QCOMPARE(restored_status->text(),
+             QStringLiteral("Results may be incomplete."));
+    QVERIFY(restored_status->isHidden());
 }
 
 void FullTextSearchDialogTest::

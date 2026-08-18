@@ -4612,28 +4612,25 @@ and C++ consumers, clean committed exact-SCM Conan creation with packaged
 consumers, exact six-file repository validation, and clean synchronized
 refs/worktrees. No successor after P8-FT-53 is selected or ranked.
 
-### Phase 8 full-text partial-status translation (selected)
+### Phase 8 full-text partial-status translation (complete)
 
-The fresh independent bounded post-P8-FT-53 audit is pinned to clean migrated
-HEAD, local branch, upstream, and live remote at
-`ce669729ad467405d40e8a09b188967b49395cb1`, plus the unchanged clean read-only
-legacy checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After checking
-all remaining visible and private full-text gaps against current architecture
-and pinned legacy evidence, it selects exactly one smallest independently
-dependency-ready leaf, P8-FT-54: translate the existing partial-response status
-`Results may be incomplete.` through the private
+P8-FT-54 was implemented from clean synchronized migrated base
+`8dcf3d87fe4b25a916c864da56c307f5c78de24b`, plus the unchanged clean
+read-only legacy checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+The existing partial-response status
+`Results may be incomplete.` now resolves through the private
 `goldendict::app::FullTextSearchDialog` context. No successor after P8-FT-54 is
 selected or ranked.
 
 P8-FT-22 already owns the exact visible text and its generation-current
 authoritative-partial visibility contract. Current
-`full_text_search_dialog.cpp` still constructs that label with
-`QStringLiteral`, while P8-FT-52 and P8-FT-53 establish dialog-owned `tr()` and
+`full_text_search_dialog.cpp` constructs that label with dialog-owned `tr()`,
+while P8-FT-52 and P8-FT-53 establish the same context and
 the focused scoped-translator precedent. Pinned legacy full-text UI and code
 have no equivalent partial-response status, so they supply no conflicting
 wording or translation-context contract.
 
-The later implementation is restricted to `full_text_search_dialog.cpp` and
+The implementation is restricted to `full_text_search_dialog.cpp` and
 `full_text_search_dialog_test.cpp`: construct the existing label with
 dialog-owned `tr("Results may be incomplete.")` and prove exact-context
 replacement, English fallback, stable widget identity and text, unchanged
@@ -4652,10 +4649,12 @@ remain separate and unranked. Index readiness/status/progress/background
 lifecycle and full-text Preferences remain blocked on a separate Core
 lifecycle/policy boundary.
 
-This selection changes only the four established governing documents. The
-Release baseline remains exactly 109 tests and compiled checks are omitted.
-Stop on ref/worktree or legacy drift, ambiguity, design conflict, a required
-non-documentation file, failed validation, or scope expansion.
+Delivery requires the focused and full 109-test Linux Release suite, fresh
+Release dependency install/configure/build and install, standalone installed C
+and C++ consumers, clean committed exact-SCM Conan creation with packaged
+consumers, exact six-file repository validation, and clean synchronized
+refs/worktrees. Completion unlocks only a fresh independent bounded full-text
+readiness audit; it does not select or rank its outcome.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

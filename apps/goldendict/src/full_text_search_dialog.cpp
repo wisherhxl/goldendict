@@ -100,8 +100,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     result_count_progress->addWidget(progress_);
     layout->addLayout(result_count_progress);
 
-    partial_status_ =
-        new QLabel(QStringLiteral("Results may be incomplete."), this);
+    partial_status_ = new QLabel(tr("Results may be incomplete."), this);
     partial_status_->setObjectName(
         QStringLiteral("fullTextPartialResponseStatus"));
     partial_status_->hide();

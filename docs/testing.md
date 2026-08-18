@@ -3569,17 +3569,18 @@ Packaged C/C++ consumers must pass, and final local/upstream/live-remote refs
 and both worktrees must agree and remain clean. No successor after P8-FT-53 is
 selected or ranked.
 
-## Phase 8 Full-Text Partial-Status Translation Selection
+## Phase 8 Full-Text Partial-Status Translation
 
-The fresh post-P8-FT-53 audit selects only P8-FT-54: translate exact existing
-status `Results may be incomplete.` through
+P8-FT-54 is complete from clean synchronized migrated base
+`8dcf3d87fe4b25a916c864da56c307f5c78de24b`: exact existing status
+`Results may be incomplete.` now resolves through
 `goldendict::app::FullTextSearchDialog`. Completed P8-FT-22 supplies the text
 and visibility contract; current `full_text_search_dialog.cpp` uses
-`QStringLiteral`; P8-FT-52/P8-FT-53 and the focused dialog test supply the exact
-private context and scoped-translator pattern. Pinned legacy has no equivalent
-partial-response status and no conflicting translation contract.
+dialog-owned `tr()`; P8-FT-52/P8-FT-53 and the focused dialog test supply the
+exact private context and scoped-translator pattern. Pinned legacy has no
+equivalent partial-response status and no conflicting translation contract.
 
-The future implementation is limited to `full_text_search_dialog.cpp` and
+The implementation is limited to `full_text_search_dialog.cpp` and
 `full_text_search_dialog_test.cpp`. Focused coverage must prove exact-context
 replacement, the exact English fallback, stable label identity/text, unchanged
 initial/replacement/complete/stale/cancelled/detached and authoritative-partial
@@ -3596,13 +3597,13 @@ exact-document navigation, match/excerpt presentation, ignore-diacritics
 consumption, index lifecycle/Preferences, adapters/index formats, and unrelated
 tests remain unselected and unranked.
 
-Verification for this documentation-only selection is limited to the exact
-four-file allowlist, cross-document evidence and boundary consistency,
-locked-policy and no-successor checks, Phase terminology, pinned refs/worktrees,
-live remote equality, and `git diff --check`. Compiled checks are omitted and
-the Release baseline remains exactly 109 tests. Stop on drift, ambiguity,
-design conflict, a required non-documentation file, failed validation, or scope
-expansion. No successor after P8-FT-54 is selected or ranked.
+Verification is the focused Release dialog test, fresh Linux Release
+dependency install/configure/build, exactly 109 registered tests and full
+Release CTest, Release install, standalone installed C/C++ consumers,
+`git diff --check`, and clean committed exact-SCM Conan creation with packaged
+consumers. Final refs and both worktrees must remain synchronized and clean.
+Completion unlocks only a fresh independent bounded full-text readiness audit;
+no successor is selected or ranked.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
