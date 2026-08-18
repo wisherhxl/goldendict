@@ -1096,6 +1096,44 @@ thread. Current identity-gated results, including empty plans and typed failures
 are retained only as inert state; stale and lifecycle-invalidated work is silent.
 Existing-target coverage preserves exactly 109 registered Release tests.
 
+### P8-FT-67 private CSS Custom Highlight plan application (selected)
+
+The fresh documentation-only audit starts from clean synchronized
+migrated/local/upstream/live-remote revision
+`c8bfcd77e01a243e3b565ebc818151c2255a0a2c` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-67 supersedes P8-FT-66's
+historical no-successor closure and selects only the private user-visible
+application leaf for the retained ordered plan. Evidence is current
+`main_window.cpp:8479-8695`, `main_window.h:499-523`, the existing
+ApplicationWorld pattern at `article_view.cpp:70-107`, and the Qt 6.11.1 pin at
+`conanfile.py:51-58`, plus pinned legacy `articleview.cc:2569-2791`.
+
+Pure Qt WebEngine `findText` orchestration is rejected for strict parity because
+Qt 6.11 has no Qt5 WebKit `HighlightAllOccurrences` flag and therefore cannot
+retain simultaneous highlights for multiple unique literals. One private,
+bounded ApplicationWorld operation must instead feature-probe and atomically
+apply CSS Custom Highlight ranges without inserting wrapper elements. It maps
+only the ordered Core-authored rendered-text plan to the unchanged DOM,
+validates each range's literal, highlights all DOM occurrences of every unique
+supplied literal with system mark colors, selects and scrolls the range mapped
+from the first ordered plan item, and retains the separately mapped ordered
+generation-bound ranges at position zero for later navigation.
+
+Empty success removes the private highlight. Unsupported capability, mapping
+or literal mismatch, script failure, staleness and every existing lifecycle
+invalidation remove partial private artifacts and publish no applied state.
+The script does not rematch the query, reinterpret Core semantics or consume
+`ignore_diacritics`; ordinary article find-in-page remains unchanged.
+
+P8-FT-67 changes only private Widgets/WebEngine presentation and focused
+existing GUI smoke coverage. Installed/Core/C interfaces and DTOs, indexes,
+configuration, dependencies, catalogs, translations, executables and test
+registration remain unchanged. Headword-only rows, the exact dictionary-name
+tooltip, exact activation, status wording and the 109-test Release baseline are
+preserved. Previous/Next commands remain outside this leaf. No successor after
+P8-FT-67 is selected, ranked, recommended or named. Completion will unlock only
+generation-bound ordered applied-range state.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

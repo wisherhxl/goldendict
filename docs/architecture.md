@@ -5363,6 +5363,59 @@ pins cancellation, teardown, every identity gate and absence of presentation
 effects. The installed surface and exactly 109 registered Release tests remain
 unchanged.
 
+### Phase 8 P8-FT-67 private CSS Custom Highlight plan application (selected)
+
+The fresh documentation-only readiness audit starts from clean synchronized
+migrated/local/upstream/live-remote revision
+`c8bfcd77e01a243e3b565ebc818151c2255a0a2c` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-67 supersedes P8-FT-66's
+historical no-successor closure and selects exactly the smallest user-visible
+application leaf unlocked by its generation-safe inert plan. Current
+`main_window.cpp:8479-8695` and `main_window.h:499-523` provide the accepted
+query, rendered-text, plan and identity state; `article_view.cpp:70-107`
+provides the existing private `QWebEngineScript::ApplicationWorld` execution
+pattern; and `conanfile.py:51-58` pins Qt 6.11.1. Pinned legacy
+`articleview.cc:2569-2728` establishes highlight-all over unique literal
+matches and first-match selection, while `articleview.cc:2730-2791` establishes
+the ordered range state later Previous/Next navigation consumes.
+
+Qt 6.11 WebEngine `findText` is not the application mechanism. Its public find
+flags provide only backward and case-sensitive search, so the removed Qt5
+WebKit `HighlightAllOccurrences` orchestration cannot retain simultaneous
+highlights for multiple unique plan literals. P8-FT-67 instead runs one private,
+bounded ApplicationWorld script after the complete P8-FT-66 identity check.
+The script feature-probes `CSS.highlights`, `Highlight`, `Range`, `Selection`
+and the required DOM traversal APIs; maps the ordered Core-authored rendered-
+text ranges to the unchanged article DOM; validates every mapped range against
+its supplied literal; and constructs all ranges before changing presentation.
+It must not parse or reinterpret the accepted query or consume
+`ignore_diacritics`.
+
+Successful nonempty application atomically replaces the tab/page's private
+named CSS highlight with all DOM occurrences of every unique supplied literal,
+using CSS system mark colors, then selects and scrolls the DOM range mapped from
+the first ordered plan item. Literal grouping follows the retained match-case
+policy; its presentation-only literal lookup must not change, drop or reorder
+the separately mapped plan ranges. Those ordered DOM ranges and current position
+zero remain private, generation-bound application state for later navigation.
+Empty success clears only the private full-text highlight and
+application state. Unsupported APIs, a text/range/literal mismatch, JavaScript
+failure or a stale callback clears any partial private artifact and publishes no
+applied state. Existing invalidation, replacement activation/search/navigation,
+tab close, page replacement, facade detachment and teardown also remove the
+private registry entry and selection without inserting wrappers, normalizing
+text nodes or otherwise mutating article DOM structure.
+
+P8-FT-67 changes only private Widgets/WebEngine presentation and focused
+existing GUI smoke coverage. It changes no installed or Core interface, DTO,
+C API, index format, configuration, dependency, catalog, translation,
+executable or test registration. Headword-only result rows, the exact
+dictionary-name tooltip, exact activation, ordinary article `findText`, status
+wording and the existing 109-test Release baseline remain unchanged.
+Previous/Next commands and their UI/status behavior remain outside this leaf.
+No successor after P8-FT-67 is selected, ranked, recommended or named.
+Completion will unlock only generation-bound ordered applied-range state.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

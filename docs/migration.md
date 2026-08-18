@@ -5327,6 +5327,46 @@ current. Empty/nonempty plans and typed failures are inert; no matching-plan
 result is applied to presentation. Existing targets cover the leaf without
 changing the exactly 109-test Release registration baseline.
 
+### Phase 8 P8-FT-67 private CSS Custom Highlight plan application (selected)
+
+The fresh documentation-only readiness audit starts from clean synchronized
+migrated/local/upstream/live-remote revision
+`c8bfcd77e01a243e3b565ebc818151c2255a0a2c` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-66's
+historical no-successor closure and selects only P8-FT-67, the smallest
+user-visible application leaf now that a current ordered plan is available as
+private GUI state. Current evidence is `main_window.cpp:8479-8695`,
+`main_window.h:499-523`, `article_view.cpp:70-107` and `conanfile.py:51-58`;
+pinned legacy evidence is `articleview.cc:2569-2791`.
+
+Qt 6.11 `findText` has no Qt5 WebKit `HighlightAllOccurrences` flag, so repeated
+single-literal calls cannot preserve the legacy simultaneous highlight-all
+presentation. P8-FT-67 uses a private bounded ApplicationWorld script and CSS
+Custom Highlight ranges instead. After the existing complete identity gate,
+the script feature-probes the required CSS Highlight, Range, Selection and DOM
+traversal capabilities, maps the ordered Core-authored rendered-text ranges to
+the unchanged DOM, validates every literal and constructs the entire result
+before replacing presentation. It registers all DOM occurrences of every
+unique supplied literal under a private tab/page highlight using CSS system
+mark colors, selects and scrolls the range mapped from the first ordered plan
+item, and separately retains generation-bound ordered ranges at current
+position zero. Literal grouping follows the retained match-case policy. It does
+not insert wrappers, change text nodes, parse the query, rematch Core semantics
+or consume `ignore_diacritics`.
+
+Empty success clears the private highlight and applied state. Unsupported APIs,
+mapping/literal mismatch, script failure, stale callback and every existing
+activation, search, lookup, navigation, tab, view, page, facade or teardown
+invalidation atomically leave no private highlight, selection or applied state.
+Focused acceptance belongs to existing GUI smoke targets and adds no registered
+test. P8-FT-67 changes no installed/Core/C API or DTO, index, configuration,
+dependency, catalog, translation or executable; headword-only rows, exact
+dictionary tooltips and activation, ordinary find-in-page, status wording and
+the exactly 109-test Release baseline remain unchanged. Previous/Next commands
+remain outside the leaf. No successor after P8-FT-67 is selected, ranked,
+recommended or named. Completion will unlock only generation-bound ordered
+applied-range state.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

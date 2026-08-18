@@ -4171,6 +4171,49 @@ teardown. The existing full-text dialog smoke independently covers every
 MainWindow identity gate, duplicate rejection and absence of visible effects.
 No test was registered; the Release baseline remains exactly 109.
 
+### P8-FT-67 private CSS Custom Highlight plan application acceptance (selected)
+
+The fresh documentation-only audit starts from clean synchronized
+migrated/local/upstream/live-remote revision
+`c8bfcd77e01a243e3b565ebc818151c2255a0a2c` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-67 supersedes P8-FT-66's
+historical no-successor closure and selects only private CSS Custom Highlight
+application of the accepted ordered plan. Acceptance is grounded in current
+`main_window.cpp:8479-8695`, `main_window.h:499-523`, the existing private
+ApplicationWorld execution at `article_view.cpp:70-107`, the Qt 6.11.1 pin at
+`conanfile.py:51-58`, and pinned legacy `articleview.cc:2569-2791`.
+
+Focused offscreen WebEngine coverage in the existing full-text application
+smoke must prove the Qt5-parity application contract: repeated literals and
+case-sensitive/case-insensitive grouping highlight every DOM occurrence of each
+unique supplied literal; distinct literals are highlighted simultaneously;
+Unicode and a match spanning adjacent text nodes map without changing DOM
+structure; the range mapped from the first ordered plan item is selected and
+scrolled into view; and private state records current position zero with the
+complete plan order intact. Empty plans clear
+the private highlight and state. The test must also prove system mark styling,
+no wrapper insertion or text-node normalization, and unchanged article links,
+markup and ordinary find-in-page behavior.
+
+Capability-probe failure, rendered-text/DOM or literal mismatch, JavaScript
+failure and partial construction must leave no private registry entry,
+selection or applied state. Existing generation/query-policy, lookup, search,
+navigation, tab, view and page identity gates must be rechecked at asynchronous
+completion; replacement activation/search/navigation, tab close, page
+replacement, facade detachment and teardown must remove an applied highlight
+and reject stale callbacks. Coverage must prove that application neither
+reinterprets the Core plan nor consumes `ignore_diacritics`.
+
+P8-FT-67 changes only existing GUI smoke coverage and registers no test. It
+changes no installed/Core/C API or DTO, index, configuration, dependency,
+catalog, translation or executable. Headword-only result rows, the exact
+dictionary-name tooltip, exact activation, status wording and exactly 109
+registered Release tests remain unchanged. Previous/Next commands are not
+tested or specified by this leaf. Compiled gates are omitted for this
+four-document-only audit. No successor after P8-FT-67 is selected, ranked,
+recommended or named. Completion will unlock only generation-bound ordered
+applied-range state.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
