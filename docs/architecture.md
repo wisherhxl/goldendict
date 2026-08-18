@@ -4832,33 +4832,24 @@ and unrelated parity remain independent and unranked. Completion unlocks only
 a fresh independent bounded readiness audit; no successor is selected, ranked,
 recommended, or named.
 
-### Phase 8 full-text error-count translation acceptance (selected)
+### Phase 8 full-text error-count translation acceptance (complete)
 
-The fresh independent bounded post-P8-FT-58 audit is pinned to clean
-synchronized migrated HEAD, local branch, upstream, and live remote at
-`0090f8aba6f03c2fcf53adb9998f8d9d16e601e2`, plus the unchanged clean
-read-only legacy checkout at
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Rechecking every remaining
-full-text parity gap and prerequisite against current and pinned-legacy
-evidence selects exactly P8-FT-59: focused translation acceptance for the
-existing private error-count status.
+P8-FT-59 is complete from synchronized migrated revision
+`471ba2a7db8491aa486951506389101caa8cb255` and the unchanged clean read-only
+legacy checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It accepts
+focused translation of the existing private error-count status without a
+production-source change.
 
 P8-FT-27 already owns the unique `fullTextErrorCountResponseStatus`, exact
 source and fallback text `Errors: %1`, authoritative decimal error count,
 visibility for one or more accepted errors, coexistence with the other
 response statuses, generation and lifecycle safety, and raw-detail
-suppression. Current `full_text_search_dialog.cpp:384-389` already formats the
-status with dialog-owned `tr("Errors: %1")`. Existing focused coverage in
-`full_text_search_dialog_test.cpp:1640-1695` proves its behavioral contract but
-does not yet prove exact-context replacement and scoped translator cleanup.
-Pinned legacy `fulltextsearch.cc` and `fulltextsearch.ui` contain no equivalent
-aggregate error-count status or conflicting translation contract. No
-architecture or product choice remains.
-
-The future leaf changes only the existing private dialog test: prove exact
-`goldendict::app::FullTextSearchDialog` context replacement with decimal
-interpolation, English fallback after scoped cleanup, stable widget identity,
-and unchanged P8-FT-27 predicates, coexistence, lifecycle safety, and
+suppression. Production retains dialog-owned `tr("Errors: %1")`. The existing
+private dialog test proves the exact `goldendict::app::FullTextSearchDialog`
+context and source, authoritative single- and multi-digit decimal
+interpolation, English fallback before installation and after scoped cleanup,
+sole direct-child label identity, and unchanged P8-FT-27 predicates,
+coexistence, stale/cancelled/detached/replaced-service/teardown safety, and
 raw-detail suppression. The Shared-Library and GUI Boundary governs. No source
 behavior, catalog, locale loader, executable, registration, public/Core/
 configuration/index-format/dependency/build/composition-root/ABI/installed
@@ -4876,9 +4867,9 @@ Index readiness/status/progress/rebuild/failure reporting/background lifecycle
 and full-text Preferences remain blocked because no separately authoritative
 Core lifecycle/policy resolution exists. Other translation, accessibility,
 styling, navigation, excerpt, diacritics, result presentation, adapters/index
-formats, and unrelated parity remain independent and unranked. P8-FT-59
-unlocks only its focused private translation-acceptance dependency; no
-successor is selected, ranked, recommended, or named.
+formats, and unrelated parity remain independent and unranked. Completion
+unlocks only a fresh independent bounded readiness audit; no successor is
+selected, ranked, recommended, or named.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

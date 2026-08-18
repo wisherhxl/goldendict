@@ -141,6 +141,21 @@ class PartialEmptyStatusTranslator final : public QTranslator {
     mutable int matching_requests = 0;
 };
 
+class ErrorCountStatusTranslator final : public QTranslator {
+   public:
+    QString translate(const char* context, const char* source_text, const char*,
+                      int) const override {
+        if (qstrcmp(context, "goldendict::app::FullTextSearchDialog") == 0 &&
+            qstrcmp(source_text, "Errors: %1") == 0) {
+            ++matching_requests;
+            return QStringLiteral("Translated errors: %1");
+        }
+        return {};
+    }
+
+    mutable int matching_requests = 0;
+};
+
 class ScopedTranslatorInstallation final {
    public:
     explicit ScopedTranslatorInstallation(QTranslator* translator)
@@ -721,6 +736,7 @@ class FullTextSearchDialogTest final : public QObject {
     void ResolvesFailureStatusThroughPrivateTranslationContext();
     void ResolvesMixedResultStatusThroughPrivateTranslationContext();
     void ResolvesPartialEmptyStatusThroughPrivateTranslationContext();
+    void ResolvesErrorCountStatusThroughPrivateTranslationContext();
     void PreservesExactForwardTabChainAcrossRequestTransitions();
     void SubmitsExactComposedAndProjectedQueryAndRetainsResponse();
     void PaintsEachResultWithIndependentDirectionAndElision();
@@ -1318,6 +1334,157 @@ void FullTextSearchDialogTest::
     QCOMPARE(restored_status->text(),
              QStringLiteral("No matches in searched dictionaries"));
     QVERIFY(restored_status->isHidden());
+}
+
+void FullTextSearchDialogTest::
+    ResolvesErrorCountStatusThroughPrivateTranslationContext() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog default_dialog(preferences, &service);
+    const auto default_matches = default_dialog.findChildren<QLabel*>(
+        QStringLiteral("fullTextErrorCountResponseStatus"),
+        Qt::FindDirectChildrenOnly);
+    QCOMPARE(default_matches.size(), 1);
+    auto* default_status = ErrorCountStatus(&default_dialog);
+    QVERIFY(default_status != nullptr);
+    QCOMPARE(default_status, default_matches.front());
+    QCOMPARE(default_status, default_dialog.error_count_status_);
+    QCOMPARE(default_status->parent(), &default_dialog);
+    QCOMPARE(default_status->objectName(),
+             QStringLiteral("fullTextErrorCountResponseStatus"));
+    QVERIFY(default_status->isHidden());
+    QVERIFY(default_status->text().isEmpty());
+
+    goldendict::core::FullTextResponse two_errors;
+    for (int index = 0; index < 2; ++index) {
+        two_errors.errors.push_back(
+            {goldendict::core::FullTextErrorCode::kInternal,
+             "private-dictionary", "private backend detail"});
+    }
+    default_dialog.active_generation_ = ++default_dialog.generation_;
+    default_dialog.FinishSearch(default_dialog.generation_, two_errors);
+    QCOMPARE(default_status->text(), QStringLiteral("Errors: 2"));
+    QVERIFY(!default_status->isHidden());
+
+    {
+        ErrorCountStatusTranslator translator;
+        const ScopedTranslatorInstallation installation(&translator);
+        QVERIFY(installation.IsInstalled());
+        FullTextSearchDialog translated_dialog(preferences, &service);
+        const auto translated_matches = translated_dialog.findChildren<QLabel*>(
+            QStringLiteral("fullTextErrorCountResponseStatus"),
+            Qt::FindDirectChildrenOnly);
+        QCOMPARE(translated_matches.size(), 1);
+        auto* translated_status = ErrorCountStatus(&translated_dialog);
+        QVERIFY(translated_status != nullptr);
+        QCOMPARE(translated_status, translated_matches.front());
+        QCOMPARE(translated_status, translated_dialog.error_count_status_);
+        QCOMPARE(translated_status->parent(), &translated_dialog);
+        QCOMPARE(translated_status->objectName(),
+                 QStringLiteral("fullTextErrorCountResponseStatus"));
+        QVERIFY(translated_status->isHidden());
+        QVERIFY(translated_status->text().isEmpty());
+        QCOMPARE(translator.matching_requests, 0);
+
+        const auto finish_current =
+            [&translated_dialog](goldendict::core::FullTextResponse response) {
+                translated_dialog.active_generation_ =
+                    ++translated_dialog.generation_;
+                translated_dialog.FinishSearch(translated_dialog.generation_,
+                                               std::move(response));
+            };
+        goldendict::core::FullTextResponse one_error;
+        one_error.errors.push_back(
+            {goldendict::core::FullTextErrorCode::kMalformedIndex,
+             "private-dictionary", "private backend detail"});
+        finish_current(one_error);
+        QCOMPARE(translated_status->text(),
+                 QStringLiteral("Translated errors: 1"));
+        QVERIFY(!translated_status->isHidden());
+        QVERIFY(!FailureStatus(&translated_dialog)->isHidden());
+
+        goldendict::core::FullTextResponse twelve_errors;
+        for (int index = 0; index < 12; ++index) {
+            twelve_errors.errors.push_back(
+                {goldendict::core::FullTextErrorCode::kInternal,
+                 "private-dictionary", "private backend detail"});
+        }
+        finish_current(twelve_errors);
+        QCOMPARE(translated_status->text(),
+                 QStringLiteral("Translated errors: 12"));
+        QVERIFY(!FailureStatus(&translated_dialog)->isHidden());
+
+        twelve_errors.results = {MakeResult("retained", "retained", 1U)};
+        finish_current(twelve_errors);
+        QCOMPARE(translated_status->text(),
+                 QStringLiteral("Translated errors: 12"));
+        QVERIFY(!MixedResultStatus(&translated_dialog)->isHidden());
+        QVERIFY(FailureStatus(&translated_dialog)->isHidden());
+
+        twelve_errors.partial = true;
+        finish_current(twelve_errors);
+        QVERIFY(!PartialStatus(&translated_dialog)->isHidden());
+        QVERIFY(!MixedResultStatus(&translated_dialog)->isHidden());
+        QVERIFY(PartialEmptyStatus(&translated_dialog)->isHidden());
+
+        twelve_errors.results.clear();
+        finish_current(twelve_errors);
+        QCOMPARE(translated_status->text(),
+                 QStringLiteral("Translated errors: 12"));
+        QVERIFY(!PartialStatus(&translated_dialog)->isHidden());
+        QVERIFY(!PartialEmptyStatus(&translated_dialog)->isHidden());
+        QVERIFY(MixedResultStatus(&translated_dialog)->isHidden());
+        QVERIFY(FailureStatus(&translated_dialog)->isHidden());
+
+        for (const auto* label : translated_dialog.findChildren<QLabel*>()) {
+            QVERIFY(
+                !label->text().contains(QStringLiteral("private-dictionary")));
+            QVERIFY(!label->text().contains(
+                QStringLiteral("private backend detail")));
+        }
+
+        const std::uint64_t stale_generation = translated_dialog.generation_;
+        translated_dialog.active_generation_ = ++translated_dialog.generation_;
+        translated_dialog.FinishSearch(stale_generation, {});
+        QCOMPARE(translated_status->text(),
+                 QStringLiteral("Translated errors: 12"));
+
+        finish_current({});
+        QVERIFY(translated_status->isHidden());
+        QVERIFY(translated_status->text().isEmpty());
+        QCOMPARE(translator.matching_requests, 5);
+
+        service.response_ = twelve_errors;
+        translated_dialog.InitializeQuery(QStringLiteral("blocked"));
+        translated_dialog.SubmitSearch();
+        QVERIFY(service.WaitForQueries(1U));
+        service.ReleaseCancelledRequest();
+        translated_dialog.SetService(nullptr);
+        QVERIFY(service.WaitForCancellation());
+        QVERIFY(translated_status->isHidden());
+        QCoreApplication::processEvents();
+        QVERIFY(translated_status->isHidden());
+        QVERIFY(translated_status->text().isEmpty());
+        translated_dialog.DetachController();
+        QVERIFY(translated_status->isHidden());
+    }
+
+    FullTextSearchDialog restored_dialog(preferences, &service);
+    const auto restored_matches = restored_dialog.findChildren<QLabel*>(
+        QStringLiteral("fullTextErrorCountResponseStatus"),
+        Qt::FindDirectChildrenOnly);
+    QCOMPARE(restored_matches.size(), 1);
+    auto* restored_status = ErrorCountStatus(&restored_dialog);
+    QVERIFY(restored_status != nullptr);
+    QCOMPARE(restored_status, restored_matches.front());
+    QCOMPARE(restored_status, restored_dialog.error_count_status_);
+    QCOMPARE(restored_status->parent(), &restored_dialog);
+    QCOMPARE(restored_status->objectName(),
+             QStringLiteral("fullTextErrorCountResponseStatus"));
+    restored_dialog.active_generation_ = ++restored_dialog.generation_;
+    restored_dialog.FinishSearch(restored_dialog.generation_, two_errors);
+    QCOMPARE(restored_status->text(), QStringLiteral("Errors: 2"));
+    QVERIFY(!restored_status->isHidden());
 }
 
 void FullTextSearchDialogTest::

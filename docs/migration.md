@@ -4885,29 +4885,22 @@ remain independent and unranked. Completion unlocks only a fresh independent
 bounded readiness audit; no successor is selected, ranked, recommended, or
 named.
 
-### Phase 8 full-text error-count translation acceptance (selected)
+### Phase 8 full-text error-count translation acceptance (complete)
 
-The fresh independent bounded post-P8-FT-58 audit is pinned to clean
-synchronized migrated HEAD, upstream, and live remote at
-`0090f8aba6f03c2fcf53adb9998f8d9d16e601e2`, with the clean read-only legacy
-checkout unchanged at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Rechecking
-all remaining full-text gaps and prerequisites selects exactly P8-FT-59:
-focused translation acceptance for the existing private error-count status.
+P8-FT-59 is complete from synchronized migrated revision
+`471ba2a7db8491aa486951506389101caa8cb255`, with the clean read-only legacy
+checkout unchanged at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It accepts
+focused translation of the existing private error-count status.
 
 P8-FT-27 owns `fullTextErrorCountResponseStatus`, exact text `Errors: %1`, its
 authoritative decimal substitution, visibility and coexistence predicates,
-lifecycle safety, and no-raw-detail contract. Current
-`full_text_search_dialog.cpp:384-389` already formats the text through the
-dialog's `tr()` context, while `full_text_search_dialog_test.cpp:1640-1695`
-covers behavior without scoped translation replacement and cleanup. Pinned
-legacy full-text source and UI contain no equivalent aggregate error-count
-status or conflicting translation contract. No unresolved architecture or
-product decision remains.
-
-The future implementation is restricted to the existing private dialog test:
-prove exact dialog-context replacement with decimal interpolation, English
-fallback after translator cleanup, stable identity, and unchanged P8-FT-27
-behavior. The Shared-Library and GUI Boundary governs. No production source,
+lifecycle safety, and no-raw-detail contract. Production retains dialog-owned
+`tr("Errors: %1")`. The existing private dialog test proves exact dialog-context
+and source replacement, authoritative single- and multi-digit decimal
+interpolation, English fallback before installation and after scoped cleanup,
+sole direct-child label identity, unchanged predicates and coexistence, stale/
+cancelled/detached/replaced-service/teardown safety, and raw-detail suppression.
+The Shared-Library and GUI Boundary governs. No production source,
 catalog, locale loader, executable, registration, public/Core/configuration/
 index-format/dependency/build/composition-root/ABI/installed-interface, or
 registered-test change is authorized.
@@ -4924,9 +4917,9 @@ Index readiness/status/progress/rebuild/failure reporting/background lifecycle
 and full-text Preferences remain blocked without a separately authoritative
 Core lifecycle/policy resolution. Other translation, accessibility, styling,
 navigation, excerpt, diacritics, result presentation, adapters/index formats,
-and unrelated parity remain independent and unranked. P8-FT-59 unlocks only
-its focused private translation-acceptance dependency; no successor is
-selected, ranked, recommended, or named.
+and unrelated parity remain independent and unranked. Completion unlocks only
+a fresh independent bounded readiness audit; no successor is selected, ranked,
+recommended, or named.
 
 ### Phase 9 — Linux Integration And Release Quality
 
