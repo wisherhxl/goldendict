@@ -126,6 +126,21 @@ class MixedResultStatusTranslator final : public QTranslator {
     mutable int matching_requests = 0;
 };
 
+class PartialEmptyStatusTranslator final : public QTranslator {
+   public:
+    QString translate(const char* context, const char* source_text, const char*,
+                      int) const override {
+        if (qstrcmp(context, "goldendict::app::FullTextSearchDialog") == 0 &&
+            qstrcmp(source_text, "No matches in searched dictionaries") == 0) {
+            ++matching_requests;
+            return QStringLiteral("Translated partial-empty status");
+        }
+        return {};
+    }
+
+    mutable int matching_requests = 0;
+};
+
 class ScopedTranslatorInstallation final {
    public:
     explicit ScopedTranslatorInstallation(QTranslator* translator)
@@ -705,6 +720,7 @@ class FullTextSearchDialogTest final : public QObject {
     void ResolvesEmptyStatusThroughPrivateTranslationContext();
     void ResolvesFailureStatusThroughPrivateTranslationContext();
     void ResolvesMixedResultStatusThroughPrivateTranslationContext();
+    void ResolvesPartialEmptyStatusThroughPrivateTranslationContext();
     void PreservesExactForwardTabChainAcrossRequestTransitions();
     void SubmitsExactComposedAndProjectedQueryAndRetainsResponse();
     void PaintsEachResultWithIndependentDirectionAndElision();
@@ -1187,6 +1203,120 @@ void FullTextSearchDialogTest::
     QVERIFY(restored_status != nullptr);
     QCOMPARE(restored_status->text(),
              QStringLiteral("Some dictionaries could not be searched"));
+    QVERIFY(restored_status->isHidden());
+}
+
+void FullTextSearchDialogTest::
+    ResolvesPartialEmptyStatusThroughPrivateTranslationContext() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog default_dialog(preferences, &service);
+    auto* default_status = PartialEmptyStatus(&default_dialog);
+    QVERIFY(default_status != nullptr);
+    QCOMPARE(default_status, default_dialog.partial_empty_status_);
+    QCOMPARE(default_status->parent(), &default_dialog);
+    QCOMPARE(default_status->objectName(),
+             QStringLiteral("fullTextPartialEmptyResponseStatus"));
+    QCOMPARE(default_status->text(),
+             QStringLiteral("No matches in searched dictionaries"));
+    QVERIFY(default_status->isHidden());
+
+    {
+        PartialEmptyStatusTranslator translator;
+        const ScopedTranslatorInstallation installation(&translator);
+        QVERIFY(installation.IsInstalled());
+        FullTextSearchDialog translated_dialog(preferences, &service);
+        const auto matches = translated_dialog.findChildren<QLabel*>(
+            QStringLiteral("fullTextPartialEmptyResponseStatus"),
+            Qt::FindDirectChildrenOnly);
+        QCOMPARE(matches.size(), 1);
+        auto* translated_status = PartialEmptyStatus(&translated_dialog);
+        QVERIFY(translated_status != nullptr);
+        QCOMPARE(translated_status, matches.front());
+        QCOMPARE(translated_status, translated_dialog.partial_empty_status_);
+        QCOMPARE(translated_status->parent(), &translated_dialog);
+        QCOMPARE(translated_status->objectName(),
+                 QStringLiteral("fullTextPartialEmptyResponseStatus"));
+        QCOMPARE(translated_status->text(),
+                 QStringLiteral("Translated partial-empty status"));
+        QVERIFY(translated_status->isHidden());
+        QCOMPARE(translator.matching_requests, 1);
+
+        const auto finish_current =
+            [&translated_dialog](goldendict::core::FullTextResponse response) {
+                translated_dialog.active_generation_ =
+                    ++translated_dialog.generation_;
+                translated_dialog.FinishSearch(translated_dialog.generation_,
+                                               std::move(response));
+            };
+
+        goldendict::core::FullTextResponse partial_empty;
+        partial_empty.partial = true;
+        partial_empty.errors.push_back(
+            {goldendict::core::FullTextErrorCode::kMalformedIndex,
+             "private-dictionary", "private backend detail"});
+        finish_current(partial_empty);
+        QVERIFY(!translated_status->isHidden());
+        QCOMPARE(translated_status->text(),
+                 QStringLiteral("Translated partial-empty status"));
+        QVERIFY(!PartialStatus(&translated_dialog)->isHidden());
+        QVERIFY(!ErrorCountStatus(&translated_dialog)->isHidden());
+        QCOMPARE(ErrorCountStatus(&translated_dialog)->text(),
+                 QStringLiteral("Errors: 1"));
+
+        goldendict::core::FullTextResponse partial_result = partial_empty;
+        partial_result.results = {MakeResult("retained", "result", 1U)};
+        finish_current(partial_result);
+        QVERIFY(translated_status->isHidden());
+        QVERIFY(!PartialStatus(&translated_dialog)->isHidden());
+        QVERIFY(!MixedResultStatus(&translated_dialog)->isHidden());
+
+        finish_current({});
+        QVERIFY(translated_status->isHidden());
+        finish_current(partial_empty);
+        QVERIFY(!translated_status->isHidden());
+        const std::uint64_t stale_generation = translated_dialog.generation_;
+        translated_dialog.active_generation_ = ++translated_dialog.generation_;
+        translated_dialog.FinishSearch(stale_generation, {});
+        QVERIFY(!translated_status->isHidden());
+
+        service.response_ = partial_empty;
+        translated_dialog.InitializeQuery(QStringLiteral("blocked"));
+        translated_dialog.SubmitSearch();
+        QVERIFY(translated_status->isHidden());
+        QVERIFY(service.WaitForQueries(1U));
+        translated_dialog.CancelSearch();
+        QVERIFY(service.WaitForCancellation());
+        QVERIFY(translated_status->isHidden());
+        service.ReleaseCancelledRequest();
+        QCoreApplication::processEvents();
+        QVERIFY(translated_status->isHidden());
+    }
+
+    ControllableDictionaryService detached_service;
+    {
+        PartialEmptyStatusTranslator translator;
+        const ScopedTranslatorInstallation installation(&translator);
+        QVERIFY(installation.IsInstalled());
+        FullTextSearchDialog detached_dialog(preferences, &detached_service);
+        auto* detached_status = PartialEmptyStatus(&detached_dialog);
+        detached_dialog.InitializeQuery(QStringLiteral("blocked"));
+        detached_dialog.SubmitSearch();
+        QVERIFY(detached_service.WaitForQueries(1U));
+        detached_service.ReleaseCancelledRequest();
+        detached_dialog.SetService(nullptr);
+        detached_dialog.DetachController();
+        QVERIFY(detached_service.WaitForCancellation());
+        QVERIFY(detached_status->isHidden());
+        QCoreApplication::processEvents();
+        QVERIFY(detached_status->isHidden());
+    }
+
+    FullTextSearchDialog restored_dialog(preferences, &service);
+    auto* restored_status = PartialEmptyStatus(&restored_dialog);
+    QVERIFY(restored_status != nullptr);
+    QCOMPARE(restored_status->text(),
+             QStringLiteral("No matches in searched dictionaries"));
     QVERIFY(restored_status->isHidden());
 }
 

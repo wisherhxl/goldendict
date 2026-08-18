@@ -125,7 +125,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     layout->addWidget(mixed_result_status_);
 
     partial_empty_status_ =
-        new QLabel(QStringLiteral("No matches in searched dictionaries"), this);
+        new QLabel(tr("No matches in searched dictionaries"), this);
     partial_empty_status_->setObjectName(
         QStringLiteral("fullTextPartialEmptyResponseStatus"));
     partial_empty_status_->hide();

@@ -4840,29 +4840,27 @@ clean exact-SCM package creation preserve the 109-test baseline. P8-FT-57
 completion unlocks only a fresh independent bounded readiness audit; no
 successor is selected, ranked, recommended, or named.
 
-### Phase 8 full-text partial-empty-status translation (selected)
+### Phase 8 full-text partial-empty-status translation (complete)
 
 The fresh independent bounded post-P8-FT-57 audit is pinned to clean
 synchronized migrated HEAD, upstream, and live remote at
-`7e7f7b90c21ff23c109f73bb983074b7e8194989`, with the clean read-only legacy
-checkout unchanged at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It audits
-all remaining full-text parity gaps and prerequisites and selects exactly one
-smallest independently evidence-ready leaf, P8-FT-58: translate the existing
-private partial-empty status through the dialog's established context.
+`58612007652ac24f08fc0bd8e2a4fb2b59839366`, with the clean read-only legacy
+checkout unchanged at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-58
+translates the existing private partial-empty status through the dialog's
+established context.
 
 Completed P8-FT-26 owns `fullTextPartialEmptyResponseStatus`, exact source and
 fallback text `No matches in searched dictionaries`, and its generation-current
 zero-result, authoritative-partial visibility, partial-status coexistence, and
-no-raw-detail behavior. Current `full_text_search_dialog.cpp:127-132` is the
-sole remaining static response-status construction using `QStringLiteral`;
-P8-FT-52 through P8-FT-57 establish dialog-owned translation and focused
+no-raw-detail behavior. The dialog now constructs that status with dialog-owned
+`tr()`; P8-FT-52 through P8-FT-57 establish dialog-owned translation and focused
 scoped-translator coverage. Pinned legacy `fulltextsearch.cc` and
 `fulltextsearch.ui` contain no equivalent status or conflicting wording or
 context contract. No unresolved architecture or product decision remains.
 
-Future implementation is restricted to `full_text_search_dialog.cpp` and
-`full_text_search_dialog_test.cpp`: use dialog-owned
-`tr("No matches in searched dictionaries")` and prove exact-context
+The completed implementation is restricted to `full_text_search_dialog.cpp` and
+`full_text_search_dialog_test.cpp`; it uses dialog-owned
+`tr("No matches in searched dictionaries")`, and focused coverage proves exact-context
 replacement, English fallback, stable identity/text, unchanged P8-FT-26
 predicates and lifecycle safety, and scoped translator cleanup. The
 Shared-Library and GUI Boundary governs. No catalog, locale loader, executable,
@@ -4883,11 +4881,9 @@ and full-text Preferences remain blocked because no separately authoritative
 Core lifecycle/policy resolution exists. Exact-document navigation,
 result/match/excerpt presentation, ignore-diacritics consumption, adapters/
 index formats, accessibility, styling/layout, catalogs, and unrelated parity
-remain independent and unranked. This documentation-only audit omits compiled
-gates and unlocks only implementation of P8-FT-58. Stop on ref/worktree or
-legacy drift, ambiguity, an equally authoritative competing choice,
-architecture conflict, scope expansion, any required non-document file, or an
-uncorrectable validation failure.
+remain independent and unranked. Completion unlocks only a fresh independent
+bounded readiness audit; no successor is selected, ranked, recommended, or
+named.
 
 ### Phase 9 — Linux Integration And Release Quality
 
