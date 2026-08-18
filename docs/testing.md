@@ -3814,6 +3814,41 @@ standalone installed C/C++ consumers, clean committed exact-SCM Conan creation
 with packaged consumers, the exact five-file allowlist, `git diff --check`,
 synchronized refs/remotes, and clean worktrees.
 
+### Post-P8-FT-59 full-text readiness audit (blocked)
+
+The fresh independent bounded audit is pinned to clean synchronized migrated
+HEAD, local branch, upstream, and live remote at
+`4e1bbea18a4f7fb123a2a49049c0ca2d4808fac2` and the unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current private
+Widgets sources and focused tests and pinned legacy `fulltextsearch.cc` and
+`fulltextsearch.ui` establish multiple independently evidence-ready
+presentation gaps at the same minimum scope. No current, legacy, or documented
+product-policy evidence uniquely distinguishes one. The audit is therefore
+blocked on separately authoritative evidence that makes exactly one smallest
+leaf unique; it selects, ranks, recommends, and names no leaf or successor and
+unlocks no dependency.
+
+This audit changes documentation only. Validation omits compiled gates and
+requires the exact four-file allowlist, complete-diff review, current and legacy
+citations, cross-document consistency, the Shared-Library and GUI Boundary,
+public/installed ABI and all Core/configuration/index-format/dependency/build/
+catalog/locale-loader/executable/registration boundaries, completed P8-FT
+identities, predicates, lifecycle, coexistence, and privacy guarantees, Phase
+terminology, blocker-only and no-successor wording, exactly 109 registered
+Release tests, synchronized refs/remotes, clean worktrees, and
+`git diff --check`.
+
+Completed translations `Full-text search`, both `Search` uses, `Results may be
+incomplete.`, `No matches`, `Full-text search failed`, `Some dictionaries
+could not be searched`, `No matches in searched dictionaries`, and
+`Errors: %1` remain exact. `Maximum word distance` remains spin-box-owned at
+`0..1000`, and `Maximum articles per dictionary` remains spin-box-owned at
+`1..100000`. Index readiness/status/progress/rebuild/failure reporting/
+background lifecycle and full-text Preferences remain blocked without
+separately authoritative Core lifecycle/policy resolution. Translation,
+accessibility, styling, navigation, excerpt, diacritics, presentation, adapter,
+and other independent parity gaps remain unranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

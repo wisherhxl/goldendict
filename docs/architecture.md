@@ -4871,6 +4871,42 @@ formats, and unrelated parity remain independent and unranked. Completion
 unlocks only a fresh independent bounded readiness audit; no successor is
 selected, ranked, recommended, or named.
 
+### Phase 8 post-P8-FT-59 full-text readiness audit (blocked)
+
+The fresh independent bounded post-P8-FT-59 audit is pinned to clean
+synchronized migrated HEAD, local branch, upstream, and live remote at
+`4e1bbea18a4f7fb123a2a49049c0ca2d4808fac2`, plus the unchanged clean
+read-only legacy checkout at
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current private Widgets sources
+and focused tests, together with pinned legacy `fulltextsearch.cc` and
+`fulltextsearch.ui`, establish multiple remaining independently evidence-ready
+presentation gaps of the same minimum scope. Neither evidence source nor a
+documented product policy uniquely distinguishes one of them.
+
+The Shared-Library and GUI Boundary keeps each such gap private to Widgets,
+but it does not authorize an arbitrary ordering choice. Selecting one would
+therefore rank equally authoritative alternatives without evidence. The audit
+is blocked only on a separately authoritative product-policy decision or new
+evidence that makes exactly one smallest leaf unique. No leaf or successor is
+selected, ranked, recommended, or named.
+
+Completed translations `Full-text search`, both `Search` uses, `Results may be
+incomplete.`, `No matches`, `Full-text search failed`, `Some dictionaries
+could not be searched`, `No matches in searched dictionaries`, and
+`Errors: %1` remain exact. Locked policies remain `Maximum word distance` with
+spin-box-owned `0..1000` and `Maximum articles per dictionary` with spin-box-
+owned `1..100000`. All completed P8-FT identities, predicates, lifecycle,
+coexistence, and privacy guarantees remain unchanged, as do public/installed
+ABI and Core, configuration, index-format, dependency, build, catalog/locale-
+loader, executable, and registration boundaries. The Release baseline remains
+exactly 109 registered tests.
+
+Index readiness/status/progress/rebuild/failure reporting/background lifecycle
+and full-text Preferences remain blocked without separately authoritative Core
+lifecycle/policy resolution. Translation, accessibility, styling, navigation,
+excerpt, diacritics, presentation, adapter, and other independent parity gaps
+remain unranked. This documentation-only audit unlocks no dependency.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

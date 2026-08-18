@@ -780,6 +780,36 @@ presentation, adapter/index-format, and unrelated parity remain independent
 and unranked. Completion unlocks only a fresh independent bounded readiness
 audit; no successor is selected, ranked, recommended, or named.
 
+### Post-P8-FT-59 full-text readiness audit (blocked)
+
+The fresh independent bounded audit is pinned to clean synchronized migrated
+HEAD, local branch, upstream, and live remote at
+`4e1bbea18a4f7fb123a2a49049c0ca2d4808fac2` and the unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current private
+Widgets sources and focused tests and pinned legacy `fulltextsearch.cc` and
+`fulltextsearch.ui` provide equally authoritative evidence for multiple
+remaining independently ready presentation gaps at the same minimum scope.
+No repository evidence or documented product policy uniquely distinguishes
+one, so the audit selects, ranks, recommends, and names no leaf or successor.
+
+The precise blocker is the absence of separately authoritative evidence that
+makes exactly one smallest leaf unique. The Shared-Library and GUI Boundary,
+public/installed ABI, and Core, configuration, index-format, dependency, build,
+catalog/locale-loader, executable, and registration boundaries remain locked.
+Completed translations `Full-text search`, both `Search` uses, `Results may be
+incomplete.`, `No matches`, `Full-text search failed`, `Some dictionaries
+could not be searched`, `No matches in searched dictionaries`, and
+`Errors: %1` remain exact. `Maximum word distance` remains spin-box-owned at
+`0..1000`, and `Maximum articles per dictionary` remains spin-box-owned at
+`1..100000`. All completed P8-FT behavior and exactly 109 registered Release
+tests remain unchanged.
+
+Index readiness/status/progress/rebuild/failure reporting/background lifecycle
+and full-text Preferences remain blocked without separately authoritative Core
+lifecycle/policy resolution. Translation, accessibility, styling, navigation,
+excerpt, diacritics, presentation, adapter, and other independent parity gaps
+remain unranked. This documentation-only audit unlocks no dependency.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

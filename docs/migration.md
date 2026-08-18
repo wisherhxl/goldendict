@@ -4921,6 +4921,41 @@ and unrelated parity remain independent and unranked. Completion unlocks only
 a fresh independent bounded readiness audit; no successor is selected, ranked,
 recommended, or named.
 
+### Phase 8 post-P8-FT-59 full-text readiness audit (blocked)
+
+The fresh independent bounded post-P8-FT-59 audit is pinned to clean
+synchronized migrated HEAD, local branch, upstream, and live remote at
+`4e1bbea18a4f7fb123a2a49049c0ca2d4808fac2`, with the clean read-only legacy
+checkout unchanged at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+private Widgets sources and focused tests and pinned legacy
+`fulltextsearch.cc` and `fulltextsearch.ui` establish multiple remaining
+independently evidence-ready presentation gaps with the same minimum scope.
+Neither current nor legacy evidence, and no documented product policy,
+uniquely distinguishes one.
+
+Selecting a leaf would therefore rank equally authoritative alternatives. The
+precise blocker is the absence of a separately authoritative product-policy
+decision or new evidence that makes exactly one smallest leaf unique. No leaf
+or successor is selected, ranked, recommended, or named, and this
+documentation-only audit unlocks no dependency.
+
+The Shared-Library and GUI Boundary and public/installed ABI remain unchanged,
+as do Core, configuration, index-format, dependency, build, catalog/locale-
+loader, executable, and registration boundaries. Completed translations
+`Full-text search`, both `Search` uses, `Results may be incomplete.`, `No
+matches`, `Full-text search failed`, `Some dictionaries could not be searched`,
+`No matches in searched dictionaries`, and `Errors: %1` remain exact. Locked
+policies remain `Maximum word distance` with spin-box-owned `0..1000` and
+`Maximum articles per dictionary` with spin-box-owned `1..100000`. All
+completed P8-FT identities, predicates, lifecycle, coexistence, and privacy
+guarantees and exactly 109 registered Release tests remain unchanged.
+
+Index readiness/status/progress/rebuild/failure reporting/background lifecycle
+and full-text Preferences remain blocked without separately authoritative Core
+lifecycle/policy resolution. Translation, accessibility, styling, navigation,
+excerpt, diacritics, presentation, adapter, and other independent parity gaps
+remain unranked.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
