@@ -16,6 +16,7 @@
 #include <QProxyStyle>
 #include <QPushButton>
 #include <QStyleOptionViewItem>
+#include <QTranslator>
 #include <QVBoxLayout>
 #include <QtTest>
 
@@ -33,6 +34,39 @@
 
 namespace goldendict::app {
 namespace {
+
+class TitleTranslator final : public QTranslator {
+   public:
+    QString translate(const char* context, const char* source_text, const char*,
+                      int) const override {
+        if (qstrcmp(context, "goldendict::app::FullTextSearchDialog") == 0 &&
+            qstrcmp(source_text, "Full-text search") == 0) {
+            ++matching_requests;
+            return QStringLiteral("Translated full-text title");
+        }
+        return {};
+    }
+
+    mutable int matching_requests = 0;
+};
+
+class ScopedTranslatorInstallation final {
+   public:
+    explicit ScopedTranslatorInstallation(QTranslator* translator)
+        : translator_(translator),
+          installed_(QCoreApplication::installTranslator(translator_)) {}
+
+    ~ScopedTranslatorInstallation() {
+        if (installed_)
+            QCoreApplication::removeTranslator(translator_);
+    }
+
+    bool IsInstalled() const { return installed_; }
+
+   private:
+    QTranslator* translator_;
+    bool installed_;
+};
 
 class ControllableDictionaryService final
     : public goldendict::core::DictionaryService {
@@ -588,6 +622,7 @@ class FullTextSearchDialogTest final : public QObject {
     Q_OBJECT
 
    private slots:
+    void ResolvesWindowTitleThroughPrivateTranslationContext();
     void PreservesExactForwardTabChainAcrossRequestTransitions();
     void SubmitsExactComposedAndProjectedQueryAndRetainsResponse();
     void PaintsEachResultWithIndependentDirectionAndElision();
@@ -609,6 +644,22 @@ class FullTextSearchDialogTest final : public QObject {
     void IdleCancelDismissesThroughDialogLifecycle();
     void ServiceReplacementDetachAndDestructionSuppressLateDelivery();
 };
+
+void FullTextSearchDialogTest::
+    ResolvesWindowTitleThroughPrivateTranslationContext() {
+    ControllableDictionaryService service;
+    goldendict::core::ApplicationPreferences preferences;
+    FullTextSearchDialog default_dialog(preferences, &service);
+    QCOMPARE(default_dialog.windowTitle(), QStringLiteral("Full-text search"));
+
+    TitleTranslator translator;
+    const ScopedTranslatorInstallation installation(&translator);
+    QVERIFY(installation.IsInstalled());
+    FullTextSearchDialog translated_dialog(preferences, &service);
+    QCOMPARE(translated_dialog.windowTitle(),
+             QStringLiteral("Translated full-text title"));
+    QCOMPARE(translator.matching_requests, 1);
+}
 
 void FullTextSearchDialogTest::
     PreservesExactForwardTabChainAcrossRequestTransitions() {

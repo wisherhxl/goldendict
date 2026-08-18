@@ -4536,25 +4536,21 @@ architectural conflict, another required file, failed validation, or scope
 expansion. No successor is selected or ranked; the precise next boundary is a
 fresh independent bounded full-text readiness audit.
 
-### Phase 8 full-text dialog window-title translation readiness (selected)
+### Phase 8 full-text dialog window-title translation (complete)
 
-The fresh independent post-P8-FT-51 audit is pinned to clean migrated
-revision `42004ac4901fd5c0c91a4303536ceb3bec37d26a` and unchanged clean
-read-only legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
-It selects exactly P8-FT-52: route the existing private full-text dialog title
-through its Widgets translation context while retaining exact source text
-`Full-text search`.
+P8-FT-52 was implemented from clean synchronized migrated revision
+`b25cee8fd95381ecd16f733107f7d201d5068eeb` with the unchanged clean read-only
+legacy checkout pinned at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+The existing private full-text dialog title now resolves through its Widgets
+translation context while retaining exact source text `Full-text search`.
 
 Pinned legacy `fulltextsearch.cc:219-223` establishes the exact title and its
-translation ownership. Current `full_text_search_dialog.cpp:59-60` preserves
-the visible English text but uses `QStringLiteral`; the same dialog class
-already owns translated button and response-count strings. The selected future
-leaf is limited to that source file and the existing focused dialog test. A
-test translator must be able to replace the title through
-`FullTextSearchDialog`'s context, while construction without a translator must
-retain the exact English title.
+translation ownership. `full_text_search_dialog.cpp` now uses the dialog's
+existing private `tr()` context. Focused construction coverage proves both an
+exact-context test translator replacement and the unchanged English fallback
+without a translator.
 
-This selection reinforces the shared-library/GUI boundary: the title remains
+This implementation reinforces the shared-library/GUI boundary: the title remains
 private presentation state and creates no public, Core, configuration,
 index-format, composition-root, dependency, build, or installed-interface
 contract. It adds no catalog or locale-loading policy, executable, or test
@@ -4570,13 +4566,11 @@ Other translation, accessibility and styling surfaces, exact-document
 navigation, match/excerpt presentation, ignore-diacritics consumption,
 adapters/index formats, and unrelated parity remain separate and unranked.
 
-The documentation-only gate is the exact four-file allowlist, cross-document
-policy and evidence consistency, locked-caption policy, Phase terminology,
-successor neutrality, clean pinned refs/worktrees, live-remote agreement, and
-`git diff --check`. Compiled checks are omitted. Stop on drift, ambiguity,
-architectural conflict, a required non-documentation or fifth documentation
-file, failed validation, or scope expansion. No successor after P8-FT-52 is
-selected or ranked.
+The delivery gate is the focused and full 109-test Linux Release suite, fresh
+Release configure/build and install, standalone installed C/C++ consumers,
+clean committed exact-SCM Conan creation with packaged consumers, repository
+validation, and clean synchronized refs/worktrees. No successor after P8-FT-52
+is selected or ranked.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

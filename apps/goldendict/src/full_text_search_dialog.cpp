@@ -57,7 +57,7 @@ FullTextSearchDialog::FullTextSearchDialog(
           FinishSearch(generation, std::move(response));
       }) {
     setObjectName(QStringLiteral("fullTextSearchDialog"));
-    setWindowTitle(QStringLiteral("Full-text search"));
+    setWindowTitle(tr("Full-text search"));
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setAttribute(Qt::WA_DeleteOnClose);
     setModal(false);

@@ -521,21 +521,20 @@ another required file, failed validation, or scope expansion. No successor is
 selected or ranked; the next boundary is a fresh independent bounded full-text
 readiness audit.
 
-The fresh independent post-P8-FT-51 audit selects exactly P8-FT-52: make the
-private full-text dialog window title translation-ready while preserving exact
-source text `Full-text search`. Pinned legacy `fulltextsearch.cc:219-223`
-applies that text through the dialog translation context; current
-`full_text_search_dialog.cpp:59-60` uses an untranslated `QStringLiteral`, even
-though the same class already translates other strings.
+P8-FT-52 is complete from synchronized migrated base
+`b25cee8fd95381ecd16f733107f7d201d5068eeb`: the private full-text dialog
+window title now resolves through its dialog translation context while
+preserving exact source text and default visible text `Full-text search`.
+Pinned legacy `fulltextsearch.cc:219-223` remains the translation-ownership
+evidence.
 
-The future leaf changes only `full_text_search_dialog.cpp` and its existing
-focused test. The title must resolve through `FullTextSearchDialog`'s
-translation context, accept a test translator's replacement, and retain the
-exact English fallback without a translator. It adds no catalog, locale
-loader, executable, registration, public/Core/config/index-format/dependency,
-build, composition-root, or installed-surface change. The Release baseline
-remains exactly 109 tests, and both locked caption/spin-box range policies
-remain unchanged.
+The implementation changes only `full_text_search_dialog.cpp` and its existing
+focused test. Construction coverage proves an exact-context test translator's
+replacement and the exact English fallback without a translator. It adds no
+catalog, locale loader, executable, registration, public/Core/config/index-
+format/dependency, build, composition-root, or installed-surface change. The
+Release baseline remains exactly 109 tests, and both locked caption/spin-box
+range policies remain unchanged.
 
 Index readiness/status/progress/background lifecycle remains blocked because
 state is private per backend and indexing occurs during dictionary loading.
@@ -545,13 +544,11 @@ accessibility and styling surfaces, exact-document navigation, match/excerpt
 presentation, ignore-diacritics consumption, adapters/index formats, and
 unrelated parity remain separate and unranked.
 
-This documentation-only selection is limited to the exact four-document
-allowlist, cross-document policy/evidence consistency, locked-caption policy,
-no-successor language, Phase terminology, pinned refs/worktrees, live remotes,
-and `git diff --check`; compiled checks are omitted. Stop on drift, ambiguity,
-design conflict, a required non-documentation or fifth documentation file,
-failed validation, or scope expansion. No successor after P8-FT-52 is selected
-or ranked.
+Delivery requires the focused and full 109-test Linux Release suite, fresh
+Release configure/build and install, standalone installed C/C++ consumers,
+clean committed exact-SCM Conan creation with packaged consumers, repository
+validation, and clean synchronized refs/worktrees. No successor after P8-FT-52
+is selected or ranked.
 
 ## Resources And Platform Integration
 

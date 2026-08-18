@@ -4599,27 +4599,20 @@ required file, failed validation, or scope expansion. No successor is selected
 or ranked. The precise next boundary is a fresh independent bounded full-text
 readiness audit across all remaining gaps and their then-current prerequisites.
 
-### Phase 8 full-text dialog window-title translation readiness (selected)
+### Phase 8 full-text dialog window-title translation (complete)
 
-The fresh independent bounded post-P8-FT-51 audit verified clean migrated
-HEAD, local branch, upstream, and live remote at
-`42004ac4901fd5c0c91a4303536ceb3bec37d26a`, plus the unchanged clean
-read-only legacy checkout at
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecked the remaining
-visible and private full-text gaps and selects exactly P8-FT-52, the smallest
-independently dependency-ready leaf: make the existing private dialog window
-title translation-ready without changing its exact source text
+P8-FT-52 was implemented from clean synchronized migrated base
+`b25cee8fd95381ecd16f733107f7d201d5068eeb` with the unchanged clean read-only
+legacy checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+The existing private dialog window title now resolves through its dialog
+translation context without changing exact source or default visible text
 `Full-text search`. No successor after P8-FT-52 is selected or ranked.
 
 Pinned legacy `fulltextsearch.cc:219-223` sets that exact title through the
-dialog's translation context. Current `full_text_search_dialog.cpp:59-60`
-instead supplies the same visible text through `QStringLiteral`, while the
-same private Widgets class already uses `tr()` for other strings. The future
-implementation is therefore limited to
+dialog's translation context. The implementation is limited to
 `apps/goldendict/src/full_text_search_dialog.cpp` and its existing focused
-dialog test: resolve the title through `FullTextSearchDialog`'s translation
-context, prove a translator can replace it, and preserve the exact English
-fallback when no translation is installed.
+dialog test: `FullTextSearchDialog::tr()` owns the title, and construction
+coverage proves both exact-context replacement and the English fallback.
 
 The shared-library/GUI boundary governs this leaf: it is presentation-owned
 and requires no public, Core, configuration, index-format, dependency, build,
@@ -4639,14 +4632,11 @@ translation, accessibility and styling surfaces, exact-document navigation,
 match/excerpt presentation, ignore-diacritics consumption, adapters/index
 formats, and unrelated parity remain separate and unranked.
 
-Acceptance for this documentation-only selection is limited to consistent
-updates in these four governing documents, exact current and pinned-legacy
-evidence, preserved boundaries and caption policies, the exact four-file
-allowlist, successor neutrality, Phase terminology, clean pinned refs and
-worktrees, live-remote agreement, and `git diff --check`. Compiled checks are
-omitted. Stop without commit or push on drift, ambiguity, design conflict, a
-required non-documentation or fifth documentation file, failed validation, or
-scope expansion.
+Acceptance requires the focused and full 109-test Linux Release suite, fresh
+Release configure/build and install, standalone installed C/C++ consumers,
+clean committed exact-SCM Conan creation with packaged consumers, exact
+six-file scope, cross-document consistency, `git diff --check`, and clean
+synchronized refs/worktrees.
 
 ### Phase 9 — Linux Integration And Release Quality
 

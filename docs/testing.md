@@ -3491,24 +3491,22 @@ another required file, failed validation, or scope expansion. No successor is
 selected or ranked; verification resumes with a fresh independent bounded
 full-text readiness audit.
 
-## Phase 8 Full-Text Dialog Window-Title Translation Readiness (Selected)
+## Phase 8 Full-Text Dialog Window-Title Translation
 
-The fresh post-P8-FT-51 documentation audit selects only P8-FT-52. Pinned
-legacy `fulltextsearch.cc:219-223` supplies exact translated title evidence;
-current `full_text_search_dialog.cpp:59-60` supplies the same visible
-`Full-text search` text through an untranslated `QStringLiteral`. The dialog's
-existing `tr()` calls establish the private translation context prerequisite.
+P8-FT-52 is complete from synchronized migrated base
+`b25cee8fd95381ecd16f733107f7d201d5068eeb`. Pinned legacy
+`fulltextsearch.cc:219-223` supplies exact translated-title evidence, and the
+current dialog resolves exact source text `Full-text search` through its
+existing private `tr()` context.
 
-The future focused change is limited to `full_text_search_dialog.cpp` and
-`full_text_search_dialog_test.cpp`. Existing dialog construction coverage must
-continue to prove the exact English fallback, and a scoped test translator
-must prove that the title resolves through `FullTextSearchDialog`'s context.
-The translator must be removed after the case so no other dialog assertions or
-application-global test state can change. No catalog, locale loader, new test
-executable, or registration is added; the Release baseline remains exactly 109
-tests.
+The focused change is limited to `full_text_search_dialog.cpp` and
+`full_text_search_dialog_test.cpp`. Construction coverage proves the exact
+English fallback and uses an automatically removed scoped test translator to
+prove replacement through the exact `FullTextSearchDialog` context and source.
+No catalog, locale loader, new test executable, or registration is added; the
+Release baseline remains exactly 109 tests.
 
-The selection changes no behavior beyond title translation resolution and no
+The implementation changes no behavior beyond title translation resolution and no
 public/Core/config/index-format/dependency/build/composition-root or installed
 contract. It preserves exact `Maximum word distance` with spin-box-owned
 `0..1000` and exact `Maximum articles per dictionary` with spin-box-owned
@@ -3517,13 +3515,18 @@ other translation, accessibility and styling surfaces, exact-document
 navigation, match/excerpt presentation, ignore-diacritics consumption,
 adapters/index formats, and unrelated tests remain separate and unranked.
 
-Verification for this documentation-only selection is limited to the exact
-four-file allowlist, cross-document policy/evidence and locked-caption
-consistency, no-successor language, Phase terminology, pinned refs/worktrees,
-live remotes, and `git diff --check`. Compiled checks are omitted. Stop on
-drift, ambiguity, design conflict, a required non-documentation or fifth
-documentation file, failed validation, or scope expansion. No successor after
-P8-FT-52 is selected or ranked.
+Verification is the focused Release dialog test, fresh Linux Release
+configure/build, exactly 109 registered tests and full Release CTest, Release
+install, standalone installed C/C++ consumers, `git diff --check`, and clean
+committed exact-SCM creation with:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Packaged C/C++ consumers must pass, and final local/upstream/live-remote refs
+and both worktrees must agree and remain clean. No successor after P8-FT-52 is
+selected or ranked.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
