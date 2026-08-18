@@ -2,12 +2,20 @@
 
 #include <QtTest>
 
+#include <type_traits>
 #include <utility>
 
 #include "goldendict/core/desktop_facade.h"
 #include "goldendict/core/dictionary_service.h"
 
 namespace goldendict::core {
+
+using BuildRenderedTextMatchPlanMethod = RenderedTextMatchPlanResult (
+    DesktopFacade::*)(const RenderedTextMatchPlanRequest&,
+                      const CancellationToken*) const;
+static_assert(
+    std::is_same_v<decltype(&DesktopFacade::BuildRenderedTextMatchPlan),
+                   BuildRenderedTextMatchPlanMethod>);
 
 class NeverCancelled final : public CancellationToken {
    public:
@@ -103,6 +111,14 @@ class EmptyDesktopFacade final : public DesktopFacade {
         return {ExactArticleTargetError::kDictionaryUnavailable, {}, {}, {}};
     }
 
+    RenderedTextMatchPlanResult BuildRenderedTextMatchPlan(
+        const RenderedTextMatchPlanRequest& request,
+        const CancellationToken* cancellation) const override {
+        static_cast<void>(request);
+        static_cast<void>(cancellation);
+        return {};
+    }
+
     ArticleTabsState GetArticleTabsState() const override { return {}; }
 
     ArticleTabSession ExportArticleTabSession() const override { return {}; }
@@ -155,6 +171,7 @@ class CoreApiTest : public QObject {
     void LookupQueryHasBoundedDefaults();
     void SuggestionQueryHasBoundedDefaults();
     void FullTextQueryHasBoundedDefaults();
+    void RenderedTextMatchPlanHasBoundedDefaults();
     void HeadlessServiceDoesNotRequireAGuiApplication();
 };
 
@@ -187,6 +204,26 @@ void CoreApiTest::FullTextQueryHasBoundedDefaults() {
     const auto response = service.SearchFullText(request);
     QCOMPARE(response.errors.size(), std::size_t{1});
     QCOMPARE(response.errors.front().code, FullTextErrorCode::kUnsupported);
+}
+
+void CoreApiTest::RenderedTextMatchPlanHasBoundedDefaults() {
+    QCOMPARE(kMaximumRenderedTextMatchPlanBytes,
+             std::size_t{16U * 1024U * 1024U});
+    const RenderedTextMatchPlanRequest request;
+    QCOMPARE(request.mode, FullTextQueryMode::kWholeWords);
+    QVERIFY(!request.match_case);
+    QVERIFY(!request.ignore_word_order);
+    QVERIFY(!request.maximum_word_distance.has_value());
+    QCOMPARE(request.timeout, std::chrono::seconds(5));
+    const RenderedTextMatchRange range;
+    QCOMPARE(range.byte_offset, std::size_t{0});
+    QCOMPARE(range.byte_length, std::size_t{0});
+    QVERIFY(range.literal.empty());
+    const RenderedTextMatchPlanResult result;
+    QVERIFY(result);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kNone);
+    QVERIFY(result.ranges.empty());
+    QVERIFY(result.message.empty());
 }
 
 void CoreApiTest::HeadlessServiceDoesNotRequireAGuiApplication() {

@@ -121,6 +121,7 @@ if(TARGET epwing_dictionary_test)
     src/article/internal_url.cc
     src/dictionary/dictionary_backend.cc
     src/dictionary/full_text_index.cc
+    src/dictionary/full_text_matcher.cc
     src/dictionary/generated_index.cc
     src/foundation/text_encoding.cc
     src/foundation/text_folding.cc
@@ -163,6 +164,7 @@ if(TARGET slob_dictionary_test)
     src/article/internal_url.cc
     src/dictionary/dictionary_backend.cc
     src/dictionary/full_text_index.cc
+    src/dictionary/full_text_matcher.cc
     src/dictionary/generated_index.cc
     src/foundation/text_encoding.cc
     src/foundation/text_folding.cc
@@ -195,6 +197,7 @@ if(TARGET zim_dictionary_test)
     src/article/internal_url.cc
     src/dictionary/dictionary_backend.cc
     src/dictionary/full_text_index.cc
+    src/dictionary/full_text_matcher.cc
     src/dictionary/generated_index.cc
     src/foundation/text_folding.cc
     src/foundation/utf8.cc
@@ -216,6 +219,7 @@ if(TARGET aard_dictionary_test)
     src/article/internal_url.cc
     src/dictionary/dictionary_backend.cc
     src/dictionary/full_text_index.cc
+    src/dictionary/full_text_matcher.cc
     src/dictionary/generated_index.cc
     src/foundation/text_folding.cc
     src/foundation/utf8.cc
@@ -260,6 +264,7 @@ if(TARGET mdict_dictionary_test)
     src/article/internal_url.cc
     src/dictionary/dictionary_backend.cc
     src/dictionary/full_text_index.cc
+    src/dictionary/full_text_matcher.cc
     src/dictionary/generated_index.cc
     src/foundation/text_encoding.cc
     src/foundation/text_folding.cc
@@ -297,6 +302,7 @@ if(TARGET bgl_dictionary_test)
     src/article/internal_url.cc
     src/dictionary/dictionary_backend.cc
     src/dictionary/full_text_index.cc
+    src/dictionary/full_text_matcher.cc
     src/dictionary/generated_index.cc
     src/foundation/text_encoding.cc
     src/foundation/text_folding.cc
@@ -346,6 +352,7 @@ endif()
 if(TARGET full_text_index_test)
   target_sources(full_text_index_test PRIVATE
     src/dictionary/full_text_index.cc
+    src/dictionary/full_text_matcher.cc
     src/dictionary/generated_index.cc
     src/foundation/text_folding.cc
     src/foundation/utf8.cc
@@ -377,6 +384,7 @@ if(TARGET stardict_dictionary_test)
       src/article/internal_url.cc
       src/dictionary/dictionary_backend.cc
       src/dictionary/full_text_index.cc
+      src/dictionary/full_text_matcher.cc
       src/dictionary/generated_index.cc
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
@@ -420,6 +428,7 @@ if(TARGET dictd_dictionary_test)
       src/article/internal_url.cc
       src/dictionary/dictionary_backend.cc
       src/dictionary/full_text_index.cc
+      src/dictionary/full_text_matcher.cc
       src/dictionary/generated_index.cc
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
@@ -457,6 +466,7 @@ if(TARGET sdict_dictionary_test)
       src/article/internal_url.cc
       src/dictionary/dictionary_backend.cc
       src/dictionary/full_text_index.cc
+      src/dictionary/full_text_matcher.cc
       src/dictionary/generated_index.cc
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
@@ -496,6 +506,7 @@ if(TARGET xdxf_dictionary_test)
       src/article/internal_url.cc
       src/dictionary/dictionary_backend.cc
       src/dictionary/full_text_index.cc
+      src/dictionary/full_text_matcher.cc
       src/dictionary/generated_index.cc
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
@@ -534,6 +545,7 @@ if(TARGET gls_dictionary_test)
       src/article/internal_url.cc
       src/dictionary/dictionary_backend.cc
       src/dictionary/full_text_index.cc
+      src/dictionary/full_text_matcher.cc
       src/dictionary/generated_index.cc
       src/foundation/text_encoding.cc
       src/foundation/text_folding.cc
@@ -571,6 +583,7 @@ if(TARGET dsl_dictionary_test)
       src/article/internal_url.cc
       src/dictionary/dictionary_backend.cc
       src/dictionary/full_text_index.cc
+      src/dictionary/full_text_matcher.cc
       src/dictionary/generated_index.cc
       src/foundation/text_encoding.cc
       src/foundation/text_folding.cc

@@ -28,6 +28,8 @@ struct ArticleUrl {
 inline constexpr std::size_t kMaximumArticleTabs = 32U;
 inline constexpr std::size_t kMaximumTabNavigationEntries = 100U;
 inline constexpr std::size_t kMaximumExactDocumentIdBytes = 4096U;
+inline constexpr std::size_t kMaximumRenderedTextMatchPlanBytes =
+    16U * 1024U * 1024U;
 
 using ArticleTabId = std::uint64_t;
 
@@ -164,6 +166,42 @@ struct TabOperationResult {
     }
 };
 
+struct RenderedTextMatchPlanRequest {
+    std::string rendered_text;
+    std::string query_text;
+    FullTextQueryMode mode = FullTextQueryMode::kWholeWords;
+    bool match_case = false;
+    bool ignore_word_order = false;
+    std::optional<std::uint32_t> maximum_word_distance;
+    std::chrono::milliseconds timeout = std::chrono::seconds(5);
+};
+
+struct RenderedTextMatchRange {
+    std::size_t byte_offset = 0U;
+    std::size_t byte_length = 0U;
+    std::string literal;
+};
+
+enum class RenderedTextMatchPlanError {
+    kNone,
+    kInvalidRequest,
+    kMalformedPattern,
+    kCancelled,
+    kDeadlineExceeded,
+    kResourceLimit,
+    kInternal,
+};
+
+struct RenderedTextMatchPlanResult {
+    std::vector<RenderedTextMatchRange> ranges;
+    RenderedTextMatchPlanError error = RenderedTextMatchPlanError::kNone;
+    std::string message;
+
+    explicit operator bool() const noexcept {
+        return error == RenderedTextMatchPlanError::kNone;
+    }
+};
+
 class GOLDENDICT_EXPORTS DesktopFacade {
    public:
     virtual ~DesktopFacade();
@@ -191,6 +229,9 @@ class GOLDENDICT_EXPORTS DesktopFacade {
     virtual TabOperationResult CloseOtherArticleTabs(ArticleTabId tab_id) = 0;
     virtual TabOperationResult GoBackInArticleTab(ArticleTabId tab_id) = 0;
     virtual TabOperationResult GoForwardInArticleTab(ArticleTabId tab_id) = 0;
+    virtual RenderedTextMatchPlanResult BuildRenderedTextMatchPlan(
+        const RenderedTextMatchPlanRequest& request,
+        const CancellationToken* cancellation = nullptr) const = 0;
 };
 
 }  // namespace goldendict::core

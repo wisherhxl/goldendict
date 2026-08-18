@@ -193,6 +193,8 @@ class ApplicationServiceTest : public QObject {
     void CompletesAnOwnedAsynchronousLookup();
     void AppliesArticlePreferencesBehindTheDesktopFacade();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
+    void BuildsRenderedTextMatchPlansBehindTheDesktopFacade();
+    void RejectsInvalidRenderedTextMatchPlanRequests();
     void ReportsCancellationAndUnavailableDictionaries();
     void RejectsUnboundedOrMalformedQueries();
     void RejectsConfiguredInputPhraseLimitsForLookupAndSuggestions();
@@ -3692,6 +3694,132 @@ void ApplicationServiceTest::ResolvesTypedArticleUrlsBehindTheDesktopFacade() {
     QCOMPARE(resource->resource.media_type, "image/png");
 
     QVERIFY(!facade->ResolveArticleUrl("https://example.test").has_value());
+}
+
+void ApplicationServiceTest::
+    BuildsRenderedTextMatchPlansBehindTheDesktopFacade() {
+    auto facade = CreateDesktopFacade({});
+    RenderedTextMatchPlanRequest request;
+    request.rendered_text = u8"CAFÉ café test test";
+    request.query_text = u8"café";
+
+    auto result = facade->BuildRenderedTextMatchPlan(request);
+    QVERIFY(result);
+    QCOMPARE(result.ranges.size(), std::size_t{2});
+    QCOMPARE(result.ranges[0].byte_offset, std::size_t{0});
+    QCOMPARE(result.ranges[0].literal, std::string(u8"CAFÉ"));
+    QCOMPARE(result.ranges[1].byte_offset, std::string(u8"CAFÉ ").size());
+    QCOMPARE(result.ranges[1].literal, std::string(u8"café"));
+    for (const auto& range : result.ranges) {
+        QCOMPARE(
+            request.rendered_text.substr(range.byte_offset, range.byte_length),
+            range.literal);
+    }
+
+    request.query_text = "test";
+    request.match_case = true;
+    request.mode = FullTextQueryMode::kPlainText;
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.ranges.size(), std::size_t{2});
+    QCOMPARE(result.ranges[0].byte_offset + result.ranges[0].byte_length + 1U,
+             result.ranges[1].byte_offset);
+
+    request.rendered_text = "alpha beta beta alpha";
+    request.query_text = "alpha beta";
+    request.mode = FullTextQueryMode::kWholeWords;
+    request.ignore_word_order = true;
+    request.maximum_word_distance = 0U;
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.ranges.size(), std::size_t{2});
+    QCOMPARE(result.ranges[0].literal, std::string("alpha beta"));
+    QCOMPARE(result.ranges[1].literal, std::string("beta alpha"));
+
+    request = {};
+    request.rendered_text = "ab12 cd34";
+    request.query_text = "[a-z]+[0-9]+";
+    request.mode = FullTextQueryMode::kRegularExpression;
+    request.match_case = true;
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.ranges.size(), std::size_t{2});
+    QCOMPARE(result.ranges[0].literal, std::string("ab12"));
+    QCOMPARE(result.ranges[1].literal, std::string("cd34"));
+
+    request.query_text = "*";
+    request.mode = FullTextQueryMode::kWildcard;
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QVERIFY(result);
+    QCOMPARE(result.ranges.size(), std::size_t{1});
+    QCOMPARE(result.ranges.front().literal, request.rendered_text);
+
+    request.rendered_text.clear();
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QVERIFY(result);
+    QVERIFY(result.ranges.empty());
+}
+
+void ApplicationServiceTest::RejectsInvalidRenderedTextMatchPlanRequests() {
+    auto facade = CreateDesktopFacade({});
+    RenderedTextMatchPlanRequest request;
+    request.rendered_text = "text";
+    auto result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kInvalidRequest);
+    QVERIFY(result.ranges.empty());
+
+    request.query_text = "[";
+    request.mode = FullTextQueryMode::kRegularExpression;
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kMalformedPattern);
+    QVERIFY(result.ranges.empty());
+
+    request.query_text = "text";
+    request.ignore_word_order = true;
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kInvalidRequest);
+
+    request = {};
+    request.rendered_text = std::string("bad\xff", 4U);
+    request.query_text = "bad";
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kInvalidRequest);
+
+    request.rendered_text = "text";
+    request.timeout = std::chrono::milliseconds::zero();
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kInvalidRequest);
+
+    request.timeout = std::chrono::seconds(5);
+    request.maximum_word_distance = kMaximumFullTextWordDistance + 1U;
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kInvalidRequest);
+
+    request.maximum_word_distance.reset();
+    request.query_text.assign(kMaximumFullTextQueryBytes + 1U, 'x');
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kInvalidRequest);
+
+    request.query_text = "text";
+    request.rendered_text.assign(kMaximumRenderedTextMatchPlanBytes + 1U, 'x');
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kInvalidRequest);
+
+    request.rendered_text = "text";
+    request.mode = static_cast<FullTextQueryMode>(999);
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kInvalidRequest);
+
+    request.mode = FullTextQueryMode::kWholeWords;
+    const CancelledToken cancelled;
+    result = facade->BuildRenderedTextMatchPlan(request, &cancelled);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kCancelled);
+    QVERIFY(result.ranges.empty());
+
+    const SlowToken slow;
+    request.rendered_text.assign(100U, 'x');
+    request.query_text = "x";
+    request.timeout = std::chrono::milliseconds(1);
+    result = facade->BuildRenderedTextMatchPlan(request, &slow);
+    QCOMPARE(result.error, RenderedTextMatchPlanError::kDeadlineExceeded);
+    QVERIFY(result.ranges.empty());
 }
 
 }  // namespace

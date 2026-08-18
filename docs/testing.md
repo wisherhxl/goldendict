@@ -4077,11 +4077,11 @@ navigation, tab/view/page, facade, cancellation, failure, and teardown
 invalidation. No successor after P8-FT-64 is selected or named; completion
 unlocks only generation-safe rendered-page text extraction.
 
-### P8-FT-65 rendered-text matching-plan facade prerequisite acceptance (selected)
+### P8-FT-65 rendered-text matching-plan facade prerequisite acceptance (complete)
 
-The resumed documentation audit is pinned to migrated/local/upstream/live-
-remote `c5b47fd0d8d720d93c47cc5e624d7ee8b1d8e44e` and legacy
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only P8-FT-65 and the
+Implementation starts from migrated/local/upstream/live-remote
+`1dce706344bd33254bedeb1e13d9b6eb5fa8c8c4` and legacy
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It completes only P8-FT-65 and the
 GET-approved installed `DesktopFacade` operation; the private stateless Core
 matcher must also serve indexed full-text search so matching semantics have one
 owner.
@@ -4091,7 +4091,7 @@ surface coverage in `core_api_test.cpp:1-193` and
 `main_window.cpp:8312-8356`, and pinned legacy
 `articleview.cc:2569-2788`.
 
-Future focused Core acceptance must cover every query mode, match-case,
+Focused Core acceptance covers every query mode, match-case,
 word-order and maximum-distance combination accepted by existing full-text
 validation; Unicode normalization and valid UTF-8 boundary mapping; wildcard
 and regular-expression validity; multiple and repeated literals; adjacent
@@ -4117,13 +4117,15 @@ text must be covered as successful no-match.
 
 Later Widgets acceptance may consume the plan only after the existing accepted-
 query, lookup, search, navigation, tab, view and page identities all remain
-current. P8-FT-65 itself adds no source or tests and does not test or specify
+current. P8-FT-65 uses existing Core/facade/API test targets and does not test
+or specify
 DOM/JavaScript application, highlight-all, first selection, Previous/Next UI,
 status wording or ignore-diacritics behavior. Headword-only rows, dictionary-
 name tooltips, locked strings/captions/ranges/translations and exactly 109
-registered Release tests remain unchanged. No successor after P8-FT-65 is
-selected or named; completion unlocks only its `DesktopFacade` matching-plan
-implementation dependency.
+registered Release tests remain unchanged. The installed C++ consumer covers
+the new facade contract while the C consumer remains unchanged. No successor
+after P8-FT-65 is selected or named; completion unlocks only its
+`DesktopFacade` matching-plan dependency boundary.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

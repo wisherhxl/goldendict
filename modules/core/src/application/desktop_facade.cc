@@ -3,13 +3,17 @@
 #include "goldendict/core/desktop_facade.h"
 
 #include <algorithm>
+#include <exception>
 #include <memory>
+#include <new>
 #include <utility>
 #include <vector>
 
 #include "../article/article_composer.h"
 #include "../article/internal_url.h"
 #include "../dictionary/dictionary_backend.h"
+#include "../dictionary/full_text_matcher.h"
+#include "../foundation/utf8.h"
 #include "article_tab_session.h"
 #include "exact_article_target_resolver.h"
 #include "goldendict/core/application.h"
@@ -121,6 +125,92 @@ class DesktopFacadeImpl final : public DesktopFacade {
             return {ExactArticleTargetError::kInvalidTarget, {}, {}, {}};
         }
         return application::ResolveExactArticleTarget(*service_, target);
+    }
+
+    RenderedTextMatchPlanResult BuildRenderedTextMatchPlan(
+        const RenderedTextMatchPlanRequest& request,
+        const CancellationToken* cancellation) const override {
+        const bool valid_mode =
+            request.mode == FullTextQueryMode::kWholeWords ||
+            request.mode == FullTextQueryMode::kPlainText ||
+            request.mode == FullTextQueryMode::kWildcard ||
+            request.mode == FullTextQueryMode::kRegularExpression;
+        const bool pattern_mode =
+            request.mode == FullTextQueryMode::kWildcard ||
+            request.mode == FullTextQueryMode::kRegularExpression;
+        if (request.query_text.empty() ||
+            request.rendered_text.size() > kMaximumRenderedTextMatchPlanBytes ||
+            request.query_text.size() > kMaximumFullTextQueryBytes ||
+            request.timeout <= std::chrono::milliseconds::zero() ||
+            !valid_mode ||
+            (request.maximum_word_distance.has_value() &&
+             *request.maximum_word_distance > kMaximumFullTextWordDistance) ||
+            (pattern_mode && (request.ignore_word_order ||
+                              request.maximum_word_distance.has_value())) ||
+            !foundation::IsValidUtf8(request.rendered_text) ||
+            !foundation::IsValidUtf8(request.query_text)) {
+            return {{},
+                    RenderedTextMatchPlanError::kInvalidRequest,
+                    "Invalid rendered-text match-plan request"};
+        }
+
+        const auto deadline =
+            std::chrono::steady_clock::now() + request.timeout;
+        try {
+            const auto matches = dictionary::MatchFullText(
+                request.rendered_text,
+                {request.query_text, request.mode, request.match_case, false,
+                 request.ignore_word_order, request.maximum_word_distance},
+                cancellation, deadline);
+            RenderedTextMatchPlanResult result;
+            result.ranges.reserve(matches.size());
+            for (const auto& match : matches) {
+                if (cancellation != nullptr &&
+                    cancellation->IsCancellationRequested()) {
+                    return {{},
+                            RenderedTextMatchPlanError::kCancelled,
+                            "Rendered-text match-plan operation cancelled"};
+                }
+                if (std::chrono::steady_clock::now() >= deadline) {
+                    return {{},
+                            RenderedTextMatchPlanError::kDeadlineExceeded,
+                            "Rendered-text match-plan deadline exceeded"};
+                }
+                result.ranges.push_back(
+                    {match.byte_offset, match.byte_length,
+                     request.rendered_text.substr(match.byte_offset,
+                                                  match.byte_length)});
+            }
+            return result;
+        } catch (const dictionary::FullTextMatcherError& error) {
+            switch (error.code()) {
+                case dictionary::FullTextMatcherErrorCode::kMalformedPattern:
+                    return {{},
+                            RenderedTextMatchPlanError::kMalformedPattern,
+                            error.what()};
+                case dictionary::FullTextMatcherErrorCode::kCancelled:
+                    return {{},
+                            RenderedTextMatchPlanError::kCancelled,
+                            error.what()};
+                case dictionary::FullTextMatcherErrorCode::kDeadlineExceeded:
+                    return {{},
+                            RenderedTextMatchPlanError::kDeadlineExceeded,
+                            error.what()};
+            }
+        } catch (const std::bad_alloc&) {
+            return {{}, RenderedTextMatchPlanError::kResourceLimit, {}};
+        } catch (const std::length_error&) {
+            return {{}, RenderedTextMatchPlanError::kResourceLimit, {}};
+        } catch (const std::exception& error) {
+            return {{}, RenderedTextMatchPlanError::kInternal, error.what()};
+        } catch (...) {
+            return {{},
+                    RenderedTextMatchPlanError::kInternal,
+                    "Unknown rendered-text match-plan failure"};
+        }
+        return {{},
+                RenderedTextMatchPlanError::kInternal,
+                "Unknown rendered-text matcher error"};
     }
 
     ArticleTabsState GetArticleTabsState() const override {

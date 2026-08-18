@@ -5215,11 +5215,11 @@ registered Release tests remain unchanged. No successor after P8-FT-64 is
 selected, ranked, recommended, or named. Completion unlocks only the
 generation-safe rendered-page text extraction dependency boundary.
 
-### Phase 8 P8-FT-65 rendered-text matching-plan facade prerequisite (selected)
+### Phase 8 P8-FT-65 rendered-text matching-plan facade prerequisite (complete)
 
-The resumed independent documentation-only audit is pinned to clean synchronized
-migrated HEAD, local branch, upstream, and live remote at
-`c5b47fd0d8d720d93c47cc5e624d7ee8b1d8e44e`, plus the unchanged clean
+The implementation starts from clean synchronized migrated HEAD, local branch,
+upstream, and live remote at
+`1dce706344bd33254bedeb1e13d9b6eb5fa8c8c4`, plus the unchanged clean
 read-only legacy checkout at
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. GET selects exactly P8-FT-65:
 expose the smallest Core-owned rendered-text rematching and matching-plan
@@ -5299,14 +5299,16 @@ page identities remain current; stale results are discarded without changing
 presentation. P8-FT-62 indexed-document offsets, excerpts and match text are
 not rendered-text or DOM coordinates and are not inputs to the plan.
 
-P8-FT-65 is documentation-only and changes no source, test, build,
-configuration, C API, index format, adapter, dependency, catalog, generated
-file, executable, UI string/range/translation, or registered test. The Release
-baseline remains exactly 109 tests. DOM/JavaScript or literal application,
+P8-FT-65 is complete. The installed facade DTO/vtable, private shared Core
+matcher, existing-target Core/facade/API tests, and installed C++ consumer are
+implemented without changing configuration, the C API, index format, adapters,
+dependencies, catalogs, generated files, executables, UI strings/ranges/
+translations, or test registration. The Release baseline remains exactly 109
+tests. DOM/JavaScript or literal application,
 highlight-all behavior, first selection, Previous/Next controls, status wording
 and ignore-diacritics behavior remain outside this leaf. No successor after
 P8-FT-65 is selected, ranked, recommended or named. Completion unlocks only the
-P8-FT-65 `DesktopFacade` matching-plan implementation dependency.
+P8-FT-65 `DesktopFacade` matching-plan dependency boundary.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

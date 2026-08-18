@@ -5226,11 +5226,10 @@ P8-FT-63 behavior, and exactly 109 registered Release tests. No successor after
 P8-FT-64 is selected, ranked, recommended, or named. Completion unlocks only
 the generation-safe rendered-page text extraction dependency boundary.
 
-### Phase 8 P8-FT-65 rendered-text matching-plan facade prerequisite (selected)
+### Phase 8 P8-FT-65 rendered-text matching-plan facade prerequisite (complete)
 
-The resumed documentation-only audit requires clean migrated HEAD, branch,
-upstream and live remote at
-`c5b47fd0d8d720d93c47cc5e624d7ee8b1d8e44e` and clean read-only legacy at
+The implementation starts from clean migrated HEAD, branch, upstream and live
+remote at `1dce706344bd33254bedeb1e13d9b6eb5fa8c8c4` and clean read-only legacy at
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. GET selects Option A and exactly
 P8-FT-65: add the installed `DesktopFacade` desktop-orchestration entry point
 for Core-owned rendered-text rematching and plan production. The stateless
@@ -5270,14 +5269,16 @@ placing UI state in Core.
 Widgets retains P8-FT-63/P8-FT-64 generation, lookup, search, navigation, tab,
 view and page gates and discards stale results. P8-FT-62 indexed-document byte
 ranges, excerpts and match text are never treated as rendered-text or DOM
-coordinates. P8-FT-65 adds no source/test/build work, DOM/JavaScript application,
-highlighting, selection, navigation, status wording or diacritics behavior and
+coordinates. P8-FT-65 is complete through the installed facade DTO/vtable, one
+private shared Core matcher, focused existing-target tests, and the installed
+C++ consumer. It adds no DOM/JavaScript application, highlighting, selection,
+navigation, status wording or diacritics behavior and
 changes no result-row/tooltip behavior, configuration, C API, index/adapters,
 dependencies, catalogs, generated files, executables, strings/ranges,
 translations or test registration. The Release baseline remains exactly 109.
 No successor after P8-FT-65 is selected, ranked, recommended or named.
-Completion unlocks only the P8-FT-65 `DesktopFacade` matching-plan
-implementation dependency.
+Completion unlocks only the P8-FT-65 `DesktopFacade` matching-plan dependency
+boundary.
 
 ### Phase 9 — Linux Integration And Release Quality
 

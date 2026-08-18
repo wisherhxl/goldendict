@@ -1007,11 +1007,11 @@ and exactly 109 registered Release tests remain unchanged. No successor after
 P8-FT-64 is selected or named; completion unlocks only generation-safe rendered-
 page text extraction.
 
-### P8-FT-65 rendered-text matching-plan facade prerequisite (selected)
+### P8-FT-65 rendered-text matching-plan facade prerequisite (complete)
 
-The resumed clean audit at migrated/local/upstream/live-remote
-`c5b47fd0d8d720d93c47cc5e624d7ee8b1d8e44e` and pinned legacy
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects exactly P8-FT-65.
+The implementation starts from clean migrated/local/upstream/live-remote
+`1dce706344bd33254bedeb1e13d9b6eb5fa8c8c4` and pinned legacy
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, and completes exactly P8-FT-65.
 GET chooses the installed `DesktopFacade` as the desktop-orchestration entry
 point while the stateless matcher remains private in Core. `DictionaryService`,
 the C API and other installed entry points remain unchanged.
@@ -1047,13 +1047,15 @@ cancellation, deadline, resource-limit and
 contained internal failures remain typed and return no partial plan.
 
 P8-FT-62 indexed byte offsets/excerpts are not rendered-text or DOM
-coordinates. P8-FT-65 implements no DOM/JavaScript or literal application,
+coordinates. P8-FT-65 is complete through the installed facade DTO/vtable, one
+private shared Core matcher, focused existing-target tests, and the installed
+C++ consumer. It implements no DOM/JavaScript or literal application,
 highlighting UI, first selection, Previous/Next navigation, status wording or
 diacritics behavior. Result rows remain headword-only with their dictionary-name
-tooltip. No source, test, build, configuration, C API, index/adapters, strings,
-ranges, translations or test registrations change; the Release baseline stays
-exactly 109. No successor after P8-FT-65 is selected or named. Completion
-unlocks only its `DesktopFacade` matching-plan implementation dependency.
+tooltip. Configuration, the C API, index/adapters, dependencies, strings,
+ranges, translations and test registrations remain unchanged; the Release
+baseline stays exactly 109. No successor after P8-FT-65 is selected or named.
+Completion unlocks only its `DesktopFacade` matching-plan dependency boundary.
 
 ## Resources And Platform Integration
 

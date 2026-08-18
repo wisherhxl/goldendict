@@ -4,12 +4,12 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <regex>
 #include <string_view>
 #include <tuple>
 
 #include "../foundation/text_folding.h"
 #include "../foundation/utf8.h"
+#include "full_text_matcher.h"
 #include "generated_index.h"
 
 namespace goldendict::core::dictionary {
@@ -134,43 +134,6 @@ std::vector<FullTextDocument> Parse(std::string_view payload) {
     return documents;
 }
 
-std::string WildcardRegex(std::string_view pattern) {
-    std::string result;
-    for (char ch : pattern) {
-        if (ch == '*')
-            result += ".*";
-        else if (ch == '?')
-            result += '.';
-        else {
-            if (std::string_view(".^$|()[]{}+\\").find(ch) !=
-                std::string_view::npos)
-                result += '\\';
-            result += ch;
-        }
-    }
-    return result;
-}
-
-struct Word {
-    std::string_view text;
-    std::size_t offset;
-};
-
-struct MappedText {
-    std::string text;
-    std::vector<std::pair<std::size_t, std::size_t>> original;
-};
-
-std::size_t Utf8CharacterBytes(unsigned char byte) {
-    if ((byte & 0x80U) == 0U)
-        return 1U;
-    if ((byte & 0xe0U) == 0xc0U)
-        return 2U;
-    if ((byte & 0xf0U) == 0xe0U)
-        return 3U;
-    return 4U;
-}
-
 bool IsUtf8Boundary(std::string_view text, std::size_t offset) {
     return offset <= text.size() &&
            (offset == text.size() ||
@@ -226,97 +189,6 @@ Excerpt BuildExcerpt(std::string_view document, std::size_t match_offset,
     }
     return {std::string(document.substr(best_begin, best_end - best_begin)),
             best_begin};
-}
-
-MappedText NormalizeMapped(std::string_view value, bool match_case,
-                           bool ignore_diacritics) {
-    MappedText result;
-    for (std::size_t begin = 0U; begin < value.size();) {
-        const auto end = std::min(
-            value.size(), begin + Utf8CharacterBytes(static_cast<unsigned char>(
-                                      value[begin])));
-        const auto normalized =
-            match_case
-                ? std::string(value.substr(begin, end - begin))
-                : foundation::NormalizeForExactLookup(
-                      value.substr(begin, end - begin), ignore_diacritics);
-        result.text += normalized;
-        for (std::size_t i = 0U; i < normalized.size(); ++i)
-            result.original.push_back({begin, end});
-        begin = end;
-    }
-    return result;
-}
-
-std::vector<Word> Words(std::string_view text) {
-    std::vector<Word> words;
-    for (std::size_t begin = 0U; begin < text.size();) {
-        while (begin < text.size() &&
-               std::isspace(static_cast<unsigned char>(text[begin])))
-            ++begin;
-        if (begin == text.size())
-            break;
-        std::size_t end = begin;
-        while (end < text.size() &&
-               !std::isspace(static_cast<unsigned char>(text[end])))
-            ++end;
-        words.push_back({text.substr(begin, end - begin), begin});
-        begin = end;
-    }
-    return words;
-}
-
-std::optional<std::pair<std::size_t, std::size_t>> MatchWords(
-    std::string_view haystack, std::string_view query, bool whole_words,
-    bool ignore_order, std::optional<std::uint32_t> maximum_distance) {
-    const auto source = Words(haystack);
-    const auto wanted = Words(query);
-    if (wanted.empty())
-        return std::nullopt;
-    const auto matches = [whole_words](std::string_view left,
-                                       std::string_view right) {
-        return whole_words ? left == right
-                           : left.find(right) != std::string_view::npos;
-    };
-    for (std::size_t start = 0U; start < source.size(); ++start) {
-        std::vector<std::size_t> selected;
-        std::size_t cursor = start;
-        bool found = true;
-        for (const auto& term : wanted) {
-            std::size_t position = source.size();
-            const std::size_t begin = ignore_order ? start : cursor;
-            for (std::size_t i = begin; i < source.size(); ++i) {
-                if ((!ignore_order ||
-                     std::find(selected.begin(), selected.end(), i) ==
-                         selected.end()) &&
-                    matches(source[i].text, term.text)) {
-                    position = i;
-                    cursor = i + 1U;
-                    break;
-                }
-            }
-            if (position == source.size()) {
-                found = false;
-                break;
-            }
-            selected.push_back(position);
-        }
-        if (!found)
-            continue;
-        std::sort(selected.begin(), selected.end());
-        if (maximum_distance.has_value()) {
-            for (std::size_t i = 1U; i < selected.size(); ++i) {
-                if (selected[i] - selected[i - 1U] - 1U > *maximum_distance)
-                    found = false;
-            }
-        }
-        if (!found)
-            continue;
-        const auto first = source[selected.front()].offset;
-        const auto last = source[selected.back()];
-        return std::pair{first, last.offset + last.text.size() - first};
-    }
-    return std::nullopt;
 }
 
 }  // namespace
@@ -391,20 +263,20 @@ FullTextResponse FullTextIndex::Search(
         return response;
     }
     const auto deadline = std::chrono::steady_clock::now() + query.timeout;
-    std::string needle = query.match_case
-                             ? query.text
-                             : foundation::NormalizeForExactLookup(
-                                   query.text, query.ignore_diacritics);
-    std::optional<std::regex> expression;
     try {
-        if (query.mode == FullTextQueryMode::kWildcard)
-            expression.emplace(WildcardRegex(needle));
-        else if (query.mode == FullTextQueryMode::kRegularExpression)
-            expression.emplace(needle);
-    } catch (const std::regex_error&) {
-        response.errors.push_back({FullTextErrorCode::kInvalidQuery,
-                                   {},
-                                   "Malformed full-text pattern"});
+        static_cast<void>(MatchFullText(
+            {},
+            {query.text, query.mode, query.match_case, query.ignore_diacritics,
+             query.ignore_word_order, query.maximum_word_distance},
+            cancellation, deadline, 1U));
+    } catch (const FullTextMatcherError& error) {
+        const auto code =
+            error.code() == FullTextMatcherErrorCode::kCancelled
+                ? FullTextErrorCode::kCancelled
+            : error.code() == FullTextMatcherErrorCode::kDeadlineExceeded
+                ? FullTextErrorCode::kDeadlineExceeded
+                : FullTextErrorCode::kInvalidQuery;
+        response.errors.push_back({code, {}, error.what()});
         return response;
     }
     for (const auto& document : documents_) {
@@ -419,39 +291,39 @@ FullTextResponse FullTextIndex::Search(
             std::find(query.dictionary_ids.begin(), query.dictionary_ids.end(),
                       document.dictionary.id) == query.dictionary_ids.end())
             continue;
-        const auto mapped = NormalizeMapped(
-            document.plain_text, query.match_case, query.ignore_diacritics);
-        const std::string& haystack = mapped.text;
-        std::size_t offset = std::string::npos;
-        std::size_t length = 0U;
-        if (expression.has_value()) {
-            std::smatch match;
-            if (std::regex_search(haystack, match, *expression)) {
-                offset = static_cast<std::size_t>(match.position());
-                length = static_cast<std::size_t>(match.length());
-                if (length == 0U)
-                    offset = std::string::npos;
-            }
-        } else {
-            const auto matched = MatchWords(
-                haystack, needle, query.mode == FullTextQueryMode::kWholeWords,
-                query.ignore_word_order, query.maximum_word_distance);
-            if (matched.has_value()) {
-                offset = matched->first;
-                length = matched->second;
-            }
+        std::vector<FullTextMatcherRange> matches;
+        try {
+            matches =
+                MatchFullText(document.plain_text,
+                              {query.text, query.mode, query.match_case,
+                               query.ignore_diacritics, query.ignore_word_order,
+                               query.maximum_word_distance},
+                              cancellation, deadline, 1U);
+        } catch (const FullTextMatcherError& error) {
+            const auto code =
+                error.code() == FullTextMatcherErrorCode::kCancelled
+                    ? FullTextErrorCode::kCancelled
+                : error.code() == FullTextMatcherErrorCode::kDeadlineExceeded
+                    ? FullTextErrorCode::kDeadlineExceeded
+                    : FullTextErrorCode::kInvalidQuery;
+            response.errors.push_back({code, {}, error.what()});
+            response.partial = !response.results.empty();
+            return response;
         }
-        if (offset == std::string::npos)
+        if (matches.empty())
             continue;
-        const auto original_offset = mapped.original[offset].first;
-        const auto original_end = mapped.original[offset + length - 1U].second;
-        offset = original_offset;
-        length = original_end - original_offset;
+        auto offset = matches.front().byte_offset;
+        auto length = matches.front().byte_length;
         FullTextResult found;
         found.dictionary = document.dictionary;
         found.headword = document.headword;
         found.document_id = document.document_id;
-        found.match = {query.text, needle, MatchMode::kFullText, 1.0};
+        found.match = {query.text,
+                       query.match_case
+                           ? query.text
+                           : foundation::NormalizeForExactLookup(
+                                 query.text, query.ignore_diacritics),
+                       MatchMode::kFullText, 1.0};
         if (offset < document.plain_text.size()) {
             length = std::min(length, document.plain_text.size() - offset);
             found.matches.push_back(

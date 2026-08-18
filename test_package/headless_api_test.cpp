@@ -692,6 +692,28 @@ int main() {
             return Fail("installed full-text excerpt origin contract failed");
         }
         auto desktop = goldendict::core::CreateDesktopFacade(loaded);
+        if (goldendict::core::kMaximumRenderedTextMatchPlanBytes !=
+            16U * 1024U * 1024U) {
+            return Fail("installed rendered-text plan bound changed");
+        }
+        goldendict::core::RenderedTextMatchPlanRequest plan_request;
+        if (plan_request.mode !=
+                goldendict::core::FullTextQueryMode::kWholeWords ||
+            plan_request.match_case || plan_request.ignore_word_order ||
+            plan_request.maximum_word_distance.has_value() ||
+            plan_request.timeout != std::chrono::seconds(5)) {
+            return Fail("installed rendered-text plan defaults changed");
+        }
+        plan_request.rendered_text = "Alpha alpha";
+        plan_request.query_text = "alpha";
+        const auto plan = desktop->BuildRenderedTextMatchPlan(plan_request);
+        if (!plan || plan.ranges.size() != 2U ||
+            plan.ranges[0].byte_offset != 0U ||
+            plan.ranges[0].literal != "Alpha" ||
+            plan.ranges[1].byte_offset != 6U ||
+            plan.ranges[1].literal != "alpha") {
+            return Fail("installed rendered-text plan contract failed");
+        }
         const goldendict::core::ExactArticleTarget exact_target{
             full_text_response.results.front().dictionary.id,
             full_text_response.results.front().document_id};

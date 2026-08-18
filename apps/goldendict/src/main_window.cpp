@@ -6375,6 +6375,14 @@ void MainWindow::RunFullTextDialogSmokeCheck(
             return inner_->ResolveExactArticleTarget(target);
         }
 
+        goldendict::core::RenderedTextMatchPlanResult
+        BuildRenderedTextMatchPlan(
+            const goldendict::core::RenderedTextMatchPlanRequest& request,
+            const goldendict::core::CancellationToken* cancellation)
+            const override {
+            return inner_->BuildRenderedTextMatchPlan(request, cancellation);
+        }
+
         goldendict::core::ArticleTabsState GetArticleTabsState()
             const override {
             return inner_->GetArticleTabsState();
