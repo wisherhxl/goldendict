@@ -187,6 +187,7 @@ struct FullTextResult {
     MatchInfo match;
     std::string excerpt;
     std::vector<FullTextMatch> matches;
+    std::size_t excerpt_byte_offset = 0U;
 };
 
 struct FullTextResponse {

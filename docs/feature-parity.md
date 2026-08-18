@@ -913,7 +913,7 @@ context bytes and then prefer the earlier origin. An over-bound match yields
 the longest code-point-aligned prefix from its own offset within the bound.
 Core guarantees UTF-8 code-point integrity, not grapheme-cluster segmentation.
 
-The future implementation affects the installed C++ result DTO and shared
+The completed implementation affects the installed C++ result DTO and shared
 index result construction plus focused existing tests. Headless behavior,
 runtime-source/C API, configuration, persistence, index format, adapter
 ingestion, dependencies, build, catalogs, locale loading, executables and test
@@ -922,12 +922,17 @@ privacy and lifecycle rules and P8-FT-60/P8-FT-61 atomic exact navigation
 remain unchanged. `Maximum word distance` remains spin-box-owned at `0..1000`,
 `Maximum articles per dictionary` remains spin-box-owned at `1..100000`, and
 exactly 109 Release tests remain registered.
+Existing shorter aggregate initializers remain source-compatible through the
+final member's zero default; the installed C++ layout/ABI change requires a
+consumer rebuild and a new exact-SCM package revision. Every accepted built-in
+continues to delegate to the single shared index path, and `full-text-v1`
+serialization is unchanged.
 Ellipses, typography, layout, colors, multi-line policy, result-list rendering,
 DOM highlighting, index lifecycle and Preferences, and all other full-text and
 unrelated parity remain excluded and unranked. No
 successor after P8-FT-62 is selected, ranked, recommended, or named.
-Completion will unlock only implementation of this match-centered excerpt/
-origin contract.
+Completion unlocks only the dependency boundary established by this match-
+centered excerpt/origin contract.
 
 ## Resources And Platform Integration
 

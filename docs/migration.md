@@ -5094,15 +5094,20 @@ at the match offset and is the longest code-point-aligned prefix within the
 bound. The contract guarantees UTF-8 code-point integrity, not grapheme-cluster
 segmentation.
 
-The Shared-Library and GUI Boundary governs the change. The excerpt is bounded
+P8-FT-62 is complete. The Shared-Library and GUI Boundary governs the change.
+The excerpt is bounded
 plain trusted DTO text. Widgets may convert and later present it with normal Qt
 text-role escaping, but may not parse dictionary content, rebuild indexes,
-invent match semantics, or expose raw backend data. The future implementation
+invent match semantics, or expose raw backend data. The implementation
 changes the installed C++ `FullTextResult` interface and shared index result
 construction plus focused existing tests. Headless behavior, runtime-source
 and C APIs, configuration, history/session format, index format, all accepted
 adapter ingestion, dependencies, build, catalogs, locale loading, executables,
-and test registrations remain unchanged.
+and test registrations remain unchanged. Appending the zero-defaulted final
+member preserves existing shorter aggregate initializers at source level but
+intentionally changes the installed C++ DTO layout/ABI, requiring rebuilt
+consumers and a new exact-SCM package revision. All accepted built-ins retain
+the shared index path, and `full-text-v1` serialization is unchanged.
 
 Acceptance requires focused existing Core tests covering ASCII and multibyte
 matches at document edges and interior, exact document range/text agreement,
@@ -5122,8 +5127,8 @@ distinct. Ellipsis wording, typography, delegate layout, colors, multi-line
 policy, result-list rendering, exact-article highlighting, index lifecycle and
 Preferences, and all other full-text and unrelated parity remain excluded and
 unranked. No successor after P8-FT-62 is selected, ranked,
-recommended, or named. Completion will unlock only implementation of this
-match-centered excerpt/origin contract.
+recommended, or named. Completion unlocks only the dependency boundary
+established by this match-centered excerpt/origin contract.
 
 ### Phase 9 — Linux Integration And Release Quality
 

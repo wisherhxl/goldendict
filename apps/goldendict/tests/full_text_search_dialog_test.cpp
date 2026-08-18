@@ -669,6 +669,7 @@ goldendict::core::FullTextResult MakeResult(const std::string& id,
     result.match.score = 0.5 + static_cast<double>(ordinal);
     result.excerpt = "excerpt-" + std::to_string(ordinal);
     result.matches = {{ordinal, 3U, "one"}, {ordinal + 10U, 7U, "second"}};
+    result.excerpt_byte_offset = ordinal * 100U;
     return result;
 }
 
@@ -700,6 +701,7 @@ void CompareResult(const goldendict::core::FullTextResult& actual,
     QCOMPARE(actual.match.mode, expected.match.mode);
     QCOMPARE(actual.match.score, expected.match.score);
     QCOMPARE(actual.excerpt, expected.excerpt);
+    QCOMPARE(actual.excerpt_byte_offset, expected.excerpt_byte_offset);
     QCOMPARE(actual.matches.size(), expected.matches.size());
     for (std::size_t i = 0; i < expected.matches.size(); ++i) {
         QCOMPARE(actual.matches[i].byte_offset,

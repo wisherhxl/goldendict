@@ -3911,13 +3911,13 @@ translations, and every successor remain excluded and unranked.
 
 ### P8-FT-62 match-centered excerpt contract prerequisite acceptance
 
-The documentation-only audit is pinned to synchronized migrated HEAD,
+The completed implementation started from synchronized migrated HEAD,
 upstream, and live remote revision
-`d8d25b50ddf7cd84f71e7b700cb28fa260ea6117` and unchanged clean read-only
+`7dda841276274a1f21d8c7905ff48698395d63c2` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
 It selects only P8-FT-62, the Shared-Library prerequisite for a bounded valid-
 UTF-8 match-centered excerpt and explicit document-relative excerpt origin.
-The future DTO field is final-member
+The implemented DTO field is final-member
 `std::size_t FullTextResult::excerpt_byte_offset`, with a zero default so
 existing shorter aggregate initializers retain their meaning.
 P8-FT-60 remains the completed exact-target facade/navigation contract;
@@ -3933,7 +3933,7 @@ literal search handoff. Pinned legacy evidence is
 `articleview.cc:2569-2728`; legacy rematches rendered page text and supplies no
 competing excerpt-origin contract.
 
-Future focused Core cases in the existing full-text index test must cover ASCII
+Focused Core cases in the existing full-text index test cover ASCII
 and multibyte matches near the start, middle and end of documents; exact
 document-relative offset/length/text correspondence; deterministic excerpt
 origin and content; valid UTF-8 start and end boundaries; the exact
@@ -3965,10 +3965,13 @@ not accepted as equivalent to backend highlighting.
 
 Cases are added only to existing test executables; no executable or test
 registration is added and the Release registration baseline remains exactly
-109 tests. Future implementation verification uses the focused Release tests,
+109 tests. Implementation verification uses the focused Release tests,
 full 109-test Release suite, Release install, standalone installed C/C++
-consumers, and exact-SCM packaged consumers. This documentation-only audit runs
-no compiled gate.
+consumers, and exact-SCM packaged consumers. The installed C++ consumer reads
+the final zero-defaulted origin and checks containment by checked subtraction;
+the additive member preserves shorter aggregate initializers at source level
+but intentionally changes the DTO layout/ABI and requires a rebuilt exact-SCM
+package. The C consumer remains unchanged.
 
 Audit acceptance requires the exact four-document allowlist, complete-diff
 review, cross-document consistency, current and pinned-legacy citations, Phase
@@ -3981,8 +3984,9 @@ no-successor wording, synchronized refs, clean worktrees, and
 `git diff --check`. Result rendering, exact-article highlighting, index
 lifecycle and Preferences, and all other full-text and unrelated parity remain
 excluded and unranked. No successor after
-P8-FT-62 is selected, ranked, recommended, or named. Completion will unlock
-only implementation of this match-centered excerpt/origin contract.
+P8-FT-62 is selected, ranked, recommended, or named. Completion unlocks only
+the dependency boundary established by this match-centered excerpt/origin
+contract.
 
 The locked control policies checked by the audit remain `Maximum word
 distance` with spin-box-owned `0..1000` and `Maximum articles per dictionary`

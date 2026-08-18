@@ -646,9 +646,14 @@ int main() {
         }
 
         goldendict::core::FullTextQuery full_text_query;
+        const goldendict::core::FullTextResult default_full_text_result;
+        const goldendict::core::FullTextResult shorter_aggregate_result{
+            {}, {}, {}, {}, {}, {}};
         if (full_text_query.result_limit != 20U ||
             !full_text_query.maximum_articles_per_dictionary.has_value() ||
-            *full_text_query.maximum_articles_per_dictionary != 100U) {
+            *full_text_query.maximum_articles_per_dictionary != 100U ||
+            default_full_text_result.excerpt_byte_offset != 0U ||
+            shorter_aggregate_result.excerpt_byte_offset != 0U) {
             return Fail("installed full-text query defaults changed");
         }
         full_text_query.text = "caf\xc3\xa9";
@@ -667,8 +672,24 @@ int main() {
                 "stardict-idx:0:", 0U) != 0U ||
             full_text_response.results.front().matches.size() != 1U ||
             full_text_response.results.front().matches.front().text !=
-                "caf\xc3\xa9") {
+                "caf\xc3\xa9" ||
+            full_text_response.results.front().excerpt.size() >
+                goldendict::core::kMaximumFullTextExcerptBytes ||
+            full_text_response.results.front().matches.front().byte_offset <
+                full_text_response.results.front().excerpt_byte_offset) {
             return Fail("installed full-text query contract failed");
+        }
+        const auto& installed_result = full_text_response.results.front();
+        const auto& installed_match = installed_result.matches.front();
+        const auto installed_relative_offset =
+            installed_match.byte_offset - installed_result.excerpt_byte_offset;
+        if (installed_relative_offset > installed_result.excerpt.size() ||
+            installed_match.byte_length >
+                installed_result.excerpt.size() - installed_relative_offset ||
+            installed_result.excerpt.substr(installed_relative_offset,
+                                            installed_match.byte_length) !=
+                installed_match.text) {
+            return Fail("installed full-text excerpt origin contract failed");
         }
         auto desktop = goldendict::core::CreateDesktopFacade(loaded);
         const goldendict::core::ExactArticleTarget exact_target{

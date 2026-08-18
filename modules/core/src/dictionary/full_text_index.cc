@@ -171,21 +171,75 @@ std::size_t Utf8CharacterBytes(unsigned char byte) {
     return 4U;
 }
 
+bool IsUtf8Boundary(std::string_view text, std::size_t offset) {
+    return offset <= text.size() &&
+           (offset == text.size() ||
+            (static_cast<unsigned char>(text[offset]) & 0xc0U) != 0x80U);
+}
+
+struct Excerpt {
+    std::string text;
+    std::size_t byte_offset = 0U;
+};
+
+Excerpt BuildExcerpt(std::string_view document, std::size_t match_offset,
+                     std::size_t match_length) {
+    const auto match_end = match_offset + match_length;
+    if (match_length > kMaximumFullTextExcerptBytes) {
+        auto end = std::min(document.size(),
+                            match_offset + kMaximumFullTextExcerptBytes);
+        while (!IsUtf8Boundary(document, end))
+            --end;
+        return {std::string(document.substr(match_offset, end - match_offset)),
+                match_offset};
+    }
+
+    const auto earliest = match_offset > kMaximumFullTextExcerptBytes
+                              ? match_offset - kMaximumFullTextExcerptBytes
+                              : 0U;
+    std::size_t best_begin = match_offset;
+    std::size_t best_end = match_end;
+    std::size_t best_length = match_length;
+    std::size_t best_imbalance = 0U;
+    for (std::size_t begin = earliest; begin <= match_offset; ++begin) {
+        if (!IsUtf8Boundary(document, begin))
+            continue;
+        auto end =
+            std::min(document.size(), begin + kMaximumFullTextExcerptBytes);
+        while (!IsUtf8Boundary(document, end))
+            --end;
+        if (end < match_end)
+            continue;
+        const auto length = end - begin;
+        const auto before = match_offset - begin;
+        const auto after = end - match_end;
+        const auto imbalance = before > after ? before - after : after - before;
+        if (length > best_length ||
+            (length == best_length && imbalance < best_imbalance) ||
+            (length == best_length && imbalance == best_imbalance &&
+             begin < best_begin)) {
+            best_begin = begin;
+            best_end = end;
+            best_length = length;
+            best_imbalance = imbalance;
+        }
+    }
+    return {std::string(document.substr(best_begin, best_end - best_begin)),
+            best_begin};
+}
+
 MappedText NormalizeMapped(std::string_view value, bool match_case,
                            bool ignore_diacritics) {
     MappedText result;
-    if (match_case) {
-        result.text = std::string(value);
-        for (std::size_t i = 0U; i < value.size(); ++i)
-            result.original.push_back({i, i + 1U});
-        return result;
-    }
     for (std::size_t begin = 0U; begin < value.size();) {
         const auto end = std::min(
             value.size(), begin + Utf8CharacterBytes(static_cast<unsigned char>(
                                       value[begin])));
-        const auto normalized = foundation::NormalizeForExactLookup(
-            value.substr(begin, end - begin), ignore_diacritics);
+        const auto normalized =
+            match_case
+                ? std::string(value.substr(begin, end - begin))
+                : foundation::NormalizeForExactLookup(
+                      value.substr(begin, end - begin), ignore_diacritics);
         result.text += normalized;
         for (std::size_t i = 0U; i < normalized.size(); ++i)
             result.original.push_back({begin, end});
@@ -398,12 +452,14 @@ FullTextResponse FullTextIndex::Search(
         found.headword = document.headword;
         found.document_id = document.document_id;
         found.match = {query.text, needle, MatchMode::kFullText, 1.0};
-        found.excerpt =
-            document.plain_text.substr(0, kMaximumFullTextExcerptBytes);
         if (offset < document.plain_text.size()) {
             length = std::min(length, document.plain_text.size() - offset);
             found.matches.push_back(
                 {offset, length, document.plain_text.substr(offset, length)});
+            const auto excerpt =
+                BuildExcerpt(document.plain_text, offset, length);
+            found.excerpt = excerpt.text;
+            found.excerpt_byte_offset = excerpt.byte_offset;
         }
         response.results.push_back(std::move(found));
         if (response.results.size() == query.result_limit)

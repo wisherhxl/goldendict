@@ -5085,18 +5085,28 @@ strings, privacy and lifecycle guarantees remain unchanged. In particular,
 articles per dictionary` remains spin-box-owned at `1..100000`. The Release
 registration baseline remains exactly 109 tests.
 
+P8-FT-62 is complete. The installed C++ DTO appends the zero-defaulted
+`excerpt_byte_offset`; existing shorter aggregate initializers remain source-
+compatible, while consumers must rebuild for the intentional DTO layout/ABI
+change. Shared index result construction maps matches to complete original
+UTF-8 code points and applies the documented longest-slice, balanced-context,
+earlier-origin and over-bound-prefix rules. No adapter implements excerpt or
+match semantics, and serialized `full-text-v1` indexes remain unchanged.
+
 Acceptance requires focused existing Core cases for ASCII and multibyte
 matches near document start, middle, and end; exact document-range/text
 correspondence; deterministic excerpt origin; valid UTF-8 boundaries; the
 4096-byte bound; and the defined over-bound match-prefix policy. Existing
 model/dialog cases must prove accepted by-value preservation
 and that replacement, cancellation, stale completion, rejection, failed exact
-activation, and teardown cannot present or revive stale data. No compiled gate
-is run for this audit. Result-list rendering, exact-article highlighting,
+activation, and teardown cannot present or revive stale data. Implementation
+verification includes focused and full Release tests, install, standalone and
+packaged C/C++ consumers, and exact-SCM Conan creation. Result-list rendering,
 index lifecycle and Preferences, and all other full-text and unrelated parity
 remain excluded and unranked. No successor after
 P8-FT-62 is selected, ranked, recommended, or named. Completion will unlock
-only implementation of this match-centered excerpt/origin contract.
+only the dependency boundary established by this match-centered excerpt/origin
+contract.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
