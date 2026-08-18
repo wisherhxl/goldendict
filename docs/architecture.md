@@ -5159,6 +5159,59 @@ successor after P8-FT-63 is selected, ranked, recommended, or named.
 Completion unlocks only the private accepted-query article-highlighting
 context dependency boundary.
 
+### Phase 8 rendered-page text extraction transport prerequisite (selected)
+
+The fresh independent bounded documentation-only audit starts from synchronized
+migrated HEAD, upstream, and live remote revision
+`6f473bf7ffc3d256342a585ab19313fe0b52a003` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After completed
+P8-FT-60 through P8-FT-63, strict pinned-Qt5 parity still keeps the full-text
+result list headword-only, preserves the dictionary-name tooltip, and targets
+article-page highlighting, first-match selection, and Previous/Next navigation
+without advancing ignore-diacritics behavior.
+
+The audit selects exactly P8-FT-64, the smallest independently implementable
+prerequisite: privately transport the successfully loaded article page's plain
+rendered text through Qt WebEngine's asynchronous extraction boundary. Current
+`main_window.cpp:7976-8110` generation- and view-gates exact-result article
+loading but sends only the accepted query text to literal `findText`; current
+`main_window.cpp:7632-7644` demonstrates asynchronous
+`QWebEnginePage::toPlainText` transport. Pinned legacy
+`articleview.cc:2569-2799` synchronously reads the rendered frame's plain text,
+rematches it, derives literal matches, highlights occurrences, selects the
+first match, and navigates Previous/Next.
+
+P8-FT-64 carries rendered plain text only after a successful, current exact-
+result page load and binds the callback to the accepted search generation,
+lookup presentation generation, tab ID, and `ArticleView`. Replacement,
+cancellation, failed activation or load, a newer lookup or search generation,
+tab/view replacement, navigation, and teardown must discard the callback. The
+text is an inert private Widgets transport value: this leaf does not store it
+in Core, rematch it, normalize it, execute a pattern, derive literals or ranges,
+mutate the DOM, highlight, select a match, navigate, change status wording, or
+consume ignore-diacritics.
+
+The Shared-Library and GUI Boundary governs the selection. P8-FT-62 document
+byte offsets, match text, and excerpts describe indexed validated UTF-8
+`plain_text`; they are not rendered-page or DOM coordinates and must not be
+applied to the extracted text. Widgets must not recreate wildcard, regular-
+expression, whole-word, word-order, word-distance, case, or normalization
+semantics. The later Core-owned transport-neutral rendered-text matching-plan
+interface remains unresolved because placing it on an installed desktop-
+orchestration boundary and choosing its synchronous/asynchronous DTO and ABI
+shape is a separate architecture decision. P8-FT-64 selects no such interface
+and no matching, DOM/literal application, highlight-all, first-selection, or
+Previous/Next implementation.
+
+P8-FT-64 changes only future private Widgets transport and focused existing GUI
+smoke coverage. It changes no public or installed API/ABI, Core DTO, C API,
+configuration, persistence, index format, adapter, dependency, build, catalog,
+locale loader, translation, generated file, executable, or test registration.
+All completed P8-FT behavior, locked strings/captions/ranges, and exactly 109
+registered Release tests remain unchanged. No successor after P8-FT-64 is
+selected, ranked, recommended, or named. Completion will unlock only the
+generation-safe rendered-page text extraction dependency boundary.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

@@ -969,6 +969,42 @@ unchanged. No successor after P8-FT-63 is selected, ranked, recommended, or
 named. Completion unlocks only the private accepted-query article-highlighting
 context dependency boundary.
 
+### P8-FT-64 rendered-page text extraction transport prerequisite (selected)
+
+The fresh independent documentation-only audit starts from synchronized
+migrated HEAD, upstream, and live remote
+`6f473bf7ffc3d256342a585ab19313fe0b52a003` and clean pinned legacy
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Completed P8-FT-60 through
+P8-FT-63 provide exact navigation, activation, bounded document-match context,
+and accepted highlighting policy transport. Strict parity continues to keep
+result rows headword-only with the dictionary-name tooltip and to target only
+article-page highlighting, first selection, and Previous/Next navigation.
+
+P8-FT-64 is the sole selected leaf: use Qt6 WebEngine's asynchronous rendered-
+page plain-text extraction after the successful current exact-result load, with
+the accepted search generation, lookup presentation generation, tab, and view
+guarding delivery. Stale, cancelled, failed, replaced, navigated-away, or torn-
+down work is discarded. The extracted text remains an inert private Widgets
+transport value; this prerequisite performs no matching or presentation change.
+
+Pinned Qt5 `articleview.cc:2569-2799` synchronously extracts rendered plain text
+before rematching and presentation. Current Qt6 `main_window.cpp:7632-7644`
+already proves the asynchronous extraction primitive, while
+`main_window.cpp:7976-8110` provides the exact-load lifecycle boundary.
+P8-FT-62 indexed-document byte offsets and excerpts are not coordinates in
+that rendered text or its DOM. Widgets may not reproduce wildcard, regular-
+expression, whole-word, order, distance, case, or normalization semantics.
+
+The Core-owned rendered-text matching-plan interface, its installed desktop-
+orchestration ABI shape, rematching, ignore-diacritics consumption, DOM or
+literal application, highlight-all behavior, selection, navigation, and status
+presentation remain unresolved and unranked. Public/installed interfaces, C
+API, Core DTOs, index format, adapters, configuration, dependencies, build,
+catalogs, translations, generated files, executables, locked strings/ranges,
+and exactly 109 registered Release tests remain unchanged. No successor after
+P8-FT-64 is selected or named; completion unlocks only generation-safe rendered-
+page text extraction.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

@@ -4037,6 +4037,47 @@ synchronized refs, clean worktrees, and `git diff --check`. No successor after
 P8-FT-63 is selected or ranked; completion unlocks only its private accepted-
 query article-highlighting context dependency boundary.
 
+### P8-FT-64 rendered-page text extraction transport prerequisite acceptance
+
+The fresh bounded documentation-only audit starts from synchronized migrated
+HEAD, upstream, and live remote
+`6f473bf7ffc3d256342a585ab19313fe0b52a003` and clean pinned legacy
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only P8-FT-64,
+the private asynchronous rendered-page plain-text extraction transport required
+after the completed P8-FT-60 through P8-FT-63 chain.
+
+Future focused cases stay in existing GUI test executables and must prove that
+successful current exact-result load extracts the rendered plain text and
+delivers it only while the accepted search generation, lookup presentation
+generation, tab ID, and `ArticleView` remain current. They must reject delivery
+after replacement, cancellation, failed activation or page load, newer lookup
+or search work, tab/view replacement, navigation, and teardown. The tests must
+also prove that extraction alone does not invoke matching, alter the DOM, change
+literal `findText`, update highlighting/search status, select a match, navigate,
+or consume ignore-diacritics.
+
+Acceptance must not interpret P8-FT-62 indexed-document byte offsets, match
+text, or excerpts as rendered-page or DOM coordinates. Widgets must not
+reimplement wildcard, regular-expression, whole-word, word-order, word-distance,
+case, or normalization semantics. Current evidence is
+`main_window.cpp:7632-7644,7976-8110`; pinned legacy evidence is
+`articleview.cc:2569-2799`. The Core matching-plan API, installed ABI shape,
+rematching, DOM/literal application, highlight-all behavior, first selection,
+Previous/Next behavior, and status wording remain outside this acceptance and
+unranked.
+
+The implementation dependency keeps cases in existing executables, so the
+Release registration baseline remains exactly 109 tests. Public/installed and C
+interfaces, Core DTOs, index format, adapters, dependencies, build,
+configuration, persistence, catalogs, translations, generated files,
+executables, locked strings/captions/ranges, and completed P8-FT behavior remain
+unchanged. This documentation-only audit requires the exact four-document
+allowlist, complete-diff review, current and legacy citations, cross-document
+consistency, Shared-Library and GUI Boundary and strict-parity wording, Phase
+terminology, synchronized refs, clean worktrees, and `git diff --check`.
+Compiled gates are omitted. No successor after P8-FT-64 is selected or named;
+completion will unlock only generation-safe rendered-page text extraction.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

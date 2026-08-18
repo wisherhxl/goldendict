@@ -5182,6 +5182,49 @@ unchanged. No successor after P8-FT-63 is selected, ranked, recommended, or
 named. Completion unlocks only the private accepted-query article-highlighting
 context dependency boundary.
 
+### Phase 8 P8-FT-64 rendered-page text extraction transport prerequisite (selected)
+
+The fresh independent documentation-only audit starts from synchronized
+migrated HEAD, upstream, and live remote revision
+`6f473bf7ffc3d256342a585ab19313fe0b52a003` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. With P8-FT-60
+through P8-FT-63 complete, strict pinned-Qt5 parity keeps full-text rows
+headword-only, retains the dictionary-name tooltip, and continues toward
+article-page highlighting, first-match selection, and Previous/Next navigation.
+Ignore-diacritics behavior does not advance.
+
+The audit selects exactly P8-FT-64: establish the private asynchronous transport
+of the successfully loaded article page's rendered plain text. Current
+`main_window.cpp:7976-8110` owns the generation- and view-gated exact-result load
+and literal article-search handoff, and `main_window.cpp:7632-7644` demonstrates
+`QWebEnginePage::toPlainText`. Pinned legacy `articleview.cc:2569-2799` reads
+rendered plain text before rematching, highlighting, selection, and navigation.
+
+The future implementation accepts extraction only for the same search
+generation, lookup presentation generation, tab ID, and `ArticleView` that
+started it. Replacement, cancellation, failed activation or load, newer lookup
+or search work, tab/view replacement, navigation, and teardown invalidate the
+callback. P8-FT-64 transports inert text only and adds no Core call, matching,
+normalization, literal derivation, JavaScript or DOM mutation, highlighting,
+selection, navigation, status wording, or ignore-diacritics consumption.
+
+The Shared-Library and GUI Boundary remains controlling. P8-FT-62 offsets,
+matches, and excerpts are coordinates in indexed UTF-8 document plain text, not
+the rendered page or DOM. Widgets must not recreate wildcard, regex, whole-word,
+word-order, word-distance, case, or normalization rules. A later audit must
+resolve the Core-owned transport-neutral rendered-text matching-plan interface
+and its installed desktop-orchestration API/ABI shape; P8-FT-64 does not choose
+one or select any dependent presentation leaf.
+
+The selected prerequisite changes only future private Widgets transport and
+focused existing GUI smoke coverage. It preserves public/installed interfaces,
+the C API, Core DTOs, configuration, persistence, index format, adapters,
+dependencies, build behavior, catalogs, locale loading, translations, generated
+files, executables, locked strings/captions/ranges, completed P8-FT-60 through
+P8-FT-63 behavior, and exactly 109 registered Release tests. No successor after
+P8-FT-64 is selected, ranked, recommended, or named. Completion will unlock only
+the generation-safe rendered-page text extraction dependency boundary.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
