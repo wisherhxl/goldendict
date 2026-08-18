@@ -3491,6 +3491,40 @@ another required file, failed validation, or scope expansion. No successor is
 selected or ranked; verification resumes with a fresh independent bounded
 full-text readiness audit.
 
+## Phase 8 Full-Text Dialog Window-Title Translation Readiness (Selected)
+
+The fresh post-P8-FT-51 documentation audit selects only P8-FT-52. Pinned
+legacy `fulltextsearch.cc:219-223` supplies exact translated title evidence;
+current `full_text_search_dialog.cpp:59-60` supplies the same visible
+`Full-text search` text through an untranslated `QStringLiteral`. The dialog's
+existing `tr()` calls establish the private translation context prerequisite.
+
+The future focused change is limited to `full_text_search_dialog.cpp` and
+`full_text_search_dialog_test.cpp`. Existing dialog construction coverage must
+continue to prove the exact English fallback, and a scoped test translator
+must prove that the title resolves through `FullTextSearchDialog`'s context.
+The translator must be removed after the case so no other dialog assertions or
+application-global test state can change. No catalog, locale loader, new test
+executable, or registration is added; the Release baseline remains exactly 109
+tests.
+
+The selection changes no behavior beyond title translation resolution and no
+public/Core/config/index-format/dependency/build/composition-root or installed
+contract. It preserves exact `Maximum word distance` with spin-box-owned
+`0..1000` and exact `Maximum articles per dictionary` with spin-box-owned
+`1..100000`. Index lifecycle/readiness/status/progress, full-text Preferences,
+other translation, accessibility and styling surfaces, exact-document
+navigation, match/excerpt presentation, ignore-diacritics consumption,
+adapters/index formats, and unrelated tests remain separate and unranked.
+
+Verification for this documentation-only selection is limited to the exact
+four-file allowlist, cross-document policy/evidence and locked-caption
+consistency, no-successor language, Phase terminology, pinned refs/worktrees,
+live remotes, and `git diff --check`. Compiled checks are omitted. Stop on
+drift, ambiguity, design conflict, a required non-documentation or fifth
+documentation file, failed validation, or scope expansion. No successor after
+P8-FT-52 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
