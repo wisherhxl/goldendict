@@ -934,6 +934,42 @@ successor after P8-FT-62 is selected, ranked, recommended, or named.
 Completion unlocks only the dependency boundary established by this match-
 centered excerpt/origin contract.
 
+### P8-FT-63 accepted-query article-highlighting context prerequisite (selected)
+
+The audit is pinned to synchronized migrated HEAD, upstream, and live remote
+revision `c733ad3ad0b18813e42dde02651708d07de26d29` and clean pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. GET's strict-parity decision
+keeps result rows headword-only, retains the exact dictionary-name tooltip, and
+rejects result-list excerpts or row redesign. The selected article-page path
+preserves legacy first-match selection and Previous/Next navigation where Qt6
+WebEngine supports them.
+
+P8-FT-63 is the smallest dependency-ready prerequisite. The current accepted
+activation context carries query text and `ignore_diacritics`, while literal
+Qt6 `findText` cannot represent the accepted mode, match-case, word-order, or
+maximum-distance policy. P8-FT-63 privately retains those exact submitted
+values by value through accepted response, result activation, and the existing
+generation-gated article-load handoff. Lifecycle rejection and replacement
+cannot apply stale context. The existing ignore-diacritics value remains
+unconsumed.
+
+Pinned Qt5 `fulltextsearch.cc:596-609` and `articleview.cc:2569-2799` rematch
+rendered page plain text and then use derived literal matches for highlighting,
+first selection, and navigation. P8-FT-62 document-relative UTF-8 byte ranges
+do not map directly to the rendered DOM. Core must own any later rendered-text
+matching plan; Widgets may present or apply that plan but may not reconstruct
+matching semantics. The matching-plan interface, DOM/literal application,
+highlight-all behavior, and navigation implementation remain separate and
+unranked.
+
+No installed interface, C API, Core DTO, index format, adapter, dependency,
+build, configuration, catalog, generated file, translation, executable, or
+test registration changes. Completed P8-FT behavior, locked strings/captions/
+ranges, headword and tooltip roles, and exactly 109 Release tests remain
+unchanged. No successor after P8-FT-63 is selected, ranked, recommended, or
+named. Selection unlocks only the private accepted-query article-highlighting
+context implementation.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

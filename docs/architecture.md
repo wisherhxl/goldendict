@@ -5108,6 +5108,57 @@ P8-FT-62 is selected, ranked, recommended, or named. Completion will unlock
 only the dependency boundary established by this match-centered excerpt/origin
 contract.
 
+### Phase 8 accepted-query article-highlighting context prerequisite (selected)
+
+The fresh bounded documentation-only audit starts from synchronized migrated
+HEAD, upstream, and live remote revision
+`c733ad3ad0b18813e42dde02651708d07de26d29` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The approved strict-
+parity policy keeps the full-text result list headword-only, preserves its
+existing dictionary-name tooltip, and excludes excerpts and row redesign.
+Article-page match highlighting after successful exact activation is the only
+approved presentation direction. P8-FT-63 selects the smallest prerequisite:
+retain the accepted submission's complete highlighting-relevant policy through
+private activation and article-load handoff.
+
+Current `full_text_search_dialog.h:24-35,106-122` and
+`full_text_search_dialog.cpp:280-348` bind only query text and
+`ignore_diacritics` to the accepted response. Current
+`main_window.cpp:5996-6043,7976-8110` generation-gates the exact-result page
+load and dispatches that text through Qt WebEngine's literal `findText`; the
+existing article-search controls already select the first literal match and
+support forward/backward navigation. That path cannot reconstruct wildcard,
+regular-expression, whole-word, word-order, maximum-distance, case, or
+normalization policy. Pinned legacy `fulltextsearch.cc:596-609` and
+`articleview.cc:2569-2799` retain that policy, read rendered page plain text,
+derive matched literal strings, highlight occurrences, select the first match,
+and provide Previous/Next navigation.
+
+P8-FT-63 extends only the private accepted activation context to preserve by
+value the submitted query text, mode, match-case flag, ignore-word-order flag,
+maximum-word-distance value, and existing ignore-diacritics flag. Replacement,
+cancellation, stale or duplicate completion, rejected or failed activation,
+tab/view replacement, and teardown cannot revive or apply older context. This
+prerequisite does not consume ignore-diacritics, rematch rendered text, execute
+JavaScript, or change current literal article search.
+
+The Shared-Library and GUI Boundary remains governing. P8-FT-62 byte ranges
+refer to indexed UTF-8 plain text and are not rendered DOM positions. A later
+audit must define a Core-owned transport-neutral rendered-text matching plan
+before Widgets can apply literal matches through WebEngine; Widgets may not
+recreate matching semantics. Rendered-page extraction, match-plan interfaces,
+DOM or literal application, highlight-all behavior, first-match selection, and
+Previous/Next parity remain outside P8-FT-63 and unranked.
+
+P8-FT-63 changes no installed API or ABI, Core DTO, C API, configuration,
+persistence, index format, adapter, dependency, build, catalog, locale loader,
+generated file, executable, or test registration. P8-FT-60 through P8-FT-62,
+all completed strings, privacy and lifecycle contracts, the locked spin-box
+ranges, and exactly 109 registered Release tests remain unchanged. No
+successor after P8-FT-63 is selected, ranked, recommended, or named. The
+selected prerequisite unlocks only implementation of the private accepted-
+query article-highlighting context.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

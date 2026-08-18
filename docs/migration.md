@@ -5130,6 +5130,58 @@ unranked. No successor after P8-FT-62 is selected, ranked,
 recommended, or named. Completion unlocks only the dependency boundary
 established by this match-centered excerpt/origin contract.
 
+### Phase 8 P8-FT-63 accepted-query article-highlighting context prerequisite (selected)
+
+This fresh bounded documentation-only audit starts from synchronized migrated
+HEAD, upstream, and live remote revision
+`c733ad3ad0b18813e42dde02651708d07de26d29` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. GET resolves the
+presentation policy in favor of strict pinned-Qt5 parity: keep the result list
+headword-only, preserve the existing dictionary-name tooltip, add no excerpt
+or row redesign, and pursue article-page highlighting after exact activation.
+The audit selects exactly P8-FT-63, the private accepted-query highlighting-
+context prerequisite.
+
+Current `full_text_search_dialog.h:24-35,106-122` and
+`full_text_search_dialog.cpp:280-348` retain only the accepted query text and
+`ignore_diacritics`. Current `main_window.cpp:5996-6043,7976-8110` safely
+generation-gates exact navigation, page load, literal first-match selection,
+status, and forward/backward `findText`, but a literal query cannot reproduce
+wildcard, regular-expression, whole-word, ignore-word-order, maximum-word-
+distance, match-case, or normalization semantics. Pinned legacy
+`fulltextsearch.cc:596-609` and `articleview.cc:2569-2799` preserve the search
+policy, inspect rendered page plain text, derive literal matched strings,
+highlight occurrences, select the first match, and expose Previous/Next.
+
+P8-FT-63 retains by value the exact accepted query text, mode, match-case,
+ignore-word-order, maximum-word-distance, and existing ignore-diacritics values
+through response acceptance, activation, and the article-load handoff.
+Replacement submission, cancellation, stale or duplicate completion, rejected
+or failed exact activation, tab/view replacement, and teardown cannot revive
+or apply an older policy. Ignore-diacritics remains unconsumed, and current
+literal article-search behavior does not change.
+
+The Shared-Library and GUI Boundary governs. P8-FT-62 authoritative ranges are
+indexed-document UTF-8 byte ranges, not rendered DOM coordinates. P8-FT-63
+does not choose a DOM mapping or let Widgets rebuild query semantics. A later
+fresh audit must define the Core-owned transport-neutral rendered-text match
+plan and its WebEngine application before strict-parity highlighting can be
+implemented. Rendered-page extraction, rematching, DOM/literal application,
+highlight-all behavior, first-match selection, Previous/Next behavior, and
+status wording remain excluded and unranked.
+
+The future prerequisite implementation is confined to private Widgets context
+transport and focused existing tests. It changes no public/installed ABI, Core
+DTO, headless service, runtime-source or C API, configuration, persistence,
+index format, adapter, dependency, build, catalog, locale loader, generated
+file, executable, translation, or test registration. The result model continues
+to expose only the established headword/Edit roles and dictionary-name tooltip.
+P8-FT-60 through P8-FT-62, locked strings/captions/ranges, all completed
+privacy and lifecycle behavior, and exactly 109 registered Release tests remain
+unchanged. No successor after P8-FT-63 is selected, ranked, recommended, or
+named. Selection unlocks only implementation of the private accepted-query
+article-highlighting context.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
