@@ -5040,6 +5040,91 @@ parity remain excluded and unranked. No successor after P8-FT-61 is selected,
 ranked, recommended, or named. Completion unlocks only the dependency boundary
 established by the activation connection.
 
+### Phase 8 P8-FT-62 match-centered excerpt contract prerequisite (selected)
+
+This fresh bounded documentation-only audit starts from synchronized migrated
+HEAD, upstream, and live remote revision
+`d8d25b50ddf7cd84f71e7b700cb28fa260ea6117` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+Repository truth durably completes P8-FT-60 as the exact-target facade,
+navigation, history and session foundation and P8-FT-61 as the dependent
+private activation connection. The next unused stable ordinal is P8-FT-62.
+Under the approved highlighting and excerpt priority, the evidence uniquely
+selects P8-FT-62: define the bounded match-centered excerpt contract required
+before result-list presentation can safely consume backend matches.
+
+Current `dictionary_service.h:164-190` defines `FullTextMatch` byte offset,
+length and text and carries `FullTextResult::excerpt`, but does not define an
+excerpt origin. Current `full_text_index.cc:314-410` validates and maps the
+accepted match to original document `plain_text`; it then copies the first
+`kMaximumFullTextExcerptBytes` bytes regardless of match position or UTF-8
+boundary. Current `full_text_response_model.cpp:15-46` projects only headword
+and dictionary tooltip while `full_text_search_dialog.cpp:300-348` preserves
+the exact accepted DTO and generation context by value. Displaying the current
+prefix as a match excerpt could therefore show no match or malformed UTF-8.
+
+Current `main_window.cpp:5996-6040,7970-8110` preserves successful exact
+activation, load, view, tab and generation checks before dispatching the
+accepted query through literal WebEngine search. Literal search cannot preserve
+wildcard, regular-expression, whole-word, word-order, word-distance,
+normalization and exact backend-range semantics, and indexed plain-text byte
+ranges cannot be applied directly to composed sanitized HTML. Pinned legacy
+`fulltextsearch.cc:596-609`, `mainwindow.cc:3001-3013`, and
+`articleview.cc:2569-2728` instead propagate a regular expression and rematch
+rendered page text; they provide no safe competing excerpt DTO or DOM-range
+mapping. Highlighting is not selected by this audit.
+
+P8-FT-62 requires Core to keep each match offset and length as an authoritative
+checked UTF-8 byte range in the original validated indexed `plain_text`, with
+both endpoints on code-point boundaries and `text` exactly equal to that valid-
+UTF-8 byte slice, including for pattern modes. `FullTextResult` gains
+`std::size_t excerpt_byte_offset` as its final member, defaulting to zero, as
+the explicit document-relative UTF-8 byte origin for `excerpt`. Shared index
+result construction produces a deterministic valid-UTF-8 excerpt no larger than
+`kMaximumFullTextExcerptBytes`, centered sufficiently to contain the first
+match whenever the match fits the bound. Match ranges remain document-relative;
+checked subtraction from the excerpt origin is the only allowed derivation of
+an excerpt-relative range.
+
+Precisely, Core chooses the longest code-point-aligned slice containing a
+fitting first match, minimizes the difference between before-match and after-
+match context bytes among equal-length candidates, and resolves a remaining
+tie to the earlier origin. If the match exceeds the bound, the excerpt begins
+at the match offset and is the longest code-point-aligned prefix within the
+bound. The contract guarantees UTF-8 code-point integrity, not grapheme-cluster
+segmentation.
+
+The Shared-Library and GUI Boundary governs the change. The excerpt is bounded
+plain trusted DTO text. Widgets may convert and later present it with normal Qt
+text-role escaping, but may not parse dictionary content, rebuild indexes,
+invent match semantics, or expose raw backend data. The future implementation
+changes the installed C++ `FullTextResult` interface and shared index result
+construction plus focused existing tests. Headless behavior, runtime-source
+and C APIs, configuration, history/session format, index format, all accepted
+adapter ingestion, dependencies, build, catalogs, locale loading, executables,
+and test registrations remain unchanged.
+
+Acceptance requires focused existing Core tests covering ASCII and multibyte
+matches at document edges and interior, exact document range/text agreement,
+deterministic origin, valid UTF-8 boundaries, the 4096-byte maximum, and the
+defined over-bound match-prefix case. Existing model
+and dialog tests cover exact accepted by-value preservation and suppression of
+replacement, cancelled, stale, rejected, failed-activation and teardown state.
+No new executable or registration is added; the Release baseline remains
+exactly 109 tests.
+
+All completed P8-FT strings, privacy and lifecycle contracts remain locked.
+`Maximum word distance` remains spin-box-owned at `0..1000`, and `Maximum
+articles per dictionary` remains spin-box-owned at `1..100000`. P8-FT-60
+validation/resolution/navigation identity and P8-FT-61
+activation/atomic failure/article-search handoff remain unchanged and
+distinct. Ellipsis wording, typography, delegate layout, colors, multi-line
+policy, result-list rendering, exact-article highlighting, index lifecycle and
+Preferences, and all other full-text and unrelated parity remain excluded and
+unranked. No successor after P8-FT-62 is selected, ranked,
+recommended, or named. Completion will unlock only implementation of this
+match-centered excerpt/origin contract.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

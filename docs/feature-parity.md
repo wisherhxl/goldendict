@@ -868,6 +868,67 @@ translations, and unrelated parity remain excluded and unranked. No successor
 after P8-FT-61 is selected or ranked. Completion unlocks only the dependency
 boundary established by this connection.
 
+### P8-FT-62 match-centered excerpt contract prerequisite (selected)
+
+The fresh documentation-only audit is pinned to synchronized migrated HEAD,
+upstream, and live remote revision
+`d8d25b50ddf7cd84f71e7b700cb28fa260ea6117` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+P8-FT-60 remains the completed Core/facade exact-target navigation foundation,
+and P8-FT-61 remains the completed private exact-result activation connection.
+The approved next priority selects exactly P8-FT-62, the smallest prerequisite
+for safe result-list match excerpt presentation.
+
+Current `dictionary_service.h:164-190` carries original-document UTF-8 byte
+matches and an unspecified excerpt. Current `full_text_index.cc:314-410`
+constructs that excerpt as the first 4096 document bytes, which can split a
+UTF-8 code point, omit the match, and supplies no excerpt origin. Current
+`full_text_response_model.cpp:15-46` and
+`full_text_search_dialog.cpp:300-348` preserve results by value without
+presenting excerpts. Direct excerpt rendering is therefore unsafe. Current
+`main_window.cpp:5996-6040,7970-8110` already generation-gates literal
+WebEngine search after successful exact navigation, but literal search cannot
+represent the backend's complete pattern and word semantics and indexed plain-
+text byte ranges do not map authoritatively to the rendered DOM. Exact-article
+highlighting is therefore not selected.
+
+P8-FT-62 keeps every `FullTextMatch` range document-relative and requires its
+text to equal the exact original validated `plain_text` byte slice with both
+range endpoints on UTF-8 code-point boundaries, including pattern modes. It adds an
+authoritative `std::size_t FullTextResult::excerpt_byte_offset`, appended as
+the final DTO member and defaulting to zero, as the document-relative UTF-8
+byte origin for a deterministic valid-UTF-8 excerpt bounded by
+`kMaximumFullTextExcerptBytes` and containing the
+first match whenever that match fits the bound. Widgets may later present this
+plain trusted DTO text and derive excerpt-relative ranges by checked
+subtraction, but cannot parse dictionaries, invent matching semantics, or
+expose backend detail. Pinned legacy `fulltextsearch.cc:596-609`,
+`mainwindow.cc:3001-3013`, and `articleview.cc:2569-2728` reconstruct rendered-
+page matches from a regular expression and provide no competing excerpt
+contract or product styling policy.
+
+The excerpt is the longest code-point-aligned slice containing a fitting first
+match; equal-length candidates minimize the difference between before/after
+context bytes and then prefer the earlier origin. An over-bound match yields
+the longest code-point-aligned prefix from its own offset within the bound.
+Core guarantees UTF-8 code-point integrity, not grapheme-cluster segmentation.
+
+The future implementation affects the installed C++ result DTO and shared
+index result construction plus focused existing tests. Headless behavior,
+runtime-source/C API, configuration, persistence, index format, adapter
+ingestion, dependencies, build, catalogs, locale loading, executables and test
+registration remain unchanged. All completed P8-FT behavior, exact strings,
+privacy and lifecycle rules and P8-FT-60/P8-FT-61 atomic exact navigation
+remain unchanged. `Maximum word distance` remains spin-box-owned at `0..1000`,
+`Maximum articles per dictionary` remains spin-box-owned at `1..100000`, and
+exactly 109 Release tests remain registered.
+Ellipses, typography, layout, colors, multi-line policy, result-list rendering,
+DOM highlighting, index lifecycle and Preferences, and all other full-text and
+unrelated parity remain excluded and unranked. No
+successor after P8-FT-62 is selected, ranked, recommended, or named.
+Completion will unlock only implementation of this match-centered excerpt/
+origin contract.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

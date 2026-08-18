@@ -3909,6 +3909,85 @@ boundaries, no-successor wording, synchronized refs, clean worktrees, and
 documentation-only audit. Highlighting/excerpts, ignore-diacritics semantics,
 translations, and every successor remain excluded and unranked.
 
+### P8-FT-62 match-centered excerpt contract prerequisite acceptance
+
+The documentation-only audit is pinned to synchronized migrated HEAD,
+upstream, and live remote revision
+`d8d25b50ddf7cd84f71e7b700cb28fa260ea6117` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+It selects only P8-FT-62, the Shared-Library prerequisite for a bounded valid-
+UTF-8 match-centered excerpt and explicit document-relative excerpt origin.
+The future DTO field is final-member
+`std::size_t FullTextResult::excerpt_byte_offset`, with a zero default so
+existing shorter aggregate initializers retain their meaning.
+P8-FT-60 remains the completed exact-target facade/navigation contract;
+P8-FT-61 remains the completed private exact-result activation connection.
+
+Current acceptance evidence is `dictionary_service.h:164-190` for the match
+and result DTO, `full_text_index.cc:314-410` for original-text range mapping and
+the unsafe first-4096-byte excerpt, `full_text_response_model.cpp:15-46` and
+`full_text_search_dialog.cpp:300-348` for by-value projection and generation
+ownership, and `main_window.cpp:5996-6040,7970-8110` for successful exact-load
+literal search handoff. Pinned legacy evidence is
+`fulltextsearch.cc:596-609`, `mainwindow.cc:3001-3013`, and
+`articleview.cc:2569-2728`; legacy rematches rendered page text and supplies no
+competing excerpt-origin contract.
+
+Future focused Core cases in the existing full-text index test must cover ASCII
+and multibyte matches near the start, middle and end of documents; exact
+document-relative offset/length/text correspondence; deterministic excerpt
+origin and content; valid UTF-8 start and end boundaries; the exact
+`kMaximumFullTextExcerptBytes` maximum; matches adjacent to combining marks;
+pattern-mode matches spanning multibyte text; and a match longer than the
+excerpt bound. The over-bound case must follow the
+documented prefix-from-match-offset policy and never emit malformed text or an
+invalid range. Equal-length fitting candidates must prove balanced-context
+selection and the earlier-origin tie break. Tests assert UTF-8 code-point
+boundaries; they do not impose a Core grapheme-cluster contract. The shared
+index path supplies this behavior to every accepted built-in
+format without adapter-specific match or excerpt logic.
+
+Existing model/dialog cases must prove that the accepted result preserves
+excerpt, origin and ordered matches exactly by value. Pending replacement,
+cancellation, stale or duplicate completion, controller detachment, teardown,
+and rejected or failed exact activation must not expose, revive or overwrite
+accepted presentation data. Until a separate presentation leaf is approved,
+the model continues to expose only its established roles and the dialog renders
+no excerpt.
+
+Implementation acceptance keeps match ranges document-relative and derives any
+excerpt-relative range only through checked subtraction from the authoritative
+origin. Widgets treat the excerpt as plain text with normal Qt role escaping;
+they do not parse dictionaries, construct indexes, reinterpret backend
+matching, map ranges into the DOM, or expose raw backend details. Literal
+WebEngine search remains the separately completed article-search handoff and is
+not accepted as equivalent to backend highlighting.
+
+Cases are added only to existing test executables; no executable or test
+registration is added and the Release registration baseline remains exactly
+109 tests. Future implementation verification uses the focused Release tests,
+full 109-test Release suite, Release install, standalone installed C/C++
+consumers, and exact-SCM packaged consumers. This documentation-only audit runs
+no compiled gate.
+
+Audit acceptance requires the exact four-document allowlist, complete-diff
+review, cross-document consistency, current and pinned-legacy citations, Phase
+terminology, the Shared-Library and GUI Boundary, explicit installed C++ DTO
+impact, unchanged headless/runtime-source/C API/configuration/persistence/index-
+format/adapter/dependency/build/catalog/locale/executable/registration
+boundaries, locked P8-FT strings/captions/ranges/privacy/lifecycle behavior,
+distinct completed P8-FT-60/P8-FT-61 contracts, exactly 109 registered tests,
+no-successor wording, synchronized refs, clean worktrees, and
+`git diff --check`. Result rendering, exact-article highlighting, index
+lifecycle and Preferences, and all other full-text and unrelated parity remain
+excluded and unranked. No successor after
+P8-FT-62 is selected, ranked, recommended, or named. Completion will unlock
+only implementation of this match-centered excerpt/origin contract.
+
+The locked control policies checked by the audit remain `Maximum word
+distance` with spin-box-owned `0..1000` and `Maximum articles per dictionary`
+with spin-box-owned `1..100000`.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

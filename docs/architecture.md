@@ -5005,6 +5005,99 @@ the exactly 109-test Release registration baseline remain unchanged. No
 successor after P8-FT-61 is selected, ranked, recommended, or named. Completion
 unlocks only the dependency boundary established by this connection.
 
+### Phase 8 match-centered excerpt contract prerequisite (selected)
+
+The fresh bounded documentation-only audit starts from synchronized migrated
+HEAD, upstream, and live remote revision
+`d8d25b50ddf7cd84f71e7b700cb28fa260ea6117` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+After the completed P8-FT-60 exact-target facade/navigation foundation and
+P8-FT-61 exact-result activation connection, the approved highlighting and
+excerpt priority selects exactly P8-FT-62: establish the smallest
+Shared-Library-owned match-centered excerpt contract required before Widgets
+can safely present an accepted result excerpt. P8-FT-62 is the next stable
+ordinal after the durably completed P8-FT-61 connection.
+
+Current `dictionary_service.h:164-190` defines document-relative UTF-8 byte
+ranges in `FullTextMatch` and carries an otherwise unspecified `excerpt` in
+`FullTextResult`. Current `full_text_index.cc:314-410` maps the accepted match
+back to the validated original `plain_text`, but sets `excerpt` to its first
+4096 bytes. That prefix can end inside a UTF-8 code point and can omit a match
+later in the document; no result field identifies the excerpt's document
+origin. Current `full_text_response_model.cpp:15-46` and
+`full_text_search_dialog.cpp:300-348` retain the DTO by value but expose only
+the established headword, dictionary tooltip, and activation behavior.
+Therefore direct result-list excerpt presentation is not safely ready.
+
+Exact-article highlighting is not the smaller safe leaf. Current
+`main_window.cpp:5996-6040,7970-8110` dispatches the accepted query only after
+successful generation-current exact navigation and page load, but Qt
+WebEngine's literal `findText` does not reproduce wildcard, regular-expression,
+whole-word, word-order, word-distance, normalization, or backend range
+semantics. Backend byte ranges refer to indexed plain text, not positions in
+the composed sanitized HTML DOM. Pinned legacy `fulltextsearch.cc:596-609`,
+`mainwindow.cc:3001-3013`, and `articleview.cc:2569-2728` instead pass a search
+expression and reconstruct matching text from the rendered page; they provide
+no competing excerpt DTO or DOM-range contract to adopt.
+
+The Shared-Library and GUI Boundary governs P8-FT-62. Core must continue to
+own match semantics and define each `FullTextMatch::byte_offset` and
+`byte_length` as a checked range in the original validated UTF-8 document
+`plain_text`; `FullTextMatch::text` must equal that exact byte slice. The result
+range start and end must be UTF-8 code-point boundaries, so `text` is valid
+UTF-8 even for pattern modes. The result
+contract appends `FullTextResult::excerpt_byte_offset` as the final DTO member,
+a `std::size_t` document-relative UTF-8 byte origin for `excerpt` defaulting to
+zero. Core
+constructs a deterministic valid-UTF-8 excerpt no larger than
+`kMaximumFullTextExcerptBytes`, positioned to contain the first authoritative
+match whenever that match itself fits the bound. Existing match ranges remain
+document-relative; a consumer may derive an excerpt-relative range only by
+checked subtraction from the authoritative origin.
+
+The selection rule is byte-based and decision-complete. When the first match
+fits the bound, choose the longest code-point-aligned document slice containing
+it; among equal-length candidates minimize the difference between before-match
+and after-match context bytes, then choose the earlier origin. When the match
+itself exceeds the bound, start at its byte offset and return the longest
+code-point-aligned prefix not exceeding the bound. UTF-8 code-point integrity
+is guaranteed; grapheme-cluster shaping remains Qt presentation behavior and
+does not redefine Core byte ranges.
+
+The excerpt remains bounded plain trusted DTO text, not markup. Widgets may
+convert and present it through normal Qt text roles, with Qt owning display
+escaping, but must not parse dictionaries, rebuild indexes, reinterpret match
+semantics, or expose raw backend details. Ellipsis wording, typography,
+delegate layout, highlighting colors, multi-line policy, result-list
+presentation, and DOM highlighting remain outside this prerequisite because
+repository and pinned-legacy evidence provide no single authoritative product
+shape.
+
+P8-FT-62 intentionally changes the installed C++ `FullTextResult` DTO contract
+and shared full-text index result construction. It changes no headless service
+behavior, runtime-source or C API, configuration, persisted session, index
+format, adapter ingestion, dependency, build, catalog, locale-loader,
+executable, or test-registration boundary. P8-FT-60 validation, navigation,
+history and session identity and P8-FT-61 activation, atomic failure and
+article-search handoff remain distinct and unchanged. All completed P8-FT
+strings, privacy and lifecycle guarantees remain unchanged. In particular,
+`Maximum word distance` remains spin-box-owned at `0..1000`, and `Maximum
+articles per dictionary` remains spin-box-owned at `1..100000`. The Release
+registration baseline remains exactly 109 tests.
+
+Acceptance requires focused existing Core cases for ASCII and multibyte
+matches near document start, middle, and end; exact document-range/text
+correspondence; deterministic excerpt origin; valid UTF-8 boundaries; the
+4096-byte bound; and the defined over-bound match-prefix policy. Existing
+model/dialog cases must prove accepted by-value preservation
+and that replacement, cancellation, stale completion, rejection, failed exact
+activation, and teardown cannot present or revive stale data. No compiled gate
+is run for this audit. Result-list rendering, exact-article highlighting,
+index lifecycle and Preferences, and all other full-text and unrelated parity
+remain excluded and unranked. No successor after
+P8-FT-62 is selected, ranked, recommended, or named. Completion will unlock
+only implementation of this match-centered excerpt/origin contract.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
