@@ -4786,6 +4786,55 @@ checks, and clean exact-SCM package creation preserve exactly 109 registered
 Release tests. P8-FT-57 completion unlocks only a fresh independent bounded
 readiness audit; no successor is selected, ranked, recommended, or named.
 
+### Phase 8 full-text partial-empty-status translation (selected)
+
+The fresh independent bounded post-P8-FT-57 audit is pinned to clean
+synchronized migrated HEAD, local branch, upstream, and live remote at
+`7e7f7b90c21ff23c109f73bb983074b7e8194989`, plus the unchanged clean
+read-only legacy checkout at
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Re-evaluation of every remaining
+full-text parity gap and its current prerequisites selects exactly one smallest
+independently evidence-ready leaf, P8-FT-58: translating the existing private
+partial-empty status through the dialog's translation context.
+
+P8-FT-26 already owns the unique `fullTextPartialEmptyResponseStatus`, exact
+source and fallback text `No matches in searched dictionaries`, and its
+generation-current zero-result, authoritative-partial visibility and
+partial-status coexistence contract without raw error details. Current
+`full_text_search_dialog.cpp:127-132` constructs only this remaining static
+response status with `QStringLiteral`; the other completed static response
+statuses use dialog-owned `tr()`. P8-FT-52 through P8-FT-57 establish the exact
+private `goldendict::app::FullTextSearchDialog` context and focused scoped-
+translator pattern. Pinned legacy `fulltextsearch.cc` and `fulltextsearch.ui`
+contain no equivalent partial-empty status or conflicting translation
+contract. No architecture or product choice remains.
+
+The future implementation is bounded to the private dialog source and its
+existing focused test: use dialog-owned
+`tr("No matches in searched dictionaries")` and prove exact-context
+replacement, English fallback, stable identity and text, unchanged P8-FT-26
+visibility and partial-status coexistence, stale/cancelled/detached/replaced-
+service/teardown safety, and scoped translator cleanup. The Shared-Library and
+GUI Boundary governs. No catalog, locale loader, executable, registration,
+public/Core/configuration/index-format/dependency/build/composition-root, ABI,
+installed-interface, or test-baseline change is authorized.
+
+Completed translations `Full-text search`, both `Search` uses,
+`Results may be incomplete.`, `No matches`, `Full-text search failed`, and
+`Some dictionaries could not be searched` remain exact. Locked policies remain
+`Maximum word distance` with spin-box-owned `0..1000` and
+`Maximum articles per dictionary` with spin-box-owned `1..100000`. All
+completed P8-FT predicates, lifecycle behavior, and raw-detail suppression
+remain unchanged. The Release baseline remains exactly 109 registered tests.
+
+Index readiness/status/progress/rebuild/failure reporting/background lifecycle
+and full-text Preferences remain blocked because repository evidence supplies
+no separately authoritative resolution of the Core lifecycle/policy boundary.
+Exact-document navigation, result/match/excerpt presentation, ignore-diacritics
+consumption, adapters/index formats, accessibility, styling/layout, catalogs,
+and unrelated parity remain independent and unranked. This documentation-only
+audit unlocks only implementation of P8-FT-58.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

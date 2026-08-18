@@ -3740,6 +3740,43 @@ package creation with its packaged consumers, the exact six-file allowlist,
 unlocks only a fresh independent bounded readiness audit; no successor is
 selected, ranked, recommended, or named.
 
+## Phase 8 Full-Text Partial-Empty-Status Translation (Selected)
+
+The documentation-only post-P8-FT-57 audit is pinned to synchronized migrated
+revision `7e7f7b90c21ff23c109f73bb983074b7e8194989` and clean read-only legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only P8-FT-58:
+translate the existing `fullTextPartialEmptyResponseStatus` through
+`goldendict::app::FullTextSearchDialog` while retaining exact source and
+fallback text `No matches in searched dictionaries`.
+
+P8-FT-26 continues to own the generation-current zero-result and authoritative-
+partial predicate, coexistence with `Results may be incomplete.`, lifecycle
+safety, and raw-detail suppression. Current
+`full_text_search_dialog.cpp:127-132` uses `QStringLiteral` for this status;
+P8-FT-52 through P8-FT-57 establish the exact-context translator pattern, and
+pinned legacy full-text sources contain no equivalent status or conflicting
+contract.
+
+Future focused acceptance extends only `full_text_search_dialog_test.cpp` to
+prove dialog-owned `tr("No matches in searched dictionaries")` replacement in
+the exact context, English fallback after scoped cleanup, stable widget
+identity and text, unchanged initial/replacement/complete/nonempty/partial-empty
+predicates, coexistence with the partial and error-count statuses, and stale/
+cancelled/detached/replaced-service/teardown safety. No executable or registered
+test is added; the Release baseline remains exactly 109 tests.
+
+This audit has an exact four-document allowlist and omits compiled gates.
+Validation covers current and pinned-legacy citations, cross-document
+consistency, completed translations, locked `Maximum word distance` / spin-box-
+owned `0..1000` and `Maximum articles per dictionary` / spin-box-owned
+`1..100000`, completed P8-FT behavior, Shared-Library and GUI Boundary, Phase
+terminology, successor neutrality, exactly 109 registered Release tests,
+`git diff --check`, synchronized refs/remotes, and clean worktrees. Index
+readiness/status/progress/rebuild/failure reporting/background lifecycle and
+full-text Preferences remain blocked without a separately authoritative Core
+lifecycle/policy resolution. Other parity remains unranked. The audit unlocks
+only implementation of P8-FT-58.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

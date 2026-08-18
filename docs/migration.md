@@ -4840,6 +4840,55 @@ clean exact-SCM package creation preserve the 109-test baseline. P8-FT-57
 completion unlocks only a fresh independent bounded readiness audit; no
 successor is selected, ranked, recommended, or named.
 
+### Phase 8 full-text partial-empty-status translation (selected)
+
+The fresh independent bounded post-P8-FT-57 audit is pinned to clean
+synchronized migrated HEAD, upstream, and live remote at
+`7e7f7b90c21ff23c109f73bb983074b7e8194989`, with the clean read-only legacy
+checkout unchanged at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It audits
+all remaining full-text parity gaps and prerequisites and selects exactly one
+smallest independently evidence-ready leaf, P8-FT-58: translate the existing
+private partial-empty status through the dialog's established context.
+
+Completed P8-FT-26 owns `fullTextPartialEmptyResponseStatus`, exact source and
+fallback text `No matches in searched dictionaries`, and its generation-current
+zero-result, authoritative-partial visibility, partial-status coexistence, and
+no-raw-detail behavior. Current `full_text_search_dialog.cpp:127-132` is the
+sole remaining static response-status construction using `QStringLiteral`;
+P8-FT-52 through P8-FT-57 establish dialog-owned translation and focused
+scoped-translator coverage. Pinned legacy `fulltextsearch.cc` and
+`fulltextsearch.ui` contain no equivalent status or conflicting wording or
+context contract. No unresolved architecture or product decision remains.
+
+Future implementation is restricted to `full_text_search_dialog.cpp` and
+`full_text_search_dialog_test.cpp`: use dialog-owned
+`tr("No matches in searched dictionaries")` and prove exact-context
+replacement, English fallback, stable identity/text, unchanged P8-FT-26
+predicates and lifecycle safety, and scoped translator cleanup. The
+Shared-Library and GUI Boundary governs. No catalog, locale loader, executable,
+registration, public/Core/configuration/index-format/dependency/build/
+composition-root/ABI/installed-interface, or test-baseline change is
+authorized.
+
+Completed translations `Full-text search`, both `Search` uses,
+`Results may be incomplete.`, `No matches`, `Full-text search failed`, and
+`Some dictionaries could not be searched` remain exact. Locked policies remain
+`Maximum word distance` with spin-box-owned `0..1000` and
+`Maximum articles per dictionary` with spin-box-owned `1..100000`. Completed
+P8-FT behavior, predicates, lifecycle, and raw-detail suppression remain
+unchanged, as does the baseline of exactly 109 registered Release tests.
+
+Index readiness/status/progress/rebuild/failure reporting/background lifecycle
+and full-text Preferences remain blocked because no separately authoritative
+Core lifecycle/policy resolution exists. Exact-document navigation,
+result/match/excerpt presentation, ignore-diacritics consumption, adapters/
+index formats, accessibility, styling/layout, catalogs, and unrelated parity
+remain independent and unranked. This documentation-only audit omits compiled
+gates and unlocks only implementation of P8-FT-58. Stop on ref/worktree or
+legacy drift, ambiguity, an equally authoritative competing choice,
+architecture conflict, scope expansion, any required non-document file, or an
+uncorrectable validation failure.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

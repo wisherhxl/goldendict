@@ -716,6 +716,45 @@ parity remain independent and unranked. P8-FT-57 completion unlocks only a
 fresh independent bounded readiness audit; no successor is selected, ranked,
 recommended, or named.
 
+The fresh independent bounded post-P8-FT-57 audit is pinned to clean
+synchronized migrated revision
+`7e7f7b90c21ff23c109f73bb983074b7e8194989` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly
+one smallest independently evidence-ready leaf, P8-FT-58: move the existing
+private partial-empty status into the established
+`goldendict::app::FullTextSearchDialog` translation context.
+
+P8-FT-26 retains the unique `fullTextPartialEmptyResponseStatus`, exact source
+and fallback text `No matches in searched dictionaries`, authoritative-partial
+zero-result visibility, coexistence with `Results may be incomplete.`,
+generation safety, and raw-detail suppression. Current
+`full_text_search_dialog.cpp:127-132` still constructs that status with
+`QStringLiteral`, while all other completed static response statuses use
+dialog-owned `tr()`. P8-FT-52 through P8-FT-57 provide the exact context and
+focused scoped-translator precedent. Pinned legacy full-text source and UI have
+no equivalent status or conflicting contract.
+
+The future implementation is limited to the private dialog and its existing
+focused test, using dialog-owned
+`tr("No matches in searched dictionaries")` and covering exact-context
+replacement, English fallback, stable identity/text, unchanged P8-FT-26
+predicates and lifecycle safety, and translator cleanup. The Shared-Library and
+GUI Boundary applies. Catalogs, locale loading, executables, registrations,
+public/Core/configuration/index-format/dependency/build/composition-root/ABI/
+installed interfaces, and exactly 109 registered Release tests remain
+unchanged.
+
+Completed translations `Full-text search`, both `Search` uses,
+`Results may be incomplete.`, `No matches`, `Full-text search failed`, and
+`Some dictionaries could not be searched` remain exact. Locked policies remain
+`Maximum word distance` with spin-box-owned `0..1000` and
+`Maximum articles per dictionary` with spin-box-owned `1..100000`. Index
+readiness/status/progress/rebuild/failure reporting/background lifecycle and
+full-text Preferences remain blocked because the Core lifecycle/policy boundary
+has no separately authoritative resolution. Other full-text and unrelated
+parity gaps remain independent and unranked. This audit unlocks only
+implementation of P8-FT-58.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |
