@@ -3569,6 +3569,41 @@ Packaged C/C++ consumers must pass, and final local/upstream/live-remote refs
 and both worktrees must agree and remain clean. No successor after P8-FT-53 is
 selected or ranked.
 
+## Phase 8 Full-Text Partial-Status Translation Selection
+
+The fresh post-P8-FT-53 audit selects only P8-FT-54: translate exact existing
+status `Results may be incomplete.` through
+`goldendict::app::FullTextSearchDialog`. Completed P8-FT-22 supplies the text
+and visibility contract; current `full_text_search_dialog.cpp` uses
+`QStringLiteral`; P8-FT-52/P8-FT-53 and the focused dialog test supply the exact
+private context and scoped-translator pattern. Pinned legacy has no equivalent
+partial-response status and no conflicting translation contract.
+
+The future implementation is limited to `full_text_search_dialog.cpp` and
+`full_text_search_dialog_test.cpp`. Focused coverage must prove exact-context
+replacement, the exact English fallback, stable label identity/text, unchanged
+initial/replacement/complete/stale/cancelled/detached and authoritative-partial
+visibility behavior, and scoped translator cleanup. No catalog, locale loader,
+new executable, registration, baseline, public/Core/config/index-format/
+dependency/build/composition-root, ABI, or installed-interface change is
+authorized.
+
+The exact translated dialog/group titles and the locked concise captions with
+control-owned ranges (`Maximum word distance` / `0..1000` and
+`Maximum articles per dictionary` / `1..100000`) remain unchanged. Other
+response strings/catalog readiness, accessibility, styling/layout,
+exact-document navigation, match/excerpt presentation, ignore-diacritics
+consumption, index lifecycle/Preferences, adapters/index formats, and unrelated
+tests remain unselected and unranked.
+
+Verification for this documentation-only selection is limited to the exact
+four-file allowlist, cross-document evidence and boundary consistency,
+locked-policy and no-successor checks, Phase terminology, pinned refs/worktrees,
+live remote equality, and `git diff --check`. Compiled checks are omitted and
+the Release baseline remains exactly 109 tests. Stop on drift, ambiguity,
+design conflict, a required non-documentation file, failed validation, or scope
+expansion. No successor after P8-FT-54 is selected or ranked.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

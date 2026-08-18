@@ -581,6 +581,38 @@ and C++ consumers, clean committed exact-SCM Conan creation with packaged
 consumers, exact six-file repository validation, `git diff --check`, and clean
 synchronized refs/worktrees. No successor after P8-FT-53 is selected or ranked.
 
+The fresh independent bounded post-P8-FT-53 audit selects exactly one smallest
+independently ready leaf, P8-FT-54: translate the existing private status
+`Results may be incomplete.` through the exact
+`goldendict::app::FullTextSearchDialog` context. P8-FT-22 supplies the exact
+text and generation-safe visibility contract; current
+`full_text_search_dialog.cpp` still uses `QStringLiteral`, and P8-FT-52/
+P8-FT-53 supply dialog-owned translation and focused-test precedents. Pinned
+legacy full-text code and UI contain no equivalent status and therefore no
+conflicting wording or context contract.
+
+The future leaf is limited to `full_text_search_dialog.cpp` and its focused
+dialog test. It changes only construction of the existing label to dialog-owned
+`tr("Results may be incomplete.")`; coverage must prove exact-context
+replacement, English fallback, unchanged identity/text and P8-FT-22 visibility
+predicates, and scoped translator cleanup. It adds no catalog, locale loader,
+executable, registration, public/Core/config/index-format/dependency/build/
+composition-root, ABI, or installed-surface change.
+
+The translated `Full-text search` and `Search` titles and both locked concise
+caption/control-range policies remain unchanged: `Maximum word distance` with
+`0..1000`, and `Maximum articles per dictionary` with `1..100000`. Other
+response strings/catalog readiness, accessibility, styling/layout,
+exact-document navigation, match/excerpt presentation, ignore-diacritics
+consumption, index formats, and unrelated parity remain unselected and
+unranked. Index lifecycle/readiness/status/progress and full-text Preferences
+remain blocked on separate Core lifecycle/policy work.
+
+This audit changes only the four governing documents, omits compiled checks,
+and preserves the exactly 109-test Release baseline. Stop on drift, ambiguity,
+design conflict, a required non-documentation file, failed validation, or scope
+expansion. No successor after P8-FT-54 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

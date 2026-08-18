@@ -4677,6 +4677,50 @@ and C++ consumers, clean committed exact-SCM Conan creation with packaged
 consumers, exact six-file scope, cross-document consistency, `git diff --check`,
 and clean synchronized refs/worktrees.
 
+### Phase 8 full-text partial-status translation (selected)
+
+The fresh independent bounded post-P8-FT-53 audit verified clean migrated HEAD,
+local branch, upstream, and live remote at
+`ce669729ad467405d40e8a09b188967b49395cb1`, and the unchanged clean read-only
+legacy checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It checked all
+remaining visible and private gaps and selects exactly one smallest
+independently dependency-ready leaf, P8-FT-54: translate the existing status
+`Results may be incomplete.` through the private
+`goldendict::app::FullTextSearchDialog` context. No successor after P8-FT-54 is
+selected or ranked.
+
+Completed P8-FT-22 owns that exact visible text and its generation-current
+partial-response visibility semantics. Current `full_text_search_dialog.cpp`
+constructs the label with `QStringLiteral`; P8-FT-52 and P8-FT-53 establish the
+dialog-owned translation context and scoped-translator test pattern. Pinned
+legacy full-text sources contain no equivalent partial-response status, so no
+legacy wording or translation context conflicts with this migrated-only status.
+
+The later implementation may change only `full_text_search_dialog.cpp` and
+`full_text_search_dialog_test.cpp`, using dialog-owned
+`tr("Results may be incomplete.")`. Focused acceptance covers exact-context
+replacement, English fallback, stable label identity/text, all existing
+P8-FT-22 visibility predicates, and automatic translator cleanup. The
+Shared-Library and GUI Boundary remains governing; no catalog, locale loader,
+executable, registration, public/Core/config/index-format/dependency/build/
+composition-root, ABI, or installed contract changes.
+
+Exact translated dialog title `Full-text search`, translated group title
+`Search`, `Maximum word distance` with control-owned `0..1000`, and
+`Maximum articles per dictionary` with control-owned `1..100000` remain locked.
+Other response strings and catalog readiness, accessibility, styling/layout,
+exact-document navigation, match/excerpt presentation, ignore-diacritics
+consumption, adapters/index formats, and unrelated parity remain separate and
+unranked. Index readiness/status/progress/background lifecycle and full-text
+Preferences remain blocked on separate Core lifecycle/policy work.
+
+Acceptance is limited to consistent updates in these four governing documents,
+the exact current and legacy evidence, preserved boundaries and locked policies,
+the unchanged 109-test Release baseline, and no-successor language. Compiled
+checks are omitted. Stop without commit or push on drift, ambiguity, design
+conflict, a required non-documentation file, failed validation, or scope
+expansion.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

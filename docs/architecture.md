@@ -4612,6 +4612,51 @@ and C++ consumers, clean committed exact-SCM Conan creation with packaged
 consumers, exact six-file repository validation, and clean synchronized
 refs/worktrees. No successor after P8-FT-53 is selected or ranked.
 
+### Phase 8 full-text partial-status translation (selected)
+
+The fresh independent bounded post-P8-FT-53 audit is pinned to clean migrated
+HEAD, local branch, upstream, and live remote at
+`ce669729ad467405d40e8a09b188967b49395cb1`, plus the unchanged clean read-only
+legacy checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. After checking
+all remaining visible and private full-text gaps against current architecture
+and pinned legacy evidence, it selects exactly one smallest independently
+dependency-ready leaf, P8-FT-54: translate the existing partial-response status
+`Results may be incomplete.` through the private
+`goldendict::app::FullTextSearchDialog` context. No successor after P8-FT-54 is
+selected or ranked.
+
+P8-FT-22 already owns the exact visible text and its generation-current
+authoritative-partial visibility contract. Current
+`full_text_search_dialog.cpp` still constructs that label with
+`QStringLiteral`, while P8-FT-52 and P8-FT-53 establish dialog-owned `tr()` and
+the focused scoped-translator precedent. Pinned legacy full-text UI and code
+have no equivalent partial-response status, so they supply no conflicting
+wording or translation-context contract.
+
+The later implementation is restricted to `full_text_search_dialog.cpp` and
+`full_text_search_dialog_test.cpp`: construct the existing label with
+dialog-owned `tr("Results may be incomplete.")` and prove exact-context
+replacement, English fallback, stable widget identity and text, unchanged
+P8-FT-22 visibility behavior, and scoped translator cleanup. The Shared-Library
+and GUI Boundary governs this private Widgets leaf. No catalog, locale loader,
+executable, registration, public/Core/configuration/index-format/dependency/
+build/composition-root, ABI, or installed-interface change is authorized.
+
+The exact translated `Full-text search` dialog title and `Search` group title
+remain unchanged. Exact `Maximum word distance` with control-owned `0..1000`
+and exact `Maximum articles per dictionary` with control-owned `1..100000`
+remain locked. Other response-string and catalog readiness, accessibility,
+styling/layout, exact-document navigation, match/excerpt presentation,
+ignore-diacritics consumption, adapters/index formats, and unrelated parity
+remain separate and unranked. Index readiness/status/progress/background
+lifecycle and full-text Preferences remain blocked on a separate Core
+lifecycle/policy boundary.
+
+This selection changes only the four established governing documents. The
+Release baseline remains exactly 109 tests and compiled checks are omitted.
+Stop on ref/worktree or legacy drift, ambiguity, design conflict, a required
+non-documentation file, failed validation, or scope expansion.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
