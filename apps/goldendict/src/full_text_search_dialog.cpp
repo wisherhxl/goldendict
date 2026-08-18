@@ -106,7 +106,7 @@ FullTextSearchDialog::FullTextSearchDialog(
     partial_status_->hide();
     layout->addWidget(partial_status_);
 
-    empty_status_ = new QLabel(QStringLiteral("No matches"), this);
+    empty_status_ = new QLabel(tr("No matches"), this);
     empty_status_->setObjectName(QStringLiteral("fullTextEmptyResponseStatus"));
     empty_status_->hide();
     layout->addWidget(empty_status_);

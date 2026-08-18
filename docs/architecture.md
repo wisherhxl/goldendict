@@ -4656,30 +4656,27 @@ consumers, exact six-file repository validation, and clean synchronized
 refs/worktrees. Completion unlocks only a fresh independent bounded full-text
 readiness audit; it does not select or rank its outcome.
 
-### Phase 8 full-text empty-status translation (selected)
+### Phase 8 full-text empty-status translation (complete)
 
-The fresh documentation-only post-P8-FT-54 audit is pinned to clean synchronized
-migrated HEAD, local branch, upstream, and live remote at
-`d0dacfbd2565658ee610cdc8a7a4dda24f32e329`, plus the unchanged clean read-only
-legacy checkout and live `origin/master` at
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly P8-FT-55: move
-the existing private empty-response status `No matches` into the
-`goldendict::app::FullTextSearchDialog` translation context. No successor after
-P8-FT-55 is selected or ranked.
+P8-FT-55 was implemented from clean synchronized migrated base
+`175a92926b1046798b51b9757a28ed156555c0aa`, plus the unchanged clean read-only
+legacy checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The existing
+private empty-response status `No matches` now resolves through the
+`goldendict::app::FullTextSearchDialog` translation context.
 
 P8-FT-23 already owns the exact text, unique `fullTextEmptyResponseStatus`
-identity, and generation-current conclusive-empty visibility contract. Current
-`full_text_search_dialog.cpp:109-112` still constructs the label with
-`QStringLiteral`, while P8-FT-52 through P8-FT-54 establish the exact private
-dialog context and scoped-translator test pattern. Pinned legacy full-text UI
+identity, and generation-current conclusive-empty visibility contract. The
+dialog constructs the label with dialog-owned `tr("No matches")`; P8-FT-52
+through P8-FT-54 establish the exact private dialog context and scoped-
+translator test pattern. Pinned legacy full-text UI
 and code have no equivalent empty-response status, so they supply no conflicting
 wording or translation-context contract.
 
-The future implementation is restricted to `full_text_search_dialog.cpp` and
-`full_text_search_dialog_test.cpp`: construct the existing label with
-dialog-owned `tr("No matches")` and prove exact-context replacement, English
-fallback, stable widget identity and text, unchanged P8-FT-23 visibility
-predicates, stale/cancelled/detached safety, and scoped translator cleanup. The
+The implementation is restricted to `full_text_search_dialog.cpp` and
+`full_text_search_dialog_test.cpp`. Focused coverage proves exact-context
+replacement, English fallback, stable widget identity and text, unchanged
+P8-FT-23 visibility predicates, stale/cancelled/detached safety, and scoped
+translator cleanup. The
 Shared-Library and GUI Boundary governs this private Widgets leaf. It authorizes
 no catalog, locale loader, executable, registration, public/Core/configuration/
 index-format/dependency/build/composition-root, ABI, or installed-interface
@@ -4695,12 +4692,9 @@ formats, and unrelated parity remain independent and unranked. Index readiness,
 status, progress, rebuild/failure reporting, background lifecycle, and full-text
 Preferences remain blocked on a separate Core lifecycle/policy boundary.
 
-This four-document-only audit omits compiled gates and preserves the exactly
-109-test Release baseline. Stop without commit or push on drift, ambiguity,
-architecture or product alternatives, scope expansion, a required file outside
-the four-document allowlist, or failed validation not correctable there.
-Completing P8-FT-55 unlocks only a fresh independent bounded full-text readiness
-audit.
+The Release baseline remains exactly 109 tests. No successor after P8-FT-55 is
+selected or ranked; completion unlocks only a fresh independent bounded full-
+text readiness audit.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

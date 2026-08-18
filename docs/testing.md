@@ -3605,26 +3605,25 @@ consumers. Final refs and both worktrees must remain synchronized and clean.
 Completion unlocks only a fresh independent bounded full-text readiness audit;
 no successor is selected or ranked.
 
-## Phase 8 Full-Text Empty-Status Translation Selection
+## Phase 8 Full-Text Empty-Status Translation
 
-The fresh documentation-only audit from clean synchronized migrated revision
-`d0dacfbd2565658ee610cdc8a7a4dda24f32e329` and unchanged clean read-only legacy
-revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects exactly P8-FT-55. The
-existing `fullTextEmptyResponseStatus` must retain exact source and fallback text
-`No matches` while resolving through
-`goldendict::app::FullTextSearchDialog::tr()`.
+P8-FT-55 is complete from clean synchronized migrated base
+`175a92926b1046798b51b9757a28ed156555c0aa` and unchanged clean read-only legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The existing
+`fullTextEmptyResponseStatus` retains exact source and fallback text `No
+matches` while resolving through `goldendict::app::FullTextSearchDialog::tr()`.
 
 P8-FT-23 already supplies the unique identity and generation-current
-conclusive-empty visibility contract. Current
-`full_text_search_dialog.cpp:109-112` uses `QStringLiteral`; P8-FT-52 through
+conclusive-empty visibility contract. The dialog uses dialog-owned `tr()`;
+P8-FT-52 through
 P8-FT-54 and `full_text_search_dialog_test.cpp` supply the exact context and
 scoped-translator pattern. Pinned legacy contains no equivalent empty-response
 status and therefore no conflicting translation contract.
 
-The implementation gate is limited to `full_text_search_dialog.cpp` and its
-existing focused test. Coverage must install an exact-context translator and
-prove replacement, then prove English fallback after scoped cleanup. The same
-test must retain exact widget identity and text and all P8-FT-23 predicates:
+The implementation is limited to `full_text_search_dialog.cpp` and its existing
+focused test. Coverage installs an exact-context translator and proves
+replacement and English fallback after scoped cleanup. The same test retains
+exact widget identity and text and all P8-FT-23 predicates:
 hidden initially and during replacement; visible only for a generation-current
 accepted response with zero results, `partial == false`, and no errors; hidden
 for nonempty, partial, or error-containing responses; and immune to stale,
@@ -3643,15 +3642,12 @@ Index readiness/status/progress/rebuild/failure UI/background lifecycle and
 full-text Preferences remain blocked on a separate Core lifecycle/policy
 boundary.
 
-This selection changes only four documents, omits compiled gates, and retains
-the exactly 109-test Release baseline. Documentation acceptance is exact-ref and
-clean-worktree verification, four-file allowlist, cross-document and pinned-
-evidence consistency, locked-policy and no-successor checks, Phase terminology,
-full-diff review, and `git diff --check`. Stop on drift, ambiguity, architecture
-or product alternatives, scope expansion, another required file, or an
-uncorrectable validation failure. No successor after P8-FT-55 is selected or
-ranked; completing it unlocks only a fresh independent bounded full-text
-readiness audit.
+Focused acceptance is the Release dialog test. The full gate is fresh Release
+install/configure/build, exactly 109 registered tests and 109/109 passing,
+Release install, standalone installed C/C++ consumers, clean committed exact-
+SCM Conan creation with packaged consumers, exact six-file validation, and
+`git diff --check`. No successor after P8-FT-55 is selected or ranked;
+completion unlocks only a fresh independent bounded full-text readiness audit.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
