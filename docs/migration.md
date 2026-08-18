@@ -5327,9 +5327,9 @@ current. Empty/nonempty plans and typed failures are inert; no matching-plan
 result is applied to presentation. Existing targets cover the leaf without
 changing the exactly 109-test Release registration baseline.
 
-### Phase 8 P8-FT-67 private CSS Custom Highlight plan application (selected)
+### Phase 8 P8-FT-67 private CSS Custom Highlight plan application (completed)
 
-The fresh documentation-only readiness audit starts from clean synchronized
+The completed implementation starts from the selected clean synchronized
 migrated/local/upstream/live-remote revision
 `c8bfcd77e01a243e3b565ebc818151c2255a0a2c` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-66's
@@ -5354,7 +5354,10 @@ position zero. Literal grouping follows the retained match-case policy. It does
 not insert wrappers, change text nodes, parse the query, rematch Core semantics
 or consume `ignore_diacritics`.
 
-Empty success clears the private highlight and applied state. Unsupported APIs,
+Each transaction, callback and published application carries a generation-bound
+owner token. Stale or failed work cleans only its own staging and cannot clear a
+newer owner; explicit current lifecycle invalidation may force-clear that
+owner. Empty success clears the private highlight and applied state. Unsupported APIs,
 mapping/literal mismatch, script failure, stale callback and every existing
 activation, search, lookup, navigation, tab, view, page, facade or teardown
 invalidation atomically leave no private highlight, selection or applied state.

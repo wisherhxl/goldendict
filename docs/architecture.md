@@ -5363,9 +5363,9 @@ pins cancellation, teardown, every identity gate and absence of presentation
 effects. The installed surface and exactly 109 registered Release tests remain
 unchanged.
 
-### Phase 8 P8-FT-67 private CSS Custom Highlight plan application (selected)
+### Phase 8 P8-FT-67 private CSS Custom Highlight plan application (completed)
 
-The fresh documentation-only readiness audit starts from clean synchronized
+The completed implementation starts from the selected clean synchronized
 migrated/local/upstream/live-remote revision
 `c8bfcd77e01a243e3b565ebc818151c2255a0a2c` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-67 supersedes P8-FT-66's
@@ -5391,7 +5391,11 @@ its supplied literal; and constructs all ranges before changing presentation.
 It must not parse or reinterpret the accepted query or consume
 `ignore_diacritics`.
 
-Successful nonempty application atomically replaces the tab/page's private
+Every transaction and callback carries a generation-bound application token.
+Staged artifacts remain unpublished, token-matched cleanup cannot remove a
+newer published owner, and explicit current lifecycle invalidation is the only
+operation that force-clears that owner. Successful nonempty application
+atomically replaces the tab/page's private
 named CSS highlight with all DOM occurrences of every unique supplied literal,
 using CSS system mark colors, then selects and scrolls the DOM range mapped from
 the first ordered plan item. Literal grouping follows the retained match-case

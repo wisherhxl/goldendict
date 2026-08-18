@@ -6,6 +6,11 @@
 #include <QUrl>
 #include <QWebEngineView>
 
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <vector>
+
 #include "article_page.h"
 
 namespace goldendict::core {
@@ -46,6 +51,20 @@ struct ArticleContext {
     bool has_image_content = false;
 };
 
+struct ArticleHighlightRange {
+    std::size_t byte_offset = 0U;
+    std::size_t byte_length = 0U;
+    QString literal;
+};
+
+struct ArticleHighlightResult {
+    QString token;
+    bool applied = false;
+    int occurrence_count = 0;
+    int ordered_count = 0;
+    int current_position = -1;
+};
+
 class ArticleView final : public QWebEngineView {
     Q_OBJECT
 
@@ -68,6 +87,13 @@ class ArticleView final : public QWebEngineView {
         const ArticleDictionaryContextSnapshot& snapshot, int entry_index);
     void TriggerDictionaryContextOverflowForTest(
         const ArticleDictionaryContextSnapshot& snapshot);
+    void ApplyFullTextHighlights(
+        const QString& token, const QString& rendered_text,
+        const std::vector<ArticleHighlightRange>& ordered_ranges,
+        bool match_case,
+        std::function<void(ArticleHighlightResult)> completion);
+    void ClearFullTextHighlights(const QString& expected_token,
+                                 bool clear_current_owner = false);
 
    signals:
     void LinkRequested(const QUrl& url, ArticleLinkDisposition disposition);

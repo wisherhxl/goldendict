@@ -60,6 +60,7 @@
 #include <QWebEngineFindTextResult>
 #include <QWebEngineHistory>
 #include <QWebEngineProfile>
+#include <QWebEngineScript>
 #include <QWebEngineView>
 #include <QWidget>
 
@@ -7036,6 +7037,160 @@ void MainWindow::RunFullTextDialogSmokeCheck(
             query_->selectedText() == selected_text_before_rejection &&
             status_->text() == QStringLiteral("Unable to update article state");
     }
+    auto run_highlight_smoke = [this, &wait_for]() {
+        bool highlight_passed = true;
+        auto* highlight_view = new ArticleView;
+        bool highlight_loaded = false;
+        connect(
+            highlight_view, &QWebEngineView::loadFinished, this,
+            [&highlight_loaded](bool ok) { highlight_loaded = ok; },
+            Qt::SingleShotConnection);
+        const QString highlight_html = QStringLiteral(
+            "<!doctype html><html><body><a id='kept' "
+            "href='goldendict://lookup/x'>"
+            "Alpha <span>Be</span><span>ta</span> alpha "
+            "Beta</a></body></html>");
+        highlight_view->setHtml(highlight_html);
+        highlight_passed = highlight_passed && wait_for([&highlight_loaded]() {
+                               return highlight_loaded;
+                           });
+        QString highlight_text;
+        bool highlight_text_ready = false;
+        highlight_view->page()->toPlainText(
+            [&highlight_text, &highlight_text_ready](const QString& text) {
+                highlight_text = text;
+                highlight_text_ready = true;
+            });
+        highlight_passed =
+            highlight_passed && wait_for([&highlight_text_ready]() {
+                return highlight_text_ready;
+            });
+        const qsizetype first_beta =
+            highlight_text.indexOf(QStringLiteral("Beta"));
+        const qsizetype first_alpha =
+            highlight_text.indexOf(QStringLiteral("Alpha"));
+        std::vector<ArticleHighlightRange> highlight_ranges;
+        if (first_beta >= 0 && first_alpha >= 0) {
+            highlight_ranges.push_back(
+                {static_cast<std::size_t>(
+                     highlight_text.left(first_beta).toUtf8().size()),
+                 std::size_t{4}, QStringLiteral("Beta")});
+            highlight_ranges.push_back(
+                {static_cast<std::size_t>(
+                     highlight_text.left(first_alpha).toUtf8().size()),
+                 std::size_t{5}, QStringLiteral("Alpha")});
+        }
+        ArticleHighlightResult generation_a;
+        bool generation_a_ready = false;
+        highlight_view->ApplyFullTextHighlights(
+            QStringLiteral("smoke-generation-a"), highlight_text,
+            highlight_ranges, false,
+            [&generation_a,
+             &generation_a_ready](ArticleHighlightResult result) {
+                generation_a = std::move(result);
+                generation_a_ready = true;
+            });
+        highlight_passed =
+            highlight_passed &&
+            wait_for([&generation_a_ready]() { return generation_a_ready; }) &&
+            generation_a.applied && generation_a.ordered_count == 2 &&
+            generation_a.occurrence_count == 4 &&
+            generation_a.current_position == 0;
+
+        ArticleHighlightResult generation_b;
+        bool generation_b_ready = false;
+        highlight_view->ApplyFullTextHighlights(
+            QStringLiteral("smoke-generation-b"), highlight_text,
+            highlight_ranges, false,
+            [&generation_b,
+             &generation_b_ready](ArticleHighlightResult result) {
+                generation_b = std::move(result);
+                generation_b_ready = true;
+            });
+        highlight_passed =
+            highlight_passed &&
+            wait_for([&generation_b_ready]() { return generation_b_ready; }) &&
+            generation_b.applied;
+        highlight_view->ClearFullTextHighlights(
+            QStringLiteral("smoke-generation-a"));
+
+        ArticleHighlightResult stale_failure;
+        bool stale_failure_ready = false;
+        auto invalid_ranges = highlight_ranges;
+        if (!invalid_ranges.empty())
+            invalid_ranges.front().literal = QStringLiteral("mismatch");
+        highlight_view->ApplyFullTextHighlights(
+            QStringLiteral("smoke-generation-a-failed"), highlight_text,
+            invalid_ranges, false,
+            [&stale_failure,
+             &stale_failure_ready](ArticleHighlightResult result) {
+                stale_failure = std::move(result);
+                stale_failure_ready = true;
+            });
+        highlight_passed = highlight_passed &&
+                           wait_for([&stale_failure_ready]() {
+                               return stale_failure_ready;
+                           }) &&
+                           !stale_failure.applied;
+
+        QVariantMap highlight_snapshot;
+        bool highlight_snapshot_ready = false;
+        highlight_view->page()->runJavaScript(
+            QStringLiteral(R"JS(
+(() => {
+  const state = globalThis.__goldendictFullTextHighlightState;
+  const published = state && state.published;
+  const selection = window.getSelection();
+  return {
+    token: published ? published.token : '',
+    ordered: published ? published.ordered.length : -1,
+    position: published ? published.position : -1,
+    occurrences: published ? published.highlight.size : -1,
+    selected: selection ? selection.toString() : '',
+    styled: published ? document.adoptedStyleSheets.includes(published.sheet) &&
+        published.sheet.cssRules.length === 1 &&
+        published.sheet.cssRules[0].cssText.toLowerCase().includes('highlight') : false,
+    registryOwned: published ?
+        CSS.highlights.get('goldendict-full-text-match') === published.highlight : false,
+    body: document.body.innerHTML,
+    link: document.getElementById('kept').getAttribute('href'),
+    spans: document.querySelectorAll('span').length
+  };
+})()
+)JS"),
+            QWebEngineScript::ApplicationWorld,
+            [&highlight_snapshot,
+             &highlight_snapshot_ready](const QVariant& value) {
+                highlight_snapshot = value.toMap();
+                highlight_snapshot_ready = true;
+            });
+        highlight_passed =
+            highlight_passed && wait_for([&highlight_snapshot_ready]() {
+                return highlight_snapshot_ready;
+            }) &&
+            highlight_snapshot.value(QStringLiteral("token")).toString() ==
+                QStringLiteral("smoke-generation-b") &&
+            highlight_snapshot.value(QStringLiteral("ordered")).toInt() == 2 &&
+            highlight_snapshot.value(QStringLiteral("position")).toInt() == 0 &&
+            highlight_snapshot.value(QStringLiteral("occurrences")).toInt() ==
+                4 &&
+            highlight_snapshot.value(QStringLiteral("selected")).toString() ==
+                QStringLiteral("Beta") &&
+            highlight_snapshot.value(QStringLiteral("styled")).toBool() &&
+            highlight_snapshot.value(QStringLiteral("registryOwned"))
+                .toBool() &&
+            highlight_snapshot.value(QStringLiteral("link")).toString() ==
+                QStringLiteral("goldendict://lookup/x") &&
+            highlight_snapshot.value(QStringLiteral("spans")).toInt() == 2 &&
+            highlight_snapshot.value(QStringLiteral("body"))
+                .toString()
+                .contains(QStringLiteral("<span>Be</span><span>ta</span>"));
+        highlight_view->ClearFullTextHighlights(
+            QStringLiteral("smoke-generation-b"));
+        highlight_view->deleteLater();
+        return highlight_passed;
+    };
+
     facade_ = capturing_facade.inner_;
     auto* search_button =
         first->findChild<QPushButton*>(QStringLiteral("fullTextSearchButton"));
@@ -7184,6 +7339,7 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     disconnect(session_connection);
     disconnect(lookup_connection);
     disconnect(geometry_connection);
+    passed = passed && run_highlight_smoke();
     const auto teardown_tab_id = TabIdAt(article_tabs_->currentIndex());
     if (auto* teardown_view = ArticleViewForTab(teardown_tab_id);
         teardown_view != nullptr &&
@@ -8679,8 +8835,57 @@ void MainWindow::FinishRenderedTextMatchPlan(
         identity.request.rendered_text) {
         return;
     }
-    rendered_text_match_plans_[identity.tab_id] =
-        RenderedTextMatchPlanState{identity, std::move(result)};
+    if (result.error != goldendict::core::RenderedTextMatchPlanError::kNone) {
+        rendered_text_match_plans_[identity.tab_id] =
+            RenderedTextMatchPlanState{
+                identity, std::move(result), QString(), false, 0, -1};
+        return;
+    }
+    const QString application_token =
+        QStringLiteral("goldendict-full-text-%1").arg(generation);
+    std::vector<ArticleHighlightRange> ranges;
+    ranges.reserve(result.ranges.size());
+    for (const auto& range : result.ranges) {
+        ranges.push_back(
+            {range.byte_offset, range.byte_length,
+             QString::fromUtf8(range.literal.data(),
+                               static_cast<qsizetype>(range.literal.size()))});
+    }
+    rendered_text_match_plans_[identity.tab_id] = RenderedTextMatchPlanState{
+        identity, std::move(result), application_token, false, 0, -1};
+    const QString rendered_text = transport->second.text;
+    identity.view->ApplyFullTextHighlights(
+        application_token, rendered_text, ranges, identity.request.match_case,
+        [guarded_window = QPointer<MainWindow>(this), tab_id = identity.tab_id,
+         guarded_view = identity.view, guarded_page = identity.page,
+         application_token](ArticleHighlightResult applied) {
+            if (guarded_window.isNull())
+                return;
+            const auto found =
+                guarded_window->rendered_text_match_plans_.find(tab_id);
+            if (found == guarded_window->rendered_text_match_plans_.end() ||
+                found->second.application_token != application_token ||
+                applied.token != application_token || guarded_view.isNull() ||
+                guarded_page.isNull() ||
+                guarded_window->ArticleViewForTab(tab_id) !=
+                    guarded_view.data() ||
+                guarded_view->page() != guarded_page.data()) {
+                if (!guarded_view.isNull())
+                    guarded_view->ClearFullTextHighlights(application_token);
+                return;
+            }
+            const int expected_ordered =
+                static_cast<int>(found->second.result.ranges.size());
+            if (!applied.applied || applied.ordered_count != expected_ordered ||
+                applied.current_position != (expected_ordered == 0 ? -1 : 0)) {
+                guarded_view->ClearFullTextHighlights(application_token);
+                guarded_window->rendered_text_match_plans_.erase(found);
+                return;
+            }
+            found->second.applied = true;
+            found->second.occurrence_count = applied.occurrence_count;
+            found->second.current_position = applied.current_position;
+        });
 }
 
 void MainWindow::InvalidateRenderedTextMatchPlan(
@@ -8689,10 +8894,26 @@ void MainWindow::InvalidateRenderedTextMatchPlan(
     pending_rendered_text_match_plan_.reset();
     if (rendered_text_match_plan_controller_ != nullptr)
         rendered_text_match_plan_controller_->Cancel();
-    if (tab_id.has_value())
+    if (tab_id.has_value()) {
+        const auto found = rendered_text_match_plans_.find(*tab_id);
+        if (found != rendered_text_match_plans_.end() &&
+            !found->second.application_token.isEmpty() &&
+            !found->second.identity.view.isNull()) {
+            found->second.identity.view->ClearFullTextHighlights(
+                found->second.application_token, true);
+        }
         rendered_text_match_plans_.erase(*tab_id);
-    else
+    } else {
+        for (const auto& [id, state] : rendered_text_match_plans_) {
+            static_cast<void>(id);
+            if (!state.application_token.isEmpty() &&
+                !state.identity.view.isNull()) {
+                state.identity.view->ClearFullTextHighlights(
+                    state.application_token, true);
+            }
+        }
         rendered_text_match_plans_.clear();
+    }
 }
 
 void MainWindow::RefreshArticleSearch() {

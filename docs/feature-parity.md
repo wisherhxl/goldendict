@@ -1096,9 +1096,9 @@ thread. Current identity-gated results, including empty plans and typed failures
 are retained only as inert state; stale and lifecycle-invalidated work is silent.
 Existing-target coverage preserves exactly 109 registered Release tests.
 
-### P8-FT-67 private CSS Custom Highlight plan application (selected)
+### P8-FT-67 private CSS Custom Highlight plan application (completed)
 
-The fresh documentation-only audit starts from clean synchronized
+The completed implementation starts from the selected clean synchronized
 migrated/local/upstream/live-remote revision
 `c8bfcd77e01a243e3b565ebc818151c2255a0a2c` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-67 supersedes P8-FT-66's
@@ -1119,7 +1119,9 @@ supplied literal with system mark colors, selects and scrolls the range mapped
 from the first ordered plan item, and retains the separately mapped ordered
 generation-bound ranges at position zero for later navigation.
 
-Empty success removes the private highlight. Unsupported capability, mapping
+Generation-bound application tokens own staged and published artifacts, so an
+older success or failure cannot clear a newer published generation. Empty
+success removes the private highlight. Unsupported capability, mapping
 or literal mismatch, script failure, staleness and every existing lifecycle
 invalidation remove partial private artifacts and publish no applied state.
 The script does not rematch the query, reinterpret Core semantics or consume

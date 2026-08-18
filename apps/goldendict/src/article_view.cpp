@@ -8,6 +8,9 @@
 #include <QClipboard>
 #include <QContextMenuEvent>
 #include <QHash>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPointer>
@@ -19,6 +22,8 @@
 
 namespace {
 
+constexpr auto kFullTextHighlightName = "goldendict-full-text-match";
+
 QString DisplaySelection(QString text) {
     text = text.trimmed();
     if (text.isRightToLeft()) {
@@ -29,6 +34,228 @@ QString DisplaySelection(QString text) {
 }
 
 }  // namespace
+
+void ArticleView::ApplyFullTextHighlights(
+    const QString& token, const QString& rendered_text,
+    const std::vector<ArticleHighlightRange>& ordered_ranges, bool match_case,
+    std::function<void(ArticleHighlightResult)> completion) {
+    if (page() == nullptr || token.isEmpty()) {
+        completion({token});
+        return;
+    }
+    QJsonArray ranges;
+    for (const auto& range : ordered_ranges) {
+        ranges.append(QJsonObject{
+            {QStringLiteral("offset"),
+             QString::number(static_cast<qulonglong>(range.byte_offset))},
+            {QStringLiteral("length"),
+             QString::number(static_cast<qulonglong>(range.byte_length))},
+            {QStringLiteral("literal"), range.literal}});
+    }
+    const QJsonObject payload{{QStringLiteral("token"), token},
+                              {QStringLiteral("text"), rendered_text},
+                              {QStringLiteral("matchCase"), match_case},
+                              {QStringLiteral("ranges"), ranges}};
+    const QString encoded = QString::fromLatin1(
+        QJsonDocument(payload).toJson(QJsonDocument::Compact).toBase64());
+    const QString script =
+        QStringLiteral(R"JS(
+(() => {
+  const payload = JSON.parse(new TextDecoder().decode(
+      Uint8Array.from(atob('%1'), c => c.charCodeAt(0))));
+  const token = payload.token;
+  const name = '%2';
+  const stateKey = '__goldendictFullTextHighlightState';
+  const prior = globalThis[stateKey] || {published: null};
+  globalThis[stateKey] = prior;
+  const fail = () => ({token, applied: false, occurrenceCount: 0,
+                        orderedCount: 0, currentPosition: -1});
+  try {
+    if (!globalThis.CSS || !CSS.highlights ||
+        typeof globalThis.Highlight !== 'function' ||
+        typeof globalThis.Range !== 'function' ||
+        typeof globalThis.TextEncoder !== 'function' ||
+        typeof globalThis.NodeFilter === 'undefined' ||
+        !document.createTreeWalker || !window.getSelection ||
+        typeof globalThis.CSSStyleSheet !== 'function' ||
+        !('adoptedStyleSheets' in document)) return fail();
+
+    const nodes = [];
+    let domText = '';
+    const walker = document.createTreeWalker(
+        document.body || document.documentElement, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      nodes.push({node, start: domText.length, end: domText.length + node.data.length});
+      domText += node.data;
+    }
+    const encoder = new TextEncoder();
+    const byteToCodeUnit = byteText => {
+      const wanted = BigInt(byteText);
+      if (wanted < 0n) return null;
+      let bytes = 0n;
+      for (let index = 0; index <= payload.text.length; ++index) {
+        if (bytes === wanted) return index;
+        if (index === payload.text.length) break;
+        const code = payload.text.codePointAt(index);
+        const width = code > 0xffff ? 2 : 1;
+        bytes += BigInt(encoder.encode(payload.text.slice(index, index + width)).length);
+        index += width - 1;
+      }
+      return null;
+    };
+    const boundary = offset => {
+      if (offset === domText.length && nodes.length)
+        return [nodes[nodes.length - 1].node, nodes[nodes.length - 1].node.data.length];
+      const found = nodes.find(item => offset >= item.start && offset < item.end);
+      return found ? [found.node, offset - found.start] : null;
+    };
+    const makeRange = (start, end) => {
+      const first = boundary(start);
+      const last = boundary(end);
+      if (!first || !last) return null;
+      const range = new Range();
+      range.setStart(first[0], first[1]);
+      range.setEnd(last[0], last[1]);
+      return range;
+    };
+
+    const ordered = [];
+    for (const supplied of payload.ranges) {
+      const start = byteToCodeUnit(supplied.offset);
+      const length = BigInt(supplied.length);
+      const end = start === null ? null : byteToCodeUnit(
+          (BigInt(supplied.offset) + length).toString());
+      if (start === null || end === null || end <= start ||
+          payload.text.slice(start, end) !== supplied.literal) return fail();
+      const renderedHaystack = payload.matchCase ? payload.text : payload.text.toLowerCase();
+      const domHaystack = payload.matchCase ? domText : domText.toLowerCase();
+      const needle = payload.matchCase ? supplied.literal : supplied.literal.toLowerCase();
+      let ordinal = 0;
+      for (let found = renderedHaystack.indexOf(needle); found !== -1 && found < start;
+           found = renderedHaystack.indexOf(needle, found + Math.max(needle.length, 1))) {
+        ++ordinal;
+      }
+      let domStart = -1;
+      for (let index = 0; index <= ordinal; ++index) {
+        domStart = domHaystack.indexOf(needle, domStart + 1);
+        if (domStart === -1) return fail();
+      }
+      const range = makeRange(domStart, domStart + supplied.literal.length);
+      const mapped = range ? range.toString() : '';
+      if (!range || (payload.matchCase ? mapped !== supplied.literal
+                                      : mapped.toLowerCase() !== needle)) return fail();
+      ordered.push(range);
+    }
+
+    if (!ordered.length) {
+      if (prior.published && prior.published.token === token) {
+        if (CSS.highlights.get(name) === prior.published.highlight)
+          CSS.highlights.delete(name);
+        document.adoptedStyleSheets = document.adoptedStyleSheets.filter(
+            sheet => sheet !== prior.published.sheet);
+        prior.published = null;
+      }
+      return {token, applied: true, occurrenceCount: 0,
+              orderedCount: 0, currentPosition: -1};
+    }
+
+    const literals = [];
+    const keys = new Set();
+    for (const supplied of payload.ranges) {
+      const key = payload.matchCase ? supplied.literal : supplied.literal.toLowerCase();
+      if (!keys.has(key)) { keys.add(key); literals.push(supplied.literal); }
+    }
+    const occurrenceRanges = [];
+    const haystack = payload.matchCase ? domText : domText.toLowerCase();
+    for (const literal of literals) {
+      const needle = payload.matchCase ? literal : literal.toLowerCase();
+      if (!needle.length) return fail();
+      for (let start = 0; (start = haystack.indexOf(needle, start)) !== -1;
+           start += Math.max(needle.length, 1)) {
+        const range = makeRange(start, start + literal.length);
+        if (!range) return fail();
+        occurrenceRanges.push(range);
+      }
+    }
+    const highlight = new Highlight(...occurrenceRanges);
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync('::highlight(' + name +
+        ') { background-color: Highlight; color: HighlightText; }');
+    const selection = window.getSelection();
+    if (!selection) return fail();
+
+    const published = {token, highlight, sheet, ordered, position: 0};
+    const old = prior.published;
+    CSS.highlights.set(name, highlight);
+    document.adoptedStyleSheets = document.adoptedStyleSheets
+        .filter(candidate => !old || candidate !== old.sheet).concat(sheet);
+    selection.removeAllRanges();
+    selection.addRange(ordered[0]);
+    const rect = ordered[0].getBoundingClientRect();
+    window.scrollTo({top: window.scrollY + rect.top,
+                     left: window.scrollX + rect.left, behavior: 'instant'});
+    prior.published = published;
+    return {token, applied: true, occurrenceCount: occurrenceRanges.length,
+            orderedCount: ordered.length, currentPosition: 0};
+  } catch (_) {
+    return fail();
+  }
+})()
+)JS")
+            .arg(encoded, QString::fromLatin1(kFullTextHighlightName));
+    page()->runJavaScript(
+        script, QWebEngineScript::ApplicationWorld,
+        [token,
+         completion = std::move(completion)](const QVariant& value) mutable {
+            const QVariantMap result = value.toMap();
+            ArticleHighlightResult applied;
+            applied.token = result.value(QStringLiteral("token")).toString();
+            applied.applied = result.value(QStringLiteral("applied")).toBool();
+            applied.occurrence_count =
+                result.value(QStringLiteral("occurrenceCount"), -1).toInt();
+            applied.ordered_count =
+                result.value(QStringLiteral("orderedCount"), -1).toInt();
+            applied.current_position =
+                result.value(QStringLiteral("currentPosition"), -1).toInt();
+            if (applied.token.isEmpty())
+                applied.token = token;
+            completion(std::move(applied));
+        });
+}
+
+void ArticleView::ClearFullTextHighlights(const QString& expected_token,
+                                          bool clear_current_owner) {
+    if (page() == nullptr)
+        return;
+    const QJsonObject payload{{QStringLiteral("token"), expected_token},
+                              {QStringLiteral("force"), clear_current_owner}};
+    const QString encoded = QString::fromLatin1(
+        QJsonDocument(payload).toJson(QJsonDocument::Compact).toBase64());
+    const QString script =
+        QStringLiteral(R"JS(
+(() => {
+  const request = JSON.parse(new TextDecoder().decode(
+      Uint8Array.from(atob('%1'), c => c.charCodeAt(0))));
+  const state = globalThis.__goldendictFullTextHighlightState;
+  const published = state && state.published;
+  if (!published || (!request.force && published.token !== request.token)) return false;
+  if (CSS.highlights.get('%2') === published.highlight)
+    CSS.highlights.delete('%2');
+  document.adoptedStyleSheets = document.adoptedStyleSheets.filter(
+      sheet => sheet !== published.sheet);
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount && published.ordered.some(range =>
+      range.compareBoundaryPoints(Range.START_TO_START, selection.getRangeAt(0)) === 0 &&
+      range.compareBoundaryPoints(Range.END_TO_END, selection.getRangeAt(0)) === 0)) {
+    selection.removeAllRanges();
+  }
+  state.published = null;
+  return true;
+})()
+)JS")
+            .arg(encoded, QString::fromLatin1(kFullTextHighlightName));
+    page()->runJavaScript(script, QWebEngineScript::ApplicationWorld);
+}
 
 ArticleView::ArticleView(QWidget* parent) : QWebEngineView(parent) {
     connect(this, &QWebEngineView::loadStarted, this, [this]() {

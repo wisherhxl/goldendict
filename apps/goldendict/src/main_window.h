@@ -512,6 +512,10 @@ class MainWindow final : public QMainWindow {
     struct RenderedTextMatchPlanState {
         RenderedTextMatchPlanIdentity identity;
         goldendict::core::RenderedTextMatchPlanResult result;
+        QString application_token;
+        bool applied = false;
+        int occurrence_count = 0;
+        int current_position = -1;
     };
 
     std::uint64_t rendered_text_match_plan_generation_ = 0U;

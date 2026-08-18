@@ -4171,9 +4171,9 @@ teardown. The existing full-text dialog smoke independently covers every
 MainWindow identity gate, duplicate rejection and absence of visible effects.
 No test was registered; the Release baseline remains exactly 109.
 
-### P8-FT-67 private CSS Custom Highlight plan application acceptance (selected)
+### P8-FT-67 private CSS Custom Highlight plan application acceptance (completed)
 
-The fresh documentation-only audit starts from clean synchronized
+The completed implementation starts from the selected clean synchronized
 migrated/local/upstream/live-remote revision
 `c8bfcd77e01a243e3b565ebc818151c2255a0a2c` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-67 supersedes P8-FT-66's
@@ -4195,7 +4195,10 @@ the private highlight and state. The test must also prove system mark styling,
 no wrapper insertion or text-node normalization, and unchanged article links,
 markup and ordinary find-in-page behavior.
 
-Capability-probe failure, rendered-text/DOM or literal mismatch, JavaScript
+Coverage also pins token ownership: delayed generation A success/failure and
+token-scoped cleanup after generation B publication leave B's highlight,
+stylesheet, selection and ordered position intact. Capability-probe failure,
+rendered-text/DOM or literal mismatch, JavaScript
 failure and partial construction must leave no private registry entry,
 selection or applied state. Existing generation/query-policy, lookup, search,
 navigation, tab, view and page identity gates must be rechecked at asynchronous
