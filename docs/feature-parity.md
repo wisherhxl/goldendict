@@ -676,6 +676,45 @@ full-text Preferences remain blocked on a separately evidenced Core lifecycle/
 policy boundary. The exactly 109-test Release baseline is preserved. P8-FT-56
 completion unlocks only a fresh independent bounded full-text readiness audit.
 
+P8-FT-57 is the sole leaf selected by the fresh independent bounded
+post-P8-FT-56 audit from clean synchronized migrated revision
+`491d85500d27df280c19d4a62a2adc9e14d55a33` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It translates only
+the existing private mixed-result status through
+`goldendict::app::FullTextSearchDialog`, retaining exact source and fallback
+text `Some dictionaries could not be searched`.
+
+P8-FT-25 already owns `fullTextMixedResultResponseStatus`, its exact text, and
+its generation-current result-plus-error visibility and partial-status
+coexistence predicates. Current `full_text_search_dialog.cpp` still uses
+`QStringLiteral`; P8-FT-52 through P8-FT-56 establish the exact dialog-owned
+translation context and scoped-translator pattern. Pinned legacy contains no
+equivalent mixed-result status or conflicting contract, so no architecture or
+product choice remains.
+
+The future P8-FT-57 implementation dependency is exactly
+`apps/goldendict/src/full_text_search_dialog.cpp` and
+`apps/goldendict/tests/full_text_search_dialog_test.cpp`. It is limited to
+dialog-owned `tr("Some dictionaries could not be searched")` and focused
+coverage for exact-context replacement, English fallback, stable identity and
+text, unchanged visibility and lifecycle safety, and translator cleanup. The
+Shared-Library and GUI Boundary applies. Catalogs, locale loading, executables,
+registrations, public/Core/configuration/index-format/dependency/build/
+composition-root/ABI/installed interfaces, and the exactly 109-test Release
+baseline remain unchanged.
+
+Completed translations `Full-text search`, `Search`,
+`Results may be incomplete.`, `No matches`, and `Full-text search failed`
+remain exact. The locked caption/control policies remain `Maximum word
+distance` with `0..1000` and `Maximum articles per dictionary` with
+`1..100000`. Index readiness/status/progress/rebuild/failure reporting/
+background lifecycle and full-text Preferences remain blocked on separately
+evidenced Core lifecycle/policy work. Exact-document navigation,
+result/match/excerpt presentation, ignore-diacritics consumption,
+adapters/index formats, accessibility, styling/layout, catalogs, and unrelated
+parity remain independent and unranked. No successor after P8-FT-57 is
+selected, ranked, recommended, or named.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

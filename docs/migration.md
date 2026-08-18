@@ -4793,6 +4793,51 @@ lifecycle/policy boundary. The completed leaf has the exact six-file scope and
 preserves exactly 109 registered Release tests. P8-FT-56 completion unlocks
 only a fresh independent bounded full-text readiness audit.
 
+### Phase 8 full-text mixed-result-status translation (selected)
+
+The fresh independent bounded post-P8-FT-56 audit is pinned to clean
+synchronized migrated HEAD, local branch, upstream, and live remote at
+`491d85500d27df280c19d4a62a2adc9e14d55a33`, plus unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It re-evaluates
+every remaining visible and private full-text gap and selects exactly one
+smallest independently evidence-ready leaf, P8-FT-57: translate the existing
+private mixed-result status through the dialog's translation context.
+
+Completed P8-FT-25 owns the unique `fullTextMixedResultResponseStatus`, exact
+source and fallback text `Some dictionaries could not be searched`, and the
+generation-current result-plus-error visibility contract without raw error
+details. Current `full_text_search_dialog.cpp` still constructs the label with
+`QStringLiteral`; P8-FT-52 through P8-FT-56 supply the exact private
+`goldendict::app::FullTextSearchDialog` context and scoped-translator test
+pattern. Pinned legacy has no equivalent mixed-result status or conflicting
+translation contract. No unresolved architecture or product choice remains.
+
+The future P8-FT-57 implementation dependency is exactly
+`apps/goldendict/src/full_text_search_dialog.cpp` and
+`apps/goldendict/tests/full_text_search_dialog_test.cpp`. It changes only the
+label construction to dialog-owned
+`tr("Some dictionaries could not be searched")` and extends focused coverage
+for exact-context replacement, English fallback, stable identity/text,
+unchanged P8-FT-25 visibility and partial-status coexistence, lifecycle safety,
+and scoped translator cleanup. It adds no catalog, locale loader, executable,
+registered test, public/Core/configuration/index-format/dependency/build/
+composition-root/ABI/installed-interface change.
+
+The Shared-Library and GUI Boundary governs. Completed translations
+`Full-text search`, `Search`, `Results may be incomplete.`, `No matches`, and
+`Full-text search failed` remain exact. Locked policies remain `Maximum word
+distance` with control-owned `0..1000` and `Maximum articles per dictionary`
+with control-owned `1..100000`. The Release baseline remains exactly 109
+registered tests.
+
+Index readiness/status/progress/rebuild/failure reporting/background lifecycle
+and full-text Preferences remain blocked on a separate fully evidenced Core
+lifecycle/policy boundary. Exact-document navigation, result/match/excerpt
+presentation, ignore-diacritics consumption, adapters/index formats,
+accessibility, styling/layout, catalogs, and unrelated parity remain independent
+and unranked. This documentation-only audit omits compiled gates. No successor
+after P8-FT-57 is selected, ranked, recommended, or named.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

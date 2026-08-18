@@ -3694,6 +3694,50 @@ reporting/background lifecycle and full-text Preferences remain blocked on a
 separate fully evidenced Core lifecycle/policy boundary. P8-FT-56 completion
 unlocks only a fresh independent bounded full-text readiness audit.
 
+## Phase 8 Full-Text Mixed-Result-Status Translation Selection
+
+P8-FT-57 is the sole leaf selected by the fresh independent bounded
+post-P8-FT-56 audit from clean synchronized migrated revision
+`491d85500d27df280c19d4a62a2adc9e14d55a33` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-25 already
+owns the unique `fullTextMixedResultResponseStatus`, exact source and fallback
+text `Some dictionaries could not be searched`, and its generation-current
+result-plus-error visibility, authoritative-partial coexistence, and no-raw-
+detail contract. Current construction still uses `QStringLiteral`; P8-FT-52
+through P8-FT-56 establish the exact
+`goldendict::app::FullTextSearchDialog` translation context and focused scoped-
+translator pattern. Pinned legacy has no equivalent status or conflicting
+translation contract.
+
+The future P8-FT-57 implementation dependency is exactly
+`apps/goldendict/src/full_text_search_dialog.cpp` and
+`apps/goldendict/tests/full_text_search_dialog_test.cpp`. Focused coverage must
+prove dialog-owned `tr("Some dictionaries could not be searched")` replacement
+through the exact context, English fallback after scoped cleanup, stable widget
+identity and text, unchanged initial/replacement/result-free/error-free/
+result-plus-error predicates, unchanged coexistence with the partial status,
+and stale/cancelled/detached/replaced-service/teardown safety. No executable or
+test registration is added.
+
+The Shared-Library and GUI Boundary applies. Public/Core/configuration/index-
+format/dependency/build/composition-root/ABI/installed interfaces, catalogs,
+locale loading, and exactly 109 registered Release tests remain unchanged.
+Completed translations `Full-text search`, `Search`,
+`Results may be incomplete.`, `No matches`, and `Full-text search failed`
+remain exact. Locked policies remain `Maximum word distance` with control-owned
+`0..1000` and `Maximum articles per dictionary` with control-owned `1..100000`.
+
+Index readiness/status/progress/rebuild/failure reporting/background lifecycle
+and full-text Preferences remain blocked on a separate fully evidenced Core
+lifecycle/policy boundary. Exact-document navigation, result/match/excerpt
+presentation, ignore-diacritics consumption, adapters/index formats,
+accessibility, styling/layout, catalogs, and unrelated parity remain independent
+and unranked. Compiled gates are omitted for this four-document-only audit.
+Validation is the exact four-file allowlist, cross-document/current/legacy
+evidence, locked policies, Phase terminology, no-successor language, exact
+refs/remotes and clean worktrees, and `git diff --check`. No successor after
+P8-FT-57 is selected, ranked, recommended, or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
