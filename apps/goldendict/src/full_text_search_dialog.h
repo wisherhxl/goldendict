@@ -37,6 +37,7 @@ struct FullTextResultActivationIntent final {
     bool match_case = false;
     bool ignore_word_order = false;
     std::optional<std::uint32_t> maximum_word_distance;
+    std::uint64_t accepted_query_generation = 0U;
 };
 
 class FullTextQueryComposer;
@@ -62,6 +63,7 @@ class FullTextSearchDialog final : public QDialog {
    signals:
     void HelpRequested();
     void ResultActivationRequested(FullTextResultActivationIntent intent);
+    void AcceptedQueryInvalidated();
     void GeometryCaptured(std::string geometry);
 
    protected:
@@ -126,6 +128,7 @@ class FullTextSearchDialog final : public QDialog {
     std::optional<ActivationScope> accepted_activation_scope_;
     std::optional<ActivationContext> pending_activation_context_;
     std::optional<ActivationContext> accepted_activation_context_;
+    std::optional<std::uint64_t> accepted_query_generation_;
     std::optional<std::uint64_t> active_generation_;
     std::uint64_t generation_ = 0U;
     bool geometry_captured_ = false;

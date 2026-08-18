@@ -5159,7 +5159,7 @@ successor after P8-FT-63 is selected, ranked, recommended, or named.
 Completion unlocks only the private accepted-query article-highlighting
 context dependency boundary.
 
-### Phase 8 rendered-page text extraction transport prerequisite (selected)
+### Phase 8 rendered-page text extraction transport prerequisite (complete)
 
 The fresh independent bounded documentation-only audit starts from synchronized
 migrated HEAD, upstream, and live remote revision
@@ -5170,7 +5170,7 @@ result list headword-only, preserves the dictionary-name tooltip, and targets
 article-page highlighting, first-match selection, and Previous/Next navigation
 without advancing ignore-diacritics behavior.
 
-The audit selects exactly P8-FT-64, the smallest independently implementable
+P8-FT-64 completes the smallest independently implementable
 prerequisite: privately transport the successfully loaded article page's plain
 rendered text through Qt WebEngine's asynchronous extraction boundary. Current
 `main_window.cpp:7976-8110` generation- and view-gates exact-result article
@@ -5203,13 +5203,16 @@ shape is a separate architecture decision. P8-FT-64 selects no such interface
 and no matching, DOM/literal application, highlight-all, first-selection, or
 Previous/Next implementation.
 
-P8-FT-64 changes only future private Widgets transport and focused existing GUI
-smoke coverage. It changes no public or installed API/ABI, Core DTO, C API,
+P8-FT-64 changes only private Widgets transport and focused existing GUI smoke
+coverage. The accepted query generation is carried by value, and successful
+current exact-result loads retain rendered text only while tab, view, page,
+lookup/search generations, and navigation identity remain current. It changes
+no public or installed API/ABI, Core DTO, C API,
 configuration, persistence, index format, adapter, dependency, build, catalog,
 locale loader, translation, generated file, executable, or test registration.
 All completed P8-FT behavior, locked strings/captions/ranges, and exactly 109
 registered Release tests remain unchanged. No successor after P8-FT-64 is
-selected, ranked, recommended, or named. Completion will unlock only the
+selected, ranked, recommended, or named. Completion unlocks only the
 generation-safe rendered-page text extraction dependency boundary.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

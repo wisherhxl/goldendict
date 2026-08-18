@@ -45,6 +45,7 @@ class QToolBar;
 class QToolButton;
 class QUrl;
 class QWebEngineView;
+class QWebEnginePage;
 class QPrinter;
 class QShortcut;
 class FavoritesTreeWidget;
@@ -303,6 +304,12 @@ class MainWindow final : public QMainWindow {
     void DispatchArticleSearch(goldendict::core::ArticleTabId tab_id,
                                ArticleView* view, const QString& text,
                                std::uint64_t generation, bool backwards);
+    void ExtractRenderedPageText(goldendict::core::ArticleTabId tab_id,
+                                 ArticleView* view,
+                                 std::uint64_t accepted_query_generation,
+                                 std::uint64_t lookup_generation,
+                                 std::uint64_t search_generation,
+                                 std::uint64_t navigation_generation);
     void RefreshArticleSearch();
     void StartSuggestionLookup();
     void FinishSuggestionLookup(goldendict::core::ArticleTabId tab_id,
@@ -438,6 +445,7 @@ class MainWindow final : public QMainWindow {
         QString query;
         QString status;
         std::uint64_t generation = 0U;
+        std::uint64_t accepted_query_generation = 0U;
     };
 
     std::map<goldendict::core::ArticleTabId, ArticleSearchPresentation>
@@ -454,10 +462,26 @@ class MainWindow final : public QMainWindow {
         bool ignore_word_order = false;
         std::optional<std::uint32_t> maximum_word_distance;
         bool ignore_diacritics = false;
+        std::uint64_t accepted_query_generation = 0U;
     };
 
     std::map<goldendict::core::ArticleTabId, PendingArticleSearchHandoff>
         pending_article_search_handoffs_;
+
+    struct RenderedPageTextTransport {
+        QString text;
+        std::uint64_t accepted_query_generation = 0U;
+        std::uint64_t lookup_generation = 0U;
+        std::uint64_t search_generation = 0U;
+        std::uint64_t navigation_generation = 0U;
+        QPointer<ArticleView> view;
+        QPointer<QWebEnginePage> page;
+    };
+
+    std::map<goldendict::core::ArticleTabId, std::uint64_t>
+        article_navigation_generations_;
+    std::map<goldendict::core::ArticleTabId, RenderedPageTextTransport>
+        rendered_page_text_transports_;
     std::map<goldendict::core::ArticleTabId, QPointF>
         pending_article_scroll_restorations_;
 

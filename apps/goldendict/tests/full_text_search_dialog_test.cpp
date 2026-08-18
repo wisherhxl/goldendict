@@ -733,6 +733,7 @@ void CompareIntent(
         QCOMPARE(actual.ignore_word_order, expected_ignore_word_order);
         QCOMPARE(actual.maximum_word_distance, expected_maximum_word_distance);
     }
+    QVERIFY(actual.accepted_query_generation != 0U);
 }
 
 }  // namespace
@@ -2360,6 +2361,7 @@ void FullTextSearchDialogTest::
         .accepted_activation_context_ = FullTextSearchDialog::ActivationContext{
         "first-query", false, goldendict::core::FullTextQueryMode::kWholeWords,
         false,         false, std::nullopt};
+    dialog.accepted_query_generation_ = 17U;
 
     std::vector<FullTextResultActivationIntent> activations;
     connect(&dialog, &FullTextSearchDialog::ResultActivationRequested, &dialog,
@@ -2387,6 +2389,7 @@ void FullTextSearchDialogTest::
     replacement.results.push_back(MakeResult("replacement", "replacement", 2U));
     dialog.accepted_activation_scope_.reset();
     dialog.accepted_activation_context_.reset();
+    dialog.accepted_query_generation_.reset();
     model->Reset(replacement);
     dialog.ActivateResult(stale);
     QCOMPARE(activations.size(), std::size_t{1});
@@ -2409,9 +2412,11 @@ void FullTextSearchDialogTest::
             false,
             false,
             std::nullopt};
+    dialog.accepted_query_generation_ = 29U;
     dialog.ActivateResult(replacement_index);
     QCOMPARE(activations.size(), std::size_t{2});
     const auto copied = activations.back();
+    QCOMPARE(copied.accepted_query_generation, 29U);
     model->Reset({});
     model->Reset(replacement);
     model->Reset({});
@@ -2710,6 +2715,7 @@ void FullTextSearchDialogTest::
     QCOMPARE(dialog.accepted_activation_scope_->dictionary_ids,
              ordered_scope.dictionary_ids);
     QVERIFY(dialog.accepted_activation_context_.has_value());
+    QVERIFY(dialog.accepted_query_generation_.has_value());
     QCOMPARE(dialog.accepted_activation_context_->query_text,
              std::string(u8"ordered café"));
     QVERIFY(dialog.accepted_activation_context_->ignore_diacritics);
@@ -2748,12 +2754,15 @@ void FullTextSearchDialogTest::
     activations.back().match_case = false;
     activations.back().ignore_word_order = false;
     activations.back().maximum_word_distance.reset();
+    activations.back().accepted_query_generation = 0U;
     dialog.ActivateResult(ordered_index);
     QCOMPARE(activations.size(), std::size_t{2});
     CompareIntent(activations.back(), ordered_result, true,
                   ordered_scope.dictionary_ids, u8"ordered café", true,
                   goldendict::core::FullTextQueryMode::kPlainText, true, true,
                   17U, true);
+    QCOMPARE(activations.back().accepted_query_generation,
+             *dialog.accepted_query_generation_);
 
     dialog.InitializeQuery(QStringLiteral("blocked"));
     dialog.SubmitSearch();
@@ -2763,6 +2772,7 @@ void FullTextSearchDialogTest::
     QCOMPARE(model->rowCount(), 0);
     QVERIFY(!dialog.accepted_activation_scope_.has_value());
     QVERIFY(!dialog.accepted_activation_context_.has_value());
+    QVERIFY(!dialog.accepted_query_generation_.has_value());
     dialog.ActivateResult(ordered_index);
     QCOMPARE(activations.size(), std::size_t{2});
     dialog.CancelSearch();

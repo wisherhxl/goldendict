@@ -18,6 +18,7 @@
 #include <QDir>
 #include <QDockWidget>
 #include <QElapsedTimer>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -5099,6 +5100,8 @@ void MainWindow::RunDictionaryBrowserExportSmokeCheck(
 
 MainWindow::~MainWindow() {
     qApp->removeEventFilter(this);
+    rendered_page_text_transports_.clear();
+    article_navigation_generations_.clear();
     if (full_text_search_dialog_ != nullptr)
         full_text_search_dialog_->DetachController();
     StopSuggestionWorker();
@@ -5137,6 +5140,13 @@ ArticleView* MainWindow::CreateArticleView(
     page->SetFacade(facade_);
     page->SetOpenNewTabsInBackground(preferences_.open_new_tabs_in_background);
     view->setPage(page);
+    article_navigation_generations_.try_emplace(tab_id, 0U);
+    connect(view, &QWebEngineView::loadStarted, this, [this, tab_id, view]() {
+        if (ArticleViewForTab(tab_id) != view)
+            return;
+        ++article_navigation_generations_[tab_id];
+        rendered_page_text_transports_.erase(tab_id);
+    });
     connect(page, &ArticlePage::LookupRequested, this,
             [this, tab_id](const QString& text, const QString& internal_url,
                            ArticleLinkDisposition disposition) {
@@ -5371,6 +5381,8 @@ void MainWindow::SyncArticleTabs() {
             suggestions_.erase(id);
             article_search_presentations_.erase(id);
             pending_article_search_handoffs_.erase(id);
+            article_navigation_generations_.erase(id);
+            rendered_page_text_transports_.erase(id);
             QWidget* widget = article_tabs_->widget(index);
             article_tabs_->removeTab(index);
             widget->deleteLater();
@@ -5972,6 +5984,19 @@ void MainWindow::ShowFullTextSearch() {
             full_text_search_dialog_,
             &goldendict::app::FullTextSearchDialog::ResultActivationRequested,
             this, &MainWindow::NavigateToFullTextResult);
+        connect(
+            full_text_search_dialog_,
+            &goldendict::app::FullTextSearchDialog::AcceptedQueryInvalidated,
+            this, [this]() {
+                pending_article_search_handoffs_.clear();
+                rendered_page_text_transports_.clear();
+                for (auto& [tab_id, presentation] :
+                     article_search_presentations_) {
+                    static_cast<void>(tab_id);
+                    presentation.accepted_query_generation = 0U;
+                    ++presentation.generation;
+                }
+            });
         connect(full_text_search_dialog_,
                 &goldendict::app::FullTextSearchDialog::GeometryCaptured, this,
                 [this](std::string geometry) {
@@ -5997,6 +6022,8 @@ void MainWindow::NavigateToFullTextResult(
     goldendict::app::FullTextResultActivationIntent intent) {
     if (facade_ == nullptr || full_text_search_dialog_ == nullptr)
         return;
+    rendered_page_text_transports_.erase(
+        TabIdAt(article_tabs_->currentIndex()));
 
     goldendict::core::TabNavigationState navigation;
     navigation.kind = goldendict::core::TabNavigationKind::kLookup;
@@ -6035,6 +6062,7 @@ void MainWindow::NavigateToFullTextResult(
                           static_cast<qsizetype>(intent.query_text.size()));
     search.status.clear();
     const std::uint64_t search_generation = ++search.generation;
+    search.accepted_query_generation = intent.accepted_query_generation;
     pending_article_search_handoffs_[tab_result.tab_id] = {
         search.query,
         lookup_results_[tab_result.tab_id].generation,
@@ -6044,7 +6072,8 @@ void MainWindow::NavigateToFullTextResult(
         intent.match_case,
         intent.ignore_word_order,
         intent.maximum_word_distance,
-        intent.ignore_diacritics};
+        intent.ignore_diacritics,
+        intent.accepted_query_generation};
     if (TabIdAt(article_tabs_->currentIndex()) == tab_result.tab_id)
         RefreshArticleSearch();
 }
@@ -6526,6 +6555,7 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     ordered_intent.match_case = true;
     ordered_intent.ignore_word_order = true;
     ordered_intent.maximum_word_distance = 23U;
+    ordered_intent.accepted_query_generation = 41U;
     facade_ = &capturing_facade;
     first->ResultActivationRequested(ordered_intent);
     const auto ordered_state = facade_->GetArticleTabsState();
@@ -6589,10 +6619,117 @@ void MainWindow::RunFullTextDialogSmokeCheck(
             ordered_intent.maximum_word_distance &&
         pending_article_search_handoffs_[tab_id_before_activation]
                 .ignore_diacritics == ordered_intent.ignore_diacritics &&
+        pending_article_search_handoffs_[tab_id_before_activation]
+                .accepted_query_generation ==
+            ordered_intent.accepted_query_generation &&
         ordered_session.tabs.size() == 1U &&
         ordered_session.tabs.front().history.back() ==
             ordered_state.tabs.front().navigation &&
         requests_.count(tab_id_before_activation) == 1U;
+
+    const auto wait_for = [](const std::function<bool()>& predicate) {
+        QElapsedTimer timer;
+        timer.start();
+        while (!predicate() && timer.elapsed() < 5000) {
+            QApplication::processEvents(QEventLoop::AllEvents, 25);
+        }
+        return predicate();
+    };
+    const bool extracted = wait_for([this, tab_id_before_activation]() {
+        return rendered_page_text_transports_.count(tab_id_before_activation) ==
+               1U;
+    });
+    QString independently_extracted_text;
+    bool independent_extraction_finished = false;
+    if (auto* extraction_view = ArticleViewForTab(tab_id_before_activation)) {
+        extraction_view->page()->toPlainText(
+            [&independently_extracted_text,
+             &independent_extraction_finished](const QString& text) {
+                independently_extracted_text = text;
+                independent_extraction_finished = true;
+            });
+    }
+    passed =
+        passed && extracted && wait_for([&independent_extraction_finished]() {
+            return independent_extraction_finished;
+        });
+    if (extracted && independent_extraction_finished) {
+        const auto& transport =
+            rendered_page_text_transports_.at(tab_id_before_activation);
+        passed =
+            passed && transport.text == independently_extracted_text &&
+            transport.accepted_query_generation ==
+                ordered_intent.accepted_query_generation &&
+            transport.lookup_generation ==
+                lookup_results_[tab_id_before_activation].generation &&
+            transport.search_generation ==
+                article_search_presentations_[tab_id_before_activation]
+                    .generation &&
+            transport.view == ArticleViewForTab(tab_id_before_activation) &&
+            transport.page == transport.view->page();
+    }
+    const auto reject_stale_extraction =
+        [this,
+         tab_id_before_activation](const std::function<void()>& invalidate) {
+            auto* stale_view = ArticleViewForTab(tab_id_before_activation);
+            if (stale_view == nullptr)
+                return false;
+            auto& stale_search =
+                article_search_presentations_[tab_id_before_activation];
+            const auto stale_lookup_generation =
+                lookup_results_[tab_id_before_activation].generation;
+            const auto stale_navigation_generation =
+                article_navigation_generations_[tab_id_before_activation];
+            rendered_page_text_transports_.erase(tab_id_before_activation);
+            ExtractRenderedPageText(
+                tab_id_before_activation, stale_view,
+                stale_search.accepted_query_generation, stale_lookup_generation,
+                stale_search.generation, stale_navigation_generation);
+            invalidate();
+            QElapsedTimer callback_timer;
+            callback_timer.start();
+            while (callback_timer.elapsed() < 100)
+                QApplication::processEvents(QEventLoop::AllEvents, 25);
+            return rendered_page_text_transports_.count(
+                       tab_id_before_activation) == 0U;
+        };
+    const auto saved_lookup_generation =
+        lookup_results_[tab_id_before_activation].generation;
+    const auto saved_search_generation =
+        article_search_presentations_[tab_id_before_activation].generation;
+    const auto saved_accepted_query_generation =
+        article_search_presentations_[tab_id_before_activation]
+            .accepted_query_generation;
+    const auto saved_navigation_generation =
+        article_navigation_generations_[tab_id_before_activation];
+    passed =
+        passed && reject_stale_extraction([this, tab_id_before_activation]() {
+            ++lookup_results_[tab_id_before_activation].generation;
+        });
+    passed =
+        passed && reject_stale_extraction([this, tab_id_before_activation]() {
+            ++article_search_presentations_[tab_id_before_activation]
+                  .generation;
+        });
+    passed =
+        passed && reject_stale_extraction([this, tab_id_before_activation]() {
+            ++article_search_presentations_[tab_id_before_activation]
+                  .accepted_query_generation;
+        });
+    passed =
+        passed && reject_stale_extraction([this, tab_id_before_activation]() {
+            ++article_navigation_generations_[tab_id_before_activation];
+        });
+    passed = passed && reject_stale_extraction(
+                           [first]() { first->AcceptedQueryInvalidated(); });
+    lookup_results_[tab_id_before_activation].generation =
+        saved_lookup_generation;
+    article_search_presentations_[tab_id_before_activation].generation =
+        saved_search_generation;
+    article_search_presentations_[tab_id_before_activation]
+        .accepted_query_generation = saved_accepted_query_generation;
+    article_navigation_generations_[tab_id_before_activation] =
+        saved_navigation_generation;
     if (auto request = requests_.find(tab_id_before_activation);
         request != requests_.end()) {
         request->second->Cancel();
@@ -6830,7 +6967,28 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     disconnect(session_connection);
     disconnect(lookup_connection);
     disconnect(geometry_connection);
+    const auto teardown_tab_id = TabIdAt(article_tabs_->currentIndex());
+    if (auto* teardown_view = ArticleViewForTab(teardown_tab_id);
+        teardown_view != nullptr &&
+        article_search_presentations_.count(teardown_tab_id) == 1U &&
+        lookup_results_.count(teardown_tab_id) == 1U &&
+        article_navigation_generations_.count(teardown_tab_id) == 1U) {
+        const auto& teardown_search =
+            article_search_presentations_.at(teardown_tab_id);
+        ExtractRenderedPageText(
+            teardown_tab_id, teardown_view,
+            teardown_search.accepted_query_generation,
+            lookup_results_.at(teardown_tab_id).generation,
+            teardown_search.generation,
+            article_navigation_generations_.at(teardown_tab_id));
+    }
     SetFacade(nullptr);
+    QElapsedTimer teardown_timer;
+    teardown_timer.start();
+    while (teardown_timer.elapsed() < 100)
+        QApplication::processEvents(QEventLoop::AllEvents, 25);
+    passed = passed && rendered_page_text_transports_.empty() &&
+             article_navigation_generations_.empty();
     activation_events.clear();
     NavigateToFullTextResult(ordered_intent);
     passed = passed && !full_text_search_action_->isEnabled();
@@ -6851,6 +7009,8 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     requests_.clear();
     lookup_results_.clear();
     pending_article_search_handoffs_.clear();
+    rendered_page_text_transports_.clear();
+    article_navigation_generations_.clear();
     RefreshResultsNavigation();
     pending_article_scroll_restorations_.clear();
     for (int index = 0; index < article_tabs_->count(); ++index) {
@@ -7932,6 +8092,7 @@ void MainWindow::StartNavigationLookup(
     if (facade_ == nullptr || navigation.query.empty())
         return;
     pending_article_search_handoffs_.erase(tab_id);
+    rendered_page_text_transports_.erase(tab_id);
     suggestions_.erase(tab_id);
     ++suggestion_generation_;
     if (suggestion_worker_ != nullptr)
@@ -8018,6 +8179,18 @@ void MainWindow::FinishLookup() {
                             RefreshDictionaryContext(id);
                             if (search_handoff.has_value() &&
                                 search_handoff->view == view) {
+                                const auto navigation =
+                                    article_navigation_generations_.find(id);
+                                if (navigation !=
+                                    article_navigation_generations_.end()) {
+                                    ExtractRenderedPageText(
+                                        id, view,
+                                        search_handoff
+                                            ->accepted_query_generation,
+                                        presentation_generation,
+                                        search_handoff->search_generation,
+                                        navigation->second);
+                                }
                                 DispatchArticleSearch(
                                     id, view, search_handoff->query,
                                     search_handoff->search_generation, false);
@@ -8089,6 +8262,8 @@ void MainWindow::FindInArticle(bool backwards) {
         return;
     const QString text = article_search_->text();
     auto& presentation = article_search_presentations_[tab_id];
+    presentation.accepted_query_generation = 0U;
+    rendered_page_text_transports_.erase(tab_id);
     presentation.query = text;
     const std::uint64_t generation = ++presentation.generation;
     if (text.isEmpty()) {
@@ -8132,6 +8307,53 @@ void MainWindow::DispatchArticleSearch(goldendict::core::ArticleTabId tab_id,
             if (TabIdAt(article_tabs_->currentIndex()) == tab_id)
                 article_search_status_->setText(found->second.status);
         });
+}
+
+void MainWindow::ExtractRenderedPageText(
+    goldendict::core::ArticleTabId tab_id, ArticleView* view,
+    std::uint64_t accepted_query_generation, std::uint64_t lookup_generation,
+    std::uint64_t search_generation, std::uint64_t navigation_generation) {
+    if (view == nullptr || accepted_query_generation == 0U ||
+        ArticleViewForTab(tab_id) != view || view->page() == nullptr) {
+        return;
+    }
+    QPointer<ArticleView> guarded_view(view);
+    QPointer<QWebEnginePage> guarded_page(view->page());
+    QPointer<MainWindow> guarded_window(this);
+    view->page()->toPlainText([guarded_window, tab_id, guarded_view,
+                               guarded_page, accepted_query_generation,
+                               lookup_generation, search_generation,
+                               navigation_generation](const QString& text) {
+        if (guarded_window.isNull())
+            return;
+        const auto lookup = guarded_window->lookup_results_.find(tab_id);
+        const auto search =
+            guarded_window->article_search_presentations_.find(tab_id);
+        const auto navigation =
+            guarded_window->article_navigation_generations_.find(tab_id);
+        if (guarded_view.isNull() || guarded_page.isNull() ||
+            lookup == guarded_window->lookup_results_.end() ||
+            lookup->second.generation != lookup_generation ||
+            search == guarded_window->article_search_presentations_.end() ||
+            search->second.generation != search_generation ||
+            search->second.accepted_query_generation !=
+                accepted_query_generation ||
+            navigation ==
+                guarded_window->article_navigation_generations_.end() ||
+            navigation->second != navigation_generation ||
+            guarded_window->ArticleViewForTab(tab_id) != guarded_view.data() ||
+            guarded_view->page() != guarded_page.data()) {
+            return;
+        }
+        guarded_window->rendered_page_text_transports_[tab_id] = {
+            text,
+            accepted_query_generation,
+            lookup_generation,
+            search_generation,
+            navigation_generation,
+            guarded_view,
+            guarded_page};
+    });
 }
 
 void MainWindow::RefreshArticleSearch() {

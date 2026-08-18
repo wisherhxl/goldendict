@@ -214,6 +214,7 @@ FullTextSearchDialog::~FullTextSearchDialog() {
 
 void FullTextSearchDialog::SetService(
     const goldendict::core::DictionaryService* service) {
+    emit AcceptedQueryInvalidated();
     active_generation_.reset();
     pending_activation_scope_.reset();
     pending_activation_context_.reset();
@@ -222,6 +223,7 @@ void FullTextSearchDialog::SetService(
 }
 
 void FullTextSearchDialog::DetachController() {
+    emit AcceptedQueryInvalidated();
     active_generation_.reset();
     pending_activation_scope_.reset();
     pending_activation_context_.reset();
@@ -268,6 +270,7 @@ bool FullTextSearchDialog::eventFilter(QObject* watched, QEvent* event) {
 }
 
 void FullTextSearchDialog::SubmitSearch() {
+    emit AcceptedQueryInvalidated();
     auto query = composer_->Compose();
     query.dictionary_ids = projected_query_.dictionary_ids;
     query.dictionary_filter_active = projected_query_.dictionary_filter_active;
@@ -282,6 +285,7 @@ void FullTextSearchDialog::SubmitSearch() {
     UpdateErrorCountStatus();
     accepted_activation_scope_.reset();
     accepted_activation_context_.reset();
+    accepted_query_generation_.reset();
     pending_activation_scope_ =
         ActivationScope{query.dictionary_filter_active, query.dictionary_ids};
     pending_activation_context_ = ActivationContext{
@@ -295,11 +299,13 @@ void FullTextSearchDialog::SubmitSearch() {
 }
 
 void FullTextSearchDialog::CancelSearch() {
+    emit AcceptedQueryInvalidated();
     if (!active_generation_.has_value()) {
         close();
         return;
     }
     active_generation_.reset();
+    accepted_query_generation_.reset();
     pending_activation_scope_.reset();
     pending_activation_context_.reset();
     controller_.Cancel();
@@ -312,6 +318,7 @@ void FullTextSearchDialog::FinishSearch(
         return;
     }
     active_generation_.reset();
+    accepted_query_generation_ = generation;
     accepted_activation_scope_ = std::move(pending_activation_scope_);
     pending_activation_scope_.reset();
     accepted_activation_context_ = std::move(pending_activation_context_);
@@ -340,7 +347,8 @@ void FullTextSearchDialog::ActivateResult(const QModelIndex& index) {
         return;
     const auto* result = response_model_->ResultAt(index);
     if (result != nullptr && accepted_activation_scope_.has_value() &&
-        accepted_activation_context_.has_value()) {
+        accepted_activation_context_.has_value() &&
+        accepted_query_generation_.has_value()) {
         emit ResultActivationRequested(FullTextResultActivationIntent{
             *result, accepted_activation_scope_->dictionary_filter_active,
             accepted_activation_scope_->dictionary_ids,
@@ -349,7 +357,8 @@ void FullTextSearchDialog::ActivateResult(const QModelIndex& index) {
             accepted_activation_context_->mode,
             accepted_activation_context_->match_case,
             accepted_activation_context_->ignore_word_order,
-            accepted_activation_context_->maximum_word_distance});
+            accepted_activation_context_->maximum_word_distance,
+            *accepted_query_generation_});
     }
 }
 

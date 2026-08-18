@@ -969,7 +969,7 @@ unchanged. No successor after P8-FT-63 is selected, ranked, recommended, or
 named. Completion unlocks only the private accepted-query article-highlighting
 context dependency boundary.
 
-### P8-FT-64 rendered-page text extraction transport prerequisite (selected)
+### P8-FT-64 rendered-page text extraction transport prerequisite (complete)
 
 The fresh independent documentation-only audit starts from synchronized
 migrated HEAD, upstream, and live remote
@@ -980,12 +980,14 @@ and accepted highlighting policy transport. Strict parity continues to keep
 result rows headword-only with the dictionary-name tooltip and to target only
 article-page highlighting, first selection, and Previous/Next navigation.
 
-P8-FT-64 is the sole selected leaf: use Qt6 WebEngine's asynchronous rendered-
+P8-FT-64 is the completed sole leaf: it uses Qt6 WebEngine's asynchronous rendered-
 page plain-text extraction after the successful current exact-result load, with
 the accepted search generation, lookup presentation generation, tab, and view
 guarding delivery. Stale, cancelled, failed, replaced, navigated-away, or torn-
 down work is discarded. The extracted text remains an inert private Widgets
 transport value; this prerequisite performs no matching or presentation change.
+The accepted query generation is retained by value, and delivery additionally
+requires the same live page and monotonic navigation identity.
 
 Pinned Qt5 `articleview.cc:2569-2799` synchronously extracts rendered plain text
 before rematching and presentation. Current Qt6 `main_window.cpp:7632-7644`
