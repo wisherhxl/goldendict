@@ -52,6 +52,7 @@ class FavoritesTreeWidget;
 class SuggestionWorker;
 class SourceDirectoriesDialog;
 class PreferencesDialog;
+class RenderedTextMatchPlanController;
 
 namespace goldendict::core {
 class DesktopFacade;
@@ -310,6 +311,12 @@ class MainWindow final : public QMainWindow {
                                  std::uint64_t lookup_generation,
                                  std::uint64_t search_generation,
                                  std::uint64_t navigation_generation);
+    void SubmitRenderedTextMatchPlan(goldendict::core::ArticleTabId tab_id);
+    void FinishRenderedTextMatchPlan(
+        std::uint64_t generation,
+        goldendict::core::RenderedTextMatchPlanResult result);
+    void InvalidateRenderedTextMatchPlan(
+        std::optional<goldendict::core::ArticleTabId> tab_id = std::nullopt);
     void RefreshArticleSearch();
     void StartSuggestionLookup();
     void FinishSuggestionLookup(goldendict::core::ArticleTabId tab_id,
@@ -446,6 +453,12 @@ class MainWindow final : public QMainWindow {
         QString status;
         std::uint64_t generation = 0U;
         std::uint64_t accepted_query_generation = 0U;
+        goldendict::core::FullTextQueryMode mode =
+            goldendict::core::FullTextQueryMode::kWholeWords;
+        bool match_case = false;
+        bool ignore_word_order = false;
+        std::optional<std::uint32_t> maximum_word_distance;
+        bool ignore_diacritics = false;
     };
 
     std::map<goldendict::core::ArticleTabId, ArticleSearchPresentation>
@@ -482,6 +495,32 @@ class MainWindow final : public QMainWindow {
         article_navigation_generations_;
     std::map<goldendict::core::ArticleTabId, RenderedPageTextTransport>
         rendered_page_text_transports_;
+
+    struct RenderedTextMatchPlanIdentity {
+        std::uint64_t work_generation = 0U;
+        std::uint64_t accepted_query_generation = 0U;
+        std::uint64_t lookup_generation = 0U;
+        std::uint64_t search_generation = 0U;
+        std::uint64_t navigation_generation = 0U;
+        goldendict::core::ArticleTabId tab_id = 0U;
+        goldendict::core::RenderedTextMatchPlanRequest request;
+        bool ignore_diacritics = false;
+        QPointer<ArticleView> view;
+        QPointer<QWebEnginePage> page;
+    };
+
+    struct RenderedTextMatchPlanState {
+        RenderedTextMatchPlanIdentity identity;
+        goldendict::core::RenderedTextMatchPlanResult result;
+    };
+
+    std::uint64_t rendered_text_match_plan_generation_ = 0U;
+    std::optional<RenderedTextMatchPlanIdentity>
+        pending_rendered_text_match_plan_;
+    std::map<goldendict::core::ArticleTabId, RenderedTextMatchPlanState>
+        rendered_text_match_plans_;
+    std::unique_ptr<RenderedTextMatchPlanController>
+        rendered_text_match_plan_controller_;
     std::map<goldendict::core::ArticleTabId, QPointF>
         pending_article_scroll_restorations_;
 

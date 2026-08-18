@@ -5310,11 +5310,11 @@ and ignore-diacritics behavior remain outside this leaf. No successor after
 P8-FT-65 is selected, ranked, recommended or named. Completion unlocks only the
 P8-FT-65 `DesktopFacade` matching-plan dependency boundary.
 
-### Phase 8 P8-FT-66 private match-plan worker/controller prerequisite (selected)
+### Phase 8 P8-FT-66 private match-plan worker/controller prerequisite (complete)
 
-The fresh independent documentation-only audit starts from clean synchronized
+The implementation starts from clean synchronized
 migrated/local/upstream/live-remote revision
-`9c9229bce082b2b5e39c6a71e188b12c12a86433` and clean pinned legacy revision
+`7596259baab285526438af205df4172032401f62` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Completed P8-FT-60 through
 P8-FT-65 provide exact-result navigation and activation, accepted query policy,
 generation-safe rendered-page text, and the installed deterministic matching
@@ -5355,6 +5355,13 @@ remain headword-only with their exact dictionary-name tooltip, and existing
 exact activation remains unchanged. No successor after P8-FT-66 is selected,
 ranked, recommended or named. Completion unlocks only generation-safe private
 match-plan availability.
+
+P8-FT-66 is complete. The private controller owns cancellable worker execution,
+by-value inputs and queued GUI-thread delivery. Main-window acceptance retains
+only identity-current typed results as inert state, and existing-target coverage
+pins cancellation, teardown, every identity gate and absence of presentation
+effects. The installed surface and exactly 109 registered Release tests remain
+unchanged.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

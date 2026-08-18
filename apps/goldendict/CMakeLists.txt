@@ -51,7 +51,8 @@ add_test(NAME legacy_configuration_location_test
 
 ti_add_executable(full_text_request_controller_test
   tests/full_text_request_controller_test.cpp
-  src/full_text_request_controller.cpp)
+  src/full_text_request_controller.cpp
+  src/rendered_text_match_plan_controller.cpp)
 target_include_directories(full_text_request_controller_test PRIVATE src)
 ti_target_include_modules_recurse(full_text_request_controller_test
   goldendict_core)

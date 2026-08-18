@@ -5280,11 +5280,11 @@ No successor after P8-FT-65 is selected, ranked, recommended or named.
 Completion unlocks only the P8-FT-65 `DesktopFacade` matching-plan dependency
 boundary.
 
-### Phase 8 P8-FT-66 private match-plan worker/controller prerequisite (selected)
+### Phase 8 P8-FT-66 private match-plan worker/controller prerequisite (complete)
 
-The fresh independent documentation-only audit starts from clean synchronized
+The implementation starts from clean synchronized
 migrated/local/upstream/live-remote revision
-`9c9229bce082b2b5e39c6a71e188b12c12a86433` and clean pinned legacy revision
+`7596259baab285526438af205df4172032401f62` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-66 supersedes P8-FT-65's
 historical no-successor closure. GET's Option B selects only P8-FT-66. The
 private Widgets worker/controller accepts a complete
@@ -5319,6 +5319,13 @@ navigate matches, change status wording or consume `ignore_diacritics`.
 Headword-only rows, dictionary tooltips and exact activation remain unchanged.
 No successor after P8-FT-66 is selected, ranked, recommended or named.
 Completion unlocks only generation-safe private match-plan availability.
+
+P8-FT-66 is complete. The private controller cancels and joins work across
+replacement and teardown, and MainWindow accepts queued typed completion only
+after the complete query, generation, tab, view and page identity remains
+current. Empty/nonempty plans and typed failures are inert; no matching-plan
+result is applied to presentation. Existing targets cover the leaf without
+changing the exactly 109-test Release registration baseline.
 
 ### Phase 9 — Linux Integration And Release Quality
 

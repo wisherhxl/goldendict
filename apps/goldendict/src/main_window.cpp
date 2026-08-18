@@ -74,6 +74,7 @@
 #include "goldendict/core/desktop_facade.h"
 #include "group_editor.h"
 #include "preferences_dialog.h"
+#include "rendered_text_match_plan_controller.h"
 #include "source_directories_dialog.h"
 #include "suggestion_worker.h"
 
@@ -741,6 +742,13 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
                                            std::move(response));
                 });
         });
+    rendered_text_match_plan_controller_ =
+        std::make_unique<RenderedTextMatchPlanController>(
+            [this](std::uint64_t generation,
+                   goldendict::core::RenderedTextMatchPlanResult result) {
+                FinishRenderedTextMatchPlan(generation, std::move(result));
+            },
+            this);
     UpdateNavigationActions();
     UpdateFileActions();
     qApp->installEventFilter(this);
@@ -5100,6 +5108,10 @@ void MainWindow::RunDictionaryBrowserExportSmokeCheck(
 
 MainWindow::~MainWindow() {
     qApp->removeEventFilter(this);
+    if (rendered_text_match_plan_controller_ != nullptr)
+        rendered_text_match_plan_controller_->DetachConsumer();
+    pending_rendered_text_match_plan_.reset();
+    rendered_text_match_plans_.clear();
     rendered_page_text_transports_.clear();
     article_navigation_generations_.clear();
     if (full_text_search_dialog_ != nullptr)
@@ -5144,6 +5156,7 @@ ArticleView* MainWindow::CreateArticleView(
     connect(view, &QWebEngineView::loadStarted, this, [this, tab_id, view]() {
         if (ArticleViewForTab(tab_id) != view)
             return;
+        InvalidateRenderedTextMatchPlan(tab_id);
         ++article_navigation_generations_[tab_id];
         rendered_page_text_transports_.erase(tab_id);
     });
@@ -5381,6 +5394,7 @@ void MainWindow::SyncArticleTabs() {
             suggestions_.erase(id);
             article_search_presentations_.erase(id);
             pending_article_search_handoffs_.erase(id);
+            InvalidateRenderedTextMatchPlan(id);
             article_navigation_generations_.erase(id);
             rendered_page_text_transports_.erase(id);
             QWidget* widget = article_tabs_->widget(index);
@@ -5990,6 +6004,7 @@ void MainWindow::ShowFullTextSearch() {
             this, [this]() {
                 pending_article_search_handoffs_.clear();
                 rendered_page_text_transports_.clear();
+                InvalidateRenderedTextMatchPlan();
                 for (auto& [tab_id, presentation] :
                      article_search_presentations_) {
                     static_cast<void>(tab_id);
@@ -6022,6 +6037,7 @@ void MainWindow::NavigateToFullTextResult(
     goldendict::app::FullTextResultActivationIntent intent) {
     if (facade_ == nullptr || full_text_search_dialog_ == nullptr)
         return;
+    InvalidateRenderedTextMatchPlan();
     rendered_page_text_transports_.erase(
         TabIdAt(article_tabs_->currentIndex()));
 
@@ -6063,6 +6079,11 @@ void MainWindow::NavigateToFullTextResult(
     search.status.clear();
     const std::uint64_t search_generation = ++search.generation;
     search.accepted_query_generation = intent.accepted_query_generation;
+    search.mode = intent.mode;
+    search.match_case = intent.match_case;
+    search.ignore_word_order = intent.ignore_word_order;
+    search.maximum_word_distance = intent.maximum_word_distance;
+    search.ignore_diacritics = intent.ignore_diacritics;
     pending_article_search_handoffs_[tab_result.tab_id] = {
         search.query,
         lookup_results_[tab_result.tab_id].generation,
@@ -6676,6 +6697,194 @@ void MainWindow::RunFullTextDialogSmokeCheck(
             transport.view == ArticleViewForTab(tab_id_before_activation) &&
             transport.page == transport.view->page();
     }
+    const bool planned = wait_for([this, tab_id_before_activation]() {
+        return rendered_text_match_plans_.count(tab_id_before_activation) == 1U;
+    });
+    const QString status_before_plan_checks = status_->text();
+    const QString article_status_before_plan_checks =
+        article_search_status_->text();
+    const QString article_query_before_plan_checks = article_search_->text();
+    passed =
+        passed && planned &&
+        pending_rendered_text_match_plan_ == std::nullopt &&
+        status_->text() == status_before_plan_checks &&
+        article_search_status_->text() == article_status_before_plan_checks &&
+        article_search_->text() == article_query_before_plan_checks;
+    if (planned) {
+        const auto accepted_state =
+            rendered_text_match_plans_.at(tab_id_before_activation);
+        const auto reject_match_plan =
+            [this, tab_id_before_activation, &accepted_state](
+                const std::function<void()>& invalidate,
+                const std::function<void()>& restore) {
+                rendered_text_match_plans_.erase(tab_id_before_activation);
+                pending_rendered_text_match_plan_ = accepted_state.identity;
+                const auto generation =
+                    pending_rendered_text_match_plan_->work_generation;
+                invalidate();
+                FinishRenderedTextMatchPlan(generation, {});
+                const bool rejected = rendered_text_match_plans_.count(
+                                          tab_id_before_activation) == 0U;
+                restore();
+                return rejected;
+            };
+        passed = passed &&
+                 reject_match_plan(
+                     [this]() {
+                         ++pending_rendered_text_match_plan_->work_generation;
+                     },
+                     []() {});
+        passed =
+            passed &&
+            reject_match_plan(
+                [this, tab_id_before_activation]() {
+                    ++article_search_presentations_[tab_id_before_activation]
+                          .accepted_query_generation;
+                },
+                [this, tab_id_before_activation, &accepted_state]() {
+                    article_search_presentations_[tab_id_before_activation]
+                        .accepted_query_generation =
+                        accepted_state.identity.accepted_query_generation;
+                });
+        const auto saved_query =
+            article_search_presentations_[tab_id_before_activation].query;
+        passed = passed &&
+                 reject_match_plan(
+                     [this, tab_id_before_activation]() {
+                         article_search_presentations_[tab_id_before_activation]
+                             .query.append(QStringLiteral("x"));
+                     },
+                     [this, tab_id_before_activation, saved_query]() {
+                         article_search_presentations_[tab_id_before_activation]
+                             .query = saved_query;
+                     });
+        const auto saved_mode =
+            article_search_presentations_[tab_id_before_activation].mode;
+        passed = passed &&
+                 reject_match_plan(
+                     [this, tab_id_before_activation]() {
+                         article_search_presentations_[tab_id_before_activation]
+                             .mode =
+                             goldendict::core::FullTextQueryMode::kPlainText;
+                     },
+                     [this, tab_id_before_activation, saved_mode]() {
+                         article_search_presentations_[tab_id_before_activation]
+                             .mode = saved_mode;
+                     });
+        passed =
+            passed &&
+            reject_match_plan(
+                [this, tab_id_before_activation]() {
+                    auto& value =
+                        article_search_presentations_[tab_id_before_activation]
+                            .match_case;
+                    value = !value;
+                },
+                [this, tab_id_before_activation]() {
+                    auto& value =
+                        article_search_presentations_[tab_id_before_activation]
+                            .match_case;
+                    value = !value;
+                });
+        passed =
+            passed &&
+            reject_match_plan(
+                [this, tab_id_before_activation]() {
+                    auto& value =
+                        article_search_presentations_[tab_id_before_activation]
+                            .ignore_word_order;
+                    value = !value;
+                },
+                [this, tab_id_before_activation]() {
+                    auto& value =
+                        article_search_presentations_[tab_id_before_activation]
+                            .ignore_word_order;
+                    value = !value;
+                });
+        const auto saved_distance =
+            article_search_presentations_[tab_id_before_activation]
+                .maximum_word_distance;
+        passed = passed &&
+                 reject_match_plan(
+                     [this, tab_id_before_activation]() {
+                         article_search_presentations_[tab_id_before_activation]
+                             .maximum_word_distance = 24U;
+                     },
+                     [this, tab_id_before_activation, saved_distance]() {
+                         article_search_presentations_[tab_id_before_activation]
+                             .maximum_word_distance = saved_distance;
+                     });
+        passed =
+            passed &&
+            reject_match_plan(
+                [this, tab_id_before_activation]() {
+                    auto& value =
+                        article_search_presentations_[tab_id_before_activation]
+                            .ignore_diacritics;
+                    value = !value;
+                },
+                [this, tab_id_before_activation]() {
+                    auto& value =
+                        article_search_presentations_[tab_id_before_activation]
+                            .ignore_diacritics;
+                    value = !value;
+                });
+        passed = passed &&
+                 reject_match_plan(
+                     [this, tab_id_before_activation]() {
+                         ++lookup_results_[tab_id_before_activation].generation;
+                     },
+                     [this, tab_id_before_activation, &accepted_state]() {
+                         lookup_results_[tab_id_before_activation].generation =
+                             accepted_state.identity.lookup_generation;
+                     });
+        passed =
+            passed &&
+            reject_match_plan(
+                [this, tab_id_before_activation]() {
+                    ++article_search_presentations_[tab_id_before_activation]
+                          .generation;
+                },
+                [this, tab_id_before_activation, &accepted_state]() {
+                    article_search_presentations_[tab_id_before_activation]
+                        .generation = accepted_state.identity.search_generation;
+                });
+        passed =
+            passed &&
+            reject_match_plan(
+                [this, tab_id_before_activation]() {
+                    ++article_navigation_generations_[tab_id_before_activation];
+                },
+                [this, tab_id_before_activation, &accepted_state]() {
+                    article_navigation_generations_[tab_id_before_activation] =
+                        accepted_state.identity.navigation_generation;
+                });
+        passed =
+            passed &&
+            reject_match_plan(
+                [this]() { pending_rendered_text_match_plan_->tab_id = 0U; },
+                []() {});
+        passed =
+            passed &&
+            reject_match_plan(
+                [this]() { pending_rendered_text_match_plan_->view = nullptr; },
+                []() {});
+        passed =
+            passed &&
+            reject_match_plan(
+                [this]() { pending_rendered_text_match_plan_->page = nullptr; },
+                []() {});
+        rendered_text_match_plans_[tab_id_before_activation] = accepted_state;
+        FinishRenderedTextMatchPlan(accepted_state.identity.work_generation,
+                                    {});
+        passed = passed &&
+                 rendered_text_match_plans_.at(tab_id_before_activation)
+                         .result.error == accepted_state.result.error &&
+                 status_->text() == status_before_plan_checks &&
+                 article_search_status_->text() ==
+                     article_status_before_plan_checks &&
+                 article_search_->text() == article_query_before_plan_checks;
+    }
     const auto reject_stale_extraction =
         [this,
          tab_id_before_activation](const std::function<void()>& invalidate) {
@@ -7005,6 +7214,9 @@ void MainWindow::RunFullTextDialogSmokeCheck(
 
 void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     const QSignalBlocker tab_signal_blocker(article_tabs_);
+    InvalidateRenderedTextMatchPlan();
+    if (rendered_text_match_plan_controller_ != nullptr)
+        rendered_text_match_plan_controller_->SetFacade(facade);
     StopSuggestionWorker();
     ++suggestion_generation_;
     suggestions_.clear();
@@ -8099,6 +8311,7 @@ void MainWindow::StartNavigationLookup(
     bool record_history) {
     if (facade_ == nullptr || navigation.query.empty())
         return;
+    InvalidateRenderedTextMatchPlan(tab_id);
     pending_article_search_handoffs_.erase(tab_id);
     rendered_page_text_transports_.erase(tab_id);
     suggestions_.erase(tab_id);
@@ -8268,6 +8481,7 @@ void MainWindow::FindInArticle(bool backwards) {
     auto* view = ArticleViewForTab(tab_id);
     if (tab_id == 0U || view == nullptr)
         return;
+    InvalidateRenderedTextMatchPlan(tab_id);
     const QString text = article_search_->text();
     auto& presentation = article_search_presentations_[tab_id];
     presentation.accepted_query_generation = 0U;
@@ -8361,7 +8575,124 @@ void MainWindow::ExtractRenderedPageText(
             navigation_generation,
             guarded_view,
             guarded_page};
+        guarded_window->SubmitRenderedTextMatchPlan(tab_id);
     });
+}
+
+void MainWindow::SubmitRenderedTextMatchPlan(
+    goldendict::core::ArticleTabId tab_id) {
+    if (facade_ == nullptr || rendered_text_match_plan_controller_ == nullptr)
+        return;
+    const auto transport = rendered_page_text_transports_.find(tab_id);
+    const auto search = article_search_presentations_.find(tab_id);
+    if (transport == rendered_page_text_transports_.end() ||
+        search == article_search_presentations_.end() ||
+        search->second.accepted_query_generation == 0U ||
+        search->second.accepted_query_generation !=
+            transport->second.accepted_query_generation) {
+        return;
+    }
+
+    const QByteArray rendered_text = transport->second.text.toUtf8();
+    const QByteArray query_text = search->second.query.toUtf8();
+    goldendict::core::RenderedTextMatchPlanRequest request;
+    request.rendered_text.assign(
+        rendered_text.constData(),
+        static_cast<std::size_t>(rendered_text.size()));
+    request.query_text.assign(query_text.constData(),
+                              static_cast<std::size_t>(query_text.size()));
+    request.mode = search->second.mode;
+    request.match_case = search->second.match_case;
+    request.ignore_word_order = search->second.ignore_word_order;
+    request.maximum_word_distance = search->second.maximum_word_distance;
+
+    const std::uint64_t generation = ++rendered_text_match_plan_generation_;
+    pending_rendered_text_match_plan_ = RenderedTextMatchPlanIdentity{
+        generation,
+        transport->second.accepted_query_generation,
+        transport->second.lookup_generation,
+        transport->second.search_generation,
+        transport->second.navigation_generation,
+        tab_id,
+        request,
+        search->second.ignore_diacritics,
+        transport->second.view,
+        transport->second.page};
+    rendered_text_match_plans_.erase(tab_id);
+    rendered_text_match_plan_controller_->Submit(std::move(request),
+                                                 generation);
+}
+
+void MainWindow::FinishRenderedTextMatchPlan(
+    std::uint64_t generation,
+    goldendict::core::RenderedTextMatchPlanResult result) {
+    if (!pending_rendered_text_match_plan_.has_value() || facade_ == nullptr ||
+        pending_rendered_text_match_plan_->work_generation != generation) {
+        return;
+    }
+    const auto identity = *pending_rendered_text_match_plan_;
+    pending_rendered_text_match_plan_.reset();
+    const auto lookup = lookup_results_.find(identity.tab_id);
+    const auto search = article_search_presentations_.find(identity.tab_id);
+    const auto navigation =
+        article_navigation_generations_.find(identity.tab_id);
+    const auto transport = rendered_page_text_transports_.find(identity.tab_id);
+    const QByteArray current_query =
+        search == article_search_presentations_.end()
+            ? QByteArray{}
+            : search->second.query.toUtf8();
+    if (identity.view.isNull() || identity.page.isNull() ||
+        lookup == lookup_results_.end() ||
+        lookup->second.generation != identity.lookup_generation ||
+        search == article_search_presentations_.end() ||
+        search->second.generation != identity.search_generation ||
+        search->second.accepted_query_generation !=
+            identity.accepted_query_generation ||
+        std::string(current_query.constData(),
+                    static_cast<std::size_t>(current_query.size())) !=
+            identity.request.query_text ||
+        search->second.mode != identity.request.mode ||
+        search->second.match_case != identity.request.match_case ||
+        search->second.ignore_word_order !=
+            identity.request.ignore_word_order ||
+        search->second.maximum_word_distance !=
+            identity.request.maximum_word_distance ||
+        search->second.ignore_diacritics != identity.ignore_diacritics ||
+        navigation == article_navigation_generations_.end() ||
+        navigation->second != identity.navigation_generation ||
+        transport == rendered_page_text_transports_.end() ||
+        transport->second.accepted_query_generation !=
+            identity.accepted_query_generation ||
+        transport->second.lookup_generation != identity.lookup_generation ||
+        transport->second.search_generation != identity.search_generation ||
+        transport->second.navigation_generation !=
+            identity.navigation_generation ||
+        transport->second.view != identity.view ||
+        transport->second.page != identity.page ||
+        ArticleViewForTab(identity.tab_id) != identity.view.data() ||
+        identity.view->page() != identity.page.data()) {
+        return;
+    }
+    const QByteArray current_rendered_text = transport->second.text.toUtf8();
+    if (std::string(current_rendered_text.constData(),
+                    static_cast<std::size_t>(current_rendered_text.size())) !=
+        identity.request.rendered_text) {
+        return;
+    }
+    rendered_text_match_plans_[identity.tab_id] =
+        RenderedTextMatchPlanState{identity, std::move(result)};
+}
+
+void MainWindow::InvalidateRenderedTextMatchPlan(
+    std::optional<goldendict::core::ArticleTabId> tab_id) {
+    ++rendered_text_match_plan_generation_;
+    pending_rendered_text_match_plan_.reset();
+    if (rendered_text_match_plan_controller_ != nullptr)
+        rendered_text_match_plan_controller_->Cancel();
+    if (tab_id.has_value())
+        rendered_text_match_plans_.erase(*tab_id);
+    else
+        rendered_text_match_plans_.clear();
 }
 
 void MainWindow::RefreshArticleSearch() {

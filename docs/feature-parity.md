@@ -1057,11 +1057,11 @@ ranges, translations and test registrations remain unchanged; the Release
 baseline stays exactly 109. No successor after P8-FT-65 is selected or named.
 Completion unlocks only its `DesktopFacade` matching-plan dependency boundary.
 
-### P8-FT-66 private match-plan worker/controller prerequisite (selected)
+### P8-FT-66 private match-plan worker/controller prerequisite (complete)
 
-The fresh independent documentation-only audit is pinned to clean synchronized
+The implementation starts from clean synchronized
 migrated/local/upstream/live-remote revision
-`9c9229bce082b2b5e39c6a71e188b12c12a86433` and clean pinned legacy revision
+`7596259baab285526438af205df4172032401f62` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-66 supersedes P8-FT-65's
 historical no-successor closure. GET's Option B selects exactly P8-FT-66: a
 private cancellable Widgets worker/controller that supplies the
@@ -1089,6 +1089,12 @@ wording, index lifecycle/Preferences and explicitly deferred ignore-diacritics
 semantics remain outside the leaf and unranked. No successor after P8-FT-66 is
 selected, ranked, recommended or named. Completion unlocks only generation-safe
 private match-plan availability.
+
+P8-FT-66 is complete. Private Widgets now supplies complete by-value inputs to
+the facade only from a cancellable worker and queues typed completion to the GUI
+thread. Current identity-gated results, including empty plans and typed failures,
+are retained only as inert state; stale and lifecycle-invalidated work is silent.
+Existing-target coverage preserves exactly 109 registered Release tests.
 
 ## Resources And Platform Integration
 

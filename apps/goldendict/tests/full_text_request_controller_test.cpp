@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "full_text_request_controller.h"
+#include "rendered_text_match_plan_controller.h"
 
 namespace {
 
@@ -133,6 +134,176 @@ class FakeDictionaryService final : public goldendict::core::DictionaryService {
     mutable QThread* worker_thread_ = nullptr;
 };
 
+class FakeDesktopFacade final : public goldendict::core::DesktopFacade {
+   public:
+    enum class Behavior { kImmediate, kWaitForCancellation, kThrow };
+
+    goldendict::core::DictionaryService& GetDictionaryService() noexcept
+        override {
+        return service_;
+    }
+
+    const goldendict::core::DictionaryService& GetDictionaryService()
+        const noexcept override {
+        return service_;
+    }
+
+    std::unique_ptr<goldendict::core::HeadwordExportOperation>
+    StartHeadwordExport(
+        goldendict::core::HeadwordExportRequest) const override {
+        return {};
+    }
+
+    goldendict::core::ArticleContent ComposeLookupPage(
+        const goldendict::core::LookupResponse&) const override {
+        return {};
+    }
+
+    std::optional<goldendict::core::ArticleUrl> ResolveArticleUrl(
+        const std::string&) const override {
+        return std::nullopt;
+    }
+
+    goldendict::core::ResolvedExactArticleTarget ResolveExactArticleTarget(
+        const goldendict::core::ExactArticleTarget&) const override {
+        return {};
+    }
+
+    goldendict::core::RenderedTextMatchPlanResult BuildRenderedTextMatchPlan(
+        const goldendict::core::RenderedTextMatchPlanRequest& request,
+        const goldendict::core::CancellationToken* cancellation)
+        const override {
+        {
+            const std::lock_guard lock(mutex_);
+            ++calls_;
+            requests_.push_back(request);
+            worker_thread_ = QThread::currentThread();
+            explicit_cancellation_ = cancellation != nullptr;
+        }
+        changed_.notify_all();
+        if (behavior_ == Behavior::kThrow)
+            throw std::runtime_error("secret worker detail");
+        if (behavior_ == Behavior::kWaitForCancellation) {
+            std::unique_lock lock(mutex_);
+            while (!cancellation->IsCancellationRequested())
+                changed_.wait_for(lock, std::chrono::milliseconds(5));
+            cancellation_seen_ = true;
+            changed_.notify_all();
+            changed_.wait(lock, [this]() {
+                return !hold_after_cancellation_ || cancellation_released_;
+            });
+            goldendict::core::RenderedTextMatchPlanResult cancelled;
+            cancelled.error =
+                goldendict::core::RenderedTextMatchPlanError::kCancelled;
+            return cancelled;
+        }
+        return result_;
+    }
+
+    goldendict::core::ArticleTabsState GetArticleTabsState() const override {
+        return {};
+    }
+
+    goldendict::core::ArticleTabSession ExportArticleTabSession()
+        const override {
+        return {};
+    }
+
+    goldendict::core::TabOperationResult RestoreArticleTabSession(
+        const goldendict::core::ArticleTabSession&) override {
+        return {};
+    }
+
+    goldendict::core::TabOperationResult OpenArticleTab(
+        const goldendict::core::TabNavigationState&,
+        goldendict::core::TabOpenPolicy, goldendict::core::TabActivationPolicy,
+        goldendict::core::TabPlacementPolicy) override {
+        return {};
+    }
+
+    goldendict::core::TabOperationResult ActivateArticleTab(
+        goldendict::core::ArticleTabId) override {
+        return {};
+    }
+
+    goldendict::core::TabOperationResult CloseArticleTab(
+        goldendict::core::ArticleTabId) override {
+        return {};
+    }
+
+    goldendict::core::TabOperationResult CloseOtherArticleTabs(
+        goldendict::core::ArticleTabId) override {
+        return {};
+    }
+
+    goldendict::core::TabOperationResult GoBackInArticleTab(
+        goldendict::core::ArticleTabId) override {
+        return {};
+    }
+
+    goldendict::core::TabOperationResult GoForwardInArticleTab(
+        goldendict::core::ArticleTabId) override {
+        return {};
+    }
+
+    bool WaitForCalls(int count) const {
+        std::unique_lock lock(mutex_);
+        return changed_.wait_for(lock, std::chrono::seconds(2),
+                                 [this, count]() { return calls_ >= count; });
+    }
+
+    bool WaitForCancellation() const {
+        std::unique_lock lock(mutex_);
+        return changed_.wait_for(lock, std::chrono::seconds(2),
+                                 [this]() { return cancellation_seen_; });
+    }
+
+    void ReleaseCancellation() {
+        {
+            const std::lock_guard lock(mutex_);
+            cancellation_released_ = true;
+        }
+        changed_.notify_all();
+    }
+
+    int calls() const {
+        const std::lock_guard lock(mutex_);
+        return calls_;
+    }
+
+    std::vector<goldendict::core::RenderedTextMatchPlanRequest> requests()
+        const {
+        const std::lock_guard lock(mutex_);
+        return requests_;
+    }
+
+    QThread* worker_thread() const {
+        const std::lock_guard lock(mutex_);
+        return worker_thread_;
+    }
+
+    bool explicit_cancellation() const {
+        const std::lock_guard lock(mutex_);
+        return explicit_cancellation_;
+    }
+
+    mutable FakeDictionaryService service_;
+    Behavior behavior_ = Behavior::kImmediate;
+    goldendict::core::RenderedTextMatchPlanResult result_;
+    bool hold_after_cancellation_ = false;
+
+   private:
+    mutable std::mutex mutex_;
+    mutable std::condition_variable changed_;
+    mutable int calls_ = 0;
+    mutable bool cancellation_seen_ = false;
+    mutable bool cancellation_released_ = false;
+    mutable bool explicit_cancellation_ = false;
+    mutable std::vector<goldendict::core::RenderedTextMatchPlanRequest>
+        requests_;
+    mutable QThread* worker_thread_ = nullptr;
+};
+
 goldendict::core::FullTextQuery Query(std::string text) {
     goldendict::core::FullTextQuery query;
     query.text = std::move(text);
@@ -152,6 +323,10 @@ class FullTextRequestControllerTest final : public QObject {
     void RejectsStaleAndDetachedCompletions();
     void ReplacesServiceOnlyAfterJoin();
     void DestructionAndStopJoinWorker();
+    void MatchPlanUsesByValueWorkerAndGuiDelivery();
+    void MatchPlanPreservesTypedResults();
+    void MatchPlanCancelsReplacementPendingDetachAndFacadeChange();
+    void MatchPlanContainsExceptionsAndRejectsDuplicateGenerations();
 };
 
 void FullTextRequestControllerTest::CompletesOnGuiThreadAndPreservesResponse() {
@@ -328,6 +503,149 @@ void FullTextRequestControllerTest::DestructionAndStopJoinWorker() {
         controller.Stop();
     }
     QVERIFY(service.WaitForCancellation());
+}
+
+void FullTextRequestControllerTest::MatchPlanUsesByValueWorkerAndGuiDelivery() {
+    FakeDesktopFacade facade;
+    facade.result_.ranges.push_back({1U, 2U, "bc"});
+    int completions = 0;
+    QThread* completion_thread = nullptr;
+    goldendict::core::RenderedTextMatchPlanResult received;
+    RenderedTextMatchPlanController controller(
+        [&](std::uint64_t generation,
+            goldendict::core::RenderedTextMatchPlanResult result) {
+            QCOMPARE(generation, 1U);
+            ++completions;
+            completion_thread = QThread::currentThread();
+            received = std::move(result);
+        });
+    controller.SetFacade(&facade);
+    goldendict::core::RenderedTextMatchPlanRequest request;
+    request.rendered_text = "abcd";
+    request.query_text = "bc";
+    request.match_case = true;
+    controller.Submit(request, 1U);
+    request.rendered_text = "mutated";
+    request.query_text = "mutated";
+
+    QTRY_COMPARE(completions, 1);
+    QCOMPARE(facade.worker_thread() == QThread::currentThread(), false);
+    QCOMPARE(completion_thread, QThread::currentThread());
+    QVERIFY(facade.explicit_cancellation());
+    QCOMPARE(facade.requests().front().rendered_text, std::string("abcd"));
+    QCOMPARE(facade.requests().front().query_text, std::string("bc"));
+    QCOMPARE(facade.requests().front().match_case, true);
+    QCOMPARE(received.ranges.size(), std::size_t{1});
+    QCOMPARE(received.ranges.front().literal, std::string("bc"));
+}
+
+void FullTextRequestControllerTest::MatchPlanPreservesTypedResults() {
+    const std::vector errors = {
+        goldendict::core::RenderedTextMatchPlanError::kNone,
+        goldendict::core::RenderedTextMatchPlanError::kNone,
+        goldendict::core::RenderedTextMatchPlanError::kInvalidRequest,
+        goldendict::core::RenderedTextMatchPlanError::kMalformedPattern,
+        goldendict::core::RenderedTextMatchPlanError::kCancelled,
+        goldendict::core::RenderedTextMatchPlanError::kDeadlineExceeded,
+        goldendict::core::RenderedTextMatchPlanError::kResourceLimit,
+        goldendict::core::RenderedTextMatchPlanError::kInternal};
+    for (std::size_t index = 0; index < errors.size(); ++index) {
+        FakeDesktopFacade facade;
+        facade.result_.error = errors[index];
+        facade.result_.message = "typed";
+        if (index == 1U)
+            facade.result_.ranges.push_back({0U, 1U, "x"});
+        int completions = 0;
+        goldendict::core::RenderedTextMatchPlanResult received;
+        RenderedTextMatchPlanController controller(
+            [&](std::uint64_t,
+                goldendict::core::RenderedTextMatchPlanResult result) {
+                received = std::move(result);
+                ++completions;
+            });
+        controller.SetFacade(&facade);
+        goldendict::core::RenderedTextMatchPlanRequest request;
+        request.rendered_text = index == 1U ? "x" : "";
+        request.query_text = "x";
+        controller.Submit(std::move(request), index + 1U);
+        QTRY_COMPARE(completions, 1);
+        QCOMPARE(received.error, errors[index]);
+        QCOMPARE(received.message, std::string("typed"));
+        QCOMPARE(received.ranges.size(), facade.result_.ranges.size());
+        if (!received.ranges.empty()) {
+            QCOMPARE(received.ranges.front().byte_offset,
+                     facade.result_.ranges.front().byte_offset);
+            QCOMPARE(received.ranges.front().byte_length,
+                     facade.result_.ranges.front().byte_length);
+            QCOMPARE(received.ranges.front().literal,
+                     facade.result_.ranges.front().literal);
+        }
+    }
+}
+
+void FullTextRequestControllerTest::
+    MatchPlanCancelsReplacementPendingDetachAndFacadeChange() {
+    FakeDesktopFacade old_facade;
+    old_facade.behavior_ = FakeDesktopFacade::Behavior::kWaitForCancellation;
+    old_facade.hold_after_cancellation_ = true;
+    FakeDesktopFacade replacement_facade;
+    int completions = 0;
+    RenderedTextMatchPlanController controller(
+        [&](std::uint64_t, goldendict::core::RenderedTextMatchPlanResult) {
+            ++completions;
+        });
+    controller.SetFacade(&old_facade);
+    goldendict::core::RenderedTextMatchPlanRequest request;
+    request.rendered_text = "text";
+    request.query_text = "running";
+    controller.Submit(request, 1U);
+    QVERIFY(old_facade.WaitForCalls(1));
+    request.query_text = "pending";
+    controller.Submit(request, 2U);
+    request.query_text = "latest";
+    controller.Submit(request, 3U);
+    QVERIFY(old_facade.WaitForCancellation());
+    old_facade.ReleaseCancellation();
+    QTRY_COMPARE(old_facade.calls(), 2);
+    QCOMPARE(old_facade.requests().back().query_text, std::string("latest"));
+    controller.Cancel();
+    QVERIFY(old_facade.WaitForCancellation());
+    controller.SetFacade(&replacement_facade);
+    request.query_text = "replacement";
+    controller.Submit(request, 4U);
+    QTRY_COMPARE(completions, 1);
+    QCOMPARE(replacement_facade.calls(), 1);
+    controller.DetachConsumer();
+    controller.Submit(request, 5U);
+    QCoreApplication::processEvents();
+    QCOMPARE(completions, 1);
+}
+
+void FullTextRequestControllerTest::
+    MatchPlanContainsExceptionsAndRejectsDuplicateGenerations() {
+    FakeDesktopFacade facade;
+    facade.behavior_ = FakeDesktopFacade::Behavior::kThrow;
+    int completions = 0;
+    goldendict::core::RenderedTextMatchPlanResult received;
+    RenderedTextMatchPlanController controller(
+        [&](std::uint64_t,
+            goldendict::core::RenderedTextMatchPlanResult result) {
+            received = std::move(result);
+            ++completions;
+        });
+    controller.SetFacade(&facade);
+    goldendict::core::RenderedTextMatchPlanRequest request;
+    request.rendered_text = "text";
+    request.query_text = "query";
+    controller.Submit(request, 7U);
+    controller.Submit(request, 7U);
+    controller.Submit(request, 6U);
+    QTRY_COMPARE(completions, 1);
+    QCOMPARE(facade.calls(), 1);
+    QCOMPARE(received.error,
+             goldendict::core::RenderedTextMatchPlanError::kInternal);
+    QCOMPARE(received.message,
+             std::string("Rendered-text match-plan worker failed internally."));
 }
 
 QTEST_GUILESS_MAIN(FullTextRequestControllerTest)

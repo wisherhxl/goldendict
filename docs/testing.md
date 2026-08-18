@@ -4127,11 +4127,11 @@ the new facade contract while the C consumer remains unchanged. No successor
 after P8-FT-65 is selected or named; completion unlocks only its
 `DesktopFacade` matching-plan dependency boundary.
 
-### P8-FT-66 private match-plan worker/controller prerequisite acceptance (selected)
+### P8-FT-66 private match-plan worker/controller prerequisite acceptance (complete)
 
-The documentation-only readiness audit starts from clean synchronized
+Implementation starts from clean synchronized
 migrated/local/upstream/live-remote revision
-`9c9229bce082b2b5e39c6a71e188b12c12a86433` and clean pinned legacy revision
+`7596259baab285526438af205df4172032401f62` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. P8-FT-66 supersedes P8-FT-65's
 historical no-successor closure. GET's Option B selects only P8-FT-66:
 cancellable worker execution of the synchronous P8-FT-65 facade
@@ -4163,6 +4163,13 @@ the Release baseline remains exactly 109 tests. Compiled gates are omitted for
 this four-document-only audit. No successor after P8-FT-66 is selected, ranked,
 recommended or named. Completion unlocks only generation-safe private match-plan
 availability.
+
+P8-FT-66 is complete. The existing `full_text_request_controller_test` covers
+by-value isolation, worker and GUI thread boundaries, typed delivery,
+replacement, pending/running cancellation, detach, facade replacement and
+teardown. The existing full-text dialog smoke independently covers every
+MainWindow identity gate, duplicate rejection and absence of visible effects.
+No test was registered; the Release baseline remains exactly 109.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
