@@ -449,6 +449,30 @@ Stop on ref/worktree or legacy drift, ambiguity, architectural conflict,
 failed validation, another required file, or scope expansion. No successor
 after P8-FT-50 is selected or ranked.
 
+The post-P8-FT-50 word-distance caption policy audit is closed without a code
+leaf. GET selected Option A: preserve the exact visible private label
+`Maximum word distance`; labels describe settings, while numeric controls own
+and expose bounds. The existing spin box remains `0..1000`, and its range is
+not embedded in translatable caption text. Current production code and focused
+tests already meet this policy, so no artificial source or test change is
+authorized.
+
+This four-document-only closure preserves all P8-FT-1 through P8-FT-50
+behavior, the exactly 109-test Release baseline, public/Core/config and
+installed contracts, dependencies, and install/package/standalone C and C++
+consumer gates. Future exact-SCM verification retains:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Compiled checks are skipped for this documentation-only audit. Indexing
+lifecycle/status UI, the articles-per-dictionary caption, other text or
+accessibility policy, styling/layout, translation work, and unrelated parity
+remain excluded and unranked. Stop on drift, ambiguity, design conflict,
+another required file, failed validation, or scope expansion. No successor is
+selected or ranked; the next boundary is a fresh post-policy readiness audit.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

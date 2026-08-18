@@ -3409,6 +3409,32 @@ unranked. Stop on ref/worktree or legacy drift, ambiguity, architectural
 conflict, failed validation, another required file, or scope expansion. No
 successor after P8-FT-50 is selected or ranked.
 
+## Phase 8 Full-Text Word-Distance Caption Policy Closure
+
+The post-P8-FT-50 documentation audit records GET's Option A without creating
+an artificial test leaf. The exact visible label remains
+`Maximum word distance`; labels describe settings, while the spin box owns and
+exposes its unchanged `0..1000` bounds. Range text must not be synthesized into
+the translatable caption. Existing composer production code and focused tests
+already prove the required label, range, state transitions, and repeated query
+composition, so no source, test, executable, or registration changes.
+
+This four-document-only closure skips compiled checks and preserves the Release
+baseline of exactly 109 tests. Linux Release CTest, Release install, packaged
+consumers, standalone installed C and C++ consumers, and exact-SCM creation
+remain the unchanged gate for later implementation work:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Indexing lifecycle/status UI, the articles-per-dictionary caption, other text
+or accessibility policy, styling/layout, translation work, public/Core/config
+or installed contracts, and unrelated parity remain excluded and unranked.
+Stop on drift, ambiguity, design conflict, another required file, failed
+validation, or scope expansion. No successor is selected or ranked; verification
+after this closure begins only with a fresh bounded post-policy readiness audit.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

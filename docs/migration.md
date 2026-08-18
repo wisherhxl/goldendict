@@ -4487,6 +4487,46 @@ ref/worktree drift, legacy dirtiness or movement, ambiguous topology,
 parentage, caption or acceptance semantics, architectural conflict, failed
 validation, discovery of another required file, or scope expansion.
 
+### Phase 8 full-text word-distance caption policy closure
+
+The resumed documentation-only post-P8-FT-50 audit verified clean migrated
+HEAD, local branch, upstream, and live remote at
+`90823b6ce600063642cc5780a0d4197e75605329`, plus the clean read-only legacy
+checkout at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Its objective is only to
+record GET's Option A decision: preserve the exact visible private label
+`Maximum word distance`. Labels describe settings; numeric controls own and
+expose their bounds, so `0..1000` remains the spin-box contract and is not
+embedded in translatable caption text.
+
+Pinned legacy `fulltextsearch.cc:203-211` supplies evidence for the historical
+range-bearing caption. Completed P8-FT-1 through P8-FT-50, current
+`full_text_query_composer.cpp:95-107`, and focused composer coverage establish
+the prerequisites and show that production already satisfies Option A.
+Acceptance is therefore documentation-only: all four governing documents state
+the same policy, no source/test change is fabricated, the label and range stay
+exact, and no successor is selected or ranked.
+
+This closure preserves all existing full-text behavior, object identity,
+composition and lifecycle semantics, public/Core/config and installed
+contracts, dependencies, and the exactly 109-test Release baseline. Compiled
+checks are skipped. The unchanged future implementation gate remains Linux
+Release build and full CTest, Release install, packaged consumers, standalone
+installed C and C++ consumers, and clean committed exact-SCM creation:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Indexing lifecycle/status UI, the articles-per-dictionary caption, other text
+or accessibility policy, styling/layout, mnemonic/translation-catalog work,
+Preferences, adapters/index formats, dependencies/builds, public/Core/config
+or composition-root changes, HTTP GET policy, and unrelated parity are
+excluded and unranked. Stop without commit or push on drift, ambiguity, design
+conflict, another required file, failed validation, or scope expansion. No
+successor is selected or ranked. The precise next boundary is a fresh bounded
+post-policy full-text readiness audit across all remaining gaps and their then-
+current prerequisites.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

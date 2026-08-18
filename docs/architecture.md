@@ -4433,6 +4433,38 @@ dirtiness or movement, ambiguous topology, parentage, caption or acceptance
 semantics, architectural conflict, failed validation, discovery of another
 required file, or scope expansion.
 
+### Phase 8 full-text word-distance caption policy closure
+
+The documentation-only post-P8-FT-50 audit is pinned to clean migrated
+revision `90823b6ce600063642cc5780a0d4197e75605329` and clean read-only legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. GET selected Option A: setting
+labels describe the setting, while the associated numeric control owns and
+exposes its bounds. Therefore the existing private visible label remains
+exactly `Maximum word distance`, the spin box retains `0..1000`, and bounds
+must not be synthesized into translatable caption text.
+
+This decision intentionally yields no caption implementation leaf: production
+code and focused tests already satisfy it. It changes no Widgets behavior,
+public/Core/config contract, installed surface, dependency, build, test
+registration, or Release baseline of exactly 109 tests. Pinned legacy
+`fulltextsearch.cc:203-211` remains evidence for the historical range-bearing
+caption, not authority to restore its obsolete bounds or text policy.
+
+No compiled check is required for this four-document-only closure. Future
+implementation still retains Linux Release build and CTest, Release install,
+packaged and standalone installed C/C++ consumer gates, and exact-SCM creation:
+
+```sh
+conan create . --build=missing -pr:h=profiles/qt-webengine -pr:b=default -s:h build_type=Release
+```
+
+Indexing lifecycle/status UI, the articles-per-dictionary caption, other text,
+accessibility, styling/layout, translation-catalog work, public/Core/config or
+composition-root changes, and unrelated parity remain excluded and unranked.
+Stop on ref/worktree drift, ambiguity, architectural conflict, another required
+file, failed validation, or scope expansion. No successor is selected or
+ranked; the next boundary is a fresh post-policy full-text readiness audit.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
