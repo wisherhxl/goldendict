@@ -4638,6 +4638,54 @@ clean committed exact-SCM Conan creation with packaged consumers, exact
 six-file scope, cross-document consistency, `git diff --check`, and clean
 synchronized refs/worktrees.
 
+### Phase 8 full-text Search group-box translation readiness (selected)
+
+The fresh independent bounded post-P8-FT-52 documentation-only audit verified
+clean migrated HEAD, local branch, upstream, and live remote at
+`a6514e6abf645fa8eeaf906e4c35d97d58faf5dd`, plus the unchanged clean
+read-only legacy checkout at
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecked all remaining
+visible and private full-text gaps and prerequisites without advance ranking
+and selects exactly P8-FT-53, the smallest independently dependency-ready
+leaf: translate the private Search group-box title through the exact
+`goldendict::app::FullTextSearchDialog` context without changing source or
+default visible text `Search`. No successor after P8-FT-53 is selected or
+ranked.
+
+Pinned legacy `fulltextsearch.ui:23-27` marks the exact title as translatable.
+Current `full_text_search_dialog.cpp:66` constructs it with
+`QStringLiteral("Search")`; completed P8-FT-52 already proves the dialog's
+private translation context. Existing focused dialog coverage locates the sole
+direct-child search group and asserts its exact English title.
+
+The future implementation is restricted to
+`apps/goldendict/src/full_text_search_dialog.cpp` and
+`apps/goldendict/tests/full_text_search_dialog_test.cpp`. It must use the
+dialog-owned `tr("Search")`, preserve the English fallback, prove replacement
+through the exact context, and automatically remove test-global translator
+state. The Shared-Library and GUI Boundary governs this private presentation
+leaf. No catalog, locale loader, executable, test registration, public/Core/
+configuration/index-format/dependency/build/composition-root, ABI, or
+installed-interface change is authorized.
+
+Exact `Maximum word distance` with spin-box-owned `0..1000` and exact
+`Maximum articles per dictionary` with spin-box-owned `1..100000` remain
+locked, and the Release baseline remains exactly 109 tests. Index readiness,
+status, progress, background lifecycle, and full-text Preferences remain
+blocked on a separate Core lifecycle/policy boundary. Translation catalogs and
+other strings, accessibility, styling/layout, exact-document navigation,
+match/excerpt presentation, ignore-diacritics consumption, adapters/index
+formats, and unrelated parity remain separate and unranked.
+
+Acceptance for this documentation-only selection is consistent updates to the
+exact four governing documents, exact current and pinned-legacy evidence,
+preserved boundaries and locked policies, successor neutrality, Phase
+terminology, clean synchronized pinned refs and worktrees, live-remote
+agreement, and `git diff --check`. Compiled checks are omitted. Stop without
+commit or push on drift, ambiguity, design conflict, a required
+non-documentation or fifth documentation file, failed validation, or scope
+expansion.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

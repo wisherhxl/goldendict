@@ -550,6 +550,42 @@ clean committed exact-SCM Conan creation with packaged consumers, repository
 validation, and clean synchronized refs/worktrees. No successor after P8-FT-52
 is selected or ranked.
 
+The fresh independent post-P8-FT-52 documentation-only audit is pinned to
+clean migrated revision `a6514e6abf645fa8eeaf906e4c35d97d58faf5dd`
+and unchanged clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Without advance ranking it
+selects exactly P8-FT-53: make the private full-text Search group-box title
+translation-ready through the exact
+`goldendict::app::FullTextSearchDialog` context while preserving source and
+default visible text `Search`.
+
+Pinned legacy `fulltextsearch.ui:23-27` marks the title as translatable;
+current `full_text_search_dialog.cpp:66` uses `QStringLiteral`. Completed
+P8-FT-52 supplies the proven private translation context, and existing focused
+coverage identifies the sole direct-child group box and its English title.
+The future change is limited to `full_text_search_dialog.cpp` and
+`full_text_search_dialog_test.cpp`, including exact-context replacement,
+English fallback, and scoped translator cleanup. It adds no catalog, locale
+loader, executable, registration, public/Core/config/index-format/dependency,
+build, composition-root, ABI, or installed-surface change.
+
+The Shared-Library and GUI Boundary remains intact, the Release baseline stays
+exactly 109 tests, and exact `Maximum word distance` / control-owned `0..1000`
+and `Maximum articles per dictionary` / control-owned `1..100000` policies
+remain locked. Index lifecycle/readiness/status/progress and full-text
+Preferences remain blocked on separate Core lifecycle/policy work. Translation
+catalogs and other strings, accessibility, styling/layout, exact-document
+navigation, match/excerpt presentation, ignore-diacritics consumption,
+adapters/index formats, and unrelated parity remain separate and unranked.
+
+Verification for this documentation-only selection is the exact four-document
+allowlist, cross-document evidence and policy consistency, locked-policy and
+no-successor gates, Phase terminology, `git diff --check`, and clean agreement
+of pinned local/upstream/live-remote refs and both worktrees. Compiled checks
+are omitted. Stop on drift, ambiguity, design conflict, a required
+non-documentation or fifth documentation file, failed validation, or scope
+expansion. No successor after P8-FT-53 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

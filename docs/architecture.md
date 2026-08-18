@@ -4572,6 +4572,52 @@ clean committed exact-SCM Conan creation with packaged consumers, repository
 validation, and clean synchronized refs/worktrees. No successor after P8-FT-52
 is selected or ranked.
 
+### Phase 8 full-text Search group-box translation readiness (selected)
+
+The fresh independent post-P8-FT-52 documentation-only audit is pinned to
+clean migrated HEAD, local branch, upstream, and live remote at
+`a6514e6abf645fa8eeaf906e4c35d97d58faf5dd`, plus the unchanged clean
+read-only legacy checkout at
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecked all remaining
+visible and private full-text gaps and prerequisites without advance ranking
+and selects exactly P8-FT-53: route the existing private Search group-box
+title through `goldendict::app::FullTextSearchDialog`'s translation context
+while retaining exact source and default visible text `Search`.
+
+Pinned legacy `fulltextsearch.ui:23-27` marks that exact group-box title as
+translatable. Current `full_text_search_dialog.cpp:66` instead constructs the
+same visible title with `QStringLiteral`, while completed P8-FT-52 proves the
+dialog's exact private translation context. Existing focused dialog coverage
+already identifies the sole direct-child group box and asserts its English
+fallback.
+
+The future implementation is limited to
+`apps/goldendict/src/full_text_search_dialog.cpp` and
+`apps/goldendict/tests/full_text_search_dialog_test.cpp`: construct the title
+with the dialog's `tr("Search")`, retain the exact English fallback, and prove
+exact-context replacement with automatically removed scoped test-translation
+state. No catalog, locale loader, executable, test registration, public/Core/
+configuration/index-format/dependency/build/composition-root, ABI, or
+installed-interface change is authorized. The Shared-Library and GUI Boundary
+continues to govern this private Widgets presentation leaf.
+
+The exact `Maximum word distance` label with spin-box-owned `0..1000` and
+exact `Maximum articles per dictionary` label with spin-box-owned `1..100000`
+remain locked. The Release baseline remains exactly 109 tests. Index readiness,
+status, progress, and background lifecycle plus full-text Preferences remain
+blocked on a separate Core lifecycle/policy boundary. Translation catalogs and
+other strings, accessibility, styling/layout, exact-document navigation,
+match/excerpt presentation, ignore-diacritics consumption, adapters/index
+formats, and unrelated parity remain separate and unranked.
+
+This documentation-only selection is limited to the exact four governing
+documents, with cross-document evidence and policy consistency, locked-policy
+preservation, Phase terminology, successor neutrality, whitespace validation,
+and clean synchronized refs/worktrees. Compiled checks are omitted. Stop on
+drift, ambiguity, design conflict, a required non-documentation or fifth
+documentation file, failed validation, or scope expansion. No successor after
+P8-FT-53 is selected or ranked.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
