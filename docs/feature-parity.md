@@ -753,6 +753,35 @@ parity gaps remain independent and unranked. Completion unlocks only a fresh
 independent bounded readiness audit; no successor is selected, ranked,
 recommended, or named.
 
+The fresh independent bounded post-P8-FT-58 audit is pinned to clean
+synchronized migrated revision
+`0090f8aba6f03c2fcf53adb9998f8d9d16e601e2` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly
+P8-FT-59: focused translation acceptance for the existing private error-count
+status `Errors: %1`.
+
+P8-FT-27 retains the unique status identity, authoritative decimal count,
+visibility and coexistence predicates, lifecycle safety, and raw-detail
+suppression. Current `full_text_search_dialog.cpp:384-389` already uses
+dialog-owned `tr("Errors: %1")`; focused testing at
+`full_text_search_dialog_test.cpp:1640-1695` covers behavior but not exact-
+context replacement or scoped translator cleanup. Pinned legacy has no
+equivalent aggregate error-count status or conflicting contract. The future
+leaf is therefore limited to the existing private dialog test and changes no
+source behavior or registered test.
+
+The Shared-Library and GUI Boundary applies. Catalogs, locale loading,
+executables, registrations, public/Core/configuration/index-format/dependency/
+build/composition-root/ABI/installed interfaces, and the exactly 109-test
+Release baseline remain unchanged. All completed translations, including `No
+matches in searched dictionaries`, and both locked caption/range policies
+remain exact. Index lifecycle reporting and full-text Preferences remain
+blocked on a separately authoritative Core lifecycle/policy resolution. Other
+translation, accessibility, styling, navigation, excerpt, diacritics, result
+presentation, adapter/index-format, and unrelated parity remain independent
+and unranked. P8-FT-59 unlocks only its focused private translation-acceptance
+dependency; no successor is selected, ranked, recommended, or named.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

@@ -3778,6 +3778,48 @@ lifecycle/policy resolution. Other parity remains unranked. Completion unlocks
 only a fresh independent bounded readiness audit; no successor is selected,
 ranked, recommended, or named.
 
+### P8-FT-59 full-text error-count translation acceptance
+
+The documentation-only post-P8-FT-58 audit is pinned to migrated revision
+`0090f8aba6f03c2fcf53adb9998f8d9d16e601e2` and clean read-only legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly focused
+translation acceptance for P8-FT-27's existing private `Errors: %1` status.
+
+Current `full_text_search_dialog.cpp:384-389` already uses dialog-owned
+`tr("Errors: %1")`. Existing focused coverage at
+`full_text_search_dialog_test.cpp:1640-1695` proves authoritative count,
+visibility, coexistence, lifecycle safety, and raw-detail suppression, but not
+exact-context translation replacement or scoped cleanup. Pinned legacy has no
+equivalent aggregate status or conflicting translation contract.
+
+Future focused acceptance extends only the existing private dialog test and
+proves exact `goldendict::app::FullTextSearchDialog` context replacement,
+authoritative decimal interpolation, English fallback after scoped translator
+cleanup, stable widget identity and text, and unchanged P8-FT-27 predicates,
+coexistence, stale/cancelled/detached/replaced-service/teardown safety, and
+raw-detail suppression. No executable or registered test is added; the Release
+baseline remains exactly 109 tests.
+
+The Shared-Library and GUI Boundary governs. Completed translations
+`Full-text search`, both `Search` uses, `Results may be incomplete.`, `No
+matches`, `Full-text search failed`, `Some dictionaries could not be searched`,
+and `No matches in searched dictionaries` remain exact. The locked `Maximum
+word distance` / spin-box-owned `0..1000` and `Maximum articles per dictionary`
+/ spin-box-owned `1..100000` policies remain unchanged. Index readiness/status/
+progress/rebuild/failure reporting/background lifecycle and full-text
+Preferences remain blocked without a separately authoritative Core lifecycle/
+policy resolution. Other translation, accessibility, styling, navigation,
+excerpt, diacritics, result presentation, adapter/index-format, and unrelated
+parity remain independent and unranked. P8-FT-59 unlocks only its focused
+private translation-acceptance dependency; no successor is selected, ranked,
+recommended, or named.
+
+This audit has an exact four-document allowlist and omits compiled gates.
+Validation requires current and pinned-legacy citations, cross-document
+consistency, all locked text/ranges/behavior/boundaries, the exactly 109-test
+baseline, Phase terminology, successor neutrality, `git diff --check`, and
+clean synchronized refs and worktrees.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
