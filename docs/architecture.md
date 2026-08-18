@@ -4871,24 +4871,55 @@ formats, and unrelated parity remain independent and unranked. Completion
 unlocks only a fresh independent bounded readiness audit; no successor is
 selected, ranked, recommended, or named.
 
-### Phase 8 post-P8-FT-59 full-text readiness audit (blocked)
+### Phase 8 exact-result navigation contract prerequisite (selected)
 
-The fresh independent bounded post-P8-FT-59 audit is pinned to clean
-synchronized migrated HEAD, local branch, upstream, and live remote at
-`4e1bbea18a4f7fb123a2a49049c0ca2d4808fac2`, plus the unchanged clean
+The fresh bounded audit is pinned to clean synchronized migrated HEAD, local
+branch, upstream, and live remote at
+`d81d9cea163e5e0edd1ce3bf8517936c96014fe4`, plus the unchanged clean
 read-only legacy checkout at
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current private Widgets sources
-and focused tests, together with pinned legacy `fulltextsearch.cc` and
-`fulltextsearch.ui`, establish multiple remaining independently evidence-ready
-presentation gaps of the same minimum scope. Neither evidence source nor a
-documented product policy uniquely distinguishes one of them.
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The user-approved priority makes
+exact-result navigation and source targeting authoritative over the remaining
+independent presentation gaps. The audit therefore selects exactly P8-FT-60:
+define the narrow Core, facade, and navigation contract required to consume an
+accepted full-text result's stable dictionary identity and opaque
+`document_id` without implementing result activation yet.
 
-The Shared-Library and GUI Boundary keeps each such gap private to Widgets,
-but it does not authorize an arbitrary ordering choice. Selecting one would
-therefore rank equally authoritative alternatives without evidence. The audit
-is blocked only on a separately authoritative product-policy decision or new
-evidence that makes exactly one smallest leaf unique. No leaf or successor is
-selected, ranked, recommended, or named.
+P8-FT-60 is the next stable persisted ordinal because repository truth ends at
+completed P8-FT-59 and contains no persisted P8-FT-60. A prior read-only
+accepted-result-count translation-test recommendation was never selected,
+committed, or recorded and owns no identifier; translation-acceptance
+hardening remains deferred.
+
+Current `dictionary_service.h:183-190` preserves `dictionary`, `headword`,
+opaque `document_id`, `excerpt`, and ordered `matches` in `FullTextResult`.
+`full_text_search_dialog.h:29-35` and
+`full_text_search_dialog.cpp:337-348` show that the private dialog delivers
+the exact accepted result, immutable submitted dictionary scope, query text,
+and `ignore_diacritics` value by value. However,
+`MainWindow::NavigateToFullTextResult` intentionally creates a headword-only
+`kLookup` navigation and ignores the result's dictionary ID and `document_id`;
+`main_window.cpp:5996-6040` performs that projection, while its focused smoke
+check at `main_window.cpp:6394-6431` pins the source and article fields empty.
+`LookupQuery` has no document selector, and
+`article_tab_session.cc:38-66` requires those fields to remain empty for
+`kLookup`. The similarly named source/target article fields belong to
+`kInternalLink` semantics and cannot be repurposed implicitly.
+
+Pinned legacy `fulltextsearch.cc:596-609` emits only the selected headword,
+aggregated dictionary IDs, highlight expression, and ignore-diacritics value;
+legacy `mainwindow.cc:3001-3013` forwards those values to headword definition
+lookup. Legacy therefore supplies source scoping and later highlighting
+evidence, but no exact-document contract.
+
+The Shared-Library and GUI Boundary governs P8-FT-60. Core must validate and
+resolve the transport-neutral dictionary/document target; Widgets may only
+coordinate the command and presentation. The prerequisite must preserve
+current-tab activation, selected group and authoritative accepted dictionary
+scope, tab history and persisted session replay, main-query text and selection,
+and the completed accepted-query article-search handoff. Invalid, stale,
+missing-dictionary, and missing-document targets must fail without mutating tab
+navigation or history. Any later installed-interface or ABI change must be the
+smallest explicitly reviewed change required by that contract.
 
 Completed translations `Full-text search`, both `Search` uses, `Results may be
 incomplete.`, `No matches`, `Full-text search failed`, `Some dictionaries
@@ -4901,11 +4932,12 @@ ABI and Core, configuration, index-format, dependency, build, catalog/locale-
 loader, executable, and registration boundaries. The Release baseline remains
 exactly 109 registered tests.
 
-Index readiness/status/progress/rebuild/failure reporting/background lifecycle
-and full-text Preferences remain blocked without separately authoritative Core
-lifecycle/policy resolution. Translation, accessibility, styling, navigation,
-excerpt, diacritics, presentation, adapter, and other independent parity gaps
-remain unranked. This documentation-only audit unlocks no dependency.
+This audit changes documentation only. Exact-result activation, highlighting
+and excerpts, ignore-diacritics consumption, translation acceptance, index and
+adapter formats, configuration, dependencies, build behavior, catalogs, locale
+loading, and unrelated parity are excluded and unranked. P8-FT-60 selects no
+successor. This audit unlocks only implementation of the selected P8-FT-60
+prerequisite; exact-result navigation itself remains locked behind it.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

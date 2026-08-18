@@ -780,22 +780,33 @@ presentation, adapter/index-format, and unrelated parity remain independent
 and unranked. Completion unlocks only a fresh independent bounded readiness
 audit; no successor is selected, ranked, recommended, or named.
 
-### Post-P8-FT-59 full-text readiness audit (blocked)
+### P8-FT-60 exact-result navigation contract prerequisite (selected)
 
-The fresh independent bounded audit is pinned to clean synchronized migrated
-HEAD, local branch, upstream, and live remote at
-`4e1bbea18a4f7fb123a2a49049c0ca2d4808fac2` and the unchanged clean read-only
-legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current private
-Widgets sources and focused tests and pinned legacy `fulltextsearch.cc` and
-`fulltextsearch.ui` provide equally authoritative evidence for multiple
-remaining independently ready presentation gaps at the same minimum scope.
-No repository evidence or documented product policy uniquely distinguishes
-one, so the audit selects, ranks, recommends, and names no leaf or successor.
+The bounded audit is pinned to synchronized migrated revision
+`d81d9cea163e5e0edd1ce3bf8517936c96014fe4` and clean read-only legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The approved priority selects
+exactly P8-FT-60: a narrow Core/facade/navigation prerequisite for consuming an
+accepted result's dictionary identity and opaque `document_id`. Repository
+history persistently ends at P8-FT-59 and contains no P8-FT-60; an abandoned,
+unpersisted accepted-result-count translation-test proposal owns no ordinal.
 
-The precise blocker is the absence of separately authoritative evidence that
-makes exactly one smallest leaf unique. The Shared-Library and GUI Boundary,
-public/installed ABI, and Core, configuration, index-format, dependency, build,
-catalog/locale-loader, executable, and registration boundaries remain locked.
+Current `dictionary_service.h:183-190` preserves dictionary identity,
+`document_id`, excerpt, and matches, but `main_window.cpp:5996-6040`
+deliberately performs only a scoped headword lookup. The installed lookup
+service has no document selector, and `article_tab_session.cc:38-66` forbids
+the existing internal-link article fields for lookup navigation. Pinned legacy
+`fulltextsearch.cc:596-609` and `mainwindow.cc:3001-3013` similarly activate a
+headword across aggregated dictionary IDs, not an exact document. Widgets
+therefore cannot implement exact targeting without inventing backend-specific
+lookup in violation of the Shared-Library and GUI Boundary.
+
+P8-FT-60 must define Core-owned target validation/resolution and facade/tab
+navigation identity while preserving current-tab, group and authoritative
+scope behavior, history/session replay, main-query selection, and the existing
+article-search handoff. Invalid or unresolved targets must leave navigation
+and history unchanged. Any interface or ABI change requires a separate narrow
+implementation review.
+
 Completed translations `Full-text search`, both `Search` uses, `Results may be
 incomplete.`, `No matches`, `Full-text search failed`, `Some dictionaries
 could not be searched`, `No matches in searched dictionaries`, and
@@ -804,11 +815,13 @@ could not be searched`, `No matches in searched dictionaries`, and
 `1..100000`. All completed P8-FT behavior and exactly 109 registered Release
 tests remain unchanged.
 
-Index readiness/status/progress/rebuild/failure reporting/background lifecycle
-and full-text Preferences remain blocked without separately authoritative Core
-lifecycle/policy resolution. Translation, accessibility, styling, navigation,
-excerpt, diacritics, presentation, adapter, and other independent parity gaps
-remain unranked. This documentation-only audit unlocks no dependency.
+The audit changes documentation only and preserves public/installed ABI, Core,
+configuration, index-format, dependency, build, catalog/locale-loader,
+executable, and registration boundaries. Exact-result activation, highlighting
+and excerpts, ignore-diacritics consumption, translation acceptance, index
+lifecycle and Preferences, presentation, adapters, and unrelated parity remain
+excluded and unranked. No successor after P8-FT-60 is selected or ranked. The
+audit unlocks only implementation of the P8-FT-60 prerequisite.
 
 ## Resources And Platform Integration
 

@@ -4921,23 +4921,39 @@ and unrelated parity remain independent and unranked. Completion unlocks only
 a fresh independent bounded readiness audit; no successor is selected, ranked,
 recommended, or named.
 
-### Phase 8 post-P8-FT-59 full-text readiness audit (blocked)
+### Phase 8 P8-FT-60 exact-result navigation contract prerequisite
 
-The fresh independent bounded post-P8-FT-59 audit is pinned to clean
-synchronized migrated HEAD, local branch, upstream, and live remote at
-`4e1bbea18a4f7fb123a2a49049c0ca2d4808fac2`, with the clean read-only legacy
-checkout unchanged at `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
-private Widgets sources and focused tests and pinned legacy
-`fulltextsearch.cc` and `fulltextsearch.ui` establish multiple remaining
-independently evidence-ready presentation gaps with the same minimum scope.
-Neither current nor legacy evidence, and no documented product policy,
-uniquely distinguishes one.
+The bounded audit starts from synchronized migrated revision
+`d81d9cea163e5e0edd1ce3bf8517936c96014fe4` and unchanged clean read-only
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The approved
+priority uniquely selects P8-FT-60: establish the smallest Core, facade, and
+tab-navigation contract that can validate, resolve, persist, and replay an
+accepted full-text result's stable dictionary ID and opaque `document_id`.
+This documentation audit does not implement that contract or activation.
 
-Selecting a leaf would therefore rank equally authoritative alternatives. The
-precise blocker is the absence of a separately authoritative product-policy
-decision or new evidence that makes exactly one smallest leaf unique. No leaf
-or successor is selected, ranked, recommended, or named, and this
-documentation-only audit unlocks no dependency.
+The identifier follows repository truth: completed durable numbering ends at
+P8-FT-59 and P8-FT-60 is unused. A prior read-only recommendation for an
+accepted-result-count translation test was never selected or persisted, so it
+does not reserve the number. Translation-acceptance hardening is excluded.
+
+Prerequisites already complete are the bounded structured `FullTextResult`,
+private accepted-result/scope/context delivery, scoped current-tab navigation,
+history/session persistence, and accepted-query article-search handoff.
+Current `main_window.cpp:5996-6040` cannot safely finish the feature: it
+discards dictionary and document identity, the service accepts only a
+`LookupQuery`, and `article_tab_session.cc:38-66` forbids the existing
+internal-link source/article fields for `kLookup`. Pinned legacy
+`fulltextsearch.cc:596-609` and `mainwindow.cc:3001-3013` confirm only headword
+plus dictionary-set targeting, not exact-document targeting.
+
+P8-FT-60 acceptance requires a transport-neutral Core-owned exact target,
+bounded validation and resolution, facade/tab identity and session replay, and
+atomic failure for invalid, stale, missing-dictionary, or missing-document
+targets. It must preserve current-tab activation, selected group, immutable
+accepted dictionary scope, history, main-query text/selection, and completed
+article-search handoff semantics. Widgets must not interpret `document_id` or
+perform backend lookup. The later implementation may change an installed
+interface only when the narrow contract explicitly requires and tests it.
 
 The Shared-Library and GUI Boundary and public/installed ABI remain unchanged,
 as do Core, configuration, index-format, dependency, build, catalog/locale-
@@ -4950,11 +4966,13 @@ policies remain `Maximum word distance` with spin-box-owned `0..1000` and
 completed P8-FT identities, predicates, lifecycle, coexistence, and privacy
 guarantees and exactly 109 registered Release tests remain unchanged.
 
-Index readiness/status/progress/rebuild/failure reporting/background lifecycle
-and full-text Preferences remain blocked without separately authoritative Core
-lifecycle/policy resolution. Translation, accessibility, styling, navigation,
-excerpt, diacritics, presentation, adapter, and other independent parity gaps
-remain unranked.
+This audit changes only the four governing documents. It excludes navigation
+implementation, highlighting/excerpts, ignore-diacritics semantics,
+translations, backend and index formats, configuration, dependencies, build
+behavior, catalogs, and unrelated presentation. Completed behavior and exactly
+109 registered Release tests remain unchanged. No successor is selected or
+ranked. The only dependency unlocked is implementation of P8-FT-60; exact-
+result activation remains dependent on its completion.
 
 ### Phase 9 — Linux Integration And Release Quality
 
