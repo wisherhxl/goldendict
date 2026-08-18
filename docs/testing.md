@@ -3994,17 +3994,19 @@ with spin-box-owned `1..100000`.
 
 ### P8-FT-63 accepted-query article-highlighting context prerequisite acceptance
 
-The documentation-only audit is pinned to synchronized migrated HEAD,
-upstream, and live remote revision
-`c733ad3ad0b18813e42dde02651708d07de26d29` and clean pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only P8-FT-63: retain
+P8-FT-63 is complete.
+
+The implementation starts from synchronized migrated HEAD, upstream, and live
+remote revision `97f2269a0cee85ae96b6c634d1967116a476e7e9` and clean pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It completes only
+P8-FT-63: retain
 the complete accepted highlighting-relevant query policy through the private
 activation and article-load handoff. The result list remains headword-only with
 its established dictionary-name tooltip; no excerpt or row-presentation test
 changes are permitted.
 
-Focused future cases extend existing dialog and MainWindow/full-text smokes.
-They prove exact by-value retention and delivery of query text, mode, match-
+Focused cases in the existing dialog and MainWindow/full-text smokes prove
+exact by-value retention and delivery of query text, mode, match-
 case, ignore-word-order, maximum-word-distance, and the already-carried ignore-
 diacritics value. They also prove that later widget edits, replacement,
 cancellation, stale or duplicate completion, controller detachment, rejected
@@ -4026,14 +4028,14 @@ Cases stay in existing test executables, so the Release registration baseline
 remains exactly 109 tests. Public/installed interfaces, Core DTOs, headless and
 runtime-source contracts, C API, configuration, persistence, index format,
 adapters, dependencies, build, catalogs, translations, generated files, and
-executables remain unchanged. Audit validation requires the exact four-
-document allowlist, complete-diff review, cross-document consistency, current
-and legacy citations, Phase terminology, Shared-Library and GUI Boundary,
-locked strings/captions/ranges and completed P8-FT-60 through P8-FT-62
-behavior, no-successor wording, synchronized refs, clean worktrees, and
-`git diff --check`. Compiled gates are omitted for this documentation-only
-audit. No successor after P8-FT-63 is selected or ranked; only its private
-accepted-query article-highlighting context implementation is unlocked.
+executables remain unchanged. Validation requires the exact nine-file
+allowlist, complete-diff review, cross-document consistency, current and legacy
+citations, Phase terminology, Shared-Library and GUI Boundary, locked strings/
+captions/ranges and completed P8-FT-60 through P8-FT-62 behavior, focused and
+full Release tests, install and consumer checks, exact-SCM package creation,
+synchronized refs, clean worktrees, and `git diff --check`. No successor after
+P8-FT-63 is selected or ranked; completion unlocks only its private accepted-
+query article-highlighting context dependency boundary.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

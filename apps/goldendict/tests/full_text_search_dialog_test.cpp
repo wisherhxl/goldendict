@@ -712,17 +712,27 @@ void CompareResult(const goldendict::core::FullTextResult& actual,
     }
 }
 
-void CompareIntent(const FullTextResultActivationIntent& actual,
-                   const goldendict::core::FullTextResult& expected_result,
-                   bool expected_filter_active,
-                   const std::vector<std::string>& expected_ids,
-                   const std::string& expected_query_text,
-                   bool expected_ignore_diacritics) {
+void CompareIntent(
+    const FullTextResultActivationIntent& actual,
+    const goldendict::core::FullTextResult& expected_result,
+    bool expected_filter_active, const std::vector<std::string>& expected_ids,
+    const std::string& expected_query_text, bool expected_ignore_diacritics,
+    goldendict::core::FullTextQueryMode expected_mode =
+        goldendict::core::FullTextQueryMode::kWholeWords,
+    bool expected_match_case = false, bool expected_ignore_word_order = false,
+    std::optional<std::uint32_t> expected_maximum_word_distance = std::nullopt,
+    bool compare_highlighting_context = false) {
     CompareResult(actual.result, expected_result);
     QCOMPARE(actual.dictionary_filter_active, expected_filter_active);
     QCOMPARE(actual.dictionary_ids, expected_ids);
     QCOMPARE(actual.query_text, expected_query_text);
     QCOMPARE(actual.ignore_diacritics, expected_ignore_diacritics);
+    if (compare_highlighting_context) {
+        QCOMPARE(actual.mode, expected_mode);
+        QCOMPARE(actual.match_case, expected_match_case);
+        QCOMPARE(actual.ignore_word_order, expected_ignore_word_order);
+        QCOMPARE(actual.maximum_word_distance, expected_maximum_word_distance);
+    }
 }
 
 }  // namespace
@@ -1593,7 +1603,13 @@ void FullTextSearchDialogTest::
     idle_dialog.pending_activation_scope_ =
         FullTextSearchDialog::ActivationScope{true, {"idle-dictionary"}};
     idle_dialog.pending_activation_context_ =
-        FullTextSearchDialog::ActivationContext{"accepted-query", true};
+        FullTextSearchDialog::ActivationContext{
+            "accepted-query",
+            true,
+            goldendict::core::FullTextQueryMode::kWholeWords,
+            false,
+            false,
+            std::nullopt};
     idle_dialog.active_generation_ = ++idle_dialog.generation_;
     std::size_t completion_count = 0U;
     idle_dialog.completion_notifier_ = [&completion_count]() {
@@ -2340,8 +2356,10 @@ void FullTextSearchDialogTest::
     model->Reset(first);
     dialog.accepted_activation_scope_ =
         FullTextSearchDialog::ActivationScope{false, {}};
-    dialog.accepted_activation_context_ =
-        FullTextSearchDialog::ActivationContext{"first-query", false};
+    dialog
+        .accepted_activation_context_ = FullTextSearchDialog::ActivationContext{
+        "first-query", false, goldendict::core::FullTextQueryMode::kWholeWords,
+        false,         false, std::nullopt};
 
     std::vector<FullTextResultActivationIntent> activations;
     connect(&dialog, &FullTextSearchDialog::ResultActivationRequested, &dialog,
@@ -2384,7 +2402,13 @@ void FullTextSearchDialogTest::
     dialog.accepted_activation_scope_ =
         FullTextSearchDialog::ActivationScope{true, {"replacement-scope"}};
     dialog.accepted_activation_context_ =
-        FullTextSearchDialog::ActivationContext{"replacement-query", true};
+        FullTextSearchDialog::ActivationContext{
+            "replacement-query",
+            true,
+            goldendict::core::FullTextQueryMode::kWholeWords,
+            false,
+            false,
+            std::nullopt};
     dialog.ActivateResult(replacement_index);
     QCOMPARE(activations.size(), std::size_t{2});
     const auto copied = activations.back();
@@ -2654,7 +2678,13 @@ void FullTextSearchDialogTest::
     RetainsExactAcceptedScopeAndQueryContextForByValueActivation() {
     ControllableDictionaryService service;
     goldendict::core::ApplicationPreferences preferences;
+    preferences.full_text_search_mode =
+        goldendict::core::FullTextSearchMode::kPlainText;
+    preferences.full_text_match_case = true;
     preferences.full_text_ignore_diacritics = true;
+    preferences.full_text_ignore_word_order = true;
+    preferences.full_text_use_maximum_word_distance = true;
+    preferences.full_text_maximum_word_distance = 17U;
     FullTextSearchDialog dialog(preferences, &service);
     auto* button_row = ButtonRow(&dialog);
     QVERIFY(button_row != nullptr);
@@ -2683,6 +2713,12 @@ void FullTextSearchDialogTest::
     QCOMPARE(dialog.accepted_activation_context_->query_text,
              std::string(u8"ordered café"));
     QVERIFY(dialog.accepted_activation_context_->ignore_diacritics);
+    QCOMPARE(dialog.accepted_activation_context_->mode,
+             goldendict::core::FullTextQueryMode::kPlainText);
+    QVERIFY(dialog.accepted_activation_context_->match_case);
+    QVERIFY(dialog.accepted_activation_context_->ignore_word_order);
+    QCOMPARE(dialog.accepted_activation_context_->maximum_word_distance,
+             std::optional<std::uint32_t>(17U));
 
     std::vector<FullTextResultActivationIntent> activations;
     connect(&dialog, &FullTextSearchDialog::ResultActivationRequested, &dialog,
@@ -2699,16 +2735,25 @@ void FullTextSearchDialogTest::
     dialog.ActivateResult(ordered_index);
     QCOMPARE(activations.size(), std::size_t{1});
     CompareIntent(activations.back(), ordered_result, true,
-                  ordered_scope.dictionary_ids, u8"ordered café", true);
+                  ordered_scope.dictionary_ids, u8"ordered café", true,
+                  goldendict::core::FullTextQueryMode::kPlainText, true, true,
+                  17U, true);
 
     activations.back().result.headword = "mutated copy";
     activations.back().dictionary_ids.clear();
     activations.back().query_text = "mutated query copy";
     activations.back().ignore_diacritics = false;
+    activations.back().mode =
+        goldendict::core::FullTextQueryMode::kRegularExpression;
+    activations.back().match_case = false;
+    activations.back().ignore_word_order = false;
+    activations.back().maximum_word_distance.reset();
     dialog.ActivateResult(ordered_index);
     QCOMPARE(activations.size(), std::size_t{2});
     CompareIntent(activations.back(), ordered_result, true,
-                  ordered_scope.dictionary_ids, u8"ordered café", true);
+                  ordered_scope.dictionary_ids, u8"ordered café", true,
+                  goldendict::core::FullTextQueryMode::kPlainText, true, true,
+                  17U, true);
 
     dialog.InitializeQuery(QStringLiteral("blocked"));
     dialog.SubmitSearch();

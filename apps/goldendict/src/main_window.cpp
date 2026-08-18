@@ -6036,8 +6036,15 @@ void MainWindow::NavigateToFullTextResult(
     search.status.clear();
     const std::uint64_t search_generation = ++search.generation;
     pending_article_search_handoffs_[tab_result.tab_id] = {
-        search.query, lookup_results_[tab_result.tab_id].generation,
-        search_generation, target_view};
+        search.query,
+        lookup_results_[tab_result.tab_id].generation,
+        search_generation,
+        target_view,
+        intent.mode,
+        intent.match_case,
+        intent.ignore_word_order,
+        intent.maximum_word_distance,
+        intent.ignore_diacritics};
     if (TabIdAt(article_tabs_->currentIndex()) == tab_result.tab_id)
         RefreshArticleSearch();
 }
@@ -6514,6 +6521,11 @@ void MainWindow::RunFullTextDialogSmokeCheck(
                                      ordered_intent.result.dictionary.id};
     ordered_intent.query_text = u8"exact accepted 😀 query";
     ordered_intent.ignore_diacritics = true;
+    ordered_intent.mode =
+        goldendict::core::FullTextQueryMode::kRegularExpression;
+    ordered_intent.match_case = true;
+    ordered_intent.ignore_word_order = true;
+    ordered_intent.maximum_word_distance = 23U;
     facade_ = &capturing_facade;
     first->ResultActivationRequested(ordered_intent);
     const auto ordered_state = facade_->GetArticleTabsState();
@@ -6566,6 +6578,17 @@ void MainWindow::RunFullTextDialogSmokeCheck(
             lookup_results_[tab_id_before_activation].generation &&
         pending_article_search_handoffs_[tab_id_before_activation].view ==
             ArticleViewForTab(tab_id_before_activation) &&
+        pending_article_search_handoffs_[tab_id_before_activation].mode ==
+            ordered_intent.mode &&
+        pending_article_search_handoffs_[tab_id_before_activation].match_case ==
+            ordered_intent.match_case &&
+        pending_article_search_handoffs_[tab_id_before_activation]
+                .ignore_word_order == ordered_intent.ignore_word_order &&
+        pending_article_search_handoffs_[tab_id_before_activation]
+                .maximum_word_distance ==
+            ordered_intent.maximum_word_distance &&
+        pending_article_search_handoffs_[tab_id_before_activation]
+                .ignore_diacritics == ordered_intent.ignore_diacritics &&
         ordered_session.tabs.size() == 1U &&
         ordered_session.tabs.front().history.back() ==
             ordered_state.tabs.front().navigation &&

@@ -934,24 +934,23 @@ successor after P8-FT-62 is selected, ranked, recommended, or named.
 Completion unlocks only the dependency boundary established by this match-
 centered excerpt/origin contract.
 
-### P8-FT-63 accepted-query article-highlighting context prerequisite (selected)
+### P8-FT-63 accepted-query article-highlighting context prerequisite (complete)
 
-The audit is pinned to synchronized migrated HEAD, upstream, and live remote
-revision `c733ad3ad0b18813e42dde02651708d07de26d29` and clean pinned legacy
+The implementation starts from synchronized migrated HEAD, upstream, and live
+remote revision `97f2269a0cee85ae96b6c634d1967116a476e7e9` and clean pinned legacy
 revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. GET's strict-parity decision
 keeps result rows headword-only, retains the exact dictionary-name tooltip, and
 rejects result-list excerpts or row redesign. The selected article-page path
 preserves legacy first-match selection and Previous/Next navigation where Qt6
 WebEngine supports them.
 
-P8-FT-63 is the smallest dependency-ready prerequisite. The current accepted
-activation context carries query text and `ignore_diacritics`, while literal
-Qt6 `findText` cannot represent the accepted mode, match-case, word-order, or
-maximum-distance policy. P8-FT-63 privately retains those exact submitted
-values by value through accepted response, result activation, and the existing
-generation-gated article-load handoff. Lifecycle rejection and replacement
-cannot apply stale context. The existing ignore-diacritics value remains
-unconsumed.
+P8-FT-63 completes the smallest dependency-ready prerequisite. The private
+accepted activation context and article-load handoff retain the exact submitted
+query text, mode, match-case, ignore-word-order, maximum-word-distance, and
+`ignore_diacritics` values by value. Generation, activation, tab/view, and
+teardown rejection prevents stale context from being applied. Literal Qt6
+`findText` still consumes only the query text; ignore-diacritics and the added
+policy values remain unconsumed.
 
 Pinned Qt5 `fulltextsearch.cc:596-609` and `articleview.cc:2569-2799` rematch
 rendered page plain text and then use derived literal matches for highlighting,
@@ -967,8 +966,8 @@ build, configuration, catalog, generated file, translation, executable, or
 test registration changes. Completed P8-FT behavior, locked strings/captions/
 ranges, headword and tooltip roles, and exactly 109 Release tests remain
 unchanged. No successor after P8-FT-63 is selected, ranked, recommended, or
-named. Selection unlocks only the private accepted-query article-highlighting
-context implementation.
+named. Completion unlocks only the private accepted-query article-highlighting
+context dependency boundary.
 
 ## Resources And Platform Integration
 

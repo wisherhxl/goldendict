@@ -32,6 +32,11 @@ struct FullTextResultActivationIntent final {
     std::vector<std::string> dictionary_ids;
     std::string query_text;
     bool ignore_diacritics = false;
+    goldendict::core::FullTextQueryMode mode =
+        goldendict::core::FullTextQueryMode::kWholeWords;
+    bool match_case = false;
+    bool ignore_word_order = false;
+    std::optional<std::uint32_t> maximum_word_distance;
 };
 
 class FullTextQueryComposer;
@@ -110,6 +115,11 @@ class FullTextSearchDialog final : public QDialog {
     struct ActivationContext final {
         std::string query_text;
         bool ignore_diacritics = false;
+        goldendict::core::FullTextQueryMode mode =
+            goldendict::core::FullTextQueryMode::kWholeWords;
+        bool match_case = false;
+        bool ignore_word_order = false;
+        std::optional<std::uint32_t> maximum_word_distance;
     };
 
     std::optional<ActivationScope> pending_activation_scope_;

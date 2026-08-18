@@ -284,8 +284,9 @@ void FullTextSearchDialog::SubmitSearch() {
     accepted_activation_context_.reset();
     pending_activation_scope_ =
         ActivationScope{query.dictionary_filter_active, query.dictionary_ids};
-    pending_activation_context_ =
-        ActivationContext{query.text, query.ignore_diacritics};
+    pending_activation_context_ = ActivationContext{
+        query.text,       query.ignore_diacritics, query.mode,
+        query.match_case, query.ignore_word_order, query.maximum_word_distance};
     active_generation_ = ++generation_;
     progress_->show();
     search_button_->setEnabled(false);
@@ -344,7 +345,11 @@ void FullTextSearchDialog::ActivateResult(const QModelIndex& index) {
             *result, accepted_activation_scope_->dictionary_filter_active,
             accepted_activation_scope_->dictionary_ids,
             accepted_activation_context_->query_text,
-            accepted_activation_context_->ignore_diacritics});
+            accepted_activation_context_->ignore_diacritics,
+            accepted_activation_context_->mode,
+            accepted_activation_context_->match_case,
+            accepted_activation_context_->ignore_word_order,
+            accepted_activation_context_->maximum_word_distance});
     }
 }
 

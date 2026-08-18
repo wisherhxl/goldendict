@@ -5130,25 +5130,25 @@ unranked. No successor after P8-FT-62 is selected, ranked,
 recommended, or named. Completion unlocks only the dependency boundary
 established by this match-centered excerpt/origin contract.
 
-### Phase 8 P8-FT-63 accepted-query article-highlighting context prerequisite (selected)
+### Phase 8 P8-FT-63 accepted-query article-highlighting context prerequisite (complete)
 
-This fresh bounded documentation-only audit starts from synchronized migrated
-HEAD, upstream, and live remote revision
-`c733ad3ad0b18813e42dde02651708d07de26d29` and unchanged clean read-only
+The implementation starts from synchronized migrated HEAD, upstream, and live
+remote revision `97f2269a0cee85ae96b6c634d1967116a476e7e9` and unchanged clean read-only
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. GET resolves the
 presentation policy in favor of strict pinned-Qt5 parity: keep the result list
 headword-only, preserve the existing dictionary-name tooltip, add no excerpt
 or row redesign, and pursue article-page highlighting after exact activation.
-The audit selects exactly P8-FT-63, the private accepted-query highlighting-
-context prerequisite.
+The implementation completes exactly P8-FT-63, the private accepted-query
+highlighting-context prerequisite.
 
-Current `full_text_search_dialog.h:24-35,106-122` and
-`full_text_search_dialog.cpp:280-348` retain only the accepted query text and
-`ignore_diacritics`. Current `main_window.cpp:5996-6043,7976-8110` safely
-generation-gates exact navigation, page load, literal first-match selection,
-status, and forward/backward `findText`, but a literal query cannot reproduce
-wildcard, regular-expression, whole-word, ignore-word-order, maximum-word-
-distance, match-case, or normalization semantics. Pinned legacy
+The private dialog activation context now retains the accepted query text,
+mode, match-case, ignore-word-order, maximum-word-distance, and
+`ignore_diacritics`. MainWindow retains that context through its existing
+generation-gated exact navigation and page-load handoff. Literal first-match
+selection, status, and forward/backward `findText` remain unchanged, but a
+literal query cannot reproduce wildcard, regular-expression, whole-word,
+ignore-word-order, maximum-word-distance, match-case, or normalization
+semantics. Pinned legacy
 `fulltextsearch.cc:596-609` and `articleview.cc:2569-2799` preserve the search
 policy, inspect rendered page plain text, derive literal matched strings,
 highlight occurrences, select the first match, and expose Previous/Next.
@@ -5170,7 +5170,7 @@ implemented. Rendered-page extraction, rematching, DOM/literal application,
 highlight-all behavior, first-match selection, Previous/Next behavior, and
 status wording remain excluded and unranked.
 
-The future prerequisite implementation is confined to private Widgets context
+The completed prerequisite implementation is confined to private Widgets context
 transport and focused existing tests. It changes no public/installed ABI, Core
 DTO, headless service, runtime-source or C API, configuration, persistence,
 index format, adapter, dependency, build, catalog, locale loader, generated
@@ -5179,8 +5179,8 @@ to expose only the established headword/Edit roles and dictionary-name tooltip.
 P8-FT-60 through P8-FT-62, locked strings/captions/ranges, all completed
 privacy and lifecycle behavior, and exactly 109 registered Release tests remain
 unchanged. No successor after P8-FT-63 is selected, ranked, recommended, or
-named. Selection unlocks only implementation of the private accepted-query
-article-highlighting context.
+named. Completion unlocks only the private accepted-query article-highlighting
+context dependency boundary.
 
 ### Phase 9 — Linux Integration And Release Quality
 

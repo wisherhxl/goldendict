@@ -448,6 +448,12 @@ class MainWindow final : public QMainWindow {
         std::uint64_t lookup_generation = 0U;
         std::uint64_t search_generation = 0U;
         QPointer<ArticleView> view;
+        goldendict::core::FullTextQueryMode mode =
+            goldendict::core::FullTextQueryMode::kWholeWords;
+        bool match_case = false;
+        bool ignore_word_order = false;
+        std::optional<std::uint32_t> maximum_word_distance;
+        bool ignore_diacritics = false;
     };
 
     std::map<goldendict::core::ArticleTabId, PendingArticleSearchHandoff>
