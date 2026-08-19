@@ -16,6 +16,9 @@
 
 namespace goldendict::core::dictionary {
 
+class FullTextIndex;
+class FullTextIndexSnapshotHolder;
+
 struct FullTextIndexPolicy {
     bool enabled = true;
     std::uint32_t maximum_dictionary_articles = 0U;
@@ -156,6 +159,7 @@ enum class FullTextIndexWorkStatus { kCompleted, kCancelled, kFailed };
 struct FullTextIndexWorkResult {
     FullTextIndexWorkStatus status = FullTextIndexWorkStatus::kFailed;
     std::string message;
+    std::shared_ptr<const FullTextIndex> replacement_snapshot;
 };
 
 class FullTextIndexFormatWorkPort {
@@ -185,7 +189,8 @@ class FullTextIndexLifecycleCoordinator final {
 
     bool RegisterDictionary(
         FullTextIndexRegistrationMetadata metadata,
-        std::shared_ptr<FullTextIndexFormatWorkPort> format_work_port);
+        std::shared_ptr<FullTextIndexFormatWorkPort> format_work_port,
+        std::shared_ptr<FullTextIndexSnapshotHolder> snapshot_holder);
     bool SubmitRebuild(const FullTextIndexRebuildIntent& intent);
     bool ExecuteBoundedWork(FullTextIndexWorkRequest request);
     bool Cancel(const FullTextIndexCancelIntent& intent) noexcept;

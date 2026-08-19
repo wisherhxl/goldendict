@@ -49,10 +49,26 @@ FullTextDocument Document(std::string id, std::string headword,
     return document;
 }
 
+std::shared_ptr<const FullTextIndex> Snapshot(
+    const TemporaryDirectory& directory, const std::string& name) {
+    return std::make_shared<const FullTextIndex>(FullTextIndex::OpenOrBuild(
+        directory.path() / (name + ".gdfts"), {},
+        {Document(name, name, name + " snapshot content")}));
+}
+
 FullTextIndexRegistrationMetadata Registration(std::string dictionary_id,
                                                std::string format_type = "AARD",
                                                std::size_t article_count = 0U) {
     return {std::move(dictionary_id), std::move(format_type), article_count};
+}
+
+bool Register(FullTextIndexLifecycleCoordinator& coordinator,
+              FullTextIndexRegistrationMetadata metadata,
+              std::shared_ptr<FullTextIndexFormatWorkPort> port,
+              std::shared_ptr<FullTextIndexSnapshotHolder> holder =
+                  std::make_shared<FullTextIndexSnapshotHolder>()) {
+    return coordinator.RegisterDictionary(std::move(metadata), std::move(port),
+                                          std::move(holder));
 }
 
 class Cancelled final : public CancellationToken {
@@ -73,6 +89,7 @@ class FakeFormatWorkPort final : public FullTextIndexFormatWorkPort {
     mutable std::size_t support_probe_count = 0U;
     mutable std::size_t revision_probe_count = 0U;
     bool throw_revision = false;
+    std::shared_ptr<const FullTextIndex> replacement_snapshot;
 
     bool IsFullTextIndexSupported() const noexcept override {
         ++support_probe_count;
@@ -99,9 +116,11 @@ class FakeFormatWorkPort final : public FullTextIndexFormatWorkPort {
                 return {cancellation_observed
                             ? FullTextIndexWorkStatus::kCancelled
                             : FullTextIndexWorkStatus::kCompleted,
-                        {}};
+                        {},
+                        replacement_snapshot};
             case Behavior::kFail:
-                return {FullTextIndexWorkStatus::kFailed, "adapter failure"};
+                return {FullTextIndexWorkStatus::kFailed, "adapter failure",
+                        nullptr};
             case Behavior::kThrowStandard:
                 throw std::runtime_error("escaped adapter failure");
             case Behavior::kThrowUnknown:
@@ -173,7 +192,9 @@ class BlockingFormatWorkPort final : public FullTextIndexFormatWorkPort {
     bool cancellation_observed_ = false;
     std::optional<FullTextIndexWorkRequest> request_;
     Completion completion_ = Completion::kResult;
-    FullTextIndexWorkResult result_{FullTextIndexWorkStatus::kCompleted, {}};
+    FullTextIndexWorkResult result_{FullTextIndexWorkStatus::kCompleted,
+                                    {},
+                                    nullptr};
 };
 
 }  // namespace
@@ -191,6 +212,7 @@ class FullTextIndexTest : public QObject {
     void SuppressesStaleCompletions();
     void ContainsCoordinatorWorkFailures();
     void PublishesImmutableSnapshots();
+    void CoordinatesGenerationAuthorizedSnapshotHandoff();
     void SkipsPublicationForUnsuccessfulOffSideWork();
     void QueryModesAndFilters();
     void AppliesIndependentIcuNormalizationPolicies();
@@ -327,6 +349,7 @@ void FullTextIndexTest::LifecycleContract() {
 }
 
 void FullTextIndexTest::RegistrationMetadataAndEligibility() {
+    TemporaryDirectory directory;
     const std::string canonical_format_types[] = {
         "AARD", "BGL",      "DICTD", "DSL", "MDICT",  "SDICT",
         "SLOB", "STARDICT", "XDXF",  "ZIM", "EPWING", "GLS",
@@ -334,7 +357,8 @@ void FullTextIndexTest::RegistrationMetadataAndEligibility() {
     for (const auto& format_type : canonical_format_types) {
         FullTextIndexLifecycleCoordinator coordinator;
         auto port = std::make_shared<FakeFormatWorkPort>();
-        QVERIFY(coordinator.RegisterDictionary(
+        QVERIFY(Register(
+            coordinator,
             Registration("dictionary-" + format_type, format_type, 7U), port));
         QCOMPARE(port->support_probe_count, 1U);
         QCOMPARE(port->revision_probe_count, 1U);
@@ -349,15 +373,16 @@ void FullTextIndexTest::RegistrationMetadataAndEligibility() {
     };
     FullTextIndexLifecycleCoordinator coordinator;
     auto existing = std::make_shared<FakeFormatWorkPort>();
-    QVERIFY(coordinator.RegisterDictionary(
-        Registration("existing", "AARD", 12U), existing));
+    QVERIFY(
+        Register(coordinator, Registration("existing", "AARD", 12U), existing));
     const auto original = coordinator.Snapshot("existing");
     for (const auto& format_type : invalid_format_types) {
         auto new_port = std::make_shared<FakeFormatWorkPort>();
-        QVERIFY(!coordinator.RegisterDictionary(
-            Registration("new-" + std::to_string(format_type.size()),
-                         format_type),
-            new_port));
+        QVERIFY(
+            !Register(coordinator,
+                      Registration("new-" + std::to_string(format_type.size()),
+                                   format_type),
+                      new_port));
         QCOMPARE(new_port->support_probe_count, 0U);
         QCOMPARE(new_port->revision_probe_count, 0U);
         QVERIFY(
@@ -365,32 +390,32 @@ void FullTextIndexTest::RegistrationMetadataAndEligibility() {
                  .has_value());
 
         auto duplicate_port = std::make_shared<FakeFormatWorkPort>();
-        QVERIFY(!coordinator.RegisterDictionary(
-            Registration("existing", format_type), duplicate_port));
+        QVERIFY(!Register(coordinator, Registration("existing", format_type),
+                          duplicate_port));
         QCOMPARE(duplicate_port->support_probe_count, 0U);
         QCOMPARE(duplicate_port->revision_probe_count, 0U);
         QCOMPARE(coordinator.Snapshot("existing"), original);
     }
     auto rejected = std::make_shared<FakeFormatWorkPort>();
-    QVERIFY(
-        !coordinator.RegisterDictionary(Registration("", "AARD"), rejected));
-    QVERIFY(
-        !coordinator.RegisterDictionary(Registration("null", "AARD"), nullptr));
-    QVERIFY(!coordinator.RegisterDictionary(Registration("existing", "AARD"),
-                                            rejected));
+    QVERIFY(!Register(coordinator, Registration("", "AARD"), rejected));
+    QVERIFY(!coordinator.RegisterDictionary(
+        Registration("null", "AARD"), nullptr,
+        std::make_shared<FullTextIndexSnapshotHolder>()));
+    QVERIFY(!Register(coordinator, Registration("existing", "AARD"), rejected));
     QCOMPARE(rejected->support_probe_count, 0U);
     QCOMPARE(rejected->revision_probe_count, 0U);
     QCOMPARE(coordinator.Snapshot("existing"), original);
     QVERIFY(coordinator.SubmitRebuild({{1U, "existing"}, {}}));
     const auto requested_existing = coordinator.Snapshot("existing");
     auto invalid_duplicate = std::make_shared<FakeFormatWorkPort>();
-    QVERIFY(!coordinator.RegisterDictionary(Registration("existing", "aArD"),
-                                            invalid_duplicate));
+    QVERIFY(!Register(coordinator, Registration("existing", "aArD"),
+                      invalid_duplicate));
     QCOMPARE(invalid_duplicate->support_probe_count, 0U);
     QCOMPARE(invalid_duplicate->revision_probe_count, 0U);
     QCOMPARE(coordinator.Snapshot("existing"), requested_existing);
     FullTextIndexWorkRequest existing_work;
     existing_work.identity = {1U, "existing"};
+    existing->replacement_snapshot = Snapshot(directory, "existing");
     QVERIFY(coordinator.ExecuteBoundedWork(existing_work));
     QCOMPARE(coordinator.Snapshot("existing")->state(),
              FullTextIndexLifecycleState::kCurrent);
@@ -398,7 +423,7 @@ void FullTextIndexTest::RegistrationMetadataAndEligibility() {
     FullTextIndexRegistrationMetadata caller =
         Registration("copied", "MDICT", 9U);
     auto copied_port = std::make_shared<FakeFormatWorkPort>();
-    QVERIFY(coordinator.RegisterDictionary(caller, copied_port));
+    QVERIFY(Register(coordinator, caller, copied_port));
     caller.dictionary_id = "changed";
     caller.format_type = "DSL";
     caller.article_count = 999U;
@@ -465,14 +490,12 @@ void FullTextIndexTest::PolicyExcludedLifecycle() {
     auto supported = std::make_shared<FakeFormatWorkPort>();
     auto unsupported = std::make_shared<FakeFormatWorkPort>();
     unsupported->supported = false;
-    QVERIFY(
-        coordinator.RegisterDictionary(Registration("supported"), supported));
-    QVERIFY(coordinator.RegisterDictionary(Registration("unsupported"),
-                                           unsupported));
+    QVERIFY(Register(coordinator, Registration("supported"), supported));
+    QVERIFY(Register(coordinator, Registration("unsupported"), unsupported));
     auto failed_initial = std::make_shared<FakeFormatWorkPort>();
     failed_initial->throw_revision = true;
-    QVERIFY(coordinator.RegisterDictionary(Registration("failed-initial"),
-                                           failed_initial));
+    QVERIFY(
+        Register(coordinator, Registration("failed-initial"), failed_initial));
     QCOMPARE(coordinator.Snapshot("failed-initial")->state(),
              FullTextIndexLifecycleState::kFailed);
 
@@ -516,18 +539,23 @@ void FullTextIndexTest::PolicyExcludedLifecycle() {
 }
 
 void FullTextIndexTest::CoordinatesExplicitLifecycleTransitions() {
+    TemporaryDirectory directory;
     FullTextIndexLifecycleCoordinator coordinator;
     auto supported = std::make_shared<FakeFormatWorkPort>();
     auto unsupported = std::make_shared<FakeFormatWorkPort>();
     unsupported->supported = false;
-    QVERIFY(
-        coordinator.RegisterDictionary(Registration("supported"), supported));
-    QVERIFY(coordinator.RegisterDictionary(Registration("unsupported"),
-                                           unsupported));
-    QVERIFY(
-        !coordinator.RegisterDictionary(Registration("supported"), supported));
-    QVERIFY(!coordinator.RegisterDictionary(Registration(""), supported));
-    QVERIFY(!coordinator.RegisterDictionary(Registration("null"), nullptr));
+    QVERIFY(Register(coordinator, Registration("supported"), supported));
+    QVERIFY(Register(coordinator, Registration("unsupported"), unsupported));
+    QVERIFY(!Register(coordinator, Registration("supported"), supported));
+    QVERIFY(!Register(coordinator, Registration(""), supported));
+    QVERIFY(!coordinator.RegisterDictionary(
+        Registration("null"), nullptr,
+        std::make_shared<FullTextIndexSnapshotHolder>()));
+    auto null_holder_port = std::make_shared<FakeFormatWorkPort>();
+    QVERIFY(!coordinator.RegisterDictionary(Registration("null-holder"),
+                                            null_holder_port, nullptr));
+    QCOMPARE(null_holder_port->support_probe_count, 0U);
+    QCOMPARE(null_holder_port->revision_probe_count, 0U);
     QVERIFY(!coordinator.Snapshot("missing").has_value());
     QVERIFY(!coordinator.Cancel({{0U, "supported"}}));
 
@@ -560,6 +588,7 @@ void FullTextIndexTest::CoordinatesExplicitLifecycleTransitions() {
     work.maximum_document_bytes = 1025U;
     work.maximum_corpus_bytes = 8193U;
     work.deadline = deadline;
+    supported->replacement_snapshot = Snapshot(directory, "supported");
     QVERIFY(coordinator.ExecuteBoundedWork(work));
     QCOMPARE(coordinator.Snapshot("supported")->state(),
              FullTextIndexLifecycleState::kCurrent);
@@ -586,11 +615,17 @@ void FullTextIndexTest::CoordinatesExplicitLifecycleTransitions() {
 }
 
 void FullTextIndexTest::IsolatesAndMonotonicallyReplacesGenerations() {
+    TemporaryDirectory directory;
     FullTextIndexLifecycleCoordinator coordinator;
     auto first = std::make_shared<FakeFormatWorkPort>();
     auto second = std::make_shared<FakeFormatWorkPort>();
-    QVERIFY(coordinator.RegisterDictionary(Registration("first"), first));
-    QVERIFY(coordinator.RegisterDictionary(Registration("second"), second));
+    auto first_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    auto second_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    const auto second_current = Snapshot(directory, "identity-current");
+    QVERIFY(second_holder->Publish(second_current));
+    QVERIFY(Register(coordinator, Registration("first"), first, first_holder));
+    QVERIFY(
+        Register(coordinator, Registration("second"), second, second_holder));
 
     QVERIFY(coordinator.SubmitRebuild({{0U, "second"}, {}}));
     QVERIFY(!coordinator.SubmitRebuild({{0U, "second"}, {}}));
@@ -609,6 +644,7 @@ void FullTextIndexTest::IsolatesAndMonotonicallyReplacesGenerations() {
     wrong.identity = {4U, "second"};
     QVERIFY(!coordinator.ExecuteBoundedWork(wrong));
     QCOMPARE(second->invocation_count, 0U);
+    QCOMPARE(second_holder->Acquire().get(), second_current.get());
     QVERIFY(coordinator.SubmitRebuild({{8U, "first"}, {}}));
     QCOMPARE(coordinator.Snapshot("first")->identity().generation, 8U);
     QCOMPARE(coordinator.Snapshot("first")->state(),
@@ -616,9 +652,14 @@ void FullTextIndexTest::IsolatesAndMonotonicallyReplacesGenerations() {
 }
 
 void FullTextIndexTest::CancelsExactWorkIdempotently() {
+    TemporaryDirectory directory;
     FullTextIndexLifecycleCoordinator coordinator;
     auto port = std::make_shared<BlockingFormatWorkPort>();
-    QVERIFY(coordinator.RegisterDictionary(Registration("dictionary"), port));
+    auto holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    const auto old_snapshot = Snapshot(directory, "cancel-old");
+    const auto cancelled_candidate = Snapshot(directory, "cancel-candidate");
+    QVERIFY(holder->Publish(old_snapshot));
+    QVERIFY(Register(coordinator, Registration("dictionary"), port, holder));
     const FullTextIndexWorkIdentity first{1U, "dictionary"};
     QVERIFY(coordinator.SubmitRebuild({first, {}}));
     QVERIFY(coordinator.Cancel({first}));
@@ -642,17 +683,22 @@ void FullTextIndexTest::CancelsExactWorkIdempotently() {
     QVERIFY(!coordinator.Cancel({{2U, "other"}}));
     QVERIFY(coordinator.Cancel({second}));
     QVERIFY(coordinator.Cancel({second}));
-    port->Finish({FullTextIndexWorkStatus::kCompleted, {}});
+    port->Finish(
+        {FullTextIndexWorkStatus::kCompleted, {}, cancelled_candidate});
     QVERIFY(running.get());
     QVERIFY(port->cancellation_observed());
     QCOMPARE(coordinator.Snapshot("dictionary")->state(),
              FullTextIndexLifecycleState::kCancelled);
+    QCOMPARE(holder->Acquire().get(), old_snapshot.get());
     QVERIFY(coordinator.Cancel({second}));
     QCOMPARE(coordinator.Snapshot("dictionary")->state(),
              FullTextIndexLifecycleState::kCancelled);
 }
 
 void FullTextIndexTest::SuppressesStaleCompletions() {
+    TemporaryDirectory directory;
+    const auto old_snapshot = Snapshot(directory, "stale-old");
+    const auto stale_candidate = Snapshot(directory, "stale-candidate");
     const std::pair<BlockingFormatWorkPort::Completion, FullTextIndexWorkStatus>
         stale_outcomes[] = {
             {BlockingFormatWorkPort::Completion::kResult,
@@ -669,8 +715,10 @@ void FullTextIndexTest::SuppressesStaleCompletions() {
     for (const auto& [completion, stale_status] : stale_outcomes) {
         FullTextIndexLifecycleCoordinator coordinator;
         auto port = std::make_shared<BlockingFormatWorkPort>();
+        auto holder = std::make_shared<FullTextIndexSnapshotHolder>();
+        QVERIFY(holder->Publish(old_snapshot));
         QVERIFY(
-            coordinator.RegisterDictionary(Registration("dictionary"), port));
+            Register(coordinator, Registration("dictionary"), port, holder));
         QVERIFY(coordinator.SubmitRebuild({{1U, "dictionary"}, {}}));
         FullTextIndexWorkRequest work;
         work.identity = {1U, "dictionary"};
@@ -683,7 +731,7 @@ void FullTextIndexTest::SuppressesStaleCompletions() {
         QVERIFY(coordinator.SubmitRebuild({{2U, "dictionary"}, excluded}));
         const auto replacement = coordinator.Snapshot("dictionary");
         if (completion == BlockingFormatWorkPort::Completion::kResult) {
-            port->Finish({stale_status, "stale failure"});
+            port->Finish({stale_status, "stale failure", stale_candidate});
         } else {
             port->FinishByThrowing(completion);
         }
@@ -693,6 +741,7 @@ void FullTextIndexTest::SuppressesStaleCompletions() {
         QCOMPARE(coordinator.Snapshot("dictionary")->identity().generation, 2U);
         QCOMPARE(coordinator.Snapshot("dictionary")->state(),
                  FullTextIndexLifecycleState::kPolicyExcluded);
+        QCOMPARE(holder->Acquire().get(), old_snapshot.get());
         QVERIFY(coordinator.SubmitRebuild({{3U, "dictionary"}, {}}));
         QCOMPARE(coordinator.Snapshot("dictionary")->state(),
                  FullTextIndexLifecycleState::kWorkRequested);
@@ -700,6 +749,8 @@ void FullTextIndexTest::SuppressesStaleCompletions() {
 }
 
 void FullTextIndexTest::ContainsCoordinatorWorkFailures() {
+    TemporaryDirectory directory;
+    const auto current = Snapshot(directory, "failure-current");
     const FakeFormatWorkPort::Behavior behaviors[] = {
         FakeFormatWorkPort::Behavior::kFail,
         FakeFormatWorkPort::Behavior::kThrowStandard,
@@ -710,8 +761,10 @@ void FullTextIndexTest::ContainsCoordinatorWorkFailures() {
         FullTextIndexLifecycleCoordinator coordinator;
         auto port = std::make_shared<FakeFormatWorkPort>();
         port->behavior = behavior;
+        auto holder = std::make_shared<FullTextIndexSnapshotHolder>();
+        QVERIFY(holder->Publish(current));
         QVERIFY(
-            coordinator.RegisterDictionary(Registration("dictionary"), port));
+            Register(coordinator, Registration("dictionary"), port, holder));
         const FullTextIndexWorkIdentity identity{generation++, "dictionary"};
         QVERIFY(coordinator.SubmitRebuild({identity, {}}));
         FullTextIndexWorkRequest work;
@@ -719,6 +772,7 @@ void FullTextIndexTest::ContainsCoordinatorWorkFailures() {
         QVERIFY(coordinator.ExecuteBoundedWork(work));
         QCOMPARE(coordinator.Snapshot("dictionary")->state(),
                  FullTextIndexLifecycleState::kFailed);
+        QCOMPARE(holder->Acquire().get(), current.get());
         QCOMPARE(port->invocation_count, 1U);
     }
 }
@@ -793,17 +847,67 @@ void FullTextIndexTest::PublishesImmutableSnapshots() {
     QCOMPARE(holder.Acquire().get(), new_snapshot.get());
 }
 
+void FullTextIndexTest::CoordinatesGenerationAuthorizedSnapshotHandoff() {
+    TemporaryDirectory directory;
+    auto holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    const auto old_snapshot = Snapshot(directory, "handoff-old");
+    const auto replacement = Snapshot(directory, "handoff-replacement");
+    QVERIFY(holder->Publish(old_snapshot));
+    const auto retained_old = holder->Acquire();
+
+    FullTextIndexLifecycleCoordinator coordinator;
+    auto port = std::make_shared<BlockingFormatWorkPort>();
+    QVERIFY(Register(coordinator, Registration("dictionary"), port, holder));
+    const FullTextIndexWorkIdentity identity{1U, "dictionary"};
+    QVERIFY(coordinator.SubmitRebuild({identity, {}}));
+    FullTextIndexWorkRequest request;
+    request.identity = identity;
+    auto running = std::async(std::launch::async, [&] {
+        return coordinator.ExecuteBoundedWork(request);
+    });
+    port->WaitUntilStarted();
+    QCOMPARE(coordinator.Snapshot("dictionary")->state(),
+             FullTextIndexLifecycleState::kWorking);
+    QCOMPARE(holder->Acquire().get(), old_snapshot.get());
+
+    port->Finish({FullTextIndexWorkStatus::kCompleted, {}, replacement});
+    QVERIFY(running.get());
+    QCOMPARE(coordinator.Snapshot("dictionary")->state(),
+             FullTextIndexLifecycleState::kCurrent);
+    QCOMPARE(holder->Acquire().get(), replacement.get());
+    QCOMPARE(retained_old.get(), old_snapshot.get());
+    QVERIFY(retained_old->ResolveDocument("handoff-old-article").has_value());
+    QVERIFY(!retained_old->ResolveDocument("handoff-replacement-article")
+                 .has_value());
+    QVERIFY(holder->Acquire()
+                ->ResolveDocument("handoff-replacement-article")
+                .has_value());
+
+    FullTextIndexLifecycleCoordinator null_coordinator;
+    auto null_port = std::make_shared<FakeFormatWorkPort>();
+    auto null_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    QVERIFY(null_holder->Publish(old_snapshot));
+    QVERIFY(Register(null_coordinator, Registration("null"), null_port,
+                     null_holder));
+    QVERIFY(null_coordinator.SubmitRebuild({{1U, "null"}, {}}));
+    request.identity = {1U, "null"};
+    QVERIFY(null_coordinator.ExecuteBoundedWork(request));
+    QCOMPARE(null_coordinator.Snapshot("null")->state(),
+             FullTextIndexLifecycleState::kFailed);
+    QCOMPARE(null_holder->Acquire().get(), old_snapshot.get());
+}
+
 void FullTextIndexTest::SkipsPublicationForUnsuccessfulOffSideWork() {
     TemporaryDirectory directory;
-    FullTextIndexSnapshotHolder holder;
+    auto holder = std::make_shared<FullTextIndexSnapshotHolder>();
     auto current =
         std::make_shared<const FullTextIndex>(FullTextIndex::OpenOrBuild(
             directory.path() / "current.gdfts", {},
             {Document("current", "Current", "published content")}));
-    QVERIFY(holder.Publish(current));
+    QVERIFY(holder->Publish(current));
 
     const auto verify_unchanged = [&] {
-        QCOMPARE(holder.Acquire().get(), current.get());
+        QCOMPARE(holder->Acquire().get(), current.get());
     };
     try {
         throw std::runtime_error("off-side build failure");
@@ -845,7 +949,7 @@ void FullTextIndexTest::SkipsPublicationForUnsuccessfulOffSideWork() {
 
     FullTextIndexLifecycleCoordinator coordinator;
     auto port = std::make_shared<BlockingFormatWorkPort>();
-    QVERIFY(coordinator.RegisterDictionary(Registration("stale"), port));
+    QVERIFY(Register(coordinator, Registration("stale"), port, holder));
     QVERIFY(coordinator.SubmitRebuild({{1U, "stale"}, {}}));
     FullTextIndexWorkRequest request;
     request.identity = {1U, "stale"};
@@ -854,7 +958,9 @@ void FullTextIndexTest::SkipsPublicationForUnsuccessfulOffSideWork() {
     });
     port->WaitUntilStarted();
     QVERIFY(coordinator.SubmitRebuild({{2U, "stale"}, {}}));
-    port->Finish({FullTextIndexWorkStatus::kCompleted, {}});
+    port->Finish({FullTextIndexWorkStatus::kCompleted,
+                  {},
+                  Snapshot(directory, "stale-off-side")});
     QVERIFY(stale.get());
     QCOMPARE(coordinator.Snapshot("stale")->identity().generation, 2U);
     QCOMPARE(coordinator.Snapshot("stale")->state(),

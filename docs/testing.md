@@ -4584,14 +4584,15 @@ and C++ consumers, exact-SCM package creation, local/upstream/live-remote
 equality and clean migrated and pinned legacy worktrees. P8-FT-77 is complete.
 No successor is selected or named.
 
-### Phase 8 P8-FT-78 generation-authorized snapshot-handoff acceptance
+### Phase 8 P8-FT-78 generation-authorized snapshot-handoff acceptance (completed)
 
-The documentation-only readiness audit is grounded at synchronized migrated
-revision `46b02610c3749094b2ae39dad687fbbd2274114c` and clean pinned legacy
-revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only the private
-generation-authorized handoff needed before a real AARD format-work port.
+The completed implementation is grounded at migrated base revision
+`5c58b1ead60aece993bd41d49ce763ad67940a47` and clean pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It implements only the
+private generation-authorized handoff needed before a real AARD format-work
+port.
 
-Future implementation extends only the existing `full_text_index_test`
+The implementation extends only the existing `full_text_index_test`
 registration. A deterministic port returns an unpublished immutable candidate
 and a registered holder exposes it only after the coordinator revalidates the
 exact current dictionary/generation and uncancelled state. Coverage must prove
@@ -4610,13 +4611,12 @@ AARD traversal cases remain unchanged.
 No AARD bridge, catalog/composition wiring, automatic persisted-policy apply
 or restart, scheduler, progress, facade/UI transport, serialization, public or
 installed interface, dependency, executable or registration is added. The
-future implementation gate is the focused existing Release test, full 109-test
+implementation gate is the focused existing Release test, full 109-test
 Release suite, install and packaged consumers, exact-SCM creation and clean ref
-equality. This documentation leaf requires only validated current/legacy
-citations, the four-file allowlist, `git diff --check`, exactly 109 Release
-registrations, local/upstream/live-remote equality and clean migrated and
-pinned legacy worktrees. Compiled tests are not required. No successor beyond
-P8-FT-78 is selected or named.
+equality. Delivery uses the exact seven-file allowlist, `git diff --check`, ten
+focused Release repeats, exactly 109 Release registrations, install and
+standalone and packaged C/C++ consumers. P8-FT-78 is complete. No successor is
+selected or named.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

@@ -5874,22 +5874,22 @@ Composition, persisted-policy application/restart, scheduling, progress,
 facade/Widgets transport, UI, serialization, two-pass ordering and every public
 ABI remain excluded. P8-FT-77 is complete. No successor is selected or named.
 
-### Phase 8 P8-FT-78 private generation-authorized immutable snapshot handoff prerequisite
+### Phase 8 P8-FT-78 private generation-authorized immutable snapshot handoff prerequisite (completed)
 
-The fresh independent post-P8-FT-77 audit is grounded at synchronized migrated
-revision `46b02610c3749094b2ae39dad687fbbd2274114c` and clean pinned legacy
-revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
-`full_text_index_lifecycle.cc:241-287` invokes bounded port work before it
-reacquires the coordinator lock and rejects a replaced generation, while
+The completed implementation is grounded at migrated base revision
+`5c58b1ead60aece993bd41d49ce763ad67940a47` and clean pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. At that base,
+`full_text_index_lifecycle.cc:241-287` invoked bounded port work before it
+reacquired the coordinator lock and rejected a replaced generation, while
 `full_text_index_snapshot.cc:10-24` provides atomic complete-replacement
-publication. Publishing from a real AARD port would therefore permit stale
-work to replace a newer reader snapshot before Core performs its authoritative
-generation check. Pinned legacy `fulltextsearch.cc:34-70,100-111`,
+publication. That gap would have permitted a real AARD port to publish stale
+work before Core performed its authoritative generation check. Pinned legacy
+`fulltextsearch.cc:34-70,100-111`,
 `mainwindow.cc:1381-1393,2100-2101,2158-2165,2180-2181,2288-2303` and
-`aard.cc:609-635` confirm cancellation and stop/apply/restart ownership but do
-not supply a safe migrated publication handoff.
+`aard.cc:609-635` confirm cancellation and stop/apply/restart ownership. This
+leaf supplies the missing safe migrated publication handoff.
 
-P8-FT-78 selects only the missing private handoff. Successful bounded work
+P8-FT-78 implements only the missing private handoff. Successful bounded work
 returns a non-null `std::shared_ptr<const FullTextIndex>` candidate without
 publishing it. Composition/catalog registers immutable dictionary metadata, a
 lifetime-safe format-work port and the same lifetime-safe snapshot holder used
@@ -5907,13 +5907,13 @@ performs policy, generation authorization, lifecycle transition or
 publication. Core retains lifecycle and eligibility ownership; the holder
 retains only acquisition and atomic replacement.
 
-This prerequisite adds no real AARD port, catalog/composition wiring,
+The implementation adds no real AARD port, catalog/composition wiring,
 automatic policy application/restart, scheduler, progress, facade/Widgets
 transport, UI, serialization change or complete rebuild workflow. Canonical
 formats, `kPolicyExcluded`, article and work limits, `full-text-v1`, intentional
 ICU divergence, public/installed boundaries, ordinary find, Dictionaries-only
-F3, translations and exactly 109 registrations remain unchanged. No successor
-beyond P8-FT-78 is selected or named.
+F3, translations and exactly 109 registrations remain unchanged. P8-FT-78 is
+complete. No successor is selected or named.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

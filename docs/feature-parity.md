@@ -1475,15 +1475,15 @@ progress or facade/UI behavior is included. All locked lifecycle, eligibility,
 snapshot, public ABI and dependency boundaries remain unchanged. P8-FT-77 is
 complete. No successor is selected or named.
 
-### P8-FT-78 private generation-authorized immutable snapshot handoff prerequisite
+### P8-FT-78 private generation-authorized immutable snapshot handoff prerequisite (completed)
 
-The fresh independent bounded audit uses synchronized migrated revision
-`46b02610c3749094b2ae39dad687fbbd2274114c` and clean pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects one prerequisite before
-a real AARD work-port bridge. Current bounded work returns before the Core
-coordinator revalidates its generation, so adapter-owned publication could
-make a stale result visible even though the later lifecycle completion is
-correctly ignored.
+The completed implementation is grounded at migrated base revision
+`5c58b1ead60aece993bd41d49ce763ad67940a47` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. At that base, bounded work returned
+before the Core coordinator revalidated its generation, so adapter-owned
+publication could have made a stale result visible even though the later
+lifecycle completion was correctly ignored. This leaf closes that gap before
+a real AARD work-port bridge.
 
 P8-FT-78 makes a completed bounded-work result carry an unpublished non-null
 immutable index candidate. Composition/catalog supplies the coordinator with
@@ -1503,7 +1503,8 @@ serialization, public/installed interface, dependency or registration change
 is included. P8-FT-72 through P8-FT-77, canonical formats,
 `kPolicyExcluded`, article limits, immutable retained readers, `full-text-v1`,
 ICU divergence, ordinary find/F3 and translations remain locked. The Release
-baseline stays exactly 109. No successor beyond P8-FT-78 is selected or named.
+baseline stays exactly 109. P8-FT-78 is complete. No successor is selected or
+named.
 
 ## Resources And Platform Integration
 

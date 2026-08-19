@@ -2,6 +2,8 @@
 
 #include "full_text_index_lifecycle.h"
 
+#include "full_text_index_snapshot.h"
+
 #include <array>
 #include <atomic>
 #include <exception>
@@ -81,14 +83,16 @@ FullTextIndexWorkResult FullTextIndexFormatWorkPort::PerformFullTextIndexWork(
     try {
         return DoPerformFullTextIndexWork(request);
     } catch (const std::bad_alloc&) {
-        return {FullTextIndexWorkStatus::kFailed, "Resource limit exceeded"};
+        return {FullTextIndexWorkStatus::kFailed, "Resource limit exceeded",
+                nullptr};
     } catch (const std::length_error&) {
-        return {FullTextIndexWorkStatus::kFailed, "Resource limit exceeded"};
+        return {FullTextIndexWorkStatus::kFailed, "Resource limit exceeded",
+                nullptr};
     } catch (const std::exception& error) {
-        return {FullTextIndexWorkStatus::kFailed, error.what()};
+        return {FullTextIndexWorkStatus::kFailed, error.what(), nullptr};
     } catch (...) {
         return {FullTextIndexWorkStatus::kFailed,
-                "Unknown full-text index work failure"};
+                "Unknown full-text index work failure", nullptr};
     }
 }
 
@@ -123,6 +127,7 @@ class FullTextIndexLifecycleCoordinator::Implementation final {
     struct Entry final {
         FullTextIndexRegistrationMetadata metadata;
         std::shared_ptr<FullTextIndexFormatWorkPort> port;
+        std::shared_ptr<FullTextIndexSnapshotHolder> snapshot_holder;
         std::shared_ptr<Generation> current;
         bool has_accepted_generation = false;
     };
@@ -139,10 +144,11 @@ FullTextIndexLifecycleCoordinator::~FullTextIndexLifecycleCoordinator() =
 
 bool FullTextIndexLifecycleCoordinator::RegisterDictionary(
     FullTextIndexRegistrationMetadata metadata,
-    std::shared_ptr<FullTextIndexFormatWorkPort> format_work_port) {
+    std::shared_ptr<FullTextIndexFormatWorkPort> format_work_port,
+    std::shared_ptr<FullTextIndexSnapshotHolder> snapshot_holder) {
     if (metadata.dictionary_id.empty() ||
         !IsCanonicalFormatType(metadata.format_type) ||
-        format_work_port == nullptr) {
+        format_work_port == nullptr || snapshot_holder == nullptr) {
         return false;
     }
 
@@ -174,9 +180,9 @@ bool FullTextIndexLifecycleCoordinator::RegisterDictionary(
     const std::string dictionary_id = metadata.dictionary_id;
     return implementation_->entries
         .emplace(dictionary_id,
-                 Implementation::Entry{std::move(metadata),
-                                       std::move(format_work_port),
-                                       std::move(generation), false})
+                 Implementation::Entry{
+                     std::move(metadata), std::move(format_work_port),
+                     std::move(snapshot_holder), std::move(generation), false})
         .second;
 }
 
@@ -274,7 +280,13 @@ bool FullTextIndexLifecycleCoordinator::ExecuteBoundedWork(
     } else {
         switch (result.status) {
             case FullTextIndexWorkStatus::kCompleted:
-                generation->state = FullTextIndexLifecycleState::kCurrent;
+                if (result.replacement_snapshot != nullptr &&
+                    found->second.snapshot_holder->Publish(
+                        result.replacement_snapshot)) {
+                    generation->state = FullTextIndexLifecycleState::kCurrent;
+                } else {
+                    generation->state = FullTextIndexLifecycleState::kFailed;
+                }
                 break;
             case FullTextIndexWorkStatus::kCancelled:
                 generation->state = FullTextIndexLifecycleState::kCancelled;

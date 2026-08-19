@@ -5766,22 +5766,22 @@ locked. Existing AARD tests are extended without registering a test, keeping
 the Release baseline at exactly 109. P8-FT-77 is complete. No successor is
 selected or named.
 
-### Phase 8 P8-FT-78 private generation-authorized immutable snapshot handoff prerequisite
+### Phase 8 P8-FT-78 private generation-authorized immutable snapshot handoff prerequisite (completed)
 
-The fresh independent post-P8-FT-77 readiness audit is pinned to synchronized
-migrated revision `46b02610c3749094b2ae39dad687fbbd2274114c` and clean legacy
-revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
-`full_text_index_lifecycle.cc:241-287` performs bounded work outside the
-coordinator lock and checks current generation only after return;
+The completed implementation is grounded at migrated base revision
+`5c58b1ead60aece993bd41d49ce763ad67940a47` and clean legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. At that base,
+`full_text_index_lifecycle.cc:241-287` performed bounded work outside the
+coordinator lock and checked current generation only after return;
 `full_text_index_snapshot.cc:10-24` atomically replaces complete immutable
-snapshots. Consequently, a real AARD port is not yet dependency-ready because
-publishing within it could expose a stale result before Core rejects that
-generation. Legacy `fulltextsearch.cc:34-70,100-111`,
+snapshots. Publishing within a real AARD port could therefore have exposed a
+stale result before Core rejected that generation. Legacy
+`fulltextsearch.cc:34-70,100-111`,
 `mainwindow.cc:1381-1393,2100-2101,2158-2165,2180-2181,2288-2303` and
 `aard.cc:609-635` support cancellation and stop/apply/restart parity without
 changing this migrated ownership requirement.
 
-P8-FT-78 selects only a private result-to-publication handoff. Successful
+P8-FT-78 implements only a private result-to-publication handoff. Successful
 bounded work returns an unpublished non-null immutable index candidate.
 Composition/catalog registers the immutable metadata, lifetime-safe port and
 the snapshot holder shared with dictionary readers. The Core coordinator
@@ -5799,8 +5799,8 @@ progress, facade/Widgets transport, UI, serialization and later format work
 remain excluded. All P8-FT-72 through P8-FT-77 behavior, canonical formats,
 `kPolicyExcluded`, article limits, immutable reader retention, `full-text-v1`,
 ICU divergence, public/installed boundaries, ordinary find/F3, translations
-and exactly 109 Release registrations remain unchanged. No successor beyond
-P8-FT-78 is selected or named.
+and exactly 109 Release registrations remain unchanged. P8-FT-78 is complete.
+No successor is selected or named.
 
 ### Phase 9 — Linux Integration And Release Quality
 
