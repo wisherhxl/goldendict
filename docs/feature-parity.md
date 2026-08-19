@@ -1806,6 +1806,37 @@ application-service composition and a mirrored member-order destruction probe,
 combined with the existing active-work shutdown test; no production test hook
 or timing sleep is used. Next dependency: none selected.
 
+### P8-FT-88 replacement-safe activation ownership prerequisite (selected)
+
+The post-P8-FT-87 audit at synchronized migrated revision
+`7c764ca79774a6c8be3db9f0b18f53310130a974` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` rejects unconditional constructor
+submission. Existing facade replacement is serialized on the Qt main thread,
+but a replacement is fully composed while the old facade and externally held
+service state may remain alive; the public composition owner has no private
+executor control. Starting both would permit overlapping writes to canonical
+full-text artifacts, contrary to immutable publication and persistence safety.
+
+P8-FT-88 therefore selects only a private Core activation/handoff authority.
+New states stay idle. Failed candidate construction or reconciliation leaves
+old activity untouched. A future accepted initial or replacement activation
+must be one-shot and serialized: join the old executor when present, submit the
+candidate exactly once with the P8-FT-86 defaults, then publish it. Old retained
+snapshots remain usable for reads but cannot index after handoff. Reentrant or
+duplicate activation is rejected without mutation. Submission rejection after
+the join aborts publication, discards the candidate and leaves the readable old
+state stopped; there is no restart or retry.
+
+This prerequisite changes no installed/public API, dependency, UI,
+serialization, format, artifact or registration. Startup/recomposition wiring,
+policy-change scheduling, progress/status, Preferences, legacy two-pass
+priority, additional bridges and remaining parity stay excluded and unranked.
+P8-FT-72 through P8-FT-87, private Core authority, no-quota defaults,
+serial/coalesced/no-retry execution, persistence/snapshot safety,
+`full-text-v1`, find/F3, translations and exactly 109 registrations remain
+locked. No successor beyond P8-FT-88 is selected or named. Next dependency:
+none selected.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

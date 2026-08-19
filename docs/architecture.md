@@ -6373,6 +6373,50 @@ only a later audit of startup submission with
 `DefaultFullTextIndexExecutionBounds()`; P8-FT-87 selects or ranks no successor.
 Next dependency: none selected.
 
+### Phase 8 P8-FT-88 replacement-safe activation ownership prerequisite (selected)
+
+The independent post-P8-FT-87 readiness audit is grounded at synchronized
+migrated revision `7c764ca79774a6c8be3db9f0b18f53310130a974` and clean pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`dictionary_service.cc:677-682,1089-1105,1776-1788` fully constructs an idle
+`ServiceState` and its executor, while `main.cpp:715-769,807-838,854-907`
+constructs and validates replacement facades before three serialized Qt
+main-thread publication paths. Those paths own only the installed
+`DesktopFacade` abstraction and cannot privately stop or activate a
+`ServiceState` executor. Unconditional constructor submission would therefore
+allow an old shared state and its replacement to write the same canonical
+artifacts concurrently. Pinned legacy instead stops and joins indexing before
+rebinding dictionaries or policy and starts it only afterward at
+`mainwindow.cc:1381-1393,2100-2101,2158-2165,2180-2181,2290-2303`.
+
+P8-FT-88 selects the missing private Core application-composition authority,
+not submission or replacement wiring. It is the sole owner of activation
+transitions for the published service state. Candidates remain idle through
+construction, registration, policy application and startup reconciliation.
+Candidate failure leaves the current state and its active or pending work
+untouched. A later accepted handoff must be serialized and non-reentrant, shut
+down and join the old executor before any candidate submission, submit the
+candidate exactly once with `DefaultFullTextIndexExecutionBounds()`, and only
+then publish it through the existing serialized replacement path. Initial
+startup uses the same operation without an old state. Old externally retained
+state snapshots remain readable after handoff, but their executor is
+permanently stopped and rejects further submission.
+
+The authority must remain private to Core: no process-global artifact registry,
+Widgets or network lifecycle control, installed/public API, dependency or test
+registration is introduced. If candidate submission is rejected after the old
+executor has joined, publication fails, the idle candidate is discarded and
+the old state remains readable with indexing stopped; the owner neither
+restarts it nor retries. Later execution failure remains an observable
+lifecycle failure without automatic retry. Startup/recomposition activation
+wiring, policy-change scheduling, progress/status, Preferences, legacy
+two-pass priority, additional format bridges and remaining parity stay
+excluded and unranked. P8-FT-72 through P8-FT-87, private Core authority,
+no-quota defaults, serial/coalesced/no-retry execution, persistence/snapshot
+safety, `full-text-v1`, find/F3, translations and exactly 109 registrations
+remain locked. P8-FT-88 selects or names no successor. Next dependency: none
+selected.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

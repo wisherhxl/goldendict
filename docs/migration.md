@@ -6178,6 +6178,53 @@ exactly 109 registrations remain locked. Completion unlocks only a later audit
 of startup submission with `DefaultFullTextIndexExecutionBounds()`; no
 successor beyond P8-FT-87 is selected or named. Next dependency: none selected.
 
+### P8-FT-88 Private Replacement-Safe Activation Ownership Prerequisite (selected)
+
+The fresh post-P8-FT-87 audit uses synchronized migrated revision
+`7c764ca79774a6c8be3db9f0b18f53310130a974` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`dictionary_service.cc:677-682,1089-1105,1776-1788` leaves each newly composed
+`ServiceState` executor idle. The three replacement flows at
+`main.cpp:715-769,807-838,854-907` run synchronously on the Qt main thread and
+fully validate a candidate before publication, but their owner sees only
+installed `DesktopFacade` objects. It cannot stop or activate the private old
+and candidate executors. Because requests retain shared old service state,
+constructor-time submission could overlap old and new writers against the
+same canonical artifacts. Pinned legacy prevents this by stopping and joining
+indexing before dictionary or policy replacement and restarting afterward at
+`mainwindow.cc:1381-1393,2100-2101,2158-2165,2180-2181,2290-2303`.
+
+The smallest dependency-ready leaf is P8-FT-88: define one private Core
+application-composition authority for replacement-safe activation. It owns the
+single serialized, non-reentrant transition for the published state. Candidate
+construction, registration, persisted-policy application and startup-artifact
+reconciliation finish while its executor is idle. Any failure before handoff
+destroys only the candidate and leaves the old publication and indexing
+activity untouched.
+
+An accepted future handoff has exact ordering: shut down and join the old
+executor if present; submit the candidate executor exactly once with
+`DefaultFullTextIndexExecutionBounds()`; then publish/swap the candidate through
+the existing serialized replacement mechanism. Initial startup follows the
+same activation path without an old state. Old externally held snapshots stay
+valid for reads, but shutdown is permanent and they cannot resume indexing.
+Duplicate or reentrant activation is rejected before either state changes. If
+candidate submission unexpectedly rejects after the old join, publication
+fails and the candidate is discarded; the old state remains readable with
+indexing stopped, with no rollback restart or retry. A later execution failure
+remains a lifecycle failure and does not invalidate the readable service.
+
+P8-FT-88 specifies the prerequisite authority only. It adds no submission or
+replacement wiring, process-global artifact registry, policy-change trigger,
+configured bound, progress/status, Preferences, legacy two-pass priority,
+additional format bridge, artifact/snapshot/persistence change, UI,
+serialization, dependency, installed/public API or registration. P8-FT-72
+through P8-FT-87, private Core authority, no-quota defaults,
+serial/coalesced/no-retry behavior, persistence/snapshot safety,
+`full-text-v1`, find/F3, translations and exactly 109 registrations remain
+locked. No successor beyond P8-FT-88 is selected or named. Next dependency:
+none selected.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

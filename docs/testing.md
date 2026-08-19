@@ -4979,6 +4979,42 @@ a later startup-submission audit using `DefaultFullTextIndexExecutionBounds()`;
 no successor beyond P8-FT-87 is selected or named. Next dependency: none
 selected.
 
+## P8-FT-88 Replacement-Safe Activation Ownership Acceptance (Selected)
+
+P8-FT-88 is a documentation-only prerequisite for a future private Core
+activation/handoff owner. The eventual focused coverage stays within existing
+registrations and uses deterministic barriers and lifetime/port sentinels, not
+timing sleeps or production test hooks.
+
+Acceptance must prove that a failed candidate construction or reconciliation
+preserves the old published state and its active or pending work. For an
+accepted replacement, the event trace must record old executor shutdown and
+join before any candidate port call or canonical-artifact work. At most one
+port may be inside artifact work at a time. Initial activation and every
+accepted replacement submit the candidate exactly once with every P8-FT-86
+default field unchanged; duplicate and reentrant activation attempts perform
+no submission or publication.
+
+Coverage must retain an externally held old service snapshot across handoff and
+prove that reads remain valid while its stopped executor cannot resume work.
+An injected post-join candidate-submission rejection must leave the candidate
+unpublished, destroy it, keep the old state readable and stopped, and perform
+no restart or retry. Later worker failure must remain a lifecycle failure with
+the published service usable. Ordinary terminal shutdown must still discard
+pending work, cancel active work and join before port/coordinator teardown.
+
+This selected documentation leaf runs no compiled tests. Delivery verifies the
+four-document allowlist and exactly 109 registrations with
+`ctest --test-dir build/Release -N`. Future implementation will use the
+smallest existing focused Core registration set justified by its private owner;
+it must add no executable or registration. Startup/recomposition wiring,
+policy-change scheduling, progress/status, Preferences, legacy two-pass
+priority, additional bridges, public/installed APIs and dependencies remain
+excluded. P8-FT-72 through P8-FT-87, private Core authority, no-quota defaults,
+serial/coalesced/no-retry execution, persistence/snapshot safety,
+`full-text-v1`, find/F3 and translations remain locked. No successor beyond
+P8-FT-88 is selected or named. Next dependency: none selected.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
