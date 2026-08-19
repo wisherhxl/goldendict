@@ -28,6 +28,7 @@
 #include "../article/article_assembler.h"
 #include "../dictionary/dictionary_backend.h"
 #include "../dictionary/full_text_index_lifecycle.h"
+#include "../dictionary/full_text_index_work_executor.h"
 #include "../formats/aard/aard_dictionary.h"
 #include "../formats/aard/aard_discovery.h"
 #include "../formats/bgl/bgl_dictionary.h"
@@ -1103,6 +1104,7 @@ class ServiceState final {
                 full_text_index_coordinator_.ReconcileStartupArtifact(
                     *evidence);
         }
+        full_text_index_executor_.emplace(full_text_index_coordinator_);
     }
 
     std::vector<DictionaryIdentity> GetCatalog() const {
@@ -1781,6 +1783,8 @@ class ServiceState final {
     std::vector<LookupError> startup_errors_;
     const std::pair<std::uint64_t, std::uint64_t> snapshot_id_ =
         NewSnapshotId();
+    std::optional<dictionary::FullTextIndexWorkExecutor>
+        full_text_index_executor_;
 };
 
 class AsyncCancellationToken final : public CancellationToken {

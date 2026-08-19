@@ -4938,10 +4938,10 @@ serial/coalesced/no-retry behavior, `full-text-v1`, find/F3, translations and
 exactly 109 registrations remain locked. No successor beyond P8-FT-86 is
 selected or named.
 
-## P8-FT-87 ServiceState Executor Ownership Acceptance (Selected)
+## P8-FT-87 ServiceState Executor Ownership Acceptance (Complete)
 
 P8-FT-87 remains within the existing `application_service_test` and
-`full_text_index_test` registrations. Future focused coverage must prove that
+`full_text_index_test` registrations. Completed focused coverage proves that
 each successfully constructed `ServiceState` owns exactly one
 `FullTextIndexWorkExecutor`, created only after discovery, registration, policy
 application and startup-artifact reconciliation. Construction with zero or
@@ -4949,14 +4949,19 @@ multiple registered entries remains idle and deterministic: it submits no
 bounds, performs no discovery or claim, changes no lifecycle state and calls no
 format port.
 
-Lifetime coverage must use condition-gated fakes or explicit destruction
-sentinels, not timing sleeps. It must prove executor shutdown is idempotent and
-joins the worker before any registered AARD work port, snapshot holder or the
-referenced coordinator is destroyed. Executor-construction failure must reject
-the complete service construction without exposing a new public error or a
-partially usable service.
+Lifetime coverage uses an explicit member-order probe, not timing sleeps or a
+production test hook. Its declaration order mirrors production: coordinator
+owner first, registered port/holder owners next and optional executor owner
+last. The executor-owner destructor resets and joins its executor before
+recording completion; port/holder destruction records follow, then coordinator
+completion. Existing active-work coverage separately proves shutdown is
+idempotent and joins the worker. Application-service coverage observes idle
+construction, lifecycle and artifact stability but does not claim direct
+observation of the private executor. Executor-construction failure continues
+to reject complete service construction through the existing exception
+boundary.
 
-The focused future commands are
+The focused commands are
 `ctest --preset conan-release -R '^(application_service_test|full_text_index_test)$'`
 after the Release targets have been built. The full implementation gate remains
 fresh Linux Release configure/build, 109/109 CTest, and the established
@@ -4971,7 +4976,8 @@ remain excluded. P8-FT-72 through P8-FT-86, private Core authority, no-quota
 32/64-bit-coherent defaults, serial/coalesced/no-retry execution,
 `full-text-v1`, find/F3 and translations remain locked. Completion unlocks only
 a later startup-submission audit using `DefaultFullTextIndexExecutionBounds()`;
-no successor beyond P8-FT-87 is selected or named.
+no successor beyond P8-FT-87 is selected or named. Next dependency: none
+selected.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

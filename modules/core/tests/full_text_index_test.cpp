@@ -201,6 +201,88 @@ class BlockingFormatWorkPort final : public FullTextIndexFormatWorkPort {
                                     nullptr};
 };
 
+using LifetimeEvents = std::vector<std::string>;
+
+class LifetimePort final : public FullTextIndexFormatWorkPort {
+   public:
+    LifetimePort(std::string name, LifetimeEvents& events)
+        : name_(std::move(name)), events_(events) {}
+
+    ~LifetimePort() override { events_.push_back("port:" + name_); }
+
+    bool IsFullTextIndexSupported() const noexcept override { return true; }
+
+    std::string FullTextIndexSourceRevision() const override {
+        return "lifetime-revision";
+    }
+
+   private:
+    FullTextIndexWorkResult DoPerformFullTextIndexWork(
+        const FullTextIndexWorkRequest&) override {
+        return {};
+    }
+
+    std::string name_;
+    LifetimeEvents& events_;
+};
+
+struct LifetimeHolderOwner {
+    LifetimeHolderOwner(std::string owner_name, LifetimeEvents& owner_events)
+        : name(std::move(owner_name)), events(owner_events) {}
+
+    ~LifetimeHolderOwner() { events.push_back("holder:" + name); }
+
+    std::string name;
+    LifetimeEvents& events;
+    FullTextIndexSnapshotHolder holder;
+};
+
+std::shared_ptr<FullTextIndexSnapshotHolder> LifetimeHolder(
+    std::string name, LifetimeEvents& events) {
+    auto owner = std::make_shared<LifetimeHolderOwner>(std::move(name), events);
+    auto* holder = &owner->holder;
+    return {std::move(owner), holder};
+}
+
+struct CoordinatorOwner {
+    explicit CoordinatorOwner(LifetimeEvents& owner_events)
+        : events(owner_events), coordinator(std::in_place) {}
+
+    ~CoordinatorOwner() {
+        coordinator.reset();
+        events.push_back("coordinator");
+    }
+
+    LifetimeEvents& events;
+    std::optional<FullTextIndexLifecycleCoordinator> coordinator;
+};
+
+struct ExecutorOwner {
+    ExecutorOwner(FullTextIndexLifecycleCoordinator& coordinator,
+                  LifetimeEvents& owner_events)
+        : events(owner_events), executor(std::in_place, coordinator) {}
+
+    ~ExecutorOwner() {
+        executor.reset();
+        events.push_back("executor shutdown complete");
+    }
+
+    LifetimeEvents& events;
+    std::optional<FullTextIndexWorkExecutor> executor;
+};
+
+// Mirrors ServiceState's relevant dependency order: coordinator first,
+// registered port/holder owners next, and the executor owner last.
+struct ServiceStateLifetimeProbe {
+    explicit ServiceStateLifetimeProbe(LifetimeEvents& probe_events)
+        : coordinator(probe_events) {}
+
+    CoordinatorOwner coordinator;
+    std::vector<std::shared_ptr<FullTextIndexFormatWorkPort>> ports;
+    std::vector<std::shared_ptr<FullTextIndexSnapshotHolder>> holders;
+    std::optional<ExecutorOwner> executor;
+};
+
 struct SerialWorkObservation {
     std::mutex mutex;
     std::condition_variable condition;
@@ -289,6 +371,7 @@ class FullTextIndexTest : public QObject {
     void ProjectsBoundedWorkRequests();
     void ExecutesSubmittedWorkSerially();
     void ShutsDownSerialWorkExecutor();
+    void DestroysExecutorBeforeRegisteredDependencies();
     void CoordinatesExplicitLifecycleTransitions();
     void IsolatesAndMonotonicallyReplacesGenerations();
     void CancelsExactWorkIdempotently();
@@ -1474,6 +1557,38 @@ void FullTextIndexTest::ShutsDownSerialWorkExecutor() {
     QCOMPARE(pending->requests().size(), 0U);
     QVERIFY(!executor.Submit(bounds));
     executor.Shutdown();
+}
+
+void FullTextIndexTest::DestroysExecutorBeforeRegisteredDependencies() {
+    const auto exercise = [](std::size_t registration_count) {
+        LifetimeEvents events;
+        {
+            ServiceStateLifetimeProbe probe(events);
+            for (std::size_t index = 0U; index < registration_count; ++index) {
+                const auto name = std::to_string(index);
+                auto port = std::make_shared<LifetimePort>(name, events);
+                auto holder = LifetimeHolder(name, events);
+                QVERIFY(Register(*probe.coordinator.coordinator,
+                                 Registration("dictionary-" + name), port,
+                                 holder));
+                probe.ports.push_back(std::move(port));
+                probe.holders.push_back(std::move(holder));
+            }
+            probe.executor.emplace(*probe.coordinator.coordinator, events);
+        }
+
+        QVERIFY(!events.empty());
+        QCOMPARE(events.front(), std::string("executor shutdown complete"));
+        QCOMPARE(events.back(), std::string("coordinator"));
+        QCOMPARE(events.size(), 2U + registration_count * 2U);
+        for (std::size_t index = 1U; index + 1U < events.size(); ++index) {
+            QVERIFY(events[index].rfind("port:", 0U) == 0U ||
+                    events[index].rfind("holder:", 0U) == 0U);
+        }
+    };
+
+    exercise(0U);
+    exercise(3U);
 }
 
 void FullTextIndexTest::CoordinatesExplicitLifecycleTransitions() {

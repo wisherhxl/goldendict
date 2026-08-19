@@ -1772,7 +1772,7 @@ through P8-FT-85, serial/coalesced/no-retry execution, `full-text-v1`, find/F3,
 translations and exactly 109 registrations remain locked. No successor beyond
 P8-FT-86 is selected or named.
 
-### P8-FT-87 private ServiceState executor ownership prerequisite (selected)
+### P8-FT-87 private ServiceState executor ownership prerequisite (complete)
 
 The post-P8-FT-86 audit at synchronized migrated revision
 `e8f2d9f49076def8186785ece6a712d5a2ea90ed` and clean pinned legacy revision
@@ -1780,7 +1780,7 @@ The post-P8-FT-86 audit at synchronized migrated revision
 prerequisite. `ServiceState` already owns the coordinator and registered
 dictionary ports but no executor; the executor references that coordinator,
 owns one worker and joins on shutdown. Pinned legacy likewise owns one indexing
-operation and destroys it before its referenced dictionaries. P8-FT-87 makes
+operation and destroys it before its referenced dictionaries. P8-FT-87 now makes
 `ServiceState` own exactly one concrete executor, created only after discovery,
 registration, policy application and startup reconciliation, with member
 lifetime ordered so executor shutdown/join precedes port and coordinator
@@ -1801,7 +1801,10 @@ through P8-FT-86, private Core authority, no-quota 32/64-bit-coherent defaults,
 serial/coalesced/no-retry execution, `full-text-v1`, find/F3, translations and
 exactly 109 registrations remain locked. Completion unlocks only a later
 startup-submission audit using the default bounds; no successor beyond
-P8-FT-87 is selected or named.
+P8-FT-87 is selected or named. Completion is covered by idle zero/multiple
+application-service composition and a mirrored member-order destruction probe,
+combined with the existing active-work shutdown test; no production test hook
+or timing sleep is used. Next dependency: none selected.
 
 ## Resources And Platform Integration
 

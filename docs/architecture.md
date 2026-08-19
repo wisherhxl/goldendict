@@ -6321,7 +6321,7 @@ serial/coalesced/no-retry behavior, `full-text-v1`, find/F3, translations and
 exactly 109 registrations remain locked. No successor beyond P8-FT-86 is
 selected or named.
 
-### Phase 8 P8-FT-87 private ServiceState executor ownership prerequisite (selected)
+### Phase 8 P8-FT-87 private ServiceState executor ownership prerequisite (complete)
 
 The independent post-P8-FT-86 readiness audit is grounded at synchronized
 migrated revision `e8f2d9f49076def8186785ece6a712d5a2ea90ed` and clean pinned
@@ -6338,7 +6338,7 @@ dictionary storage so reverse member destruction stops indexing first. The
 smallest dependency-ready leaf is therefore private executor ownership and
 lifetime inside `ServiceState`, before any startup or recomposition submission.
 
-P8-FT-87 composes exactly one `FullTextIndexWorkExecutor` as a concrete private
+P8-FT-87 now composes exactly one `FullTextIndexWorkExecutor` as a concrete private
 `ServiceState` dependency referencing the existing coordinator. Construction
 occurs only after discovery, AARD registration, persisted-policy application
 and startup-artifact reconciliation complete, so no worker exists while the
@@ -6349,12 +6349,18 @@ coordinator are destroyed. The executor remains idle: this leaf does not call
 the executor fails service construction through the existing construction
 boundary; shutdown remains idempotent and exposes no new error surface.
 
-Focused future acceptance extends the existing application-service and
+Focused completed acceptance extends the existing application-service and
 full-text-index tests without a new registration. It proves one executor per
 successfully constructed `ServiceState`, idle construction with zero or
 multiple registrations, no lifecycle or port effect during composition, and
-joined shutdown before an AARD port or coordinator can be destroyed. Tests use
-condition-gated fakes or explicit lifetime sentinels rather than timing sleeps.
+the structural destruction order required before registered ports, holders and
+the coordinator can be destroyed. The mirrored test aggregate declares the
+coordinator first, port/holder owners next and an executor-owner probe last;
+the last member explicitly resets and joins the optional executor before
+recording completion. Existing active-work coverage proves shutdown behavior,
+while application-service coverage observes idle lifecycle and artifact
+stability without claiming access to private executor internals. Tests use no
+timing sleeps or production hooks.
 
 Startup/recomposition submission, configured bounds, lifecycle transitions,
 retry, additional queues or parallelism, progress/status, Preferences,
@@ -6365,6 +6371,7 @@ coherence, serial/coalesced/no-retry execution, `full-text-v1`, find/F3,
 translations and exactly 109 registrations remain locked. Completion unlocks
 only a later audit of startup submission with
 `DefaultFullTextIndexExecutionBounds()`; P8-FT-87 selects or ranks no successor.
+Next dependency: none selected.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

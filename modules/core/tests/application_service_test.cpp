@@ -186,6 +186,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesMdictResources();
     void DiscoversSanitizesAndQueriesAard();
     void AppliesPersistedFullTextPolicyAfterAardDiscovery();
+    void ComposesIdleExecutorAfterAardReconciliation();
     void DiscoversSanitizesAndQueriesZimResources();
     void DiscoversSanitizesAndQueriesSlobResources();
     void DiscoversSanitizesAndQueriesEpwingResources();
@@ -3487,6 +3488,43 @@ void ApplicationServiceTest::
             ->state(),
         dictionary::FullTextIndexLifecycleState::kPolicyExcluded);
     QCOMPARE(ReadFile(artifact), canonical);
+}
+
+void ApplicationServiceTest::ComposesIdleExecutorAfterAardReconciliation() {
+    auto empty_service = CreateDictionaryService({});
+    QVERIFY(empty_service->GetCatalog().empty());
+    empty_service.reset();
+
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteAardFixture(root, "first.aar");
+    test::WriteAardFixture(root, "second.aar", true, true);
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    configuration.index_directory = (root / "indexes").string();
+
+    auto service = CreateDictionaryService(configuration);
+    const auto catalog = service->GetCatalog();
+    QCOMPARE(catalog.size(), 2U);
+    std::vector<std::pair<std::filesystem::path, std::string>> artifacts;
+    for (const auto& dictionary : catalog) {
+        const auto lifecycle = application::FullTextIndexLifecycleSnapshot(
+            *service, dictionary.id);
+        QVERIFY(lifecycle.has_value());
+        QCOMPARE(lifecycle->identity().generation, 1U);
+        QCOMPARE(lifecycle->state(),
+                 dictionary::FullTextIndexLifecycleState::kCurrent);
+        const auto artifact =
+            std::filesystem::path(configuration.index_directory) /
+            (dictionary.id + ".gdfts");
+        artifacts.emplace_back(artifact, ReadFile(artifact));
+        QVERIFY(!artifacts.back().second.empty());
+    }
+
+    service.reset();
+    for (const auto& [path, contents] : artifacts)
+        QCOMPARE(ReadFile(path), contents);
 }
 
 void ApplicationServiceTest::DiscoversSanitizesAndQueriesZimResources() {
