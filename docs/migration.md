@@ -6026,19 +6026,20 @@ remain locked. Delivery uses the exact lifecycle header, implementation,
 existing lifecycle test and four-document allowlist. P8-FT-83 is complete. No
 successor beyond P8-FT-83 is selected or named.
 
-### Phase 8 P8-FT-84 private serial full-text work executor (selected)
+### Phase 8 P8-FT-84 private serial full-text work executor (complete)
 
-The independent readiness audit at synchronized migrated revision
-`b1b8ac629a8a1764e1359693d316223b3a0fa819` and clean pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects one smallest scheduling
-leaf. Current lifecycle code already separates P8-FT-83 deterministic
+The implementation at synchronized migrated base revision
+`148f33510cf5dbbfa5527dafed4525f99219217a` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` completes one smallest scheduling
+leaf. Lifecycle code separates P8-FT-83 deterministic
 discovery, P8-FT-82 bounded projection and the sole execution-time claim.
 Pinned legacy `fulltextsearch.cc:34-112` establishes a single background
 runnable with cooperative cancellation and wait-on-stop, while
 `mainwindow.cc:1381-1393,2100-2101,2158-2165,2180-2181,2302-2303` establishes
 stop-before-replace/restart lifetime ordering.
 
-P8-FT-84 introduces only a private Core serial executor: exactly one owned
+P8-FT-84 introduces only `FullTextIndexWorkExecutor`, a private Core serial
+executor: exactly one owned
 worker, a coalesced pending sweep, copied immutable bounds and explicit
 shutdown. Each sweep uses one canonical discovery snapshot, projects every
 identity through P8-FT-82 and lets `ExecuteBoundedWork` perform the only claim.
@@ -6058,8 +6059,9 @@ legacy two-pass ordering, progress/status, facade/Widgets transport,
 Preferences, additional formats and serialization remain excluded.
 Public/installed APIs, dependencies, `full-text-v1`, UI/find/F3, P8-FT-72
 through P8-FT-83, snapshot/persistence safety and exactly 109 registrations
-remain locked. This readiness delivery changes exactly the four governing
-documents. No successor beyond P8-FT-84 is selected or named.
+remain locked. Delivery changes the two private executor files, Core source
+list, existing test and exactly four governing sections. P8-FT-84 is complete.
+No successor beyond P8-FT-84 is selected or named.
 
 ### Phase 9 — Linux Integration And Release Quality
 

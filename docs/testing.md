@@ -4842,12 +4842,11 @@ divergence, ordinary find/F3, UI/translations, stale/artifact/snapshot safety,
 serialization and dependencies remain locked. P8-FT-83 is complete. No
 successor beyond P8-FT-83 is selected or named.
 
-## P8-FT-84 Private Serial Executor Acceptance
+## P8-FT-84 Private Serial Executor Acceptance (Complete)
 
-P8-FT-84 remains within the existing `full_text_index_test` registration. Use
-controllable gated fake ports and condition-based observations; do not add
-timing sleeps, another executable or another registration. Focused acceptance
-must prove:
+P8-FT-84 remains within the existing `full_text_index_test` registration. Its
+controllable fake ports use condition-based gates and add no timing sleeps,
+executable or registration. Focused acceptance proves:
 
 - exactly one port call can be active and actionable identities execute in the
   P8-FT-83 canonical dictionary-ID order;
@@ -4866,13 +4865,13 @@ must prove:
 - repeated shutdown and destruction are safe and leave no worker accessing
   released lifecycle, port, cancellation, prepared-update or snapshot state.
 
-The readiness documentation gate validates citations, English terminology,
-`git diff --check`, the exact four-document allowlist, synchronized refs, clean
-worktrees and exactly 109 Release registrations. No compiled run is required
-for this documentation-only selection. P8-FT-72 through P8-FT-83,
+The implementation gate is repeated focused Release execution, fresh Release
+configure/build, 109/109 CTest, install, standalone and packaged C/C++
+consumers, exact-SCM Conan creation, `git diff --check`, the exact eight-file
+allowlist, synchronized refs and clean worktrees. P8-FT-72 through P8-FT-83,
 public/installed APIs, dependencies, `full-text-v1`, persistence/snapshot
-safety and UI/find/F3 remain locked. No successor beyond P8-FT-84 is selected
-or named.
+safety and UI/find/F3 remain locked. P8-FT-84 is complete. No successor beyond
+P8-FT-84 is selected or named.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

@@ -2,6 +2,7 @@
 
 #include <QtTest>
 
+#include <algorithm>
 #include <condition_variable>
 #include <filesystem>
 #include <fstream>
@@ -15,6 +16,7 @@
 #include "../src/dictionary/full_text_index.h"
 #include "../src/dictionary/full_text_index_lifecycle.h"
 #include "../src/dictionary/full_text_index_snapshot.h"
+#include "../src/dictionary/full_text_index_work_executor.h"
 #include "../src/dictionary/full_text_matcher.h"
 #include "../src/foundation/utf8.h"
 
@@ -197,6 +199,77 @@ class BlockingFormatWorkPort final : public FullTextIndexFormatWorkPort {
                                     nullptr};
 };
 
+struct SerialWorkObservation {
+    std::mutex mutex;
+    std::condition_variable condition;
+    std::vector<std::string> order;
+    std::size_t active_count = 0U;
+    std::size_t maximum_active_count = 0U;
+};
+
+class GatedFormatWorkPort final : public FullTextIndexFormatWorkPort {
+   public:
+    GatedFormatWorkPort(std::string dictionary_id,
+                        SerialWorkObservation& observation)
+        : dictionary_id_(std::move(dictionary_id)), observation_(observation) {}
+
+    bool IsFullTextIndexSupported() const noexcept override { return true; }
+
+    std::string FullTextIndexSourceRevision() const override {
+        return dictionary_id_ + "-revision";
+    }
+
+    void WaitUntilInvocation(std::size_t count = 1U) {
+        std::unique_lock lock(observation_.mutex);
+        observation_.condition.wait(
+            lock, [this, count] { return requests_.size() >= count; });
+    }
+
+    void Finish(
+        FullTextIndexWorkStatus status = FullTextIndexWorkStatus::kFailed) {
+        std::lock_guard lock(observation_.mutex);
+        result_status_ = status;
+        finish_ = true;
+        observation_.condition.notify_all();
+    }
+
+    std::vector<FullTextIndexWorkRequest> requests() const {
+        std::lock_guard lock(observation_.mutex);
+        return requests_;
+    }
+
+    bool cancellation_observed() const {
+        std::lock_guard lock(observation_.mutex);
+        return cancellation_observed_;
+    }
+
+   private:
+    FullTextIndexWorkResult DoPerformFullTextIndexWork(
+        const FullTextIndexWorkRequest& request) override {
+        std::unique_lock lock(observation_.mutex);
+        requests_.push_back(request);
+        observation_.order.push_back(dictionary_id_);
+        ++observation_.active_count;
+        observation_.maximum_active_count = std::max(
+            observation_.maximum_active_count, observation_.active_count);
+        observation_.condition.notify_all();
+        observation_.condition.wait(lock, [this] { return finish_; });
+        cancellation_observed_ =
+            request.cancellation != nullptr &&
+            request.cancellation->IsCancellationRequested();
+        --observation_.active_count;
+        observation_.condition.notify_all();
+        return {result_status_, "gated result", nullptr};
+    }
+
+    const std::string dictionary_id_;
+    SerialWorkObservation& observation_;
+    std::vector<FullTextIndexWorkRequest> requests_;
+    FullTextIndexWorkStatus result_status_ = FullTextIndexWorkStatus::kFailed;
+    bool finish_ = false;
+    bool cancellation_observed_ = false;
+};
+
 }  // namespace
 
 class FullTextIndexTest : public QObject {
@@ -211,6 +284,8 @@ class FullTextIndexTest : public QObject {
     void ReconcilesValidatedStartupArtifacts();
     void DiscoversRequestedWork();
     void ProjectsBoundedWorkRequests();
+    void ExecutesSubmittedWorkSerially();
+    void ShutsDownSerialWorkExecutor();
     void CoordinatesExplicitLifecycleTransitions();
     void IsolatesAndMonotonicallyReplacesGenerations();
     void CancelsExactWorkIdempotently();
@@ -1139,6 +1214,140 @@ void FullTextIndexTest::ProjectsBoundedWorkRequests() {
     QVERIFY(running.get());
     QCOMPARE(working.Snapshot("working")->state(),
              FullTextIndexLifecycleState::kFailed);
+}
+
+void FullTextIndexTest::ExecutesSubmittedWorkSerially() {
+    FullTextIndexLifecycleCoordinator coordinator;
+    SerialWorkObservation observation;
+    auto zeta = std::make_shared<GatedFormatWorkPort>("zeta", observation);
+    auto alpha = std::make_shared<GatedFormatWorkPort>("alpha", observation);
+    auto middle = std::make_shared<GatedFormatWorkPort>("middle", observation);
+    auto stale = std::make_shared<GatedFormatWorkPort>("stale", observation);
+    auto terminal =
+        std::make_shared<GatedFormatWorkPort>("terminal", observation);
+    QVERIFY(Register(coordinator, Registration("zeta"), zeta));
+    QVERIFY(Register(coordinator, Registration("alpha"), alpha));
+    QVERIFY(Register(coordinator, Registration("middle"), middle));
+    QVERIFY(Register(coordinator, Registration("stale"), stale));
+    QVERIFY(Register(coordinator, Registration("terminal"), terminal));
+
+    const FullTextIndexPolicy policy;
+    QVERIFY(coordinator.SubmitRebuild({{3U, "zeta"}, policy}));
+    QVERIFY(coordinator.SubmitRebuild({{2U, "alpha"}, policy}));
+    QVERIFY(coordinator.SubmitRebuild({{1U, "stale"}, policy}));
+    const auto first_deadline =
+        std::chrono::steady_clock::now() + std::chrono::minutes(10);
+    const FullTextIndexExecutionBounds first_bounds(7U, 101U, 707U,
+                                                    first_deadline);
+    FullTextIndexWorkExecutor executor(coordinator);
+    QVERIFY(executor.Submit(first_bounds));
+
+    alpha->WaitUntilInvocation();
+    QCOMPARE(coordinator.Snapshot("alpha")->state(),
+             FullTextIndexLifecycleState::kWorking);
+    QCOMPARE(coordinator.Snapshot("zeta")->state(),
+             FullTextIndexLifecycleState::kWorkRequested);
+    QCOMPARE(alpha->requests().size(), 1U);
+    QCOMPARE(alpha->requests().front().maximum_documents, 7U);
+    QCOMPARE(alpha->requests().front().maximum_document_bytes, 101U);
+    QCOMPARE(alpha->requests().front().maximum_corpus_bytes, 707U);
+    QCOMPARE(alpha->requests().front().deadline, first_deadline);
+    QCOMPARE(alpha->requests().front().identity,
+             coordinator.Snapshot("alpha")->identity());
+    QCOMPARE(alpha->requests().front().source_revision,
+             std::string("alpha-revision"));
+    QVERIFY(alpha->requests().front().cancellation != nullptr);
+
+    // This generation was requested after the active sweep's discovery.
+    QVERIFY(coordinator.SubmitRebuild({{5U, "middle"}, policy}));
+    QVERIFY(coordinator.SubmitRebuild({{2U, "stale"}, policy}));
+    const auto stale_replacement = coordinator.Snapshot("stale")->identity();
+    QVERIFY(coordinator.Cancel({stale_replacement}));
+    alpha->Finish();
+    zeta->WaitUntilInvocation();
+    QCOMPARE(middle->requests().size(), 0U);
+    QCOMPARE(stale->requests().size(), 0U);
+    QCOMPARE(coordinator.Snapshot("stale")->state(),
+             FullTextIndexLifecycleState::kCancelled);
+
+    const auto second_deadline =
+        std::chrono::steady_clock::now() + std::chrono::minutes(20);
+    const FullTextIndexExecutionBounds second_bounds(11U, 103U, 1001U,
+                                                     second_deadline);
+    const FullTextIndexExecutionBounds coalesced_bounds(
+        13U, 107U, 1284U,
+        std::chrono::steady_clock::now() + std::chrono::minutes(30));
+    QVERIFY(executor.Submit(second_bounds));
+    auto coalesced_one = std::async(
+        std::launch::async, [&] { return executor.Submit(coalesced_bounds); });
+    auto coalesced_two = std::async(
+        std::launch::async, [&] { return executor.Submit(coalesced_bounds); });
+    QVERIFY(coalesced_one.get());
+    QVERIFY(coalesced_two.get());
+
+    zeta->Finish();
+    middle->WaitUntilInvocation();
+    QCOMPARE(middle->requests().size(), 1U);
+    QCOMPARE(middle->requests().front().maximum_documents, 11U);
+    QCOMPARE(middle->requests().front().maximum_document_bytes, 103U);
+    QCOMPARE(middle->requests().front().maximum_corpus_bytes, 1001U);
+    QCOMPARE(middle->requests().front().deadline, second_deadline);
+    QVERIFY(coordinator.SubmitRebuild({{1U, "terminal"}, policy}));
+    QVERIFY(executor.Submit(second_bounds));
+    middle->Finish();
+    terminal->WaitUntilInvocation();
+    QCOMPARE(coordinator.Snapshot("middle")->state(),
+             FullTextIndexLifecycleState::kFailed);
+    terminal->Finish();
+    executor.Shutdown();
+
+    const std::vector<std::string> expected_order = {"alpha", "zeta", "middle",
+                                                     "terminal"};
+    QCOMPARE(observation.order, expected_order);
+    QCOMPARE(observation.maximum_active_count, 1U);
+    QCOMPARE(alpha->requests().size(), 1U);
+    QCOMPARE(zeta->requests().size(), 1U);
+    QCOMPARE(middle->requests().size(), 1U);
+    QCOMPARE(coordinator.Snapshot("alpha")->state(),
+             FullTextIndexLifecycleState::kFailed);
+    QCOMPARE(coordinator.Snapshot("zeta")->state(),
+             FullTextIndexLifecycleState::kFailed);
+}
+
+void FullTextIndexTest::ShutsDownSerialWorkExecutor() {
+    FullTextIndexLifecycleCoordinator coordinator;
+    SerialWorkObservation observation;
+    auto active = std::make_shared<GatedFormatWorkPort>("active", observation);
+    auto pending =
+        std::make_shared<GatedFormatWorkPort>("pending", observation);
+    QVERIFY(Register(coordinator, Registration("active"), active));
+    QVERIFY(Register(coordinator, Registration("pending"), pending));
+    const FullTextIndexPolicy policy;
+    QVERIFY(coordinator.SubmitRebuild({{1U, "active"}, policy}));
+    const FullTextIndexExecutionBounds bounds(
+        5U, 100U, 500U,
+        std::chrono::steady_clock::now() + std::chrono::minutes(5));
+
+    FullTextIndexWorkExecutor executor(coordinator);
+    QVERIFY(executor.Submit(bounds));
+    active->WaitUntilInvocation();
+    QVERIFY(coordinator.SubmitRebuild({{1U, "pending"}, policy}));
+    QVERIFY(executor.Submit(bounds));
+
+    auto shutdown =
+        std::async(std::launch::async, [&] { executor.Shutdown(); });
+    while (executor.Submit(bounds)) {}
+    active->Finish(FullTextIndexWorkStatus::kCompleted);
+    shutdown.get();
+
+    QVERIFY(active->cancellation_observed());
+    QCOMPARE(coordinator.Snapshot("active")->state(),
+             FullTextIndexLifecycleState::kCancelled);
+    QCOMPARE(coordinator.Snapshot("pending")->state(),
+             FullTextIndexLifecycleState::kWorkRequested);
+    QCOMPARE(pending->requests().size(), 0U);
+    QVERIFY(!executor.Submit(bounds));
+    executor.Shutdown();
 }
 
 void FullTextIndexTest::CoordinatesExplicitLifecycleTransitions() {

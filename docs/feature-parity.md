@@ -1703,9 +1703,9 @@ Delivery uses the exact lifecycle header, implementation, existing lifecycle
 test and four-document allowlist. P8-FT-83 is complete. No successor beyond
 P8-FT-83 is selected or named.
 
-### P8-FT-84 private serial full-text work executor (selected)
+### P8-FT-84 private serial full-text work executor (complete)
 
-The post-P8-FT-83 audit selects exactly one private Core scheduling boundary.
+The completed implementation adds exactly one private Core scheduling boundary.
 P8-FT-84 owns one worker and one coalesced pending sweep, consumes P8-FT-83
 canonical discovery, obtains every request only from P8-FT-82 projection and
 leaves `ExecuteBoundedWork` as the sole lifecycle claim. Its fixed concurrency
@@ -1722,8 +1722,9 @@ ingress, automatic startup/recomposition, multiple or configurable workers,
 priority/two-pass policy, progress/status, UI, public/installed APIs,
 dependencies and serialization remain excluded. P8-FT-72 through P8-FT-83,
 `full-text-v1`, snapshot/persistence safety, ordinary find/F3 and exactly 109
-registrations remain locked. The readiness change is restricted to the four
-governing documents. No successor beyond P8-FT-84 is selected or named.
+registrations remain locked. Delivery is bounded to the private executor,
+existing Core build/test boundary and four governing documents. P8-FT-84 is
+complete. No successor beyond P8-FT-84 is selected or named.
 
 ## Resources And Platform Integration
 

@@ -6174,10 +6174,10 @@ lifecycle header, implementation, existing lifecycle test and four-document
 allowlist. P8-FT-83 is complete. No successor beyond P8-FT-83 is selected or
 named.
 
-### Phase 8 P8-FT-84 private serial full-text work executor (selected)
+### Phase 8 P8-FT-84 private serial full-text work executor (complete)
 
-The fresh post-P8-FT-83 readiness audit is grounded at synchronized migrated
-revision `b1b8ac629a8a1764e1359693d316223b3a0fa819` and clean pinned legacy
+The completed implementation is grounded at synchronized migrated base
+revision `148f33510cf5dbbfa5527dafed4525f99219217a` and clean pinned legacy
 revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
 `full_text_index_lifecycle.h:232-263` keeps lifecycle authority private to
 Core. `full_text_index_lifecycle.cc:361-422` supplies deterministic discovery
@@ -6191,14 +6191,16 @@ restart. The smallest dependency-ready scheduling leaf is therefore one
 private serial executor, not composition ingress or visible lifecycle
 transport.
 
-P8-FT-84 adds a private Core executor that references, but does not replace or
-own, the lifecycle coordinator. It owns exactly one worker, one coalesced
+P8-FT-84 adds `full_text_index_work_executor.h/.cc`, a private Core executor
+that references, but does not replace or own, the lifecycle coordinator. It
+owns exactly one worker, one coalesced
 pending sweep, immutable execution bounds copied at submission, synchronization
 and shutdown state. The worker consumes one P8-FT-83 discovery snapshot in
 canonical dictionary-ID order, projects every identity only through P8-FT-82
 and invokes `ExecuteBoundedWork`; that existing operation remains the sole
 `kWorkRequested` to `kWorking` claim. Concurrent submissions coalesce instead
-of creating duplicate queues. A sweep does not rediscover work, so a generation
+of creating duplicate queues; the first accepted submission supplies the
+pending sweep's copied bounds. A sweep does not rediscover work, so a generation
 requested after its snapshot requires another explicit submission.
 
 Shutdown rejects new submissions, discards an unclaimed pending sweep, cancels
@@ -6209,8 +6211,9 @@ are harmless projection or execution rejections. Port failures and escaped
 exceptions retain the existing terminal-state policy; the executor performs no
 retry, backoff or failure reinterpretation.
 
-Focused acceptance extends only `full_text_index_test`, using gated fake ports
-without timing sleeps. It proves exact serial execution and canonical order,
+Focused acceptance extends only `full_text_index_test`, using condition-gated
+fake ports without timing sleeps. It proves exact serial execution and
+canonical order,
 P8-FT-82 bound authority, coalesced concurrent submission, sole claiming,
 stale/replacement rejection, failure isolation without retry, active-work
 cancellation, submission rejection during shutdown and join before coordinator
@@ -6223,9 +6226,9 @@ It also adds no configurable or parallel concurrency, priority, legacy
 two-pass ordering, progress/status, facade/Widgets transport, Preferences,
 format bridge or serialization. Public/installed APIs, dependencies,
 `full-text-v1`, UI/find/F3, P8-FT-72 through P8-FT-83 and snapshot/persistence
-safety remain unchanged, with exactly 109 registrations. The selected
-documentation delivery is restricted to `docs/architecture.md`,
-`docs/feature-parity.md`, `docs/migration.md` and `docs/testing.md`. No
+safety remain unchanged, with exactly 109 registrations. The implementation
+delivery is restricted to the executor header and implementation, Core CMake
+source list, existing lifecycle test and four governing documents. No
 successor beyond P8-FT-84 is selected or named.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
