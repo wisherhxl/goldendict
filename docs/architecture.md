@@ -5682,6 +5682,54 @@ translations, completed full-text behavior and exactly 109 registrations remain
 unchanged. P8-FT-73 completes only the private Core coordinator state machine;
 no dependency beyond that boundary is selected or named.
 
+### Phase 8 P8-FT-74 Core article-count lifecycle-policy ingress (selected)
+
+The fresh post-P8-FT-73 audit used synchronized migrated revision
+`58f958178bdf9aec877aab4c0fd3bfd765bfe160` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The smallest dependency-ready
+leaf is one private, value-only ingress from persisted application preferences
+to the existing Core lifecycle policy. Current `application.h:268-278`,
+`configuration.cc:141,189,219-220,746-750,1542,1557-1559` and
+`legacy_configuration.cc:403,451,471-472` already persist and migrate the three
+policy inputs. Pinned legacy `config.hh:156-181`,
+`preferences.ui:1371-1395`, `preferences.cc:360-382,490-575` and the format
+eligibility checks, for example `stardict.cc:202-206`, establish that
+`maxDictionarySize` is an article count in `0..10000000`, with zero meaning
+unlimited, rather than a byte or megabyte limit.
+
+P8-FT-74 corrects C++ terminology before the value is consumed. The installed
+application-preference member becomes `full_text_maximum_dictionary_articles`
+and the private lifecycle-policy member becomes
+`maximum_dictionary_articles`, retaining the existing `std::uint32_t` type,
+member position and object layout. This is an intentional installed C++ source
+compatibility change; facade, C and DTO contracts remain unchanged. The
+current serialized key `full_text_maximum_dictionary_megabytes` remains the
+canonical read/write spelling as a frozen, historically misnamed wire key, and
+legacy XML import continues to read `fullTextSearch.maxDictionarySize`, so no
+persisted-value migration or configuration-format break is introduced.
+
+The selected private projection copies full-text enablement, the article-count
+limit and disabled-format text byte-for-byte into a policy value. It is
+distinct from `full_text_maximum_articles_per_dictionary`, which bounds
+returned search results. Projection creates no generation, request, adapter
+call, eligibility result, lifecycle transition, snapshot mutation,
+cancellation, thread or scheduling. A future byte-size limit, if selected,
+requires a new unambiguous field and key; P8-FT-74 adds no megabyte or dual-field
+policy.
+
+Focused acceptance extends the existing application-service and full-text-
+index tests without a registration. It covers default zero, current-key round
+trip, legacy migration, inclusive `10000000` and rejected `10000001`, query-
+limit separation, corrected policy defaults/equality and exact by-value
+projection. Real adapter bridging, coordinator composition, automatic apply or
+restart, facade/Widgets transport, Preferences UI, visible lifecycle state,
+serialization and the complete rebuild workflow remain excluded. All P8-FT-72
+and P8-FT-73 identity, stale-result, cancellation, failure and synchronous-work
+semantics remain locked, as do dependencies, `full-text-v1`, ordinary find,
+Dictionaries-only F3, translations and exactly 109 registrations. P8-FT-74 is
+the sole dependency unlocked by this audit; no successor beyond it is selected
+or named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

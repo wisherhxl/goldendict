@@ -5604,6 +5604,47 @@ completed full-text behavior or test registration. The Release baseline remains
 exactly 109. The private coordinator is complete; no dependency beyond it is
 selected or named.
 
+### Phase 8 P8-FT-74 Core article-count lifecycle-policy ingress (selected)
+
+The fresh readiness audit used synchronized migrated revision
+`58f958178bdf9aec877aab4c0fd3bfd765bfe160` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Of persisted-policy application,
+one real adapter bridge, composition ownership and facade/Widgets transport,
+only the value-only persisted-policy ingress is dependency-ready. Current
+`application.h:268-278`, `configuration.cc:141,189,219-220,746-750,1542,1557-1559`
+and `legacy_configuration.cc:403,451,471-472` provide its complete input seam.
+Pinned legacy `config.hh:156-181`, `preferences.ui:1371-1395`,
+`preferences.cc:360-382,490-575` and representative `stardict.cc:202-206`
+establish maximum dictionary size as an article count, accepted in
+`0..10000000` with zero unlimited.
+
+P8-FT-74 corrects the misleading C++ names to installed
+`full_text_maximum_dictionary_articles` and private
+`maximum_dictionary_articles` before consumption, while retaining the same
+`std::uint32_t` position and layout. The installed C++ source member rename is
+intentional and documented; other public/facade/C/DTO interfaces do not
+change. For persistence compatibility, the current configuration continues to
+read and canonically emit the frozen misnamed key
+`full_text_maximum_dictionary_megabytes`, and legacy import retains
+`fullTextSearch.maxDictionarySize`. No persisted-key or value migration is
+required.
+
+The private pure projection copies enabled, article-count limit and disabled-
+format text unchanged into `FullTextIndexPolicy`. It does not parse format
+tokens or apply per-dictionary eligibility. The lifecycle limit remains
+separate from query `full_text_maximum_articles_per_dictionary`, which bounds
+returned results. No byte-size limit or dual-field policy is introduced; a
+future byte limit requires a new unambiguous field and key.
+
+Focused existing tests cover default zero, both persistence paths, inclusive
+`10000000`, rejected `10000001`, query-limit separation, corrected policy
+equality and exact by-value projection without a new registration. Real port
+bridges, coordinator composition, automatic apply/restart, facade/Widgets
+transport, UI, progress, serialization and complete rebuild behavior remain
+excluded. P8-FT-72/73 semantics and all other locked surfaces remain unchanged,
+including exactly 109 Release registrations. P8-FT-74 alone is unlocked; no
+successor beyond it is selected or named.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
