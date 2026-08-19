@@ -1659,6 +1659,49 @@ article/work bounds, ICU divergence, ordinary find/F3, UI/translations,
 stale/artifact/snapshot safety and exactly 109 registrations remain locked.
 P8-FT-82 is complete, and no successor is selected or named.
 
+### P8-FT-83 private deterministic full-text work discovery (selected)
+
+The fresh post-P8-FT-82 audit at synchronized migrated revision
+`6e17c3441138381fcd107573f1f4bf5ed70cad7f` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects exactly one private Core
+prerequisite: discover current actionable work identities before any executor
+owns submission. Current `full_text_index_lifecycle.cc:117-139` stores entries
+in dictionary-ID order, `full_text_index_lifecycle.cc:191-271` produces
+requested generations, and `full_text_index_lifecycle.cc:361-403` safely
+projects only a caller-supplied exact identity. Composition
+`dictionary_service.cc:1090-1104` applies policy and reconciles artifacts but
+does not discover work. Pinned legacy `fulltextsearch.cc:34-125` combines
+dictionary scanning with execution; the migrated boundary must separate those
+responsibilities.
+
+The selected leaf adds one side-effect-free coordinator query equivalent to
+`std::vector<FullTextIndexWorkIdentity> DiscoverRequestedWork() const`.
+It snapshots accepted current `kWorkRequested` generations only while they
+remain capable, policy-eligible, uncancelled and backed by cancellation state.
+The vector follows canonical dictionary-ID order for reproducibility, without
+selecting priority, concurrency or legacy two-pass behavior. Empty registries
+and registries without actionable work return an empty vector.
+
+Discovery does not claim or execute work, create bounds, invoke a format port,
+touch persistence or holders, cancel work or allocate generations. A returned
+identity may become stale immediately; the P8-FT-82 exact-identity projection
+remains the authority that revalidates lifecycle state and the bounded safety
+envelope. Repeated discovery is deterministic while state is unchanged and
+cannot make one registration observe or alter another.
+
+Focused acceptance stays in the existing lifecycle test registration. It pins
+empty/single/multiple discovery, dictionary-ID ordering, latest-generation
+identity, every actionable predicate, exclusion of every non-requested state,
+policy replacement and cancellation, mutation-free behavior, no port call,
+successful bounded projection and stale-identity rejection. P8-FT-83 adds no
+executor/dispatcher ownership, submission, thread, queue, concurrency limit,
+shutdown/join, retry, progress/status, two-pass ordering, additional format
+bridge, facade/UI transport, public/installed API, dependency or registration.
+P8-FT-72 through P8-FT-82, `full-text-v1`, canonical IDs,
+`kPolicyExcluded`, bounds, ICU divergence, ordinary find/F3, UI/translations,
+stale/artifact/snapshot safety and exactly 109 registrations remain locked. No
+successor beyond P8-FT-83 is selected or named.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

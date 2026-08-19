@@ -4797,6 +4797,51 @@ IDs, `kPolicyExcluded`, article/work bounds, ICU divergence, ordinary find/F3,
 UI/translations, stale/artifact/snapshot safety, serialization and dependencies
 remain locked. P8-FT-82 is complete, and no successor is selected or named.
 
+### Phase 8 P8-FT-83 deterministic work-discovery acceptance (selected)
+
+The fresh audit is grounded at synchronized migrated revision
+`6e17c3441138381fcd107573f1f4bf5ed70cad7f` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly one private Core
+leaf: side-effect-free discovery of actionable `kWorkRequested` identities in
+canonical dictionary-ID order. The future interface is equivalent to
+`std::vector<FullTextIndexWorkIdentity> DiscoverRequestedWork() const`; no
+successor is selected.
+
+Acceptance extends only the existing `full_text_index_test` registration.
+Positive cases cover zero registrations, no actionable entries, one entry and
+multiple entries registered out of dictionary-ID order. Discovery must return
+only each accepted current generation's exact identity in canonical order when
+the entry remains `kWorkRequested`, format-capable, policy-eligible,
+uncancelled and backed by a cancellation token. Repeated calls with unchanged
+state return the same vector and leave registrations isolated.
+
+Negative cases exclude initial `kNotIndexed`, unavailable,
+`kPolicyExcluded`, working, current, cancelled and failed entries, superseded
+generations, newly ineligible policy and cancellation. Discovery invokes no
+format work, projects no bounds, claims no state, accesses no artifact,
+prepares or finalizes no update, writes no canonical file, publishes no holder
+snapshot and allocates no generation. A discovered identity must project
+successfully through P8-FT-82 with valid bounds, while replacement or
+cancellation between discovery and projection must make that same identity
+fail safely.
+
+No new executable or test is registered, so the Release baseline remains
+exactly 109. The future implementation gate is the focused existing Release
+test, full 109/109 Release CTest, Release install, standalone and packaged C/C++
+consumers, exact-SCM package creation and clean ref equality. P8-FT-83 adds no
+executor/dispatcher ownership, submission, thread, queue, concurrency limit,
+shutdown/cancel/join orchestration, retry, progress/status, two-pass ordering,
+format port, facade/UI transport, public/installed API or dependency.
+
+The documentation gate reviews exactly the four P8-FT-83 sections and
+validates every current and pinned citation, terminology, `git diff --check`,
+the exact four-file allowlist, exactly 109 Release registrations, ref equality
+and clean migrated/pinned worktrees. P8-FT-72 through P8-FT-82,
+`full-text-v1`, canonical IDs, `kPolicyExcluded`, article/work bounds, ICU
+divergence, ordinary find/F3, UI/translations, stale/artifact/snapshot safety,
+serialization and dependencies remain locked. No successor beyond P8-FT-83 is
+selected or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

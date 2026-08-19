@@ -5982,6 +5982,51 @@ private lifecycle header and implementation, the existing lifecycle test and
 these four governing documents. P8-FT-82 is complete, and no successor is
 selected or named.
 
+### Phase 8 P8-FT-83 private deterministic full-text work discovery (selected)
+
+The independent post-P8-FT-82 readiness audit used synchronized migrated
+revision `6e17c3441138381fcd107573f1f4bf5ed70cad7f` and clean pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`full_text_index_lifecycle.cc:117-139` owns accepted generations in an ordered
+private registry, and `full_text_index_lifecycle.cc:191-271` can create
+eligible `kWorkRequested` generations. However,
+`full_text_index_lifecycle.h:231-256` exposes only exact-identity projection,
+while `dictionary_service.cc:1090-1104` stops after policy application and
+artifact reconciliation. Pinned legacy `fulltextsearch.cc:34-125` discovers
+work by scanning dictionaries before its background owner executes it. The
+smallest dependency-ready leaf is therefore private discovery of actionable
+identities before executor ownership can be selected.
+
+P8-FT-83 adds one side-effect-free coordinator query equivalent to
+`std::vector<FullTextIndexWorkIdentity> DiscoverRequestedWork() const`. It
+returns snapshots of only accepted current `kWorkRequested` generations that
+remain format-capable, policy-eligible, uncancelled and backed by a cancellation
+token. Results use canonical dictionary-ID order from the existing registry;
+this is deterministic discovery, not scheduler priority or legacy two-pass
+policy. Zero registrations or no actionable entries return an empty vector.
+
+Discovery claims no generation, constructs no bounds, invokes no format port,
+reads or writes no artifact, prepares or finalizes no update, publishes no
+snapshot, requests no cancellation and allocates no generation. Returned
+identities are observations that may become stale; P8-FT-82 must revalidate
+each exact identity and its bounds before later submission. Repetition is
+deterministic while lifecycle state is unchanged, and registrations remain
+isolated.
+
+Acceptance extends only the existing `full_text_index_test` registration. It
+proves empty, single and multiple-entry discovery; canonical dictionary-ID
+order; inclusion of only the latest actionable generation; exclusion of
+unavailable, not-indexed, policy-excluded, working, current, cancelled and
+failed entries; policy/capability/cancellation revalidation; no observable
+mutation or port call; and successful projection of a discovered identity plus
+safe rejection of a subsequently stale identity. P8-FT-83 adds no executor,
+dispatcher, submission, thread, queue, concurrency limit, shutdown/join,
+retry, progress/status, two-pass ordering, format bridge, facade/UI transport,
+public/installed API, dependency or registration. P8-FT-72 through P8-FT-82,
+`full-text-v1`, canonical IDs, `kPolicyExcluded`, bounds, ICU, find/F3,
+UI/translations, stale/artifact/snapshot safety and exactly 109 registrations
+remain locked. No successor beyond P8-FT-83 is selected or named.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
