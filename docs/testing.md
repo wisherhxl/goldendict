@@ -4391,6 +4391,33 @@ exact-SCM package creation. Documentation validation requires citation,
 changed-section, registration-count, ref/worktree and `git diff --check`
 checks. No successor is selected or ranked.
 
+### Phase 8 P8-FT-73 private Core lifecycle coordinator (selected)
+
+The documentation-only readiness audit at migrated revision
+`fbc50b18fb183f69c34b524db869140a3760da25` and pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects one private Core
+coordinator state machine. Its implementation test boundary remains the
+existing `full_text_index_test` registration with a deterministic fake
+P8-FT-72 format-work port.
+
+Focused coverage must prove requested-to-working-to-terminal transitions;
+independent generation and dictionary identity; capability rejection and
+not-indexed state; exact source-revision capture; bounded request forwarding;
+current success, cancellation and contained failure; cancellation idempotence;
+replacement during work; and suppression of stale success, cancellation,
+exception and failure completions. Snapshot assertions consume immutable
+values, and the fake must verify cancellation through the existing token.
+
+Tests must not require a real adapter, persistence/configuration application,
+facade or Widgets transport, automatic scheduling, queue/concurrency, legacy
+two-pass ordering, retry, progress, visible failure behavior, serialization or
+the complete rebuild workflow. No new executable or registration is required,
+so the Release baseline remains exactly 109. This audit requires citation and
+terminology review, the four-file allowlist, `git diff --check`, exact
+registration counting, reference equality and clean migrated and legacy
+worktrees; no compiled run is required. Only the private coordinator
+implementation is unlocked, and no dependency beyond it is selected or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

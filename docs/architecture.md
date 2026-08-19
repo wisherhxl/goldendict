@@ -5639,6 +5639,48 @@ so installed C++/Core/C interfaces and DTOs, configuration ABI, dependencies,
 Dictionaries-only F3, translations and exactly 109 Release registrations stay
 unchanged. No successor is selected, ranked, recommended or named.
 
+### Phase 8 P8-FT-73 private Core full-text index lifecycle coordinator (selected)
+
+The post-P8-FT-72 audit was performed from synchronized migrated revision
+`fbc50b18fb183f69c34b524db869140a3760da25` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The smallest dependency-ready
+leaf is one private Core coordinator state machine. Current
+`full_text_index_lifecycle.h:16-146` supplies its policy, identity, intent,
+snapshot and work-port vocabulary, but the only non-test implementation is the
+exception-containing port boundary in `full_text_index_lifecycle.cc:9-26`.
+`dictionary_service.cc:1812-1912` and `desktop_facade.cc:68-88` establish the
+current private service/composition seam without owning this lifecycle.
+
+The coordinator owns one authoritative current generation per dictionary ID.
+For an explicitly submitted rebuild it samples the selected port's capability
+and opaque source revision, publishes requested then working state, and invokes
+one bounded P8-FT-72 work request. Completion may publish current, cancelled or
+failed only when both generation and dictionary ID still match. Capability
+rejection publishes unavailable; a supported dictionary with no accepted work
+publishes not-indexed. Replaced-generation results, exceptions and cancellation
+completions are stale and cannot mutate the current immutable snapshot.
+Cancellation is dictionary-generation scoped, idempotent and propagated by the
+existing Core token; the P8-FT-72 port continues to contain escaped adapter
+exceptions.
+
+Pinned legacy `fulltextsearch.cc:31-125` proves background execution, shared
+cancellation, readiness checks and exception containment, while
+`mainwindow.cc:1381-1393,2100-2101,2164-2165,2180-2181,2302-2303` proves that
+dictionary or preference replacement first stops work and later restarts it.
+Its two-pass small-then-remaining loop is evidence of legacy behavior, not
+coordinator policy selected by this leaf.
+
+P8-FT-73 includes no automatic startup or recomposition scheduling, policy
+persistence/application, queue or concurrency policy, two-pass ordering,
+retry, progress percentage, real adapter bridge, facade/Widgets transport,
+visible readiness/status/failure UI, serialization or complete rebuild
+workflow. Installed/public C++, facade, C, DTO and configuration ABI,
+dependencies, `full-text-v1`, ordinary find-in-page, Dictionaries-only F3,
+translations, completed full-text behavior and exactly 109 registrations remain
+unchanged. This selection unlocks only implementation of the private Core
+coordinator state machine; no dependency beyond that boundary is selected or
+named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
