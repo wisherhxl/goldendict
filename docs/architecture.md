@@ -5839,6 +5839,40 @@ semantics, dependencies, `full-text-v1`, ordinary find, Dictionaries-only F3,
 translations, intentional ICU divergence and exactly 109 registrations remain
 unchanged. No successor beyond P8-FT-76 is selected or named.
 
+### Phase 8 P8-FT-77 private bounded AARD full-text traversal prerequisite (selected)
+
+This fresh readiness audit used synchronized migrated revision
+`f947355a8e5d912d9776f73a0ae4a58acff9581a` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects one smallest
+dependency-ready prerequisite after immutable snapshot publication: replace
+AARD's all-at-once full-text article extraction with a private incremental
+traversal seam. Current `aard_reader.h:42-68`, `aard_reader.cc:483-499` and
+`aard_dictionary.cc:55-92` show that construction first copies every retained
+article into one vector and then builds a second full-text document vector.
+Pinned legacy `aard.cc:609-635` and `ftshelpers.cc:298-366` show AARD delegating
+to shared indexing with cancellation checks during article traversal.
+
+The AARD reader will synchronously visit one `FullTextArticle` at a time through
+a private callback and invoke a supplied checkpoint before every record
+inspection, including duplicate records. Traversal preserves current record
+order, first-record deduplication, `record_ordinal`, `article_ordinal`, headword
+and payload. The callback receives a non-owning value valid only for its call;
+the reader retains neither callback output nor traversal state after return.
+Checkpoint or visitor exceptions stop traversal immediately and propagate to
+the caller. This seam supplies cancellation/deadline checkpoints while the
+eventual work consumer remains responsible for the request's document,
+per-document-byte and corpus-byte limits.
+
+AARD's construction-time consumer will use the same traversal without changing
+document IDs, article assembly, generated-index behavior, search results or
+error translation. This leaf adds no cross-format abstraction, real lifecycle
+work port, registration, generation handoff or publication path. Core retains
+lifecycle and eligibility ownership; the private adapter owns traversal
+mechanics; complete immutable snapshot publication remains mandatory.
+Composition, persisted-policy application/restart, scheduling, progress,
+facade/Widgets transport, UI, serialization, two-pass ordering and every public
+ABI remain excluded. No successor beyond P8-FT-77 is selected or named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

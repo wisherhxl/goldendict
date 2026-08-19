@@ -1451,6 +1451,32 @@ serialization and complete rebuild behavior remain unselected. The existing
 `full_text_index_test` is the sole acceptance registration, preserving
 exactly 109. P8-FT-76 is complete. No successor is selected or named.
 
+### P8-FT-77 private bounded AARD full-text traversal prerequisite (selected)
+
+The independent post-P8-FT-76 audit at migrated revision
+`f947355a8e5d912d9776f73a0ae4a58acff9581a` and pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects only AARD incremental
+full-text article traversal. The migrated AARD reader currently returns a
+fully materialized article vector, after which its dictionary builds a second
+document vector. Legacy AARD delegates to shared FTS traversal that checks
+cancellation between articles.
+
+The selected private reader seam visits retained articles synchronously in
+existing first-record order, checkpoints before each source record, and emits
+the existing ordinals, headword and payload without retaining callback data.
+Duplicate records are inspected and checkpointed but emit only the first
+article occurrence. Visitor or checkpoint failure terminates immediately.
+AARD's existing construction path consumes the seam with unchanged document
+IDs, assembly, indexing, lookup and error behavior.
+
+Focused existing-test coverage will pin ordering, deduplication, field values,
+checkpoint frequency, early termination and construction parity without a new
+registration, preserving exactly 109. No generic format interface, lifecycle
+port, composition wiring, publication handoff, policy restart, scheduling,
+progress or facade/UI behavior is selected. All locked lifecycle, eligibility,
+snapshot, public ABI and dependency boundaries remain unchanged. No successor
+beyond P8-FT-77 is selected or named.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

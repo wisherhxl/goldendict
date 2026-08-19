@@ -4552,6 +4552,37 @@ and C++ consumers, exact-SCM package creation, local/upstream/live-remote
 equality and clean migrated and pinned legacy worktrees. P8-FT-76 is complete.
 No successor is selected or named.
 
+### Phase 8 P8-FT-77 bounded AARD traversal acceptance (selected)
+
+The docs/readiness leaf is grounded at synchronized migrated revision
+`f947355a8e5d912d9776f73a0ae4a58acff9581a` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Its future implementation extends
+only existing AARD reader and dictionary test registrations; no executable or
+test is registered, so the Release baseline remains exactly 109.
+
+Reader coverage must prove deterministic current record order, first-record
+deduplication, exact record/article ordinals, headword and payload, and one
+checkpoint before every record inspection including duplicates. A checkpoint
+throw before a record emits nothing for that record or later records; a visitor
+throw emits nothing later and propagates unchanged. The visitor observes a
+non-owning article only for the callback duration, and the reader retains no
+visitor result or traversal state.
+
+Dictionary coverage must compare the incremental consumer with the current
+fixture results: exact `aard-index:<record_ordinal>:<article_ordinal>` IDs,
+assembled plain text, generated-index state, full-text results, document
+resolution and error translation remain unchanged. The tests add no lifecycle
+port, request-bound enforcement, registration, generation authorization or
+snapshot publication expectation. Existing P8-FT-72 through P8-FT-76 cases
+remain locked; cross-format traversal, policy restart, scheduling, progress,
+facade/UI transport, serialization and two-pass ordering remain excluded.
+
+Delivery validation for this selection is docs-only: the four-document
+allowlist, `git diff --check`, exactly 109 Release registrations,
+local/upstream/live-remote equality and clean migrated and pinned legacy
+worktrees. Compiled tests are unnecessary because no executable evidence is
+changed. No successor beyond P8-FT-77 is selected or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
