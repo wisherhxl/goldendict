@@ -274,7 +274,7 @@ struct ApplicationPreferences {
     bool full_text_use_maximum_articles = false;
     bool full_text_ignore_word_order = false;
     bool full_text_ignore_diacritics = false;
-    std::uint32_t full_text_maximum_dictionary_megabytes = 0U;
+    std::uint32_t full_text_maximum_dictionary_articles = 0U;
     std::string full_text_disabled_types;
 
     bool operator==(const ApplicationPreferences& other) const noexcept {
@@ -314,7 +314,7 @@ struct ApplicationPreferences {
                    full_text_use_maximum_word_distance,
                    full_text_use_maximum_articles, full_text_ignore_word_order,
                    full_text_ignore_diacritics,
-                   full_text_maximum_dictionary_megabytes,
+                   full_text_maximum_dictionary_articles,
                    full_text_disabled_types) ==
                std::tie(
                    other.interface_language, other.help_language,
@@ -367,7 +367,7 @@ struct ApplicationPreferences {
                    other.full_text_use_maximum_articles,
                    other.full_text_ignore_word_order,
                    other.full_text_ignore_diacritics,
-                   other.full_text_maximum_dictionary_megabytes,
+                   other.full_text_maximum_dictionary_articles,
                    other.full_text_disabled_types);
     }
 

@@ -5604,13 +5604,14 @@ completed full-text behavior or test registration. The Release baseline remains
 exactly 109. The private coordinator is complete; no dependency beyond it is
 selected or named.
 
-### Phase 8 P8-FT-74 Core article-count lifecycle-policy ingress (selected)
+### Phase 8 P8-FT-74 Core article-count lifecycle-policy ingress (completed)
 
-The fresh readiness audit used synchronized migrated revision
-`58f958178bdf9aec877aab4c0fd3bfd765bfe160` and clean pinned legacy revision
+The completed implementation used synchronized migrated base revision
+`a5e013d8164550f4757c6d4a58949cb575624989` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Of persisted-policy application,
 one real adapter bridge, composition ownership and facade/Widgets transport,
-only the value-only persisted-policy ingress is dependency-ready. Current
+the implementation completes only the value-only persisted-policy ingress.
+Current
 `application.h:268-278`, `configuration.cc:141,189,219-220,746-750,1542,1557-1559`
 and `legacy_configuration.cc:403,451,471-472` provide its complete input seam.
 Pinned legacy `config.hh:156-181`, `preferences.ui:1371-1395`,
@@ -5642,8 +5643,8 @@ equality and exact by-value projection without a new registration. Real port
 bridges, coordinator composition, automatic apply/restart, facade/Widgets
 transport, UI, progress, serialization and complete rebuild behavior remain
 excluded. P8-FT-72/73 semantics and all other locked surfaces remain unchanged,
-including exactly 109 Release registrations. P8-FT-74 alone is unlocked; no
-successor beyond it is selected or named.
+including exactly 109 Release registrations. P8-FT-74 is complete. No next
+dependency is selected.
 
 ### Phase 9 — Linux Integration And Release Quality
 

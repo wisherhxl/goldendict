@@ -4422,11 +4422,11 @@ registration counting, reference equality and clean migrated and legacy
 worktrees. P8-FT-73 is complete, and no dependency beyond it is selected or
 named.
 
-### Phase 8 P8-FT-74 article-count policy-ingress acceptance (selected)
+### Phase 8 P8-FT-74 article-count policy-ingress acceptance (completed)
 
-The documentation-only post-P8-FT-73 audit at migrated revision
-`58f958178bdf9aec877aab4c0fd3bfd765bfe160` and pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects one future implementation
+The completed implementation from migrated base revision
+`a5e013d8164550f4757c6d4a58949cb575624989` and pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` covers one implementation
 boundary: correct maximum-dictionary terminology and project the three
 persisted lifecycle inputs by value into private Core policy. Evidence is
 current `application.h:268-278`,
@@ -4435,11 +4435,11 @@ current `application.h:268-278`,
 `config.hh:156-181`, `preferences.ui:1371-1395`,
 `preferences.cc:360-382,490-575` and `stardict.cc:202-206`.
 
-The existing `application_service_test` acceptance boundary must prove default
+The existing `application_service_test` acceptance boundary proves default
 zero, current misnamed-key canonical read/write round trip, legacy XML
 migration, acceptance of `10000000`, rejection of `10000001`, and independence
 from query `full_text_maximum_articles_per_dictionary`. The existing
-`full_text_index_test` boundary must prove the corrected
+`full_text_index_test` boundary proves the corrected
 `maximum_dictionary_articles` default and equality plus exact by-value
 projection of enablement, article count and raw disabled-format text. Mutating
 the source preferences after projection must not alter the policy value.
@@ -4455,13 +4455,13 @@ second field, alias member or dual interpretation.
 No coordinator generation, request, port call, lifecycle transition,
 cancellation, scheduling, adapter, composition, facade/Widgets transport, UI,
 serialization or complete rebuild behavior is in scope. No executable or
-registration is added, so the Release baseline remains exactly 109. Future
-implementation delivery uses the two focused existing targets, Linux Release
+registration is added, so the Release baseline remains exactly 109.
+Implementation delivery uses the two focused existing targets, Linux Release
 configure/build, 109/109 CTest, installed/package consumers and exact-SCM
-package creation. The present audit requires citation and terminology review,
+package creation. Delivery includes citation and terminology review,
 the four-file allowlist, `git diff --check`, registration counting, reference
-equality and clean migrated and legacy worktrees. P8-FT-74 is the sole
-dependency unlocked; no successor beyond it is selected or named.
+equality and clean migrated and legacy worktrees. P8-FT-74 is complete. No next
+dependency is selected.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

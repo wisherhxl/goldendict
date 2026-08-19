@@ -12,6 +12,13 @@
 
 namespace goldendict::core::dictionary {
 
+FullTextIndexPolicy ProjectFullTextIndexPolicy(
+    const ApplicationPreferences& preferences) {
+    return {preferences.full_text_search_enabled,
+            preferences.full_text_maximum_dictionary_articles,
+            preferences.full_text_disabled_types};
+}
+
 FullTextIndexWorkResult FullTextIndexFormatWorkPort::PerformFullTextIndexWork(
     const FullTextIndexWorkRequest& request) noexcept {
     try {

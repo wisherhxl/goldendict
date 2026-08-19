@@ -187,15 +187,35 @@ class FullTextIndexTest : public QObject {
 void FullTextIndexTest::LifecycleContract() {
     const FullTextIndexPolicy defaults;
     QVERIFY(defaults.enabled);
-    QCOMPARE(defaults.maximum_dictionary_megabytes, 0U);
+    QCOMPARE(defaults.maximum_dictionary_articles, 0U);
     QVERIFY(defaults.disabled_format_types.empty());
 
     FullTextIndexPolicy policy = defaults;
     policy.enabled = false;
-    policy.maximum_dictionary_megabytes = 512U;
+    policy.maximum_dictionary_articles = 512U;
     policy.disabled_format_types = "AARD,DSL";
     QVERIFY(policy != defaults);
     QCOMPARE(policy, FullTextIndexPolicy(policy));
+
+    ApplicationPreferences preferences;
+    preferences.full_text_search_enabled = false;
+    preferences.full_text_maximum_dictionary_articles = 10000000U;
+    preferences.full_text_maximum_articles_per_dictionary = 7U;
+    preferences.full_text_disabled_types =
+        std::string("AARD\0DSL \xce\x94", 11U);
+    const auto projected = ProjectFullTextIndexPolicy(preferences);
+    QCOMPARE(projected.enabled, false);
+    QCOMPARE(projected.maximum_dictionary_articles, 10000000U);
+    QCOMPARE(projected.disabled_format_types,
+             preferences.full_text_disabled_types);
+    preferences.full_text_search_enabled = true;
+    preferences.full_text_maximum_dictionary_articles = 1U;
+    preferences.full_text_maximum_articles_per_dictionary = 99U;
+    preferences.full_text_disabled_types = "changed";
+    QCOMPARE(projected.enabled, false);
+    QCOMPARE(projected.maximum_dictionary_articles, 10000000U);
+    QCOMPARE(projected.disabled_format_types,
+             std::string("AARD\0DSL \xce\x94", 11U));
 
     const FullTextIndexWorkIdentity identity{42U, "dictionary-a"};
     const FullTextIndexWorkIdentity stale_generation{41U, "dictionary-a"};
@@ -311,7 +331,7 @@ void FullTextIndexTest::CoordinatesExplicitLifecycleTransitions() {
              FullTextIndexLifecycleState::kUnavailable);
 
     FullTextIndexPolicy policy;
-    policy.maximum_dictionary_megabytes = 55U;
+    policy.maximum_dictionary_articles = 55U;
     policy.disabled_format_types = "DSL";
     supported->source_revision = "revision-2";
     const FullTextIndexWorkIdentity identity{1U, "supported"};

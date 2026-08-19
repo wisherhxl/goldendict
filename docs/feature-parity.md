@@ -1336,11 +1336,11 @@ dependency, serialization, search, F3, translation and 109-registration
 surfaces remain unchanged. P8-FT-73 changes only the private coordinator
 implementation; no dependency beyond it is selected or named.
 
-### P8-FT-74 Core article-count lifecycle-policy ingress (selected)
+### P8-FT-74 Core article-count lifecycle-policy ingress (completed)
 
-The post-P8-FT-73 audit at migrated revision
-`58f958178bdf9aec877aab4c0fd3bfd765bfe160` and pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects only a private, value-only
+The completed implementation from migrated base revision
+`a5e013d8164550f4757c6d4a58949cb575624989` and pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` adds only a private, value-only
 projection of persisted lifecycle policy into Core. Current
 `application.h:268-278`, `configuration.cc:141,189,219-220,746-750,1542,1557-1559`
 and `legacy_configuration.cc:403,451,471-472` contain the existing inputs.
@@ -1349,7 +1349,7 @@ Pinned legacy `config.hh:156-181`, `preferences.ui:1371-1395`,
 maximum dictionary value is an article count in `0..10000000`, where zero is
 unlimited.
 
-The selected leaf renames the installed C++ preference member to
+The completed leaf renames the installed C++ preference member to
 `full_text_maximum_dictionary_articles` and the private policy member to
 `maximum_dictionary_articles`, retaining their type, order and layout while
 documenting the unavoidable installed C++ source rename. It continues to read
@@ -1363,12 +1363,11 @@ result bound.
 
 No megabyte limit, dual field, generation, adapter call, lifecycle transition,
 composition, scheduling, facade/Widgets transport, UI, serialization or
-complete rebuild behavior belongs to P8-FT-74. Existing tests will pin the
+complete rebuild behavior belongs to P8-FT-74. Existing tests pin the
 default, bounds, both persistence paths, query-policy separation and exact
 projection without changing the 109-test Release baseline. All P8-FT-72/73
 semantics and locked ABI surfaces other than the documented C++ source member
-rename remain unchanged. P8-FT-74 is the sole dependency unlocked; no successor
-beyond it is selected or named.
+rename remain unchanged. P8-FT-74 is complete. No next dependency is selected.
 
 ## Resources And Platform Integration
 

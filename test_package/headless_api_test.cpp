@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -566,8 +567,13 @@ int Fail(const std::string& message) {
 }  // namespace
 
 int main() {
+    static_assert(
+        std::is_same_v<decltype(goldendict::core::ApplicationPreferences::
+                                    full_text_maximum_dictionary_articles),
+                       std::uint32_t>);
     goldendict::core::ApplicationPreferences preferences;
-    if (preferences.hide_single_tab || preferences.mru_tab_order) {
+    if (preferences.hide_single_tab || preferences.mru_tab_order ||
+        preferences.full_text_maximum_dictionary_articles != 0U) {
         return 1;
     }
     try {
@@ -607,6 +613,8 @@ int main() {
 
         goldendict::core::CoreConfiguration configuration;
         configuration.preferences.maximum_dictionary_references = 0U;
+        configuration.preferences.full_text_maximum_dictionary_articles =
+            10000000U;
         configuration.full_text_dialog_geometry =
             std::string("opaque\0dialog%geometry", 22U);
         configuration.dictionary_paths = {dictionary_root.string()};
@@ -630,6 +638,8 @@ int main() {
             loaded.full_text_dialog_geometry !=
                 configuration.full_text_dialog_geometry ||
             loaded.preferences.maximum_dictionary_references != 0U ||
+            loaded.preferences.full_text_maximum_dictionary_articles !=
+                10000000U ||
             loaded.external_program_sources !=
                 configuration.external_program_sources) {
             return Fail("configuration round-trip failed");

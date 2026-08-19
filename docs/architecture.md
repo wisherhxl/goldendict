@@ -5682,10 +5682,10 @@ translations, completed full-text behavior and exactly 109 registrations remain
 unchanged. P8-FT-73 completes only the private Core coordinator state machine;
 no dependency beyond that boundary is selected or named.
 
-### Phase 8 P8-FT-74 Core article-count lifecycle-policy ingress (selected)
+### Phase 8 P8-FT-74 Core article-count lifecycle-policy ingress (completed)
 
-The fresh post-P8-FT-73 audit used synchronized migrated revision
-`58f958178bdf9aec877aab4c0fd3bfd765bfe160` and clean pinned legacy revision
+The completed implementation used synchronized migrated base revision
+`a5e013d8164550f4757c6d4a58949cb575624989` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The smallest dependency-ready
 leaf is one private, value-only ingress from persisted application preferences
 to the existing Core lifecycle policy. Current `application.h:268-278`,
@@ -5708,7 +5708,7 @@ canonical read/write spelling as a frozen, historically misnamed wire key, and
 legacy XML import continues to read `fullTextSearch.maxDictionarySize`, so no
 persisted-value migration or configuration-format break is introduced.
 
-The selected private projection copies full-text enablement, the article-count
+The private projection copies full-text enablement, the article-count
 limit and disabled-format text byte-for-byte into a policy value. It is
 distinct from `full_text_maximum_articles_per_dictionary`, which bounds
 returned search results. Projection creates no generation, request, adapter
@@ -5727,8 +5727,7 @@ serialization and the complete rebuild workflow remain excluded. All P8-FT-72
 and P8-FT-73 identity, stale-result, cancellation, failure and synchronous-work
 semantics remain locked, as do dependencies, `full-text-v1`, ordinary find,
 Dictionaries-only F3, translations and exactly 109 registrations. P8-FT-74 is
-the sole dependency unlocked by this audit; no successor beyond it is selected
-or named.
+complete. No next dependency is selected.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

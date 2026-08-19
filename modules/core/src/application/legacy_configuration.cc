@@ -469,7 +469,7 @@ void ApplyPreference(ApplicationPreferences& p, std::string_view key,
     UINT("fullTextSearch.maxDistanceBetweenWords",
          full_text_maximum_word_distance, std::uint32_t)
     UINT("fullTextSearch.maxDictionarySize",
-         full_text_maximum_dictionary_megabytes, std::uint32_t)
+         full_text_maximum_dictionary_articles, std::uint32_t)
 #undef STRING
 #undef BOOL
 #undef UINT

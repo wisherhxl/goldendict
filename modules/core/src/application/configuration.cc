@@ -217,7 +217,7 @@ void SetPreference(ApplicationPreferences& preferences, std::string_view name,
     UINT_PREFERENCE("full_text_maximum_word_distance",
                     full_text_maximum_word_distance, std::uint32_t)
     UINT_PREFERENCE("full_text_maximum_dictionary_megabytes",
-                    full_text_maximum_dictionary_megabytes, std::uint32_t)
+                    full_text_maximum_dictionary_articles, std::uint32_t)
 #undef STRING_PREFERENCE
 #undef BOOL_PREFERENCE
 #undef UINT_PREFERENCE
@@ -747,7 +747,7 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         preferences.full_text_maximum_articles_per_dictionary == 0U ||
         preferences.full_text_maximum_articles_per_dictionary > 100000U ||
         preferences.full_text_maximum_word_distance > 1000U ||
-        preferences.full_text_maximum_dictionary_megabytes > 1048576U) {
+        preferences.full_text_maximum_dictionary_articles > 10000000U) {
         throw std::runtime_error("Numeric preference is outside its bounds");
     }
 
@@ -1555,7 +1555,7 @@ void SaveConfiguration(const std::string& configuration_path,
     APPEND_BOOL("full_text_ignore_word_order", full_text_ignore_word_order);
     APPEND_BOOL("full_text_ignore_diacritics", full_text_ignore_diacritics);
     APPEND_NUMBER("full_text_maximum_dictionary_megabytes",
-                  full_text_maximum_dictionary_megabytes);
+                  full_text_maximum_dictionary_articles);
     APPEND_STRING("full_text_disabled_types", full_text_disabled_types);
 #undef APPEND_STRING
 #undef APPEND_BOOL

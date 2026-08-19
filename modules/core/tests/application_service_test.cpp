@@ -957,6 +957,10 @@ void ApplicationServiceTest::
 }
 
 void ApplicationServiceTest::ApplicationPreferencesCompareByValue() {
+    static_assert(
+        std::is_same_v<decltype(ApplicationPreferences::
+                                    full_text_maximum_dictionary_articles),
+                       std::uint32_t>);
     ApplicationPreferences first;
     ApplicationPreferences second;
 
@@ -1035,7 +1039,9 @@ void ApplicationServiceTest::
     preferences.synonym_search_enabled = false;
     preferences.full_text_search_mode = FullTextSearchMode::kRegularExpression;
     preferences.full_text_match_case = true;
+    preferences.full_text_maximum_articles_per_dictionary = 4321U;
     preferences.full_text_maximum_word_distance = 9U;
+    preferences.full_text_maximum_dictionary_articles = 10000000U;
     preferences.full_text_disabled_types = "audio|images";
 
     SaveConfiguration(path.string(), expected);
@@ -1046,6 +1052,12 @@ void ApplicationServiceTest::
     QVERIFY(first.find("preference=double_click_translates|0\n") !=
             std::string::npos);
     QVERIFY(first.find("preference=select_word_by_single_click|1\n") !=
+            std::string::npos);
+    QVERIFY(
+        first.find(
+            "preference=full_text_maximum_dictionary_megabytes|10000000\n") !=
+        std::string::npos);
+    QVERIFY(first.find("full_text_maximum_dictionary_articles") ==
             std::string::npos);
     const auto actual = LoadConfiguration(path.string());
 
@@ -1085,6 +1097,10 @@ void ApplicationServiceTest::
              preferences.full_text_search_mode);
     QCOMPARE(actual.preferences.full_text_match_case,
              preferences.full_text_match_case);
+    QCOMPARE(actual.preferences.full_text_maximum_articles_per_dictionary,
+             std::uint32_t{4321});
+    QCOMPARE(actual.preferences.full_text_maximum_dictionary_articles,
+             std::uint32_t{10000000});
     QCOMPARE(actual.preferences.full_text_disabled_types,
              preferences.full_text_disabled_types);
 
@@ -1111,6 +1127,8 @@ void ApplicationServiceTest::
     QCOMPARE(older.preferences.input_phrase_length_limit, std::uint32_t{1000});
     QCOMPARE(older.preferences.maximum_dictionary_references,
              std::uint16_t{20});
+    QCOMPARE(older.preferences.full_text_maximum_dictionary_articles,
+             std::uint32_t{0});
 
     expected.preferences.maximum_dictionary_references = 0U;
     SaveConfiguration(path.string(), expected);
@@ -1365,6 +1383,12 @@ void ApplicationServiceTest::
     QCOMPARE(ReadFile(path), original_bytes);
 
     invalid = original;
+    invalid.preferences.full_text_maximum_dictionary_articles = 10000001U;
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original_bytes);
+
+    invalid = original;
     invalid.preferences.zoom_factor = 5.01;
     QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), invalid),
                              std::runtime_error);
@@ -1564,7 +1588,9 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
         "<mruTabOrder>1</mruTabOrder>"
         "<escKeyHidesMainWindow>1</escKeyHidesMainWindow>"
         "<fullTextSearch><searchMode>3</searchMode><matchCase>1</matchCase>"
+        "<maxArticlesPerDictionary>321</maxArticlesPerDictionary>"
         "<maxDistanceBetweenWords>9</maxDistanceBetweenWords>"
+        "<maxDictionarySize>7654321</maxDictionarySize>"
         "<disabledTypes>audio|images</disabledTypes>"
         "<dialogGeometry>ZnRzLWdlb21ldHJ5</dialogGeometry></fullTextSearch>"
         "</preferences><mainWindowGeometry>Z2VvbWV0cnk=</mainWindowGeometry>"
@@ -1633,7 +1659,11 @@ void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
     QCOMPARE(preferences.full_text_search_mode,
              FullTextSearchMode::kRegularExpression);
     QCOMPARE(preferences.full_text_match_case, true);
+    QCOMPARE(preferences.full_text_maximum_articles_per_dictionary,
+             std::uint32_t{321});
     QCOMPARE(preferences.full_text_maximum_word_distance, std::uint32_t{9});
+    QCOMPARE(preferences.full_text_maximum_dictionary_articles,
+             std::uint32_t{7654321});
     QCOMPARE(preferences.full_text_disabled_types, "audio|images");
     QCOMPARE(preferences.confirm_favorites_deletion, false);
     QCOMPARE(preferences.always_expand_optional_parts, true);

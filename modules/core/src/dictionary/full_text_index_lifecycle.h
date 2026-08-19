@@ -11,20 +11,21 @@
 #include <string>
 #include <utility>
 
+#include "goldendict/core/application.h"
 #include "goldendict/core/dictionary_service.h"
 
 namespace goldendict::core::dictionary {
 
 struct FullTextIndexPolicy {
     bool enabled = true;
-    std::uint32_t maximum_dictionary_megabytes = 0U;
+    std::uint32_t maximum_dictionary_articles = 0U;
     std::string disabled_format_types;
 
     friend bool operator==(const FullTextIndexPolicy& left,
                            const FullTextIndexPolicy& right) {
         return left.enabled == right.enabled &&
-               left.maximum_dictionary_megabytes ==
-                   right.maximum_dictionary_megabytes &&
+               left.maximum_dictionary_articles ==
+                   right.maximum_dictionary_articles &&
                left.disabled_format_types == right.disabled_format_types;
     }
 
@@ -33,6 +34,9 @@ struct FullTextIndexPolicy {
         return !(left == right);
     }
 };
+
+FullTextIndexPolicy ProjectFullTextIndexPolicy(
+    const ApplicationPreferences& preferences);
 
 struct FullTextIndexWorkIdentity {
     std::uint64_t generation = 0U;
