@@ -4364,32 +4364,32 @@ citation checks, cross-document terminology review, the four-file allowlist,
 `git diff --check`, ref equality and clean migrated and pinned worktrees. No
 further successor is selected, ranked, recommended or named.
 
-### Phase 8 P8-FT-72 Core full-text index lifecycle contract prerequisite (selected)
+### Phase 8 P8-FT-72 Core full-text index lifecycle contract prerequisite (completed)
 
-The documentation-only post-P8-FT-71 audit at migrated revision
-`2485043a77c1af6e0ee1916519524667d088322b` and pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects exactly P8-FT-72. Core owns
+P8-FT-72 was implemented from migrated revision
+`0b84e6dc2ab627c613c483a931b995f6c0554191` and pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Core owns
 full-text index policy and lifecycle coordination; Widgets may edit policy,
 issue rebuild/cancel intents and consume immutable snapshots only; adapters
 report capability/source revision and execute bounded cancellable work.
 
-Future P8-FT-72 verification belongs in an existing Core test target. A fake
-format-work port must cover policy transport, rebuild/cancel intent identity,
-immutable generation- and dictionary-identified snapshots, capability/source-
-revision reporting, bounded work and cancellation, including stale-identity
-separation. The leaf adds no executable or registered test, preserving exactly
-109 Release registrations.
+`full_text_index_test` uses a deterministic fake format-work port to cover
+policy defaults/equality, rebuild/cancel intent identity, immutable generation-
+and dictionary-identified snapshots, capability/opaque-source-revision
+reporting, bounded request transport, cancellation observation and contained
+explicit/exception failures. Changed generation and dictionary identities are
+tested independently. No executable or registration was added, preserving
+exactly 109 Release registrations.
 
-The tests must not require coordinator execution, persistence application,
+The tests require no coordinator execution, persistence application,
 Preferences or Widgets, visible progress/status, a real format adapter, index
 serialization or a complete rebuild. They must not encode progress percentage,
 queue/concurrency, legacy two-pass ordering, retry or failure-presentation
-policy. The future delivery gate is the focused existing Core target, Linux
+policy. The delivery gate is the focused existing Core target, Linux
 Release configure/build and 109/109 CTest, install and packaged consumers, and
-exact-SCM package creation. This documentation audit itself requires citation,
-four-file allowlist, registration-count, ref/worktree and `git diff --check`
-validation only; no compiled run is required. No successor beyond P8-FT-72 is
-selected or ranked.
+exact-SCM package creation. Documentation validation requires citation,
+changed-section, registration-count, ref/worktree and `git diff --check`
+checks. No successor is selected or ranked.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

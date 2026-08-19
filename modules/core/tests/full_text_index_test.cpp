@@ -4,8 +4,12 @@
 
 #include <filesystem>
 #include <fstream>
+#include <optional>
+#include <stdexcept>
+#include <type_traits>
 
 #include "../src/dictionary/full_text_index.h"
+#include "../src/dictionary/full_text_index_lifecycle.h"
 #include "../src/dictionary/full_text_matcher.h"
 #include "../src/foundation/utf8.h"
 
@@ -45,12 +49,55 @@ class Cancelled final : public CancellationToken {
     bool IsCancellationRequested() const noexcept override { return true; }
 };
 
+class FakeFormatWorkPort final : public FullTextIndexFormatWorkPort {
+   public:
+    enum class Behavior { kComplete, kFail, kThrowStandard, kThrowUnknown };
+
+    bool supported = true;
+    std::string source_revision = "revision-1";
+    Behavior behavior = Behavior::kComplete;
+    std::optional<FullTextIndexWorkRequest> request;
+    bool cancellation_observed = false;
+
+    bool IsFullTextIndexSupported() const noexcept override {
+        return supported;
+    }
+
+    std::string FullTextIndexSourceRevision() const override {
+        return source_revision;
+    }
+
+   private:
+    FullTextIndexWorkResult DoPerformFullTextIndexWork(
+        const FullTextIndexWorkRequest& work_request) override {
+        request = work_request;
+        cancellation_observed =
+            work_request.cancellation != nullptr &&
+            work_request.cancellation->IsCancellationRequested();
+        switch (behavior) {
+            case Behavior::kComplete:
+                return {cancellation_observed
+                            ? FullTextIndexWorkStatus::kCancelled
+                            : FullTextIndexWorkStatus::kCompleted,
+                        {}};
+            case Behavior::kFail:
+                return {FullTextIndexWorkStatus::kFailed, "adapter failure"};
+            case Behavior::kThrowStandard:
+                throw std::runtime_error("escaped adapter failure");
+            case Behavior::kThrowUnknown:
+                throw 7;
+        }
+        return {};
+    }
+};
+
 }  // namespace
 
 class FullTextIndexTest : public QObject {
     Q_OBJECT
    private slots:
     void Lifecycle();
+    void LifecycleContract();
     void QueryModesAndFilters();
     void AppliesIndependentIcuNormalizationPolicies();
     void PreservesNormalizedMatchOriginsAndProgress();
@@ -60,6 +107,110 @@ class FullTextIndexTest : public QObject {
     void ResolvesOpaqueDocumentIdentity();
     void RejectsMalformedAndBoundedWork();
 };
+
+void FullTextIndexTest::LifecycleContract() {
+    const FullTextIndexPolicy defaults;
+    QVERIFY(defaults.enabled);
+    QCOMPARE(defaults.maximum_dictionary_megabytes, 0U);
+    QVERIFY(defaults.disabled_format_types.empty());
+
+    FullTextIndexPolicy policy = defaults;
+    policy.enabled = false;
+    policy.maximum_dictionary_megabytes = 512U;
+    policy.disabled_format_types = "AARD,DSL";
+    QVERIFY(policy != defaults);
+    QCOMPARE(policy, FullTextIndexPolicy(policy));
+
+    const FullTextIndexWorkIdentity identity{42U, "dictionary-a"};
+    const FullTextIndexWorkIdentity stale_generation{41U, "dictionary-a"};
+    const FullTextIndexWorkIdentity stale_dictionary{42U, "dictionary-b"};
+    QVERIFY(identity != stale_generation);
+    QVERIFY(identity != stale_dictionary);
+    QCOMPARE((FullTextIndexRebuildIntent{identity, policy}),
+             (FullTextIndexRebuildIntent{identity, policy}));
+    QVERIFY(!(FullTextIndexRebuildIntent{identity, policy} ==
+              FullTextIndexRebuildIntent{stale_generation, policy}));
+    QCOMPARE(FullTextIndexCancelIntent{identity},
+             (FullTextIndexCancelIntent{identity}));
+    QVERIFY(!(FullTextIndexCancelIntent{identity} ==
+              FullTextIndexCancelIntent{stale_dictionary}));
+
+    const FullTextIndexLifecycleSnapshot snapshot{
+        identity, FullTextIndexLifecycleState::kWorkRequested, true,
+        "revision-1"};
+    static_assert(std::is_same_v<decltype(snapshot.identity()),
+                                 const FullTextIndexWorkIdentity&>);
+    static_assert(std::is_same_v<decltype(snapshot.source_revision()),
+                                 const std::string&>);
+    QCOMPARE(snapshot.identity(), identity);
+    QCOMPARE(snapshot.state(), FullTextIndexLifecycleState::kWorkRequested);
+    QVERIFY(snapshot.format_capable());
+    QCOMPARE(snapshot.source_revision(), std::string("revision-1"));
+    QCOMPARE(snapshot,
+             FullTextIndexLifecycleSnapshot(
+                 identity, FullTextIndexLifecycleState::kWorkRequested, true,
+                 "revision-1"));
+    QVERIFY(!(snapshot == FullTextIndexLifecycleSnapshot(
+                              stale_generation,
+                              FullTextIndexLifecycleState::kWorkRequested, true,
+                              "revision-1")));
+    QVERIFY(!(snapshot == FullTextIndexLifecycleSnapshot(
+                              stale_dictionary,
+                              FullTextIndexLifecycleState::kWorkRequested, true,
+                              "revision-1")));
+
+    FakeFormatWorkPort port;
+    QVERIFY(port.IsFullTextIndexSupported());
+    QCOMPARE(port.FullTextIndexSourceRevision(), std::string("revision-1"));
+    port.supported = false;
+    QVERIFY(!port.IsFullTextIndexSupported());
+    port.supported = true;
+    port.source_revision = "revision-2";
+    QCOMPARE(port.FullTextIndexSourceRevision(), std::string("revision-2"));
+
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    FullTextIndexWorkRequest request;
+    request.identity = identity;
+    request.policy = policy;
+    request.source_revision = "revision-2";
+    request.maximum_documents = 101U;
+    request.maximum_document_bytes = 1024U;
+    request.maximum_corpus_bytes = 4096U;
+    request.deadline = deadline;
+    auto result = port.PerformFullTextIndexWork(request);
+    QCOMPARE(result.status, FullTextIndexWorkStatus::kCompleted);
+    QVERIFY(result.message.empty());
+    QVERIFY(port.request.has_value());
+    QCOMPARE(port.request->identity, identity);
+    QCOMPARE(port.request->policy, policy);
+    QCOMPARE(port.request->source_revision, std::string("revision-2"));
+    QCOMPARE(port.request->maximum_documents, 101U);
+    QCOMPARE(port.request->maximum_document_bytes, 1024U);
+    QCOMPARE(port.request->maximum_corpus_bytes, 4096U);
+    QCOMPARE(port.request->deadline, deadline);
+    QVERIFY(port.request->cancellation == nullptr);
+
+    Cancelled cancelled;
+    request.cancellation = &cancelled;
+    result = port.PerformFullTextIndexWork(request);
+    QCOMPARE(result.status, FullTextIndexWorkStatus::kCancelled);
+    QVERIFY(port.cancellation_observed);
+
+    port.behavior = FakeFormatWorkPort::Behavior::kFail;
+    result = port.PerformFullTextIndexWork(request);
+    QCOMPARE(result.status, FullTextIndexWorkStatus::kFailed);
+    QCOMPARE(result.message, std::string("adapter failure"));
+    port.behavior = FakeFormatWorkPort::Behavior::kThrowStandard;
+    result = port.PerformFullTextIndexWork(request);
+    QCOMPARE(result.status, FullTextIndexWorkStatus::kFailed);
+    QCOMPARE(result.message, std::string("escaped adapter failure"));
+    port.behavior = FakeFormatWorkPort::Behavior::kThrowUnknown;
+    result = port.PerformFullTextIndexWork(request);
+    QCOMPARE(result.status, FullTextIndexWorkStatus::kFailed);
+    QCOMPARE(result.message,
+             std::string("Unknown full-text index work failure"));
+}
 
 void FullTextIndexTest::ConstructsBoundedMatchCenteredExcerpts() {
     TemporaryDirectory directory;

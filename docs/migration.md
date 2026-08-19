@@ -5525,10 +5525,10 @@ and dictionary tooltips. Existing targets gain focused coverage without a new
 registration, preserving exactly 109 Release tests. No further successor is
 selected, ranked, recommended or named.
 
-### Phase 8 P8-FT-72 Core full-text index lifecycle contract prerequisite (selected)
+### Phase 8 P8-FT-72 Core full-text index lifecycle contract prerequisite (completed)
 
-The fresh remaining-parity audit uses synchronized migrated revision
-`2485043a77c1af6e0ee1916519524667d088322b` and clean pinned legacy revision
+P8-FT-72 was implemented from synchronized migrated revision
+`0b84e6dc2ab627c613c483a931b995f6c0554191` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It resolves the former Core
 lifecycle/policy blocker by assigning authoritative full-text index policy and
 lifecycle coordination to Core. Widgets is limited to editing policy, issuing
@@ -5544,13 +5544,13 @@ index state. Pinned legacy `config.hh:156-180`, `dictionary.hh:423-436`,
 bounded work and GUI-owned scheduling/cancellation responsibilities that the
 migrated Core boundary must separate.
 
-The audit selects exactly P8-FT-72, the smallest dependency-ready prerequisite:
-a private transport-neutral Core application/domain contract containing the
-Core-owned policy value, rebuild/cancel command intents, immutable generation-
-and dictionary-identified lifecycle snapshots, and an abstract format-work
-port reporting capability/source revision and accepting bounded cancellable
-work. Focused contract tests use a fake port in an existing Core target and add
-no registration.
+The completed private transport-neutral Core application/domain contract
+contains the lifecycle policy inputs, generation- and dictionary-identified
+rebuild/cancel intents, immutable snapshots, bounded work request/result values
+and an abstract format-work port. The port reports capability and opaque source
+revision, accepts existing Core cancellation/deadline types and contains work
+failures. Focused contract tests use a deterministic fake port in the existing
+`full_text_index_test` target and add no registration.
 
 P8-FT-72 excludes coordinator execution, policy persistence application,
 Preferences UI, facade/Widgets wiring, visible readiness/progress/status, real
@@ -5559,7 +5559,7 @@ does not select progress, queue/concurrency, two-pass ordering, retry or failure
 presentation policy. All installed/Core/C/DTO/configuration/dependency/
 serialization contracts and completed P8-FT behavior remain locked, including
 ordinary find-in-page, Dictionaries-only F3, translations and exactly 109
-Release registrations. No successor beyond P8-FT-72 is selected or ranked.
+Release registrations. No successor is selected or ranked.
 
 ### Phase 9 — Linux Integration And Release Quality
 

@@ -1271,10 +1271,10 @@ transport, stale-policy rejection and DOM application without adding a test
 registration; the Release baseline remains exactly 109. No further successor
 is selected, ranked, recommended or named.
 
-### P8-FT-72 Core full-text index lifecycle contract prerequisite (selected)
+### P8-FT-72 Core full-text index lifecycle contract prerequisite (completed)
 
-The fresh audit at synchronized migrated revision
-`2485043a77c1af6e0ee1916519524667d088322b` and clean pinned legacy revision
+P8-FT-72 was implemented from synchronized migrated revision
+`0b84e6dc2ab627c613c483a931b995f6c0554191` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` resolves the outstanding ownership
 decision. Core authoritatively owns full-text index policy and lifecycle
 coordination. Widgets may edit policy, send rebuild/cancel intents and consume
@@ -1288,11 +1288,12 @@ index seams but no shared coordination contract. Pinned legacy
 `mainwindow.cc:1381-1393,2100-2101,2158-2165,2288-2303` prove the policy,
 bounded dictionary work and GUI-owned scheduling/cancellation lifecycle.
 
-P8-FT-72 is the sole selected dependency-ready prerequisite. It will define a
-private transport-neutral Core policy value, rebuild/cancel command intents,
-immutable generation- and dictionary-identified lifecycle snapshots, and an
-abstract bounded cancellable format-work port reporting capability and source
-revision. A fake port in an existing Core test target will cover the contract
+The completed private transport-neutral contract defines the lifecycle policy
+inputs, generation- and dictionary-identified rebuild/cancel intents, immutable
+snapshots, bounded work request/result values and an abstract format-work port.
+The port reports capability and opaque source revision, observes existing Core
+cancellation and contains failures at its work boundary. A deterministic fake
+in `full_text_index_test` pins the value, identity and transport semantics
 without a new registration.
 
 Coordinator execution, persistence application, Preferences UI, facade/
@@ -1302,7 +1303,7 @@ scheduling/concurrency, legacy two-pass ordering, retry and failure-presentation
 policy remain undecided. Installed interfaces, DTOs, configuration ABI,
 dependencies, `full-text-v1`, P8-FT-1 through P8-FT-71, ordinary find-in-page,
 Dictionaries-only F3, translations and exactly 109 registrations remain
-locked. No successor beyond P8-FT-72 is selected or ranked.
+locked. No successor is selected or ranked.
 
 ## Resources And Platform Integration
 

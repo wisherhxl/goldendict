@@ -5599,10 +5599,10 @@ the documented ICU divergence from Qt5 custom folding and trailing
 
 No further successor is selected, ranked, recommended or named.
 
-### Phase 8 P8-FT-72 Core full-text index lifecycle contract prerequisite (selected)
+### Phase 8 P8-FT-72 Core full-text index lifecycle contract prerequisite (completed)
 
-The fresh post-P8-FT-71 audit is pinned to synchronized migrated revision
-`2485043a77c1af6e0ee1916519524667d088322b` and clean pinned legacy revision
+P8-FT-72 was implemented from synchronized migrated revision
+`0b84e6dc2ab627c613c483a931b995f6c0554191` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It resolves the previously blocked
 ownership decision: Core is the authoritative owner of full-text index policy
 and lifecycle coordination. Widgets may edit policy, issue rebuild and cancel
@@ -5620,16 +5620,16 @@ contract joins those seams. Pinned legacy `config.hh:156-180`,
 policy, capability/work, cancellation/current-item and stop/apply/restart
 responsibilities, but place their coordination in the Qt GUI.
 
-Exactly one smallest dependency-ready prerequisite is selected: P8-FT-72 will
-define and test a private transport-neutral Core application/domain contract.
-It comprises a Core-owned policy value; rebuild and cancel command intents;
-immutable generation- and dictionary-identified lifecycle snapshots; and an
-abstract format-work port that reports capability and source revision and
-accepts bounded cancellable work. Generation and dictionary identity must make
-stale commands and snapshots distinguishable. Focused coverage will use a fake
-format-work port in an existing Core test target and add no registration.
+The completed private contract defines the Core-owned indexing policy inputs,
+generation- and dictionary-identified rebuild/cancel intents, immutable
+lifecycle snapshots, bounded work request/result values and an abstract format-
+work port. The port reports capability and opaque source revision, accepts an
+explicitly bounded request with existing Core cancellation/deadline types, and
+contains adapter failures and escaped exceptions. Generation and dictionary
+identity make stale commands and snapshots distinguishable. A deterministic
+fake port in `full_text_index_test` pins the boundary without a registration.
 
-P8-FT-72 does not implement coordinator execution, persistence application,
+P8-FT-72 implements no coordinator execution, persistence application,
 Preferences UI, facade or Widgets wiring, visible readiness/progress/status,
 any real adapter conversion, index serialization or the complete rebuild
 workflow. It defines no progress percentage, queue/concurrency or two-pass
@@ -5637,8 +5637,7 @@ ordering, retry policy or failure presentation. The contract remains private,
 so installed C++/Core/C interfaces and DTOs, configuration ABI, dependencies,
 `full-text-v1`, all completed P8-FT behavior, ordinary find-in-page,
 Dictionaries-only F3, translations and exactly 109 Release registrations stay
-unchanged. No successor beyond P8-FT-72 is selected, ranked, recommended or
-named.
+unchanged. No successor is selected, ranked, recommended or named.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
