@@ -4327,30 +4327,29 @@ Rendered request and Widgets consumption remain unresolved. No successor is
 selected, ranked, recommended or named; completion unlocks only the Core
 normalized matching/origin-map dependency boundary.
 
-### P8-FT-71 rendered-text ignore-diacritics readiness acceptance (selected)
+### P8-FT-71 rendered-text ignore-diacritics acceptance (completed)
 
-The documentation-only audit starts at synchronized migrated revision
+P8-FT-71 was implemented from synchronized migrated revision
 `14b78a90dd5a37dfa4a3381aeebf7a559eb9ae5d` with clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Evidence is
-`desktop_facade.h:169-177`, `desktop_facade.cc:130-164`,
-`main_window.h:458-519`, `main_window.cpp:9040-9296`,
+`desktop_facade.h:169-178`, `desktop_facade.cc:130-164`,
+`main_window.h:455-522`, `main_window.cpp:9063-9344`,
 `rendered_text_match_plan_controller.cpp:24-215`,
 `article_view.cpp:88-205`, and pinned legacy
-`fulltextsearch.cc:596-609` plus `articleview.cc:133-190,2569-2648`. The audit
-selects only transport and consumption of the accepted flag; it does not
-implement or compile that leaf.
+`fulltextsearch.cc:596-609` plus `articleview.cc:133-190,2569-2648`. The
+completed leaf transports and consumes only the accepted flag.
 
-Future focused Core coverage in the existing application-service target must
+Focused Core coverage in the existing application-service target
 set the new default-false request member and prove all four independent
 `match_case`/`ignore_diacritics` policies, canonical equivalents, and exact
 complete original UTF-8 byte offsets, lengths and literals. Existing malformed
 pattern, invalid request, cancellation, deadline and resource-bound behavior
 must remain unchanged.
 
-Existing controller coverage must prove that `ignore_diacritics` survives the
+Existing controller coverage proves that `ignore_diacritics` survives the
 request's by-value asynchronous copy and cannot be revived or overwritten by
 replacement, cancellation, stale completion or consumer detachment. Existing
-GUI smoke coverage must prove true and false accepted-policy propagation,
+GUI smoke coverage proves true and false accepted-policy propagation,
 request-owned stale-policy rejection, exact DOM application, highlight-all,
 first selection and unchanged P8-FT-69 Previous/Next and status snapshots.
 Tab/view/page/generation isolation, failure clearing and ordinary find-in-page
@@ -4362,8 +4361,8 @@ dependency, index serialization, catalog, translation or JavaScript-interface
 test change is required. The necessary installed request DTO source/layout
 change must be explicit. Documentation validation requires current and legacy
 citation checks, cross-document terminology review, the four-file allowlist,
-`git diff --check`, ref equality and clean migrated and pinned worktrees. This
-audit unlocks only implementation of P8-FT-71 and names no further successor.
+`git diff --check`, ref equality and clean migrated and pinned worktrees. No
+further successor is selected, ranked, recommended or named.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

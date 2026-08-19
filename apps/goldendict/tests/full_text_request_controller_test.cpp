@@ -524,9 +524,11 @@ void FullTextRequestControllerTest::MatchPlanUsesByValueWorkerAndGuiDelivery() {
     request.rendered_text = "abcd";
     request.query_text = "bc";
     request.match_case = true;
+    request.ignore_diacritics = true;
     controller.Submit(request, 1U);
     request.rendered_text = "mutated";
     request.query_text = "mutated";
+    request.ignore_diacritics = false;
 
     QTRY_COMPARE(completions, 1);
     QCOMPARE(facade.worker_thread() == QThread::currentThread(), false);
@@ -535,6 +537,7 @@ void FullTextRequestControllerTest::MatchPlanUsesByValueWorkerAndGuiDelivery() {
     QCOMPARE(facade.requests().front().rendered_text, std::string("abcd"));
     QCOMPARE(facade.requests().front().query_text, std::string("bc"));
     QCOMPARE(facade.requests().front().match_case, true);
+    QCOMPARE(facade.requests().front().ignore_diacritics, true);
     QCOMPARE(received.ranges.size(), std::size_t{1});
     QCOMPARE(received.ranges.front().literal, std::string("bc"));
 }
@@ -598,23 +601,29 @@ void FullTextRequestControllerTest::
     goldendict::core::RenderedTextMatchPlanRequest request;
     request.rendered_text = "text";
     request.query_text = "running";
+    request.ignore_diacritics = false;
     controller.Submit(request, 1U);
     QVERIFY(old_facade.WaitForCalls(1));
     request.query_text = "pending";
+    request.ignore_diacritics = false;
     controller.Submit(request, 2U);
     request.query_text = "latest";
+    request.ignore_diacritics = true;
     controller.Submit(request, 3U);
     QVERIFY(old_facade.WaitForCancellation());
     old_facade.ReleaseCancellation();
     QTRY_COMPARE(old_facade.calls(), 2);
     QCOMPARE(old_facade.requests().back().query_text, std::string("latest"));
+    QCOMPARE(old_facade.requests().back().ignore_diacritics, true);
     controller.Cancel();
     QVERIFY(old_facade.WaitForCancellation());
     controller.SetFacade(&replacement_facade);
     request.query_text = "replacement";
+    request.ignore_diacritics = false;
     controller.Submit(request, 4U);
     QTRY_COMPARE(completions, 1);
     QCOMPARE(replacement_facade.calls(), 1);
+    QCOMPARE(replacement_facade.requests().front().ignore_diacritics, false);
     controller.DetachConsumer();
     controller.Submit(request, 5U);
     QCoreApplication::processEvents();

@@ -1238,14 +1238,13 @@ registered Release tests. Rendered request and Widgets consumption remain
 unresolved. No successor is named or ranked; completion unlocks only the Core
 normalized matching/origin-map dependency boundary.
 
-### P8-FT-71 rendered-text ignore-diacritics consumption (selected)
+### P8-FT-71 rendered-text ignore-diacritics consumption (completed)
 
-The fresh audit at synchronized migrated revision
+P8-FT-71 was implemented from synchronized migrated revision
 `14b78a90dd5a37dfa4a3381aeebf7a559eb9ae5d` and clean pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects one bounded leaf and does
-not implement it. Current `desktop_facade.h:169-177`,
-`desktop_facade.cc:130-164`, `main_window.h:458-519`,
-`main_window.cpp:9040-9296`, `rendered_text_match_plan_controller.cpp:24-215`
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current `desktop_facade.h:169-178`,
+`desktop_facade.cc:130-164`, `main_window.h:455-522`,
+`main_window.cpp:9063-9344`, `rendered_text_match_plan_controller.cpp:24-215`
 and `article_view.cpp:88-205` prove exact ownership: Widgets captures accepted
 query policy and rendered text with generation identity, the controller owns
 an asynchronous request copy, Core produces ordered exact-original ranges,
@@ -1269,8 +1268,8 @@ status, lifecycle invalidation, ordinary find-in-page, activation,
 translations, headword-only rows and tooltips remain unchanged. Existing Core,
 controller and GUI-smoke targets must cover flag combinations, by-value
 transport, stale-policy rejection and DOM application without adding a test
-registration; the Release baseline remains exactly 109. The audit unlocks
-only implementation of P8-FT-71 and names no further successor.
+registration; the Release baseline remains exactly 109. No further successor
+is selected, ranked, recommended or named.
 
 ## Resources And Platform Integration
 

@@ -159,8 +159,9 @@ class DesktopFacadeImpl final : public DesktopFacade {
         try {
             const auto matches = dictionary::MatchFullText(
                 request.rendered_text,
-                {request.query_text, request.mode, request.match_case, false,
-                 request.ignore_word_order, request.maximum_word_distance},
+                {request.query_text, request.mode, request.match_case,
+                 request.ignore_diacritics, request.ignore_word_order,
+                 request.maximum_word_distance},
                 cancellation, deadline);
             RenderedTextMatchPlanResult result;
             result.ranges.reserve(matches.size());

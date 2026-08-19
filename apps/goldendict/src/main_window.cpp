@@ -6713,6 +6713,8 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     passed =
         passed && planned &&
         pending_rendered_text_match_plan_ == std::nullopt &&
+        rendered_text_match_plans_.at(tab_id_before_activation)
+            .identity.request.ignore_diacritics &&
         status_->text() == status_before_plan_checks &&
         article_search_status_->text() == article_status_before_plan_checks &&
         article_search_->text() == article_query_before_plan_checks;
@@ -6820,20 +6822,20 @@ void MainWindow::RunFullTextDialogSmokeCheck(
                          article_search_presentations_[tab_id_before_activation]
                              .maximum_word_distance = saved_distance;
                      });
+        const bool saved_ignore_diacritics =
+            article_search_presentations_[tab_id_before_activation]
+                .ignore_diacritics;
         passed =
             passed &&
             reject_match_plan(
-                [this, tab_id_before_activation]() {
-                    auto& value =
-                        article_search_presentations_[tab_id_before_activation]
-                            .ignore_diacritics;
-                    value = !value;
+                [this, tab_id_before_activation, &accepted_state]() {
+                    article_search_presentations_[tab_id_before_activation]
+                        .ignore_diacritics =
+                        !accepted_state.identity.request.ignore_diacritics;
                 },
-                [this, tab_id_before_activation]() {
-                    auto& value =
-                        article_search_presentations_[tab_id_before_activation]
-                            .ignore_diacritics;
-                    value = !value;
+                [this, tab_id_before_activation, saved_ignore_diacritics]() {
+                    article_search_presentations_[tab_id_before_activation]
+                        .ignore_diacritics = saved_ignore_diacritics;
                 });
         passed = passed &&
                  reject_match_plan(
@@ -6962,6 +6964,7 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     activation_events.clear();
     auto second_intent = ordered_intent;
     second_intent.result.headword = "second-exact-headword";
+    second_intent.ignore_diacritics = false;
     first->ResultActivationRequested(second_intent);
     const auto second_state = facade_->GetArticleTabsState();
     passed = passed &&
@@ -6978,6 +6981,26 @@ void MainWindow::RunFullTextDialogSmokeCheck(
         request->second->Cancel();
         requests_.erase(request);
     }
+    auto* second_view = ArticleViewForTab(tab_id_before_activation);
+    auto& second_search =
+        article_search_presentations_[tab_id_before_activation];
+    rendered_page_text_transports_.erase(tab_id_before_activation);
+    ExtractRenderedPageText(
+        tab_id_before_activation, second_view,
+        second_search.accepted_query_generation,
+        lookup_results_[tab_id_before_activation].generation,
+        second_search.generation,
+        article_navigation_generations_[tab_id_before_activation]);
+    const bool second_planned = wait_for([this, tab_id_before_activation]() {
+        const auto plan =
+            rendered_text_match_plans_.find(tab_id_before_activation);
+        return plan != rendered_text_match_plans_.end() &&
+               !plan->second.identity.request.ignore_diacritics;
+    });
+    passed =
+        passed && second_view != nullptr && second_planned &&
+        pending_rendered_text_match_plan_ == std::nullopt &&
+        rendered_page_text_transports_.count(tab_id_before_activation) == 1U;
 
     activation_events.clear();
     NavigateArticleTab(false);
@@ -7540,7 +7563,7 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     passed = passed && full_text_search_dialog_.data() == first &&
              full_text_search_action_->isEnabled() &&
              captured_geometries.empty();
-    first->resize(first->width() + 71, first->height() + 43);
+    first->resize(640, 480);
     first->move(first->pos() + QPoint(23, 29));
     QApplication::processEvents();
     const QScreen* geometry_screen = first->screen();
@@ -9061,6 +9084,7 @@ void MainWindow::SubmitRenderedTextMatchPlan(
                               static_cast<std::size_t>(query_text.size()));
     request.mode = search->second.mode;
     request.match_case = search->second.match_case;
+    request.ignore_diacritics = search->second.ignore_diacritics;
     request.ignore_word_order = search->second.ignore_word_order;
     request.maximum_word_distance = search->second.maximum_word_distance;
 
@@ -9073,7 +9097,6 @@ void MainWindow::SubmitRenderedTextMatchPlan(
         transport->second.navigation_generation,
         tab_id,
         request,
-        search->second.ignore_diacritics,
         transport->second.view,
         transport->second.page};
     if (const auto current = rendered_text_match_plans_.find(tab_id);
@@ -9124,7 +9147,8 @@ void MainWindow::FinishRenderedTextMatchPlan(
             identity.request.ignore_word_order ||
         search->second.maximum_word_distance !=
             identity.request.maximum_word_distance ||
-        search->second.ignore_diacritics != identity.ignore_diacritics ||
+        search->second.ignore_diacritics !=
+            identity.request.ignore_diacritics ||
         navigation == article_navigation_generations_.end() ||
         navigation->second != identity.navigation_generation ||
         transport == rendered_page_text_transports_.end() ||
@@ -9290,8 +9314,8 @@ void MainWindow::NavigateFullTextHighlight(
                 current->second.identity.navigation_generation !=
                     identity.navigation_generation ||
                 current->second.identity.tab_id != identity.tab_id ||
-                current->second.identity.ignore_diacritics !=
-                    identity.ignore_diacritics ||
+                current->second.identity.request.ignore_diacritics !=
+                    identity.request.ignore_diacritics ||
                 current->second.identity.request.rendered_text !=
                     identity.request.rendered_text ||
                 current->second.identity.request.query_text !=

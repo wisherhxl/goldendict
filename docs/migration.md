@@ -5490,14 +5490,13 @@ consumption remain unresolved. No successor is selected, ranked, recommended
 or named; completion unlocks only the Core normalized matching/origin-map
 dependency boundary.
 
-### Phase 8 P8-FT-71 rendered-text ignore-diacritics consumption (selected)
+### Phase 8 P8-FT-71 rendered-text ignore-diacritics consumption (completed)
 
-The fresh post-P8-FT-70 audit was performed from synchronized migrated
+P8-FT-71 was implemented from synchronized migrated
 revision `14b78a90dd5a37dfa4a3381aeebf7a559eb9ae5d` and clean pinned legacy
-revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects one bounded
-implementation leaf and makes no implementation change. Current
-`desktop_facade.h:169-177`, `desktop_facade.cc:130-164`,
-`main_window.h:458-519`, `main_window.cpp:9040-9296`,
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`desktop_facade.h:169-178`, `desktop_facade.cc:130-164`,
+`main_window.h:455-522`, `main_window.cpp:9063-9344`,
 `rendered_text_match_plan_controller.cpp:24-215` and
 `article_view.cpp:88-205` prove that Widgets owns accepted presentation and
 lifecycle identity, the controller copies work by value, Core owns matching,
@@ -5523,8 +5522,8 @@ highlight-all, first selection, P8-FT-69 navigation/status, cancellation,
 replacement, teardown and tab/view/page/generation isolation remain intact,
 as do ordinary find-in-page, activation, translations, headword-only results
 and dictionary tooltips. Existing targets gain focused coverage without a new
-registration, preserving exactly 109 Release tests. This audit unlocks only
-implementation of P8-FT-71 and names no further successor.
+registration, preserving exactly 109 Release tests. No further successor is
+selected, ranked, recommended or named.
 
 ### Phase 9 — Linux Integration And Release Quality
 

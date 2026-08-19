@@ -508,7 +508,6 @@ class MainWindow final : public QMainWindow {
         std::uint64_t navigation_generation = 0U;
         goldendict::core::ArticleTabId tab_id = 0U;
         goldendict::core::RenderedTextMatchPlanRequest request;
-        bool ignore_diacritics = false;
         QPointer<ArticleView> view;
         QPointer<QWebEnginePage> page;
     };

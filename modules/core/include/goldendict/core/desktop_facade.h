@@ -171,6 +171,7 @@ struct RenderedTextMatchPlanRequest {
     std::string query_text;
     FullTextQueryMode mode = FullTextQueryMode::kWholeWords;
     bool match_case = false;
+    bool ignore_diacritics = false;
     bool ignore_word_order = false;
     std::optional<std::uint32_t> maximum_word_distance;
     std::chrono::milliseconds timeout = std::chrono::seconds(5);

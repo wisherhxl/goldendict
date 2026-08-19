@@ -3700,6 +3700,43 @@ void ApplicationServiceTest::
     BuildsRenderedTextMatchPlansBehindTheDesktopFacade() {
     auto facade = CreateDesktopFacade({});
     RenderedTextMatchPlanRequest request;
+    QCOMPARE(request.ignore_diacritics, false);
+    request.rendered_text = u8"CAFÉ café cafe café";
+    request.query_text = u8"café";
+
+    struct PolicyCase {
+        bool match_case;
+        bool ignore_diacritics;
+        std::vector<std::string> literals;
+    };
+
+    const std::vector<PolicyCase> policies = {
+        {false, false, {u8"CAFÉ", u8"café", u8"café"}},
+        {true, false, {u8"café", u8"café"}},
+        {false, true, {u8"CAFÉ", u8"café", "cafe", u8"café"}},
+        {true, true, {u8"café", "cafe", u8"café"}},
+    };
+    for (const auto& policy : policies) {
+        request.match_case = policy.match_case;
+        request.ignore_diacritics = policy.ignore_diacritics;
+        const auto policy_result = facade->BuildRenderedTextMatchPlan(request);
+        QVERIFY(policy_result);
+        QCOMPARE(policy_result.ranges.size(), policy.literals.size());
+        std::size_t search_offset = 0U;
+        for (std::size_t index = 0U; index < policy.literals.size(); ++index) {
+            const auto expected_offset = request.rendered_text.find(
+                policy.literals[index], search_offset);
+            QVERIFY(expected_offset != std::string::npos);
+            QCOMPARE(policy_result.ranges[index].byte_offset, expected_offset);
+            QCOMPARE(policy_result.ranges[index].byte_length,
+                     policy.literals[index].size());
+            QCOMPARE(policy_result.ranges[index].literal,
+                     policy.literals[index]);
+            search_offset = expected_offset + policy.literals[index].size();
+        }
+    }
+
+    request = {};
     request.rendered_text = u8"CAFÉ café test test";
     request.query_text = u8"café";
 
