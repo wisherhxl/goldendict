@@ -480,10 +480,9 @@ Reader Reader::Open(const std::filesystem::path& path) {
     return reader;
 }
 
-std::vector<FullTextArticle> Reader::ReadFullTextArticles(
+void Reader::VisitFullTextArticles(
+    const std::function<void(const FullTextArticle&)>& visitor,
     const std::function<void()>& checkpoint) const {
-    std::vector<FullTextArticle> result;
-    result.reserve(articles_.size());
     std::vector<bool> seen(articles_.size(), false);
     for (std::size_t ordinal = 0U; ordinal < records_.size(); ++ordinal) {
         if (checkpoint)
@@ -492,10 +491,10 @@ std::vector<FullTextArticle> Reader::ReadFullTextArticles(
         if (seen[record.article])
             continue;
         seen[record.article] = true;
-        result.push_back(
-            {ordinal, record.word, record.article, articles_[record.article]});
+        const FullTextArticle article{ordinal, record.word, record.article,
+                                      articles_[record.article]};
+        visitor(article);
     }
-    return result;
 }
 
 std::vector<const Reader::Record*> Reader::Ranked(

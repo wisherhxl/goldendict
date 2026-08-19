@@ -41,9 +41,9 @@ struct Article {
 
 struct FullTextArticle {
     std::size_t record_ordinal = 0U;
-    std::string headword;
+    std::string_view headword;
     std::size_t article_ordinal = 0U;
-    std::string data;
+    std::string_view data;
 };
 
 class Reader final {
@@ -64,7 +64,8 @@ class Reader final {
         return source_snapshot_;
     }
 
-    std::vector<FullTextArticle> ReadFullTextArticles(
+    void VisitFullTextArticles(
+        const std::function<void(const FullTextArticle&)>& visitor,
         const std::function<void()>& checkpoint = {}) const;
 
     std::vector<Article> LookupExact(

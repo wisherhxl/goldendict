@@ -55,36 +55,39 @@ Dictionary Dictionary::Open(
         if (full_text_index_path.has_value()) {
             try {
                 std::vector<dictionary::FullTextDocument> documents;
-                const auto sources = dictionary.reader_.ReadFullTextArticles();
-                documents.reserve(sources.size());
-                for (const auto& source : sources) {
-                    dictionary::Article article{source.headword, "text/html",
-                                                source.data};
-                    auto assembled = article::Assemble(dictionary.identity_,
-                                                       {std::move(article)});
-                    dictionary::FullTextDocument document;
-                    document.dictionary.id = dictionary.identity_.id;
-                    document.dictionary.name = dictionary.identity_.name;
-                    document.dictionary.source = dictionary.identity_.source;
-                    document.dictionary.description =
-                        dictionary.identity_.description;
-                    document.dictionary.article_count =
-                        dictionary.identity_.article_count;
-                    document.dictionary.headword_count =
-                        dictionary.identity_.headword_count;
-                    document.dictionary.source_language =
-                        dictionary.identity_.source_language;
-                    document.dictionary.target_language =
-                        dictionary.identity_.target_language;
-                    document.dictionary.supports_headword_enumeration =
-                        dictionary.identity_.supports_headword_enumeration;
-                    document.headword = source.headword;
-                    document.document_id =
-                        "aard-index:" + std::to_string(source.record_ordinal) +
-                        ":" + std::to_string(source.article_ordinal);
-                    document.plain_text = std::move(assembled.plain_text);
-                    documents.push_back(std::move(document));
-                }
+                documents.reserve(dictionary.reader_.article_count());
+                dictionary.reader_.VisitFullTextArticles(
+                    [&](const FullTextArticle& source) {
+                        dictionary::Article article{
+                            std::string(source.headword), "text/html",
+                            std::string(source.data)};
+                        auto assembled = article::Assemble(
+                            dictionary.identity_, {std::move(article)});
+                        dictionary::FullTextDocument document;
+                        document.dictionary.id = dictionary.identity_.id;
+                        document.dictionary.name = dictionary.identity_.name;
+                        document.dictionary.source =
+                            dictionary.identity_.source;
+                        document.dictionary.description =
+                            dictionary.identity_.description;
+                        document.dictionary.article_count =
+                            dictionary.identity_.article_count;
+                        document.dictionary.headword_count =
+                            dictionary.identity_.headword_count;
+                        document.dictionary.source_language =
+                            dictionary.identity_.source_language;
+                        document.dictionary.target_language =
+                            dictionary.identity_.target_language;
+                        document.dictionary.supports_headword_enumeration =
+                            dictionary.identity_.supports_headword_enumeration;
+                        document.headword = source.headword;
+                        document.document_id =
+                            "aard-index:" +
+                            std::to_string(source.record_ordinal) + ":" +
+                            std::to_string(source.article_ordinal);
+                        document.plain_text = std::move(assembled.plain_text);
+                        documents.push_back(std::move(document));
+                    });
                 dictionary.full_text_index_ =
                     dictionary::FullTextIndex::OpenOrBuild(
                         *full_text_index_path,

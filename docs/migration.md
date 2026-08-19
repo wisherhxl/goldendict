@@ -5735,18 +5735,18 @@ serialization or complete rebuild workflow is selected. Canonical validation,
 intentional ICU divergence, dependencies and exactly 109 registrations remain
 locked. P8-FT-76 is complete. No successor is selected or named.
 
-### Phase 8 P8-FT-77 private bounded AARD full-text traversal prerequisite (selected)
+### Phase 8 P8-FT-77 private bounded AARD full-text traversal prerequisite (completed)
 
-The fresh post-P8-FT-76 readiness audit used synchronized migrated revision
-`f947355a8e5d912d9776f73a0ae4a58acff9581a` and clean pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+The completed implementation is grounded at migrated base revision
+`a4393dcb1fd3bf4cd13938dddc909ef96af26135` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The migrated base
 `aard_reader.h:42-68`, `aard_reader.cc:483-499` and
-`aard_dictionary.cc:55-92` prove that AARD materializes all source articles
-before materializing full-text documents. Pinned legacy `aard.cc:609-635`,
+`aard_dictionary.cc:55-92` showed AARD materializing all source articles before
+materializing full-text documents. Pinned legacy `aard.cc:609-635`,
 `ftshelpers.cc:298-366` and `fulltextsearch.cc:34-64` prove delegated per-
 article cancellation and keep scheduling and two-pass ordering separate.
 
-P8-FT-77 selects only a private synchronous AARD reader traversal. It invokes
+P8-FT-77 implements only a private synchronous AARD reader traversal. It invokes
 the caller checkpoint before every record inspection, emits one article for
 the first record owning each article, preserves current record order and exact
 ordinal/headword/payload fields, and gives the visitor no ownership beyond the
@@ -5763,8 +5763,8 @@ authorized publication, automatic policy application/restart, scheduling,
 progress, facade/Widgets transport, UI or serialization. Core lifecycle and
 eligibility ownership and complete immutable snapshot publication remain
 locked. Existing AARD tests are extended without registering a test, keeping
-the Release baseline at exactly 109. No successor beyond P8-FT-77 is selected
-or named.
+the Release baseline at exactly 109. P8-FT-77 is complete. No successor is
+selected or named.
 
 ### Phase 9 — Linux Integration And Release Quality
 
