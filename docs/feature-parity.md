@@ -1369,6 +1369,54 @@ projection without changing the 109-test Release baseline. All P8-FT-72/73
 semantics and locked ABI surfaces other than the documented C++ source member
 rename remain unchanged. P8-FT-74 is complete. No next dependency is selected.
 
+### P8-FT-75 private registration metadata and policy eligibility
+
+The fresh readiness audit at synchronized migrated revision
+`1bc50e19d21e165a233e806cb3781930cad600c4` and pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects only the private Core
+prerequisite that defines immutable registration metadata, pure policy
+eligibility and `kPolicyExcluded`. Current `dictionary_service.cc:450-464`
+and `dictionary_service.cc:687-1036`, the twelve textual dictionary readers and
+`full_text_index_lifecycle.h/.cc` provide the dictionary-ID, format branch,
+article-count, policy, port and coordinator seams. Pinned legacy per-format
+`setFTSParameters` checks, represented by `stardict.cc:202-206`, prove the
+canonical format names and Qt5 eligibility rule.
+
+Registration metadata owns one dictionary ID, exact canonical ASCII format
+identifier and authoritative `std::size_t` article count. The accepted closed
+set is `AARD`, `BGL`, `DICTD`, `DSL`, `MDICT`, `SDICT`, `SLOB`, `STARDICT`,
+`XDXF`, `ZIM`, `EPWING` and `GLS`. Empty, unknown, differently cased,
+NUL-containing and non-ASCII identifiers fail atomically before port probing
+or coordinator mutation. The metadata ID is the sole registration key and the
+coordinator stores a value copy. Composition/catalog is assigned eventual
+metadata and lifetime-safe-port production, while the port itself remains
+capability/source-revision/bounded-work only; no producer is wired here.
+
+The pure predicate requires enabled policy, absence of the validated format
+under length-aware ASCII case-insensitive raw substring matching, and zero
+unlimited or `article_count <= maximum_dictionary_articles`. Only ASCII
+uppercase letters fold; all other bytes, including NUL and non-ASCII bytes,
+remain unchanged. Partial substrings remain matches, with no locale,
+tokenization, trimming or delimiter interpretation.
+
+Unsupported accepted work remains `kUnavailable`. Supported policy-ineligible
+work becomes `kPolicyExcluded`, replaces and cancels an older generation,
+keeps capability true, has empty source revision and performs no revision or
+bounded-work call. Eligible revision failure remains `kFailed`; eligible work
+continues through requested and the locked P8-FT-73 identity, stale,
+cancellation and failure rules. Focused existing-test coverage accepts all
+twelve identifiers, rejects every invalid class atomically, pins comparison
+and article-limit edges, distinguishes unavailable from excluded, and proves
+excluded cancellation, non-execution, stale suppression and later eligible
+recovery without changing the 109-test baseline.
+
+Real adapter conversion, composition wiring, automatic policy apply/restart,
+facade/Widgets transport, UI, scheduling, progress, retry, serialization and
+complete rebuild behavior remain excluded. All public, dependency,
+`full-text-v1`, ordinary-find, Dictionaries-only F3 and translation surfaces
+remain locked. Only implementation of P8-FT-75 is unlocked; no successor
+beyond it is selected or named.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

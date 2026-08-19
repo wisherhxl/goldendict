@@ -5646,6 +5646,62 @@ excluded. P8-FT-72/73 semantics and all other locked surfaces remain unchanged,
 including exactly 109 Release registrations. P8-FT-74 is complete. No next
 dependency is selected.
 
+### Phase 8 P8-FT-75 private registration metadata and policy eligibility
+
+The post-P8-FT-74 documentation-only readiness audit uses synchronized
+migrated revision `1bc50e19d21e165a233e806cb3781930cad600c4` and clean pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Of eligibility,
+one real adapter bridge, composition, automatic persisted-policy application
+and facade/Widgets transport, it selects only the private Core prerequisite
+that defines immutable registration metadata, a pure eligibility predicate and
+the separate `kPolicyExcluded` lifecycle state.
+
+Current `dictionary_service.cc:450-464,687-1036` owns stable dictionary-ID and
+format-specific catalog construction, all twelve textual dictionaries copy
+their reader article counts into authoritative identity, and
+`full_text_index_lifecycle.h/.cc` owns policy, the narrow format-work port and
+the explicit coordinator. Pinned legacy `stardict.cc:202-206` and the matching
+checks in `aard.cc`, `bgl.cc`, `dictdfiles.cc`, `dsl.cc`, `epwing.cc`, `gls.cc`,
+`mdx.cc`, `sdict.cc`, `slob.cc`, `xdxf.cc` and `zim.cc` establish the closed
+format set and exact Qt5 rule.
+
+The private copied metadata contains dictionary ID, authoritative
+`std::size_t` article count and one exact case-sensitive ASCII format type from
+`AARD`, `BGL`, `DICTD`, `DSL`, `MDICT`, `SDICT`, `SLOB`, `STARDICT`, `XDXF`,
+`ZIM`, `EPWING` or `GLS`. Empty, unknown, differently cased, embedded-NUL and
+non-ASCII values are rejected before duplicate lookup, port probing,
+registration, snapshot, cancellation or generation mutation. The metadata ID
+is the sole registration key. Composition/catalog owns eventual production of
+metadata and a lifetime-safe port, but this leaf wires neither; the port stays
+limited to capability, source revision and bounded cancellable work.
+
+Core eligibility requires enabled policy, no occurrence of canonical format
+type in raw disabled text under explicit length-aware ASCII case-insensitive
+substring matching, and a zero limit or inclusive article count. Folding maps
+only `A`-`Z` to `a`-`z`; other bytes, embedded NUL and non-ASCII data compare
+unchanged. Partial substrings remain exclusions without locale dependence,
+tokenization, trimming or delimiter normalization.
+
+Accepted unsupported generations remain `kUnavailable`; supported but
+ineligible generations become `kPolicyExcluded`, replace and cancel older
+work, remain capability true, retain empty source revision and call neither
+revision nor work. Supported eligible generations capture revision and become
+requested, with revision exceptions contained as failed. Exact cancellation,
+rejected excluded execution, stale-completion suppression and later eligible
+recovery preserve P8-FT-73 identity and lifecycle rules. Generation-zero
+snapshots keep the existing technical probe because no policy is yet accepted.
+
+Focused acceptance extends only `full_text_index_test`: all twelve canonical
+values, atomic invalid cases, copied metadata, ASCII substring and NUL/non-
+ASCII edges, zero/equal/over article limits, state precedence, excluded no-call
+behavior, cancellation, stale replacement and eligible recovery. No test is
+registered, preserving exactly 109. Real adapters, composition wiring,
+automatic apply/restart, facade/Widgets transport, UI, scheduling, progress,
+retry, legacy two-pass ordering, serialization and complete rebuild remain
+excluded, as do changes to every locked public, dependency, search, F3 and
+translation surface. Only P8-FT-75 implementation is unlocked; no successor
+beyond it is selected or named.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

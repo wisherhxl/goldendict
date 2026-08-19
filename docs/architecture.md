@@ -5729,6 +5729,72 @@ semantics remain locked, as do dependencies, `full-text-v1`, ordinary find,
 Dictionaries-only F3, translations and exactly 109 registrations. P8-FT-74 is
 complete. No next dependency is selected.
 
+### Phase 8 P8-FT-75 private registration metadata and policy eligibility
+
+The fresh post-P8-FT-74 readiness audit is pinned to synchronized migrated
+revision `1bc50e19d21e165a233e806cb3781930cad600c4` and clean legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects one private Core
+prerequisite: immutable per-dictionary registration metadata, the pure
+eligibility predicate that consumes P8-FT-74 policy, and a distinct
+policy-excluded lifecycle snapshot. Current `dictionary_service.cc:450-464`
+and `dictionary_service.cc:687-1036` supply stable dictionary IDs and format-
+specific catalog branches,
+the twelve textual dictionaries assign authoritative reader article counts,
+and `full_text_index_lifecycle.h:19-180` plus
+`full_text_index_lifecycle.cc:15-246` supply the policy, narrow work port and
+coordinator. Pinned legacy `stardict.cc:202-206` and the equivalent checks in
+`aard.cc`, `bgl.cc`, `dictdfiles.cc`, `dsl.cc`, `epwing.cc`, `gls.cc`,
+`mdx.cc`, `sdict.cc`, `slob.cc`, `xdxf.cc` and `zim.cc` establish the exact
+format identifiers and eligibility behavior.
+
+The private registration value contains the dictionary ID, canonical format
+type and authoritative `std::size_t` article count. Format type accepts only
+the exact case-sensitive ASCII identifiers `AARD`, `BGL`, `DICTD`, `DSL`,
+`MDICT`, `SDICT`, `SLOB`, `STARDICT`, `XDXF`, `ZIM`, `EPWING` and `GLS`.
+Empty, unknown, differently cased, NUL-containing or non-ASCII values are
+rejected before duplicate lookup, port probing, registration, snapshot,
+cancellation or identity mutation. Registration uses the metadata dictionary
+ID as its sole key, stores a value copy and retains null-port and duplicate-ID
+rejection.
+Composition/catalog owns production of this immutable metadata and the
+lifetime-safe port, but wiring that producer is outside this prerequisite.
+The port remains limited to capability, opaque source revision and bounded
+cancellable work.
+
+Core eligibility is enabled, the canonical format identifier is absent from
+raw disabled-format text under length-aware ASCII case-insensitive substring
+comparison, and the article limit is zero or the count is less than or equal
+to it. Only bytes `A` through `Z` fold to `a` through `z`; every other byte,
+including embedded NUL and non-ASCII content, compares unchanged. There is no
+locale dependence, tokenization, trimming or delimiter normalization, so
+legacy partial-substring behavior remains exact.
+
+An accepted newer unsupported generation publishes `kUnavailable`. A
+supported but ineligible generation publishes the new `kPolicyExcluded`,
+cancels and replaces older work, remains format-capable, carries an empty
+source revision and invokes neither revision lookup nor bounded work. A
+supported eligible generation captures source revision and publishes
+`kWorkRequested`; escaped revision failure publishes `kFailed`. Exact cancel
+is still accepted and idempotent for the excluded identity without changing
+its state, bounded execution rejects it, stale completions cannot overwrite
+it, and a newer eligible generation can resume the P8-FT-73 flow. Initial
+generation-zero registration retains the existing not-indexed, unavailable or
+failed technical probe because no policy has been accepted.
+
+Focused acceptance stays in `full_text_index_test` and adds no registration.
+It covers every canonical identifier, atomic rejection of every invalid class,
+copied metadata, locale-independent raw substring edges, zero/inclusive article
+limits, unavailable-versus-policy-excluded precedence, no excluded revision or
+work call, exact cancel/execution behavior, stale replacement and later
+eligible recovery. Real adapters, composition wiring, automatic persisted-
+policy apply/restart, facade/Widgets transport, UI, scheduling, progress,
+retry, two-pass ordering, serialization and the complete rebuild remain
+excluded. Installed/public C++, facade, C, DTO and configuration ABI,
+dependencies, `full-text-v1`, ordinary find, Dictionaries-only F3,
+translations and exactly 109 registrations remain unchanged. Only
+implementation of this selected prerequisite is unlocked; no successor beyond
+it is selected or named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

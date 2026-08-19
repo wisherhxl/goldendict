@@ -4463,6 +4463,58 @@ the four-file allowlist, `git diff --check`, registration counting, reference
 equality and clean migrated and legacy worktrees. P8-FT-74 is complete. No next
 dependency is selected.
 
+### Phase 8 P8-FT-75 registration metadata and policy-eligibility acceptance
+
+The selected documentation-only prerequisite is grounded at migrated revision
+`1bc50e19d21e165a233e806cb3781930cad600c4` and pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Evidence is current
+`dictionary_service.cc:450-464,687-1036`, the authoritative reader article-
+count assignments in the twelve textual dictionaries,
+`full_text_index_lifecycle.h:19-180`,
+`full_text_index_lifecycle.cc:15-246`, and pinned legacy per-format
+`setFTSParameters` implementations such as `stardict.cc:202-206`.
+
+Extend only `full_text_index_test`. Registration coverage accepts each exact
+canonical ASCII identifier independently: `AARD`, `BGL`, `DICTD`, `DSL`,
+`MDICT`, `SDICT`, `SLOB`, `STARDICT`, `XDXF`, `ZIM`, `EPWING` and `GLS`. It
+rejects empty, unknown ASCII, differently cased, embedded-NUL and representative
+non-ASCII identifiers. Each invalid case is atomic before duplicate lookup or
+port probing: test both a new dictionary ID and an invalid request reusing an
+existing ID, proving no insertion, replacement, snapshot change, cancellation
+or identity/generation mutation. Also prove null-port, empty-ID and duplicate-
+ID rejection plus copied metadata immunity to caller mutation.
+
+Pure-predicate coverage proves enabled and disabled policy; exact and mixed-
+case matches; prefix and suffix partial-substring matches; ordinary non-match;
+whitespace and delimiter non-normalization; non-ASCII surroundings; and an
+embedded NUL in disabled text. The length-aware helper folds only ASCII
+`A`-`Z`, compares all other bytes unchanged and is tested directly without
+depending on or changing process-global locale. Article coverage proves zero
+unlimited, below and equal limits eligible, and above limit excluded.
+
+Coordinator coverage distinguishes technical `kUnavailable` from
+`kPolicyExcluded`. A supported excluded generation is accepted, capability
+true and revision-empty; it replaces and cancels older work but performs no
+source-revision or bounded-work call. Exact cancellation is accepted and
+idempotent without changing excluded state, and execution is rejected.
+Complete every stale-result outcome after replacement and prove none can
+overwrite the excluded snapshot, then submit a newer eligible generation and
+prove normal requested work resumes. Eligible source-revision exceptions
+remain `kFailed`. Generation-zero not-indexed/unavailable/failed probing and
+all P8-FT-72/73/74 identity, monotonicity, bounds, cancellation and failure
+cases remain unchanged.
+
+No executable or registration is added, so the Release baseline remains
+exactly 109. No real adapter, composition wiring, automatic persisted-policy
+apply/restart, facade/Widgets transport, UI, scheduling, progress, retry,
+two-pass ordering, serialization or complete rebuild is tested or selected.
+Installed/public C++, facade, C, DTO and configuration ABI, dependencies,
+`full-text-v1`, ordinary find, Dictionaries-only F3 and translations remain
+locked. Documentation validation requires current and legacy citation review,
+the four-file allowlist, terminology review, `git diff --check`, exact
+registration counting, reference equality and clean worktrees. Only
+implementation of P8-FT-75 is unlocked; no successor beyond it is named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
