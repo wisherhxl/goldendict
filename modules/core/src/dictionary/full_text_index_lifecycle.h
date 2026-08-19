@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "full_text_index.h"
 #include "goldendict/core/application.h"
@@ -246,6 +247,7 @@ class FullTextIndexLifecycleCoordinator final {
     bool ReconcileStartupArtifact(
         const FullTextIndexStartupArtifactEvidence& evidence) noexcept;
     bool SubmitRebuild(const FullTextIndexRebuildIntent& intent);
+    std::vector<FullTextIndexWorkIdentity> DiscoverRequestedWork() const;
     std::optional<FullTextIndexWorkRequest> ProjectBoundedWorkRequest(
         const FullTextIndexWorkIdentity& identity,
         const FullTextIndexExecutionBounds& bounds) const;

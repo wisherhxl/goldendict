@@ -358,6 +358,25 @@ bool FullTextIndexLifecycleCoordinator::SubmitRebuild(
     return true;
 }
 
+std::vector<FullTextIndexWorkIdentity>
+FullTextIndexLifecycleCoordinator::DiscoverRequestedWork() const {
+    std::vector<FullTextIndexWorkIdentity> identities;
+    std::lock_guard lock(implementation_->mutex);
+    identities.reserve(implementation_->entries.size());
+    for (const auto& [dictionary_id, entry] : implementation_->entries) {
+        const auto& generation = *entry.current;
+        if (entry.has_accepted_generation &&
+            generation.state == FullTextIndexLifecycleState::kWorkRequested &&
+            generation.format_capable &&
+            IsFullTextIndexPolicyEligible(entry.metadata, generation.policy) &&
+            generation.cancellation != nullptr &&
+            !generation.cancellation->IsCancellationRequested()) {
+            identities.push_back(generation.identity);
+        }
+    }
+    return identities;
+}
+
 std::optional<FullTextIndexWorkRequest>
 FullTextIndexLifecycleCoordinator::ProjectBoundedWorkRequest(
     const FullTextIndexWorkIdentity& identity,

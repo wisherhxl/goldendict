@@ -209,6 +209,7 @@ class FullTextIndexTest : public QObject {
     void PolicyExcludedLifecycle();
     void AppliesPolicyToAllRegisteredEntries();
     void ReconcilesValidatedStartupArtifacts();
+    void DiscoversRequestedWork();
     void ProjectsBoundedWorkRequests();
     void CoordinatesExplicitLifecycleTransitions();
     void IsolatesAndMonotonicallyReplacesGenerations();
@@ -802,6 +803,165 @@ void FullTextIndexTest::ReconcilesValidatedStartupArtifacts() {
     QCOMPARE(working.Snapshot("working")->state(),
              FullTextIndexLifecycleState::kFailed);
     QCOMPARE(working_holder->Acquire(), first_snapshot);
+}
+
+void FullTextIndexTest::DiscoversRequestedWork() {
+    FullTextIndexLifecycleCoordinator empty;
+    QVERIFY(empty.DiscoverRequestedWork().empty());
+
+    FullTextIndexLifecycleCoordinator inactive;
+    auto inactive_port = std::make_shared<FakeFormatWorkPort>();
+    QVERIFY(Register(inactive, Registration("inactive"), inactive_port));
+    QVERIFY(inactive.DiscoverRequestedWork().empty());
+    QCOMPARE(inactive.Snapshot("inactive")->state(),
+             FullTextIndexLifecycleState::kNotIndexed);
+
+    TemporaryDirectory directory;
+    FullTextIndexLifecycleCoordinator coordinator;
+    auto zeta_port = std::make_shared<FakeFormatWorkPort>();
+    auto alpha_port = std::make_shared<FakeFormatWorkPort>();
+    auto middle_port = std::make_shared<FakeFormatWorkPort>();
+    auto unavailable_port = std::make_shared<FakeFormatWorkPort>();
+    auto excluded_port = std::make_shared<FakeFormatWorkPort>();
+    auto failed_port = std::make_shared<FakeFormatWorkPort>();
+    auto current_port = std::make_shared<FakeFormatWorkPort>();
+    auto cancelled_port = std::make_shared<FakeFormatWorkPort>();
+    auto working_port = std::make_shared<BlockingFormatWorkPort>();
+    unavailable_port->supported = false;
+    failed_port->throw_revision = true;
+
+    auto zeta_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    auto alpha_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    auto middle_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    auto current_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    const auto current_snapshot = Snapshot(directory, "discovery-current");
+    QVERIFY(current_holder->Publish(current_snapshot));
+
+    QVERIFY(
+        Register(coordinator, Registration("zeta"), zeta_port, zeta_holder));
+    QVERIFY(
+        Register(coordinator, Registration("alpha"), alpha_port, alpha_holder));
+    QVERIFY(Register(coordinator, Registration("middle"), middle_port,
+                     middle_holder));
+    QVERIFY(Register(coordinator, Registration("not-indexed"),
+                     std::make_shared<FakeFormatWorkPort>()));
+    QVERIFY(
+        Register(coordinator, Registration("unavailable"), unavailable_port));
+    QVERIFY(
+        Register(coordinator, Registration("excluded", "BGL"), excluded_port));
+    QVERIFY(Register(coordinator, Registration("failed"), failed_port));
+    QVERIFY(Register(coordinator, Registration("current"), current_port,
+                     current_holder));
+    QVERIFY(Register(coordinator, Registration("cancelled"), cancelled_port));
+    QVERIFY(Register(coordinator, Registration("working"), working_port));
+
+    FullTextIndexPolicy policy;
+    policy.disabled_format_types = "BGL";
+    QVERIFY(coordinator.SubmitRebuild({{4U, "zeta"}, policy}));
+    QVERIFY(coordinator.SubmitRebuild({{1U, "alpha"}, policy}));
+    QVERIFY(coordinator.SubmitRebuild({{2U, "alpha"}, policy}));
+    QVERIFY(coordinator.SubmitRebuild({{7U, "middle"}, policy}));
+    QVERIFY(coordinator.SubmitRebuild({{1U, "unavailable"}, policy}));
+    QVERIFY(coordinator.SubmitRebuild({{1U, "excluded"}, policy}));
+    QVERIFY(coordinator.SubmitRebuild({{1U, "failed"}, policy}));
+    QVERIFY(coordinator.SubmitRebuild({{1U, "current"}, policy}));
+    const auto current_identity = coordinator.Snapshot("current")->identity();
+    QVERIFY(coordinator.ReconcileStartupArtifact(
+        {current_identity, "revision-1", current_snapshot}));
+    QVERIFY(coordinator.SubmitRebuild({{1U, "cancelled"}, policy}));
+    const auto cancelled_identity =
+        coordinator.Snapshot("cancelled")->identity();
+    QVERIFY(coordinator.Cancel({cancelled_identity}));
+    QVERIFY(coordinator.SubmitRebuild({{1U, "working"}, policy}));
+    const auto working_identity = coordinator.Snapshot("working")->identity();
+    FullTextIndexWorkRequest working_request;
+    working_request.identity = working_identity;
+    auto working = std::async(std::launch::async, [&] {
+        return coordinator.ExecuteBoundedWork(working_request);
+    });
+    working_port->WaitUntilStarted();
+
+    const std::vector<FullTextIndexWorkIdentity> expected = {
+        {2U, "alpha"}, {7U, "middle"}, {4U, "zeta"}};
+    const auto snapshots_before =
+        std::vector{coordinator.Snapshot("alpha"),
+                    coordinator.Snapshot("middle"),
+                    coordinator.Snapshot("zeta"),
+                    coordinator.Snapshot("not-indexed"),
+                    coordinator.Snapshot("unavailable"),
+                    coordinator.Snapshot("excluded"),
+                    coordinator.Snapshot("failed"),
+                    coordinator.Snapshot("current"),
+                    coordinator.Snapshot("cancelled"),
+                    coordinator.Snapshot("working")};
+    const auto alpha_snapshot_before = alpha_holder->Acquire();
+    const auto middle_snapshot_before = middle_holder->Acquire();
+    const auto zeta_snapshot_before = zeta_holder->Acquire();
+    const auto alpha_probes = std::pair{alpha_port->support_probe_count,
+                                        alpha_port->revision_probe_count};
+    const auto middle_probes = std::pair{middle_port->support_probe_count,
+                                         middle_port->revision_probe_count};
+    const auto zeta_probes = std::pair{zeta_port->support_probe_count,
+                                       zeta_port->revision_probe_count};
+
+    QCOMPARE(coordinator.DiscoverRequestedWork(), expected);
+    QCOMPARE(coordinator.DiscoverRequestedWork(), expected);
+    QCOMPARE(alpha_port->invocation_count, 0U);
+    QCOMPARE(middle_port->invocation_count, 0U);
+    QCOMPARE(zeta_port->invocation_count, 0U);
+    QCOMPARE(std::pair(alpha_port->support_probe_count,
+                       alpha_port->revision_probe_count),
+             alpha_probes);
+    QCOMPARE(std::pair(middle_port->support_probe_count,
+                       middle_port->revision_probe_count),
+             middle_probes);
+    QCOMPARE(std::pair(zeta_port->support_probe_count,
+                       zeta_port->revision_probe_count),
+             zeta_probes);
+    QCOMPARE(alpha_holder->Acquire(), alpha_snapshot_before);
+    QCOMPARE(middle_holder->Acquire(), middle_snapshot_before);
+    QCOMPARE(zeta_holder->Acquire(), zeta_snapshot_before);
+    const auto snapshots_after =
+        std::vector{coordinator.Snapshot("alpha"),
+                    coordinator.Snapshot("middle"),
+                    coordinator.Snapshot("zeta"),
+                    coordinator.Snapshot("not-indexed"),
+                    coordinator.Snapshot("unavailable"),
+                    coordinator.Snapshot("excluded"),
+                    coordinator.Snapshot("failed"),
+                    coordinator.Snapshot("current"),
+                    coordinator.Snapshot("cancelled"),
+                    coordinator.Snapshot("working")};
+    QCOMPARE(snapshots_after, snapshots_before);
+
+    const FullTextIndexExecutionBounds bounds(
+        3U, 1024U, 2048U,
+        std::chrono::steady_clock::now() + std::chrono::minutes(5));
+    const auto projected =
+        coordinator.ProjectBoundedWorkRequest(expected.front(), bounds);
+    QVERIFY(projected.has_value());
+    QCOMPARE(projected->identity, expected.front());
+
+    QVERIFY(coordinator.SubmitRebuild({{3U, "alpha"}, policy}));
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(expected.front(), bounds));
+    const std::vector<FullTextIndexWorkIdentity> after_replacement = {
+        {3U, "alpha"}, {7U, "middle"}, {4U, "zeta"}};
+    QCOMPARE(coordinator.DiscoverRequestedWork(), after_replacement);
+
+    QVERIFY(coordinator.Cancel({expected[1]}));
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(expected[1], bounds));
+    const std::vector<FullTextIndexWorkIdentity> after_cancellation = {
+        {3U, "alpha"}, {4U, "zeta"}};
+    QCOMPARE(coordinator.DiscoverRequestedWork(), after_cancellation);
+
+    QVERIFY(coordinator.Cancel({after_cancellation.back()}));
+    const std::vector<FullTextIndexWorkIdentity> single = {{3U, "alpha"}};
+    QCOMPARE(coordinator.DiscoverRequestedWork(), single);
+
+    working_port->Finish({FullTextIndexWorkStatus::kFailed, "expected"});
+    QVERIFY(working.get());
+    QCOMPARE(coordinator.Snapshot("working")->state(),
+             FullTextIndexLifecycleState::kFailed);
 }
 
 void FullTextIndexTest::ProjectsBoundedWorkRequests() {

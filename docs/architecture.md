@@ -6124,10 +6124,10 @@ registrations remain locked. Delivery uses the exact seven-file implementation,
 test and four-document allowlist. P8-FT-82 is complete, and no successor is
 selected or named.
 
-### Phase 8 P8-FT-83 private deterministic full-text work discovery (selected)
+### Phase 8 P8-FT-83 private deterministic full-text work discovery (complete)
 
-The independent post-P8-FT-82 readiness audit is grounded at synchronized
-migrated revision `6e17c3441138381fcd107573f1f4bf5ed70cad7f` and clean pinned
+The implementation is grounded at synchronized migrated revision
+`93590fa656b06d31bdd3c92bc477f72fdbb5256f` and clean pinned
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
 `full_text_index_lifecycle.cc:117-139` keeps generation state in an ordered
 private map, `full_text_index_lifecycle.cc:191-271` creates policy-authorized
@@ -6139,7 +6139,7 @@ startup artifacts without exposing remaining work. Pinned legacy
 Core work discovery is therefore the smallest cohesive prerequisite to a later
 executor boundary.
 
-P8-FT-83 adds a private const coordinator query equivalent to
+P8-FT-83 adds the private const coordinator query
 `std::vector<FullTextIndexWorkIdentity> DiscoverRequestedWork() const`.
 Under the coordinator lock it snapshots the identities of accepted current
 generations whose state is `kWorkRequested`, format remains capable, policy
@@ -6156,7 +6156,7 @@ identities are intentionally revocable observations: replacement,
 cancellation or any other transition may stale them, and the locked P8-FT-82
 projection must revalidate the exact identity and execution bounds.
 
-Focused acceptance extends only `full_text_index_test`. It proves empty,
+Focused acceptance in `full_text_index_test` proves empty,
 single and multiple discovery; canonical order independent of registration
 order; exact latest identities; exclusion of unavailable, `kNotIndexed`,
 `kPolicyExcluded`, working, current, cancelled and failed entries; capability,
@@ -6169,8 +6169,10 @@ limit, shutdown/cancel/join orchestration, retry, progress/status, two-pass
 ordering, additional format bridge or facade/UI transport. Public/installed
 APIs, dependencies, `full-text-v1`, canonical IDs, `kPolicyExcluded`, bounds,
 ICU behavior, ordinary find/F3, UI/translations, P8-FT-72 through P8-FT-82
-safety and exactly 109 registrations remain locked. Delivery is limited to the
-four governing documents. No successor beyond P8-FT-83 is selected or named.
+safety and exactly 109 registrations remain locked. Delivery uses the exact
+lifecycle header, implementation, existing lifecycle test and four-document
+allowlist. P8-FT-83 is complete. No successor beyond P8-FT-83 is selected or
+named.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

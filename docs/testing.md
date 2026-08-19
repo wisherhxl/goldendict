@@ -4797,15 +4797,14 @@ IDs, `kPolicyExcluded`, article/work bounds, ICU divergence, ordinary find/F3,
 UI/translations, stale/artifact/snapshot safety, serialization and dependencies
 remain locked. P8-FT-82 is complete, and no successor is selected or named.
 
-### Phase 8 P8-FT-83 deterministic work-discovery acceptance (selected)
+### Phase 8 P8-FT-83 deterministic work-discovery acceptance (complete)
 
-The fresh audit is grounded at synchronized migrated revision
-`6e17c3441138381fcd107573f1f4bf5ed70cad7f` and clean pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly one private Core
-leaf: side-effect-free discovery of actionable `kWorkRequested` identities in
-canonical dictionary-ID order. The future interface is equivalent to
-`std::vector<FullTextIndexWorkIdentity> DiscoverRequestedWork() const`; no
-successor is selected.
+The implementation is grounded at synchronized migrated revision
+`93590fa656b06d31bdd3c92bc477f72fdbb5256f` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It completes exactly one private
+Core leaf: side-effect-free discovery of actionable `kWorkRequested`
+identities in canonical dictionary-ID order through
+`DiscoverRequestedWork() const`.
 
 Acceptance extends only the existing `full_text_index_test` registration.
 Positive cases cover zero registrations, no actionable entries, one entry and
@@ -4826,7 +4825,7 @@ cancellation between discovery and projection must make that same identity
 fail safely.
 
 No new executable or test is registered, so the Release baseline remains
-exactly 109. The future implementation gate is the focused existing Release
+exactly 109. The implementation gate is the focused existing Release
 test, full 109/109 Release CTest, Release install, standalone and packaged C/C++
 consumers, exact-SCM package creation and clean ref equality. P8-FT-83 adds no
 executor/dispatcher ownership, submission, thread, queue, concurrency limit,
@@ -4835,12 +4834,13 @@ format port, facade/UI transport, public/installed API or dependency.
 
 The documentation gate reviews exactly the four P8-FT-83 sections and
 validates every current and pinned citation, terminology, `git diff --check`,
-the exact four-file allowlist, exactly 109 Release registrations, ref equality
-and clean migrated/pinned worktrees. P8-FT-72 through P8-FT-82,
+the exact seven-file implementation/test/documentation allowlist, exactly 109
+Release registrations, ref equality and clean migrated/pinned worktrees.
+P8-FT-72 through P8-FT-82,
 `full-text-v1`, canonical IDs, `kPolicyExcluded`, article/work bounds, ICU
 divergence, ordinary find/F3, UI/translations, stale/artifact/snapshot safety,
-serialization and dependencies remain locked. No successor beyond P8-FT-83 is
-selected or named.
+serialization and dependencies remain locked. P8-FT-83 is complete. No
+successor beyond P8-FT-83 is selected or named.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

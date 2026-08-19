@@ -1659,22 +1659,21 @@ article/work bounds, ICU divergence, ordinary find/F3, UI/translations,
 stale/artifact/snapshot safety and exactly 109 registrations remain locked.
 P8-FT-82 is complete, and no successor is selected or named.
 
-### P8-FT-83 private deterministic full-text work discovery (selected)
+### P8-FT-83 private deterministic full-text work discovery (complete)
 
-The fresh post-P8-FT-82 audit at synchronized migrated revision
-`6e17c3441138381fcd107573f1f4bf5ed70cad7f` and clean pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects exactly one private Core
-prerequisite: discover current actionable work identities before any executor
-owns submission. Current `full_text_index_lifecycle.cc:117-139` stores entries
-in dictionary-ID order, `full_text_index_lifecycle.cc:191-271` produces
-requested generations, and `full_text_index_lifecycle.cc:361-403` safely
-projects only a caller-supplied exact identity. Composition
+The implementation at synchronized migrated revision
+`93590fa656b06d31bdd3c92bc477f72fdbb5256f` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` completes exactly one private Core
+prerequisite: discovery of current actionable work identities before any
+executor owns submission. The ordered coordinator registry produces requested
+generations, discovers their identities and safely projects only a caller-
+supplied exact identity. Composition
 `dictionary_service.cc:1090-1104` applies policy and reconciles artifacts but
 does not discover work. Pinned legacy `fulltextsearch.cc:34-125` combines
 dictionary scanning with execution; the migrated boundary must separate those
 responsibilities.
 
-The selected leaf adds one side-effect-free coordinator query equivalent to
+The completed leaf adds one side-effect-free coordinator query,
 `std::vector<FullTextIndexWorkIdentity> DiscoverRequestedWork() const`.
 It snapshots accepted current `kWorkRequested` generations only while they
 remain capable, policy-eligible, uncancelled and backed by cancellation state.
@@ -1699,8 +1698,10 @@ shutdown/join, retry, progress/status, two-pass ordering, additional format
 bridge, facade/UI transport, public/installed API, dependency or registration.
 P8-FT-72 through P8-FT-82, `full-text-v1`, canonical IDs,
 `kPolicyExcluded`, bounds, ICU divergence, ordinary find/F3, UI/translations,
-stale/artifact/snapshot safety and exactly 109 registrations remain locked. No
-successor beyond P8-FT-83 is selected or named.
+stale/artifact/snapshot safety and exactly 109 registrations remain locked.
+Delivery uses the exact lifecycle header, implementation, existing lifecycle
+test and four-document allowlist. P8-FT-83 is complete. No successor beyond
+P8-FT-83 is selected or named.
 
 ## Resources And Platform Integration
 
