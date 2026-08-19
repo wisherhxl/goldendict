@@ -5560,6 +5560,47 @@ No successor after P8-FT-70 is selected, ranked, recommended or named.
 Completion unlocks only the Core normalized matching/origin-map dependency
 boundary; rendered request and Widgets consumption require a fresh audit.
 
+### Phase 8 P8-FT-71 rendered-text ignore-diacritics consumption (selected)
+
+The fresh readiness audit starts from synchronized migrated revision
+`14b78a90dd5a37dfa4a3381aeebf7a559eb9ae5d` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`desktop_facade.h:169-177`, `desktop_facade.cc:130-164`,
+`main_window.h:458-519`, `main_window.cpp:9040-9296`,
+`rendered_text_match_plan_controller.cpp:24-215` and
+`article_view.cpp:88-205` establish one unambiguous ownership path. Widgets
+owns the generation-bound accepted presentation and rendered-page capture;
+the controller transports a request by value; Core owns matching and exact
+original-range production; ArticleView only validates and maps those ranges
+onto the current DOM. Pinned legacy `fulltextsearch.cc:596-609` and
+`articleview.cc:133-190,2569-2648` confirm that case sensitivity and diacritic
+handling are independent and that matching positions return to original text.
+
+P8-FT-71 is therefore the smallest safe selected leaf, but is not implemented
+by this audit. Implementation adds a default-false `ignore_diacritics` member
+to the transport-neutral installed `RenderedTextMatchPlanRequest`, copies the
+accepted value into that request before asynchronous submission, and passes
+the request member to the existing private Core `FullTextQuery`. The request
+itself becomes the authoritative immutable policy snapshot, so the redundant
+Widgets-only identity member is removed and completion/navigation staleness
+checks compare the request-owned value. This necessary public DTO source and
+layout change does not alter the facade method signature or vtable, C API,
+configuration, dependency graph, index format or serialization.
+
+Core continues to return P8-FT-70's exact complete original UTF-8 slices.
+ArticleView and its ApplicationWorld JavaScript continue to receive exact
+ranges and literals with the existing `matchCase` mapping policy; neither
+layer normalizes text or implements diacritic semantics. Exact per-range DOM
+application, highlight-all, first selection, P8-FT-69 Previous/Next and status
+snapshots, token ownership and tab/view/page/generation rejection remain
+unchanged. Ordinary find-in-page, activation, translations, headword-only
+rows and dictionary tooltips also remain unchanged. Migrated matching keeps
+the documented ICU divergence from Qt5 custom folding and trailing
+`Mark_NonSpacing` extension.
+
+No implementation or further successor is selected, ranked, recommended or
+named by this audit. It unlocks only implementation of P8-FT-71.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

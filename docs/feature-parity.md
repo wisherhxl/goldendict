@@ -1238,6 +1238,40 @@ registered Release tests. Rendered request and Widgets consumption remain
 unresolved. No successor is named or ranked; completion unlocks only the Core
 normalized matching/origin-map dependency boundary.
 
+### P8-FT-71 rendered-text ignore-diacritics consumption (selected)
+
+The fresh audit at synchronized migrated revision
+`14b78a90dd5a37dfa4a3381aeebf7a559eb9ae5d` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects one bounded leaf and does
+not implement it. Current `desktop_facade.h:169-177`,
+`desktop_facade.cc:130-164`, `main_window.h:458-519`,
+`main_window.cpp:9040-9296`, `rendered_text_match_plan_controller.cpp:24-215`
+and `article_view.cpp:88-205` prove exact ownership: Widgets captures accepted
+query policy and rendered text with generation identity, the controller owns
+an asynchronous request copy, Core produces ordered exact-original ranges,
+and ArticleView maps only those ranges to the current DOM. Pinned legacy
+`fulltextsearch.cc:596-609` and `articleview.cc:133-190,2569-2648` confirm
+independent case/diacritic policy and original-text position recovery.
+
+Implementation is bounded to adding default-false `ignore_diacritics` to the
+installed transport-neutral `RenderedTextMatchPlanRequest`, populating it from
+the accepted presentation, and supplying it to Core's existing private
+matcher. The request-owned value replaces the duplicate identity member and
+participates in the existing completion and navigation staleness comparisons.
+This is the required public DTO source/layout change; facade method/vtable, C
+API, configuration, dependencies, `full-text-v1` serialization and all other
+installed contracts remain unchanged.
+
+Core retains P8-FT-70 ICU normalization and origin mapping. JavaScript receives
+the same exact original literals and ranges and gains no normalization policy
+or new payload member. Highlight-all, first selection, P8-FT-69 navigation and
+status, lifecycle invalidation, ordinary find-in-page, activation,
+translations, headword-only rows and tooltips remain unchanged. Existing Core,
+controller and GUI-smoke targets must cover flag combinations, by-value
+transport, stale-policy rejection and DOM application without adding a test
+registration; the Release baseline remains exactly 109. The audit unlocks
+only implementation of P8-FT-71 and names no further successor.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

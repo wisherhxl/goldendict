@@ -5490,6 +5490,42 @@ consumption remain unresolved. No successor is selected, ranked, recommended
 or named; completion unlocks only the Core normalized matching/origin-map
 dependency boundary.
 
+### Phase 8 P8-FT-71 rendered-text ignore-diacritics consumption (selected)
+
+The fresh post-P8-FT-70 audit was performed from synchronized migrated
+revision `14b78a90dd5a37dfa4a3381aeebf7a559eb9ae5d` and clean pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects one bounded
+implementation leaf and makes no implementation change. Current
+`desktop_facade.h:169-177`, `desktop_facade.cc:130-164`,
+`main_window.h:458-519`, `main_window.cpp:9040-9296`,
+`rendered_text_match_plan_controller.cpp:24-215` and
+`article_view.cpp:88-205` prove that Widgets owns accepted presentation and
+lifecycle identity, the controller copies work by value, Core owns matching,
+and ArticleView/JavaScript only apply Core-authored exact original ranges.
+Pinned legacy `fulltextsearch.cc:596-609` and
+`articleview.cc:133-190,2569-2648` establish independent case/diacritic
+semantics and mapping back to original text.
+
+The implementation leaf adds default-false `ignore_diacritics` to the
+transport-neutral installed `RenderedTextMatchPlanRequest`, populates it from
+the accepted generation-bound value, and passes it to the existing Core
+matcher. The request becomes the sole immutable policy snapshot: the duplicate
+Widgets identity member is removed and existing completion/navigation stale
+checks use the request member. This necessary public DTO source/layout change
+does not change the facade method or vtable, C API, configuration, dependency,
+index-format or `full-text-v1` serialization contracts.
+
+P8-FT-70 ICU matching and exact original UTF-8 literals remain authoritative;
+the Qt5 custom folding and trailing `Mark_NonSpacing` extension remain an
+intentional divergence. ArticleView's payload and JavaScript gain no
+diacritic-normalization responsibility. Exact DOM range application,
+highlight-all, first selection, P8-FT-69 navigation/status, cancellation,
+replacement, teardown and tab/view/page/generation isolation remain intact,
+as do ordinary find-in-page, activation, translations, headword-only results
+and dictionary tooltips. Existing targets gain focused coverage without a new
+registration, preserving exactly 109 Release tests. This audit unlocks only
+implementation of P8-FT-71 and names no further successor.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
