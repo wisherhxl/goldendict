@@ -1167,12 +1167,12 @@ baseline are preserved. No successor after P8-FT-68 is selected, ranked,
 recommended or named. Completion unlocks only private full-text navigation
 UI/status binding.
 
-### P8-FT-69 private per-article full-text navigation row binding (selected)
+### P8-FT-69 private per-article full-text navigation row binding (completed)
 
-The fresh independent documentation-only audit at clean synchronized migrated
-revision `fef60700d73c3ed8fc994ba553a04692b0d26fa1` and unchanged clean pinned
+The completed implementation was selected by clean synchronized revision
+`35b2ffb94d3b819b7fe6242585fc5fa0729906b9` and unchanged clean pinned
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` supersedes P8-FT-68's
-historical no-successor closure and selects only P8-FT-69. GET Option A
+historical no-successor closure and completed only P8-FT-69. The implementation
 recreates the pinned `articleview.ui:58-100` dedicated row below each article
 web view with exact source captions `&Previous` and `&Next` and an independent
 status label. Pinned `articleview.cc:220-230,2688-2706,2730-2788` fixes the

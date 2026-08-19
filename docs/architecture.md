@@ -5457,19 +5457,20 @@ Release baseline remain unchanged. No successor after P8-FT-68 is selected,
 ranked, recommended or named. Completion unlocks only private full-text
 navigation UI/status binding.
 
-### Phase 8 P8-FT-69 private per-article full-text navigation row binding (selected)
+### Phase 8 P8-FT-69 private per-article full-text navigation row binding (completed)
 
-The fresh independent documentation-only audit at clean synchronized migrated
-revision `fef60700d73c3ed8fc994ba553a04692b0d26fa1` and unchanged clean pinned
+The completed implementation was selected by clean synchronized revision
+`35b2ffb94d3b819b7fe6242585fc5fa0729906b9` and unchanged clean pinned
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` supersedes P8-FT-68's
-historical no-successor closure and selects only P8-FT-69. Pinned legacy
+historical no-successor closure and completed only P8-FT-69. Pinned legacy
 `articleview.ui:58-100` establishes a dedicated `ftsSearchFrame` below the web
 view, with exact source captions `&Previous` and `&Next` and an independent
 status label. Pinned legacy `articleview.cc:220-230,2688-2706,2730-2788`
 establishes translated status `%1 of %2 matches`, one-based presentation,
 initial and boundary enablement, and one-step non-wrapping navigation.
 
-P8-FT-69 recreates that row as private presentation owned by each migrated
+P8-FT-69 recreates that row as a private `ArticleView` composite containing its
+web content and dedicated navigation row. The row is owned by each migrated
 `ArticleView`. It is visible only while that article owns a current nonempty
 applied-range state; tab switching therefore presents only the active article's
 row. Replacement, page/load/view invalidation, tab close and teardown hide and

@@ -10,16 +10,21 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QContextMenuEvent>
+#include <QHBoxLayout>
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLabel>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPointer>
+#include <QPushButton>
+#include <QVBoxLayout>
 #include <QWebEngineContextMenuRequest>
 #include <QWebEnginePage>
 #include <QWebEngineScript>
+#include <QWebEngineView>
 
 #include "goldendict/core/desktop_facade.h"
 
@@ -55,6 +60,30 @@ bool ReadJavaScriptInteger(const QVariantMap& result, const QString& key,
 }
 
 }  // namespace
+
+class ArticleWebView final : public QWebEngineView {
+   public:
+    explicit ArticleWebView(ArticleView* owner)
+        : QWebEngineView(owner), owner_(owner) {}
+
+   protected:
+    void contextMenuEvent(QContextMenuEvent* event) override {
+        owner_->HandleContextMenuEvent(event);
+    }
+
+    void mousePressEvent(QMouseEvent* event) override {
+        QWebEngineView::mousePressEvent(event);
+        owner_->HandleMousePressEvent(event);
+    }
+
+    void mouseDoubleClickEvent(QMouseEvent* event) override {
+        QWebEngineView::mouseDoubleClickEvent(event);
+        owner_->HandleMouseDoubleClickEvent(event);
+    }
+
+   private:
+    ArticleView* owner_;
+};
 
 void ArticleView::ApplyFullTextHighlights(
     const QString& token, const QString& rendered_text,
@@ -409,13 +438,142 @@ void ArticleView::NavigateFullTextHighlight(
         });
 }
 
-ArticleView::ArticleView(QWidget* parent) : QWebEngineView(parent) {
-    connect(this, &QWebEngineView::loadStarted, this, [this]() {
+ArticleView::ArticleView(QWidget* parent) : QWidget(parent) {
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    web_view_ = new ArticleWebView(this);
+    web_view_->setObjectName(QStringLiteral("articleWebContent"));
+    layout->addWidget(web_view_, 1);
+
+    full_text_navigation_row_ = new QWidget(this);
+    full_text_navigation_row_->setObjectName(
+        QStringLiteral("fullTextNavigationRow"));
+    auto* navigation_layout = new QHBoxLayout(full_text_navigation_row_);
+    full_text_previous_ =
+        new QPushButton(tr("&Previous"), full_text_navigation_row_);
+    full_text_previous_->setObjectName(QStringLiteral("fullTextPrevious"));
+    full_text_next_ = new QPushButton(tr("&Next"), full_text_navigation_row_);
+    full_text_next_->setObjectName(QStringLiteral("fullTextNext"));
+    full_text_status_ = new QLabel(full_text_navigation_row_);
+    full_text_status_->setObjectName(
+        QStringLiteral("fullTextNavigationStatus"));
+    navigation_layout->addWidget(full_text_previous_);
+    navigation_layout->addWidget(full_text_next_);
+    navigation_layout->addWidget(full_text_status_);
+    navigation_layout->addStretch(1);
+    layout->addWidget(full_text_navigation_row_);
+    full_text_navigation_row_->hide();
+    full_text_previous_->setEnabled(false);
+    full_text_next_->setEnabled(false);
+    setFocusProxy(web_view_);
+
+    connect(web_view_, &QWebEngineView::loadStarted, this, [this]() {
         ++document_generation_;
         ++pointer_generation_;
         dictionary_context_entries_.clear();
         dictionary_context_overflow_ = false;
+        ClearFullTextNavigation({}, true);
+        emit loadStarted();
     });
+    connect(web_view_, &QWebEngineView::loadFinished, this,
+            &ArticleView::loadFinished);
+    connect(web_view_, &QWebEngineView::urlChanged, this,
+            &ArticleView::urlChanged);
+    connect(web_view_, &QWebEngineView::pdfPrintingFinished, this,
+            &ArticleView::pdfPrintingFinished);
+    connect(web_view_, &QWebEngineView::printFinished, this,
+            &ArticleView::printFinished);
+    connect(full_text_previous_, &QPushButton::clicked, this, [this]() {
+        if (!full_text_navigation_token_.isEmpty())
+            emit FullTextNavigationRequested(
+                ArticleHighlightNavigationDirection::kPrevious);
+    });
+    connect(full_text_next_, &QPushButton::clicked, this, [this]() {
+        if (!full_text_navigation_token_.isEmpty())
+            emit FullTextNavigationRequested(
+                ArticleHighlightNavigationDirection::kNext);
+    });
+}
+
+QWebEnginePage* ArticleView::page() const {
+    return web_view_->page();
+}
+
+void ArticleView::setPage(QWebEnginePage* page) {
+    web_view_->setPage(page);
+}
+
+void ArticleView::setHtml(const QString& html, const QUrl& base_url) {
+    web_view_->setHtml(html, base_url);
+}
+
+void ArticleView::reload() {
+    web_view_->reload();
+}
+
+void ArticleView::findText(
+    const QString& text, QWebEnginePage::FindFlags options,
+    const std::function<void(const QWebEngineFindTextResult&)>& callback) {
+    web_view_->findText(text, options, callback);
+}
+
+void ArticleView::setZoomFactor(qreal factor) {
+    web_view_->setZoomFactor(factor);
+}
+
+qreal ArticleView::zoomFactor() const {
+    return web_view_->zoomFactor();
+}
+
+void ArticleView::print(QPrinter* printer) {
+    web_view_->print(printer);
+}
+
+void ArticleView::printToPdf(
+    const std::function<void(const QByteArray&)>& result_callback) const {
+    web_view_->printToPdf(result_callback);
+}
+
+void ArticleView::printToPdf(const QString& file_path) const {
+    web_view_->printToPdf(file_path);
+}
+
+void ArticleView::setFocus(Qt::FocusReason reason) {
+    web_view_->setFocus(reason);
+}
+
+bool ArticleView::hasFocus() const {
+    return web_view_->hasFocus();
+}
+
+void ArticleView::PublishFullTextNavigationSnapshot(
+    const ArticleHighlightNavigationSnapshot& snapshot) {
+    if (!snapshot.accepted || snapshot.token.isEmpty() ||
+        snapshot.ordered_count <= 0 || snapshot.current_position < 0 ||
+        snapshot.current_position >= snapshot.ordered_count) {
+        return;
+    }
+    full_text_navigation_token_ = snapshot.token;
+    full_text_previous_->setEnabled(snapshot.can_previous);
+    full_text_next_->setEnabled(snapshot.can_next);
+    full_text_status_->setText(tr("%1 of %2 matches")
+                                   .arg(snapshot.current_position + 1)
+                                   .arg(snapshot.ordered_count));
+    full_text_navigation_row_->show();
+}
+
+void ArticleView::ClearFullTextNavigation(const QString& expected_token,
+                                          bool force) {
+    if (!force && (expected_token.isEmpty() ||
+                   expected_token != full_text_navigation_token_)) {
+        return;
+    }
+    full_text_navigation_token_.clear();
+    full_text_previous_->setEnabled(false);
+    full_text_next_->setEnabled(false);
+    full_text_status_->clear();
+    full_text_navigation_row_->hide();
 }
 
 void ArticleView::SetFacade(
@@ -499,16 +657,14 @@ void ArticleView::QueryWordAt(const QPointF& position, bool translate) {
         });
 }
 
-void ArticleView::mousePressEvent(QMouseEvent* event) {
-    QWebEngineView::mousePressEvent(event);
+void ArticleView::HandleMousePressEvent(QMouseEvent* event) {
     if (select_word_by_single_click_ && event->button() == Qt::LeftButton &&
         event->modifiers() == Qt::NoModifier) {
         QueryWordAt(event->position(), false);
     }
 }
 
-void ArticleView::mouseDoubleClickEvent(QMouseEvent* event) {
-    QWebEngineView::mouseDoubleClickEvent(event);
+void ArticleView::HandleMouseDoubleClickEvent(QMouseEvent* event) {
     if (double_click_translates_ && event->button() == Qt::LeftButton &&
         event->modifiers() == Qt::NoModifier) {
         QueryWordAt(event->position(), true);
@@ -672,8 +828,8 @@ void ArticleView::TriggerDictionaryContextOverflowForTest(
     TriggerDictionaryContextOverflow(snapshot);
 }
 
-void ArticleView::contextMenuEvent(QContextMenuEvent* event) {
-    auto* request = lastContextMenuRequest();
+void ArticleView::HandleContextMenuEvent(QContextMenuEvent* event) {
+    auto* request = web_view_->lastContextMenuRequest();
     if (request == nullptr)
         return;
     request->setAccepted(true);

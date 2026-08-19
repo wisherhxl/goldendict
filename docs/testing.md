@@ -4247,12 +4247,12 @@ exactly 109 registered Release tests remain unchanged. No successor after
 P8-FT-68 is selected, ranked, recommended or named. Completion unlocks only
 private full-text navigation UI/status binding.
 
-### P8-FT-69 private per-article full-text navigation row binding acceptance (selected)
+### P8-FT-69 private per-article full-text navigation row binding acceptance (completed)
 
-The fresh independent documentation-only audit at clean synchronized migrated
-revision `fef60700d73c3ed8fc994ba553a04692b0d26fa1` and unchanged clean pinned
+The completed implementation was selected by clean synchronized revision
+`35b2ffb94d3b819b7fe6242585fc5fa0729906b9` and unchanged clean pinned
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` supersedes P8-FT-68's
-historical no-successor closure and selects only P8-FT-69. Acceptance is
+historical no-successor closure and completed only P8-FT-69. Acceptance is
 grounded in pinned legacy `articleview.ui:58-100` for the dedicated per-article
 row below the web view and exact source captions `&Previous` and `&Next`, and
 `articleview.cc:220-230,2688-2706,2730-2788` for translated
@@ -4260,18 +4260,18 @@ row below the web view and exact source captions `&Previous` and `&Next`, and
 one-step non-wrapping navigation. Current P8-FT-68 supplies the accepted typed
 token, zero-based position, ordered count, `can_previous` and `can_next`.
 
-Focused coverage in the existing GUI smoke target must prove a distinct row
+Focused coverage in the existing GUI smoke target proves a distinct row
 owned by every `ArticleView`, below its web content and separate from the
 ordinary find toolbar. Initial, single-range, interior, first-boundary and
 last-boundary snapshots must produce exact captions, `position + 1` status and
 button state solely from an accepted identity-current snapshot. Forward and
 backward completions update only after the complete identity recheck; rejected,
 stale, token-mismatched, detached and teardown callbacks leave the current UI
-unchanged. Tab switching must reveal only the active tab's retained current row;
-replacement, page/load/view invalidation, tab close and teardown must hide and
+unchanged. Tab switching reveals only the active tab's retained current row;
+replacement, page/load/view invalidation, tab close and teardown hide and
 clear the affected row.
 
-Coverage must also prove that the ordinary find controls, state, status,
+Coverage also proves that the ordinary find controls, state, status,
 shortcuts and `findText` path are unchanged and never reused. F3 remains the
 exclusive migrated Dictionaries shortcut, and no F3/Shift+F3 full-text binding
 is added. The leaf does not consume `ignore_diacritics` or change any

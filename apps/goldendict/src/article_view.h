@@ -4,7 +4,8 @@
 #define GOLDENDICT_APPS_GOLDENDICT_ARTICLE_VIEW_H_
 
 #include <QUrl>
-#include <QWebEngineView>
+#include <QWebEnginePage>
+#include <QWidget>
 
 #include <cstddef>
 #include <cstdint>
@@ -16,6 +17,9 @@
 namespace goldendict::core {
 class DesktopFacade;
 }
+
+class ArticleWebView;
+class QPrinter;
 
 enum class ArticleContextAction {
     kOpenLink,
@@ -76,11 +80,27 @@ struct ArticleHighlightNavigationSnapshot {
     bool can_next = false;
 };
 
-class ArticleView final : public QWebEngineView {
+class ArticleView final : public QWidget {
     Q_OBJECT
 
    public:
     explicit ArticleView(QWidget* parent = nullptr);
+
+    QWebEnginePage* page() const;
+    void setPage(QWebEnginePage* page);
+    void setHtml(const QString& html, const QUrl& base_url = QUrl());
+    void reload();
+    void findText(const QString& text, QWebEnginePage::FindFlags options = {},
+                  const std::function<void(const QWebEngineFindTextResult&)>&
+                      callback = {});
+    void setZoomFactor(qreal factor);
+    qreal zoomFactor() const;
+    void print(QPrinter* printer);
+    void printToPdf(
+        const std::function<void(const QByteArray&)>& result_callback) const;
+    void printToPdf(const QString& file_path) const;
+    void setFocus(Qt::FocusReason reason = Qt::OtherFocusReason);
+    bool hasFocus() const;
 
     void SetFacade(const goldendict::core::DesktopFacade* facade) noexcept;
     void SetClickPreferences(bool double_click_translates,
@@ -111,6 +131,13 @@ class ArticleView final : public QWebEngineView {
         std::function<void(ArticleHighlightNavigationSnapshot)> completion);
 
    signals:
+    void loadStarted();
+    void loadFinished(bool success);
+    void urlChanged(const QUrl& url);
+    void pdfPrintingFinished(const QString& file_path, bool success);
+    void printFinished(bool success);
+    void FullTextNavigationRequested(
+        ArticleHighlightNavigationDirection direction);
     void LinkRequested(const QUrl& url, ArticleLinkDisposition disposition);
     void SelectionLookupRequested(const QString& text,
                                   ArticleLinkDisposition disposition);
@@ -121,12 +148,10 @@ class ArticleView final : public QWebEngineView {
                                    quint64 presentation_generation);
     void DictionaryResultsPaneRequested(quint64 presentation_generation);
 
-   protected:
-    void contextMenuEvent(QContextMenuEvent* event) override;
-    void mousePressEvent(QMouseEvent* event) override;
-    void mouseDoubleClickEvent(QMouseEvent* event) override;
-
    private:
+    friend class MainWindow;
+    friend class ArticleWebView;
+
     enum class LinkKind { kNone, kInternalLookup, kExternal };
 
     LinkKind ClassifyLink(const QUrl& url) const;
@@ -139,6 +164,20 @@ class ArticleView final : public QWebEngineView {
         const ArticleDictionaryContextSnapshot& snapshot, int entry_index);
     void TriggerDictionaryContextOverflow(
         const ArticleDictionaryContextSnapshot& snapshot);
+    void HandleContextMenuEvent(QContextMenuEvent* event);
+    void HandleMousePressEvent(QMouseEvent* event);
+    void HandleMouseDoubleClickEvent(QMouseEvent* event);
+    void PublishFullTextNavigationSnapshot(
+        const ArticleHighlightNavigationSnapshot& snapshot);
+    void ClearFullTextNavigation(const QString& expected_token = {},
+                                 bool force = false);
+
+    ArticleWebView* web_view_ = nullptr;
+    QWidget* full_text_navigation_row_ = nullptr;
+    class QPushButton* full_text_previous_ = nullptr;
+    class QPushButton* full_text_next_ = nullptr;
+    class QLabel* full_text_status_ = nullptr;
+    QString full_text_navigation_token_;
 
     const goldendict::core::DesktopFacade* facade_ = nullptr;
     bool double_click_translates_ = true;

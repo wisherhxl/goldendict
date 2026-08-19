@@ -2760,7 +2760,7 @@ void MainWindow::RunArticleClickPreferencesSmokeCheck(
                     ++*lookup_count;
             });
     connect(
-        view, &QWebEngineView::loadFinished, this,
+        view, &ArticleView::loadFinished, this,
         [this, view, passed, lookup_count, initial_session, initial_state,
          completion = std::move(completion)](bool success) mutable {
             if (!success) {
@@ -3074,7 +3074,7 @@ void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
         [triggers]() { ++*triggers; }, Qt::DirectConnection);
 
     connect(
-        first_view, &QWebEngineView::loadFinished, this,
+        first_view, &ArticleView::loadFinished, this,
         [this, completion = std::move(completion), passed, initial_session,
          initial_state, first_tab_id, first_view, trigger_connection,
          triggers](bool loaded) mutable {
@@ -3120,7 +3120,7 @@ void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
                     const auto second_tab_id = opened.tab_id;
                     auto* second_view = ArticleViewForTab(second_tab_id);
                     connect(
-                        second_view, &QWebEngineView::loadFinished, this,
+                        second_view, &ArticleView::loadFinished, this,
                         [this, completion = std::move(completion), passed,
                          initial_session, initial_state, first_tab_id,
                          first_view, second_tab_id, trigger_connection,
@@ -3395,7 +3395,7 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
 void MainWindow::RunWebEngineInteractionCheck(
     std::function<void(bool)> completion) {
     connect(
-        article_view_, &QWebEngineView::loadFinished, this,
+        article_view_, &ArticleView::loadFinished, this,
         [this, completion = std::move(completion)](bool loaded) mutable {
             if (!loaded) {
                 completion(false);
@@ -3774,7 +3774,7 @@ void MainWindow::RunDictionaryContextNavigationCheck(
              TabIdAt(article_tabs_->currentIndex()) == tab_id;
 
     connect(
-        view, &QWebEngineView::loadFinished, this,
+        view, &ArticleView::loadFinished, this,
         [this, view, snapshot, tab_id, navigation_requests, passed,
          completion = std::move(completion)](bool loaded) mutable {
             view->TriggerDictionaryContextActionForTest(snapshot, 0);
@@ -5155,7 +5155,7 @@ ArticleView* MainWindow::CreateArticleView(
     page->SetOpenNewTabsInBackground(preferences_.open_new_tabs_in_background);
     view->setPage(page);
     article_navigation_generations_.try_emplace(tab_id, 0U);
-    connect(view, &QWebEngineView::loadStarted, this, [this, tab_id, view]() {
+    connect(view, &ArticleView::loadStarted, this, [this, tab_id, view]() {
         if (ArticleViewForTab(tab_id) != view)
             return;
         InvalidateRenderedTextMatchPlan(tab_id);
@@ -5215,9 +5215,9 @@ ArticleView* MainWindow::CreateArticleView(
             [this, tab_id, view](quint64 generation) {
                 ShowDictionaryResultsPane(tab_id, view, generation);
             });
-    connect(view, &QWebEngineView::urlChanged, this,
+    connect(view, &ArticleView::urlChanged, this,
             &MainWindow::UpdateNavigationActions);
-    connect(view, &QWebEngineView::loadFinished, this,
+    connect(view, &ArticleView::loadFinished, this,
             [this, tab_id, view](bool success) {
                 const auto scroll =
                     pending_article_scroll_restorations_.find(tab_id);
@@ -5266,7 +5266,7 @@ ArticleView* MainWindow::CreateArticleView(
                     }
                 }
             });
-    connect(view, &QWebEngineView::pdfPrintingFinished, this,
+    connect(view, &ArticleView::pdfPrintingFinished, this,
             [this, tab_id](const QString&, bool success) {
                 if (TabIdAt(article_tabs_->currentIndex()) == tab_id) {
                     status_->setText(success
@@ -5274,12 +5274,16 @@ ArticleView* MainWindow::CreateArticleView(
                                          : QStringLiteral("PDF save failed"));
                 }
             });
-    connect(view, &QWebEngineView::printFinished, this, [this](bool success) {
+    connect(view, &ArticleView::printFinished, this, [this](bool success) {
         print_in_progress_ = false;
         UpdateFileActions();
         status_->setText(success ? QStringLiteral("Article printed")
                                  : QStringLiteral("Printing failed"));
     });
+    connect(view, &ArticleView::FullTextNavigationRequested, this,
+            [this, tab_id](ArticleHighlightNavigationDirection direction) {
+                NavigateFullTextHighlight(tab_id, direction);
+            });
     view->setHtml(QStringLiteral(
         "<!doctype html><html><body><h1>GoldenDict</h1>"
         "<p>Choose a dictionary folder to begin.</p></body></html>"));
@@ -7040,10 +7044,122 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     }
     auto run_highlight_smoke = [this, &wait_for]() {
         bool highlight_passed = true;
+        const QString ordinary_query = article_search_->text();
+        const bool ordinary_enabled = article_search_->isEnabled();
+        const auto window_actions = findChildren<QAction*>();
+        const auto f3_count = std::count_if(
+            window_actions.cbegin(), window_actions.cend(),
+            [](const QAction* action) {
+                return action->shortcuts().contains(QKeySequence(Qt::Key_F3));
+            });
+        const auto shift_f3_count =
+            std::count_if(window_actions.cbegin(), window_actions.cend(),
+                          [](const QAction* action) {
+                              return action->shortcuts().contains(
+                                  QKeySequence(Qt::SHIFT | Qt::Key_F3));
+                          });
+        highlight_passed =
+            dictionaries_action_->shortcut() == QKeySequence(Qt::Key_F3) &&
+            f3_count == 1 && shift_f3_count == 0;
         auto* highlight_view = new ArticleView;
+        auto* web_content = highlight_view->findChild<QWebEngineView*>(
+            QStringLiteral("articleWebContent"));
+        auto* navigation_row = highlight_view->findChild<QWidget*>(
+            QStringLiteral("fullTextNavigationRow"));
+        auto* previous_button = highlight_view->findChild<QPushButton*>(
+            QStringLiteral("fullTextPrevious"));
+        auto* next_button = highlight_view->findChild<QPushButton*>(
+            QStringLiteral("fullTextNext"));
+        auto* navigation_status = highlight_view->findChild<QLabel*>(
+            QStringLiteral("fullTextNavigationStatus"));
+        auto* view_layout =
+            qobject_cast<QVBoxLayout*>(highlight_view->layout());
+        highlight_passed =
+            web_content != nullptr && navigation_row != nullptr &&
+            previous_button != nullptr && next_button != nullptr &&
+            navigation_status != nullptr && view_layout != nullptr &&
+            view_layout->indexOf(web_content) == 0 &&
+            view_layout->indexOf(navigation_row) == 1 &&
+            navigation_row->isHidden() &&
+            previous_button->text() == QStringLiteral("&Previous") &&
+            next_button->text() == QStringLiteral("&Next") &&
+            !previous_button->isEnabled() && !next_button->isEnabled() &&
+            navigation_status->text().isEmpty();
+
+        int navigation_requests = 0;
+        QList<ArticleHighlightNavigationDirection> requested_directions;
+        connect(highlight_view, &ArticleView::FullTextNavigationRequested,
+                highlight_view,
+                [&navigation_requests, &requested_directions](
+                    ArticleHighlightNavigationDirection direction) {
+                    ++navigation_requests;
+                    requested_directions.push_back(direction);
+                });
+        highlight_view->PublishFullTextNavigationSnapshot(
+            {true, QStringLiteral("ui-owner"), 0, 1, false, false});
+        highlight_passed =
+            highlight_passed && !navigation_row->isHidden() &&
+            navigation_status->text() == QStringLiteral("1 of 1 matches") &&
+            !previous_button->isEnabled() && !next_button->isEnabled();
+        highlight_view->PublishFullTextNavigationSnapshot(
+            {true, QStringLiteral("ui-owner"), 1, 3, true, true});
+        highlight_passed =
+            highlight_passed &&
+            navigation_status->text() == QStringLiteral("2 of 3 matches") &&
+            previous_button->isEnabled() && next_button->isEnabled();
+        previous_button->click();
+        next_button->click();
+        highlight_passed =
+            highlight_passed && navigation_requests == 2 &&
+            requested_directions ==
+                QList<ArticleHighlightNavigationDirection>{
+                    ArticleHighlightNavigationDirection::kPrevious,
+                    ArticleHighlightNavigationDirection::kNext} &&
+            navigation_status->text() == QStringLiteral("2 of 3 matches");
+        highlight_view->PublishFullTextNavigationSnapshot(
+            {false, QStringLiteral("rejected"), 0, 3, false, true});
+        highlight_view->ClearFullTextNavigation(QStringLiteral("stale"));
+        highlight_passed =
+            highlight_passed && !navigation_row->isHidden() &&
+            navigation_status->text() == QStringLiteral("2 of 3 matches") &&
+            previous_button->isEnabled() && next_button->isEnabled();
+        highlight_view->PublishFullTextNavigationSnapshot(
+            {true, QStringLiteral("ui-owner"), 0, 3, false, true});
+        highlight_passed =
+            highlight_passed &&
+            navigation_status->text() == QStringLiteral("1 of 3 matches") &&
+            !previous_button->isEnabled() && next_button->isEnabled();
+        highlight_view->PublishFullTextNavigationSnapshot(
+            {true, QStringLiteral("ui-owner"), 2, 3, true, false});
+        highlight_passed =
+            highlight_passed &&
+            navigation_status->text() == QStringLiteral("3 of 3 matches") &&
+            previous_button->isEnabled() && !next_button->isEnabled();
+
+        auto* independent_view = new ArticleView;
+        auto* independent_row = independent_view->findChild<QWidget*>(
+            QStringLiteral("fullTextNavigationRow"));
+        independent_view->PublishFullTextNavigationSnapshot(
+            {true, QStringLiteral("independent-owner"), 0, 2, false, true});
+        QTabWidget tab_exposure;
+        tab_exposure.addTab(highlight_view, QStringLiteral("first"));
+        tab_exposure.addTab(independent_view, QStringLiteral("second"));
+        tab_exposure.show();
+        QApplication::processEvents();
+        highlight_passed = highlight_passed && highlight_view->isVisible() &&
+                           navigation_row->isVisible() &&
+                           !independent_view->isVisible() &&
+                           !independent_row->isHidden();
+        tab_exposure.setCurrentWidget(independent_view);
+        QApplication::processEvents();
+        highlight_passed = highlight_passed && !highlight_view->isVisible() &&
+                           independent_view->isVisible() &&
+                           independent_row->isVisible();
+        tab_exposure.setCurrentWidget(highlight_view);
+        QApplication::processEvents();
         bool highlight_loaded = false;
         connect(
-            highlight_view, &QWebEngineView::loadFinished, this,
+            highlight_view, &ArticleView::loadFinished, this,
             [&highlight_loaded](bool ok) { highlight_loaded = ok; },
             Qt::SingleShotConnection);
         const QString highlight_html = QStringLiteral(
@@ -7052,9 +7168,11 @@ void MainWindow::RunFullTextDialogSmokeCheck(
             "Alpha <span>Be</span><span>ta</span> alpha "
             "Beta</a></body></html>");
         highlight_view->setHtml(highlight_html);
-        highlight_passed = highlight_passed && wait_for([&highlight_loaded]() {
-                               return highlight_loaded;
-                           });
+        const bool initial_load_ready =
+            wait_for([&highlight_loaded]() { return highlight_loaded; });
+        highlight_passed = highlight_passed && initial_load_ready &&
+                           navigation_row->isHidden() &&
+                           navigation_status->text().isEmpty();
         QString highlight_text;
         bool highlight_text_ready = false;
         highlight_view->page()->toPlainText(
@@ -7062,10 +7180,9 @@ void MainWindow::RunFullTextDialogSmokeCheck(
                 highlight_text = text;
                 highlight_text_ready = true;
             });
-        highlight_passed =
-            highlight_passed && wait_for([&highlight_text_ready]() {
-                return highlight_text_ready;
-            });
+        const bool initial_text_ready = wait_for(
+            [&highlight_text_ready]() { return highlight_text_ready; });
+        highlight_passed = highlight_passed && initial_text_ready;
         const qsizetype first_beta =
             highlight_text.indexOf(QStringLiteral("Beta"));
         const qsizetype first_alpha =
@@ -7302,13 +7419,16 @@ void MainWindow::RunFullTextDialogSmokeCheck(
 
         ArticleHighlightResult one_range;
         bool one_range_ready = false;
-        highlight_view->ApplyFullTextHighlights(
-            QStringLiteral("smoke-one-range"), highlight_text,
-            std::vector<ArticleHighlightRange>{highlight_ranges.front()}, false,
-            [&one_range, &one_range_ready](ArticleHighlightResult result) {
-                one_range = std::move(result);
-                one_range_ready = true;
-            });
+        if (!highlight_ranges.empty()) {
+            highlight_view->ApplyFullTextHighlights(
+                QStringLiteral("smoke-one-range"), highlight_text,
+                std::vector<ArticleHighlightRange>{highlight_ranges.front()},
+                false,
+                [&one_range, &one_range_ready](ArticleHighlightResult result) {
+                    one_range = std::move(result);
+                    one_range_ready = true;
+                });
+        }
         highlight_passed =
             highlight_passed &&
             wait_for([&one_range_ready]() { return one_range_ready; }) &&
@@ -7352,19 +7472,23 @@ void MainWindow::RunFullTextDialogSmokeCheck(
         highlight_passed = highlight_passed && !empty.accepted;
         bool lifecycle_loaded = false;
         connect(
-            highlight_view, &QWebEngineView::loadFinished, this,
+            highlight_view, &ArticleView::loadFinished, this,
             [&lifecycle_loaded](bool ok) { lifecycle_loaded = ok; },
             Qt::SingleShotConnection);
         highlight_view->setHtml(QStringLiteral(
             "<!doctype html><html><body>replacement</body></html>"));
-        highlight_passed = highlight_passed && wait_for([&lifecycle_loaded]() {
-                               return lifecycle_loaded;
-                           });
+        const bool lifecycle_ready =
+            wait_for([&lifecycle_loaded]() { return lifecycle_loaded; });
+        highlight_passed = highlight_passed && lifecycle_ready;
         const auto invalidated =
             navigate(QStringLiteral("smoke-one-range"),
                      ArticleHighlightNavigationDirection::kNext);
-        highlight_passed = highlight_passed && !invalidated.accepted;
-        highlight_view->deleteLater();
+        highlight_passed = highlight_passed && !invalidated.accepted &&
+                           navigation_row->isHidden() &&
+                           navigation_status->text().isEmpty() &&
+                           article_search_->text() == ordinary_query &&
+                           article_search_->isEnabled() == ordinary_enabled &&
+                           navigation_status != article_search_status_;
         return highlight_passed;
     };
 
@@ -7516,7 +7640,8 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     disconnect(session_connection);
     disconnect(lookup_connection);
     disconnect(geometry_connection);
-    passed = passed && run_highlight_smoke();
+    const bool row_smoke_passed = run_highlight_smoke();
+    passed = passed && row_smoke_passed;
     const auto teardown_tab_id = TabIdAt(article_tabs_->currentIndex());
     if (auto* teardown_view = ArticleViewForTab(teardown_tab_id);
         teardown_view != nullptr &&
@@ -8342,7 +8467,7 @@ void MainWindow::SetFavoriteItems(const std::vector<FavoriteViewItem>& items,
 
 void MainWindow::RunWebEngineSmokeCheck(std::function<void(bool)> completion) {
     connect(
-        article_view_, &QWebEngineView::loadFinished, this,
+        article_view_, &ArticleView::loadFinished, this,
         [this, completion = std::move(completion)](bool loaded) mutable {
             if (!loaded) {
                 completion(false);
@@ -8722,7 +8847,7 @@ void MainWindow::FinishLookup() {
                     pending_article_search_handoffs_.erase(pending);
                 }
                 connect(
-                    view, &QWebEngineView::loadFinished, this,
+                    view, &ArticleView::loadFinished, this,
                     [this, id, view, presentation_generation,
                      search_handoff = std::move(search_handoff)](bool success) {
                         const auto current = lookup_results_.find(id);
@@ -8951,6 +9076,15 @@ void MainWindow::SubmitRenderedTextMatchPlan(
         search->second.ignore_diacritics,
         transport->second.view,
         transport->second.page};
+    if (const auto current = rendered_text_match_plans_.find(tab_id);
+        current != rendered_text_match_plans_.end() &&
+        !current->second.application_token.isEmpty() &&
+        !current->second.identity.view.isNull()) {
+        current->second.identity.view->ClearFullTextHighlights(
+            current->second.application_token, true);
+        current->second.identity.view->ClearFullTextNavigation(
+            current->second.application_token, true);
+    }
     rendered_text_match_plans_.erase(tab_id);
     rendered_text_match_plan_controller_->Submit(std::move(request),
                                                  generation);
@@ -9062,6 +9196,12 @@ void MainWindow::FinishRenderedTextMatchPlan(
             found->second.applied = true;
             found->second.occurrence_count = applied.occurrence_count;
             found->second.current_position = applied.current_position;
+            if (applied.ordered_count > 0) {
+                guarded_view->PublishFullTextNavigationSnapshot(
+                    {true, applied.token, applied.current_position,
+                     applied.ordered_count, applied.current_position > 0,
+                     applied.current_position + 1 < applied.ordered_count});
+            }
         });
 }
 
@@ -9078,6 +9218,8 @@ void MainWindow::InvalidateRenderedTextMatchPlan(
             !found->second.identity.view.isNull()) {
             found->second.identity.view->ClearFullTextHighlights(
                 found->second.application_token, true);
+            found->second.identity.view->ClearFullTextNavigation(
+                found->second.application_token, true);
         }
         rendered_text_match_plans_.erase(*tab_id);
     } else {
@@ -9086,6 +9228,8 @@ void MainWindow::InvalidateRenderedTextMatchPlan(
             if (!state.application_token.isEmpty() &&
                 !state.identity.view.isNull()) {
                 state.identity.view->ClearFullTextHighlights(
+                    state.application_token, true);
+                state.identity.view->ClearFullTextNavigation(
                     state.application_token, true);
             }
         }
@@ -9171,6 +9315,7 @@ void MainWindow::NavigateFullTextHighlight(
                 return;
             }
             current->second.current_position = snapshot.current_position;
+            identity.view->PublishFullTextNavigationSnapshot(snapshot);
         });
 }
 
