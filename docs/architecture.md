@@ -5974,7 +5974,7 @@ Dictionaries-only F3, translations and exactly 109 registrations remain
 locked. P8-FT-79 is complete. No successor
 beyond it is selected or named.
 
-### Phase 8 P8-FT-80 persisted full-text policy application (selected)
+### Phase 8 P8-FT-80 persisted full-text policy application (completed)
 
 The fresh post-P8-FT-79 readiness audit is grounded at synchronized migrated
 revision `d79180de54bc19076ff3eae4743cf5de40a40e18` and clean pinned legacy
@@ -6007,9 +6007,10 @@ Policy application submits no work and owns no thread, startup artifact
 reconciliation, progress/status projection or UI transport. It adds no public
 or installed interface and no registration.
 
-Acceptance uses focused existing lifecycle and application-service tests for
-enabled and disabled policy, disabled format, article threshold, capable and
-incapable ports, source-revision failure, multiple and zero registrations,
+Completed acceptance uses focused existing lifecycle and application-service
+tests for enabled and disabled policy, disabled format, article threshold,
+capable and incapable ports, source-revision failure, multiple and zero
+registrations,
 repeated application, monotonic generations and cancellation of superseded
 requested or working generations. Cancellation of superseded work is
 cooperative, but an excluded, unavailable, failed, stale or cancelled

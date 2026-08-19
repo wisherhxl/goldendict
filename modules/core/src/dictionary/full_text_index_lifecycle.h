@@ -202,6 +202,7 @@ class FullTextIndexLifecycleCoordinator final {
         FullTextIndexRegistrationMetadata metadata,
         std::shared_ptr<FullTextIndexFormatWorkPort> format_work_port,
         std::shared_ptr<FullTextIndexSnapshotHolder> snapshot_holder);
+    bool ApplyPolicyToRegisteredEntries(const FullTextIndexPolicy& policy);
     bool SubmitRebuild(const FullTextIndexRebuildIntent& intent);
     bool ExecuteBoundedWork(FullTextIndexWorkRequest request);
     bool Cancel(const FullTextIndexCancelIntent& intent) noexcept;

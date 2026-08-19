@@ -5852,7 +5852,7 @@ surfaces, dependencies, ordinary find/F3, translations and exactly 109 Release
 registrations remain unchanged. P8-FT-79 is complete. No successor beyond it
 is selected or named.
 
-### Phase 8 P8-FT-80 persisted full-text policy application (selected)
+### Phase 8 P8-FT-80 persisted full-text policy application (completed)
 
 The independent post-P8-FT-79 audit used synchronized migrated revision
 `d79180de54bc19076ff3eae4743cf5de40a40e18` and clean pinned legacy revision
@@ -5865,8 +5865,9 @@ full-text parameters to dictionaries before starting or restarting its indexer.
 The audit therefore selects only P8-FT-80: apply persisted policy to registered
 dictionaries before any reconciliation or scheduling boundary.
 
-The leaf adds one private coordinator-wide application operation. It assigns a
-strictly newer generation to every entry present for that application,
+The completed leaf adds one private coordinator-wide application operation. It
+assigns a strictly newer generation to every entry present for that
+application,
 re-evaluates capability and the existing eligibility predicate, captures the
 eligible source revision, cancels the superseded generation and transitions to
 exactly `kUnavailable`, `kPolicyExcluded`, `kFailed` or `kWorkRequested`.
@@ -5876,7 +5877,7 @@ policy projected from the already-loaded application preferences. Only AARD is
 affected in production because no other real format-work port is registered.
 
 Acceptance extends only existing lifecycle and application-service tests. It
-must prove enabled and disabled policy, disabled format matching, article-count
+proves enabled and disabled policy, disabled format matching, article-count
 thresholds, capable and incapable ports, source-revision failure, multiple and
 zero registrations, repeated application, strictly newer per-entry generations
 and cancellation of superseded requested or working work. Cancellation is

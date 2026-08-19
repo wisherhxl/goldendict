@@ -9,6 +9,7 @@
 #include <thread>
 #include <type_traits>
 
+#include "../src/application/full_text_index_lifecycle_inspection.h"
 #include "goldendict/core/application.h"
 #include "goldendict/core/headword_export.h"
 #include "support/aard_fixture.h"
@@ -184,6 +185,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesBglResources();
     void DiscoversSanitizesAndQueriesMdictResources();
     void DiscoversSanitizesAndQueriesAard();
+    void AppliesPersistedFullTextPolicyAfterAardDiscovery();
     void DiscoversSanitizesAndQueriesZimResources();
     void DiscoversSanitizesAndQueriesSlobResources();
     void DiscoversSanitizesAndQueriesEpwingResources();
@@ -3431,6 +3433,51 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesAard() {
     service = CreateDictionaryService(configuration);
     QCOMPARE(ReadFile(index_path), canonical);
     QCOMPARE(service->GetCatalog().front().article_count, std::size_t{2});
+}
+
+void ApplicationServiceTest::
+    AppliesPersistedFullTextPolicyAfterAardDiscovery() {
+    CoreConfiguration empty_configuration;
+    auto empty_service = CreateDictionaryService(empty_configuration);
+    QVERIFY(empty_service->GetCatalog().empty());
+
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteAardFixture(root);
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    configuration.index_directory = (root / "indexes").string();
+    auto service = CreateDictionaryService(configuration);
+    const auto dictionary_id = service->GetCatalog().front().id;
+    const auto requested =
+        application::FullTextIndexLifecycleSnapshot(*service, dictionary_id);
+    QVERIFY(requested.has_value());
+    QCOMPARE(requested->identity().generation, 1U);
+    QCOMPARE(requested->state(),
+             dictionary::FullTextIndexLifecycleState::kWorkRequested);
+    const auto artifact = std::filesystem::path(configuration.index_directory) /
+                          (dictionary_id + ".gdfts");
+    const auto canonical = ReadFile(artifact);
+
+    configuration.preferences.full_text_disabled_types = "aard";
+    service = CreateDictionaryService(configuration);
+    const auto excluded =
+        application::FullTextIndexLifecycleSnapshot(*service, dictionary_id);
+    QVERIFY(excluded.has_value());
+    QCOMPARE(excluded->identity().generation, 1U);
+    QCOMPARE(excluded->state(),
+             dictionary::FullTextIndexLifecycleState::kPolicyExcluded);
+    QCOMPARE(ReadFile(artifact), canonical);
+
+    configuration.preferences.full_text_disabled_types.clear();
+    configuration.preferences.full_text_maximum_dictionary_articles = 1U;
+    service = CreateDictionaryService(configuration);
+    QCOMPARE(
+        application::FullTextIndexLifecycleSnapshot(*service, dictionary_id)
+            ->state(),
+        dictionary::FullTextIndexLifecycleState::kPolicyExcluded);
+    QCOMPARE(ReadFile(artifact), canonical);
 }
 
 void ApplicationServiceTest::DiscoversSanitizesAndQueriesZimResources() {

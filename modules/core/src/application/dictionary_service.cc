@@ -60,6 +60,7 @@
 #include "../foundation/text_folding.h"
 #include "../foundation/utf8.h"
 #include "exact_article_target_resolver.h"
+#include "full_text_index_lifecycle_inspection.h"
 #include "goldendict/core/application.h"
 #include "input_phrase.h"
 
@@ -1082,6 +1083,11 @@ class ServiceState final {
             }
             groups_.emplace(group.id, std::move(resolved));
         }
+        if (!full_text_index_coordinator_.ApplyPolicyToRegisteredEntries(
+                dictionary::ProjectFullTextIndexPolicy(preferences_))) {
+            throw std::runtime_error(
+                "Could not apply persisted full-text index policy");
+        }
     }
 
     std::vector<DictionaryIdentity> GetCatalog() const {
@@ -1731,6 +1737,11 @@ class ServiceState final {
                 resolved->document_id, resolved->headword};
     }
 
+    std::optional<dictionary::FullTextIndexLifecycleSnapshot>
+    FullTextIndexLifecycleSnapshot(const std::string& dictionary_id) const {
+        return full_text_index_coordinator_.Snapshot(dictionary_id);
+    }
+
    private:
     std::vector<const dictionary::Backend*> BackendsForGroup(
         std::uint32_t group_id) const {
@@ -1871,6 +1882,11 @@ class DictionaryServiceImpl final : public DictionaryService {
         return state_->ResolveExactArticleTarget(target);
     }
 
+    std::optional<dictionary::FullTextIndexLifecycleSnapshot>
+    FullTextIndexLifecycleSnapshot(const std::string& dictionary_id) const {
+        return state_->FullTextIndexLifecycleSnapshot(dictionary_id);
+    }
+
    private:
     std::shared_ptr<const ServiceState> state_;
 };
@@ -1878,6 +1894,16 @@ class DictionaryServiceImpl final : public DictionaryService {
 }  // namespace
 
 namespace application {
+
+std::optional<dictionary::FullTextIndexLifecycleSnapshot>
+FullTextIndexLifecycleSnapshot(const DictionaryService& service,
+                               const std::string& dictionary_id) {
+    const auto* implementation =
+        dynamic_cast<const DictionaryServiceImpl*>(&service);
+    if (implementation == nullptr)
+        return std::nullopt;
+    return implementation->FullTextIndexLifecycleSnapshot(dictionary_id);
+}
 
 ResolvedExactArticleTarget ResolveExactArticleTarget(
     const DictionaryService& service, const ExactArticleTarget& target) {

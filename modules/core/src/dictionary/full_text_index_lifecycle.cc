@@ -7,12 +7,14 @@
 #include <array>
 #include <atomic>
 #include <exception>
+#include <limits>
 #include <map>
 #include <mutex>
 #include <new>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace goldendict::core::dictionary {
 
@@ -184,6 +186,89 @@ bool FullTextIndexLifecycleCoordinator::RegisterDictionary(
                      std::move(metadata), std::move(format_work_port),
                      std::move(snapshot_holder), std::move(generation), false})
         .second;
+}
+
+bool FullTextIndexLifecycleCoordinator::ApplyPolicyToRegisteredEntries(
+    const FullTextIndexPolicy& policy) {
+    struct Replacement final {
+        std::string dictionary_id;
+        std::shared_ptr<Implementation::Generation> superseded;
+        std::shared_ptr<Implementation::Generation> generation;
+    };
+
+    std::vector<Replacement> replacements;
+    {
+        std::lock_guard lock(implementation_->mutex);
+        replacements.reserve(implementation_->entries.size());
+        for (const auto& [dictionary_id, entry] : implementation_->entries) {
+            if (entry.current->identity.generation ==
+                std::numeric_limits<std::uint64_t>::max()) {
+                return false;
+            }
+            replacements.push_back({dictionary_id, entry.current, nullptr});
+        }
+    }
+
+    for (auto& replacement : replacements) {
+        std::shared_ptr<FullTextIndexFormatWorkPort> port;
+        FullTextIndexRegistrationMetadata metadata;
+        {
+            std::lock_guard lock(implementation_->mutex);
+            const auto found =
+                implementation_->entries.find(replacement.dictionary_id);
+            if (found == implementation_->entries.end() ||
+                found->second.current != replacement.superseded) {
+                return false;
+            }
+            port = found->second.port;
+            metadata = found->second.metadata;
+        }
+
+        const bool format_capable = port->IsFullTextIndexSupported();
+        std::string source_revision;
+        FullTextIndexLifecycleState state =
+            FullTextIndexLifecycleState::kUnavailable;
+        if (format_capable &&
+            !IsFullTextIndexPolicyEligible(metadata, policy)) {
+            state = FullTextIndexLifecycleState::kPolicyExcluded;
+        } else if (format_capable) {
+            state = FullTextIndexLifecycleState::kWorkRequested;
+            try {
+                source_revision = port->FullTextIndexSourceRevision();
+            } catch (...) {
+                state = FullTextIndexLifecycleState::kFailed;
+            }
+        }
+
+        replacement.generation = std::make_shared<Implementation::Generation>();
+        replacement.generation->identity = {
+            replacement.superseded->identity.generation + 1U,
+            replacement.dictionary_id};
+        replacement.generation->policy = policy;
+        replacement.generation->format_capable = format_capable;
+        replacement.generation->source_revision = std::move(source_revision);
+        replacement.generation->state = state;
+        replacement.generation->cancellation =
+            std::make_shared<CoordinatorCancellation>();
+    }
+
+    std::lock_guard lock(implementation_->mutex);
+    for (const auto& replacement : replacements) {
+        const auto found =
+            implementation_->entries.find(replacement.dictionary_id);
+        if (found == implementation_->entries.end() ||
+            found->second.current != replacement.superseded) {
+            return false;
+        }
+    }
+    for (auto& replacement : replacements) {
+        auto& entry = implementation_->entries.at(replacement.dictionary_id);
+        if (entry.current->cancellation != nullptr)
+            entry.current->cancellation->Cancel();
+        entry.current = std::move(replacement.generation);
+        entry.has_accepted_generation = true;
+    }
+    return true;
 }
 
 bool FullTextIndexLifecycleCoordinator::SubmitRebuild(

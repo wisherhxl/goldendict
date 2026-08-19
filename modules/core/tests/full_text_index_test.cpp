@@ -207,6 +207,7 @@ class FullTextIndexTest : public QObject {
     void LifecycleContract();
     void RegistrationMetadataAndEligibility();
     void PolicyExcludedLifecycle();
+    void AppliesPolicyToAllRegisteredEntries();
     void CoordinatesExplicitLifecycleTransitions();
     void IsolatesAndMonotonicallyReplacesGenerations();
     void CancelsExactWorkIdempotently();
@@ -537,6 +538,120 @@ void FullTextIndexTest::PolicyExcludedLifecycle() {
              FullTextIndexLifecycleState::kFailed);
     QVERIFY(coordinator.Snapshot("supported")->format_capable());
     QVERIFY(coordinator.Snapshot("supported")->source_revision().empty());
+}
+
+void FullTextIndexTest::AppliesPolicyToAllRegisteredEntries() {
+    TemporaryDirectory directory;
+    FullTextIndexLifecycleCoordinator empty;
+    QVERIFY(empty.ApplyPolicyToRegisteredEntries({}));
+
+    FullTextIndexLifecycleCoordinator coordinator;
+    auto eligible = std::make_shared<FakeFormatWorkPort>();
+    auto threshold = std::make_shared<FakeFormatWorkPort>();
+    auto excluded = std::make_shared<FakeFormatWorkPort>();
+    auto incapable = std::make_shared<FakeFormatWorkPort>();
+    incapable->supported = false;
+    auto failed = std::make_shared<FakeFormatWorkPort>();
+    auto holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    const auto current = Snapshot(directory, "policy-current");
+    QVERIFY(holder->Publish(current));
+    QVERIFY(Register(coordinator, Registration("eligible", "AARD", 9U),
+                     eligible, holder));
+    QVERIFY(Register(coordinator, Registration("threshold", "DSL", 10U),
+                     threshold));
+    QVERIFY(
+        Register(coordinator, Registration("excluded", "BGL", 2U), excluded));
+    QVERIFY(Register(coordinator, Registration("incapable", "MDICT", 1U),
+                     incapable));
+    QVERIFY(Register(coordinator, Registration("failed", "SDICT", 1U), failed));
+    failed->throw_revision = true;
+
+    FullTextIndexPolicy policy;
+    policy.maximum_dictionary_articles = 10U;
+    policy.disabled_format_types = "bgl";
+    const auto eligible_revision_probes = eligible->revision_probe_count;
+    QVERIFY(coordinator.ApplyPolicyToRegisteredEntries(policy));
+    QCOMPARE(coordinator.Snapshot("eligible")->state(),
+             FullTextIndexLifecycleState::kWorkRequested);
+    QCOMPARE(coordinator.Snapshot("eligible")->identity().generation, 1U);
+    QCOMPARE(coordinator.Snapshot("eligible")->source_revision(),
+             std::string("revision-1"));
+    QCOMPARE(eligible->revision_probe_count, eligible_revision_probes + 1U);
+    QCOMPARE(coordinator.Snapshot("threshold")->state(),
+             FullTextIndexLifecycleState::kWorkRequested);
+    QCOMPARE(coordinator.Snapshot("excluded")->state(),
+             FullTextIndexLifecycleState::kPolicyExcluded);
+    QCOMPARE(coordinator.Snapshot("incapable")->state(),
+             FullTextIndexLifecycleState::kUnavailable);
+    QCOMPARE(coordinator.Snapshot("failed")->state(),
+             FullTextIndexLifecycleState::kFailed);
+    QCOMPARE(eligible->invocation_count, 0U);
+    QCOMPARE(holder->Acquire().get(), current.get());
+
+    FullTextIndexPolicy disabled;
+    disabled.enabled = false;
+    QVERIFY(coordinator.ApplyPolicyToRegisteredEntries(disabled));
+    for (const auto* dictionary_id :
+         {"eligible", "threshold", "excluded", "failed"}) {
+        QCOMPARE(coordinator.Snapshot(dictionary_id)->identity().generation,
+                 2U);
+        QCOMPARE(coordinator.Snapshot(dictionary_id)->state(),
+                 FullTextIndexLifecycleState::kPolicyExcluded);
+    }
+    QCOMPARE(coordinator.Snapshot("incapable")->identity().generation, 2U);
+    QCOMPARE(coordinator.Snapshot("incapable")->state(),
+             FullTextIndexLifecycleState::kUnavailable);
+    QCOMPARE(holder->Acquire().get(), current.get());
+
+    FullTextIndexPolicy below_threshold;
+    below_threshold.maximum_dictionary_articles = 9U;
+    QVERIFY(coordinator.ApplyPolicyToRegisteredEntries(below_threshold));
+    QCOMPARE(coordinator.Snapshot("eligible")->state(),
+             FullTextIndexLifecycleState::kWorkRequested);
+    QCOMPARE(coordinator.Snapshot("threshold")->state(),
+             FullTextIndexLifecycleState::kPolicyExcluded);
+    QCOMPARE(coordinator.Snapshot("eligible")->identity().generation, 3U);
+    QCOMPARE(coordinator.Snapshot("threshold")->identity().generation, 3U);
+
+    FullTextIndexLifecycleCoordinator requested;
+    auto requested_port = std::make_shared<FakeFormatWorkPort>();
+    QVERIFY(Register(requested, Registration("requested"), requested_port));
+    QVERIFY(requested.SubmitRebuild({{7U, "requested"}, {}}));
+    const auto requested_token = requested_port;
+    QVERIFY(requested.ApplyPolicyToRegisteredEntries(disabled));
+    QCOMPARE(requested.Snapshot("requested")->identity().generation, 8U);
+    FullTextIndexWorkRequest old_request;
+    old_request.identity = {7U, "requested"};
+    QVERIFY(!requested.ExecuteBoundedWork(old_request));
+    QCOMPARE(requested_token->invocation_count, 0U);
+
+    FullTextIndexLifecycleCoordinator working;
+    auto blocking = std::make_shared<BlockingFormatWorkPort>();
+    auto working_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    QVERIFY(working_holder->Publish(current));
+    QVERIFY(
+        Register(working, Registration("working"), blocking, working_holder));
+    QVERIFY(working.SubmitRebuild({{4U, "working"}, {}}));
+    FullTextIndexWorkRequest work;
+    work.identity = {4U, "working"};
+    auto stale = std::async(std::launch::async,
+                            [&] { return working.ExecuteBoundedWork(work); });
+    blocking->WaitUntilStarted();
+    QVERIFY(working.ApplyPolicyToRegisteredEntries(disabled));
+    const auto artifact = directory.path() / "stale-policy.gdfts";
+    auto prepared = FullTextIndex::PrepareUpdate(
+        artifact, {}, {Document("stale", "Stale", "stale policy content")});
+    blocking->Finish({FullTextIndexWorkStatus::kCompleted,
+                      {},
+                      prepared->snapshot(),
+                      prepared});
+    QVERIFY(stale.get());
+    QVERIFY(blocking->cancellation_observed());
+    QVERIFY(!std::filesystem::exists(artifact));
+    QCOMPARE(working.Snapshot("working")->identity().generation, 5U);
+    QCOMPARE(working.Snapshot("working")->state(),
+             FullTextIndexLifecycleState::kPolicyExcluded);
+    QCOMPARE(working_holder->Acquire().get(), current.get());
 }
 
 void FullTextIndexTest::CoordinatesExplicitLifecycleTransitions() {

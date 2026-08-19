@@ -1544,7 +1544,7 @@ ordinary find/F3, translations and exactly 109 registrations remain locked.
 P8-FT-79 is complete. No successor beyond it is selected or
 named.
 
-### P8-FT-80 persisted full-text policy application (selected)
+### P8-FT-80 persisted full-text policy application (completed)
 
 The fresh post-P8-FT-79 audit at synchronized migrated revision
 `d79180de54bc19076ff3eae4743cf5de40a40e18` and clean pinned legacy revision
@@ -1563,7 +1563,7 @@ loaded preferences. Empty registration sets are a successful no-op and
 repeated applications remain monotonic. The production connection affects
 only the completed AARD registration and neither schedules nor executes work.
 
-Focused existing lifecycle and application-service coverage will pin enabled,
+Focused existing lifecycle and application-service coverage pins enabled,
 disabled, format-excluded and article-threshold policies; capable/incapable
 ports; revision failure; multiple and zero entries; repetition; monotonicity;
 and cancellation of superseded requested or working generations. Cancellation
