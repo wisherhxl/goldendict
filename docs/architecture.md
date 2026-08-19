@@ -6321,6 +6321,51 @@ serial/coalesced/no-retry behavior, `full-text-v1`, find/F3, translations and
 exactly 109 registrations remain locked. No successor beyond P8-FT-86 is
 selected or named.
 
+### Phase 8 P8-FT-87 private ServiceState executor ownership prerequisite (selected)
+
+The independent post-P8-FT-86 readiness audit is grounded at synchronized
+migrated revision `e8f2d9f49076def8186785ece6a712d5a2ea90ed` and clean pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`dictionary_service.cc:676-681,920-950,1090-1105,1775-1783` constructs
+`ServiceState`, registers the only production AARD port, applies policy and
+reconciles startup evidence, but owns no executor. The executor references its
+coordinator and joins its worker on shutdown at
+`full_text_index_work_executor.h:15-41` and
+`full_text_index_work_executor.cc:9-43`. Pinned legacy
+`fulltextsearch.cc:74-112` owns and stops one background indexing operation,
+while `mainwindow.hh:153-160,194-196` declares indexing after its referenced
+dictionary storage so reverse member destruction stops indexing first. The
+smallest dependency-ready leaf is therefore private executor ownership and
+lifetime inside `ServiceState`, before any startup or recomposition submission.
+
+P8-FT-87 composes exactly one `FullTextIndexWorkExecutor` as a concrete private
+`ServiceState` dependency referencing the existing coordinator. Construction
+occurs only after discovery, AARD registration, persisted-policy application
+and startup-artifact reconciliation complete, so no worker exists while the
+service is partially composed. Declaration and destruction order must make the
+executor shut down and join before registered dictionary ports and the
+coordinator are destroyed. The executor remains idle: this leaf does not call
+`Submit`, discover or claim work, or choose execution bounds. Failure to create
+the executor fails service construction through the existing construction
+boundary; shutdown remains idempotent and exposes no new error surface.
+
+Focused future acceptance extends the existing application-service and
+full-text-index tests without a new registration. It proves one executor per
+successfully constructed `ServiceState`, idle construction with zero or
+multiple registrations, no lifecycle or port effect during composition, and
+joined shutdown before an AARD port or coordinator can be destroyed. Tests use
+condition-gated fakes or explicit lifetime sentinels rather than timing sleeps.
+
+Startup/recomposition submission, configured bounds, lifecycle transitions,
+retry, additional queues or parallelism, progress/status, Preferences,
+additional format bridges, artifact/snapshot/persistence changes, UI,
+serialization, dependencies and public/installed APIs remain excluded.
+P8-FT-72 through P8-FT-86, private Core authority, no-quota defaults, 32/64-bit
+coherence, serial/coalesced/no-retry execution, `full-text-v1`, find/F3,
+translations and exactly 109 registrations remain locked. Completion unlocks
+only a later audit of startup submission with
+`DefaultFullTextIndexExecutionBounds()`; P8-FT-87 selects or ranks no successor.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

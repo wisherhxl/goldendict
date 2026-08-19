@@ -1772,6 +1772,37 @@ through P8-FT-85, serial/coalesced/no-retry execution, `full-text-v1`, find/F3,
 translations and exactly 109 registrations remain locked. No successor beyond
 P8-FT-86 is selected or named.
 
+### P8-FT-87 private ServiceState executor ownership prerequisite (selected)
+
+The post-P8-FT-86 audit at synchronized migrated revision
+`e8f2d9f49076def8186785ece6a712d5a2ea90ed` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects one private composition
+prerequisite. `ServiceState` already owns the coordinator and registered
+dictionary ports but no executor; the executor references that coordinator,
+owns one worker and joins on shutdown. Pinned legacy likewise owns one indexing
+operation and destroys it before its referenced dictionaries. P8-FT-87 makes
+`ServiceState` own exactly one concrete executor, created only after discovery,
+registration, policy application and startup reconciliation, with member
+lifetime ordered so executor shutdown/join precedes port and coordinator
+destruction.
+
+The owned executor remains idle. Construction performs no submission,
+discovery, claim, execution, lifecycle transition or port call, and failure to
+create it fails service construction through the existing boundary. Future
+focused coverage stays in the existing Core registrations and proves one
+executor per service state, zero/multiple-registration construction, idle
+composition and joined teardown before referenced AARD port/coordinator
+lifetime ends.
+
+Startup/recomposition submission, configured bounds, retry, concurrency,
+progress/status, persistence/snapshot changes, additional format bridges,
+public APIs, dependencies, UI and registrations remain excluded. P8-FT-72
+through P8-FT-86, private Core authority, no-quota 32/64-bit-coherent defaults,
+serial/coalesced/no-retry execution, `full-text-v1`, find/F3, translations and
+exactly 109 registrations remain locked. Completion unlocks only a later
+startup-submission audit using the default bounds; no successor beyond
+P8-FT-87 is selected or named.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

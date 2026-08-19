@@ -6132,6 +6132,45 @@ excluded. P8-FT-72 through P8-FT-85, Core authority, serial/coalesced/no-retry
 execution, `full-text-v1`, find/F3, translations and exactly 109 registrations
 remain locked. No successor beyond P8-FT-86 is selected or named.
 
+### P8-FT-87 Private ServiceState Executor Ownership Prerequisite
+
+The independent post-P8-FT-86 audit is grounded at synchronized migrated
+revision `e8f2d9f49076def8186785ece6a712d5a2ea90ed` and clean pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current `ServiceState`
+composition registers AARD, applies persisted lifecycle policy and reconciles
+startup evidence but does not own the completed serial executor. The executor
+contract requires its referenced coordinator and ports to outlive it and joins
+its worker during shutdown. Pinned legacy owns one indexing operation and
+orders it after dictionary storage so it is destroyed first. The selected
+smallest dependency-ready leaf is P8-FT-87: private executor ownership and
+lifetime composition, not submission.
+
+The implementation contract adds exactly one concretely owned
+`FullTextIndexWorkExecutor` to `ServiceState`. It is created only after all
+discovery, registration, policy application and startup reconciliation succeed.
+Member declaration and destruction order must stop and join the executor before
+destroying any registered port or the coordinator it references. It starts
+idle, receives no bounds and performs no submission, discovery, claim or work.
+Executor-construction failure follows existing service-construction failure;
+shutdown stays idempotent and private.
+
+Future acceptance extends only the existing `application_service_test` and
+`full_text_index_test` registrations. It proves one owned executor per
+successful service state, safe idle construction for zero and multiple
+registrations, no composition-time lifecycle or port effect, and joined
+shutdown before AARD port/coordinator teardown using deterministic lifetime
+sentinels rather than sleeps. No executable or test registration is added.
+
+Startup/recomposition submission, configurable bounds, lifecycle transitions,
+retry, extra queues or workers, progress/status, Preferences, other format
+bridges, artifact/snapshot/persistence changes, UI, serialization, dependencies
+and public/installed APIs remain excluded. P8-FT-72 through P8-FT-86, private
+Core authority, no-quota defaults, 32/64-bit coherence,
+serial/coalesced/no-retry execution, `full-text-v1`, find/F3, translations and
+exactly 109 registrations remain locked. Completion unlocks only a later audit
+of startup submission with `DefaultFullTextIndexExecutionBounds()`; no
+successor beyond P8-FT-87 is selected or named.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

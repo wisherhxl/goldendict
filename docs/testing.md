@@ -4938,6 +4938,41 @@ serial/coalesced/no-retry behavior, `full-text-v1`, find/F3, translations and
 exactly 109 registrations remain locked. No successor beyond P8-FT-86 is
 selected or named.
 
+## P8-FT-87 ServiceState Executor Ownership Acceptance (Selected)
+
+P8-FT-87 remains within the existing `application_service_test` and
+`full_text_index_test` registrations. Future focused coverage must prove that
+each successfully constructed `ServiceState` owns exactly one
+`FullTextIndexWorkExecutor`, created only after discovery, registration, policy
+application and startup-artifact reconciliation. Construction with zero or
+multiple registered entries remains idle and deterministic: it submits no
+bounds, performs no discovery or claim, changes no lifecycle state and calls no
+format port.
+
+Lifetime coverage must use condition-gated fakes or explicit destruction
+sentinels, not timing sleeps. It must prove executor shutdown is idempotent and
+joins the worker before any registered AARD work port, snapshot holder or the
+referenced coordinator is destroyed. Executor-construction failure must reject
+the complete service construction without exposing a new public error or a
+partially usable service.
+
+The focused future commands are
+`ctest --preset conan-release -R '^(application_service_test|full_text_index_test)$'`
+after the Release targets have been built. The full implementation gate remains
+fresh Linux Release configure/build, 109/109 CTest, and the established
+install/package/API checks. This documentation leaf changes no evidence or
+executable behavior, so it runs no compiled tests and must preserve exactly 109
+registrations.
+
+Startup/recomposition submission, configured bounds, execution effects, retry,
+additional concurrency, progress/status, persistence/snapshot changes, other
+format bridges, public/installed APIs, dependencies, UI and new registrations
+remain excluded. P8-FT-72 through P8-FT-86, private Core authority, no-quota
+32/64-bit-coherent defaults, serial/coalesced/no-retry execution,
+`full-text-v1`, find/F3 and translations remain locked. Completion unlocks only
+a later startup-submission audit using `DefaultFullTextIndexExecutionBounds()`;
+no successor beyond P8-FT-87 is selected or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
