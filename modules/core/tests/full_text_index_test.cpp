@@ -203,6 +203,7 @@ class FullTextIndexTest : public QObject {
     Q_OBJECT
    private slots:
     void Lifecycle();
+    void PreparesWithoutPersisting();
     void LifecycleContract();
     void RegistrationMetadataAndEligibility();
     void PolicyExcludedLifecycle();
@@ -730,12 +731,22 @@ void FullTextIndexTest::SuppressesStaleCompletions() {
         excluded.disabled_format_types = "aard";
         QVERIFY(coordinator.SubmitRebuild({{2U, "dictionary"}, excluded}));
         const auto replacement = coordinator.Snapshot("dictionary");
+        const auto artifact =
+            directory.path() /
+            ("stale-artifact-" +
+             std::to_string(static_cast<int>(stale_status)) + ".gdfts");
         if (completion == BlockingFormatWorkPort::Completion::kResult) {
-            port->Finish({stale_status, "stale failure", stale_candidate});
+            auto prepared = FullTextIndex::PrepareUpdate(
+                artifact, {},
+                {Document("stale", "Stale", "stale prepared content")});
+            port->Finish({stale_status, "stale failure", prepared->snapshot(),
+                          prepared});
+            QVERIFY(!std::filesystem::exists(artifact));
         } else {
             port->FinishByThrowing(completion);
         }
         QVERIFY(stale.get());
+        QVERIFY(!std::filesystem::exists(artifact));
         QVERIFY(port->cancellation_observed());
         QCOMPARE(coordinator.Snapshot("dictionary"), replacement);
         QCOMPARE(coordinator.Snapshot("dictionary")->identity().generation, 2U);
@@ -1154,6 +1165,38 @@ void FullTextIndexTest::Lifecycle() {
     }
     QCOMPARE(FullTextIndex::OpenOrBuild(path, sources, documents).state(),
              FullTextIndexState::kRebuiltCorrupt);
+}
+
+void FullTextIndexTest::PreparesWithoutPersisting() {
+    TemporaryDirectory directory;
+    const auto path = directory.path() / "prepared.gdfts";
+    const auto source = directory.path() / "source.txt";
+    std::ofstream(source) << "source";
+    const auto sources = CaptureSourceSnapshot({source});
+    const std::vector documents{Document("a", "Alpha", "prepared content")};
+
+    auto created = FullTextIndex::PrepareUpdate(path, sources, documents);
+    QVERIFY(created->snapshot() != nullptr);
+    QCOMPARE(created->snapshot()->state(), FullTextIndexState::kCreated);
+    QVERIFY(!std::filesystem::exists(path));
+    QVERIFY(created->Finalize());
+    QVERIFY(std::filesystem::exists(path));
+
+    std::ifstream before_input(path, std::ios::binary);
+    const std::string before((std::istreambuf_iterator<char>(before_input)),
+                             std::istreambuf_iterator<char>());
+    auto reused = FullTextIndex::PrepareUpdate(path, sources, documents);
+    QCOMPARE(reused->snapshot()->state(), FullTextIndexState::kReused);
+    std::ifstream reused_input(path, std::ios::binary);
+    QCOMPARE(std::string(std::istreambuf_iterator<char>(reused_input), {}),
+             before);
+
+    std::ofstream(path, std::ios::binary | std::ios::trunc) << "corrupt";
+    auto rebuilt = FullTextIndex::PrepareUpdate(path, sources, documents);
+    QCOMPARE(rebuilt->snapshot()->state(), FullTextIndexState::kRebuiltCorrupt);
+    std::ifstream corrupt_input(path, std::ios::binary);
+    QCOMPARE(std::string(std::istreambuf_iterator<char>(corrupt_input), {}),
+             std::string("corrupt"));
 }
 
 void FullTextIndexTest::QueryModesAndFilters() {

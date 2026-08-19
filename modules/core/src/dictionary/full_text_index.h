@@ -4,6 +4,7 @@
 #define GOLDENDICT_CORE_SRC_DICTIONARY_FULL_TEXT_INDEX_H_
 
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -51,6 +52,31 @@ class FullTextIndexError final : public std::runtime_error {
 
 class FullTextIndex final {
    public:
+    class PreparedUpdate final {
+       public:
+        const std::shared_ptr<const FullTextIndex>& snapshot() const noexcept {
+            return snapshot_;
+        }
+
+        bool Finalize() noexcept;
+
+       private:
+        friend class FullTextIndex;
+        std::filesystem::path path_;
+        SourceSnapshot sources_;
+        std::string payload_;
+        std::shared_ptr<const FullTextIndex> snapshot_;
+        bool needs_write_ = false;
+        bool finalized_ = false;
+    };
+
+    static std::shared_ptr<PreparedUpdate> PrepareUpdate(
+        const std::filesystem::path& path, const SourceSnapshot& sources,
+        std::vector<FullTextDocument> documents,
+        const CancellationToken* cancellation = nullptr,
+        std::chrono::steady_clock::time_point deadline =
+            std::chrono::steady_clock::time_point::max());
+
     static FullTextIndex OpenOrBuild(
         const std::filesystem::path& path, const SourceSnapshot& sources,
         std::vector<FullTextDocument> documents,

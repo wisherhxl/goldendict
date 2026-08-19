@@ -3402,6 +3402,7 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesAard() {
     test::WriteAardFixture(root);
     CoreConfiguration configuration;
     configuration.dictionary_paths = {root.string()};
+    configuration.index_directory = (root / "indexes").string();
     auto service = CreateDictionaryService(configuration);
     LookupQuery query;
     query.text = "EXAMPLE";
@@ -3422,6 +3423,14 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesAard() {
             std::string::npos);
     QVERIFY(entry.article.sanitized_html->find("goldendict://lookup/alias") !=
             std::string::npos);
+    const auto index_path =
+        std::filesystem::path(configuration.index_directory) /
+        (catalog.front().id + ".gdfts");
+    const auto canonical = ReadFile(index_path);
+    QVERIFY(!canonical.empty());
+    service = CreateDictionaryService(configuration);
+    QCOMPARE(ReadFile(index_path), canonical);
+    QCOMPARE(service->GetCatalog().front().article_count, std::size_t{2});
 }
 
 void ApplicationServiceTest::DiscoversSanitizesAndQueriesZimResources() {

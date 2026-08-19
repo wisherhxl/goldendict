@@ -1506,13 +1506,13 @@ ICU divergence, ordinary find/F3 and translations remain locked. The Release
 baseline stays exactly 109. P8-FT-78 is complete. No successor is selected or
 named.
 
-### P8-FT-79 private AARD full-text format-work bridge (selected)
+### P8-FT-79 private AARD full-text format-work bridge (complete)
 
 The fresh readiness audit at synchronized migrated revision
 `7a07e41b7ad0e9613a93129bd55c5cf598e06166` and clean pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects one smallest ready leaf: a
-real private AARD `FullTextIndexFormatWorkPort` bridge and its lifetime-safe
-catalog registration. AARD already has the sole-archive source snapshot,
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` completes one private AARD
+`FullTextIndexFormatWorkPort` bridge, its authorization-safe prepared-artifact
+prerequisite and lifetime-safe catalog registration. AARD already has the sole-archive source snapshot,
 bounded callback traversal, stable first-record document provenance, immutable
 index result and generation-authorized snapshot publication, so no separate
 builder/result or source-revision prerequisite is required.
@@ -1523,7 +1523,8 @@ a mismatched captured revision and performs bounded cancellable traversal. It
 preserves existing article assembly and `aard-index:<record>:<article>` IDs,
 enforces nonzero request document, document-byte and corpus-byte limits with
 overflow-safe accounting, and returns one complete immutable candidate without
-publishing. The dictionary's construction-time index and later replacements
+publishing or mutating the canonical artifact. The coordinator alone finalizes
+prepared persistence after exact revalidation. The dictionary's construction-time index and later replacements
 share one holder; every search, availability, state or resolution call retains
 one acquired snapshot for its duration.
 
@@ -1540,7 +1541,7 @@ the complete rebuild workflow remain outside this leaf. P8-FT-72 through
 P8-FT-78, `kPolicyExcluded`, canonical IDs, article/work bounds,
 `full-text-v1`, ICU divergence, public/installed interfaces, dependencies,
 ordinary find/F3, translations and exactly 109 registrations remain locked.
-P8-FT-79 is the sole selected boundary. No successor beyond it is selected or
+P8-FT-79 is complete. No successor beyond it is selected or
 named.
 
 ## Resources And Platform Integration

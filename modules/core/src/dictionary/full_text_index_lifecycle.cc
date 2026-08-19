@@ -281,6 +281,10 @@ bool FullTextIndexLifecycleCoordinator::ExecuteBoundedWork(
         switch (result.status) {
             case FullTextIndexWorkStatus::kCompleted:
                 if (result.replacement_snapshot != nullptr &&
+                    (result.prepared_update == nullptr ||
+                     (result.prepared_update->snapshot() ==
+                          result.replacement_snapshot &&
+                      result.prepared_update->Finalize())) &&
                     found->second.snapshot_holder->Publish(
                         result.replacement_snapshot)) {
                     generation->state = FullTextIndexLifecycleState::kCurrent;

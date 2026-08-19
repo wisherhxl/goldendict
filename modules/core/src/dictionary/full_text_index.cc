@@ -197,7 +197,7 @@ FullTextIndexError::FullTextIndexError(FullTextErrorCode code,
                                        std::string message)
     : std::runtime_error(std::move(message)), code_(code) {}
 
-FullTextIndex FullTextIndex::OpenOrBuild(
+std::shared_ptr<FullTextIndex::PreparedUpdate> FullTextIndex::PrepareUpdate(
     const std::filesystem::path& path, const SourceSnapshot& sources,
     std::vector<FullTextDocument> documents,
     const CancellationToken* cancellation,
@@ -216,25 +216,62 @@ FullTextIndex FullTextIndex::OpenOrBuild(
                                   right.document_id);
               });
     auto loaded = LoadGeneratedIndex(path, kFormat, sources);
+    auto prepared = std::make_shared<PreparedUpdate>();
     FullTextIndex result;
     if (loaded.state == GeneratedIndexState::kCurrent) {
         try {
             result.documents_ = Parse(loaded.payload);
             result.state_ = FullTextIndexState::kReused;
-            return result;
+            prepared->snapshot_ =
+                std::make_shared<const FullTextIndex>(std::move(result));
+            return prepared;
         } catch (const FullTextIndexError&) {
             loaded.state = GeneratedIndexState::kCorrupt;
         }
     }
     Check(cancellation, deadline);
-    StoreGeneratedIndex(path, kFormat, sources, Serialize(documents));
     result.documents_ = std::move(documents);
     result.state_ = loaded.state == GeneratedIndexState::kMissing
                         ? FullTextIndexState::kCreated
                     : loaded.state == GeneratedIndexState::kStale
                         ? FullTextIndexState::kRebuiltStale
                         : FullTextIndexState::kRebuiltCorrupt;
-    return result;
+    prepared->path_ = path;
+    prepared->sources_ = sources;
+    prepared->payload_ = Serialize(result.documents_);
+    prepared->snapshot_ =
+        std::make_shared<const FullTextIndex>(std::move(result));
+    prepared->needs_write_ = true;
+    return prepared;
+}
+
+bool FullTextIndex::PreparedUpdate::Finalize() noexcept {
+    if (finalized_)
+        return true;
+    try {
+        if (needs_write_)
+            StoreGeneratedIndex(path_, kFormat, sources_, payload_);
+        finalized_ = true;
+        payload_.clear();
+        sources_.clear();
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+FullTextIndex FullTextIndex::OpenOrBuild(
+    const std::filesystem::path& path, const SourceSnapshot& sources,
+    std::vector<FullTextDocument> documents,
+    const CancellationToken* cancellation,
+    std::chrono::steady_clock::time_point deadline) {
+    auto prepared = PrepareUpdate(path, sources, std::move(documents),
+                                  cancellation, deadline);
+    if (!prepared->Finalize()) {
+        throw GeneratedIndexError(
+            "Cannot finalize generated full-text index: " + path.string());
+    }
+    return *prepared->snapshot();
 }
 
 FullTextResponse FullTextIndex::Search(

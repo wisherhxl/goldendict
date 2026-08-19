@@ -5915,7 +5915,7 @@ ICU divergence, public/installed boundaries, ordinary find, Dictionaries-only
 F3, translations and exactly 109 registrations remain unchanged. P8-FT-78 is
 complete. No successor is selected or named.
 
-### Phase 8 P8-FT-79 private AARD full-text format-work bridge (selected)
+### Phase 8 P8-FT-79 private AARD full-text format-work bridge (complete)
 
 The fresh post-P8-FT-78 audit used synchronized migrated revision
 `7a07e41b7ad0e9613a93129bd55c5cf598e06166` and clean pinned legacy revision
@@ -5933,7 +5933,7 @@ indexing, traversal cancellation and
 stop/apply/restart ownership. No smaller format-specific builder, result or
 source-revision prerequisite remains.
 
-P8-FT-79 selects one private AARD `FullTextIndexFormatWorkPort` bridge. It is
+P8-FT-79 implements one private AARD `FullTextIndexFormatWorkPort` bridge. It is
 capable only when an index destination is configured, reports a deterministic
 opaque revision derived from the reader's sole-container source snapshot and
 rejects work whose captured revision no longer matches. Its bounded work uses
@@ -5941,8 +5941,10 @@ the P8-FT-77 traversal and preserves current article assembly, first-record
 deduplication, document ordering and IDs. It checks cancellation and deadline
 before every record inspection and enforces the request's nonzero document,
 per-document-byte and corpus-byte limits with overflow-safe accounting before
-returning one complete immutable `FullTextIndex` candidate. The port never
-publishes.
+returning one complete immutable `FullTextIndex` candidate. Preparation reads
+but does not mutate the canonical generated index. After exact generation and
+cancellation revalidation, the coordinator alone finalizes any prepared
+artifact and publishes its snapshot. The port never authorizes publication.
 
 The AARD dictionary uses the same lifetime-safe snapshot holder for its
 construction-time created or reused index and for later replacements. Search,
@@ -5969,7 +5971,7 @@ excluded. P8-FT-72 through P8-FT-78, canonical format IDs,
 `kPolicyExcluded`, article and work bounds, `full-text-v1`, intentional ICU
 divergence, public/installed boundaries, dependencies, ordinary find,
 Dictionaries-only F3, translations and exactly 109 registrations remain
-locked. P8-FT-79 is selected as the only implementation boundary. No successor
+locked. P8-FT-79 is complete. No successor
 beyond it is selected or named.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

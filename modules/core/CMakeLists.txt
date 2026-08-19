@@ -219,6 +219,8 @@ if(TARGET aard_dictionary_test)
     src/article/internal_url.cc
     src/dictionary/dictionary_backend.cc
     src/dictionary/full_text_index.cc
+    src/dictionary/full_text_index_lifecycle.cc
+    src/dictionary/full_text_index_snapshot.cc
     src/dictionary/full_text_matcher.cc
     src/dictionary/generated_index.cc
     src/foundation/text_folding.cc

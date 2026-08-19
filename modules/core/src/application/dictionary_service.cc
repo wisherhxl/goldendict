@@ -27,6 +27,7 @@
 
 #include "../article/article_assembler.h"
 #include "../dictionary/dictionary_backend.h"
+#include "../dictionary/full_text_index_lifecycle.h"
 #include "../formats/aard/aard_dictionary.h"
 #include "../formats/aard/aard_discovery.h"
 #include "../formats/bgl/bgl_dictionary.h"
@@ -930,10 +931,18 @@ class ServiceState final {
                     (id + ".gdfts");
             }
             try {
-                dictionaries_.push_back(
-                    std::make_unique<formats::aard::Dictionary>(
-                        formats::aard::Dictionary::Open(id, dictionary_path,
-                                                        full_text_index_path)));
+                auto aard = std::make_unique<formats::aard::Dictionary>(
+                    formats::aard::Dictionary::Open(id, dictionary_path,
+                                                    full_text_index_path));
+                if (!full_text_index_coordinator_.RegisterDictionary(
+                        {id, "AARD", aard->identity().article_count},
+                        aard->full_text_work_port(),
+                        aard->full_text_snapshot_holder())) {
+                    startup_errors_.push_back(
+                        {LookupErrorCode::kInternal, id,
+                         "Could not register AARD full-text lifecycle"});
+                }
+                dictionaries_.push_back(std::move(aard));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});
@@ -1738,6 +1747,7 @@ class ServiceState final {
     }
 
     ApplicationPreferences preferences_;
+    dictionary::FullTextIndexLifecycleCoordinator full_text_index_coordinator_;
     std::unordered_set<std::string> runtime_source_ids_;
     std::vector<std::unique_ptr<dictionary::Backend>> dictionaries_;
     std::unordered_map<std::uint32_t, std::vector<const dictionary::Backend*>>

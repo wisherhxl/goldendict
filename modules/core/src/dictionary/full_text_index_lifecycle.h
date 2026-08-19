@@ -11,12 +11,12 @@
 #include <string>
 #include <utility>
 
+#include "full_text_index.h"
 #include "goldendict/core/application.h"
 #include "goldendict/core/dictionary_service.h"
 
 namespace goldendict::core::dictionary {
 
-class FullTextIndex;
 class FullTextIndexSnapshotHolder;
 
 struct FullTextIndexPolicy {
@@ -157,9 +157,20 @@ struct FullTextIndexWorkRequest {
 enum class FullTextIndexWorkStatus { kCompleted, kCancelled, kFailed };
 
 struct FullTextIndexWorkResult {
+    FullTextIndexWorkResult(
+        FullTextIndexWorkStatus work_status = FullTextIndexWorkStatus::kFailed,
+        std::string work_message = {},
+        std::shared_ptr<const FullTextIndex> snapshot = nullptr,
+        std::shared_ptr<FullTextIndex::PreparedUpdate> update = nullptr)
+        : status(work_status),
+          message(std::move(work_message)),
+          replacement_snapshot(std::move(snapshot)),
+          prepared_update(std::move(update)) {}
+
     FullTextIndexWorkStatus status = FullTextIndexWorkStatus::kFailed;
     std::string message;
     std::shared_ptr<const FullTextIndex> replacement_snapshot;
+    std::shared_ptr<FullTextIndex::PreparedUpdate> prepared_update;
 };
 
 class FullTextIndexFormatWorkPort {

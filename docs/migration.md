@@ -5802,7 +5802,7 @@ ICU divergence, public/installed boundaries, ordinary find/F3, translations
 and exactly 109 Release registrations remain unchanged. P8-FT-78 is complete.
 No successor is selected or named.
 
-### Phase 8 P8-FT-79 private AARD full-text format-work bridge (selected)
+### Phase 8 P8-FT-79 private AARD full-text format-work bridge (complete)
 
 The independent post-P8-FT-78 audit used synchronized migrated revision
 `7a07e41b7ad0e9613a93129bd55c5cf598e06166` and clean pinned legacy revision
@@ -5815,15 +5815,18 @@ article traversal and GUI-owned stop/apply/restart. Therefore a separate AARD
 builder/result or source-revision leaf would add no independent ownership or
 testability value.
 
-P8-FT-79 selects only the private AARD `FullTextIndexFormatWorkPort` bridge and
-its production registration. The port reports capability only for a configured
+P8-FT-79 implements the private AARD `FullTextIndexFormatWorkPort` bridge, its
+authorization-safe prepared-artifact prerequisite and production registration.
+The port reports capability only for a configured
 index destination, derives its opaque revision deterministically from the sole
 `.aar` source stamp, rejects request/revision mismatch, and converts bounded
 P8-FT-77 visits into the existing assembled documents and stable AARD IDs. It
 checks cancellation/deadline at every record checkpoint, applies nonzero
 request document, per-document-byte and corpus-byte limits with overflow-safe
 totals, builds entirely off-side and returns a non-null immutable candidate on
-success without publication.
+success without publication or canonical persistence. Only the coordinator
+finalizes the prepared artifact after exact generation/cancellation
+revalidation and before holder publication.
 
 The AARD dictionary replaces direct optional-index ownership with one shared
 snapshot holder seeded by construction-time create/reuse. Search, index state,
@@ -5846,8 +5849,8 @@ transport, UI, serialization changes and complete rebuild orchestration remain
 excluded. All P8-FT-72 through P8-FT-78 contracts, canonical identifiers,
 `kPolicyExcluded`, article/work bounds, ICU divergence, public/installed
 surfaces, dependencies, ordinary find/F3, translations and exactly 109 Release
-registrations remain unchanged. P8-FT-79 is the only selected implementation
-leaf. No successor beyond it is selected or named.
+registrations remain unchanged. P8-FT-79 is complete. No successor beyond it
+is selected or named.
 
 ### Phase 9 — Linux Integration And Release Quality
 

@@ -33,6 +33,7 @@ class AardDictionaryTest : public QObject {
     void RejectsCancellationAndHasNoResources();
     void BuildsAndRebuildsUniqueArticleFullTextIndex();
     void ContainsFullTextFailures();
+    void BuildsCandidatesAndPublishesOnlyThroughCoordinator();
 };
 
 void AardDictionaryTest::ExposesIdentityHtmlAndSuggestions() {
@@ -130,6 +131,114 @@ void AardDictionaryTest::ContainsFullTextFailures() {
     QCOMPARE(storage.LookupExact("example").size(), std::size_t{1});
     QCOMPARE(storage.SearchFullText(query).errors.front().code,
              FullTextErrorCode::kInternal);
+}
+
+void AardDictionaryTest::BuildsCandidatesAndPublishesOnlyThroughCoordinator() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto path = test::WriteAardFixture(root);
+    const auto index_path = root / "fixture.gdfts";
+    Dictionary dictionary = Dictionary::Open("aard-id", path, index_path);
+    const auto holder = dictionary.full_text_snapshot_holder();
+    const auto original = holder->Acquire();
+    QVERIFY(original != nullptr);
+    const auto port = dictionary.full_text_work_port();
+    QVERIFY(port->IsFullTextIndexSupported());
+    QVERIFY(!Dictionary::Open("disabled", path)
+                 .full_text_work_port()
+                 ->IsFullTextIndexSupported());
+    const auto revision = port->FullTextIndexSourceRevision();
+    QVERIFY(revision.rfind("aard-source-v1:", 0U) == 0U);
+    QCOMPARE(port->FullTextIndexSourceRevision(), revision);
+
+    std::ofstream(index_path, std::ios::binary | std::ios::trunc) << "corrupt";
+    dictionary::FullTextIndexWorkRequest request;
+    request.identity = {1U, "aard-id"};
+    request.source_revision = revision;
+    request.maximum_documents = 8U;
+    request.maximum_document_bytes = 1024U;
+    request.maximum_corpus_bytes = 4096U;
+    auto candidate = port->PerformFullTextIndexWork(request);
+    QCOMPARE(candidate.status, dictionary::FullTextIndexWorkStatus::kCompleted);
+    QVERIFY(candidate.replacement_snapshot != nullptr);
+    QCOMPARE(holder->Acquire(), original);
+    std::ifstream unchanged(index_path, std::ios::binary);
+    QCOMPARE(std::string(std::istreambuf_iterator<char>(unchanged),
+                         std::istreambuf_iterator<char>()),
+             std::string("corrupt"));
+
+    const auto verify_failed =
+        [&](dictionary::FullTextIndexWorkRequest failed) {
+            const auto result = port->PerformFullTextIndexWork(failed);
+            QVERIFY(result.status !=
+                    dictionary::FullTextIndexWorkStatus::kCompleted);
+            QVERIFY(result.replacement_snapshot == nullptr);
+            QCOMPARE(holder->Acquire(), original);
+            std::ifstream input(index_path, std::ios::binary);
+            QCOMPARE(std::string(std::istreambuf_iterator<char>(input),
+                                 std::istreambuf_iterator<char>()),
+                     std::string("corrupt"));
+        };
+    auto invalid = request;
+    invalid.maximum_documents = 0U;
+    verify_failed(invalid);
+    invalid = request;
+    invalid.maximum_document_bytes = 0U;
+    verify_failed(invalid);
+    invalid = request;
+    invalid.maximum_corpus_bytes = 0U;
+    verify_failed(invalid);
+    invalid = request;
+    invalid.maximum_documents = 1U;
+    verify_failed(invalid);
+    invalid = request;
+    invalid.maximum_document_bytes = 1U;
+    verify_failed(invalid);
+    invalid = request;
+    invalid.maximum_corpus_bytes = 1U;
+    verify_failed(invalid);
+    invalid = request;
+    invalid.source_revision = "stale";
+    verify_failed(invalid);
+    invalid = request;
+    invalid.deadline = std::chrono::steady_clock::time_point::min();
+    verify_failed(invalid);
+    FullTextCancelledToken cancelled;
+    invalid = request;
+    invalid.cancellation = &cancelled;
+    verify_failed(invalid);
+
+    dictionary::FullTextIndexLifecycleCoordinator coordinator;
+    QVERIFY(
+        coordinator.RegisterDictionary({"aard-id", "AARD", 2U}, port, holder));
+    dictionary::FullTextIndexPolicy policy;
+    QVERIFY(coordinator.SubmitRebuild({{2U, "aard-id"}, policy}));
+    request.identity = {2U, "aard-id"};
+    request.maximum_documents = 8U;
+    QVERIFY(coordinator.ExecuteBoundedWork(request));
+    QVERIFY(holder->Acquire() != original);
+    QCOMPARE(coordinator.Snapshot("aard-id")->state(),
+             dictionary::FullTextIndexLifecycleState::kCurrent);
+    QVERIFY(dictionary::FullTextIndex::OpenOrBuild(
+                index_path, dictionary::CaptureSourceSnapshot({path}), {})
+                .state() == dictionary::FullTextIndexState::kReused);
+
+    const auto published = holder->Acquire();
+    const auto canonical = [&] {
+        std::ifstream input(index_path, std::ios::binary);
+        return std::string(std::istreambuf_iterator<char>(input),
+                           std::istreambuf_iterator<char>());
+    }();
+    std::ofstream(path, std::ios::binary | std::ios::app) << "drift";
+    request.source_revision = revision;
+    const auto drifted = port->PerformFullTextIndexWork(request);
+    QCOMPARE(drifted.status, dictionary::FullTextIndexWorkStatus::kFailed);
+    QCOMPARE(holder->Acquire(), published);
+    std::ifstream after_drift(index_path, std::ios::binary);
+    QCOMPARE(std::string(std::istreambuf_iterator<char>(after_drift),
+                         std::istreambuf_iterator<char>()),
+             canonical);
 }
 }  // namespace
 }  // namespace goldendict::core::formats::aard
