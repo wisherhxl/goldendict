@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include "../src/dictionary/full_text_index.h"
+#include "../src/dictionary/full_text_matcher.h"
 #include "../src/foundation/utf8.h"
 
 namespace goldendict::core::dictionary {
@@ -51,6 +52,9 @@ class FullTextIndexTest : public QObject {
    private slots:
     void Lifecycle();
     void QueryModesAndFilters();
+    void AppliesIndependentIcuNormalizationPolicies();
+    void PreservesNormalizedMatchOriginsAndProgress();
+    void PreservesQueryModesAndWordConstraints();
     void ConstructsBoundedMatchCenteredExcerpts();
     void PreservesUtf8MatchAndExcerptBoundaries();
     void ResolvesOpaqueDocumentIdentity();
@@ -154,9 +158,9 @@ void FullTextIndexTest::PreservesUtf8MatchAndExcerptBoundaries() {
     result = index.Search(query).results.front();
     QCOMPARE(result.matches.front().text, std::string(u8"é"));
     QCOMPARE(result.matches.front().byte_length, std::string(u8"é").size());
-    query.text = u8"e.";
+    query.text = u8"é";
     result = index.Search(query).results.front();
-    QCOMPARE(result.matches.front().text, std::string(u8"é"));
+    QCOMPARE(result.matches.front().text, std::string(u8"é"));
     QVERIFY(foundation::IsValidUtf8(result.matches.front().text));
 
     query.text = "x+";
@@ -284,6 +288,138 @@ void FullTextIndexTest::QueryModesAndFilters() {
              std::string("CAFÉ"));
 }
 
+void FullTextIndexTest::AppliesIndependentIcuNormalizationPolicies() {
+    const auto match = [](std::string_view text, std::string_view query,
+                          bool match_case, bool ignore_diacritics) {
+        return MatchFullText(text,
+                             {query, FullTextQueryMode::kPlainText, match_case,
+                              ignore_diacritics, false, std::nullopt},
+                             nullptr,
+                             std::chrono::steady_clock::time_point::max());
+    };
+
+    QVERIFY(!match(u8"CAFÉ", u8"café", false, false).empty());
+    QVERIFY(match(u8"CAFÉ", u8"café", true, false).empty());
+    QVERIFY(!match(u8"CAFÉ", "CAFE", true, true).empty());
+    QVERIFY(match(u8"CAFÉ", "cafe", true, true).empty());
+    QVERIFY(!match(u8"CAFÉ", "cafe", false, true).empty());
+    QVERIFY(match(u8"CAFÉ", "cafe", false, false).empty());
+
+    const std::string reordered = u8"ạ́";
+    const auto canonical = match(reordered, u8"ạ́", true, false);
+    QCOMPARE(canonical.size(), 1U);
+    QCOMPARE(canonical.front().byte_offset, 0U);
+    QCOMPARE(canonical.front().byte_length, reordered.size());
+
+    QCOMPARE(NormalizeFullTextQuery(u8"İ", false, false), std::string(u8"i̇"));
+    QCOMPARE(NormalizeFullTextQuery(u8"İ", false, true), std::string("i"));
+    QCOMPARE(NormalizeFullTextQuery(u8"가", true, false), std::string(u8"가"));
+    QCOMPARE(NormalizeFullTextQuery(u8"가", true, false), std::string(u8"가"));
+    const auto folded_mark = match(u8"İ", "i", false, true);
+    QCOMPARE(folded_mark.size(), 1U);
+    QCOMPARE(folded_mark.front().byte_length, std::string(u8"İ").size());
+}
+
+void FullTextIndexTest::PreservesNormalizedMatchOriginsAndProgress() {
+    const auto match = [](std::string_view text, std::string_view query,
+                          FullTextQueryMode mode =
+                              FullTextQueryMode::kPlainText,
+                          bool match_case = false,
+                          bool ignore_diacritics = false) {
+        return MatchFullText(
+            text,
+            {query, mode, match_case, ignore_diacritics, false, std::nullopt},
+            nullptr, std::chrono::steady_clock::time_point::max());
+    };
+
+    const std::string expansion = u8"ß ß";
+    const auto expanded = match(expansion, "s");
+    QCOMPARE(expanded.size(), 2U);
+    QCOMPARE(expanded[0].byte_offset, 0U);
+    QCOMPARE(expanded[0].byte_length, std::string(u8"ß").size());
+    QCOMPARE(expansion.substr(expanded[0].byte_offset, expanded[0].byte_length),
+             std::string(u8"ß"));
+    QCOMPARE(expansion.substr(expanded[1].byte_offset, expanded[1].byte_length),
+             std::string(u8"ß"));
+
+    const std::string marks = u8"á का x⃝ .́ ́";
+    for (const auto& [query, literal] :
+         std::vector<std::pair<std::string, std::string>>{
+             {"a", u8"á"}, {u8"क", u8"का"}, {"x", u8"x⃝"}}) {
+        const auto ranges =
+            match(marks, query, FullTextQueryMode::kPlainText, true, true);
+        QCOMPARE(ranges.size(), 1U);
+        QCOMPARE(marks.substr(ranges.front().byte_offset,
+                              ranges.front().byte_length),
+                 literal);
+    }
+    QVERIFY(
+        match(u8"́⃝", u8"́", FullTextQueryMode::kPlainText, true, true).empty());
+
+    const std::string hangul = u8"가";
+    const auto contracted =
+        match(hangul, u8"가", FullTextQueryMode::kPlainText, true, false);
+    QCOMPARE(contracted.size(), 1U);
+    QCOMPARE(contracted.front().byte_length, hangul.size());
+
+    const std::string supplementary = u8"😀😀";
+    const auto regex =
+        match(supplementary, ".", FullTextQueryMode::kRegularExpression, true);
+    QCOMPARE(regex.size(), 2U);
+    for (const auto& range : regex) {
+        QCOMPARE(range.byte_length, std::string(u8"😀").size());
+        QCOMPARE(supplementary.substr(range.byte_offset, range.byte_length),
+                 std::string(u8"😀"));
+    }
+    const auto wildcard =
+        match(u8"😀", "?", FullTextQueryMode::kWildcard, true);
+    QCOMPARE(wildcard.size(), 1U);
+    QCOMPARE(wildcard.front().byte_length, std::string(u8"😀").size());
+
+    TemporaryDirectory directory;
+    auto index = FullTextIndex::OpenOrBuild(
+        directory.path() / "agreement.gdfts", {},
+        {Document("agreement", "Agreement", expansion)});
+    FullTextQuery query;
+    query.text = "ss";
+    query.mode = FullTextQueryMode::kRegularExpression;
+    const auto indexed = index.Search(query);
+    QCOMPARE(indexed.results.size(), 1U);
+    QCOMPARE(indexed.results.front().matches.front().byte_offset,
+             expanded.front().byte_offset);
+    QCOMPARE(indexed.results.front().matches.front().byte_length,
+             expanded.front().byte_length);
+    QCOMPARE(indexed.results.front().matches.front().text, std::string(u8"ß"));
+}
+
+void FullTextIndexTest::PreservesQueryModesAndWordConstraints() {
+    const std::string source = "alpha beta gamma alpha gamma beta";
+    for (const auto mode :
+         {FullTextQueryMode::kWholeWords, FullTextQueryMode::kPlainText}) {
+        for (const bool ignore_order : {false, true}) {
+            for (const auto distance : {std::optional<std::uint32_t>{},
+                                        std::optional<std::uint32_t>{0U},
+                                        std::optional<std::uint32_t>{2U}}) {
+                const auto ranges = MatchFullText(
+                    source,
+                    {"alpha beta", mode, true, false, ignore_order, distance},
+                    nullptr, std::chrono::steady_clock::time_point::max());
+                QVERIFY(!ranges.empty());
+            }
+        }
+    }
+    for (const auto mode : {FullTextQueryMode::kWildcard,
+                            FullTextQueryMode::kRegularExpression}) {
+        const auto query = mode == FullTextQueryMode::kWildcard
+                               ? std::string_view("alpha*beta")
+                               : std::string_view("alpha.+beta");
+        QVERIFY(!MatchFullText(
+                     source, {query, mode, true, false, false, std::nullopt},
+                     nullptr, std::chrono::steady_clock::time_point::max())
+                     .empty());
+    }
+}
+
 void FullTextIndexTest::RejectsMalformedAndBoundedWork() {
     TemporaryDirectory directory;
     auto index =
@@ -300,6 +436,16 @@ void FullTextIndexTest::RejectsMalformedAndBoundedWork() {
     query = {};
     query.text = "text";
     query.timeout = std::chrono::milliseconds::zero();
+    QCOMPARE(index.Search(query).errors.front().code,
+             FullTextErrorCode::kInvalidQuery);
+    query = {};
+    query.text = "*";
+    query.mode = FullTextQueryMode::kWildcard;
+    query.ignore_word_order = true;
+    QCOMPARE(index.Search(query).errors.front().code,
+             FullTextErrorCode::kInvalidQuery);
+    query.ignore_word_order = false;
+    query.maximum_word_distance = 1U;
     QCOMPARE(index.Search(query).errors.front().code,
              FullTextErrorCode::kInvalidQuery);
     Cancelled cancelled;

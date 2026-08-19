@@ -4280,15 +4280,14 @@ activation, headword-only row or dictionary-tooltip contract. It registers no
 test and preserves exactly 109 registered Release tests. No successor after
 P8-FT-69 is selected, ranked, recommended or named.
 
-### P8-FT-70 ICU normalized matching and origin-map acceptance (selected)
+### P8-FT-70 ICU normalized matching and origin-map acceptance (complete)
 
-Acceptance starts from synchronized migrated/local/upstream/live-remote
-`deb523c04449c7cbead3fa8bcdd6d93c74fd15aa` and clean pinned legacy
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-69's
-historical no-successor closure and selects only the Core normalization and
-origin-map prerequisite. Evidence is current
-`full_text_matcher.cc:59-79,168-241`, `full_text_matcher.h:31-47`,
-`full_text_index.cc:267-325`, `desktop_facade.cc:130-164` and
+Acceptance was implemented from synchronized selected revision
+`c91dfc628bea5382c2dc10182e848561c919305e` and clean pinned legacy
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It completes only the Core
+normalization and origin-map prerequisite. Implementation evidence is
+`full_text_matcher.cc`, `full_text_matcher.h`, `full_text_index.cc`,
+`desktop_facade.cc` and
 `main_window.cpp:9040-9078`, plus pinned legacy
 `fulltextsearch.cc:596-609` and `articleview.cc:133-190,2569-2648`.
 

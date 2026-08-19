@@ -3755,6 +3755,33 @@ void ApplicationServiceTest::
     result = facade->BuildRenderedTextMatchPlan(request);
     QVERIFY(result);
     QVERIFY(result.ranges.empty());
+
+    request = {};
+    request.rendered_text = u8"Straße é 😀";
+    request.query_text = "ss";
+    request.mode = FullTextQueryMode::kRegularExpression;
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QVERIFY(result);
+    QCOMPARE(result.ranges.size(), std::size_t{1});
+    QCOMPARE(result.ranges.front().literal, std::string(u8"ß"));
+    QCOMPARE(request.rendered_text.substr(result.ranges.front().byte_offset,
+                                          result.ranges.front().byte_length),
+             result.ranges.front().literal);
+
+    request.query_text = u8"é";
+    request.match_case = true;
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QVERIFY(result);
+    QCOMPARE(result.ranges.size(), std::size_t{1});
+    QCOMPARE(result.ranges.front().literal, std::string(u8"é"));
+
+    request.query_text = ".";
+    request.rendered_text = u8"😀";
+    request.mode = FullTextQueryMode::kRegularExpression;
+    result = facade->BuildRenderedTextMatchPlan(request);
+    QCOMPARE(result.ranges.size(), std::size_t{1});
+    QCOMPARE(result.ranges.front().byte_length, std::string(u8"😀").size());
+    QCOMPARE(result.ranges.front().literal, std::string(u8"😀"));
 }
 
 void ApplicationServiceTest::RejectsInvalidRenderedTextMatchPlanRequests() {

@@ -5434,18 +5434,15 @@ Focused coverage changes only the existing GUI smoke target, registers no test,
 and preserves the exactly 109-test Release baseline. No successor after
 P8-FT-69 is selected, ranked, recommended or named.
 
-### Phase 8 P8-FT-70 ICU normalized matching and origin-map prerequisite (selected)
+### Phase 8 P8-FT-70 ICU normalized matching and origin-map prerequisite (complete)
 
-The fresh documentation-only audit is pinned to clean synchronized migrated
-HEAD, upstream and live remote
-`deb523c04449c7cbead3fa8bcdd6d93c74fd15aa` and clean pinned legacy
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks the complete remaining
-full-text parity surface, supersedes P8-FT-69's historical no-successor closure
-and selects only P8-FT-70. No smaller prerequisite outranks the Core semantics
-and origin mapping required before `ignore_diacritics` can be consumed by the
-rendered-text path.
+P8-FT-70 was implemented from synchronized selected revision
+`c91dfc628bea5382c2dc10182e848561c919305e` with clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It completes the selected Core
+semantics and origin mapping required before `ignore_diacritics` can be
+consumed by the rendered-text path.
 
-Current `full_text_matcher.cc:59-79,168-191` uses per-scalar mapping and makes
+The prior matcher used per-scalar mapping and made
 diacritic removal ineffective when `match_case` is true. Current
 `desktop_facade.h:169-177`, `desktop_facade.cc:130-164` and
 `main_window.cpp:9040-9078` retain the separate Widgets value but intentionally
@@ -5456,7 +5453,7 @@ and original-position recovery. GET intentionally adopts ICU rather than Qt5's
 custom diacritic tables and trailing `Mark_NonSpacing` rule; migrated behavior
 uses ICU full folding, canonical equivalence and all `Mn`, `Mc` and `Me` marks.
 
-The selected contract applies the same pipeline to query and source: NFD;
+The completed contract applies the same pipeline to query and source: NFD;
 optional ICU full case fold only for case-insensitive matching; NFD again;
 optional removal of all three Unicode Mark categories only when diacritics are
 ignored; and NFC. The source path propagates original UTF-8 spans through
@@ -5484,8 +5481,9 @@ pattern-mode combinations and indexed/private-matcher agreement.
 `full-text-v1` and the exactly 109-test Release registration baseline remain
 unchanged.
 
-P8-FT-70 is Core-only. It corrects existing combined-flag `FullTextQuery`
-behavior without changing public type shape, ABI, C API, DTOs, facade request,
+Completed P8-FT-70 is Core-only. It corrects existing combined-flag
+`FullTextQuery` behavior without changing public type shape, ABI, C API, DTOs,
+facade request,
 configuration, dependencies, catalogs, translations, activation, tooltips,
 headword-only results, ordinary find or Widgets. Rendered request and Widgets
 consumption remain unresolved. No successor is selected, ranked, recommended

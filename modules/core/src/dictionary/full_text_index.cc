@@ -319,10 +319,8 @@ FullTextResponse FullTextIndex::Search(
         found.headword = document.headword;
         found.document_id = document.document_id;
         found.match = {query.text,
-                       query.match_case
-                           ? query.text
-                           : foundation::NormalizeForExactLookup(
-                                 query.text, query.ignore_diacritics),
+                       NormalizeFullTextQuery(query.text, query.match_case,
+                                              query.ignore_diacritics),
                        MatchMode::kFullText, 1.0};
         if (offset < document.plain_text.size()) {
             length = std::min(length, document.plain_text.size() - offset);

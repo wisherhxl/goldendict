@@ -1196,14 +1196,14 @@ Release tests remain unchanged. `ignore_diacritics` consumption stays
 independently unresolved and unranked. No successor after P8-FT-69 is selected,
 ranked, recommended or named.
 
-### P8-FT-70 ICU normalized matching and origin-map prerequisite (selected)
+### P8-FT-70 ICU normalized matching and origin-map prerequisite (complete)
 
-The fresh bounded audit at synchronized migrated revision
-`deb523c04449c7cbead3fa8bcdd6d93c74fd15aa` and clean pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` supersedes P8-FT-69's historical
-no-successor closure and selects only the smallest ready Core prerequisite.
-Current `full_text_matcher.cc:59-79,168-191` couples case handling to
-diacritic removal and maps per scalar. Current `desktop_facade.h:169-177`,
+P8-FT-70 was implemented from synchronized selected migrated revision
+`c91dfc628bea5382c2dc10182e848561c919305e` with clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It completes the smallest selected
+Core prerequisite.
+The prior matcher coupled case handling to diacritic removal and mapped per
+scalar. Current `desktop_facade.h:169-177`,
 `desktop_facade.cc:130-164` and `main_window.cpp:9040-9078` leave the retained
 Widgets flag outside the rendered request. Pinned legacy
 `fulltextsearch.cc:596-609` and `articleview.cc:133-190,2569-2648` prove the
@@ -1226,8 +1226,8 @@ range. Empty, backward, duplicate and overlapping mapped candidates are
 skipped with forward progress. Results remain deterministic, leftmost-first,
 original-range non-overlapping and exact original UTF-8 slices.
 
-The single private Core normalizer/origin-map owner serves indexed and
-rendered matching. P8-FT-70 corrects existing combined-flag `FullTextQuery`
+The completed single private Core normalizer/origin-map owner serves indexed
+and rendered matching. P8-FT-70 corrects existing combined-flag `FullTextQuery`
 behavior but changes no type layout, ABI, C API, DTO, index serialization,
 configuration, dependency, catalog, translation, activation, tooltip,
 headword-only, ordinary-find, rendered-request or Widgets contract. Existing

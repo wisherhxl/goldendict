@@ -5493,18 +5493,17 @@ unranked. Focused coverage stays in the existing GUI smoke target, registers no
 test, and preserves the exactly 109-test Release baseline. No successor after
 P8-FT-69 is selected, ranked, recommended or named.
 
-### Phase 8 P8-FT-70 ICU normalized matching and origin-map prerequisite (selected)
+### Phase 8 P8-FT-70 ICU normalized matching and origin-map prerequisite (complete)
 
-The fresh independent bounded audit starts from synchronized migrated HEAD,
-local branch, upstream and live remote revision
-`deb523c04449c7cbead3fa8bcdd6d93c74fd15aa` and unchanged clean pinned legacy
-revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-69's
-historical no-successor closure and selects only P8-FT-70, the smallest ready
-Core prerequisite for consuming the accepted `ignore_diacritics` policy.
+P8-FT-70 was implemented from synchronized selected migrated revision
+`c91dfc628bea5382c2dc10182e848561c919305e` and unchanged clean pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It completes only the selected
+smallest Core prerequisite for consuming the accepted `ignore_diacritics`
+policy.
 
-Current `full_text_matcher.cc:59-79,168-191` normalizes source text one UTF-8
-scalar at a time and bypasses normalization, including diacritic removal, when
-`match_case` is true. Current `desktop_facade.h:169-177`,
+The prior matcher normalized source text one UTF-8 scalar at a time and
+bypassed normalization, including diacritic removal, when `match_case` was
+true. Current `desktop_facade.h:169-177`,
 `desktop_facade.cc:130-164` and `main_window.cpp:9040-9078` show that the
 rendered-text request omits the flag, the facade deliberately supplies
 `false`, and Widgets retains the accepted value outside the request. Pinned
@@ -5558,7 +5557,7 @@ identity, ordinary-find and exactly 109 registered Release-test contracts
 remain unchanged; only the selected combined-flag matching behavior changes.
 
 No successor after P8-FT-70 is selected, ranked, recommended or named.
-Completion will unlock only the Core normalized matching/origin-map dependency
+Completion unlocks only the Core normalized matching/origin-map dependency
 boundary; rendered request and Widgets consumption require a fresh audit.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

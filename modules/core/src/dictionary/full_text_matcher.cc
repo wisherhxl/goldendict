@@ -7,7 +7,11 @@
 #include <regex>
 #include <utility>
 
-#include "../foundation/text_folding.h"
+#include <unicode/uchar.h>
+#include <unicode/unorm2.h>
+#include <unicode/ustring.h>
+#include <unicode/utf16.h>
+#include <unicode/utf8.h>
 
 namespace goldendict::core::dictionary {
 namespace {
@@ -41,42 +45,235 @@ std::string WildcardRegex(std::string_view pattern) {
     return result;
 }
 
-std::size_t Utf8CharacterBytes(unsigned char byte) {
-    if ((byte & 0x80U) == 0U)
-        return 1U;
-    if ((byte & 0xe0U) == 0xc0U)
-        return 2U;
-    if ((byte & 0xf0U) == 0xe0U)
-        return 3U;
-    return 4U;
+void RequireSuccess(UErrorCode status, const char* operation) {
+    if (U_FAILURE(status))
+        throw std::runtime_error(std::string(operation) + ": " +
+                                 u_errorName(status));
+}
+
+bool IsMark(UChar32 value) {
+    const auto category = static_cast<UCharCategory>(u_charType(value));
+    return category == U_NON_SPACING_MARK ||
+           category == U_COMBINING_SPACING_MARK || category == U_ENCLOSING_MARK;
+}
+
+bool IsAttachableBase(UChar32 value) {
+    return !IsMark(value) && !u_isUWhiteSpace(value) && !u_ispunct(value);
+}
+
+struct Span {
+    std::size_t begin = 0U;
+    std::size_t end = 0U;
+};
+
+bool Intersects(Span left, Span right) {
+    return left.begin < right.end && right.begin < left.end;
+}
+
+Span Union(Span left, Span right) {
+    return {std::min(left.begin, right.begin), std::max(left.end, right.end)};
+}
+
+struct Token {
+    UChar32 value = 0;
+    Span origin;
+};
+
+std::vector<UChar> Utf16(UChar32 value) {
+    if (value <= 0xffff)
+        return {static_cast<UChar>(value)};
+    return {U16_LEAD(value), U16_TRAIL(value)};
+}
+
+std::vector<UChar32> CodePoints(const UChar* value, std::int32_t length) {
+    std::vector<UChar32> result;
+    for (std::int32_t position = 0; position < length;) {
+        UChar32 code_point = 0;
+        U16_NEXT(value, position, length, code_point);
+        result.push_back(code_point);
+    }
+    return result;
+}
+
+std::vector<UChar32> Decompose(const UNormalizer2* nfd, UChar32 value) {
+    const auto input = Utf16(value);
+    UErrorCode status = U_ZERO_ERROR;
+    auto length = unorm2_normalize(nfd, input.data(),
+                                   static_cast<std::int32_t>(input.size()),
+                                   nullptr, 0, &status);
+    if (status != U_BUFFER_OVERFLOW_ERROR && U_FAILURE(status))
+        RequireSuccess(status, "Cannot size Unicode normalization");
+    status = U_ZERO_ERROR;
+    std::vector<UChar> output(static_cast<std::size_t>(length));
+    length = unorm2_normalize(nfd, input.data(),
+                              static_cast<std::int32_t>(input.size()),
+                              output.data(), length, &status);
+    RequireSuccess(status, "Cannot normalize Unicode text");
+    return CodePoints(output.data(), length);
+}
+
+std::vector<UChar32> Fold(UChar32 value) {
+    const auto input = Utf16(value);
+    UErrorCode status = U_ZERO_ERROR;
+    auto length = u_strFoldCase(nullptr, 0, input.data(),
+                                static_cast<std::int32_t>(input.size()),
+                                U_FOLD_CASE_DEFAULT, &status);
+    if (status != U_BUFFER_OVERFLOW_ERROR && U_FAILURE(status))
+        RequireSuccess(status, "Cannot size Unicode case folding");
+    status = U_ZERO_ERROR;
+    std::vector<UChar> output(static_cast<std::size_t>(length));
+    length = u_strFoldCase(output.data(), length, input.data(),
+                           static_cast<std::int32_t>(input.size()),
+                           U_FOLD_CASE_DEFAULT, &status);
+    RequireSuccess(status, "Cannot fold Unicode case");
+    return CodePoints(output.data(), length);
+}
+
+template <typename Transform>
+std::vector<Token> Expand(const std::vector<Token>& input,
+                          Transform transform) {
+    std::vector<Token> output;
+    for (const auto& token : input) {
+        for (const auto value : transform(token.value))
+            output.push_back({value, token.origin});
+    }
+    return output;
+}
+
+void CanonicallyOrder(std::vector<Token>* tokens) {
+    std::size_t begin = 0U;
+    for (std::size_t end = 0U; end <= tokens->size(); ++end) {
+        if (end != tokens->size() &&
+            u_getCombiningClass((*tokens)[end].value) != 0)
+            continue;
+        std::stable_sort(tokens->begin() + static_cast<std::ptrdiff_t>(begin),
+                         tokens->begin() + static_cast<std::ptrdiff_t>(end),
+                         [](const Token& left, const Token& right) {
+                             return u_getCombiningClass(left.value) <
+                                    u_getCombiningClass(right.value);
+                         });
+        begin = end + 1U;
+    }
+}
+
+std::vector<Token> Compose(const UNormalizer2* nfc,
+                           const std::vector<Token>& input) {
+    std::vector<Token> output;
+    std::optional<std::size_t> starter;
+    std::uint8_t previous_class = 0U;
+    for (const auto& token : input) {
+        const auto combining_class = u_getCombiningClass(token.value);
+        UChar32 composition = -1;
+        if (starter.has_value() &&
+            (previous_class == 0U || previous_class < combining_class)) {
+            composition =
+                unorm2_composePair(nfc, output[*starter].value, token.value);
+        }
+        if (composition >= 0) {
+            output[*starter].value = composition;
+            output[*starter].origin =
+                Union(output[*starter].origin, token.origin);
+            continue;
+        }
+        output.push_back(token);
+        if (combining_class == 0U)
+            starter = output.size() - 1U;
+        previous_class = combining_class;
+    }
+    return output;
 }
 
 struct MappedText {
     std::string text;
-    std::vector<std::pair<std::size_t, std::size_t>> original;
+    std::vector<Span> original;
+    std::vector<std::size_t> boundaries;
 };
 
 MappedText NormalizeMapped(std::string_view value, bool match_case,
                            bool ignore_diacritics,
                            const CancellationToken* cancellation,
                            std::chrono::steady_clock::time_point deadline) {
-    MappedText result;
-    for (std::size_t begin = 0U; begin < value.size();) {
+    std::vector<Token> tokens;
+    for (std::int32_t position = 0;
+         position < static_cast<std::int32_t>(value.size());) {
         Check(cancellation, deadline);
-        const auto end = std::min(
-            value.size(), begin + Utf8CharacterBytes(static_cast<unsigned char>(
-                                      value[begin])));
-        const auto normalized =
-            match_case
-                ? std::string(value.substr(begin, end - begin))
-                : foundation::NormalizeForExactLookup(
-                      value.substr(begin, end - begin), ignore_diacritics);
-        result.text += normalized;
-        for (std::size_t i = 0U; i < normalized.size(); ++i)
-            result.original.push_back({begin, end});
-        begin = end;
+        const auto begin = position;
+        UChar32 code_point = 0;
+        U8_NEXT(value.data(), position, static_cast<std::int32_t>(value.size()),
+                code_point);
+        tokens.push_back({code_point,
+                          {static_cast<std::size_t>(begin),
+                           static_cast<std::size_t>(position)}});
+    }
+    for (std::size_t index = 0U; index < tokens.size();) {
+        if (!IsAttachableBase(tokens[index].value)) {
+            ++index;
+            continue;
+        }
+        std::size_t end = index + 1U;
+        while (end < tokens.size() && IsMark(tokens[end].value))
+            ++end;
+        const Span cluster{tokens[index].origin.begin,
+                           tokens[end - 1U].origin.end};
+        for (std::size_t member = index; member < end; ++member)
+            tokens[member].origin = cluster;
+        index = end;
+    }
+
+    UErrorCode status = U_ZERO_ERROR;
+    const auto* nfd = unorm2_getNFDInstance(&status);
+    RequireSuccess(status, "Cannot initialize NFD normalization");
+    status = U_ZERO_ERROR;
+    const auto* nfc = unorm2_getNFCInstance(&status);
+    RequireSuccess(status, "Cannot initialize NFC normalization");
+
+    tokens =
+        Expand(tokens, [nfd](UChar32 input) { return Decompose(nfd, input); });
+    CanonicallyOrder(&tokens);
+    if (!match_case)
+        tokens = Expand(tokens, Fold);
+    tokens =
+        Expand(tokens, [nfd](UChar32 input) { return Decompose(nfd, input); });
+    CanonicallyOrder(&tokens);
+    if (ignore_diacritics) {
+        tokens.erase(std::remove_if(tokens.begin(), tokens.end(),
+                                    [](const Token& token) {
+                                        return IsMark(token.value);
+                                    }),
+                     tokens.end());
+    }
+    tokens = Compose(nfc, tokens);
+
+    MappedText result;
+    result.boundaries.push_back(0U);
+    for (const auto& token : tokens) {
+        char encoded[U8_MAX_LENGTH];
+        std::int32_t length = 0;
+        U8_APPEND_UNSAFE(encoded, length, token.value);
+        result.text.append(encoded, static_cast<std::size_t>(length));
+        result.original.insert(result.original.end(),
+                               static_cast<std::size_t>(length), token.origin);
+        result.boundaries.push_back(result.text.size());
     }
     return result;
+}
+
+std::size_t ScalarStart(const MappedText& mapped, std::size_t offset) {
+    const auto found = std::upper_bound(mapped.boundaries.begin(),
+                                        mapped.boundaries.end(), offset);
+    return found == mapped.boundaries.begin() ? 0U : *(found - 1);
+}
+
+std::size_t ScalarEnd(const MappedText& mapped, std::size_t offset) {
+    const auto found = std::lower_bound(mapped.boundaries.begin(),
+                                        mapped.boundaries.end(), offset);
+    return found == mapped.boundaries.end() ? mapped.text.size() : *found;
+}
+
+std::size_t NextScalar(const MappedText& mapped, std::size_t offset) {
+    const auto found = std::upper_bound(mapped.boundaries.begin(),
+                                        mapped.boundaries.end(), offset);
+    return found == mapped.boundaries.end() ? mapped.text.size() : *found;
 }
 
 struct Word {
@@ -161,6 +358,13 @@ std::optional<std::pair<std::size_t, std::size_t>> MatchWords(
 
 }  // namespace
 
+std::string NormalizeFullTextQuery(std::string_view text, bool match_case,
+                                   bool ignore_diacritics) {
+    return NormalizeMapped(text, match_case, ignore_diacritics, nullptr,
+                           std::chrono::steady_clock::time_point::max())
+        .text;
+}
+
 FullTextMatcherError::FullTextMatcherError(FullTextMatcherErrorCode code,
                                            std::string message)
     : std::runtime_error(std::move(message)), code_(code) {}
@@ -175,10 +379,10 @@ std::vector<FullTextMatcherRange> MatchFullText(
         NormalizeMapped(text, options.match_case, options.ignore_diacritics,
                         cancellation, deadline);
     Check(cancellation, deadline);
-    const std::string needle =
-        options.match_case ? std::string(options.query_text)
-                           : foundation::NormalizeForExactLookup(
-                                 options.query_text, options.ignore_diacritics);
+    const std::string needle = NormalizeFullTextQuery(
+        options.query_text, options.match_case, options.ignore_diacritics);
+    if (needle.empty())
+        return {};
     std::optional<std::regex> expression;
     try {
         if (options.mode == FullTextQueryMode::kWildcard)
@@ -220,25 +424,26 @@ std::vector<FullTextMatcherRange> MatchFullText(
         if (!matched.has_value())
             break;
         if (matched->second == 0U) {
-            const auto zero_offset = matched->first;
-            cursor = zero_offset +
-                     Utf8CharacterBytes(
-                         static_cast<unsigned char>(mapped.text[zero_offset]));
+            cursor = NextScalar(mapped, matched->first);
             continue;
         }
-        const auto normalized_offset = matched->first;
-        const auto normalized_end = normalized_offset + matched->second;
-        const auto original_offset = mapped.original[normalized_offset].first;
-        const auto original_end = mapped.original[normalized_end - 1U].second;
+        const auto normalized_offset = ScalarStart(mapped, matched->first);
+        const auto normalized_end =
+            ScalarEnd(mapped, matched->first + matched->second);
+        Span original = mapped.original[normalized_offset];
+        for (auto position = normalized_offset; position < normalized_end;
+             ++position)
+            original = Union(original, mapped.original[position]);
         cursor = normalized_end;
         while (cursor < mapped.original.size() &&
-               mapped.original[cursor].first < original_end) {
-            ++cursor;
-        }
-        if (original_offset < accepted_end)
+               Intersects(mapped.original[cursor], original))
+            cursor = NextScalar(mapped, cursor);
+        if (original.begin >= original.end || original.begin < accepted_end) {
+            cursor = std::max(cursor, NextScalar(mapped, matched->first));
             continue;
-        result.push_back({original_offset, original_end - original_offset});
-        accepted_end = original_end;
+        }
+        result.push_back({original.begin, original.end - original.begin});
+        accepted_end = original.end;
         if (match_limit.has_value() && result.size() >= *match_limit)
             break;
     }

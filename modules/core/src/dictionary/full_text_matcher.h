@@ -46,6 +46,9 @@ struct FullTextMatcherRange {
     std::size_t byte_length = 0U;
 };
 
+std::string NormalizeFullTextQuery(std::string_view text, bool match_case,
+                                   bool ignore_diacritics);
+
 std::vector<FullTextMatcherRange> MatchFullText(
     std::string_view text, const FullTextMatcherOptions& options,
     const CancellationToken* cancellation,
