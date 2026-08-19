@@ -237,8 +237,12 @@ Dictionary Dictionary::Open(
                             *full_text_index_path,
                             dictionary.reader_->source_snapshot(),
                             std::move(documents)));
-                dictionary.full_text_snapshot_holder_->Publish(
-                    std::move(snapshot));
+                if (dictionary.full_text_snapshot_holder_->Publish(snapshot)) {
+                    dictionary.startup_full_text_snapshot_ =
+                        std::move(snapshot);
+                    dictionary.startup_full_text_source_revision_ =
+                        SourceRevision(dictionary.reader_->source_snapshot());
+                }
             } catch (const dictionary::FullTextIndexError& full_text_error) {
                 dictionary.full_text_error_ = {full_text_error.code(),
                                                dictionary.identity_.id,
@@ -263,6 +267,18 @@ Dictionary Dictionary::Open(
     } catch (const Error& error) {
         throw TranslateError(error);
     }
+}
+
+std::optional<dictionary::FullTextIndexStartupArtifactEvidence>
+Dictionary::StartupArtifactEvidence(
+    dictionary::FullTextIndexWorkIdentity identity) const noexcept {
+    if (startup_full_text_snapshot_ == nullptr ||
+        startup_full_text_source_revision_.empty()) {
+        return std::nullopt;
+    }
+    return dictionary::FullTextIndexStartupArtifactEvidence{
+        std::move(identity), startup_full_text_source_revision_,
+        startup_full_text_snapshot_};
 }
 
 FullTextResponse Dictionary::SearchFullText(

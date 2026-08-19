@@ -4705,17 +4705,18 @@ remain locked. Startup/restart reconciliation, scheduling/submission,
 progress/status visibility, other real ports and facade/UI transport remain
 unselected and unranked. No successor beyond P8-FT-80 is selected or named.
 
-### Phase 8 P8-FT-81 startup artifact reconciliation acceptance (selected)
+### Phase 8 P8-FT-81 startup artifact reconciliation acceptance (complete)
 
-The fresh audit is grounded at synchronized migrated revision
-`9dbd2a17c9342b905c3f9668003ea90629566335` and clean pinned legacy revision
+The fresh audit was grounded at synchronized migrated revision
+`73f9e6cd976379e5f16a4c7eb5deb4e1f965ad80` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly one private
 Core leaf: reconcile an exact policy-eligible `kWorkRequested` generation with
 an immutable startup artifact already validated against its captured source
 revision. No successor is selected.
 
-Extend only the existing `full_text_index_test`, `aard_dictionary_test` and
-`application_service_test` registrations. Coordinator cases must prove that
+Acceptance extends only the existing `full_text_index_test`,
+`aard_dictionary_test` and `application_service_test` registrations.
+Coordinator cases prove that
 immutable startup evidence is accepted only for the exact current requested
 identity when capability, policy eligibility, source revision, holder snapshot
 and uncancelled state all match. Acceptance changes that same generation to
@@ -4726,7 +4727,7 @@ multiple registrations are deterministic. A snapshot successfully rebuilt from
 a stale or corrupt on-disk artifact is accepted without another write during
 reconciliation.
 
-Negative cases must cover absent snapshot or evidence, a startup build that
+Negative cases cover absent snapshot or evidence, a startup build that
 published no snapshot, stale identity, source-revision or snapshot mismatch,
 corrupt or otherwise unverifiable evidence, cancellation and replacement before
 reconciliation, plus unavailable, `kPolicyExcluded`, failed, current and other
@@ -4737,9 +4738,9 @@ evidence without another traversal or canonical-file write. Application-service
 startup must reconcile eligible AARD to `kCurrent`,
 leave excluded AARD `kPolicyExcluded`, and keep empty discovery successful.
 
-The implementation leaf adds no scheduler, thread, queue, retry,
+The completed implementation leaf adds no scheduler, thread, queue, retry,
 progress/status projection, additional format port, facade/UI transport,
-executable or test registration. Its delivery gate will use the three focused
+executable or test registration. Its delivery gate uses the three focused
 existing Release tests, full 109/109 Release CTest, Release install, standalone
 and packaged C/C++ consumers, exact-SCM package creation and clean ref equality.
 

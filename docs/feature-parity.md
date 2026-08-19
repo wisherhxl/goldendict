@@ -1577,10 +1577,10 @@ Startup/restart reconciliation, scheduling/submission, progress/status
 visibility, other real ports and facade/UI transport remain unselected and
 unranked. No successor beyond P8-FT-80 is selected or named.
 
-### P8-FT-81 private startup full-text artifact reconciliation (selected)
+### P8-FT-81 private startup full-text artifact reconciliation (complete)
 
 The fresh post-P8-FT-80 audit at synchronized migrated revision
-`9dbd2a17c9342b905c3f9668003ea90629566335` and clean pinned legacy revision
+`73f9e6cd976379e5f16a4c7eb5deb4e1f965ad80` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects exactly one private Core
 boundary: reconcile an eligible `kWorkRequested` generation with an immutable
 startup snapshot already validated against the same source revision. Current
@@ -1602,7 +1602,7 @@ on-disk artifact is valid evidence; reconciliation performs no additional
 write. Reconciliation is idempotent and safe for zero or multiple entries.
 
 Focused existing lifecycle, AARD dictionary and application-service coverage
-will pin exact evidence binding, retained snapshot identity, no work-port call
+pins exact evidence binding, retained snapshot identity, no work-port call
 or additional artifact rewrite, idempotence, zero/multiple entries, successfully
 rebuilt startup snapshots and every rejection case. Only the completed AARD
 registration participates in production.

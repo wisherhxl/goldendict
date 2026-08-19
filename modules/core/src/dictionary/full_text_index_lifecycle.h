@@ -93,6 +93,12 @@ struct FullTextIndexCancelIntent {
     }
 };
 
+struct FullTextIndexStartupArtifactEvidence {
+    FullTextIndexWorkIdentity identity;
+    std::string source_revision;
+    std::shared_ptr<const FullTextIndex> snapshot;
+};
+
 enum class FullTextIndexLifecycleState {
     kUnavailable,
     kNotIndexed,
@@ -203,6 +209,8 @@ class FullTextIndexLifecycleCoordinator final {
         std::shared_ptr<FullTextIndexFormatWorkPort> format_work_port,
         std::shared_ptr<FullTextIndexSnapshotHolder> snapshot_holder);
     bool ApplyPolicyToRegisteredEntries(const FullTextIndexPolicy& policy);
+    bool ReconcileStartupArtifact(
+        const FullTextIndexStartupArtifactEvidence& evidence) noexcept;
     bool SubmitRebuild(const FullTextIndexRebuildIntent& intent);
     bool ExecuteBoundedWork(FullTextIndexWorkRequest request);
     bool Cancel(const FullTextIndexCancelIntent& intent) noexcept;

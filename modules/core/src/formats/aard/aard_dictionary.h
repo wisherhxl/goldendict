@@ -54,6 +54,10 @@ class Dictionary final : public dictionary::Backend,
         return full_text_snapshot_holder_;
     }
 
+    std::optional<dictionary::FullTextIndexStartupArtifactEvidence>
+    StartupArtifactEvidence(
+        dictionary::FullTextIndexWorkIdentity identity) const noexcept;
+
     std::optional<dictionary::ResolvedFullTextDocument> ResolveFullTextDocument(
         std::string_view document_id) const override {
         const auto snapshot = full_text_snapshot_holder_->Acquire();
@@ -79,6 +83,9 @@ class Dictionary final : public dictionary::Backend,
         full_text_snapshot_holder_;
     std::shared_ptr<dictionary::FullTextIndexFormatWorkPort>
         full_text_work_port_;
+    std::shared_ptr<const dictionary::FullTextIndex>
+        startup_full_text_snapshot_;
+    std::string startup_full_text_source_revision_;
     std::optional<FullTextError> full_text_error_;
 };
 }  // namespace goldendict::core::formats::aard

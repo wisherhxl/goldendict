@@ -79,6 +79,50 @@ void AardDictionaryTest::BuildsAndRebuildsUniqueArticleFullTextIndex() {
     const Dictionary created = Dictionary::Open("aard-id", path, index);
     QCOMPARE(created.full_text_index_state(),
              std::optional(dictionary::FullTextIndexState::kCreated));
+    const auto verify_startup_evidence =
+        [&](const Dictionary& aard,
+            dictionary::FullTextIndexState expected_state) {
+            QCOMPARE(aard.full_text_index_state(),
+                     std::optional(expected_state));
+            const auto snapshot = aard.full_text_snapshot_holder()->Acquire();
+            const auto canonical = [&] {
+                std::ifstream input(index, std::ios::binary);
+                return std::string(std::istreambuf_iterator<char>(input),
+                                   std::istreambuf_iterator<char>());
+            }();
+            const dictionary::FullTextIndexWorkIdentity identity{7U, "aard-id"};
+            const auto evidence = aard.StartupArtifactEvidence(identity);
+            QVERIFY(evidence.has_value());
+            QCOMPARE(evidence->identity, identity);
+            QCOMPARE(evidence->source_revision,
+                     aard.full_text_work_port()->FullTextIndexSourceRevision());
+            QCOMPARE(evidence->snapshot, snapshot);
+            QCOMPARE(aard.full_text_snapshot_holder()->Acquire(), snapshot);
+            dictionary::FullTextIndexLifecycleCoordinator coordinator;
+            QVERIFY(coordinator.RegisterDictionary(
+                {"aard-id", "AARD", aard.identity().article_count},
+                aard.full_text_work_port(), aard.full_text_snapshot_holder()));
+            QVERIFY(coordinator.ApplyPolicyToRegisteredEntries({}));
+            const auto requested = coordinator.Snapshot("aard-id");
+            QVERIFY(requested.has_value());
+            QCOMPARE(requested->state(),
+                     dictionary::FullTextIndexLifecycleState::kWorkRequested);
+            const auto bound =
+                aard.StartupArtifactEvidence(requested->identity());
+            QVERIFY(bound.has_value());
+            QVERIFY(coordinator.ReconcileStartupArtifact(*bound));
+            QCOMPARE(coordinator.Snapshot("aard-id")->identity(),
+                     requested->identity());
+            QCOMPARE(coordinator.Snapshot("aard-id")->state(),
+                     dictionary::FullTextIndexLifecycleState::kCurrent);
+            QVERIFY(!coordinator.ReconcileStartupArtifact(*bound));
+            QCOMPARE(aard.full_text_snapshot_holder()->Acquire(), snapshot);
+            std::ifstream unchanged(index, std::ios::binary);
+            QCOMPARE(std::string(std::istreambuf_iterator<char>(unchanged),
+                                 std::istreambuf_iterator<char>()),
+                     canonical);
+        };
+    verify_startup_evidence(created, dictionary::FullTextIndexState::kCreated);
     FullTextQuery query;
     query.text = "searchable";
     const auto response = created.SearchFullText(query);
@@ -96,15 +140,18 @@ void AardDictionaryTest::BuildsAndRebuildsUniqueArticleFullTextIndex() {
     QCOMPARE(redirect.results.size(), std::size_t{1});
     QCOMPARE(redirect.results.front().document_id,
              std::string("aard-index:2:1"));
-    QCOMPARE(Dictionary::Open("aard-id", path, index).full_text_index_state(),
-             std::optional(dictionary::FullTextIndexState::kReused));
+    const Dictionary reused = Dictionary::Open("aard-id", path, index);
+    verify_startup_evidence(reused, dictionary::FullTextIndexState::kReused);
     path = test::WriteAardFixture(root, "fixture.aar", true, true);
-    QCOMPARE(Dictionary::Open("aard-id", path, index).full_text_index_state(),
-             std::optional(dictionary::FullTextIndexState::kRebuiltStale));
+    const Dictionary rebuilt_stale = Dictionary::Open("aard-id", path, index);
+    verify_startup_evidence(rebuilt_stale,
+                            dictionary::FullTextIndexState::kRebuiltStale);
     std::ofstream(index, std::ios::binary | std::ios::trunc) << "corrupt";
-    QCOMPARE(Dictionary::Open("aard-id", path, index).full_text_index_state(),
-             std::optional(dictionary::FullTextIndexState::kRebuiltCorrupt));
+    const Dictionary rebuilt_corrupt = Dictionary::Open("aard-id", path, index);
+    verify_startup_evidence(rebuilt_corrupt,
+                            dictionary::FullTextIndexState::kRebuiltCorrupt);
     const Dictionary disabled = Dictionary::Open("aard-id", path);
+    QVERIFY(!disabled.StartupArtifactEvidence({8U, "aard-id"}).has_value());
     QCOMPARE(disabled.SearchFullText(query).errors.front().code,
              FullTextErrorCode::kUnsupported);
 }
@@ -128,6 +175,7 @@ void AardDictionaryTest::ContainsFullTextFailures() {
     const auto blocked = root / "blocked.gdfts";
     QVERIFY(std::filesystem::create_directory(blocked));
     const Dictionary storage = Dictionary::Open("storage-id", path, blocked);
+    QVERIFY(!storage.StartupArtifactEvidence({1U, "storage-id"}).has_value());
     QCOMPARE(storage.LookupExact("example").size(), std::size_t{1});
     QCOMPARE(storage.SearchFullText(query).errors.front().code,
              FullTextErrorCode::kInternal);

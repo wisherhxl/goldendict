@@ -6023,16 +6023,16 @@ reconciliation, scheduling/submission, progress/status visibility, other
 format ports and facade/UI transport remain unselected and unranked. No
 successor beyond P8-FT-80 is selected or named.
 
-### Phase 8 P8-FT-81 private startup full-text artifact reconciliation (selected)
+### Phase 8 P8-FT-81 private startup full-text artifact reconciliation (complete)
 
-The independent post-P8-FT-80 readiness audit is grounded at synchronized
-migrated revision `9dbd2a17c9342b905c3f9668003ea90629566335` and clean pinned
+The independent post-P8-FT-80 readiness audit was grounded at synchronized
+migrated revision `73f9e6cd976379e5f16a4c7eb5deb4e1f965ad80` and clean pinned
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
-`full_text_index_lifecycle.cc:147-189,191-272` registers a holder and port, then
+`full_text_index_lifecycle.cc:147-189,191-302` registers a holder and port, then
 applies policy as a new `kWorkRequested` generation without consulting the
-holder. `aard_dictionary.cc:171-262` has already opened or rebuilt the canonical
+holder. `aard_dictionary.cc:171-282` has already opened or rebuilt the canonical
 artifact and published its source-current immutable snapshot before that
-registration, while `dictionary_service.cc:919-950,1086-1090` composes those
+registration, while `dictionary_service.cc:919-954,1090-1105` composes those
 steps in that order. Pinned legacy `fulltextsearch.cc:34-125` and
 `mainwindow.cc:1381-1393,2158-2165,2288-2303` check existing index readiness
 before bounded background work and restart indexing only after applying policy.
@@ -6059,8 +6059,8 @@ reconciliation remains limited to AARD, the sole registered real work port. An
 AARD snapshot successfully rebuilt from a stale or corrupt on-disk artifact is
 valid startup evidence; reconciliation performs no additional artifact write.
 
-Focused acceptance will extend only the existing lifecycle, AARD dictionary
-and application-service tests. It must prove exact identity/revision/snapshot
+Focused acceptance extends only the existing lifecycle, AARD dictionary
+and application-service tests. It proves exact identity/revision/snapshot
 binding, retained snapshot identity, no port call or artifact rewrite,
 idempotence, zero/multiple entries, acceptance of successfully rebuilt startup
 snapshots, and rejection of absent, stale, corrupt or unverifiable evidence,

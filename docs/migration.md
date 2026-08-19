@@ -5894,10 +5894,10 @@ UI/translations and exactly 109 registrations remain locked. Reconciliation,
 scheduling/submission, visibility, other formats and UI transport remain
 unselected and unranked. No successor beyond P8-FT-80 is selected or named.
 
-### Phase 8 P8-FT-81 private startup full-text artifact reconciliation (selected)
+### Phase 8 P8-FT-81 private startup full-text artifact reconciliation (complete)
 
 The independent post-P8-FT-80 audit used synchronized migrated revision
-`9dbd2a17c9342b905c3f9668003ea90629566335` and clean pinned legacy revision
+`73f9e6cd976379e5f16a4c7eb5deb4e1f965ad80` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current AARD construction opens or
 rebuilds the canonical full-text artifact and publishes its immutable snapshot
 before composition registers the holder and port. Persisted-policy application
@@ -5907,7 +5907,7 @@ indexing pass. The audit therefore selects only P8-FT-81: reconcile exact
 requested generations with already validated startup artifacts before any work
 submission or scheduling boundary.
 
-The selected leaf adds a private format-to-Core evidence seam and one private
+The completed leaf adds a private format-to-Core evidence seam and one private
 reconciliation operation. Immutable evidence binds the startup snapshot to the
 captured source revision and exact current identity. If capability, eligibility,
 identity, revision, holder snapshot and uncancelled state still match, Core
@@ -5924,9 +5924,9 @@ is idempotent; zero and multiple entries are deterministic; stale evidence
 cannot authorize persistence, publication or a state transition. Production
 scope is only the completed AARD registration.
 
-Acceptance extends only existing `full_text_index_test`,
-`aard_dictionary_test` and `application_service_test` registrations. It must
-prove exact identity/revision/snapshot binding, retained snapshot identity, no
+Acceptance extends only the existing `full_text_index_test`,
+`aard_dictionary_test` and `application_service_test` registrations. It proves
+exact identity/revision/snapshot binding, retained snapshot identity, no
 port call or additional artifact rewrite, idempotence, zero/multiple entries,
 successfully rebuilt startup snapshots and every rejection above. P8-FT-81 adds
 no scheduler, thread, queue, retry,

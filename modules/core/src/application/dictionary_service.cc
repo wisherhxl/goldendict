@@ -917,6 +917,8 @@ class ServiceState final {
             }
         }
         const auto aard_discovery = formats::aard::Discover(roots);
+        std::vector<formats::aard::Dictionary*> registered_aard;
+        registered_aard.reserve(aard_discovery.dictionary_files.size());
         for (const auto& issue : aard_discovery.issues) {
             startup_errors_.push_back(
                 {LookupErrorCode::kDictionaryUnavailable,
@@ -942,6 +944,8 @@ class ServiceState final {
                     startup_errors_.push_back(
                         {LookupErrorCode::kInternal, id,
                          "Could not register AARD full-text lifecycle"});
+                } else {
+                    registered_aard.push_back(aard.get());
                 }
                 dictionaries_.push_back(std::move(aard));
             } catch (const dictionary::Error& error) {
@@ -1087,6 +1091,17 @@ class ServiceState final {
                 dictionary::ProjectFullTextIndexPolicy(preferences_))) {
             throw std::runtime_error(
                 "Could not apply persisted full-text index policy");
+        }
+        for (const auto* aard : registered_aard) {
+            const auto lifecycle =
+                full_text_index_coordinator_.Snapshot(aard->identity().id);
+            if (!lifecycle.has_value())
+                continue;
+            const auto evidence =
+                aard->StartupArtifactEvidence(lifecycle->identity());
+            if (evidence.has_value())
+                full_text_index_coordinator_.ReconcileStartupArtifact(
+                    *evidence);
         }
     }
 

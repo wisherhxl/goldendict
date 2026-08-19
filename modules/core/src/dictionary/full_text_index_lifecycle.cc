@@ -271,6 +271,35 @@ bool FullTextIndexLifecycleCoordinator::ApplyPolicyToRegisteredEntries(
     return true;
 }
 
+bool FullTextIndexLifecycleCoordinator::ReconcileStartupArtifact(
+    const FullTextIndexStartupArtifactEvidence& evidence) noexcept {
+    if (evidence.snapshot == nullptr)
+        return false;
+
+    std::lock_guard lock(implementation_->mutex);
+    const auto found =
+        implementation_->entries.find(evidence.identity.dictionary_id);
+    if (found == implementation_->entries.end())
+        return false;
+
+    auto& entry = found->second;
+    auto& generation = *entry.current;
+    if (!entry.has_accepted_generation ||
+        generation.identity != evidence.identity ||
+        generation.state != FullTextIndexLifecycleState::kWorkRequested ||
+        !generation.format_capable ||
+        !IsFullTextIndexPolicyEligible(entry.metadata, generation.policy) ||
+        generation.source_revision != evidence.source_revision ||
+        generation.cancellation == nullptr ||
+        generation.cancellation->IsCancellationRequested() ||
+        entry.snapshot_holder->Acquire() != evidence.snapshot) {
+        return false;
+    }
+
+    generation.state = FullTextIndexLifecycleState::kCurrent;
+    return true;
+}
+
 bool FullTextIndexLifecycleCoordinator::SubmitRebuild(
     const FullTextIndexRebuildIntent& intent) {
     std::shared_ptr<FullTextIndexFormatWorkPort> port;

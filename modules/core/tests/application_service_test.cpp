@@ -3450,15 +3450,24 @@ void ApplicationServiceTest::
     configuration.index_directory = (root / "indexes").string();
     auto service = CreateDictionaryService(configuration);
     const auto dictionary_id = service->GetCatalog().front().id;
-    const auto requested =
+    const auto current =
         application::FullTextIndexLifecycleSnapshot(*service, dictionary_id);
-    QVERIFY(requested.has_value());
-    QCOMPARE(requested->identity().generation, 1U);
-    QCOMPARE(requested->state(),
-             dictionary::FullTextIndexLifecycleState::kWorkRequested);
+    QVERIFY(current.has_value());
+    QCOMPARE(current->identity().generation, 1U);
+    QCOMPARE(current->state(),
+             dictionary::FullTextIndexLifecycleState::kCurrent);
     const auto artifact = std::filesystem::path(configuration.index_directory) /
                           (dictionary_id + ".gdfts");
     const auto canonical = ReadFile(artifact);
+
+    service = CreateDictionaryService(configuration);
+    const auto reused =
+        application::FullTextIndexLifecycleSnapshot(*service, dictionary_id);
+    QVERIFY(reused.has_value());
+    QCOMPARE(reused->identity().generation, 1U);
+    QCOMPARE(reused->state(),
+             dictionary::FullTextIndexLifecycleState::kCurrent);
+    QCOMPARE(ReadFile(artifact), canonical);
 
     configuration.preferences.full_text_disabled_types = "aard";
     service = CreateDictionaryService(configuration);

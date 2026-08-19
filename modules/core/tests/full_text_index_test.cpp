@@ -208,6 +208,7 @@ class FullTextIndexTest : public QObject {
     void RegistrationMetadataAndEligibility();
     void PolicyExcludedLifecycle();
     void AppliesPolicyToAllRegisteredEntries();
+    void ReconcilesValidatedStartupArtifacts();
     void CoordinatesExplicitLifecycleTransitions();
     void IsolatesAndMonotonicallyReplacesGenerations();
     void CancelsExactWorkIdempotently();
@@ -652,6 +653,154 @@ void FullTextIndexTest::AppliesPolicyToAllRegisteredEntries() {
     QCOMPARE(working.Snapshot("working")->state(),
              FullTextIndexLifecycleState::kPolicyExcluded);
     QCOMPARE(working_holder->Acquire().get(), current.get());
+}
+
+void FullTextIndexTest::ReconcilesValidatedStartupArtifacts() {
+    TemporaryDirectory directory;
+    FullTextIndexLifecycleCoordinator empty;
+    QVERIFY(empty.ApplyPolicyToRegisteredEntries({}));
+    QVERIFY(!empty.ReconcileStartupArtifact({}));
+
+    FullTextIndexLifecycleCoordinator coordinator;
+    auto first_port = std::make_shared<FakeFormatWorkPort>();
+    auto second_port = std::make_shared<FakeFormatWorkPort>();
+    auto excluded_port = std::make_shared<FakeFormatWorkPort>();
+    auto unavailable_port = std::make_shared<FakeFormatWorkPort>();
+    unavailable_port->supported = false;
+    auto failed_port = std::make_shared<FakeFormatWorkPort>();
+    auto first_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    auto second_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    auto excluded_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    const auto first_snapshot = Snapshot(directory, "startup-first");
+    const auto second_snapshot = Snapshot(directory, "startup-second");
+    const auto excluded_snapshot = Snapshot(directory, "startup-excluded");
+    QVERIFY(first_holder->Publish(first_snapshot));
+    QVERIFY(second_holder->Publish(second_snapshot));
+    QVERIFY(excluded_holder->Publish(excluded_snapshot));
+    QVERIFY(
+        Register(coordinator, Registration("first"), first_port, first_holder));
+    QVERIFY(Register(coordinator, Registration("second"), second_port,
+                     second_holder));
+    QVERIFY(Register(coordinator, Registration("excluded", "BGL"),
+                     excluded_port, excluded_holder));
+    QVERIFY(
+        Register(coordinator, Registration("unavailable"), unavailable_port));
+    QVERIFY(Register(coordinator, Registration("failed"), failed_port));
+    failed_port->throw_revision = true;
+
+    FullTextIndexPolicy policy;
+    policy.disabled_format_types = "BGL";
+    QVERIFY(coordinator.ApplyPolicyToRegisteredEntries(policy));
+    const auto first_identity = coordinator.Snapshot("first")->identity();
+    const auto second_identity = coordinator.Snapshot("second")->identity();
+    const auto first_support_probes = first_port->support_probe_count;
+    const auto first_revision_probes = first_port->revision_probe_count;
+    const FullTextIndexStartupArtifactEvidence first_evidence{
+        first_identity, "revision-1", first_snapshot};
+
+    QVERIFY(!coordinator.ReconcileStartupArtifact(
+        {{first_identity.generation + 1U, "first"},
+         "revision-1",
+         first_snapshot}));
+    QVERIFY(!coordinator.ReconcileStartupArtifact(
+        {first_identity, "stale-revision", first_snapshot}));
+    QVERIFY(!coordinator.ReconcileStartupArtifact(
+        {first_identity, "revision-1", second_snapshot}));
+    QVERIFY(!coordinator.ReconcileStartupArtifact(
+        {first_identity, "revision-1", nullptr}));
+    QCOMPARE(coordinator.Snapshot("first")->state(),
+             FullTextIndexLifecycleState::kWorkRequested);
+    QCOMPARE(first_holder->Acquire(), first_snapshot);
+
+    QVERIFY(coordinator.ReconcileStartupArtifact(first_evidence));
+    QCOMPARE(coordinator.Snapshot("first")->identity(), first_identity);
+    QCOMPARE(coordinator.Snapshot("first")->state(),
+             FullTextIndexLifecycleState::kCurrent);
+    QCOMPARE(first_holder->Acquire(), first_snapshot);
+    QVERIFY(!coordinator.ReconcileStartupArtifact(first_evidence));
+    QCOMPARE(first_port->invocation_count, 0U);
+    QCOMPARE(first_port->support_probe_count, first_support_probes);
+    QCOMPARE(first_port->revision_probe_count, first_revision_probes);
+
+    QVERIFY(second_holder->Publish(first_snapshot));
+    QVERIFY(!coordinator.ReconcileStartupArtifact(
+        {second_identity, "revision-1", second_snapshot}));
+    QCOMPARE(coordinator.Snapshot("second")->state(),
+             FullTextIndexLifecycleState::kWorkRequested);
+    QVERIFY(second_holder->Publish(second_snapshot));
+    QVERIFY(coordinator.ReconcileStartupArtifact(
+        {second_identity, "revision-1", second_snapshot}));
+    QCOMPARE(coordinator.Snapshot("second")->identity(), second_identity);
+    QCOMPARE(coordinator.Snapshot("second")->state(),
+             FullTextIndexLifecycleState::kCurrent);
+    QCOMPARE(second_holder->Acquire(), second_snapshot);
+    QCOMPARE(second_port->invocation_count, 0U);
+
+    QVERIFY(!coordinator.ReconcileStartupArtifact(
+        {coordinator.Snapshot("excluded")->identity(), "", excluded_snapshot}));
+    QCOMPARE(coordinator.Snapshot("excluded")->state(),
+             FullTextIndexLifecycleState::kPolicyExcluded);
+    QVERIFY(!coordinator.ReconcileStartupArtifact(
+        {coordinator.Snapshot("unavailable")->identity(), "", first_snapshot}));
+    QCOMPARE(coordinator.Snapshot("unavailable")->state(),
+             FullTextIndexLifecycleState::kUnavailable);
+    QVERIFY(!coordinator.ReconcileStartupArtifact(
+        {coordinator.Snapshot("failed")->identity(), "", first_snapshot}));
+    QCOMPARE(coordinator.Snapshot("failed")->state(),
+             FullTextIndexLifecycleState::kFailed);
+
+    FullTextIndexLifecycleCoordinator cancelled;
+    auto cancelled_port = std::make_shared<FakeFormatWorkPort>();
+    auto cancelled_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    QVERIFY(cancelled_holder->Publish(first_snapshot));
+    QVERIFY(Register(cancelled, Registration("cancelled"), cancelled_port,
+                     cancelled_holder));
+    QVERIFY(cancelled.ApplyPolicyToRegisteredEntries({}));
+    const auto cancelled_identity = cancelled.Snapshot("cancelled")->identity();
+    QVERIFY(cancelled.Cancel({cancelled_identity}));
+    QVERIFY(!cancelled.ReconcileStartupArtifact(
+        {cancelled_identity, "revision-1", first_snapshot}));
+    QCOMPARE(cancelled.Snapshot("cancelled")->state(),
+             FullTextIndexLifecycleState::kCancelled);
+
+    FullTextIndexLifecycleCoordinator replaced;
+    auto replaced_port = std::make_shared<FakeFormatWorkPort>();
+    auto replaced_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    QVERIFY(replaced_holder->Publish(first_snapshot));
+    QVERIFY(Register(replaced, Registration("replaced"), replaced_port,
+                     replaced_holder));
+    QVERIFY(replaced.ApplyPolicyToRegisteredEntries({}));
+    const auto stale_identity = replaced.Snapshot("replaced")->identity();
+    QVERIFY(replaced.ApplyPolicyToRegisteredEntries({}));
+    QVERIFY(!replaced.ReconcileStartupArtifact(
+        {stale_identity, "revision-1", first_snapshot}));
+    QCOMPARE(replaced.Snapshot("replaced")->identity().generation, 2U);
+    QCOMPARE(replaced.Snapshot("replaced")->state(),
+             FullTextIndexLifecycleState::kWorkRequested);
+    QCOMPARE(replaced_holder->Acquire(), first_snapshot);
+
+    FullTextIndexLifecycleCoordinator working;
+    auto blocking = std::make_shared<BlockingFormatWorkPort>();
+    auto working_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    QVERIFY(working_holder->Publish(first_snapshot));
+    QVERIFY(
+        Register(working, Registration("working"), blocking, working_holder));
+    QVERIFY(working.ApplyPolicyToRegisteredEntries({}));
+    const auto working_identity = working.Snapshot("working")->identity();
+    FullTextIndexWorkRequest request;
+    request.identity = working_identity;
+    auto work = std::async(std::launch::async,
+                           [&] { return working.ExecuteBoundedWork(request); });
+    blocking->WaitUntilStarted();
+    QVERIFY(!working.ReconcileStartupArtifact(
+        {working_identity, "blocking-revision", first_snapshot}));
+    QCOMPARE(working.Snapshot("working")->state(),
+             FullTextIndexLifecycleState::kWorking);
+    blocking->Finish({FullTextIndexWorkStatus::kFailed, "expected"});
+    QVERIFY(work.get());
+    QCOMPARE(working.Snapshot("working")->state(),
+             FullTextIndexLifecycleState::kFailed);
+    QCOMPARE(working_holder->Acquire(), first_snapshot);
 }
 
 void FullTextIndexTest::CoordinatesExplicitLifecycleTransitions() {
