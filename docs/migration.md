@@ -5852,6 +5852,47 @@ surfaces, dependencies, ordinary find/F3, translations and exactly 109 Release
 registrations remain unchanged. P8-FT-79 is complete. No successor beyond it
 is selected or named.
 
+### Phase 8 P8-FT-80 persisted full-text policy application (selected)
+
+The independent post-P8-FT-79 audit used synchronized migrated revision
+`d79180de54bc19076ff3eae4743cf5de40a40e18` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current Core already projects
+persisted preferences into `FullTextIndexPolicy`, owns canonical eligibility,
+retains immutable registration metadata and replaces generations
+monotonically. Composition already retains those preferences and owns the
+completed AARD dictionary, holder and port registration. Pinned legacy applies
+full-text parameters to dictionaries before starting or restarting its indexer.
+The audit therefore selects only P8-FT-80: apply persisted policy to registered
+dictionaries before any reconciliation or scheduling boundary.
+
+The leaf adds one private coordinator-wide application operation. It assigns a
+strictly newer generation to every entry present for that application,
+re-evaluates capability and the existing eligibility predicate, captures the
+eligible source revision, cancels the superseded generation and transitions to
+exactly `kUnavailable`, `kPolicyExcluded`, `kFailed` or `kWorkRequested`.
+Applying to no registrations succeeds without effect; applying repeatedly is
+monotonic. Composition calls the operation once after discovery with the
+policy projected from the already-loaded application preferences. Only AARD is
+affected in production because no other real format-work port is registered.
+
+Acceptance extends only existing lifecycle and application-service tests. It
+must prove enabled and disabled policy, disabled format matching, article-count
+thresholds, capable and incapable ports, source-revision failure, multiple and
+zero registrations, repeated application, strictly newer per-entry generations
+and cancellation of superseded requested or working work. Cancellation is
+cooperative; an excluded, unavailable, failed, stale or cancelled completion
+cannot finalize an artifact, mutate the canonical index, publish a holder
+snapshot or reach `kCurrent`.
+
+P8-FT-80 does not schedule or execute work and adds no startup/restart
+reconciliation, progress/status surface, real port, facade/Widgets transport,
+UI, serialization, public/installed API, dependency or test registration.
+P8-FT-72 through P8-FT-79, `full-text-v1`, canonical IDs,
+`kPolicyExcluded`, article/work bounds, ICU divergence, ordinary find/F3,
+UI/translations and exactly 109 registrations remain locked. Reconciliation,
+scheduling/submission, visibility, other formats and UI transport remain
+unselected and unranked. No successor beyond P8-FT-80 is selected or named.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

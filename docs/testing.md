@@ -4662,6 +4662,48 @@ P8-FT-72 through P8-FT-78, public/installed boundaries, canonical IDs,
 UI/translations, serialization and dependencies remain locked. P8-FT-79 is
 complete. No successor beyond it is selected or named.
 
+### Phase 8 P8-FT-80 persisted-policy application acceptance (selected)
+
+The fresh audit is grounded at synchronized migrated revision
+`d79180de54bc19076ff3eae4743cf5de40a40e18` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly one private
+Core leaf: apply the persisted full-text policy to all registered lifecycle
+entries after discovery. No successor is selected.
+
+Extend only the existing `full_text_index_test` and
+`application_service_test` registrations. Coordinator cases must prove that
+one application assigns a strictly newer generation to each registered entry,
+uses the existing canonical capability and policy-eligibility rules, captures
+an eligible source revision, cancels a superseded generation and produces only
+`kUnavailable`, `kPolicyExcluded`, `kFailed` or `kWorkRequested`. Cover enabled
+and disabled policy, disabled format matching, maximum-article inclusion and
+exclusion, capable and incapable ports, source-revision failure, multiple and
+zero registrations, repeated application and monotonic per-entry identities.
+
+Race cases must hold requested or working generations while a later policy is
+applied and prove the superseded cancellation is observable. Late stale,
+cancelled, failed, excluded or unavailable completion cannot finalize a
+prepared artifact, mutate the canonical index, publish the holder or reach
+`kCurrent`. Existing cooperative cancellation, generation revalidation and all
+P8-FT-79 AARD publication-safety cases remain unchanged.
+
+Application-service coverage must construct eligible and excluded AARD
+fixtures, project the persisted preferences after discovery, and observe the
+matching requested or policy-excluded lifecycle state without executing work.
+The empty-discovery case remains successful. The leaf adds no scheduler,
+thread, restart reconciliation, progress/status projection, facade/UI
+transport, format port, executable or test registration.
+
+The documentation gate reviews the four P8-FT-80 sections and validates every
+current and pinned citation, terminology, `git diff --check`, the exact
+four-file allowlist, exactly 109 Release registrations, ref equality and clean
+migrated/pinned worktrees. P8-FT-72 through P8-FT-79, public/installed APIs,
+`full-text-v1`, canonical IDs, `kPolicyExcluded`, article/work bounds, ICU
+divergence, ordinary find/F3, UI/translations, serialization and dependencies
+remain locked. Startup/restart reconciliation, scheduling/submission,
+progress/status visibility, other real ports and facade/UI transport remain
+unselected and unranked. No successor beyond P8-FT-80 is selected or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

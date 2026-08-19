@@ -1544,6 +1544,39 @@ ordinary find/F3, translations and exactly 109 registrations remain locked.
 P8-FT-79 is complete. No successor beyond it is selected or
 named.
 
+### P8-FT-80 persisted full-text policy application (selected)
+
+The fresh post-P8-FT-79 audit at synchronized migrated revision
+`d79180de54bc19076ff3eae4743cf5de40a40e18` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects exactly one private Core
+boundary: apply the persisted full-text lifecycle policy to every dictionary
+registered with the coordinator. Existing preference projection, canonical
+eligibility, registration metadata and generation replacement make this leaf
+dependency-ready; pinned legacy applies full-text parameters before indexing.
+
+One all-entry coordinator operation assigns a strictly newer generation per
+registered dictionary, rechecks capability and eligibility, captures an
+eligible source revision, cancels superseded work and leaves each entry in
+exactly `kUnavailable`, `kPolicyExcluded`, `kFailed` or `kWorkRequested`.
+Composition invokes it once after discovery with the policy projected from its
+loaded preferences. Empty registration sets are a successful no-op and
+repeated applications remain monotonic. The production connection affects
+only the completed AARD registration and neither schedules nor executes work.
+
+Focused existing lifecycle and application-service coverage will pin enabled,
+disabled, format-excluded and article-threshold policies; capable/incapable
+ports; revision failure; multiple and zero entries; repetition; monotonicity;
+and cancellation of superseded requested or working generations. Cancellation
+is cooperative; no stale, cancelled, failed or excluded completion may persist,
+publish or become `kCurrent`.
+
+P8-FT-72 through P8-FT-79, public/installed APIs, `full-text-v1`, canonical
+IDs, `kPolicyExcluded`, article/work bounds, ICU divergence, ordinary find/F3,
+UI/translations, dependencies and exactly 109 registrations remain locked.
+Startup/restart reconciliation, scheduling/submission, progress/status
+visibility, other real ports and facade/UI transport remain unselected and
+unranked. No successor beyond P8-FT-80 is selected or named.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

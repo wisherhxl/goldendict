@@ -5974,6 +5974,54 @@ Dictionaries-only F3, translations and exactly 109 registrations remain
 locked. P8-FT-79 is complete. No successor
 beyond it is selected or named.
 
+### Phase 8 P8-FT-80 persisted full-text policy application (selected)
+
+The fresh post-P8-FT-79 readiness audit is grounded at synchronized migrated
+revision `d79180de54bc19076ff3eae4743cf5de40a40e18` and clean pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`full_text_index_lifecycle.cc:19-23,71-78` already projects persisted
+preferences into the private lifecycle policy and owns canonical eligibility.
+`full_text_index_lifecycle.cc:115-137,145-245` already owns registration
+metadata, generation replacement, cancellation and policy-derived state.
+`dictionary_service.cc:675-680,925-950,1749-1755` retains the loaded
+preferences and owns the completed AARD registration for the service lifetime.
+Pinned legacy `mainwindow.cc:1381-1393,2158-2165,2288-2303` applies persisted
+full-text parameters before starting or restarting indexing. Persisted-policy
+application is therefore the smallest dependency-ready leaf before
+reconciliation or scheduling.
+
+P8-FT-80 adds one private coordinator operation that atomically applies one
+immutable policy to all entries registered at the time of the call. For each
+entry, Core allocates a strictly newer generation, re-evaluates capability and
+the existing eligibility predicate, captures the current source revision when
+eligible, cancels the superseded generation and publishes exactly one
+replacement state: `kUnavailable`, `kPolicyExcluded`, `kFailed` or
+`kWorkRequested`. Empty registration sets succeed as a no-op. Repeated
+applications remain monotonic and superseded requested or working generations
+cannot later authorize persistence or holder publication.
+
+After discovery, composition projects its already-loaded preferences and
+applies the result once to the completed registrations. The production effect
+is limited to AARD because it is the only real registered format-work port.
+Policy application submits no work and owns no thread, startup artifact
+reconciliation, progress/status projection or UI transport. It adds no public
+or installed interface and no registration.
+
+Acceptance uses focused existing lifecycle and application-service tests for
+enabled and disabled policy, disabled format, article threshold, capable and
+incapable ports, source-revision failure, multiple and zero registrations,
+repeated application, monotonic generations and cancellation of superseded
+requested or working generations. Cancellation of superseded work is
+cooperative, but an excluded, unavailable, failed, stale or cancelled
+completion cannot finalize an artifact, mutate the canonical index, publish
+the holder or reach `kCurrent`. P8-FT-72 through P8-FT-79,
+`full-text-v1`, canonical IDs, `kPolicyExcluded`, article/work bounds, ICU
+divergence, ordinary find/F3, UI/translations, dependencies, public/installed
+APIs and exactly 109 registrations remain locked. Startup/restart
+reconciliation, scheduling/submission, progress/status visibility, other
+format ports and facade/UI transport remain unselected and unranked. No
+successor beyond P8-FT-80 is selected or named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
