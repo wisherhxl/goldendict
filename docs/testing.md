@@ -4905,7 +4905,7 @@ or registration. P8-FT-72 through P8-FT-84 remain locked, exactly 109
 registrations remain required, this private correction is complete, and no
 successor beyond P8-FT-85 is selected.
 
-## P8-FT-86 Parity-Preserving Execution-Bounds Provider Acceptance (Selected)
+## P8-FT-86 Parity-Preserving Execution-Bounds Provider Acceptance (Complete)
 
 P8-FT-86 remains within the existing `full_text_index_test` registration. The
 private argument-free `DefaultFullTextIndexExecutionBounds()` factory must
@@ -4913,7 +4913,7 @@ return `std::numeric_limits<std::size_t>::max()` for maximum documents,
 maximum bytes per document and maximum corpus bytes, and
 `std::chrono::steady_clock::time_point::max()` for its deadline.
 
-Focused implementation acceptance must prove:
+Completed focused implementation acceptance proves:
 
 - all three numeric fields equal `SIZE_MAX` on the build target;
 - the deadline equals `steady_clock::time_point::max()` with no clock input or
@@ -4926,7 +4926,7 @@ Focused implementation acceptance must prove:
 No arbitrary-expiry test is added for this provider. The implementation gate
 is the focused existing Release test, fresh Release configure/build, 109/109
 CTest and the established install/package/API checks. This documentation leaf
-runs no compiled test. Its exact future implementation allowlist is the private
+runs no compiled test. Its exact implementation allowlist is the private
 lifecycle header and implementation, existing full-text index test, and four
 governing documents.
 

@@ -6276,10 +6276,10 @@ registrations. Delivery is limited to the lifecycle implementation, existing
 test and four governing documents. P8-FT-85 is complete; no successor beyond
 it is selected or named.
 
-### Phase 8 P8-FT-86 parity-preserving private execution-bounds provider (selected)
+### Phase 8 P8-FT-86 parity-preserving private execution-bounds provider (complete)
 
 The independent post-P8-FT-85 readiness audit is grounded at synchronized
-migrated revision `78b1922c379aa22c523d9b873be304776f3501b0` and clean pinned
+migrated revision `ab38dd0d76a8cb8843a9eb4089148104570c444b` and clean pinned
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
 `full_text_index_lifecycle.h:103-134` defines the immutable private execution
 envelope, and `full_text_index_lifecycle.cc:381-422` retains authoritative
@@ -6288,11 +6288,11 @@ policy permits `0..10000000` articles with zero unlimited at
 `configuration.cc:747-752` and `full_text_index_lifecycle.cc:75-80`. Therefore
 the existing `full_text_index.h:18-21` index-construction limits cannot be
 promoted into production lifecycle quotas without excluding policy-eligible
-dictionaries. The next smallest dependency-ready prerequisite is exactly one
-private parity-preserving default provider, before executor ownership or
-composition submission.
+dictionaries. The selected implementation prerequisite was exactly one private
+parity-preserving default provider, before executor ownership or composition
+submission.
 
-P8-FT-86 adds the argument-free private
+P8-FT-86 provides the argument-free private
 `DefaultFullTextIndexExecutionBounds()` factory beside the lifecycle DTO. It
 returns `std::numeric_limits<std::size_t>::max()` independently for maximum
 documents, maximum bytes per document and maximum corpus bytes, plus
@@ -6302,14 +6302,14 @@ tuple is nonzero and mathematically coherent under P8-FT-85 on both 32- and
 limits, needs no clock arithmetic or injected time, and remains replaceable by
 a later configured policy without changing coordinator or executor authority.
 
-Focused acceptance extends only `full_text_index_test`. It proves every
+Completed focused acceptance extends only `full_text_index_test`. It proves every
 numeric field equals `SIZE_MAX`, the deadline equals
 `steady_clock::time_point::max()`, and P8-FT-82 accepts and forwards every
 value unchanged for an exact current `kWorkRequested` identity. Factory
 creation and projection remain deterministic and cause no lifecycle transition
 or format-port call. No arbitrary-expiry case belongs to this factory.
 
-Implementation delivery is restricted to
+Implementation delivery was restricted to
 `full_text_index_lifecycle.h/.cc`, the existing `full_text_index_test`, and the
 four governing documents. P8-FT-86 adds no executor ownership, `ServiceState`
 wiring, startup/recomposition submission, configurable quota, discovery,

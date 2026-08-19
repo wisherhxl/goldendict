@@ -25,6 +25,13 @@ FullTextIndexPolicy ProjectFullTextIndexPolicy(
             preferences.full_text_disabled_types};
 }
 
+FullTextIndexExecutionBounds DefaultFullTextIndexExecutionBounds() {
+    return {std::numeric_limits<std::size_t>::max(),
+            std::numeric_limits<std::size_t>::max(),
+            std::numeric_limits<std::size_t>::max(),
+            std::chrono::steady_clock::time_point::max()};
+}
+
 namespace {
 
 unsigned char FoldAscii(unsigned char value) noexcept {

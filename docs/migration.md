@@ -6095,10 +6095,10 @@ UI, serialization, dependency, public API or registration is selected.
 P8-FT-72 through P8-FT-84 and exactly 109 registrations remain locked. This
 correction is complete; no successor beyond P8-FT-85 is selected or named.
 
-### Phase 8 P8-FT-86 parity-preserving private execution-bounds provider (selected)
+### Phase 8 P8-FT-86 parity-preserving private execution-bounds provider (complete)
 
 The fresh post-P8-FT-85 audit uses synchronized migrated revision
-`78b1922c379aa22c523d9b873be304776f3501b0` and clean pinned legacy revision
+`ab38dd0d76a8cb8843a9eb4089148104570c444b` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current configuration and policy
 permit `0..10000000` dictionary articles with zero unlimited. Pinned legacy
 `fulltextsearch.cc:34-112` runs eligible indexing serially in the background
@@ -6108,7 +6108,7 @@ before replacement and restarts it afterward. After P8-FT-85 removed the
 machine-product restriction, the smallest dependency-ready composition
 prerequisite is a private no-practical-quota production bounds provider.
 
-P8-FT-86 adds only the private argument-free
+P8-FT-86 provides only the private argument-free
 `DefaultFullTextIndexExecutionBounds()` factory. Its maximum-document,
 maximum-document-byte and maximum-corpus-byte fields each equal `SIZE_MAX`, and
 its deadline equals `steady_clock::time_point::max()`. P8-FT-82 remains the
@@ -6117,7 +6117,7 @@ clock, discover or submit work, invoke an executor or port, or mutate lifecycle
 state. A future configured provider may replace these defaults without
 changing coordinator/executor responsibilities.
 
-Acceptance extends the existing `full_text_index_test` registration with exact
+Completed acceptance extends the existing `full_text_index_test` registration with exact
 field checks, successful unchanged P8-FT-82 projection for a current requested
 identity, and proof of no lifecycle or port effects. No arbitrary expiry test
 is added. The exact implementation allowlist is

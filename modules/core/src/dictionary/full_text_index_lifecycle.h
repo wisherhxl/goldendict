@@ -134,6 +134,8 @@ class FullTextIndexExecutionBounds final {
     const std::chrono::steady_clock::time_point deadline_;
 };
 
+FullTextIndexExecutionBounds DefaultFullTextIndexExecutionBounds();
+
 enum class FullTextIndexLifecycleState {
     kUnavailable,
     kNotIndexed,

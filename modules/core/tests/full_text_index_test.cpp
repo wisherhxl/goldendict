@@ -12,6 +12,7 @@
 #include <mutex>
 #include <optional>
 #include <stdexcept>
+#include <tuple>
 #include <type_traits>
 
 #include "../src/dictionary/full_text_index.h"
@@ -284,6 +285,7 @@ class FullTextIndexTest : public QObject {
     void AppliesPolicyToAllRegisteredEntries();
     void ReconcilesValidatedStartupArtifacts();
     void DiscoversRequestedWork();
+    void ProvidesDefaultExecutionBounds();
     void ProjectsBoundedWorkRequests();
     void ExecutesSubmittedWorkSerially();
     void ShutsDownSerialWorkExecutor();
@@ -1038,6 +1040,81 @@ void FullTextIndexTest::DiscoversRequestedWork() {
     QVERIFY(working.get());
     QCOMPARE(coordinator.Snapshot("working")->state(),
              FullTextIndexLifecycleState::kFailed);
+}
+
+void FullTextIndexTest::ProvidesDefaultExecutionBounds() {
+    TemporaryDirectory directory;
+    const auto artifact_inventory = [&directory] {
+        using Artifact = std::tuple<std::filesystem::path, std::uintmax_t,
+                                    std::filesystem::file_time_type>;
+        std::vector<Artifact> artifacts;
+        for (const auto& entry :
+             std::filesystem::recursive_directory_iterator(directory.path())) {
+            if (entry.is_regular_file()) {
+                artifacts.emplace_back(
+                    entry.path().lexically_relative(directory.path()),
+                    entry.file_size(), entry.last_write_time());
+            }
+        }
+        std::sort(artifacts.begin(), artifacts.end());
+        return artifacts;
+    };
+    FullTextIndexLifecycleCoordinator coordinator;
+    auto port = std::make_shared<FakeFormatWorkPort>();
+    auto holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    const auto snapshot = Snapshot(directory, "default-bounds");
+    QVERIFY(holder->Publish(snapshot));
+    QVERIFY(
+        Register(coordinator, Registration("default-bounds"), port, holder));
+
+    const FullTextIndexPolicy policy;
+    QVERIFY(coordinator.SubmitRebuild({{1U, "default-bounds"}, policy}));
+    const FullTextIndexWorkIdentity identity{1U, "default-bounds"};
+    const auto lifecycle_before = coordinator.Snapshot("default-bounds");
+    QVERIFY(lifecycle_before.has_value());
+    const auto discovery_before = coordinator.DiscoverRequestedWork();
+    QCOMPARE(discovery_before,
+             std::vector<FullTextIndexWorkIdentity>({identity}));
+    const auto snapshot_before = holder->Acquire();
+    const auto artifacts_before = artifact_inventory();
+    const auto support_probes_before = port->support_probe_count;
+    const auto revision_probes_before = port->revision_probe_count;
+    const auto invocations_before = port->invocation_count;
+    QVERIFY(!port->request.has_value());
+
+    const auto bounds = DefaultFullTextIndexExecutionBounds();
+    QCOMPARE(bounds.maximum_documents(),
+             std::numeric_limits<std::size_t>::max());
+    QCOMPARE(bounds.maximum_document_bytes(),
+             std::numeric_limits<std::size_t>::max());
+    QCOMPARE(bounds.maximum_corpus_bytes(),
+             std::numeric_limits<std::size_t>::max());
+    QCOMPARE(bounds.deadline(), std::chrono::steady_clock::time_point::max());
+
+    const auto projected =
+        coordinator.ProjectBoundedWorkRequest(identity, bounds);
+    QVERIFY(projected.has_value());
+    QCOMPARE(projected->identity, identity);
+    QCOMPARE(projected->policy, policy);
+    QCOMPARE(projected->source_revision, lifecycle_before->source_revision());
+    QCOMPARE(projected->maximum_documents, bounds.maximum_documents());
+    QCOMPARE(projected->maximum_document_bytes,
+             bounds.maximum_document_bytes());
+    QCOMPARE(projected->maximum_corpus_bytes, bounds.maximum_corpus_bytes());
+    QCOMPARE(projected->deadline, bounds.deadline());
+    QVERIFY(projected->cancellation != nullptr);
+    QVERIFY(!projected->cancellation->IsCancellationRequested());
+
+    QCOMPARE(coordinator.Snapshot("default-bounds"), lifecycle_before);
+    QCOMPARE(coordinator.DiscoverRequestedWork(), discovery_before);
+    QCOMPARE(holder->Acquire(), snapshot_before);
+    QCOMPARE(holder->Acquire(), snapshot);
+    QVERIFY(artifact_inventory() == artifacts_before);
+    QCOMPARE(port->support_probe_count, support_probes_before);
+    QCOMPARE(port->revision_probe_count, revision_probes_before);
+    QCOMPARE(port->invocation_count, invocations_before);
+    QVERIFY(!port->request.has_value());
+    QVERIFY(!projected->cancellation->IsCancellationRequested());
 }
 
 void FullTextIndexTest::ProjectsBoundedWorkRequests() {
