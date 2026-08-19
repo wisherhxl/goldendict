@@ -6091,8 +6091,9 @@ scheduling ownership is introduced.
 P8-FT-82 defines one immutable private execution-bounds value containing
 nonzero maximum documents, maximum bytes per document and maximum corpus bytes,
 plus a future absolute deadline. One side-effect-free coordinator operation
-rejects multiplication overflow and corpus limits incoherent with the bounded
-document aggregate, finds the exact current
+currently requires the document-byte product to fit `std::size_t`, rejects
+corpus limits incoherent with that bounded document aggregate, and finds the
+exact current
 `kWorkRequested` identity, rechecks capability, policy eligibility and
 cancellation, and returns a request whose identity, policy, captured source
 revision and cancellation come exclusively from that generation. The operation
@@ -6228,8 +6229,52 @@ format bridge or serialization. Public/installed APIs, dependencies,
 `full-text-v1`, UI/find/F3, P8-FT-72 through P8-FT-83 and snapshot/persistence
 safety remain unchanged, with exactly 109 registrations. The implementation
 delivery is restricted to the executor header and implementation, Core CMake
-source list, existing lifecycle test and four governing documents. No
-successor beyond P8-FT-84 is selected or named.
+source list, existing lifecycle test and four governing documents. At
+P8-FT-84 completion, no successor beyond it was selected or named.
+
+### Phase 8 P8-FT-85 overflow-safe execution-bounds coherence (selected)
+
+The independent post-P8-FT-84 readiness audit is grounded at synchronized
+migrated revision `f14b14f8bda473ba9914f7de7b241ee37647e165` and clean pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Tiger explicitly
+recognizes x86 targets and 32-bit compilation modes in
+`cmake/TigerDetectCXXCompiler.cmake:94-101,118-136,153-164`; production cannot
+assume 64-bit `std::size_t`. Current
+`full_text_index_lifecycle.cc:383-393` rejects an otherwise coherent envelope
+when `maximum_documents * maximum_document_bytes` is not machine-representable.
+That rule would force a later production provider to reduce a legitimate
+per-document bound merely to make an aggregate product fit. The smallest
+dependency-ready prerequisite is therefore an overflow-safe P8-FT-82
+coherence correction, before any production bounds authority or composition
+ingress.
+
+P8-FT-85 keeps the same immutable fields and requires nonzero document,
+per-document-byte and corpus bounds plus a future deadline. For `D` documents,
+`B` bytes per document and corpus `C`, projection accepts the envelope exactly
+when the mathematical relation `C <= D * B` holds, without calculating the
+product. It rejects when `D < C / B`, or when `D == C / B` and `C % B != 0`;
+all other positive combinations are coherent. This quotient/remainder rule is
+defined identically for 32- and 64-bit `std::size_t`, including products larger
+than `SIZE_MAX`, and accepted values are forwarded unchanged.
+
+Focused acceptance extends only `full_text_index_test`: retain zero-bound,
+expired-deadline and incoherent-envelope rejection; prove representable
+equality, quotient boundaries with and without remainders, one-below/equal/
+one-above cases where representable, and coherent overflowing products up to
+`D == B == C == SIZE_MAX`. Host-independent synthetic 32- and 64-bit-width
+cases pin the arithmetic rule. Every projection remains side-effect-free and
+preserves coordinator-authoritative identity, policy, revision and
+cancellation.
+
+This leaf adds no production bounds provider, composition or executor wiring,
+startup/recomposition submission, port call, lifecycle transition, discovery,
+execution, artifact/snapshot/persistence change, retry, concurrency, UI,
+serialization, format bridge, dependency, public/installed API or test
+registration. P8-FT-72 through P8-FT-84, serial/coalesced/no-retry execution,
+`full-text-v1`, find/F3 and translations remain locked with exactly 109
+registrations. Delivery is limited to the lifecycle implementation, existing
+test and four governing documents. P8-FT-85 is selected; no successor beyond
+it is selected or named.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

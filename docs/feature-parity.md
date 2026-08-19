@@ -1632,8 +1632,8 @@ dispatcher to construct Core's safety envelope.
 The selected leaf adds one immutable private execution-bounds value and one
 side-effect-free coordinator projection for an exact dictionary identity.
 Projection accepts only nonzero document, per-document byte and corpus byte
-limits, a future absolute deadline, a representable document-byte product, a
-corpus limit no greater than that product, and the exact current
+limits, a future absolute deadline, a currently representable document-byte
+product, a corpus limit no greater than that product, and the exact current
 uncancelled generation while capability and policy eligibility still hold.
 Core supplies the accepted generation's identity, policy, captured source
 revision and cancellation; a caller cannot forge or replace those fields. A
@@ -1724,7 +1724,28 @@ dependencies and serialization remain excluded. P8-FT-72 through P8-FT-83,
 `full-text-v1`, snapshot/persistence safety, ordinary find/F3 and exactly 109
 registrations remain locked. Delivery is bounded to the private executor,
 existing Core build/test boundary and four governing documents. P8-FT-84 is
-complete. No successor beyond P8-FT-84 is selected or named.
+complete. At its completion, no successor beyond it was selected or named.
+
+### P8-FT-85 overflow-safe execution-bounds coherence (selected)
+
+The post-P8-FT-84 audit at migrated revision
+`f14b14f8bda473ba9914f7de7b241ee37647e165` and pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects one private Core
+prerequisite. Tiger retains explicit x86 and 32-bit target handling; P8-FT-82
+must not require `D * B` itself to fit `std::size_t`. P8-FT-85 changes only
+bounds coherence to the overflow-free mathematical rule `C <= D * B`, rejecting
+when `D < C / B` or when `D == C / B && C % B != 0`. Positive bounds and a
+future deadline remain mandatory, and accepted fields are forwarded unchanged.
+
+Existing focused coverage must retain all zero, deadline, lifecycle and
+side-effect checks and add quotient/remainder boundaries plus coherent products
+larger than `SIZE_MAX`, including `D == B == C == SIZE_MAX`, with synthetic
+32- and 64-bit-width arithmetic cases. No production provider, composition,
+submission, executor change, lifecycle transition, artifact/snapshot change,
+public API, dependency, UI or registration is added. P8-FT-72 through
+P8-FT-84 and exactly 109 registrations remain locked. Implementation of this
+private correction is the only dependency unlocked; no successor beyond
+P8-FT-85 is selected or named.
 
 ## Resources And Platform Integration
 
