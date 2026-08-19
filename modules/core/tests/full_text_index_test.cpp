@@ -14,6 +14,7 @@
 
 #include "../src/dictionary/full_text_index.h"
 #include "../src/dictionary/full_text_index_lifecycle.h"
+#include "../src/dictionary/full_text_index_snapshot.h"
 #include "../src/dictionary/full_text_matcher.h"
 #include "../src/foundation/utf8.h"
 
@@ -189,6 +190,8 @@ class FullTextIndexTest : public QObject {
     void CancelsExactWorkIdempotently();
     void SuppressesStaleCompletions();
     void ContainsCoordinatorWorkFailures();
+    void PublishesImmutableSnapshots();
+    void SkipsPublicationForUnsuccessfulOffSideWork();
     void QueryModesAndFilters();
     void AppliesIndependentIcuNormalizationPolicies();
     void PreservesNormalizedMatchOriginsAndProgress();
@@ -718,6 +721,145 @@ void FullTextIndexTest::ContainsCoordinatorWorkFailures() {
                  FullTextIndexLifecycleState::kFailed);
         QCOMPARE(port->invocation_count, 1U);
     }
+}
+
+void FullTextIndexTest::PublishesImmutableSnapshots() {
+    TemporaryDirectory directory;
+    FullTextIndexSnapshotHolder holder;
+    QVERIFY(holder.Acquire() == nullptr);
+
+    auto old_snapshot =
+        std::make_shared<const FullTextIndex>(FullTextIndex::OpenOrBuild(
+            directory.path() / "old.gdfts", {},
+            {Document("old", "Old", "old snapshot content")}));
+    auto new_snapshot =
+        std::make_shared<const FullTextIndex>(FullTextIndex::OpenOrBuild(
+            directory.path() / "new.gdfts", {},
+            {Document("new", "New", "new snapshot content")}));
+
+    QVERIFY(holder.Publish(old_snapshot));
+    const auto retained_old = holder.Acquire();
+    QCOMPARE(retained_old.get(), old_snapshot.get());
+
+    std::mutex mutex;
+    std::condition_variable ready_condition;
+    std::condition_variable start_condition;
+    constexpr std::size_t kReaderCount = 16U;
+    std::size_t ready_count = 0U;
+    bool start = false;
+    std::vector<std::future<std::shared_ptr<const FullTextIndex>>> readers;
+    readers.reserve(kReaderCount);
+    for (std::size_t i = 0U; i < kReaderCount; ++i) {
+        readers.push_back(std::async(std::launch::async, [&] {
+            {
+                std::unique_lock lock(mutex);
+                ++ready_count;
+                ready_condition.notify_one();
+                start_condition.wait(lock, [&] { return start; });
+            }
+            std::shared_ptr<const FullTextIndex> observed;
+            for (std::size_t attempt = 0U; attempt < 256U; ++attempt) {
+                observed = holder.Acquire();
+                if (observed.get() != old_snapshot.get() &&
+                    observed.get() != new_snapshot.get())
+                    return observed;
+            }
+            return observed;
+        }));
+    }
+
+    {
+        std::unique_lock lock(mutex);
+        ready_condition.wait(lock, [&] { return ready_count == kReaderCount; });
+        start = true;
+    }
+    start_condition.notify_all();
+    QVERIFY(holder.Publish(new_snapshot));
+    for (auto& reader : readers) {
+        const auto observed = reader.get();
+        QVERIFY(observed != nullptr);
+        QVERIFY(observed.get() == old_snapshot.get() ||
+                observed.get() == new_snapshot.get());
+    }
+
+    const auto acquired_new = holder.Acquire();
+    QCOMPARE(acquired_new.get(), new_snapshot.get());
+    QCOMPARE(retained_old.get(), old_snapshot.get());
+    QVERIFY(retained_old->ResolveDocument("Old-article").has_value());
+    QVERIFY(!retained_old->ResolveDocument("New-article").has_value());
+    QVERIFY(acquired_new->ResolveDocument("New-article").has_value());
+
+    QVERIFY(!holder.Publish(nullptr));
+    QCOMPARE(holder.Acquire().get(), new_snapshot.get());
+}
+
+void FullTextIndexTest::SkipsPublicationForUnsuccessfulOffSideWork() {
+    TemporaryDirectory directory;
+    FullTextIndexSnapshotHolder holder;
+    auto current =
+        std::make_shared<const FullTextIndex>(FullTextIndex::OpenOrBuild(
+            directory.path() / "current.gdfts", {},
+            {Document("current", "Current", "published content")}));
+    QVERIFY(holder.Publish(current));
+
+    const auto verify_unchanged = [&] {
+        QCOMPARE(holder.Acquire().get(), current.get());
+    };
+    try {
+        throw std::runtime_error("off-side build failure");
+    } catch (const std::runtime_error&) {}
+    verify_unchanged();
+
+    Cancelled cancelled;
+    try {
+        (void)FullTextIndex::OpenOrBuild(
+            directory.path() / "cancelled.gdfts", {},
+            {Document("cancelled", "Cancelled", "content")}, &cancelled);
+        QFAIL("Cancelled off-side construction unexpectedly succeeded");
+    } catch (const FullTextIndexError& error) {
+        QCOMPARE(error.code(), FullTextErrorCode::kCancelled);
+    }
+    verify_unchanged();
+
+    try {
+        (void)FullTextIndex::OpenOrBuild(
+            directory.path() / "expired.gdfts", {},
+            {Document("expired", "Expired", "content")}, nullptr,
+            std::chrono::steady_clock::time_point::min());
+        QFAIL("Expired off-side construction unexpectedly succeeded");
+    } catch (const FullTextIndexError& error) {
+        QCOMPARE(error.code(), FullTextErrorCode::kDeadlineExceeded);
+    }
+    verify_unchanged();
+
+    try {
+        (void)FullTextIndex::OpenOrBuild(
+            directory.path() / "over-budget.gdfts", {},
+            {Document("large", "Large",
+                      std::string(kMaximumFullTextDocumentBytes + 1U, 'x'))});
+        QFAIL("Over-budget off-side construction unexpectedly succeeded");
+    } catch (const FullTextIndexError& error) {
+        QCOMPARE(error.code(), FullTextErrorCode::kResourceLimit);
+    }
+    verify_unchanged();
+
+    FullTextIndexLifecycleCoordinator coordinator;
+    auto port = std::make_shared<BlockingFormatWorkPort>();
+    QVERIFY(coordinator.RegisterDictionary(Registration("stale"), port));
+    QVERIFY(coordinator.SubmitRebuild({{1U, "stale"}, {}}));
+    FullTextIndexWorkRequest request;
+    request.identity = {1U, "stale"};
+    auto stale = std::async(std::launch::async, [&] {
+        return coordinator.ExecuteBoundedWork(request);
+    });
+    port->WaitUntilStarted();
+    QVERIFY(coordinator.SubmitRebuild({{2U, "stale"}, {}}));
+    port->Finish({FullTextIndexWorkStatus::kCompleted, {}});
+    QVERIFY(stale.get());
+    QCOMPARE(coordinator.Snapshot("stale")->identity().generation, 2U);
+    QCOMPARE(coordinator.Snapshot("stale")->state(),
+             FullTextIndexLifecycleState::kWorkRequested);
+    verify_unchanged();
 }
 
 void FullTextIndexTest::ConstructsBoundedMatchCenteredExcerpts() {

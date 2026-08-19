@@ -1417,23 +1417,29 @@ complete rebuild behavior remain excluded. All public, dependency,
 `full-text-v1`, ordinary-find, Dictionaries-only F3 and translation surfaces
 remain locked. P8-FT-75 is complete. No successor is selected or named.
 
-### P8-FT-76 private immutable full-text index publication contract (selected)
+### P8-FT-76 private immutable full-text index publication contract (completed)
 
-The independent audit at synchronized migrated revision
-`f0e6fd69c19c69d84f9f0a9e17b83618218ae4a6` and pinned legacy revision
+The completed implementation from synchronized migrated base revision
+`c32aa1217bb9934b4b8ede1e1623a12c7a1777b3` and pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects only the private Core
 ownership/publication prerequisite needed before one real adapter bridge.
 Current textual adapters retain construction-time
 `std::optional<FullTextIndex>` values without a synchronized replacement seam.
 
-P8-FT-76 will provide an optional immutable
-`std::shared_ptr<const FullTextIndex>` snapshot holder. Replacement indexes are
+P8-FT-76 provides a narrow private Core abstraction over an optional
+immutable `std::shared_ptr<const FullTextIndex>` snapshot. Its single
+responsibility is acquisition and replace-on-success publication. Readers
+depend on that abstraction, not its atomic or mutex mechanics; construction,
+lifecycle and scheduling stay separate. Replacement indexes are
 built completely off-side with bounded incremental traversal, then atomically
 published only on success. Each search or document-resolution call retains one
 acquired snapshot for its full duration. Existing readers may complete on the
 old snapshot and later readers observe the new one; partial state, in-place
 mutation and null replacement are forbidden. Failure, cancellation, deadline,
 resource-bound and stale paths publish nothing.
+
+This encapsulation is the only selected abstraction: no interface or design
+pattern is added without concrete ownership, testability or maintenance value.
 
 This leaf does not implement a real adapter port or its generation-authorized
 publication handoff. Composition/catalog metadata-plus-port ownership, the
@@ -1442,8 +1448,8 @@ lifecycle ownership, canonical formats, `kPolicyExcluded`, zero-unlimited
 `0..10000000` article policy and intentional ICU divergence remain locked.
 Policy application/restart, scheduling, progress, facade/UI transport,
 serialization and complete rebuild behavior remain unselected. The existing
-`full_text_index_test` is the sole future acceptance registration, preserving
-exactly 109. No successor beyond P8-FT-76 is selected or named.
+`full_text_index_test` is the sole acceptance registration, preserving
+exactly 109. P8-FT-76 is complete. No successor is selected or named.
 
 ## Resources And Platform Integration
 

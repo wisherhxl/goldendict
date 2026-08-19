@@ -353,6 +353,7 @@ if(TARGET full_text_index_test)
   target_sources(full_text_index_test PRIVATE
     src/dictionary/full_text_index.cc
     src/dictionary/full_text_index_lifecycle.cc
+    src/dictionary/full_text_index_snapshot.cc
     src/dictionary/full_text_matcher.cc
     src/dictionary/generated_index.cc
     src/foundation/text_folding.cc
