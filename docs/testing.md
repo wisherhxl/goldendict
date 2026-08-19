@@ -4842,6 +4842,38 @@ divergence, ordinary find/F3, UI/translations, stale/artifact/snapshot safety,
 serialization and dependencies remain locked. P8-FT-83 is complete. No
 successor beyond P8-FT-83 is selected or named.
 
+## P8-FT-84 Private Serial Executor Acceptance
+
+P8-FT-84 remains within the existing `full_text_index_test` registration. Use
+controllable gated fake ports and condition-based observations; do not add
+timing sleeps, another executable or another registration. Focused acceptance
+must prove:
+
+- exactly one port call can be active and actionable identities execute in the
+  P8-FT-83 canonical dictionary-ID order;
+- submitted immutable bounds reach work only through P8-FT-82 projection, and
+  `ExecuteBoundedWork` remains the sole successful claim;
+- concurrent submissions coalesce into one pending sweep without duplicate
+  queues or retry, while work requested after a discovery snapshot waits for a
+  later explicit submission;
+- stale, replaced, cancelled, expired, duplicate and already-working
+  identities cannot invoke unintended work or weaken publication safety;
+- one port failure does not escape the worker or trigger retry and does not
+  prevent later identities in the accepted sweep from being considered;
+- shutdown rejects new submission, discards an unclaimed pending sweep,
+  cancels the exact active identity and joins before coordinator or fake-port
+  teardown; and
+- repeated shutdown and destruction are safe and leave no worker accessing
+  released lifecycle, port, cancellation, prepared-update or snapshot state.
+
+The readiness documentation gate validates citations, English terminology,
+`git diff --check`, the exact four-document allowlist, synchronized refs, clean
+worktrees and exactly 109 Release registrations. No compiled run is required
+for this documentation-only selection. P8-FT-72 through P8-FT-83,
+public/installed APIs, dependencies, `full-text-v1`, persistence/snapshot
+safety and UI/find/F3 remain locked. No successor beyond P8-FT-84 is selected
+or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

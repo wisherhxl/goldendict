@@ -6026,6 +6026,41 @@ remain locked. Delivery uses the exact lifecycle header, implementation,
 existing lifecycle test and four-document allowlist. P8-FT-83 is complete. No
 successor beyond P8-FT-83 is selected or named.
 
+### Phase 8 P8-FT-84 private serial full-text work executor (selected)
+
+The independent readiness audit at synchronized migrated revision
+`b1b8ac629a8a1764e1359693d316223b3a0fa819` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects one smallest scheduling
+leaf. Current lifecycle code already separates P8-FT-83 deterministic
+discovery, P8-FT-82 bounded projection and the sole execution-time claim.
+Pinned legacy `fulltextsearch.cc:34-112` establishes a single background
+runnable with cooperative cancellation and wait-on-stop, while
+`mainwindow.cc:1381-1393,2100-2101,2158-2165,2180-2181,2302-2303` establishes
+stop-before-replace/restart lifetime ordering.
+
+P8-FT-84 introduces only a private Core serial executor: exactly one owned
+worker, a coalesced pending sweep, copied immutable bounds and explicit
+shutdown. Each sweep uses one canonical discovery snapshot, projects every
+identity through P8-FT-82 and lets `ExecuteBoundedWork` perform the only claim.
+Concurrent submissions do not create duplicate queues, and newly requested
+work requires a later explicit submission. Shutdown rejects new submission,
+discards unclaimed scheduling state, cancels the exact active identity and
+joins before referenced coordinator or port destruction. No failure,
+cancellation, expiry or stale rejection is retried.
+
+Acceptance extends only `full_text_index_test` and adds no registration. Gated
+fake ports prove serial canonical order, exact bounds, coalescing, sole claim,
+stale/replacement safety, isolated terminal failure, active cancellation,
+shutdown rejection and deterministic join without sleeps. Composition ingress
+at `dictionary_service.cc:1090-1104,1775-1783`, automatic startup or policy-
+change scheduling, multiple workers, configurable concurrency, priority,
+legacy two-pass ordering, progress/status, facade/Widgets transport,
+Preferences, additional formats and serialization remain excluded.
+Public/installed APIs, dependencies, `full-text-v1`, UI/find/F3, P8-FT-72
+through P8-FT-83, snapshot/persistence safety and exactly 109 registrations
+remain locked. This readiness delivery changes exactly the four governing
+documents. No successor beyond P8-FT-84 is selected or named.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
