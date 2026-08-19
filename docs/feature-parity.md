@@ -1167,6 +1167,35 @@ baseline are preserved. No successor after P8-FT-68 is selected, ranked,
 recommended or named. Completion unlocks only private full-text navigation
 UI/status binding.
 
+### P8-FT-69 private per-article full-text navigation row binding (selected)
+
+The fresh independent documentation-only audit at clean synchronized migrated
+revision `fef60700d73c3ed8fc994ba553a04692b0d26fa1` and unchanged clean pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` supersedes P8-FT-68's
+historical no-successor closure and selects only P8-FT-69. GET Option A
+recreates the pinned `articleview.ui:58-100` dedicated row below each article
+web view with exact source captions `&Previous` and `&Next` and an independent
+status label. Pinned `articleview.cc:220-230,2688-2706,2730-2788` fixes the
+translated status at `%1 of %2 matches`, displayed with one-based position,
+and proves initial, boundary and one-step non-wrapping semantics.
+
+The row is private per `ArticleView`, visible only for that tab's current
+nonempty applied-range owner, and hidden and cleared on replacement,
+page/load/view invalidation, close or teardown. Status and enablement bind only
+from a complete identity-validated accepted P8-FT-68 snapshot: position plus
+one, ordered count, `can_previous` and `can_next`. Rejected, stale,
+token-mismatched, detached and teardown callbacks make no optimistic or later
+UI change.
+
+Ordinary find-in-page controls, state, status, shortcuts and `findText` remain
+strictly separate. F3 remains exclusively the migrated Dictionaries shortcut;
+the leaf adds no F3/Shift+F3 full-text binding. Public, Core and C interfaces
+and DTOs, indexes, configuration, dependencies, catalogs, activation,
+headword-only rows, exact dictionary-name tooltips and exactly 109 registered
+Release tests remain unchanged. `ignore_diacritics` consumption stays
+independently unresolved and unranked. No successor after P8-FT-69 is selected,
+ranked, recommended or named.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

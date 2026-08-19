@@ -5457,6 +5457,41 @@ Release baseline remain unchanged. No successor after P8-FT-68 is selected,
 ranked, recommended or named. Completion unlocks only private full-text
 navigation UI/status binding.
 
+### Phase 8 P8-FT-69 private per-article full-text navigation row binding (selected)
+
+The fresh independent documentation-only audit at clean synchronized migrated
+revision `fef60700d73c3ed8fc994ba553a04692b0d26fa1` and unchanged clean pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` supersedes P8-FT-68's
+historical no-successor closure and selects only P8-FT-69. Pinned legacy
+`articleview.ui:58-100` establishes a dedicated `ftsSearchFrame` below the web
+view, with exact source captions `&Previous` and `&Next` and an independent
+status label. Pinned legacy `articleview.cc:220-230,2688-2706,2730-2788`
+establishes translated status `%1 of %2 matches`, one-based presentation,
+initial and boundary enablement, and one-step non-wrapping navigation.
+
+P8-FT-69 recreates that row as private presentation owned by each migrated
+`ArticleView`. It is visible only while that article owns a current nonempty
+applied-range state; tab switching therefore presents only the active article's
+row. Replacement, page/load/view invalidation, tab close and teardown hide and
+clear the affected row. The initial snapshot returned by application and every
+later navigation completion may update its status and buttons only after the
+composition root revalidates the complete P8-FT-68 identity and accepts the
+returned token, zero-based position, ordered count, `can_previous` and
+`can_next`. Rejected, stale, token-mismatched, detached and teardown callbacks
+make no optimistic or later UI change. Accepted status is
+`tr("%1 of %2 matches").arg(position + 1).arg(ordered_count)`.
+
+The dedicated row is strictly separate from the migrated ordinary find-in-page
+toolbar, its state, status, shortcuts and `findText` path. GET Option A retains
+F3 exclusively for the migrated Dictionaries action and adds no F3/Shift+F3
+full-text binding in this leaf. The Shared-Library and GUI Boundary remains
+intact: no installed/Core/C interface or DTO, index, configuration, dependency,
+catalog, activation, dictionary-name tooltip or headword-only result contract
+changes. `ignore_diacritics` consumption remains independently unresolved and
+unranked. Focused coverage stays in the existing GUI smoke target, registers no
+test, and preserves the exactly 109-test Release baseline. No successor after
+P8-FT-69 is selected, ranked, recommended or named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

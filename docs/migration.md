@@ -5402,6 +5402,38 @@ the Release baseline remains exactly 109 tests. No successor after P8-FT-68 is
 selected, ranked, recommended or named. Completion unlocks only private
 full-text navigation UI/status binding.
 
+### Phase 8 P8-FT-69 private per-article full-text navigation row binding (selected)
+
+The fresh independent documentation-only audit at clean synchronized migrated
+revision `fef60700d73c3ed8fc994ba553a04692b0d26fa1` and unchanged clean pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` supersedes P8-FT-68's
+historical no-successor closure and selects only P8-FT-69. GET Option A
+recreates the pinned `articleview.ui:58-100` dedicated per-article
+`ftsSearchFrame` below the web view, with exact source captions `&Previous` and
+`&Next` and an independent status label. Pinned legacy
+`articleview.cc:220-230,2688-2706,2730-2788` supplies the exact translated
+`%1 of %2 matches` wording, one-based presentation, initial and boundary
+enablement, and one-step non-wrapping behavior.
+
+Each migrated `ArticleView` privately owns its row. It is visible only for a
+current nonempty applied-range owner and is hidden and cleared on replacement,
+page/load/view invalidation, tab close and teardown. Initial publication and
+later commands bind status and button enablement only from an accepted P8-FT-68
+typed snapshot after complete composition-root identity validation. Rejected,
+stale, token-mismatched, detached and teardown callbacks make no UI change.
+Accepted status uses `position + 1` and `ordered_count`; button state uses only
+`can_previous` and `can_next`.
+
+The row remains strictly separate from ordinary find-in-page controls, state,
+status, shortcuts and `findText`. F3 remains exclusively the migrated
+Dictionaries shortcut; P8-FT-69 adds no F3/Shift+F3 full-text binding. No
+installed/Core/C interface or DTO, index, configuration, dependency, catalog,
+activation, dictionary-name tooltip or headword-only result contract changes.
+`ignore_diacritics` consumption remains separately unresolved and unranked.
+Focused coverage changes only the existing GUI smoke target, registers no test,
+and preserves the exactly 109-test Release baseline. No successor after
+P8-FT-69 is selected, ranked, recommended or named.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
