@@ -5915,6 +5915,63 @@ ICU divergence, public/installed boundaries, ordinary find, Dictionaries-only
 F3, translations and exactly 109 registrations remain unchanged. P8-FT-78 is
 complete. No successor is selected or named.
 
+### Phase 8 P8-FT-79 private AARD full-text format-work bridge (selected)
+
+The fresh post-P8-FT-78 audit used synchronized migrated revision
+`7a07e41b7ad0e9613a93129bd55c5cf598e06166` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`aard_reader.cc:476-498` already captures the sole `.aar` source snapshot and
+provides bounded incremental article traversal; `aard_dictionary.cc:32-118`
+already defines the stable identity, first-record document ownership and
+`aard-index:<record-ordinal>:<article-ordinal>` provenance; and
+`full_text_index_lifecycle.cc:247-298` plus `full_text_index_snapshot.cc:10-24`
+already provide unpublished result handoff and generation-authorized atomic
+publication. Pinned legacy `aard.cc:609-635`, `ftshelpers.cc:298-366`,
+`fulltextsearch.cc:34-111` and
+`mainwindow.cc:1381-1393,2100-2101,2158-2165,2180-2181,2288-2303` confirm AARD
+indexing, traversal cancellation and
+stop/apply/restart ownership. No smaller format-specific builder, result or
+source-revision prerequisite remains.
+
+P8-FT-79 selects one private AARD `FullTextIndexFormatWorkPort` bridge. It is
+capable only when an index destination is configured, reports a deterministic
+opaque revision derived from the reader's sole-container source snapshot and
+rejects work whose captured revision no longer matches. Its bounded work uses
+the P8-FT-77 traversal and preserves current article assembly, first-record
+deduplication, document ordering and IDs. It checks cancellation and deadline
+before every record inspection and enforces the request's nonzero document,
+per-document-byte and corpus-byte limits with overflow-safe accounting before
+returning one complete immutable `FullTextIndex` candidate. The port never
+publishes.
+
+The AARD dictionary uses the same lifetime-safe snapshot holder for its
+construction-time created or reused index and for later replacements. Search,
+availability, state and document resolution each acquire one immutable
+snapshot and retain it for the complete call. Catalog composition owns the
+dictionary, holder, port and immutable `{dictionary ID, "AARD", article count}`
+registration and supplies them to the Core coordinator with shared lifetime.
+Registration itself starts no work and applies no policy.
+
+Focused implementation extends existing AARD dictionary, lifecycle and
+application-service tests without adding a registration. It must prove exact
+metadata and revision, create/reuse/rebuild candidate return, holder-backed
+search and resolution, stable provenance, and lifetime-safe catalog
+registration. Zero or exceeded bounds, overflow, revision mismatch,
+cancellation, deadline expiry, corrupt or stale index handling and escaped
+traversal, assembly or build failures return no publishable candidate and
+leave the holder unchanged. Only the coordinator may publish after exact
+generation and cancellation revalidation; stale work cannot replace the
+active snapshot or reach `kCurrent`.
+
+Automatic policy application/restart, scheduling, progress, facade/Widgets
+transport, UI, serialization changes and the complete rebuild workflow remain
+excluded. P8-FT-72 through P8-FT-78, canonical format IDs,
+`kPolicyExcluded`, article and work bounds, `full-text-v1`, intentional ICU
+divergence, public/installed boundaries, dependencies, ordinary find,
+Dictionaries-only F3, translations and exactly 109 registrations remain
+locked. P8-FT-79 is selected as the only implementation boundary. No successor
+beyond it is selected or named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

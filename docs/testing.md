@@ -4618,6 +4618,49 @@ focused Release repeats, exactly 109 Release registrations, install and
 standalone and packaged C/C++ consumers. P8-FT-78 is complete. No successor is
 selected or named.
 
+### Phase 8 P8-FT-79 AARD format-work bridge acceptance (selected)
+
+The audit is grounded at synchronized migrated revision
+`7a07e41b7ad0e9613a93129bd55c5cf598e06166` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects one private AARD
+format-work bridge and catalog registration; no smaller builder/result or
+source-revision prerequisite and no successor are selected.
+
+Extend only the existing `aard_dictionary_test`, `full_text_index_test` and
+`application_service_test` registrations. Focused cases must prove exact
+canonical `AARD` metadata and authoritative article count, capability with and
+without an index destination, deterministic sole-archive revision and captured-
+revision mismatch rejection. Candidate coverage pins created, reused, stale-
+rebuilt and corrupt-rebuilt immutable indexes, unchanged first-record ownership,
+assembled text and `aard-index:<record>:<article>` IDs.
+
+Bounded-work cases exercise zero and exceeded document, per-document-byte and
+corpus-byte limits, overflow-safe totals, cancellation and deadline at traversal
+checkpoints, source revision drift, and escaped reader, assembly, generated-
+index and full-text-index failures. Every unsuccessful result carries no
+candidate and leaves the holder unchanged. The port must never publish.
+
+Holder and composition cases prove construction-time seeding, retained old
+readers during replacement, complete-call snapshot retention for search and
+resolution, availability/state projection, shared dictionary/holder/port
+lifetime and exact coordinator registration. Successful work becomes visible
+and `kCurrent` only through the P8-FT-78 generation/cancellation revalidation;
+replacement and cancellation races cannot publish stale candidates.
+
+No new executable or test registration is added, preserving exactly 109
+Release tests. The implementation gate is the focused existing Release tests,
+full 109/109 Release CTest, Release install, standalone and packaged C/C++
+consumers, exact-SCM package creation, `git diff --check`, allowlist and
+ref/worktree checks. The selection-only documentation commit requires the
+four-document allowlist, citation and terminology checks, `git diff --check`,
+exactly 109 registrations, ref equality and clean migrated/pinned worktrees;
+compiled tests are unnecessary because it changes no code.
+
+P8-FT-72 through P8-FT-78, public/installed boundaries, canonical IDs,
+`kPolicyExcluded`, article/work bounds, ICU divergence, ordinary find/F3,
+UI/translations, serialization and dependencies remain locked. P8-FT-79 is the
+only selected boundary. No successor beyond it is selected or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
