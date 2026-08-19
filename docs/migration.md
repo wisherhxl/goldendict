@@ -6178,7 +6178,7 @@ exactly 109 registrations remain locked. Completion unlocks only a later audit
 of startup submission with `DefaultFullTextIndexExecutionBounds()`; no
 successor beyond P8-FT-87 is selected or named. Next dependency: none selected.
 
-### P8-FT-88 Private Replacement-Safe Activation Ownership Prerequisite (selected)
+### P8-FT-88 Private Replacement-Safe Activation Ownership Prerequisite (complete)
 
 The fresh post-P8-FT-87 audit uses synchronized migrated revision
 `7c764ca79774a6c8be3db9f0b18f53310130a974` and clean pinned legacy revision
@@ -6194,7 +6194,7 @@ same canonical artifacts. Pinned legacy prevents this by stopping and joining
 indexing before dictionary or policy replacement and restarting afterward at
 `mainwindow.cc:1381-1393,2100-2101,2158-2165,2180-2181,2290-2303`.
 
-The smallest dependency-ready leaf is P8-FT-88: define one private Core
+P8-FT-88 defines one private Core
 application-composition authority for replacement-safe activation. It owns the
 single serialized, non-reentrant transition for the published state. Candidate
 construction, registration, persisted-policy application and startup-artifact
@@ -6214,8 +6214,18 @@ fails and the candidate is discarded; the old state remains readable with
 indexing stopped, with no rollback restart or retry. A later execution failure
 remains a lifecycle failure and does not invalidate the readable service.
 
-P8-FT-88 specifies the prerequisite authority only. It adds no submission or
-replacement wiring, process-global artifact registry, policy-change trigger,
+The completed owner pairs each concrete `DesktopFacadeImpl` with a move-only
+handle to its exact `DictionaryServiceImpl` shared `ServiceState` executor.
+Candidate construction runs outside the owner mutex; installation revalidates
+open state and uses first-successful-install ownership. Activation moves the old
+handle out under lock, unlocks for shutdown/join and candidate submission, then
+relocks to publish or abort. Owner and handle destructors stop and join
+idempotently, so externally retained facade snapshots remain readable but
+cannot retain indexing activity.
+
+P8-FT-88 implements the prerequisite authority only. It adds no startup
+submission or replacement wiring, process-global artifact registry,
+policy-change trigger,
 configured bound, progress/status, Preferences, legacy two-pass priority,
 additional format bridge, artifact/snapshot/persistence change, UI,
 serialization, dependency, installed/public API or registration. P8-FT-72

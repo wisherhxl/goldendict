@@ -2,6 +2,7 @@
 
 #include <QtTest>
 
+#include <condition_variable>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -9,6 +10,7 @@
 #include <thread>
 #include <type_traits>
 
+#include "../src/application/desktop_facade_activation_owner.h"
 #include "../src/application/full_text_index_lifecycle_inspection.h"
 #include "goldendict/core/application.h"
 #include "goldendict/core/headword_export.h"
@@ -187,6 +189,11 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesAard();
     void AppliesPersistedFullTextPolicyAfterAardDiscovery();
     void ComposesIdleExecutorAfterAardReconciliation();
+    void ActivatesAndReplacesPrivateDesktopFacadeCompositions();
+    void PreservesInstalledCandidateWhenAnotherBuildFails();
+    void SerializesConcurrentCandidateInstallationAndActivation();
+    void ActivationHandleIsOneShotAndStopsOnDestruction();
+    void ActivationOwnerDestructionStopsRetainedFacadeState();
     void DiscoversSanitizesAndQueriesZimResources();
     void DiscoversSanitizesAndQueriesSlobResources();
     void DiscoversSanitizesAndQueriesEpwingResources();
@@ -3525,6 +3532,154 @@ void ApplicationServiceTest::ComposesIdleExecutorAfterAardReconciliation() {
     service.reset();
     for (const auto& [path, contents] : artifacts)
         QCOMPARE(ReadFile(path), contents);
+}
+
+void ApplicationServiceTest::
+    ActivatesAndReplacesPrivateDesktopFacadeCompositions() {
+    application::DesktopFacadeActivationOwner owner;
+    QVERIFY(!owner.CurrentSnapshot());
+    QVERIFY(!owner.Activate());
+
+    QVERIFY(owner.BuildAndInstallCandidate({}));
+    QVERIFY(owner.Activate());
+    const auto initial = owner.CurrentSnapshot();
+    QVERIFY(initial);
+    QVERIFY(initial->GetDictionaryService().GetCatalog().empty());
+    QVERIFY(!owner.Activate());
+
+    QVERIFY(owner.BuildAndInstallCandidate({}));
+    QVERIFY(owner.Activate());
+    const auto replacement = owner.CurrentSnapshot();
+    QVERIFY(replacement);
+    QVERIFY(replacement != initial);
+    QVERIFY(initial->GetDictionaryService().GetCatalog().empty());
+    QVERIFY(application::IsFullTextIndexExecutorStopped(
+        initial->GetDictionaryService()));
+
+    QVERIFY(owner.Shutdown());
+    QVERIFY(owner.Shutdown());
+    QVERIFY(!owner.CurrentSnapshot());
+    QVERIFY(!owner.BuildAndInstallCandidate({}));
+    QVERIFY(!owner.Activate());
+    QVERIFY(initial->GetDictionaryService().GetCatalog().empty());
+    QVERIFY(replacement->GetDictionaryService().GetCatalog().empty());
+}
+
+void ApplicationServiceTest::
+    PreservesInstalledCandidateWhenAnotherBuildFails() {
+    application::DesktopFacadeActivationOwner owner;
+    QVERIFY(owner.BuildAndInstallCandidate({}));
+
+    std::vector<std::unique_ptr<RuntimeDictionarySource>> invalid;
+    invalid.push_back(std::make_unique<InspectionRuntimeSource>());
+    invalid.push_back(std::make_unique<InspectionRuntimeSource>());
+    QVERIFY_EXCEPTION_THROWN(
+        owner.BuildAndInstallCandidate({}, std::move(invalid)),
+        std::runtime_error);
+
+    QVERIFY(owner.Activate());
+    const auto current = owner.CurrentSnapshot();
+    QVERIFY(current);
+    QVERIFY(current->GetDictionaryService().GetCatalog().empty());
+
+    QVERIFY(owner.BuildAndInstallCandidate({}));
+}
+
+void ApplicationServiceTest::
+    SerializesConcurrentCandidateInstallationAndActivation() {
+    application::DesktopFacadeActivationOwner owner;
+    std::mutex mutex;
+    std::condition_variable condition;
+    std::size_t ready = 0U;
+    bool start = false;
+    const auto wait_for_start = [&] {
+        std::unique_lock lock(mutex);
+        ++ready;
+        condition.notify_all();
+        condition.wait(lock, [&] { return start; });
+    };
+    const auto release = [&] {
+        std::unique_lock lock(mutex);
+        condition.wait(lock, [&] { return ready == 2U; });
+        start = true;
+        condition.notify_all();
+    };
+
+    auto first_build = std::async(std::launch::async, [&] {
+        wait_for_start();
+        return owner.BuildAndInstallCandidate({});
+    });
+    auto second_build = std::async(std::launch::async, [&] {
+        wait_for_start();
+        return owner.BuildAndInstallCandidate({});
+    });
+    release();
+    QCOMPARE(static_cast<unsigned>(first_build.get()) +
+                 static_cast<unsigned>(second_build.get()),
+             1U);
+
+    ready = 0U;
+    start = false;
+    auto first_activation = std::async(std::launch::async, [&] {
+        wait_for_start();
+        return owner.Activate();
+    });
+    auto second_activation = std::async(std::launch::async, [&] {
+        wait_for_start();
+        return owner.Activate();
+    });
+    release();
+    QCOMPARE(static_cast<unsigned>(first_activation.get()) +
+                 static_cast<unsigned>(second_activation.get()),
+             1U);
+    QVERIFY(owner.CurrentSnapshot());
+}
+
+void ApplicationServiceTest::ActivationHandleIsOneShotAndStopsOnDestruction() {
+    auto candidate =
+        application::CreateDictionaryServiceActivationCandidate({}, {});
+    QVERIFY(candidate.service);
+    QVERIFY(candidate.activation.SubmitOnceWithDefaults());
+    QVERIFY(!candidate.activation.SubmitOnceWithDefaults());
+    candidate.activation.ShutdownAndJoin();
+    candidate.activation.ShutdownAndJoin();
+    QVERIFY(!candidate.activation.SubmitOnceWithDefaults());
+    QVERIFY(candidate.service->GetCatalog().empty());
+}
+
+void ApplicationServiceTest::
+    ActivationOwnerDestructionStopsRetainedFacadeState() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteAardFixture(root);
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    configuration.index_directory = (root / "indexes").string();
+
+    std::shared_ptr<DesktopFacade> retained;
+    std::string dictionary_id;
+    {
+        application::DesktopFacadeActivationOwner owner;
+        QVERIFY(owner.BuildAndInstallCandidate(configuration));
+        QVERIFY(owner.Activate());
+        retained = owner.CurrentSnapshot();
+        QVERIFY(retained);
+        dictionary_id =
+            retained->GetDictionaryService().GetCatalog().front().id;
+    }
+
+    const auto lifecycle = application::FullTextIndexLifecycleSnapshot(
+        retained->GetDictionaryService(), dictionary_id);
+    QVERIFY(lifecycle.has_value());
+    QVERIFY(application::IsFullTextIndexExecutorStopped(
+        retained->GetDictionaryService()));
+    QCOMPARE(lifecycle->state(),
+             dictionary::FullTextIndexLifecycleState::kCurrent);
+    LookupQuery query;
+    query.text = "headword";
+    const auto response = retained->GetDictionaryService().Lookup(query);
+    QVERIFY(response.errors.empty());
 }
 
 void ApplicationServiceTest::DiscoversSanitizesAndQueriesZimResources() {

@@ -15,6 +15,7 @@
 #include "../dictionary/full_text_matcher.h"
 #include "../foundation/utf8.h"
 #include "article_tab_session.h"
+#include "desktop_facade_activation_owner.h"
 #include "exact_article_target_resolver.h"
 #include "goldendict/core/application.h"
 #include "input_phrase.h"
@@ -71,6 +72,18 @@ class DesktopFacadeImpl final : public DesktopFacade {
         std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources)
         : service_(CreateDictionaryService(configuration,
                                            std::move(runtime_sources))),
+          preferences_(configuration.preferences),
+          article_options_{
+              configuration.preferences.always_expand_optional_parts,
+              configuration.preferences.collapse_large_articles,
+              configuration.preferences.article_size_limit} {
+        tabs_.push_back(CreateTabRecord(EmptyNavigation()));
+        active_tab_id_ = tabs_.front().id;
+    }
+
+    DesktopFacadeImpl(const CoreConfiguration& configuration,
+                      std::unique_ptr<DictionaryService> service)
+        : service_(std::move(service)),
           preferences_(configuration.preferences),
           article_options_{
               configuration.preferences.always_expand_optional_parts,
@@ -432,6 +445,25 @@ class DesktopFacadeImpl final : public DesktopFacade {
 };
 
 }  // namespace
+
+namespace application {
+
+DesktopFacadeActivationCandidate CreateDesktopFacadeActivationCandidate(
+    const CoreConfiguration& configuration) {
+    return CreateDesktopFacadeActivationCandidate(configuration, {});
+}
+
+DesktopFacadeActivationCandidate CreateDesktopFacadeActivationCandidate(
+    const CoreConfiguration& configuration,
+    std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources) {
+    auto dictionary = CreateDictionaryServiceActivationCandidate(
+        configuration, std::move(runtime_sources));
+    auto facade = std::make_shared<DesktopFacadeImpl>(
+        configuration, std::move(dictionary.service));
+    return {std::move(facade), std::move(dictionary.activation)};
+}
+
+}  // namespace application
 
 DesktopFacade::~DesktopFacade() = default;
 

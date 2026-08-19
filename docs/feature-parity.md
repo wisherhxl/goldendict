@@ -1806,7 +1806,7 @@ application-service composition and a mirrored member-order destruction probe,
 combined with the existing active-work shutdown test; no production test hook
 or timing sleep is used. Next dependency: none selected.
 
-### P8-FT-88 replacement-safe activation ownership prerequisite (selected)
+### P8-FT-88 replacement-safe activation ownership prerequisite (complete)
 
 The post-P8-FT-87 audit at synchronized migrated revision
 `7c764ca79774a6c8be3db9f0b18f53310130a974` and clean pinned legacy revision
@@ -1817,15 +1817,22 @@ service state may remain alive; the public composition owner has no private
 executor control. Starting both would permit overlapping writes to canonical
 full-text artifacts, contrary to immutable publication and persistence safety.
 
-P8-FT-88 therefore selects only a private Core activation/handoff authority.
+P8-FT-88 implements only a private Core activation/handoff authority.
 New states stay idle. Failed candidate construction or reconciliation leaves
-old activity untouched. A future accepted initial or replacement activation
-must be one-shot and serialized: join the old executor when present, submit the
+old activity untouched. An accepted initial or replacement activation is
+one-shot and serialized: join the old executor when present, submit the
 candidate exactly once with the P8-FT-86 defaults, then publish it. Old retained
 snapshots remain usable for reads but cannot index after handoff. Reentrant or
 duplicate activation is rejected without mutation. Submission rejection after
 the join aborts publication, discards the candidate and leaves the readable old
 state stopped; there is no restart or retry.
+
+The concrete source-private bundle connects `DesktopFacadeImpl` to its exact
+`DictionaryServiceImpl`, shared `ServiceState` and executor through a move-only
+activation handle. A mutex state machine reserves participants but never holds
+the mutex across shutdown/join or submission. Construction occurs outside the
+mutex and installation revalidates ownership. Owner and handle RAII teardown
+stop indexing even when external facade snapshots remain readable.
 
 This prerequisite changes no installed/public API, dependency, UI,
 serialization, format, artifact or registration. Startup/recomposition wiring,

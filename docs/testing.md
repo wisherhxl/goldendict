@@ -4979,35 +4979,39 @@ a later startup-submission audit using `DefaultFullTextIndexExecutionBounds()`;
 no successor beyond P8-FT-87 is selected or named. Next dependency: none
 selected.
 
-## P8-FT-88 Replacement-Safe Activation Ownership Acceptance (Selected)
+## P8-FT-88 Replacement-Safe Activation Ownership Acceptance (Complete)
 
-P8-FT-88 is a documentation-only prerequisite for a future private Core
-activation/handoff owner. The eventual focused coverage stays within existing
-registrations and uses deterministic barriers and lifetime/port sentinels, not
-timing sleeps or production test hooks.
+P8-FT-88 implements a private Core activation/handoff owner. Focused coverage
+stays within `application_service_test`; no executable or registration is
+added. It uses concrete service fixtures and lifetime observations, not timing
+sleeps or production test hooks.
 
-Acceptance must prove that a failed candidate construction or reconciliation
-preserves the old published state and its active or pending work. For an
-accepted replacement, the event trace must record old executor shutdown and
-join before any candidate port call or canonical-artifact work. At most one
-port may be inside artifact work at a time. Initial activation and every
-accepted replacement submit the candidate exactly once with every P8-FT-86
-default field unchanged; duplicate and reentrant activation attempts perform
-no submission or publication.
+Completed acceptance proves that failed candidate construction preserves the
+installed candidate and current publication. Initial activation and replacement
+use the same one-shot default submission, publish only after acceptance, and
+leave retained old facade snapshots readable with an observably stopped
+executor. Concurrent candidate installation and activation each admit exactly
+one winner; duplicate attempts perform no second submission or publication.
 
-Coverage must retain an externally held old service snapshot across handoff and
-prove that reads remain valid while its stopped executor cannot resume work.
-An injected post-join candidate-submission rejection must leave the candidate
-unpublished, destroy it, keep the old state readable and stopped, and perform
-no restart or retry. Later worker failure must remain a lifecycle failure with
-the published service usable. Ordinary terminal shutdown must still discard
-pending work, cancel active work and join before port/coordinator teardown.
+Coverage retains externally held old facade snapshots across handoff and owner
+destruction and proves reads remain valid after executor shutdown. It also
+proves initial/replacement publication, duplicate rejection, candidate
+preservation on construction failure, one-shot default submission, idempotent
+terminal shutdown and rejection after shutdown. The move-only handle is the
+only route to the exact `ServiceState` executor and provides fail-safe RAII
+shutdown.
 
-This selected documentation leaf runs no compiled tests. Delivery verifies the
-four-document allowlist and exactly 109 registrations with
-`ctest --test-dir build/Release -N`. Future implementation will use the
-smallest existing focused Core registration set justified by its private owner;
-it must add no executable or registration. Startup/recomposition wiring,
+The executor submission-rejection branch is defensive but structurally
+unreachable for an installed candidate: construction yields an idle executor,
+the handle is not independently exposed, and only its first owner submission
+can transition it. Coverage proves that invariant rather than adding a
+test-only way to stop a candidate. A false return would still leave the old
+publication readable and stopped, discard the candidate, and perform no
+restart or retry. Later worker failure remains a lifecycle failure.
+
+Delivery verifies the exact nine-file allowlist, focused application-service
+test, full 109/109 Release suite, install and consumers, and exact-SCM package.
+Startup/recomposition wiring,
 policy-change scheduling, progress/status, Preferences, legacy two-pass
 priority, additional bridges, public/installed APIs and dependencies remain
 excluded. P8-FT-72 through P8-FT-87, private Core authority, no-quota defaults,

@@ -6373,7 +6373,7 @@ only a later audit of startup submission with
 `DefaultFullTextIndexExecutionBounds()`; P8-FT-87 selects or ranks no successor.
 Next dependency: none selected.
 
-### Phase 8 P8-FT-88 replacement-safe activation ownership prerequisite (selected)
+### Phase 8 P8-FT-88 replacement-safe activation ownership prerequisite (complete)
 
 The independent post-P8-FT-87 readiness audit is grounded at synchronized
 migrated revision `7c764ca79774a6c8be3db9f0b18f53310130a974` and clean pinned
@@ -6389,8 +6389,8 @@ artifacts concurrently. Pinned legacy instead stops and joins indexing before
 rebinding dictionaries or policy and starts it only afterward at
 `mainwindow.cc:1381-1393,2100-2101,2158-2165,2180-2181,2290-2303`.
 
-P8-FT-88 selects the missing private Core application-composition authority,
-not submission or replacement wiring. It is the sole owner of activation
+P8-FT-88 implements the missing private Core application-composition authority,
+not startup or replacement wiring. It is the sole owner of activation
 transitions for the published service state. Candidates remain idle through
 construction, registration, policy application and startup reconciliation.
 Candidate failure leaves the current state and its active or pending work
@@ -6402,7 +6402,17 @@ startup uses the same operation without an old state. Old externally retained
 state snapshots remain readable after handoff, but their executor is
 permanently stopped and rejects further submission.
 
-The authority must remain private to Core: no process-global artifact registry,
+The source-private move-only activation handle follows the concrete facade,
+dictionary-service, `ServiceState` and executor ownership path. The owner mutex
+reserves handoff participants, then remains unlocked while the old executor is
+joined and candidate work is submitted. Current snapshots use shared facade
+ownership and remain readable after their activation handle is moved out and
+permanently stopped. Candidate construction occurs outside the mutex and
+installation revalidates open, non-handoff, empty-candidate state. Handle and
+owner destructors provide idempotent shutdown/join; retained facade snapshots
+therefore cannot keep indexing alive after owner destruction.
+
+The authority remains private to Core: no process-global artifact registry,
 Widgets or network lifecycle control, installed/public API, dependency or test
 registration is introduced. If candidate submission is rejected after the old
 executor has joined, publication fails, the idle candidate is discarded and

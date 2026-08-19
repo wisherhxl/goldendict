@@ -60,6 +60,7 @@
 #include "../formats/zipsounds/zipsounds_discovery.h"
 #include "../foundation/text_folding.h"
 #include "../foundation/utf8.h"
+#include "desktop_facade_activation_owner.h"
 #include "exact_article_target_resolver.h"
 #include "full_text_index_lifecycle_inspection.h"
 #include "goldendict/core/application.h"
@@ -1759,6 +1760,22 @@ class ServiceState final {
         return full_text_index_coordinator_.Snapshot(dictionary_id);
     }
 
+    bool SubmitFullTextIndexWork() {
+        return full_text_index_executor_.has_value() &&
+               full_text_index_executor_->Submit(
+                   dictionary::DefaultFullTextIndexExecutionBounds());
+    }
+
+    void ShutdownFullTextIndexWork() noexcept {
+        if (full_text_index_executor_.has_value())
+            full_text_index_executor_->Shutdown();
+        full_text_index_executor_stopped_.store(true);
+    }
+
+    bool IsFullTextIndexExecutorStopped() const noexcept {
+        return full_text_index_executor_stopped_.load();
+    }
+
    private:
     std::vector<const dictionary::Backend*> BackendsForGroup(
         std::uint32_t group_id) const {
@@ -1785,6 +1802,7 @@ class ServiceState final {
         NewSnapshotId();
     std::optional<dictionary::FullTextIndexWorkExecutor>
         full_text_index_executor_;
+    std::atomic<bool> full_text_index_executor_stopped_{false};
 };
 
 class AsyncCancellationToken final : public CancellationToken {
@@ -1857,6 +1875,9 @@ class DictionaryServiceImpl final : public DictionaryService {
         : state_(std::make_shared<ServiceState>(configuration,
                                                 std::move(runtime_sources))) {}
 
+    explicit DictionaryServiceImpl(std::shared_ptr<ServiceState> state)
+        : state_(std::move(state)) {}
+
     std::vector<DictionaryIdentity> GetCatalog() const override {
         return state_->GetCatalog();
     }
@@ -1906,6 +1927,10 @@ class DictionaryServiceImpl final : public DictionaryService {
         return state_->FullTextIndexLifecycleSnapshot(dictionary_id);
     }
 
+    bool IsFullTextIndexExecutorStopped() const noexcept {
+        return state_->IsFullTextIndexExecutorStopped();
+    }
+
    private:
     std::shared_ptr<const ServiceState> state_;
 };
@@ -1913,6 +1938,89 @@ class DictionaryServiceImpl final : public DictionaryService {
 }  // namespace
 
 namespace application {
+
+class ServiceStateActivationHandle::Impl final {
+   public:
+    explicit Impl(std::shared_ptr<ServiceState> state)
+        : state_(std::move(state)) {}
+
+    bool SubmitOnceWithDefaults() {
+        std::lock_guard lock(mutex_);
+        if (state_kind_ != StateKind::kIdle)
+            return false;
+        if (!state_->SubmitFullTextIndexWork()) {
+            state_->ShutdownFullTextIndexWork();
+            state_kind_ = StateKind::kStopped;
+            return false;
+        }
+        state_kind_ = StateKind::kSubmitted;
+        return true;
+    }
+
+    void ShutdownAndJoin() noexcept {
+        std::lock_guard lock(mutex_);
+        if (state_kind_ == StateKind::kStopped)
+            return;
+        state_->ShutdownFullTextIndexWork();
+        state_kind_ = StateKind::kStopped;
+    }
+
+   private:
+    enum class StateKind { kIdle, kSubmitted, kStopped };
+
+    std::shared_ptr<ServiceState> state_;
+    std::mutex mutex_;
+    StateKind state_kind_ = StateKind::kIdle;
+};
+
+ServiceStateActivationHandle::ServiceStateActivationHandle() noexcept = default;
+
+ServiceStateActivationHandle::ServiceStateActivationHandle(
+    std::unique_ptr<Impl> impl) noexcept
+    : impl_(std::move(impl)) {}
+
+ServiceStateActivationHandle::~ServiceStateActivationHandle() {
+    ShutdownAndJoin();
+}
+
+ServiceStateActivationHandle::ServiceStateActivationHandle(
+    ServiceStateActivationHandle&&) noexcept = default;
+
+ServiceStateActivationHandle& ServiceStateActivationHandle::operator=(
+    ServiceStateActivationHandle&& other) noexcept {
+    if (this != &other) {
+        ShutdownAndJoin();
+        impl_ = std::move(other.impl_);
+    }
+    return *this;
+}
+
+bool ServiceStateActivationHandle::SubmitOnceWithDefaults() {
+    return impl_ != nullptr && impl_->SubmitOnceWithDefaults();
+}
+
+void ServiceStateActivationHandle::ShutdownAndJoin() noexcept {
+    if (impl_ != nullptr)
+        impl_->ShutdownAndJoin();
+}
+
+DictionaryServiceActivationCandidate CreateDictionaryServiceActivationCandidate(
+    const CoreConfiguration& configuration,
+    std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources) {
+    auto state = std::make_shared<ServiceState>(configuration,
+                                                std::move(runtime_sources));
+    auto activation = ServiceStateActivationHandle(
+        std::make_unique<ServiceStateActivationHandle::Impl>(state));
+    return {std::make_unique<DictionaryServiceImpl>(std::move(state)),
+            std::move(activation)};
+}
+
+bool IsFullTextIndexExecutorStopped(const DictionaryService& service) noexcept {
+    const auto* implementation =
+        dynamic_cast<const DictionaryServiceImpl*>(&service);
+    return implementation != nullptr &&
+           implementation->IsFullTextIndexExecutorStopped();
+}
 
 std::optional<dictionary::FullTextIndexLifecycleSnapshot>
 FullTextIndexLifecycleSnapshot(const DictionaryService& service,
