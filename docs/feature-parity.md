@@ -1271,6 +1271,39 @@ transport, stale-policy rejection and DOM application without adding a test
 registration; the Release baseline remains exactly 109. No further successor
 is selected, ranked, recommended or named.
 
+### P8-FT-72 Core full-text index lifecycle contract prerequisite (selected)
+
+The fresh audit at synchronized migrated revision
+`2485043a77c1af6e0ee1916519524667d088322b` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` resolves the outstanding ownership
+decision. Core authoritatively owns full-text index policy and lifecycle
+coordination. Widgets may edit policy, send rebuild/cancel intents and consume
+immutable snapshots only; adapters report capability/source revision and
+perform bounded cancellable work without owning policy or global lifecycle.
+
+Current `application.h:268-278`, `dictionary_backend.h:30-40` and
+`full_text_index.h:35-67` provide persisted policy inputs and private adapter/
+index seams but no shared coordination contract. Pinned legacy
+`config.hh:156-180`, `dictionary.hh:423-436`, `fulltextsearch.cc:34-125` and
+`mainwindow.cc:1381-1393,2100-2101,2158-2165,2288-2303` prove the policy,
+bounded dictionary work and GUI-owned scheduling/cancellation lifecycle.
+
+P8-FT-72 is the sole selected dependency-ready prerequisite. It will define a
+private transport-neutral Core policy value, rebuild/cancel command intents,
+immutable generation- and dictionary-identified lifecycle snapshots, and an
+abstract bounded cancellable format-work port reporting capability and source
+revision. A fake port in an existing Core test target will cover the contract
+without a new registration.
+
+Coordinator execution, persistence application, Preferences UI, facade/
+Widgets wiring, visible status/progress, real adapter conversion, serialization
+and the complete rebuild workflow remain outside P8-FT-72. Progress,
+scheduling/concurrency, legacy two-pass ordering, retry and failure-presentation
+policy remain undecided. Installed interfaces, DTOs, configuration ABI,
+dependencies, `full-text-v1`, P8-FT-1 through P8-FT-71, ordinary find-in-page,
+Dictionaries-only F3, translations and exactly 109 registrations remain
+locked. No successor beyond P8-FT-72 is selected or ranked.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

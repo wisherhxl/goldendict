@@ -5525,6 +5525,42 @@ and dictionary tooltips. Existing targets gain focused coverage without a new
 registration, preserving exactly 109 Release tests. No further successor is
 selected, ranked, recommended or named.
 
+### Phase 8 P8-FT-72 Core full-text index lifecycle contract prerequisite (selected)
+
+The fresh remaining-parity audit uses synchronized migrated revision
+`2485043a77c1af6e0ee1916519524667d088322b` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It resolves the former Core
+lifecycle/policy blocker by assigning authoritative full-text index policy and
+lifecycle coordination to Core. Widgets is limited to editing policy, issuing
+rebuild/cancel intents and consuming immutable snapshots. Format adapters
+report capability/source revision and perform bounded cancellable work without
+owning policy or global coordination.
+
+Current `application.h:268-278`, `dictionary_backend.h:30-40` and
+`full_text_index.h:35-67` stop at persisted policy inputs and private adapter/
+index state. Pinned legacy `config.hh:156-180`, `dictionary.hh:423-436`,
+`fulltextsearch.cc:34-125` and
+`mainwindow.cc:1381-1393,2100-2101,2158-2165,2288-2303` establish the policy,
+bounded work and GUI-owned scheduling/cancellation responsibilities that the
+migrated Core boundary must separate.
+
+The audit selects exactly P8-FT-72, the smallest dependency-ready prerequisite:
+a private transport-neutral Core application/domain contract containing the
+Core-owned policy value, rebuild/cancel command intents, immutable generation-
+and dictionary-identified lifecycle snapshots, and an abstract format-work
+port reporting capability/source revision and accepting bounded cancellable
+work. Focused contract tests use a fake port in an existing Core target and add
+no registration.
+
+P8-FT-72 excludes coordinator execution, policy persistence application,
+Preferences UI, facade/Widgets wiring, visible readiness/progress/status, real
+adapter conversion, index serialization and the complete rebuild workflow. It
+does not select progress, queue/concurrency, two-pass ordering, retry or failure
+presentation policy. All installed/Core/C/DTO/configuration/dependency/
+serialization contracts and completed P8-FT behavior remain locked, including
+ordinary find-in-page, Dictionaries-only F3, translations and exactly 109
+Release registrations. No successor beyond P8-FT-72 is selected or ranked.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

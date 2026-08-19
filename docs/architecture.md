@@ -5599,6 +5599,47 @@ the documented ICU divergence from Qt5 custom folding and trailing
 
 No further successor is selected, ranked, recommended or named.
 
+### Phase 8 P8-FT-72 Core full-text index lifecycle contract prerequisite (selected)
+
+The fresh post-P8-FT-71 audit is pinned to synchronized migrated revision
+`2485043a77c1af6e0ee1916519524667d088322b` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It resolves the previously blocked
+ownership decision: Core is the authoritative owner of full-text index policy
+and lifecycle coordination. Widgets may edit policy, issue rebuild and cancel
+intents, and consume immutable lifecycle snapshots only. Format adapters may
+report capability and source revision and perform bounded cancellable index
+work, but they do not own policy or the global lifecycle.
+
+Current `application.h:268-278` already persists the transport-neutral policy
+inputs, while `dictionary_backend.h:30-40` exposes only private per-backend
+search, resolution and availability and `full_text_index.h:35-67` exposes only
+private created/reused/rebuilt state. No authoritative Core coordination
+contract joins those seams. Pinned legacy `config.hh:156-180`,
+`dictionary.hh:423-436`, `fulltextsearch.cc:34-125` and
+`mainwindow.cc:1381-1393,2100-2101,2158-2165,2288-2303` establish the missing
+policy, capability/work, cancellation/current-item and stop/apply/restart
+responsibilities, but place their coordination in the Qt GUI.
+
+Exactly one smallest dependency-ready prerequisite is selected: P8-FT-72 will
+define and test a private transport-neutral Core application/domain contract.
+It comprises a Core-owned policy value; rebuild and cancel command intents;
+immutable generation- and dictionary-identified lifecycle snapshots; and an
+abstract format-work port that reports capability and source revision and
+accepts bounded cancellable work. Generation and dictionary identity must make
+stale commands and snapshots distinguishable. Focused coverage will use a fake
+format-work port in an existing Core test target and add no registration.
+
+P8-FT-72 does not implement coordinator execution, persistence application,
+Preferences UI, facade or Widgets wiring, visible readiness/progress/status,
+any real adapter conversion, index serialization or the complete rebuild
+workflow. It defines no progress percentage, queue/concurrency or two-pass
+ordering, retry policy or failure presentation. The contract remains private,
+so installed C++/Core/C interfaces and DTOs, configuration ABI, dependencies,
+`full-text-v1`, all completed P8-FT behavior, ordinary find-in-page,
+Dictionaries-only F3, translations and exactly 109 Release registrations stay
+unchanged. No successor beyond P8-FT-72 is selected, ranked, recommended or
+named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
