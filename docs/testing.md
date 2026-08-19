@@ -4752,10 +4752,10 @@ migrated/pinned worktrees. P8-FT-72 through P8-FT-80, public/installed APIs,
 divergence, ordinary find/F3, UI/translations, serialization and dependencies
 remain locked. No successor beyond P8-FT-81 is selected or named.
 
-### Phase 8 P8-FT-82 bounded work-request projection acceptance (selected)
+### Phase 8 P8-FT-82 bounded work-request projection acceptance (complete)
 
-The fresh audit is grounded at synchronized migrated revision
-`60d2ae95b73629b8efaa2333bbe2dfe1786bd5db` and clean pinned legacy revision
+The fresh audit was grounded at synchronized migrated revision
+`333bdbbca0812c8289bdc3194d66cd17300ecbee` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly one private Core
 leaf: validate immutable execution bounds and project the request for the exact
 current eligible `kWorkRequested` generation. No successor is selected.
@@ -4770,8 +4770,9 @@ prepares or finalizes no update, writes no artifact, publishes no snapshot and
 allocates no generation. Repeated projection is deterministic and
 side-effect-free; zero and multiple registrations remain isolated.
 
-Negative cases cover each zero resource bound, overflow-invalid combinations,
-an expired deadline, unknown dictionary, stale or mismatched identity,
+Negative cases cover each zero resource bound, multiplication overflow,
+corpus/document incoherence, an expired deadline, unknown dictionary, stale or
+mismatched identity,
 replacement and cancellation, plus unavailable, `kPolicyExcluded`, failed,
 working, current and every other non-requested state. Each produces no request
 and no observable mutation. A successful projected request must remain
@@ -4780,7 +4781,7 @@ existing cancellation, revision, Prepare/Finalize, stale-completion,
 persistence and snapshot-publication assertions continue to pass.
 
 No new executable or test is registered, so the Release baseline remains
-exactly 109. The future implementation gate is the focused existing Release
+exactly 109. The implementation gate is the focused existing Release
 test, full 109/109 Release CTest, Release install, standalone and packaged C/C++
 consumers, exact-SCM package creation, and clean ref equality. P8-FT-82 adds no
 submission, scheduler, dispatcher/executor ownership, thread, queue,
@@ -4789,11 +4790,12 @@ transport, public/installed API or dependency.
 
 The documentation gate reviews exactly the four P8-FT-82 sections and validates
 every current and pinned citation, terminology, `git diff --check`, the exact
-four-file allowlist, exactly 109 Release registrations, ref equality and clean
-migrated/pinned worktrees. P8-FT-72 through P8-FT-81, `full-text-v1`, canonical
+seven-file implementation/test/documentation allowlist, exactly 109 Release
+registrations, ref equality and clean migrated/pinned worktrees. P8-FT-72
+through P8-FT-81, `full-text-v1`, canonical
 IDs, `kPolicyExcluded`, article/work bounds, ICU divergence, ordinary find/F3,
 UI/translations, stale/artifact/snapshot safety, serialization and dependencies
-remain locked. No successor beyond P8-FT-82 is selected or named.
+remain locked. P8-FT-82 is complete, and no successor is selected or named.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

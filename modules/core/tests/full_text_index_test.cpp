@@ -209,6 +209,7 @@ class FullTextIndexTest : public QObject {
     void PolicyExcludedLifecycle();
     void AppliesPolicyToAllRegisteredEntries();
     void ReconcilesValidatedStartupArtifacts();
+    void ProjectsBoundedWorkRequests();
     void CoordinatesExplicitLifecycleTransitions();
     void IsolatesAndMonotonicallyReplacesGenerations();
     void CancelsExactWorkIdempotently();
@@ -801,6 +802,183 @@ void FullTextIndexTest::ReconcilesValidatedStartupArtifacts() {
     QCOMPARE(working.Snapshot("working")->state(),
              FullTextIndexLifecycleState::kFailed);
     QCOMPARE(working_holder->Acquire(), first_snapshot);
+}
+
+void FullTextIndexTest::ProjectsBoundedWorkRequests() {
+    static_assert(!std::is_assignable_v<FullTextIndexExecutionBounds&,
+                                        FullTextIndexExecutionBounds>);
+
+    const auto future =
+        std::chrono::steady_clock::now() + std::chrono::minutes(5);
+    const FullTextIndexExecutionBounds bounds(17U, 1025U, 8193U, future);
+    FullTextIndexLifecycleCoordinator empty;
+    QVERIFY(!empty.ProjectBoundedWorkRequest({1U, "missing"}, bounds));
+
+    TemporaryDirectory directory;
+    FullTextIndexLifecycleCoordinator coordinator;
+    auto first_port = std::make_shared<FakeFormatWorkPort>();
+    auto second_port = std::make_shared<FakeFormatWorkPort>();
+    auto excluded_port = std::make_shared<FakeFormatWorkPort>();
+    auto unavailable_port = std::make_shared<FakeFormatWorkPort>();
+    unavailable_port->supported = false;
+    auto first_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    auto second_holder = std::make_shared<FullTextIndexSnapshotHolder>();
+    const auto first_snapshot = Snapshot(directory, "projection-first");
+    const auto second_snapshot = Snapshot(directory, "projection-second");
+    QVERIFY(first_holder->Publish(first_snapshot));
+    QVERIFY(second_holder->Publish(second_snapshot));
+    QVERIFY(Register(coordinator, Registration("first", "AARD", 10U),
+                     first_port, first_holder));
+    QVERIFY(Register(coordinator, Registration("second"), second_port,
+                     second_holder));
+    QVERIFY(
+        Register(coordinator, Registration("excluded", "BGL"), excluded_port));
+    QVERIFY(
+        Register(coordinator, Registration("unavailable"), unavailable_port));
+
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest({0U, "first"}, bounds));
+    QCOMPARE(coordinator.Snapshot("first")->state(),
+             FullTextIndexLifecycleState::kNotIndexed);
+
+    FullTextIndexPolicy policy;
+    policy.maximum_dictionary_articles = 25U;
+    policy.disabled_format_types = "BGL";
+    QVERIFY(coordinator.ApplyPolicyToRegisteredEntries(policy));
+    const auto first_before = coordinator.Snapshot("first");
+    const auto second_before = coordinator.Snapshot("second");
+    const auto first_support_probes = first_port->support_probe_count;
+    const auto first_revision_probes = first_port->revision_probe_count;
+    const auto first_invocations = first_port->invocation_count;
+
+    const auto first =
+        coordinator.ProjectBoundedWorkRequest(first_before->identity(), bounds);
+    QVERIFY(first.has_value());
+    QCOMPARE(first->identity, first_before->identity());
+    QCOMPARE(first->policy, policy);
+    QCOMPARE(first->source_revision, first_before->source_revision());
+    QCOMPARE(first->maximum_documents, 17U);
+    QCOMPARE(first->maximum_document_bytes, 1025U);
+    QCOMPARE(first->maximum_corpus_bytes, 8193U);
+    QCOMPARE(first->deadline, future);
+    QVERIFY(first->cancellation != nullptr);
+    QVERIFY(!first->cancellation->IsCancellationRequested());
+
+    const auto repeated =
+        coordinator.ProjectBoundedWorkRequest(first_before->identity(), bounds);
+    QVERIFY(repeated.has_value());
+    QCOMPARE(repeated->identity, first->identity);
+    QCOMPARE(repeated->policy, first->policy);
+    QCOMPARE(repeated->source_revision, first->source_revision);
+    QCOMPARE(repeated->maximum_documents, first->maximum_documents);
+    QCOMPARE(repeated->maximum_document_bytes, first->maximum_document_bytes);
+    QCOMPARE(repeated->maximum_corpus_bytes, first->maximum_corpus_bytes);
+    QCOMPARE(repeated->deadline, first->deadline);
+    QCOMPARE(repeated->cancellation, first->cancellation);
+    QCOMPARE(coordinator.Snapshot("first"), first_before);
+    QCOMPARE(coordinator.Snapshot("second"), second_before);
+    QCOMPARE(first_holder->Acquire(), first_snapshot);
+    QCOMPARE(second_holder->Acquire(), second_snapshot);
+    QCOMPARE(first_port->support_probe_count, first_support_probes);
+    QCOMPARE(first_port->revision_probe_count, first_revision_probes);
+    QCOMPARE(first_port->invocation_count, first_invocations);
+
+    const FullTextIndexExecutionBounds zero_documents(0U, 1U, 1U, future);
+    const FullTextIndexExecutionBounds zero_document_bytes(1U, 0U, 1U, future);
+    const FullTextIndexExecutionBounds zero_corpus_bytes(1U, 1U, 0U, future);
+    const FullTextIndexExecutionBounds overflow(
+        2U, std::numeric_limits<std::size_t>::max(), 1U, future);
+    const FullTextIndexExecutionBounds incoherent(2U, 3U, 7U, future);
+    const FullTextIndexExecutionBounds expired(
+        1U, 1U, 1U, std::chrono::steady_clock::time_point::min());
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(first->identity,
+                                                   zero_documents));
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(first->identity,
+                                                   zero_document_bytes));
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(first->identity,
+                                                   zero_corpus_bytes));
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(first->identity, overflow));
+    QVERIFY(
+        !coordinator.ProjectBoundedWorkRequest(first->identity, incoherent));
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(first->identity, expired));
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(
+        {first->identity.generation + 1U, "first"}, bounds));
+    const auto projected_second = coordinator.ProjectBoundedWorkRequest(
+        {first->identity.generation, "second"}, bounds);
+    QVERIFY(projected_second.has_value());
+    QCOMPARE(projected_second->identity, second_before->identity());
+    QCOMPARE(projected_second->source_revision,
+             second_before->source_revision());
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(
+        {first->identity.generation, "unknown"}, bounds));
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(
+        coordinator.Snapshot("excluded")->identity(), bounds));
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(
+        coordinator.Snapshot("unavailable")->identity(), bounds));
+    QCOMPARE(coordinator.Snapshot("first"), first_before);
+    QCOMPARE(coordinator.Snapshot("second"), second_before);
+    QCOMPARE(excluded_port->invocation_count, 0U);
+    QCOMPARE(unavailable_port->invocation_count, 0U);
+
+    const auto second_identity = second_before->identity();
+    QVERIFY(coordinator.Cancel({second_identity}));
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(second_identity, bounds));
+    QCOMPARE(coordinator.Snapshot("second")->state(),
+             FullTextIndexLifecycleState::kCancelled);
+    QCOMPARE(coordinator.Snapshot("first"), first_before);
+
+    const auto stale_identity = first->identity;
+    QVERIFY(coordinator.SubmitRebuild(
+        {{stale_identity.generation + 1U, "first"}, policy}));
+    QVERIFY(!coordinator.ProjectBoundedWorkRequest(stale_identity, bounds));
+    const auto replacement_identity = coordinator.Snapshot("first")->identity();
+    const auto projected_replacement =
+        coordinator.ProjectBoundedWorkRequest(replacement_identity, bounds);
+    QVERIFY(projected_replacement.has_value());
+    first_port->replacement_snapshot =
+        Snapshot(directory, "projection-replacement");
+    QVERIFY(coordinator.ExecuteBoundedWork(*projected_replacement));
+    QCOMPARE(coordinator.Snapshot("first")->state(),
+             FullTextIndexLifecycleState::kCurrent);
+    QCOMPARE(first_port->request->maximum_documents, 17U);
+    QCOMPARE(first_port->request->maximum_document_bytes, 1025U);
+    QCOMPARE(first_port->request->maximum_corpus_bytes, 8193U);
+    QCOMPARE(first_port->request->deadline, future);
+    QCOMPARE(first_port->request->identity, replacement_identity);
+    QCOMPARE(first_port->request->policy, policy);
+    QCOMPARE(first_port->request->source_revision, std::string("revision-1"));
+    QVERIFY(
+        !coordinator.ProjectBoundedWorkRequest(replacement_identity, bounds));
+
+    FullTextIndexLifecycleCoordinator failed;
+    auto failed_port = std::make_shared<FakeFormatWorkPort>();
+    QVERIFY(Register(failed, Registration("failed"), failed_port));
+    failed_port->throw_revision = true;
+    QVERIFY(failed.ApplyPolicyToRegisteredEntries({}));
+    QVERIFY(!failed.ProjectBoundedWorkRequest(
+        failed.Snapshot("failed")->identity(), bounds));
+    QCOMPARE(failed.Snapshot("failed")->state(),
+             FullTextIndexLifecycleState::kFailed);
+    QCOMPARE(failed_port->invocation_count, 0U);
+
+    FullTextIndexLifecycleCoordinator working;
+    auto blocking = std::make_shared<BlockingFormatWorkPort>();
+    QVERIFY(Register(working, Registration("working"), blocking));
+    QVERIFY(working.ApplyPolicyToRegisteredEntries({}));
+    const auto working_identity = working.Snapshot("working")->identity();
+    const auto projected_working =
+        working.ProjectBoundedWorkRequest(working_identity, bounds);
+    QVERIFY(projected_working.has_value());
+    auto running = std::async(std::launch::async, [&] {
+        return working.ExecuteBoundedWork(*projected_working);
+    });
+    blocking->WaitUntilStarted();
+    QVERIFY(!working.ProjectBoundedWorkRequest(working_identity, bounds));
+    QCOMPARE(working.Snapshot("working")->state(),
+             FullTextIndexLifecycleState::kWorking);
+    blocking->Finish({FullTextIndexWorkStatus::kFailed, "expected"});
+    QVERIFY(running.get());
+    QCOMPARE(working.Snapshot("working")->state(),
+             FullTextIndexLifecycleState::kFailed);
 }
 
 void FullTextIndexTest::CoordinatesExplicitLifecycleTransitions() {

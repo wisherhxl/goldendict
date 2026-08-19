@@ -5937,27 +5937,28 @@ article/work bounds, ICU divergence, ordinary find/F3, UI/translations and
 exactly 109 registrations remain locked. No successor beyond P8-FT-81 is
 selected or named.
 
-### Phase 8 P8-FT-82 private bounded full-text work-request projection (selected)
+### Phase 8 P8-FT-82 private bounded full-text work-request projection (complete)
 
 The fresh post-P8-FT-81 audit used synchronized migrated revision
-`60d2ae95b73629b8efaa2333bbe2dfe1786bd5db` and clean pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. The current private lifecycle
-request carries document, per-document byte, corpus byte and deadline bounds,
-but the execution operation accepts those values from its caller. AARD rejects
-zero bounds, and pinned legacy checks index readiness before launching its
-background pass without defining transport-neutral byte or deadline limits.
-The audit selects only P8-FT-82: make Core project the validated bounded request
-for the exact eligible startup-unreconciled `kWorkRequested` generation before
-any work-submission ownership is introduced.
+`333bdbbca0812c8289bdc3194d66cd17300ecbee` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. At that baseline, the private
+lifecycle request carried document, per-document byte, corpus byte and deadline
+bounds, but the execution operation accepted those values from its caller.
+AARD rejected zero bounds, and pinned legacy checked index readiness before
+launching its background pass without defining transport-neutral byte or
+deadline limits. The audit selected only P8-FT-82: make Core project the
+validated bounded request for the exact eligible startup-unreconciled
+`kWorkRequested` generation before any work-submission ownership is introduced.
 
-The selected leaf defines an immutable private execution-bounds value and a
+The completed leaf defines an immutable private execution-bounds value and a
 side-effect-free coordinator projection. Resource bounds must all be nonzero,
 the absolute deadline must be in the future, and validation must be
-overflow-safe. The coordinator requires the exact current uncancelled requested
-identity, rechecks capability and policy eligibility, and supplies identity,
-policy, captured source revision and cancellation from authoritative generation
-state. Success returns a request without invoking its port or moving it to
-`kWorking`.
+overflow-safe; the document/per-document product must be representable and the
+corpus limit cannot exceed it. The coordinator requires the exact current
+uncancelled requested identity, rechecks capability and policy eligibility, and
+supplies identity, policy, captured source revision and cancellation from
+authoritative generation state. Success returns a request without invoking its
+port or moving it to `kWorking`.
 
 Zero, expired or overflow-invalid bounds and unknown, stale, replaced,
 cancelled, unavailable, excluded, failed, working, current or otherwise
@@ -5976,7 +5977,9 @@ shutdown/join, retry, progress/status, additional format bridge, facade/UI
 transport, public/installed API or dependency. P8-FT-72 through P8-FT-81,
 `full-text-v1`, canonical IDs, `kPolicyExcluded`, article/work bounds, ICU
 divergence, ordinary find/F3, UI/translations, stale/artifact/snapshot safety
-and exactly 109 registrations remain locked. No successor beyond P8-FT-82 is
+and exactly 109 registrations remain locked. Delivery changes exactly the
+private lifecycle header and implementation, the existing lifecycle test and
+these four governing documents. P8-FT-82 is complete, and no successor is
 selected or named.
 
 ### Phase 9 — Linux Integration And Release Quality

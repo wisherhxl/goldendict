@@ -6072,17 +6072,17 @@ or registration. P8-FT-72 through P8-FT-80, `full-text-v1`, canonical IDs,
 UI/translations and exactly 109 registrations remain locked. No successor
 beyond P8-FT-81 is selected or named.
 
-### Phase 8 P8-FT-82 private bounded full-text work-request projection (selected)
+### Phase 8 P8-FT-82 private bounded full-text work-request projection (complete)
 
-The independent post-P8-FT-81 readiness audit is grounded at synchronized
-migrated revision `60d2ae95b73629b8efaa2333bbe2dfe1786bd5db` and clean pinned
+The independent post-P8-FT-81 readiness audit was grounded at synchronized
+migrated revision `333bdbbca0812c8289bdc3194d66cd17300ecbee` and clean pinned
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
-`full_text_index_lifecycle.h:151-160` defines the private work request's
-document, per-document byte, corpus byte and absolute-deadline bounds.
-`full_text_index_lifecycle.cc:361-388` accepts caller-supplied bounds when it
-claims the exact requested generation, then authoritatively replaces policy,
-source revision and cancellation. `aard_dictionary.cc:58-68` rejects zero
-resource bounds before traversal. Pinned legacy `fulltextsearch.cc:34-125`
+`full_text_index_lifecycle.h:102-134` defines the immutable private execution
+bounds, while `full_text_index_lifecycle.h:185-195` retains the private final
+work request. `full_text_index_lifecycle.cc:361-403` validates and projects the
+request before `ExecuteBoundedWork` claims it. `aard_dictionary.cc:58-68`
+rejects zero resource bounds before traversal. Pinned legacy
+`fulltextsearch.cc:34-125`
 owns readiness checks and background start/stop but supplies no reusable byte
 or deadline policy. The smallest dependency-ready boundary is therefore Core
 projection of a validated safety envelope before any production submission or
@@ -6091,7 +6091,8 @@ scheduling ownership is introduced.
 P8-FT-82 defines one immutable private execution-bounds value containing
 nonzero maximum documents, maximum bytes per document and maximum corpus bytes,
 plus a future absolute deadline. One side-effect-free coordinator operation
-validates those values without overflow, finds the exact current
+rejects multiplication overflow and corpus limits incoherent with the bounded
+document aggregate, finds the exact current
 `kWorkRequested` identity, rechecks capability, policy eligibility and
 cancellation, and returns a request whose identity, policy, captured source
 revision and cancellation come exclusively from that generation. The operation
@@ -6119,7 +6120,9 @@ shutdown/join, retry, progress/status, additional format bridge or facade/UI
 transport. Public/installed APIs, dependencies, `full-text-v1`, canonical IDs,
 `kPolicyExcluded`, existing article/work bounds, ICU behavior, ordinary
 find/F3, UI/translations, P8-FT-72 through P8-FT-81 safety and exactly 109
-registrations remain locked. No successor beyond P8-FT-82 is selected or named.
+registrations remain locked. Delivery uses the exact seven-file implementation,
+test and four-document allowlist. P8-FT-82 is complete, and no successor is
+selected or named.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

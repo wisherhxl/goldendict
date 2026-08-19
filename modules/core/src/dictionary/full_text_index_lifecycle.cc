@@ -358,6 +358,50 @@ bool FullTextIndexLifecycleCoordinator::SubmitRebuild(
     return true;
 }
 
+std::optional<FullTextIndexWorkRequest>
+FullTextIndexLifecycleCoordinator::ProjectBoundedWorkRequest(
+    const FullTextIndexWorkIdentity& identity,
+    const FullTextIndexExecutionBounds& bounds) const {
+    if (bounds.maximum_documents() == 0U ||
+        bounds.maximum_document_bytes() == 0U ||
+        bounds.maximum_corpus_bytes() == 0U ||
+        bounds.deadline() <= std::chrono::steady_clock::now() ||
+        bounds.maximum_documents() > std::numeric_limits<std::size_t>::max() /
+                                         bounds.maximum_document_bytes() ||
+        bounds.maximum_corpus_bytes() >
+            bounds.maximum_documents() * bounds.maximum_document_bytes()) {
+        return std::nullopt;
+    }
+
+    std::lock_guard lock(implementation_->mutex);
+    const auto found = implementation_->entries.find(identity.dictionary_id);
+    if (found == implementation_->entries.end())
+        return std::nullopt;
+
+    const auto& entry = found->second;
+    const auto& generation = *entry.current;
+    if (bounds.deadline() <= std::chrono::steady_clock::now() ||
+        !entry.has_accepted_generation || generation.identity != identity ||
+        generation.state != FullTextIndexLifecycleState::kWorkRequested ||
+        !generation.format_capable ||
+        !IsFullTextIndexPolicyEligible(entry.metadata, generation.policy) ||
+        generation.cancellation == nullptr ||
+        generation.cancellation->IsCancellationRequested()) {
+        return std::nullopt;
+    }
+
+    FullTextIndexWorkRequest request;
+    request.identity = generation.identity;
+    request.policy = generation.policy;
+    request.source_revision = generation.source_revision;
+    request.maximum_documents = bounds.maximum_documents();
+    request.maximum_document_bytes = bounds.maximum_document_bytes();
+    request.maximum_corpus_bytes = bounds.maximum_corpus_bytes();
+    request.deadline = bounds.deadline();
+    request.cancellation = generation.cancellation.get();
+    return request;
+}
+
 bool FullTextIndexLifecycleCoordinator::ExecuteBoundedWork(
     FullTextIndexWorkRequest request) {
     std::shared_ptr<FullTextIndexFormatWorkPort> port;

@@ -99,6 +99,40 @@ struct FullTextIndexStartupArtifactEvidence {
     std::shared_ptr<const FullTextIndex> snapshot;
 };
 
+class FullTextIndexExecutionBounds final {
+   public:
+    FullTextIndexExecutionBounds(std::size_t maximum_documents,
+                                 std::size_t maximum_document_bytes,
+                                 std::size_t maximum_corpus_bytes,
+                                 std::chrono::steady_clock::time_point deadline)
+        : maximum_documents_(maximum_documents),
+          maximum_document_bytes_(maximum_document_bytes),
+          maximum_corpus_bytes_(maximum_corpus_bytes),
+          deadline_(deadline) {}
+
+    std::size_t maximum_documents() const noexcept {
+        return maximum_documents_;
+    }
+
+    std::size_t maximum_document_bytes() const noexcept {
+        return maximum_document_bytes_;
+    }
+
+    std::size_t maximum_corpus_bytes() const noexcept {
+        return maximum_corpus_bytes_;
+    }
+
+    std::chrono::steady_clock::time_point deadline() const noexcept {
+        return deadline_;
+    }
+
+   private:
+    const std::size_t maximum_documents_;
+    const std::size_t maximum_document_bytes_;
+    const std::size_t maximum_corpus_bytes_;
+    const std::chrono::steady_clock::time_point deadline_;
+};
+
 enum class FullTextIndexLifecycleState {
     kUnavailable,
     kNotIndexed,
@@ -212,6 +246,9 @@ class FullTextIndexLifecycleCoordinator final {
     bool ReconcileStartupArtifact(
         const FullTextIndexStartupArtifactEvidence& evidence) noexcept;
     bool SubmitRebuild(const FullTextIndexRebuildIntent& intent);
+    std::optional<FullTextIndexWorkRequest> ProjectBoundedWorkRequest(
+        const FullTextIndexWorkIdentity& identity,
+        const FullTextIndexExecutionBounds& bounds) const;
     bool ExecuteBoundedWork(FullTextIndexWorkRequest request);
     bool Cancel(const FullTextIndexCancelIntent& intent) noexcept;
 

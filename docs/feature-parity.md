@@ -1612,17 +1612,17 @@ UI/translations, dependencies and exactly 109 registrations remain locked. No
 scheduler, thread, queue, progress/status, other format bridge or facade/UI
 transport is selected. No successor beyond P8-FT-81 is selected or named.
 
-### P8-FT-82 private bounded full-text work-request projection (selected)
+### P8-FT-82 private bounded full-text work-request projection (complete)
 
 The fresh post-P8-FT-81 audit at synchronized migrated revision
-`60d2ae95b73629b8efaa2333bbe2dfe1786bd5db` and clean pinned legacy revision
+`333bdbbca0812c8289bdc3194d66cd17300ecbee` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects exactly one private Core
 prerequisite: project validated execution bounds into a request for the exact
 current eligible `kWorkRequested` generation. Current
-`full_text_index_lifecycle.h:151-160` exposes document, per-document byte,
-corpus byte and absolute-deadline bounds, while
-`full_text_index_lifecycle.cc:361-388` currently accepts those values from its
-caller and replaces only policy, source revision and cancellation. AARD
+`full_text_index_lifecycle.h:102-134` now owns immutable document,
+per-document byte, corpus byte and absolute-deadline bounds, while
+`full_text_index_lifecycle.cc:361-403` validates them and constructs the final
+request entirely from bounds plus authoritative coordinator state. AARD
 `aard_dictionary.cc:58-68` rejects every zero resource bound. Pinned legacy
 `fulltextsearch.cc:34-125` checks readiness before starting background work but
 has no transport-neutral byte/deadline contract. Explicit projection is
@@ -1632,7 +1632,8 @@ dispatcher to construct Core's safety envelope.
 The selected leaf adds one immutable private execution-bounds value and one
 side-effect-free coordinator projection for an exact dictionary identity.
 Projection accepts only nonzero document, per-document byte and corpus byte
-limits, a future absolute deadline, overflow-safe values, and the exact current
+limits, a future absolute deadline, a representable document-byte product, a
+corpus limit no greater than that product, and the exact current
 uncancelled generation while capability and policy eligibility still hold.
 Core supplies the accepted generation's identity, policy, captured source
 revision and cancellation; a caller cannot forge or replace those fields. A
@@ -1651,10 +1652,12 @@ bounded execution seam.
 P8-FT-82 adds no submission, scheduler, dispatcher/executor ownership, thread,
 queue, shutdown/join, retry, progress/status, additional format bridge,
 facade/UI transport, public/installed API, dependency or registration.
-P8-FT-72 through P8-FT-81, `full-text-v1`, canonical IDs, `kPolicyExcluded`,
+The completed delivery is bounded to the lifecycle header and implementation,
+the existing lifecycle test and four governing documents. P8-FT-72 through
+P8-FT-81, `full-text-v1`, canonical IDs, `kPolicyExcluded`,
 article/work bounds, ICU divergence, ordinary find/F3, UI/translations,
-stale/artifact/snapshot safety and exactly 109 registrations remain locked. No
-successor beyond P8-FT-82 is selected or named.
+stale/artifact/snapshot safety and exactly 109 registrations remain locked.
+P8-FT-82 is complete, and no successor is selected or named.
 
 ## Resources And Platform Integration
 
