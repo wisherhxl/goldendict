@@ -1136,11 +1136,10 @@ preserved. Previous/Next commands remain outside this leaf. No successor after
 P8-FT-67 is selected, ranked, recommended or named. Completion will unlock only
 generation-bound ordered applied-range state.
 
-### P8-FT-68 private ordered applied-range navigation command prerequisite (selected)
+### P8-FT-68 private ordered applied-range navigation command prerequisite (completed)
 
-The fresh independent audit starts from clean synchronized
-migrated/local/upstream/live-remote revision
-`a708b8518bf400d9f0c2a44edf0b214959937d85` and clean pinned legacy revision
+The completed implementation was selected by clean synchronized revision
+`67dd57c26f1f7b7af1021ffb1041947ddb0c2f20` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-67's
 historical no-successor closure and selects only the smallest dependency-ready
 consumer of its generation-bound ordered applied-range state. Current
@@ -1165,7 +1164,7 @@ headword-only rows and exact dictionary-name tooltips remain unchanged. Public,
 Core and C interfaces and DTOs, indexes, configuration, dependencies, catalogs,
 translations, executables, test registration and the exactly 109-test Release
 baseline are preserved. No successor after P8-FT-68 is selected, ranked,
-recommended or named. Completion will unlock only private full-text navigation
+recommended or named. Completion unlocks only private full-text navigation
 UI/status binding.
 
 ## Resources And Platform Integration

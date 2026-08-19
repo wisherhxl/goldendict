@@ -5420,11 +5420,10 @@ Previous/Next commands and their UI/status behavior remain outside this leaf.
 No successor after P8-FT-67 is selected, ranked, recommended or named.
 Completion will unlock only generation-bound ordered applied-range state.
 
-### Phase 8 P8-FT-68 private ordered applied-range navigation command prerequisite (selected)
+### Phase 8 P8-FT-68 private ordered applied-range navigation command prerequisite (completed)
 
-The fresh independent readiness audit starts from clean synchronized
-migrated/local/upstream/live-remote revision
-`a708b8518bf400d9f0c2a44edf0b214959937d85` and clean pinned legacy revision
+The completed implementation was selected by clean synchronized revision
+`67dd57c26f1f7b7af1021ffb1041947ddb0c2f20` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-67's
 historical no-successor closure and selects only P8-FT-68, the smallest
 dependency-ready consumer of its private generation-bound ordered applied-range
@@ -5455,7 +5454,7 @@ installed/Core/C interface or DTO, index format, configuration, dependency,
 catalog, translation, executable or test registration. Headword-only result
 rows, exact dictionary-name tooltips, exact activation and the exactly 109-test
 Release baseline remain unchanged. No successor after P8-FT-68 is selected,
-ranked, recommended or named. Completion will unlock only private full-text
+ranked, recommended or named. Completion unlocks only private full-text
 navigation UI/status binding.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

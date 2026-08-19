@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <limits>
 
 #include <QAction>
 #include <QApplication>
@@ -7114,6 +7115,114 @@ void MainWindow::RunFullTextDialogSmokeCheck(
         highlight_view->ClearFullTextHighlights(
             QStringLiteral("smoke-generation-a"));
 
+        bool instrumentation_ready = false;
+        highlight_view->page()->runJavaScript(
+            QStringLiteral(R"JS(
+(() => {
+  globalThis.__goldendictNavigationSelectionChanges = 0;
+  globalThis.__goldendictNavigationScrolls = 0;
+  const originalRemoveAllRanges = Selection.prototype.removeAllRanges;
+  Selection.prototype.removeAllRanges = function(...args) {
+    ++globalThis.__goldendictNavigationSelectionChanges;
+    return originalRemoveAllRanges.apply(this, args);
+  };
+  const originalAddRange = Selection.prototype.addRange;
+  Selection.prototype.addRange = function(...args) {
+    ++globalThis.__goldendictNavigationSelectionChanges;
+    return originalAddRange.apply(this, args);
+  };
+  const original = window.scrollTo.bind(window);
+  window.scrollTo = (...args) => {
+    ++globalThis.__goldendictNavigationScrolls;
+    return original(...args);
+  };
+  return true;
+})()
+)JS"),
+            QWebEngineScript::ApplicationWorld,
+            [&instrumentation_ready](const QVariant&) {
+                instrumentation_ready = true;
+            });
+        highlight_passed =
+            highlight_passed && wait_for([&instrumentation_ready]() {
+                return instrumentation_ready;
+            });
+
+        auto navigate = [highlight_view, &wait_for](
+                            const QString& token,
+                            ArticleHighlightNavigationDirection direction) {
+            ArticleHighlightNavigationSnapshot snapshot;
+            bool ready = false;
+            highlight_view->NavigateFullTextHighlight(
+                token, direction,
+                [&snapshot, &ready](ArticleHighlightNavigationSnapshot result) {
+                    snapshot = std::move(result);
+                    ready = true;
+                });
+            wait_for([&ready]() { return ready; });
+            return snapshot;
+        };
+        auto presentation_counts = [highlight_view, &wait_for]() {
+            QPair<int, int> counts{-1, -1};
+            bool ready = false;
+            highlight_view->page()->runJavaScript(
+                QStringLiteral(R"JS([
+  globalThis.__goldendictNavigationSelectionChanges,
+  globalThis.__goldendictNavigationScrolls
+])JS"),
+                QWebEngineScript::ApplicationWorld,
+                [&counts, &ready](const QVariant& value) {
+                    const QVariantList values = value.toList();
+                    if (values.size() == 2)
+                        counts = {values[0].toInt(), values[1].toInt()};
+                    ready = true;
+                });
+            wait_for([&ready]() { return ready; });
+            return counts;
+        };
+        const auto next = navigate(QStringLiteral("smoke-generation-b"),
+                                   ArticleHighlightNavigationDirection::kNext);
+        highlight_passed =
+            highlight_passed && next.accepted && next.current_position == 1 &&
+            next.ordered_count == 2 && next.can_previous && !next.can_next;
+        const auto before_last_boundary = presentation_counts();
+        const auto last_boundary =
+            navigate(QStringLiteral("smoke-generation-b"),
+                     ArticleHighlightNavigationDirection::kNext);
+        highlight_passed = highlight_passed && last_boundary.accepted &&
+                           last_boundary.current_position == 1 &&
+                           last_boundary.can_previous &&
+                           !last_boundary.can_next;
+        const auto after_last_boundary = presentation_counts();
+        highlight_passed =
+            highlight_passed && before_last_boundary == after_last_boundary;
+        const auto previous =
+            navigate(QStringLiteral("smoke-generation-b"),
+                     ArticleHighlightNavigationDirection::kPrevious);
+        highlight_passed = highlight_passed && previous.accepted &&
+                           previous.current_position == 0 &&
+                           !previous.can_previous && previous.can_next;
+        const auto before_first_boundary = presentation_counts();
+        const auto first_boundary =
+            navigate(QStringLiteral("smoke-generation-b"),
+                     ArticleHighlightNavigationDirection::kPrevious);
+        highlight_passed = highlight_passed && first_boundary.accepted &&
+                           first_boundary.current_position == 0 &&
+                           !first_boundary.can_previous &&
+                           first_boundary.can_next;
+        const auto after_first_boundary = presentation_counts();
+        highlight_passed =
+            highlight_passed && before_first_boundary == after_first_boundary;
+        const auto wrong_token =
+            navigate(QStringLiteral("smoke-generation-a"),
+                     ArticleHighlightNavigationDirection::kNext);
+        highlight_passed =
+            highlight_passed && !wrong_token.accepted &&
+            wrong_token.token == QStringLiteral("smoke-generation-a") &&
+            wrong_token.current_position == -1 &&
+            wrong_token.ordered_count == 0 && !wrong_token.can_previous &&
+            !wrong_token.can_next;
+
         ArticleHighlightResult stale_failure;
         bool stale_failure_ready = false;
         auto invalid_ranges = highlight_ranges;
@@ -7145,6 +7254,8 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     token: published ? published.token : '',
     ordered: published ? published.ordered.length : -1,
     position: published ? published.position : -1,
+    selectionChanges: globalThis.__goldendictNavigationSelectionChanges,
+    scrolls: globalThis.__goldendictNavigationScrolls,
     occurrences: published ? published.highlight.size : -1,
     selected: selection ? selection.toString() : '',
     styled: published ? document.adoptedStyleSheets.includes(published.sheet) &&
@@ -7172,6 +7283,9 @@ void MainWindow::RunFullTextDialogSmokeCheck(
                 QStringLiteral("smoke-generation-b") &&
             highlight_snapshot.value(QStringLiteral("ordered")).toInt() == 2 &&
             highlight_snapshot.value(QStringLiteral("position")).toInt() == 0 &&
+            highlight_snapshot.value(QStringLiteral("selectionChanges"))
+                    .toInt() >= 0 &&
+            highlight_snapshot.value(QStringLiteral("scrolls")).toInt() >= 2 &&
             highlight_snapshot.value(QStringLiteral("occurrences")).toInt() ==
                 4 &&
             highlight_snapshot.value(QStringLiteral("selected")).toString() ==
@@ -7185,8 +7299,71 @@ void MainWindow::RunFullTextDialogSmokeCheck(
             highlight_snapshot.value(QStringLiteral("body"))
                 .toString()
                 .contains(QStringLiteral("<span>Be</span><span>ta</span>"));
+
+        ArticleHighlightResult one_range;
+        bool one_range_ready = false;
+        highlight_view->ApplyFullTextHighlights(
+            QStringLiteral("smoke-one-range"), highlight_text,
+            std::vector<ArticleHighlightRange>{highlight_ranges.front()}, false,
+            [&one_range, &one_range_ready](ArticleHighlightResult result) {
+                one_range = std::move(result);
+                one_range_ready = true;
+            });
+        highlight_passed =
+            highlight_passed &&
+            wait_for([&one_range_ready]() { return one_range_ready; }) &&
+            one_range.applied && one_range.current_position == 0;
+        const auto one_previous =
+            navigate(QStringLiteral("smoke-one-range"),
+                     ArticleHighlightNavigationDirection::kPrevious);
+        const auto one_next =
+            navigate(QStringLiteral("smoke-one-range"),
+                     ArticleHighlightNavigationDirection::kNext);
+        highlight_passed =
+            highlight_passed && one_previous.accepted && one_next.accepted &&
+            one_previous.current_position == 0 &&
+            one_next.current_position == 0 && !one_previous.can_previous &&
+            !one_previous.can_next && !one_next.can_previous &&
+            !one_next.can_next;
+        bool corrupt_ready = false;
+        highlight_view->page()->runJavaScript(
+            QStringLiteral(R"JS(
+(() => {
+  const state = globalThis.__goldendictFullTextHighlightState;
+  if (state && state.published) state.published.position = 0.5;
+  return true;
+})()
+)JS"),
+            QWebEngineScript::ApplicationWorld,
+            [&corrupt_ready](const QVariant&) { corrupt_ready = true; });
+        highlight_passed = highlight_passed && wait_for([&corrupt_ready]() {
+                               return corrupt_ready;
+                           });
+        const auto malformed =
+            navigate(QStringLiteral("smoke-one-range"),
+                     ArticleHighlightNavigationDirection::kNext);
+        highlight_passed = highlight_passed && !malformed.accepted &&
+                           malformed.current_position == -1 &&
+                           malformed.ordered_count == 0;
         highlight_view->ClearFullTextHighlights(
-            QStringLiteral("smoke-generation-b"));
+            QStringLiteral("smoke-one-range"), true);
+        const auto empty = navigate(QStringLiteral("smoke-one-range"),
+                                    ArticleHighlightNavigationDirection::kNext);
+        highlight_passed = highlight_passed && !empty.accepted;
+        bool lifecycle_loaded = false;
+        connect(
+            highlight_view, &QWebEngineView::loadFinished, this,
+            [&lifecycle_loaded](bool ok) { lifecycle_loaded = ok; },
+            Qt::SingleShotConnection);
+        highlight_view->setHtml(QStringLiteral(
+            "<!doctype html><html><body>replacement</body></html>"));
+        highlight_passed = highlight_passed && wait_for([&lifecycle_loaded]() {
+                               return lifecycle_loaded;
+                           });
+        const auto invalidated =
+            navigate(QStringLiteral("smoke-one-range"),
+                     ArticleHighlightNavigationDirection::kNext);
+        highlight_passed = highlight_passed && !invalidated.accepted;
         highlight_view->deleteLater();
         return highlight_passed;
     };
@@ -8914,6 +9091,87 @@ void MainWindow::InvalidateRenderedTextMatchPlan(
         }
         rendered_text_match_plans_.clear();
     }
+}
+
+void MainWindow::NavigateFullTextHighlight(
+    goldendict::core::ArticleTabId tab_id,
+    ArticleHighlightNavigationDirection direction) {
+    const auto found = rendered_text_match_plans_.find(tab_id);
+    if (found == rendered_text_match_plans_.end() || !found->second.applied ||
+        found->second.application_token.isEmpty() ||
+        found->second.current_position < 0 ||
+        found->second.result.ranges.size() >
+            static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
+        found->second.identity.view.isNull() ||
+        found->second.identity.page.isNull()) {
+        return;
+    }
+    const RenderedTextMatchPlanIdentity identity = found->second.identity;
+    const QString token = found->second.application_token;
+    const int old_position = found->second.current_position;
+    const int ordered_count =
+        static_cast<int>(found->second.result.ranges.size());
+    const int expected_position =
+        direction == ArticleHighlightNavigationDirection::kPrevious
+            ? (old_position > 0 ? old_position - 1 : old_position)
+            : (old_position + 1 < ordered_count ? old_position + 1
+                                                : old_position);
+    identity.view->NavigateFullTextHighlight(
+        token, direction,
+        [guarded_window = QPointer<MainWindow>(this), identity, token,
+         old_position, ordered_count,
+         expected_position](ArticleHighlightNavigationSnapshot snapshot) {
+            if (guarded_window.isNull())
+                return;
+            const auto current =
+                guarded_window->rendered_text_match_plans_.find(
+                    identity.tab_id);
+            if (current == guarded_window->rendered_text_match_plans_.end() ||
+                !snapshot.accepted || snapshot.token != token ||
+                snapshot.ordered_count != ordered_count ||
+                snapshot.current_position != expected_position ||
+                current->second.application_token != token ||
+                !current->second.applied ||
+                current->second.current_position != old_position ||
+                static_cast<int>(current->second.result.ranges.size()) !=
+                    ordered_count ||
+                current->second.identity.work_generation !=
+                    identity.work_generation ||
+                current->second.identity.accepted_query_generation !=
+                    identity.accepted_query_generation ||
+                current->second.identity.lookup_generation !=
+                    identity.lookup_generation ||
+                current->second.identity.search_generation !=
+                    identity.search_generation ||
+                current->second.identity.navigation_generation !=
+                    identity.navigation_generation ||
+                current->second.identity.tab_id != identity.tab_id ||
+                current->second.identity.ignore_diacritics !=
+                    identity.ignore_diacritics ||
+                current->second.identity.request.rendered_text !=
+                    identity.request.rendered_text ||
+                current->second.identity.request.query_text !=
+                    identity.request.query_text ||
+                current->second.identity.request.mode !=
+                    identity.request.mode ||
+                current->second.identity.request.match_case !=
+                    identity.request.match_case ||
+                current->second.identity.request.ignore_word_order !=
+                    identity.request.ignore_word_order ||
+                current->second.identity.request.maximum_word_distance !=
+                    identity.request.maximum_word_distance ||
+                current->second.identity.request.timeout !=
+                    identity.request.timeout ||
+                current->second.identity.view != identity.view ||
+                current->second.identity.page != identity.page ||
+                identity.view.isNull() || identity.page.isNull() ||
+                guarded_window->ArticleViewForTab(identity.tab_id) !=
+                    identity.view.data() ||
+                identity.view->page() != identity.page.data()) {
+                return;
+            }
+            current->second.current_position = snapshot.current_position;
+        });
 }
 
 void MainWindow::RefreshArticleSearch() {

@@ -65,6 +65,17 @@ struct ArticleHighlightResult {
     int current_position = -1;
 };
 
+enum class ArticleHighlightNavigationDirection { kPrevious, kNext };
+
+struct ArticleHighlightNavigationSnapshot {
+    bool accepted = false;
+    QString token;
+    int current_position = -1;
+    int ordered_count = 0;
+    bool can_previous = false;
+    bool can_next = false;
+};
+
 class ArticleView final : public QWebEngineView {
     Q_OBJECT
 
@@ -94,6 +105,10 @@ class ArticleView final : public QWebEngineView {
         std::function<void(ArticleHighlightResult)> completion);
     void ClearFullTextHighlights(const QString& expected_token,
                                  bool clear_current_owner = false);
+    void NavigateFullTextHighlight(
+        const QString& expected_token,
+        ArticleHighlightNavigationDirection direction,
+        std::function<void(ArticleHighlightNavigationSnapshot)> completion);
 
    signals:
     void LinkRequested(const QUrl& url, ArticleLinkDisposition disposition);

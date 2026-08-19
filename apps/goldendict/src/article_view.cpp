@@ -4,6 +4,9 @@
 
 #include <utility>
 
+#include <cmath>
+#include <limits>
+
 #include <QApplication>
 #include <QClipboard>
 #include <QContextMenuEvent>
@@ -31,6 +34,24 @@ QString DisplaySelection(QString text) {
         text.append(QChar(0x202c));
     }
     return text;
+}
+
+bool ReadJavaScriptInteger(const QVariantMap& result, const QString& key,
+                           int* output) {
+    if (!result.contains(key))
+        return false;
+    const QVariant value = result.value(key);
+    bool converted = false;
+    const double number = value.toDouble(&converted);
+    if (!converted || value.metaType().id() == QMetaType::Bool ||
+        value.metaType().id() == QMetaType::QString || !std::isfinite(number) ||
+        std::trunc(number) != number ||
+        number < static_cast<double>(std::numeric_limits<int>::min()) ||
+        number > static_cast<double>(std::numeric_limits<int>::max())) {
+        return false;
+    }
+    *output = static_cast<int>(number);
+    return true;
 }
 
 }  // namespace
@@ -255,6 +276,137 @@ void ArticleView::ClearFullTextHighlights(const QString& expected_token,
 )JS")
             .arg(encoded, QString::fromLatin1(kFullTextHighlightName));
     page()->runJavaScript(script, QWebEngineScript::ApplicationWorld);
+}
+
+void ArticleView::NavigateFullTextHighlight(
+    const QString& expected_token,
+    ArticleHighlightNavigationDirection direction,
+    std::function<void(ArticleHighlightNavigationSnapshot)> completion) {
+    ArticleHighlightNavigationSnapshot rejected;
+    rejected.token = expected_token;
+    if (page() == nullptr || expected_token.isEmpty()) {
+        completion(std::move(rejected));
+        return;
+    }
+    const QJsonObject payload{
+        {QStringLiteral("token"), expected_token},
+        {QStringLiteral("delta"),
+         direction == ArticleHighlightNavigationDirection::kPrevious ? -1 : 1}};
+    const QString encoded = QString::fromLatin1(
+        QJsonDocument(payload).toJson(QJsonDocument::Compact).toBase64());
+    const QString script =
+        QStringLiteral(R"JS(
+(() => {
+  const request = JSON.parse(new TextDecoder().decode(
+      Uint8Array.from(atob('%1'), c => c.charCodeAt(0))));
+  const reject = () => ({accepted: false, token: request.token,
+      currentPosition: -1, orderedCount: 0,
+      canPrevious: false, canNext: false});
+  try {
+    const state = globalThis.__goldendictFullTextHighlightState;
+    const published = state && state.published;
+    if ((request.delta !== -1 && request.delta !== 1) ||
+        !published || published.token !== request.token ||
+        !Array.isArray(published.ordered) || !published.ordered.length ||
+        !Number.isInteger(published.position) || published.position < 0 ||
+        published.position >= published.ordered.length ||
+        !published.ordered.every(range => range instanceof Range) ||
+        !globalThis.CSS || !CSS.highlights ||
+        CSS.highlights.get('%2') !== published.highlight ||
+        !('adoptedStyleSheets' in document) ||
+        !Array.from(document.adoptedStyleSheets).includes(published.sheet) ||
+        !window.getSelection || typeof window.scrollTo !== 'function') return reject();
+    const count = published.ordered.length;
+    const snapshot = () => ({accepted: true, token: published.token,
+        currentPosition: published.position, orderedCount: count,
+        canPrevious: published.position > 0,
+        canNext: published.position + 1 < count});
+    const targetPosition = published.position + request.delta;
+    if (targetPosition < 0 || targetPosition >= count) return snapshot();
+    const target = published.ordered[targetPosition];
+    const rect = target.getBoundingClientRect();
+    if (!rect || !Number.isFinite(rect.top) || !Number.isFinite(rect.left))
+      return reject();
+    const selection = window.getSelection();
+    if (!selection || typeof selection.removeAllRanges !== 'function' ||
+        typeof selection.addRange !== 'function') return reject();
+    const oldRanges = [];
+    for (let index = 0; index < selection.rangeCount; ++index)
+      oldRanges.push(selection.getRangeAt(index).cloneRange());
+    const oldX = window.scrollX;
+    const oldY = window.scrollY;
+    try {
+      selection.removeAllRanges();
+      selection.addRange(target);
+      window.scrollTo({top: oldY + rect.top, left: oldX + rect.left,
+                       behavior: 'instant'});
+    } catch (_) {
+      try {
+        selection.removeAllRanges();
+        for (const range of oldRanges) selection.addRange(range);
+        window.scrollTo({top: oldY, left: oldX, behavior: 'instant'});
+      } catch (_) {}
+      return reject();
+    }
+    published.position = targetPosition;
+    return snapshot();
+  } catch (_) {
+    return reject();
+  }
+})()
+)JS")
+            .arg(encoded, QString::fromLatin1(kFullTextHighlightName));
+    page()->runJavaScript(
+        script, QWebEngineScript::ApplicationWorld,
+        [expected_token,
+         completion = std::move(completion)](const QVariant& value) mutable {
+            ArticleHighlightNavigationSnapshot snapshot;
+            snapshot.token = expected_token;
+            if (value.metaType().id() != QMetaType::QVariantMap) {
+                completion(std::move(snapshot));
+                return;
+            }
+            const QVariantMap result = value.toMap();
+            const QVariant accepted = result.value(QStringLiteral("accepted"));
+            const QVariant token = result.value(QStringLiteral("token"));
+            const QVariant can_previous =
+                result.value(QStringLiteral("canPrevious"));
+            const QVariant can_next = result.value(QStringLiteral("canNext"));
+            int position = -1;
+            int count = 0;
+            if (accepted.metaType().id() != QMetaType::Bool ||
+                token.metaType().id() != QMetaType::QString ||
+                can_previous.metaType().id() != QMetaType::Bool ||
+                can_next.metaType().id() != QMetaType::Bool ||
+                !ReadJavaScriptInteger(
+                    result, QStringLiteral("currentPosition"), &position) ||
+                !ReadJavaScriptInteger(result, QStringLiteral("orderedCount"),
+                                       &count)) {
+                completion(std::move(snapshot));
+                return;
+            }
+            if (!accepted.toBool()) {
+                if (token.toString() == expected_token && position == -1 &&
+                    count == 0 && !can_previous.toBool() && !can_next.toBool())
+                    snapshot.token = token.toString();
+                completion(std::move(snapshot));
+                return;
+            }
+            if (token.toString() != expected_token || count <= 0 ||
+                position < 0 || position >= count ||
+                can_previous.toBool() != (position > 0) ||
+                can_next.toBool() != (position + 1 < count)) {
+                completion(std::move(snapshot));
+                return;
+            }
+            snapshot.accepted = true;
+            snapshot.token = token.toString();
+            snapshot.current_position = position;
+            snapshot.ordered_count = count;
+            snapshot.can_previous = can_previous.toBool();
+            snapshot.can_next = can_next.toBool();
+            completion(std::move(snapshot));
+        });
 }
 
 ArticleView::ArticleView(QWidget* parent) : QWebEngineView(parent) {

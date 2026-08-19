@@ -21,6 +21,7 @@
 
 class ArticlePage;
 class ArticleView;
+enum class ArticleHighlightNavigationDirection;
 class ArticleSchemeHandler;
 enum class ArticleLinkDisposition;
 class DictionaryBrowser;
@@ -317,6 +318,9 @@ class MainWindow final : public QMainWindow {
         goldendict::core::RenderedTextMatchPlanResult result);
     void InvalidateRenderedTextMatchPlan(
         std::optional<goldendict::core::ArticleTabId> tab_id = std::nullopt);
+    void NavigateFullTextHighlight(
+        goldendict::core::ArticleTabId tab_id,
+        ArticleHighlightNavigationDirection direction);
     void RefreshArticleSearch();
     void StartSuggestionLookup();
     void FinishSuggestionLookup(goldendict::core::ArticleTabId tab_id,
