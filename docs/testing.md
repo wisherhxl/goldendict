@@ -4465,8 +4465,8 @@ dependency is selected.
 
 ### Phase 8 P8-FT-75 registration metadata and policy-eligibility acceptance
 
-The selected documentation-only prerequisite is grounded at migrated revision
-`1bc50e19d21e165a233e806cb3781930cad600c4` and pinned legacy revision
+The completed P8-FT-75 implementation is grounded at migrated base revision
+`18023f3aebae9ad610fa1b9afcb505dc946b7a1a` and pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Evidence is current
 `dictionary_service.cc:450-464,687-1036`, the authoritative reader article-
 count assignments in the twelve textual dictionaries,
@@ -4512,8 +4512,8 @@ Installed/public C++, facade, C, DTO and configuration ABI, dependencies,
 `full-text-v1`, ordinary find, Dictionaries-only F3 and translations remain
 locked. Documentation validation requires current and legacy citation review,
 the four-file allowlist, terminology review, `git diff --check`, exact
-registration counting, reference equality and clean worktrees. Only
-implementation of P8-FT-75 is unlocked; no successor beyond it is named.
+registration counting, reference equality and clean worktrees. P8-FT-75 is
+complete. No successor is selected or named.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a

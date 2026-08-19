@@ -1371,11 +1371,12 @@ rename remain unchanged. P8-FT-74 is complete. No next dependency is selected.
 
 ### P8-FT-75 private registration metadata and policy eligibility
 
-The fresh readiness audit at synchronized migrated revision
-`1bc50e19d21e165a233e806cb3781930cad600c4` and pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects only the private Core
-prerequisite that defines immutable registration metadata, pure policy
-eligibility and `kPolicyExcluded`. Current `dictionary_service.cc:450-464`
+P8-FT-75 completes the private Core prerequisite that defines immutable
+registration metadata, pure policy eligibility and `kPolicyExcluded`. Its
+implementation is grounded in synchronized migrated base revision
+`18023f3aebae9ad610fa1b9afcb505dc946b7a1a` and pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`dictionary_service.cc:450-464`
 and `dictionary_service.cc:687-1036`, the twelve textual dictionary readers and
 `full_text_index_lifecycle.h/.cc` provide the dictionary-ID, format branch,
 article-count, policy, port and coordinator seams. Pinned legacy per-format
@@ -1414,8 +1415,7 @@ Real adapter conversion, composition wiring, automatic policy apply/restart,
 facade/Widgets transport, UI, scheduling, progress, retry, serialization and
 complete rebuild behavior remain excluded. All public, dependency,
 `full-text-v1`, ordinary-find, Dictionaries-only F3 and translation surfaces
-remain locked. Only implementation of P8-FT-75 is unlocked; no successor
-beyond it is selected or named.
+remain locked. P8-FT-75 is complete. No successor is selected or named.
 
 ## Resources And Platform Integration
 

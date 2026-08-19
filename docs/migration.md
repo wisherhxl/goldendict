@@ -5648,13 +5648,12 @@ dependency is selected.
 
 ### Phase 8 P8-FT-75 private registration metadata and policy eligibility
 
-The post-P8-FT-74 documentation-only readiness audit uses synchronized
-migrated revision `1bc50e19d21e165a233e806cb3781930cad600c4` and clean pinned
-legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Of eligibility,
-one real adapter bridge, composition, automatic persisted-policy application
-and facade/Widgets transport, it selects only the private Core prerequisite
-that defines immutable registration metadata, a pure eligibility predicate and
-the separate `kPolicyExcluded` lifecycle state.
+P8-FT-75 completes the private Core prerequisite that defines immutable
+registration metadata, a pure eligibility predicate and the separate
+`kPolicyExcluded` lifecycle state. Its implementation is grounded in
+synchronized migrated base revision
+`18023f3aebae9ad610fa1b9afcb505dc946b7a1a` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
 
 Current `dictionary_service.cc:450-464,687-1036` owns stable dictionary-ID and
 format-specific catalog construction, all twelve textual dictionaries copy
@@ -5699,8 +5698,7 @@ registered, preserving exactly 109. Real adapters, composition wiring,
 automatic apply/restart, facade/Widgets transport, UI, scheduling, progress,
 retry, legacy two-pass ordering, serialization and complete rebuild remain
 excluded, as do changes to every locked public, dependency, search, F3 and
-translation surface. Only P8-FT-75 implementation is unlocked; no successor
-beyond it is selected or named.
+translation surface. P8-FT-75 is complete. No successor is selected or named.
 
 ### Phase 9 — Linux Integration And Release Quality
 

@@ -5731,12 +5731,13 @@ complete. No next dependency is selected.
 
 ### Phase 8 P8-FT-75 private registration metadata and policy eligibility
 
-The fresh post-P8-FT-74 readiness audit is pinned to synchronized migrated
-revision `1bc50e19d21e165a233e806cb3781930cad600c4` and clean legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects one private Core
-prerequisite: immutable per-dictionary registration metadata, the pure
-eligibility predicate that consumes P8-FT-74 policy, and a distinct
-policy-excluded lifecycle snapshot. Current `dictionary_service.cc:450-464`
+P8-FT-75 completes one private Core prerequisite: immutable per-dictionary
+registration metadata, the pure eligibility predicate that consumes P8-FT-74
+policy, and a distinct policy-excluded lifecycle snapshot. Its implementation
+is grounded in synchronized migrated base revision
+`18023f3aebae9ad610fa1b9afcb505dc946b7a1a` and clean legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`dictionary_service.cc:450-464`
 and `dictionary_service.cc:687-1036` supply stable dictionary IDs and format-
 specific catalog branches,
 the twelve textual dictionaries assign authoritative reader article counts,
@@ -5791,9 +5792,8 @@ policy apply/restart, facade/Widgets transport, UI, scheduling, progress,
 retry, two-pass ordering, serialization and the complete rebuild remain
 excluded. Installed/public C++, facade, C, DTO and configuration ABI,
 dependencies, `full-text-v1`, ordinary find, Dictionaries-only F3,
-translations and exactly 109 registrations remain unchanged. Only
-implementation of this selected prerequisite is unlocked; no successor beyond
-it is selected or named.
+translations and exactly 109 registrations remain unchanged. P8-FT-75 is
+complete. No successor is selected or named.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile

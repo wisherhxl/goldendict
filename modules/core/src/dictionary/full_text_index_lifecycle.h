@@ -38,6 +38,23 @@ struct FullTextIndexPolicy {
 FullTextIndexPolicy ProjectFullTextIndexPolicy(
     const ApplicationPreferences& preferences);
 
+struct FullTextIndexRegistrationMetadata {
+    std::string dictionary_id;
+    std::string format_type;
+    std::size_t article_count = 0U;
+
+    friend bool operator==(const FullTextIndexRegistrationMetadata& left,
+                           const FullTextIndexRegistrationMetadata& right) {
+        return left.dictionary_id == right.dictionary_id &&
+               left.format_type == right.format_type &&
+               left.article_count == right.article_count;
+    }
+};
+
+bool IsFullTextIndexPolicyEligible(
+    const FullTextIndexRegistrationMetadata& metadata,
+    const FullTextIndexPolicy& policy) noexcept;
+
 struct FullTextIndexWorkIdentity {
     std::uint64_t generation = 0U;
     std::string dictionary_id;
@@ -76,6 +93,7 @@ struct FullTextIndexCancelIntent {
 enum class FullTextIndexLifecycleState {
     kUnavailable,
     kNotIndexed,
+    kPolicyExcluded,
     kWorkRequested,
     kWorking,
     kCurrent,
@@ -166,7 +184,7 @@ class FullTextIndexLifecycleCoordinator final {
         const FullTextIndexLifecycleCoordinator&) = delete;
 
     bool RegisterDictionary(
-        std::string dictionary_id,
+        FullTextIndexRegistrationMetadata metadata,
         std::shared_ptr<FullTextIndexFormatWorkPort> format_work_port);
     bool SubmitRebuild(const FullTextIndexRebuildIntent& intent);
     bool ExecuteBoundedWork(FullTextIndexWorkRequest request);
