@@ -385,10 +385,12 @@ FullTextIndexLifecycleCoordinator::ProjectBoundedWorkRequest(
         bounds.maximum_document_bytes() == 0U ||
         bounds.maximum_corpus_bytes() == 0U ||
         bounds.deadline() <= std::chrono::steady_clock::now() ||
-        bounds.maximum_documents() > std::numeric_limits<std::size_t>::max() /
-                                         bounds.maximum_document_bytes() ||
-        bounds.maximum_corpus_bytes() >
-            bounds.maximum_documents() * bounds.maximum_document_bytes()) {
+        bounds.maximum_documents() <
+            bounds.maximum_corpus_bytes() / bounds.maximum_document_bytes() ||
+        (bounds.maximum_documents() ==
+             bounds.maximum_corpus_bytes() / bounds.maximum_document_bytes() &&
+         bounds.maximum_corpus_bytes() % bounds.maximum_document_bytes() !=
+             0U)) {
         return std::nullopt;
     }
 

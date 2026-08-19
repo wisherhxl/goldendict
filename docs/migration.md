@@ -5953,15 +5953,15 @@ validated bounded request for the exact eligible startup-unreconciled
 The completed leaf defines an immutable private execution-bounds value and a
 side-effect-free coordinator projection. Resource bounds must all be nonzero,
 the absolute deadline must be in the future, and validation must be
-overflow-safe; the current implementation requires the document/per-document
-product to be representable and the corpus limit cannot exceed it. The
+overflow-safe; the corpus limit cannot mathematically exceed the
+document/per-document product, which need not be representable. The
 coordinator requires the exact current
 uncancelled requested identity, rechecks capability and policy eligibility, and
 supplies identity, policy, captured source revision and cancellation from
 authoritative generation state. Success returns a request without invoking its
 port or moving it to `kWorking`.
 
-Zero, expired or overflow-invalid bounds and unknown, stale, replaced,
+Zero, expired or mathematically incoherent bounds and unknown, stale, replaced,
 cancelled, unavailable, excluded, failed, working, current or otherwise
 non-requested identities return no request. They cannot mutate lifecycle state,
 prepare or finalize an update, write an artifact, publish a holder snapshot or
@@ -6064,10 +6064,10 @@ remain locked. Delivery changes the two private executor files, Core source
 list, existing test and exactly four governing sections. P8-FT-84 is complete.
 At its completion, no successor beyond it was selected or named.
 
-### Phase 8 P8-FT-85 overflow-safe execution-bounds coherence (selected)
+### Phase 8 P8-FT-85 overflow-safe execution-bounds coherence (complete)
 
 The fresh post-P8-FT-84 audit uses synchronized migrated revision
-`f14b14f8bda473ba9914f7de7b241ee37647e165` and clean pinned legacy revision
+`20b684eb2ad09ab48c22b7df81afa65d46a1d26f` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Tiger's architecture detection
 explicitly supports x86 and 32-bit compilation modes, so production policy
 cannot assume a 64-bit `size_t`. The P8-FT-82 multiplication-representability
@@ -6092,9 +6092,8 @@ mutation or port work.
 No provider, composition/executor wiring, startup or replacement submission,
 new scheduling policy, artifact/snapshot/persistence change, format bridge,
 UI, serialization, dependency, public API or registration is selected.
-P8-FT-72 through P8-FT-84 and exactly 109 registrations remain locked. The
-implementation of this correction is the sole dependency unlocked; no
-successor beyond P8-FT-85 is selected or named.
+P8-FT-72 through P8-FT-84 and exactly 109 registrations remain locked. This
+correction is complete; no successor beyond P8-FT-85 is selected or named.
 
 ### Phase 9 — Linux Integration And Release Quality
 

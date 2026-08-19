@@ -6091,8 +6091,8 @@ scheduling ownership is introduced.
 P8-FT-82 defines one immutable private execution-bounds value containing
 nonzero maximum documents, maximum bytes per document and maximum corpus bytes,
 plus a future absolute deadline. One side-effect-free coordinator operation
-currently requires the document-byte product to fit `std::size_t`, rejects
-corpus limits incoherent with that bounded document aggregate, and finds the
+rejects corpus limits mathematically incoherent with the bounded document
+aggregate without calculating that aggregate, and finds the
 exact current
 `kWorkRequested` identity, rechecks capability, policy eligibility and
 cancellation, and returns a request whose identity, policy, captured source
@@ -6100,7 +6100,7 @@ revision and cancellation come exclusively from that generation. The operation
 does not change the state to `kWorking`; only the existing execution boundary
 may claim work.
 
-Projection rejects zero or overflow-invalid bounds, an expired deadline,
+Projection rejects zero or mathematically incoherent bounds, an expired deadline,
 unknown or stale identity, replacement or cancellation, and unavailable,
 `kPolicyExcluded`, failed, working, current or other non-requested states. Every
 rejection is side-effect-free: no port call, preparation, finalization,
@@ -6232,10 +6232,10 @@ delivery is restricted to the executor header and implementation, Core CMake
 source list, existing lifecycle test and four governing documents. At
 P8-FT-84 completion, no successor beyond it was selected or named.
 
-### Phase 8 P8-FT-85 overflow-safe execution-bounds coherence (selected)
+### Phase 8 P8-FT-85 overflow-safe execution-bounds coherence (complete)
 
 The independent post-P8-FT-84 readiness audit is grounded at synchronized
-migrated revision `f14b14f8bda473ba9914f7de7b241ee37647e165` and clean pinned
+migrated revision `20b684eb2ad09ab48c22b7df81afa65d46a1d26f` and clean pinned
 legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Tiger explicitly
 recognizes x86 targets and 32-bit compilation modes in
 `cmake/TigerDetectCXXCompiler.cmake:94-101,118-136,153-164`; production cannot
@@ -6273,7 +6273,7 @@ serialization, format bridge, dependency, public/installed API or test
 registration. P8-FT-72 through P8-FT-84, serial/coalesced/no-retry execution,
 `full-text-v1`, find/F3 and translations remain locked with exactly 109
 registrations. Delivery is limited to the lifecycle implementation, existing
-test and four governing documents. P8-FT-85 is selected; no successor beyond
+test and four governing documents. P8-FT-85 is complete; no successor beyond
 it is selected or named.
 
 WebEngine's default-profile cache path, size, type, cookies, and persistent

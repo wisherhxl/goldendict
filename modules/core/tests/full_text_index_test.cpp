@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <condition_variable>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <future>
@@ -1120,9 +1121,17 @@ void FullTextIndexTest::ProjectsBoundedWorkRequests() {
     const FullTextIndexExecutionBounds zero_documents(0U, 1U, 1U, future);
     const FullTextIndexExecutionBounds zero_document_bytes(1U, 0U, 1U, future);
     const FullTextIndexExecutionBounds zero_corpus_bytes(1U, 1U, 0U, future);
-    const FullTextIndexExecutionBounds overflow(
+    const FullTextIndexExecutionBounds overflowing_product(
         2U, std::numeric_limits<std::size_t>::max(), 1U, future);
+    const FullTextIndexExecutionBounds maximum_values(
+        std::numeric_limits<std::size_t>::max(),
+        std::numeric_limits<std::size_t>::max(),
+        std::numeric_limits<std::size_t>::max(), future);
+    const FullTextIndexExecutionBounds below_equality(2U, 3U, 5U, future);
+    const FullTextIndexExecutionBounds equality(2U, 3U, 6U, future);
     const FullTextIndexExecutionBounds incoherent(2U, 3U, 7U, future);
+    const FullTextIndexExecutionBounds quotient_with_remainder(3U, 3U, 7U,
+                                                               future);
     const FullTextIndexExecutionBounds expired(
         1U, 1U, 1U, std::chrono::steady_clock::time_point::min());
     QVERIFY(!coordinator.ProjectBoundedWorkRequest(first->identity,
@@ -1131,10 +1140,50 @@ void FullTextIndexTest::ProjectsBoundedWorkRequests() {
                                                    zero_document_bytes));
     QVERIFY(!coordinator.ProjectBoundedWorkRequest(first->identity,
                                                    zero_corpus_bytes));
-    QVERIFY(!coordinator.ProjectBoundedWorkRequest(first->identity, overflow));
+    const auto overflowing_projection = coordinator.ProjectBoundedWorkRequest(
+        first->identity, overflowing_product);
+    QVERIFY(overflowing_projection.has_value());
+    QCOMPARE(overflowing_projection->maximum_documents, 2U);
+    QCOMPARE(overflowing_projection->maximum_document_bytes,
+             std::numeric_limits<std::size_t>::max());
+    QCOMPARE(overflowing_projection->maximum_corpus_bytes, 1U);
+    QCOMPARE(overflowing_projection->deadline, future);
+    const auto maximum_projection =
+        coordinator.ProjectBoundedWorkRequest(first->identity, maximum_values);
+    QVERIFY(maximum_projection.has_value());
+    QCOMPARE(maximum_projection->maximum_documents,
+             std::numeric_limits<std::size_t>::max());
+    QCOMPARE(maximum_projection->maximum_document_bytes,
+             std::numeric_limits<std::size_t>::max());
+    QCOMPARE(maximum_projection->maximum_corpus_bytes,
+             std::numeric_limits<std::size_t>::max());
+    QVERIFY(
+        coordinator.ProjectBoundedWorkRequest(first->identity, below_equality));
+    QVERIFY(coordinator.ProjectBoundedWorkRequest(first->identity, equality));
     QVERIFY(
         !coordinator.ProjectBoundedWorkRequest(first->identity, incoherent));
+    QVERIFY(coordinator.ProjectBoundedWorkRequest(first->identity,
+                                                  quotient_with_remainder));
     QVERIFY(!coordinator.ProjectBoundedWorkRequest(first->identity, expired));
+
+    const auto is_mathematically_coherent =
+        [](auto documents, auto document_bytes, auto corpus_bytes) {
+            return documents > corpus_bytes / document_bytes ||
+                   (documents == corpus_bytes / document_bytes &&
+                    corpus_bytes % document_bytes == 0U);
+        };
+    const auto maximum_32 = std::numeric_limits<std::uint32_t>::max();
+    QVERIFY(
+        is_mathematically_coherent(std::uint32_t{2U}, maximum_32, maximum_32));
+    QVERIFY(is_mathematically_coherent(maximum_32, maximum_32, maximum_32));
+    QVERIFY(!is_mathematically_coherent(std::uint32_t{1U}, maximum_32 - 1U,
+                                        maximum_32));
+    const auto maximum_64 = std::numeric_limits<std::uint64_t>::max();
+    QVERIFY(
+        is_mathematically_coherent(std::uint64_t{2U}, maximum_64, maximum_64));
+    QVERIFY(is_mathematically_coherent(maximum_64, maximum_64, maximum_64));
+    QVERIFY(!is_mathematically_coherent(std::uint64_t{1U}, maximum_64 - 1U,
+                                        maximum_64));
     QVERIFY(!coordinator.ProjectBoundedWorkRequest(
         {first->identity.generation + 1U, "first"}, bounds));
     const auto projected_second = coordinator.ProjectBoundedWorkRequest(

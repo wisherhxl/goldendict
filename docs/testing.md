@@ -4770,8 +4770,8 @@ prepares or finalizes no update, writes no artifact, publishes no snapshot and
 allocates no generation. Repeated projection is deterministic and
 side-effect-free; zero and multiple registrations remain isolated.
 
-Negative cases cover each zero resource bound, the current multiplication-
-representability restriction, corpus/document incoherence, an expired
+Negative cases cover each zero resource bound, mathematical corpus/document
+incoherence, an expired
 deadline, unknown dictionary, stale or
 mismatched identity,
 replacement and cancellation, plus unavailable, `kPolicyExcluded`, failed,
@@ -4874,7 +4874,7 @@ public/installed APIs, dependencies, `full-text-v1`, persistence/snapshot
 safety and UI/find/F3 remain locked. P8-FT-84 is complete. At its completion,
 no successor beyond it was selected or named.
 
-## P8-FT-85 Overflow-Safe Bounds-Coherence Acceptance (Selected)
+## P8-FT-85 Overflow-Safe Bounds-Coherence Acceptance (Complete)
 
 P8-FT-85 remains within the existing `full_text_index_test` registration and
 changes only P8-FT-82 arithmetic validation. For positive `D`, `B` and `C`, the
@@ -4896,14 +4896,14 @@ Focused implementation acceptance must prove:
 - projection remains deterministic and side-effect-free, retains authoritative
   lifecycle fields, and invokes no port or executor work.
 
-The future implementation gate is the focused existing Release test, fresh
+The implementation gate is the focused existing Release test, fresh
 Release configure/build, 109/109 CTest and the established install/package/API
 checks. This documentation leaf runs no compiled test. It adds no production
 bounds provider, composition or submission, executor behavior, lifecycle
 transition, artifact/snapshot/persistence change, public API, dependency, UI
 or registration. P8-FT-72 through P8-FT-84 remain locked, exactly 109
-registrations remain required, implementation of this private correction is
-the only dependency unlocked, and no successor beyond P8-FT-85 is selected.
+registrations remain required, this private correction is complete, and no
+successor beyond P8-FT-85 is selected.
 
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
