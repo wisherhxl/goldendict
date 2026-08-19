@@ -4705,6 +4705,52 @@ remain locked. Startup/restart reconciliation, scheduling/submission,
 progress/status visibility, other real ports and facade/UI transport remain
 unselected and unranked. No successor beyond P8-FT-80 is selected or named.
 
+### Phase 8 P8-FT-81 startup artifact reconciliation acceptance (selected)
+
+The fresh audit is grounded at synchronized migrated revision
+`9dbd2a17c9342b905c3f9668003ea90629566335` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects exactly one private
+Core leaf: reconcile an exact policy-eligible `kWorkRequested` generation with
+an immutable startup artifact already validated against its captured source
+revision. No successor is selected.
+
+Extend only the existing `full_text_index_test`, `aard_dictionary_test` and
+`application_service_test` registrations. Coordinator cases must prove that
+immutable startup evidence is accepted only for the exact current requested
+identity when capability, policy eligibility, source revision, holder snapshot
+and uncancelled state all match. Acceptance changes that same generation to
+`kCurrent`, retains exact snapshot pointer identity, invokes no work port,
+prepares or finalizes no update, publishes no snapshot, rewrites no artifact and
+allocates no generation. Repeating acceptance is an idempotent no-op; zero and
+multiple registrations are deterministic. A snapshot successfully rebuilt from
+a stale or corrupt on-disk artifact is accepted without another write during
+reconciliation.
+
+Negative cases must cover absent snapshot or evidence, a startup build that
+published no snapshot, stale identity, source-revision or snapshot mismatch,
+corrupt or otherwise unverifiable evidence, cancellation and replacement before
+reconciliation, plus unavailable, `kPolicyExcluded`, failed, current and other
+non-requested states. Each remains unchanged and stale evidence cannot later
+persist, publish or become current. AARD cases must prove its construction-time
+current/reused/rebuilt-stale/rebuilt-corrupt startup snapshot supplies exact
+evidence without another traversal or canonical-file write. Application-service
+startup must reconcile eligible AARD to `kCurrent`,
+leave excluded AARD `kPolicyExcluded`, and keep empty discovery successful.
+
+The implementation leaf adds no scheduler, thread, queue, retry,
+progress/status projection, additional format port, facade/UI transport,
+executable or test registration. Its delivery gate will use the three focused
+existing Release tests, full 109/109 Release CTest, Release install, standalone
+and packaged C/C++ consumers, exact-SCM package creation and clean ref equality.
+
+The documentation gate reviews exactly the four P8-FT-81 sections and validates
+every current and pinned citation, terminology, `git diff --check`, the exact
+four-file allowlist, exactly 109 Release registrations, ref equality and clean
+migrated/pinned worktrees. P8-FT-72 through P8-FT-80, public/installed APIs,
+`full-text-v1`, canonical IDs, `kPolicyExcluded`, article/work bounds, ICU
+divergence, ordinary find/F3, UI/translations, serialization and dependencies
+remain locked. No successor beyond P8-FT-81 is selected or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

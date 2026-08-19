@@ -6023,6 +6023,55 @@ reconciliation, scheduling/submission, progress/status visibility, other
 format ports and facade/UI transport remain unselected and unranked. No
 successor beyond P8-FT-80 is selected or named.
 
+### Phase 8 P8-FT-81 private startup full-text artifact reconciliation (selected)
+
+The independent post-P8-FT-80 readiness audit is grounded at synchronized
+migrated revision `9dbd2a17c9342b905c3f9668003ea90629566335` and clean pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`full_text_index_lifecycle.cc:147-189,191-272` registers a holder and port, then
+applies policy as a new `kWorkRequested` generation without consulting the
+holder. `aard_dictionary.cc:171-262` has already opened or rebuilt the canonical
+artifact and published its source-current immutable snapshot before that
+registration, while `dictionary_service.cc:919-950,1086-1090` composes those
+steps in that order. Pinned legacy `fulltextsearch.cc:34-125` and
+`mainwindow.cc:1381-1393,2158-2165,2288-2303` check existing index readiness
+before bounded background work and restart indexing only after applying policy.
+Startup artifact reconciliation is therefore the smallest dependency-ready
+leaf before submission or scheduling; scheduling first would repeat work for an
+artifact already validated during discovery.
+
+P8-FT-81 adds one private Core reconciliation boundary for the exact current
+`kWorkRequested` identity. A format registration may supply immutable startup
+artifact evidence binding its already-published snapshot to the same captured
+source revision. Core accepts that evidence only while the entry, generation,
+policy eligibility, capability, source revision, holder snapshot and
+cancellation state still match; acceptance changes only that generation to
+`kCurrent`. It does not call the work port, prepare or finalize an update,
+replace the holder, rewrite the canonical artifact or allocate a generation.
+
+Missing, corrupt or otherwise unverifiable evidence, a startup build that
+published no snapshot, revision mismatch,
+replacement, cancellation and every unavailable, excluded, failed or
+non-requested state remain unchanged. Reconciliation is idempotent and handles
+zero or multiple registrations deterministically. Stale evidence cannot
+authorize persistence, publication or a lifecycle transition. Production
+reconciliation remains limited to AARD, the sole registered real work port. An
+AARD snapshot successfully rebuilt from a stale or corrupt on-disk artifact is
+valid startup evidence; reconciliation performs no additional artifact write.
+
+Focused acceptance will extend only the existing lifecycle, AARD dictionary
+and application-service tests. It must prove exact identity/revision/snapshot
+binding, retained snapshot identity, no port call or artifact rewrite,
+idempotence, zero/multiple entries, acceptance of successfully rebuilt startup
+snapshots, and rejection of absent, stale, corrupt or unverifiable evidence,
+mismatched, cancelled, replaced, excluded, unavailable and failed cases.
+P8-FT-81 adds no scheduler, thread, queue, retry, progress/status,
+additional format bridge, facade/UI transport, public/installed API, dependency
+or registration. P8-FT-72 through P8-FT-80, `full-text-v1`, canonical IDs,
+`kPolicyExcluded`, article/work bounds, ICU divergence, ordinary find/F3,
+UI/translations and exactly 109 registrations remain locked. No successor
+beyond P8-FT-81 is selected or named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

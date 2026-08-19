@@ -5894,6 +5894,49 @@ UI/translations and exactly 109 registrations remain locked. Reconciliation,
 scheduling/submission, visibility, other formats and UI transport remain
 unselected and unranked. No successor beyond P8-FT-80 is selected or named.
 
+### Phase 8 P8-FT-81 private startup full-text artifact reconciliation (selected)
+
+The independent post-P8-FT-80 audit used synchronized migrated revision
+`9dbd2a17c9342b905c3f9668003ea90629566335` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current AARD construction opens or
+rebuilds the canonical full-text artifact and publishes its immutable snapshot
+before composition registers the holder and port. Persisted-policy application
+then creates an eligible `kWorkRequested` generation without consulting that
+startup artifact. Pinned legacy checks `haveFTSIndex()` before each bounded
+indexing pass. The audit therefore selects only P8-FT-81: reconcile exact
+requested generations with already validated startup artifacts before any work
+submission or scheduling boundary.
+
+The selected leaf adds a private format-to-Core evidence seam and one private
+reconciliation operation. Immutable evidence binds the startup snapshot to the
+captured source revision and exact current identity. If capability, eligibility,
+identity, revision, holder snapshot and uncancelled state still match, Core
+changes only that generation from `kWorkRequested` to `kCurrent`. It performs no
+work-port call, preparation, finalization, holder publication, canonical write
+or generation allocation.
+
+Absent, stale, corrupt or otherwise unverifiable evidence, a startup build that
+published no snapshot, revision-mismatched, cancelled, replaced, excluded,
+unavailable, failed and non-requested entries remain unchanged. A snapshot
+successfully rebuilt from a stale or corrupt on-disk artifact is valid evidence;
+reconciliation performs no additional canonical write. Repeated reconciliation
+is idempotent; zero and multiple entries are deterministic; stale evidence
+cannot authorize persistence, publication or a state transition. Production
+scope is only the completed AARD registration.
+
+Acceptance extends only existing `full_text_index_test`,
+`aard_dictionary_test` and `application_service_test` registrations. It must
+prove exact identity/revision/snapshot binding, retained snapshot identity, no
+port call or additional artifact rewrite, idempotence, zero/multiple entries,
+successfully rebuilt startup snapshots and every rejection above. P8-FT-81 adds
+no scheduler, thread, queue, retry,
+progress/status surface, additional format bridge, facade/Widgets transport,
+UI, serialization, public/installed API, dependency or test registration.
+P8-FT-72 through P8-FT-80, `full-text-v1`, canonical IDs, `kPolicyExcluded`,
+article/work bounds, ICU divergence, ordinary find/F3, UI/translations and
+exactly 109 registrations remain locked. No successor beyond P8-FT-81 is
+selected or named.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
