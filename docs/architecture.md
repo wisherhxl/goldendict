@@ -5874,6 +5874,47 @@ Composition, persisted-policy application/restart, scheduling, progress,
 facade/Widgets transport, UI, serialization, two-pass ordering and every public
 ABI remain excluded. P8-FT-77 is complete. No successor is selected or named.
 
+### Phase 8 P8-FT-78 private generation-authorized immutable snapshot handoff prerequisite
+
+The fresh independent post-P8-FT-77 audit is grounded at synchronized migrated
+revision `46b02610c3749094b2ae39dad687fbbd2274114c` and clean pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`full_text_index_lifecycle.cc:241-287` invokes bounded port work before it
+reacquires the coordinator lock and rejects a replaced generation, while
+`full_text_index_snapshot.cc:10-24` provides atomic complete-replacement
+publication. Publishing from a real AARD port would therefore permit stale
+work to replace a newer reader snapshot before Core performs its authoritative
+generation check. Pinned legacy `fulltextsearch.cc:34-70,100-111`,
+`mainwindow.cc:1381-1393,2100-2101,2158-2165,2180-2181,2288-2303` and
+`aard.cc:609-635` confirm cancellation and stop/apply/restart ownership but do
+not supply a safe migrated publication handoff.
+
+P8-FT-78 selects only the missing private handoff. Successful bounded work
+returns a non-null `std::shared_ptr<const FullTextIndex>` candidate without
+publishing it. Composition/catalog registers immutable dictionary metadata, a
+lifetime-safe format-work port and the same lifetime-safe snapshot holder used
+by that dictionary's readers. After work returns, the coordinator holds its
+existing synchronization boundary, revalidates exact dictionary and generation
+identity and cancellation, atomically publishes the candidate, and only then
+transitions the lifecycle snapshot to `kCurrent`. Readers retain an acquired
+snapshot for their complete search or resolution call.
+
+Stale, cancelled, failed, exceptional, deadline-expired, over-budget and
+identity-mismatched outcomes publish nothing. A completed result without a
+candidate is contained as failure and cannot become current. The port remains
+capability/source-revision/bounded cancellable work only: it neither owns nor
+performs policy, generation authorization, lifecycle transition or
+publication. Core retains lifecycle and eligibility ownership; the holder
+retains only acquisition and atomic replacement.
+
+This prerequisite adds no real AARD port, catalog/composition wiring,
+automatic policy application/restart, scheduler, progress, facade/Widgets
+transport, UI, serialization change or complete rebuild workflow. Canonical
+formats, `kPolicyExcluded`, article and work limits, `full-text-v1`, intentional
+ICU divergence, public/installed boundaries, ordinary find, Dictionaries-only
+F3, translations and exactly 109 registrations remain unchanged. No successor
+beyond P8-FT-78 is selected or named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

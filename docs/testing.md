@@ -4584,6 +4584,40 @@ and C++ consumers, exact-SCM package creation, local/upstream/live-remote
 equality and clean migrated and pinned legacy worktrees. P8-FT-77 is complete.
 No successor is selected or named.
 
+### Phase 8 P8-FT-78 generation-authorized snapshot-handoff acceptance
+
+The documentation-only readiness audit is grounded at synchronized migrated
+revision `46b02610c3749094b2ae39dad687fbbd2274114c` and clean pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only the private
+generation-authorized handoff needed before a real AARD format-work port.
+
+Future implementation extends only the existing `full_text_index_test`
+registration. A deterministic port returns an unpublished immutable candidate
+and a registered holder exposes it only after the coordinator revalidates the
+exact current dictionary/generation and uncancelled state. Coverage must prove
+that successful publication precedes `kCurrent`, a retained old reader remains
+valid while later readers acquire the complete replacement, and exactly one
+current candidate is published.
+
+Replacement and cancellation races must prove that stale successful work
+cannot publish or overwrite the newer snapshot. Cancelled, failed, exceptional,
+deadline-expired, over-budget, identity-mismatched and completed-with-null
+results must leave the holder unchanged; completed-with-null becomes contained
+failure and never `kCurrent`. Existing P8-FT-72 through P8-FT-77 lifecycle,
+identity, policy, bounds, cancellation, exception, immutable-publication and
+AARD traversal cases remain unchanged.
+
+No AARD bridge, catalog/composition wiring, automatic persisted-policy apply
+or restart, scheduler, progress, facade/UI transport, serialization, public or
+installed interface, dependency, executable or registration is added. The
+future implementation gate is the focused existing Release test, full 109-test
+Release suite, install and packaged consumers, exact-SCM creation and clean ref
+equality. This documentation leaf requires only validated current/legacy
+citations, the four-file allowlist, `git diff --check`, exactly 109 Release
+registrations, local/upstream/live-remote equality and clean migrated and
+pinned legacy worktrees. Compiled tests are not required. No successor beyond
+P8-FT-78 is selected or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

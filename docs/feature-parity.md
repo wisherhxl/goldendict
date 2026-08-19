@@ -1475,6 +1475,36 @@ progress or facade/UI behavior is included. All locked lifecycle, eligibility,
 snapshot, public ABI and dependency boundaries remain unchanged. P8-FT-77 is
 complete. No successor is selected or named.
 
+### P8-FT-78 private generation-authorized immutable snapshot handoff prerequisite
+
+The fresh independent bounded audit uses synchronized migrated revision
+`46b02610c3749094b2ae39dad687fbbd2274114c` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects one prerequisite before
+a real AARD work-port bridge. Current bounded work returns before the Core
+coordinator revalidates its generation, so adapter-owned publication could
+make a stale result visible even though the later lifecycle completion is
+correctly ignored.
+
+P8-FT-78 makes a completed bounded-work result carry an unpublished non-null
+immutable index candidate. Composition/catalog supplies the coordinator with
+immutable registration metadata, the lifetime-safe port and the reader's
+lifetime-safe snapshot holder. Under the coordinator's current synchronization
+boundary, exact current identity and cancellation are rechecked, the complete
+candidate is atomically published, and the generation becomes `kCurrent` only
+after publication succeeds. Failed, cancelled, expired, over-budget,
+exceptional, stale, mismatched and completed-without-candidate results leave
+the prior snapshot unchanged.
+
+The adapter continues to own only its private bounded traversal; the port
+continues to report capability/source revision and perform bounded cancellable
+work. Core alone authorizes publication and owns lifecycle/eligibility. No real
+AARD bridge, composition wiring, scheduling, policy restart, progress, UI,
+serialization, public/installed interface, dependency or registration change
+is included. P8-FT-72 through P8-FT-77, canonical formats,
+`kPolicyExcluded`, article limits, immutable retained readers, `full-text-v1`,
+ICU divergence, ordinary find/F3 and translations remain locked. The Release
+baseline stays exactly 109. No successor beyond P8-FT-78 is selected or named.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |
