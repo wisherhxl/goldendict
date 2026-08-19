@@ -4280,6 +4280,54 @@ activation, headword-only row or dictionary-tooltip contract. It registers no
 test and preserves exactly 109 registered Release tests. No successor after
 P8-FT-69 is selected, ranked, recommended or named.
 
+### P8-FT-70 ICU normalized matching and origin-map acceptance (selected)
+
+Acceptance starts from synchronized migrated/local/upstream/live-remote
+`deb523c04449c7cbead3fa8bcdd6d93c74fd15aa` and clean pinned legacy
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-69's
+historical no-successor closure and selects only the Core normalization and
+origin-map prerequisite. Evidence is current
+`full_text_matcher.cc:59-79,168-241`, `full_text_matcher.h:31-47`,
+`full_text_index.cc:267-325`, `desktop_facade.cc:130-164` and
+`main_window.cpp:9040-9078`, plus pinned legacy
+`fulltextsearch.cc:596-609` and `articleview.cc:133-190,2569-2648`.
+
+Focused cases in existing Core executables apply the identical query/source
+pipeline: NFD; ICU full case fold only when `match_case` is false; NFD again;
+remove all `Mn`, `Mc` and `Me` only when `ignore_diacritics` is true; then NFC.
+The four policy combinations cover precomposed and decomposed equivalents,
+canonical mark reordering, combined case-sensitive/ignore-diacritics positive
+matches and wrong-case rejection, and ignore-disabled preservation.
+
+Origin-map cases prove spans survive every expansion and contraction. They
+cover ICU case-fold expansion such as `ß` to `ss`, folding that emits marks,
+canonical contraction/equivalence, repeated normalized units sharing one
+original cluster, attached `Mn`/`Mc`/`Me`, leading and unattached Marks, and
+supplementary-plane scalars. Every result is the minimal contiguous complete-
+original-cluster range covering the normalized units touched even when a
+boundary falls inside an expansion. Byte offset, byte length and literal must
+identify the exact complete valid-UTF-8 original slice.
+
+Repeated normalized units with one origin yield no duplicate or zero-length
+occurrence. Accepted ranges advance past every normalized unit whose origin
+overlaps the accepted range; empty, backward, duplicate and overlapping
+candidates are skipped with forward cursor progress. Coverage proves
+leftmost-first original-range non-overlap for adjacent and repeated matches,
+all four query modes, every valid word-order and distance combination,
+unchanged rejection of invalid pattern-mode combinations, and agreement
+between private matcher and indexed full-text behavior.
+
+Existing cases continue to cover malformed patterns, cancellation, deadlines,
+resource bounds and `full-text-v1` serialization. P8-FT-70 changes no public
+layout or ABI, C API, DTO, rendered request, Widgets path, configuration,
+dependency, catalog, translation, executable or test registration. Activation,
+headword-only rows, exact dictionary tooltips, ordinary find and exactly 109
+registered Release tests remain unchanged. GET's intentional ICU divergence
+from Qt5 custom folding and trailing `Mark_NonSpacing` behavior is explicit.
+Rendered request and Widgets consumption remain unresolved. No successor is
+selected, ranked, recommended or named; completion unlocks only the Core
+normalized matching/origin-map dependency boundary.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

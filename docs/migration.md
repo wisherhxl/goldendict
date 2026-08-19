@@ -5434,6 +5434,64 @@ Focused coverage changes only the existing GUI smoke target, registers no test,
 and preserves the exactly 109-test Release baseline. No successor after
 P8-FT-69 is selected, ranked, recommended or named.
 
+### Phase 8 P8-FT-70 ICU normalized matching and origin-map prerequisite (selected)
+
+The fresh documentation-only audit is pinned to clean synchronized migrated
+HEAD, upstream and live remote
+`deb523c04449c7cbead3fa8bcdd6d93c74fd15aa` and clean pinned legacy
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It rechecks the complete remaining
+full-text parity surface, supersedes P8-FT-69's historical no-successor closure
+and selects only P8-FT-70. No smaller prerequisite outranks the Core semantics
+and origin mapping required before `ignore_diacritics` can be consumed by the
+rendered-text path.
+
+Current `full_text_matcher.cc:59-79,168-191` uses per-scalar mapping and makes
+diacritic removal ineffective when `match_case` is true. Current
+`desktop_facade.h:169-177`, `desktop_facade.cc:130-164` and
+`main_window.cpp:9040-9078` retain the separate Widgets value but intentionally
+omit it from the rendered-text request and hard-code the matcher option false.
+Pinned legacy `fulltextsearch.cc:596-609` and
+`articleview.cc:133-190,2569-2648` establish independent case/diacritic policy
+and original-position recovery. GET intentionally adopts ICU rather than Qt5's
+custom diacritic tables and trailing `Mark_NonSpacing` rule; migrated behavior
+uses ICU full folding, canonical equivalence and all `Mn`, `Mc` and `Me` marks.
+
+The selected contract applies the same pipeline to query and source: NFD;
+optional ICU full case fold only for case-insensitive matching; NFD again;
+optional removal of all three Unicode Mark categories only when diacritics are
+ignored; and NFC. The source path propagates original UTF-8 spans through
+decomposition, folding expansion, canonical reordering, mark removal and NFC
+contraction. A complete original cluster is a non-Mark scalar with its
+immediately attached Marks; a leading or unattached Mark stays independent and
+cannot attach across whitespace or punctuation.
+
+Every normalized match maps to the minimal contiguous complete-original-
+cluster range covering its touched normalized units, including a boundary
+inside a multi-unit expansion. Repeated normalized units sharing one origin,
+including `ß` folded to `ss`, yield at most one nonempty original occurrence.
+Acceptance advances past all normalized units overlapping the accepted origin;
+empty, backward, duplicate or overlapping mapped candidates are skipped with
+continued cursor progress. Results remain leftmost-first and non-overlapping,
+and their text is the exact complete UTF-8 original slice.
+
+Focused existing Core targets cover the four policy combinations; precomposed,
+decomposed and reordered canonical equivalents; case-fold expansion and
+fold-emitted marks; contraction; repeated normalized units with one origin;
+attached `Mn`/`Mc`/`Me`, standalone marks and supplementary scalars; all query
+modes, every valid word-order/distance combination, repeated/adjacent matches,
+cancellation, deadlines, malformed patterns, unchanged rejection of invalid
+pattern-mode combinations and indexed/private-matcher agreement.
+`full-text-v1` and the exactly 109-test Release registration baseline remain
+unchanged.
+
+P8-FT-70 is Core-only. It corrects existing combined-flag `FullTextQuery`
+behavior without changing public type shape, ABI, C API, DTOs, facade request,
+configuration, dependencies, catalogs, translations, activation, tooltips,
+headword-only results, ordinary find or Widgets. Rendered request and Widgets
+consumption remain unresolved. No successor is selected, ranked, recommended
+or named; completion unlocks only the Core normalized matching/origin-map
+dependency boundary.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

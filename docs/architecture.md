@@ -5493,6 +5493,74 @@ unranked. Focused coverage stays in the existing GUI smoke target, registers no
 test, and preserves the exactly 109-test Release baseline. No successor after
 P8-FT-69 is selected, ranked, recommended or named.
 
+### Phase 8 P8-FT-70 ICU normalized matching and origin-map prerequisite (selected)
+
+The fresh independent bounded audit starts from synchronized migrated HEAD,
+local branch, upstream and live remote revision
+`deb523c04449c7cbead3fa8bcdd6d93c74fd15aa` and unchanged clean pinned legacy
+revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It supersedes P8-FT-69's
+historical no-successor closure and selects only P8-FT-70, the smallest ready
+Core prerequisite for consuming the accepted `ignore_diacritics` policy.
+
+Current `full_text_matcher.cc:59-79,168-191` normalizes source text one UTF-8
+scalar at a time and bypasses normalization, including diacritic removal, when
+`match_case` is true. Current `desktop_facade.h:169-177`,
+`desktop_facade.cc:130-164` and `main_window.cpp:9040-9078` show that the
+rendered-text request omits the flag, the facade deliberately supplies
+`false`, and Widgets retains the accepted value outside the request. Pinned
+legacy `fulltextsearch.cc:596-609` and
+`articleview.cc:133-190,2569-2648` prove that case sensitivity and diacritic
+handling were independent and that normalized positions were mapped back to
+original text. GET selects ICU behavior as the migrated source of truth rather
+than exact custom-folding equivalence. This intentionally differs from Qt5's
+custom folding and trailing `Mark_NonSpacing` extension by using ICU full case
+folding, canonical normalization and all Unicode `Mn`, `Mc` and `Me` marks.
+
+P8-FT-70 applies one deterministic pipeline to query and source: ICU NFD; ICU
+full case fold only when `match_case` is false; NFD again because folding may
+emit decomposable characters or marks; removal of every `Mn`, `Mc` and `Me`
+only when `ignore_diacritics` is true; then ICU NFC as the stable matcher
+representation. The two policies are independent in all four combinations.
+Normalization operates across complete sequences, not independently per
+scalar.
+
+The private Core normalizer carries original UTF-8 byte spans through every
+source transformation. Decomposition and folding expansions copy the input
+span to every output unit; canonical reordering moves units with their spans;
+removal drops the normalized mark but retains the complete original cluster
+extent associated with a retained base; contraction/recomposition assigns the
+minimal contiguous span covering all contributors. An original cluster is a
+non-Mark scalar plus immediately attached `Mn`, `Mc` and `Me` scalars. A
+leading or unattached Mark is its own cluster and is not attached across
+whitespace or punctuation.
+
+A normalized match touching any part of an expansion maps to the minimal
+contiguous complete-original-cluster range covering every touched normalized
+unit. Thus multiple units with one origin, such as ICU `ß` to `ss`, produce at
+most one accepted nonempty original occurrence. Accepted ranges begin and end
+on complete UTF-8 scalar and cluster boundaries. After acceptance, matching
+advances beyond both the normalized match and remaining normalized units whose
+origins overlap that accepted range. Empty, backward, duplicate and overlapping
+mapped candidates are skipped while the normalized cursor still advances.
+Leftmost-first order, original-range non-overlap and forward progress remain
+deterministic; returned match text remains the exact original UTF-8 slice.
+
+The Shared-Library and GUI Boundary keeps this prerequisite in Core. The one
+private normalizer/origin-map owner serves indexed and rendered-text matching.
+The correction changes existing `FullTextQuery` behavior for the combined
+flags but changes no public type layout, installed ABI, facade vtable, C API,
+DTO, index serialization, dependency or test registration. The rendered-text
+request continues to omit `ignore_diacritics`, its facade call continues to
+supply `false`, and Widgets continues to retain without consuming the flag.
+All completed activation, headword-only, dictionary-tooltip, navigation,
+translation, configuration, index-format/serialization, adapter/document-
+identity, ordinary-find and exactly 109 registered Release-test contracts
+remain unchanged; only the selected combined-flag matching behavior changes.
+
+No successor after P8-FT-70 is selected, ranked, recommended or named.
+Completion will unlock only the Core normalized matching/origin-map dependency
+boundary; rendered request and Widgets consumption require a fresh audit.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

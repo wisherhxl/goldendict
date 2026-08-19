@@ -1196,6 +1196,48 @@ Release tests remain unchanged. `ignore_diacritics` consumption stays
 independently unresolved and unranked. No successor after P8-FT-69 is selected,
 ranked, recommended or named.
 
+### P8-FT-70 ICU normalized matching and origin-map prerequisite (selected)
+
+The fresh bounded audit at synchronized migrated revision
+`deb523c04449c7cbead3fa8bcdd6d93c74fd15aa` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` supersedes P8-FT-69's historical
+no-successor closure and selects only the smallest ready Core prerequisite.
+Current `full_text_matcher.cc:59-79,168-191` couples case handling to
+diacritic removal and maps per scalar. Current `desktop_facade.h:169-177`,
+`desktop_facade.cc:130-164` and `main_window.cpp:9040-9078` leave the retained
+Widgets flag outside the rendered request. Pinned legacy
+`fulltextsearch.cc:596-609` and `articleview.cc:133-190,2569-2648` prove the
+policies are independent and require mapping normalized matches to original
+text.
+
+GET intentionally selects ICU semantics over Qt5's custom folding and trailing
+`Mark_NonSpacing` extension. Query and source use NFD, optional ICU full case
+folding only when case-insensitive, NFD again, optional removal of every
+Unicode `Mn`/`Mc`/`Me` only when ignoring diacritics, and NFC. Source origin
+spans propagate through expansions, reordering, removals and contractions.
+Each match maps to the minimal contiguous complete UTF-8 range covering every
+touched original cluster; a cluster is a non-Mark scalar plus immediately
+attached Marks, while leading or unattached Marks stay independent.
+
+Boundaries inside expansions and repeated normalized units with one origin,
+such as `ß` to `ss`, produce at most one nonempty original occurrence. After
+acceptance the cursor passes all normalized units whose origins overlap that
+range. Empty, backward, duplicate and overlapping mapped candidates are
+skipped with forward progress. Results remain deterministic, leftmost-first,
+original-range non-overlapping and exact original UTF-8 slices.
+
+The single private Core normalizer/origin-map owner serves indexed and
+rendered matching. P8-FT-70 corrects existing combined-flag `FullTextQuery`
+behavior but changes no type layout, ABI, C API, DTO, index serialization,
+configuration, dependency, catalog, translation, activation, tooltip,
+headword-only, ordinary-find, rendered-request or Widgets contract. Existing
+Core targets cover the four policies, canonical equivalence/reordering,
+expansion, fold-emitted marks, contraction, all Mark categories, origin safety,
+query modes and unchanged failure/bound behavior without changing exactly 109
+registered Release tests. Rendered request and Widgets consumption remain
+unresolved. No successor is named or ranked; completion unlocks only the Core
+normalized matching/origin-map dependency boundary.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |
