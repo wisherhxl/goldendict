@@ -5561,23 +5561,23 @@ serialization contracts and completed P8-FT behavior remain locked, including
 ordinary find-in-page, Dictionaries-only F3, translations and exactly 109
 Release registrations. No successor is selected or ranked.
 
-### Phase 8 P8-FT-73 private Core full-text index lifecycle coordinator (selected)
+### Phase 8 P8-FT-73 private Core full-text index lifecycle coordinator (completed)
 
 The post-P8-FT-72 readiness audit used synchronized migrated revision
 `fbc50b18fb183f69c34b524db869140a3760da25` and clean pinned legacy revision
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
-`full_text_index_lifecycle.h:16-146` and
-`full_text_index_lifecycle.cc:9-26` provide a complete private contract and
-exception-containing work boundary but no executing owner.
+`full_text_index_lifecycle` provided the private contract and
+exception-containing work boundary now used by the completed coordinator.
 `dictionary_service.cc:1812-1912` composes backends into the private service and
 `desktop_facade.cc:68-88` composes that service into the application, without
 applying full-text lifecycle policy or producing lifecycle snapshots.
 
-The smallest ready leaf is therefore P8-FT-73, one private Core coordinator
-state machine. It owns one current generation per dictionary ID, samples the
+P8-FT-73 completes one private Core coordinator state machine. It owns one
+current generation per registered dictionary ID, samples the
 selected port's capability and opaque source revision for that exact identity,
-and converts an explicit rebuild intent into one bounded work request and
-immutable requested, working and terminal snapshot transitions. Only an exact
+and converts an explicit rebuild intent into requested state. Only a separately
+submitted exact-identity bounded request publishes working and invokes the
+port. Only an exact
 current `(generation, dictionary_id)` result may publish current, cancelled or
 failed. Unsupported capability publishes unavailable; supported dictionaries
 without accepted work remain not-indexed. Replacement makes every older result,
@@ -5601,8 +5601,8 @@ status/failure UI, serialization and the complete rebuild workflow. It changes
 no installed/public C++, facade, C, DTO or configuration ABI, dependency,
 `full-text-v1`, ordinary find-in-page, Dictionaries-only F3, translation,
 completed full-text behavior or test registration. The Release baseline remains
-exactly 109. Only implementation of this private coordinator is unlocked; no
-dependency beyond it is selected or named.
+exactly 109. The private coordinator is complete; no dependency beyond it is
+selected or named.
 
 ### Phase 9 — Linux Integration And Release Quality
 

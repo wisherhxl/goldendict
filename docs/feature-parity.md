@@ -1305,26 +1305,26 @@ dependencies, `full-text-v1`, P8-FT-1 through P8-FT-71, ordinary find-in-page,
 Dictionaries-only F3, translations and exactly 109 registrations remain
 locked. No successor is selected or ranked.
 
-### P8-FT-73 private Core full-text index lifecycle coordinator (selected)
+### P8-FT-73 private Core full-text index lifecycle coordinator (completed)
 
 The fresh audit at migrated revision
 `fbc50b18fb183f69c34b524db869140a3760da25` and pinned legacy revision
-`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects only the private Core
-coordinator state machine. P8-FT-72 already supplies every value and port type
-needed by that leaf; current service/composition code has no lifecycle owner.
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selected only the private Core
+coordinator state machine. P8-FT-72 supplies every value and port type used by
+the completed private owner; service/composition code remains outside it.
 Policy persistence/application cannot be authoritative without that owner, a
 real adapter bridge has no coordinator request consumer, and facade/Widgets
 transport has no authoritative snapshot producer.
 
-The selected leaf owns one current `(generation, dictionary_id)` identity,
-samples port capability and opaque source revision for that generation, issues
-one explicitly requested bounded operation, and publishes immutable requested,
-working, current, cancelled, failed, unavailable or not-indexed snapshots.
-Cancellation is scoped and idempotent. Results and failures for a replaced
-generation or different dictionary are stale and publish nothing; adapter
-exceptions remain contained by the existing port boundary. Focused fake-port
-tests pin transitions, identity isolation, stale suppression, cancellation,
-source-revision capture and failure containment without a new registration.
+The completed leaf owns one current `(generation, dictionary_id)` identity,
+samples port capability and opaque source revision for each accepted newer
+generation, and executes only a separately submitted exact-identity bounded
+operation. It publishes immutable requested, working, current, cancelled,
+failed, unavailable or not-indexed snapshots. Cancellation is scoped,
+idempotent and propagated through the existing token. Replaced results,
+exceptions and cancellation completions publish nothing. Focused deterministic
+fake-port tests pin transitions, isolation, bounds, stale suppression,
+cancellation and failure containment without a new registration.
 
 Pinned legacy `fulltextsearch.cc:31-125` and
 `mainwindow.cc:1381-1393,2100-2101,2164-2165,2180-2181,2302-2303` establish
@@ -1333,8 +1333,8 @@ must move out of Widgets, but do not force legacy two-pass ordering into this
 leaf. Automatic scheduling, persistence application, real adapters, facade/
 Widgets transport, progress and visible status remain excluded. All locked ABI,
 dependency, serialization, search, F3, translation and 109-registration
-surfaces remain unchanged. Only the private coordinator implementation is
-unlocked; no dependency beyond it is selected or named.
+surfaces remain unchanged. P8-FT-73 changes only the private coordinator
+implementation; no dependency beyond it is selected or named.
 
 ## Resources And Platform Integration
 

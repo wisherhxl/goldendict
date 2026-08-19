@@ -6,6 +6,8 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -147,6 +149,31 @@ class FullTextIndexFormatWorkPort {
    private:
     virtual FullTextIndexWorkResult DoPerformFullTextIndexWork(
         const FullTextIndexWorkRequest& request) = 0;
+};
+
+class FullTextIndexLifecycleCoordinator final {
+   public:
+    FullTextIndexLifecycleCoordinator();
+    ~FullTextIndexLifecycleCoordinator();
+
+    FullTextIndexLifecycleCoordinator(
+        const FullTextIndexLifecycleCoordinator&) = delete;
+    FullTextIndexLifecycleCoordinator& operator=(
+        const FullTextIndexLifecycleCoordinator&) = delete;
+
+    bool RegisterDictionary(
+        std::string dictionary_id,
+        std::shared_ptr<FullTextIndexFormatWorkPort> format_work_port);
+    bool SubmitRebuild(const FullTextIndexRebuildIntent& intent);
+    bool ExecuteBoundedWork(FullTextIndexWorkRequest request);
+    bool Cancel(const FullTextIndexCancelIntent& intent) noexcept;
+
+    std::optional<FullTextIndexLifecycleSnapshot> Snapshot(
+        const std::string& dictionary_id) const;
+
+   private:
+    class Implementation;
+    std::unique_ptr<Implementation> implementation_;
 };
 
 }  // namespace goldendict::core::dictionary
