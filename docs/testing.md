@@ -4515,6 +4515,38 @@ the four-file allowlist, terminology review, `git diff --check`, exact
 registration counting, reference equality and clean worktrees. P8-FT-75 is
 complete. No successor is selected or named.
 
+### Phase 8 P8-FT-76 immutable index-publication acceptance (selected)
+
+The docs-only selection is grounded at synchronized migrated revision
+`f0e6fd69c19c69d84f9f0a9e17b83618218ae4a6` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. A future implementation extends
+only the existing `full_text_index_test` registration with the private Core
+immutable snapshot-publication contract; it adds no executable or registration,
+so the Release baseline remains exactly 109.
+
+Focused coverage must prove initial absence, successful non-null publication,
+exact acquired pointer identity, replacement visibility and continued validity
+of a prior snapshot retained by an in-flight reader. Deterministic concurrent
+coverage must show that readers observe either the complete old index or the
+complete new index, never partial or destroyed state. Rejected null publication
+must leave the current snapshot unchanged. The holder may use the C++17 atomic
+shared-pointer operations or equivalent encapsulated synchronization; tests do
+not require lock-free behavior.
+
+Off-side construction acceptance must prove that failure, cancellation,
+deadline expiry, document-count, per-document-byte and corpus-byte rejection,
+and stale-generation outcomes perform no publication. Format-specific bounded
+incremental traversal, a real adapter port and the exact generation-authorized
+handoff remain excluded until a bridge is independently selected. Tests must
+not add composition, persisted-policy apply/restart, scheduling, progress,
+facade/Widgets transport, UI or serialization behavior, and must preserve every
+P8-FT-72 through P8-FT-75 identity, policy and lifecycle case.
+
+This docs-only audit requires the four-file allowlist, `git diff --check`, exact
+109-registration counting, local/upstream/live-remote equality and clean
+migrated and pinned legacy worktrees. Compiled tests are not required unless
+the evidence changes. No successor beyond P8-FT-76 is selected or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

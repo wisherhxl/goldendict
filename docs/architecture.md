@@ -5795,6 +5795,43 @@ dependencies, `full-text-v1`, ordinary find, Dictionaries-only F3,
 translations and exactly 109 registrations remain unchanged. P8-FT-75 is
 complete. No successor is selected or named.
 
+### Phase 8 P8-FT-76 private immutable full-text index publication contract (selected)
+
+The fresh post-P8-FT-75 audit used synchronized migrated revision
+`f0e6fd69c19c69d84f9f0a9e17b83618218ae4a6` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects one smallest
+dependency-ready prerequisite: a private Core ownership and publication
+contract for replaceable full-text indexes. Current textual adapters build a
+`std::optional<FullTextIndex>` during dictionary construction and expose it
+directly to search and document resolution. No adapter has a synchronized
+replacement holder, so composition cannot yet supply the lifetime-safe real
+work port required by P8-FT-75.
+
+The implementation will add one private snapshot holder for an optional
+`std::shared_ptr<const FullTextIndex>`. A replacement is built completely
+off-side through bounded incremental traversal and is atomically published
+only after successful completion. Search and document-resolution calls acquire
+one shared snapshot and retain it for the entire call. In-flight readers may
+finish against the prior immutable snapshot, while later acquisitions observe
+the complete replacement; no reader can observe partial construction,
+in-place mutation or destruction. C++17 atomic shared-pointer operations or an
+equivalently encapsulated synchronization mechanism are acceptable; lock-free
+publication is not required. Null publication is rejected without changing
+the current snapshot.
+
+Failure, cancellation, deadline expiry, resource-bound rejection and stale
+work publish nothing. The future real adapter bridge must authorize publication
+against the current lifecycle generation, but P8-FT-76 adds neither that bridge
+nor its generation handoff. Core remains lifecycle and eligibility owner;
+composition/catalog remains owner of immutable registration metadata plus the
+lifetime-safe port; and the port remains limited to capability, opaque source
+revision and bounded cancellable work. Persisted-policy application/restart,
+scheduling, progress, facade/Widgets transport, UI, serialization and complete
+rebuild orchestration remain excluded. All locked P8-FT-72 through P8-FT-75
+semantics, dependencies, `full-text-v1`, ordinary find, Dictionaries-only F3,
+translations, intentional ICU divergence and exactly 109 registrations remain
+unchanged. No successor beyond P8-FT-76 is selected or named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

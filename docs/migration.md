@@ -5700,6 +5700,35 @@ retry, legacy two-pass ordering, serialization and complete rebuild remain
 excluded, as do changes to every locked public, dependency, search, F3 and
 translation surface. P8-FT-75 is complete. No successor is selected or named.
 
+### Phase 8 P8-FT-76 private immutable full-text index publication contract (selected)
+
+The fresh post-P8-FT-75 audit used synchronized migrated revision
+`f0e6fd69c19c69d84f9f0a9e17b83618218ae4a6` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. It selects only the private Core
+snapshot-publication prerequisite needed before a real lifecycle adapter can be
+composed. The twelve migrated textual adapters currently construct and retain
+an unsynchronized `std::optional<FullTextIndex>`; none can safely replace that
+value while full-text search or document resolution is in flight.
+
+P8-FT-76 will introduce an optional immutable
+`std::shared_ptr<const FullTextIndex>` holder. Index construction occurs
+off-side through bounded incremental traversal. Only a complete successful
+replacement is atomically published, and every search or resolution call keeps
+its acquired snapshot alive for the complete operation. Old and new readers
+may overlap safely, but no reader observes partial construction, in-place
+mutation or destruction. Null, failed, cancelled, expired, over-budget and
+stale publication attempts leave the current snapshot unchanged.
+
+The real adapter bridge and its exact generation-authorized publication
+handoff remain outside this leaf. Core lifecycle/eligibility ownership,
+composition/catalog ownership of immutable metadata plus port, and the narrow
+capability/source-revision/bounded-work port remain unchanged. No persisted-
+policy apply/restart, scheduler, progress, facade/Widgets transport, UI,
+serialization or complete rebuild workflow is selected. Canonical validation,
+`kPolicyExcluded`, the zero-unlimited `0..10000000` article-count rule,
+intentional ICU divergence, dependencies and exactly 109 registrations remain
+locked. No successor beyond P8-FT-76 is selected or named.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
