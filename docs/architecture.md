@@ -6072,6 +6072,55 @@ or registration. P8-FT-72 through P8-FT-80, `full-text-v1`, canonical IDs,
 UI/translations and exactly 109 registrations remain locked. No successor
 beyond P8-FT-81 is selected or named.
 
+### Phase 8 P8-FT-82 private bounded full-text work-request projection (selected)
+
+The independent post-P8-FT-81 readiness audit is grounded at synchronized
+migrated revision `60d2ae95b73629b8efaa2333bbe2dfe1786bd5db` and clean pinned
+legacy revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current
+`full_text_index_lifecycle.h:151-160` defines the private work request's
+document, per-document byte, corpus byte and absolute-deadline bounds.
+`full_text_index_lifecycle.cc:361-388` accepts caller-supplied bounds when it
+claims the exact requested generation, then authoritatively replaces policy,
+source revision and cancellation. `aard_dictionary.cc:58-68` rejects zero
+resource bounds before traversal. Pinned legacy `fulltextsearch.cc:34-125`
+owns readiness checks and background start/stop but supplies no reusable byte
+or deadline policy. The smallest dependency-ready boundary is therefore Core
+projection of a validated safety envelope before any production submission or
+scheduling ownership is introduced.
+
+P8-FT-82 defines one immutable private execution-bounds value containing
+nonzero maximum documents, maximum bytes per document and maximum corpus bytes,
+plus a future absolute deadline. One side-effect-free coordinator operation
+validates those values without overflow, finds the exact current
+`kWorkRequested` identity, rechecks capability, policy eligibility and
+cancellation, and returns a request whose identity, policy, captured source
+revision and cancellation come exclusively from that generation. The operation
+does not change the state to `kWorking`; only the existing execution boundary
+may claim work.
+
+Projection rejects zero or overflow-invalid bounds, an expired deadline,
+unknown or stale identity, replacement or cancellation, and unavailable,
+`kPolicyExcluded`, failed, working, current or other non-requested states. Every
+rejection is side-effect-free: no port call, preparation, finalization,
+canonical write, holder publication or generation allocation occurs. Repeated
+projection is deterministic, and requests for one entry cannot observe or
+alter another entry.
+
+Focused acceptance extends only `full_text_index_test`. It proves exact bound
+forwarding; coordinator-authoritative identity, policy, source revision and
+cancellation; every positive and negative state above; zero/multiple-entry
+isolation; no work-port call; and that a successfully projected request remains
+accepted by the existing bounded execution seam without weakening
+Prepare/Finalize, stale-completion or snapshot-publication rules. No executable
+or test registration is added.
+
+P8-FT-82 owns no submission, scheduler, dispatcher/executor, thread, queue,
+shutdown/join, retry, progress/status, additional format bridge or facade/UI
+transport. Public/installed APIs, dependencies, `full-text-v1`, canonical IDs,
+`kPolicyExcluded`, existing article/work bounds, ICU behavior, ordinary
+find/F3, UI/translations, P8-FT-72 through P8-FT-81 safety and exactly 109
+registrations remain locked. No successor beyond P8-FT-82 is selected or named.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed
