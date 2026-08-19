@@ -6095,6 +6095,43 @@ UI, serialization, dependency, public API or registration is selected.
 P8-FT-72 through P8-FT-84 and exactly 109 registrations remain locked. This
 correction is complete; no successor beyond P8-FT-85 is selected or named.
 
+### Phase 8 P8-FT-86 parity-preserving private execution-bounds provider (selected)
+
+The fresh post-P8-FT-85 audit uses synchronized migrated revision
+`78b1922c379aa22c523d9b873be304776f3501b0` and clean pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`. Current configuration and policy
+permit `0..10000000` dictionary articles with zero unlimited. Pinned legacy
+`fulltextsearch.cc:34-112` runs eligible indexing serially in the background
+without equivalent document, byte or wall-clock quotas, while
+`mainwindow.cc:1381-1393,2100-2101,2158-2165,2180-2181,2302-2303` stops work
+before replacement and restarts it afterward. After P8-FT-85 removed the
+machine-product restriction, the smallest dependency-ready composition
+prerequisite is a private no-practical-quota production bounds provider.
+
+P8-FT-86 adds only the private argument-free
+`DefaultFullTextIndexExecutionBounds()` factory. Its maximum-document,
+maximum-document-byte and maximum-corpus-byte fields each equal `SIZE_MAX`, and
+its deadline equals `steady_clock::time_point::max()`. P8-FT-82 remains the
+sole validation and projection authority. The factory does not inspect a
+clock, discover or submit work, invoke an executor or port, or mutate lifecycle
+state. A future configured provider may replace these defaults without
+changing coordinator/executor responsibilities.
+
+Acceptance extends the existing `full_text_index_test` registration with exact
+field checks, successful unchanged P8-FT-82 projection for a current requested
+identity, and proof of no lifecycle or port effects. No arbitrary expiry test
+is added. The exact implementation allowlist is
+`full_text_index_lifecycle.h`, `full_text_index_lifecycle.cc`,
+`full_text_index_test.cpp` and the four governing documents.
+
+Executor ownership/lifetime, `ServiceState` wiring, startup/recomposition
+submission, configured quotas, legacy two-pass priority, progress/status,
+Preferences, additional format bridges, artifact/snapshot/persistence changes,
+UI, serialization, dependencies, public/installed APIs and registrations remain
+excluded. P8-FT-72 through P8-FT-85, Core authority, serial/coalesced/no-retry
+execution, `full-text-v1`, find/F3, translations and exactly 109 registrations
+remain locked. No successor beyond P8-FT-86 is selected or named.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

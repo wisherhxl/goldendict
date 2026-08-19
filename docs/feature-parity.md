@@ -1746,6 +1746,32 @@ public API, dependency, UI or registration is added. P8-FT-72 through
 P8-FT-84 and exactly 109 registrations remain locked. This private correction
 is complete; no successor beyond P8-FT-85 is selected or named.
 
+### P8-FT-86 parity-preserving private execution-bounds provider (selected)
+
+The post-P8-FT-85 audit at migrated revision
+`78b1922c379aa22c523d9b873be304776f3501b0` and pinned legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` selects one private Core
+prerequisite. The lifecycle policy accepts an article-count threshold through
+`10000000` and treats zero as unlimited, so the smaller index-construction
+constants are not production lifecycle policy. P8-FT-86 provides an
+argument-free immutable default envelope with all three `std::size_t` fields
+equal to `SIZE_MAX` and the deadline equal to
+`steady_clock::time_point::max()`. The tuple preserves legacy/configuration
+eligibility, is coherent under P8-FT-85 on 32- and 64-bit targets, and adds no
+practical quota, clock input or clock arithmetic.
+
+Existing focused coverage must prove the exact maxima, successful unchanged
+P8-FT-82 projection for a current requested identity, and absence of lifecycle
+transitions or format-port calls. No expiry case is added for this factory.
+Implementation is limited to the private lifecycle header and implementation,
+the existing full-text index test, and four governing documents. Executor
+ownership, `ServiceState` composition, startup/recomposition submission,
+configured bounds, execution, persistence/snapshot changes, progress/status,
+public APIs, dependencies, UI and registrations remain excluded. P8-FT-72
+through P8-FT-85, serial/coalesced/no-retry execution, `full-text-v1`, find/F3,
+translations and exactly 109 registrations remain locked. No successor beyond
+P8-FT-86 is selected or named.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

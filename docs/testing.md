@@ -4905,6 +4905,39 @@ or registration. P8-FT-72 through P8-FT-84 remain locked, exactly 109
 registrations remain required, this private correction is complete, and no
 successor beyond P8-FT-85 is selected.
 
+## P8-FT-86 Parity-Preserving Execution-Bounds Provider Acceptance (Selected)
+
+P8-FT-86 remains within the existing `full_text_index_test` registration. The
+private argument-free `DefaultFullTextIndexExecutionBounds()` factory must
+return `std::numeric_limits<std::size_t>::max()` for maximum documents,
+maximum bytes per document and maximum corpus bytes, and
+`std::chrono::steady_clock::time_point::max()` for its deadline.
+
+Focused implementation acceptance must prove:
+
+- all three numeric fields equal `SIZE_MAX` on the build target;
+- the deadline equals `steady_clock::time_point::max()` with no clock input or
+  arithmetic;
+- P8-FT-82 accepts the tuple for an exact current `kWorkRequested` identity and
+  forwards every value unchanged; and
+- factory creation and projection leave lifecycle state unchanged and invoke
+  no format port.
+
+No arbitrary-expiry test is added for this provider. The implementation gate
+is the focused existing Release test, fresh Release configure/build, 109/109
+CTest and the established install/package/API checks. This documentation leaf
+runs no compiled test. Its exact future implementation allowlist is the private
+lifecycle header and implementation, existing full-text index test, and four
+governing documents.
+
+Executor ownership, `ServiceState` composition, startup/recomposition
+submission, configured quotas, execution, lifecycle or port effects,
+artifact/snapshot/persistence changes, public APIs, dependencies, UI and new
+registrations remain excluded. P8-FT-72 through P8-FT-85,
+serial/coalesced/no-retry behavior, `full-text-v1`, find/F3, translations and
+exactly 109 registrations remain locked. No successor beyond P8-FT-86 is
+selected or named.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or
