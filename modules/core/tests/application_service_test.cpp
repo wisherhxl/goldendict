@@ -12,6 +12,7 @@
 #include <thread>
 #include <type_traits>
 
+#include "../src/application/configuration_transaction_preparation.h"
 #include "../src/application/desktop_facade_activation_owner.h"
 #include "../src/application/full_text_index_lifecycle_inspection.h"
 #include "../src/application/pending_configuration_transaction.h"
@@ -35,6 +36,11 @@
 
 namespace goldendict::core {
 namespace {
+
+static_assert(std::is_move_constructible_v<PreparedConfigurationTransaction>);
+static_assert(!std::is_move_assignable_v<PreparedConfigurationTransaction>);
+static_assert(!std::is_copy_constructible_v<PreparedConfigurationTransaction>);
+static_assert(!std::is_copy_assignable_v<PreparedConfigurationTransaction>);
 
 PendingConfigurationTransactionRecord CompletePendingRecord() {
     PendingConfigurationTransactionRecord record;
@@ -203,6 +209,11 @@ class ApplicationServiceTest : public QObject {
     void PendingTransactionAcceptsBoundaries();
     void PendingTransactionRejectsMalformedRecords();
     void PendingTransactionRejectsInvalidValues();
+    void PreparesConfigurationOnlyWithoutChangingDestinations();
+    void PreparesExactHistoryReplacementStates();
+    void PreparationFailuresAreAbortableAndBounded();
+    void PreparationFilesystemFailuresAreDeterministic();
+    void PreparedTransactionOwnsStagingUntilReleased();
     void MigratesLegacyPathsWithoutTouchingTheSource();
     void MigratesAllLegacyOnlineSourcesAtomically();
     void RejectsUnsupportedLegacyOnlineSourcesAtomically();
@@ -1909,6 +1920,408 @@ void ApplicationServiceTest::PendingTransactionRejectsInvalidValues() {
     record.failure->category = static_cast<PendingFailureCategory>(0xffU);
     QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
                              std::runtime_error);
+}
+
+void ApplicationServiceTest::
+    PreparesConfigurationOnlyWithoutChangingDestinations() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto configuration_path = root / "core.conf";
+    const auto history_path = root / "history-v1";
+
+    CoreConfiguration previous;
+    previous.index_directory = "previous-indexes";
+    SaveConfiguration(configuration_path.string(), previous);
+    QVERIFY(std::filesystem::create_directory(history_path));
+    test::WriteBinaryFile(history_path / "marker",
+                          "history must remain unread");
+    const auto previous_bytes = ReadFile(configuration_path);
+
+    ConfigurationTransactionPreparationInput input;
+    input.configuration_path = configuration_path;
+    input.history_path = history_path;
+    input.desired_configuration.index_directory = "desired-indexes";
+    input.history_intent = PendingHistoryIntent::kUnchanged;
+    bool observed_history_checkpoint = false;
+    ConfigurationTransactionPreparationDependencies dependencies;
+    dependencies.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        for (std::size_t index = 0U; index < identity.size(); ++index)
+            identity[index] = static_cast<std::uint8_t>(index + 1U);
+        return std::optional{identity};
+    };
+    dependencies.checkpoint = [&observed_history_checkpoint](
+                                  PreparationCheckpoint checkpoint,
+                                  const std::filesystem::path&) {
+        if (checkpoint == PreparationCheckpoint::kAfterPreviousHistoryRead ||
+            checkpoint == PreparationCheckpoint::kAfterDesiredHistoryStaged)
+            observed_history_checkpoint = true;
+    };
+
+    auto result =
+        PrepareConfigurationTransaction(input, std::move(dependencies));
+    QVERIFY(result);
+    QVERIFY(!result.error.has_value());
+    QVERIFY(!observed_history_checkpoint);
+    QCOMPARE(ReadFile(configuration_path), previous_bytes);
+    QCOMPARE(ReadFile(history_path / "marker"),
+             std::string("history must remain unread"));
+
+    const auto& prepared = *result.prepared;
+    const auto& record = prepared.record();
+    QCOMPARE(record.phase, PendingTransactionPhase::kPrepared);
+    QCOMPARE(record.desired_recovery_attempt,
+             DesiredRecoveryAttempt::kNotAttempted);
+    QCOMPARE(record.history_intent, PendingHistoryIntent::kUnchanged);
+    QVERIFY(!record.desired_history.has_value());
+    QVERIFY(!record.previous_history.existed);
+    QVERIFY(!record.previous_history.payload.has_value());
+    QVERIFY(record.previous_configuration.existed);
+    QCOMPARE(record.previous_configuration.payload->bytes, previous_bytes);
+    QCOMPARE(ParsePendingConfigurationTransaction(prepared.serialized_record()),
+             record);
+    QCOMPARE(ReadFile(prepared.staged_record_path()),
+             prepared.serialized_record());
+    QCOMPARE(QCryptographicHash::hash(
+                 QByteArray::fromStdString(record.desired_configuration.bytes),
+                 QCryptographicHash::Sha256),
+             QByteArray(reinterpret_cast<const char*>(
+                            record.desired_configuration.sha256.data()),
+                        static_cast<qsizetype>(
+                            record.desired_configuration.sha256.size())));
+    QCOMPARE(
+        QCryptographicHash::hash(QByteArray::fromStdString(previous_bytes),
+                                 QCryptographicHash::Sha256),
+        QByteArray(reinterpret_cast<const char*>(
+                       record.previous_configuration.payload->sha256.data()),
+                   static_cast<qsizetype>(
+                       record.previous_configuration.payload->sha256.size())));
+}
+
+void ApplicationServiceTest::PreparesExactHistoryReplacementStates() {
+    for (const auto& previous_history :
+         {std::optional<std::string>{}, std::optional<std::string>{""},
+          std::optional<std::string>{"goldendict-history-v1\n4 old\n"}}) {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto root = TemporaryPath(directory);
+        const auto configuration_path = root / "core.conf";
+        const auto history_path = root / "history-v1";
+        SaveConfiguration(configuration_path.string(), {});
+        if (previous_history)
+            test::WriteBinaryFile(history_path, *previous_history);
+        const auto configuration_before = ReadFile(configuration_path);
+
+        ConfigurationTransactionPreparationInput input;
+        input.configuration_path = configuration_path;
+        input.history_path = history_path;
+        input.history_intent = PendingHistoryIntent::kReplace;
+        input.desired_history = {{7U, "caf\xC3\xA9"}, {9U, "dictionary"}};
+        ConfigurationTransactionPreparationDependencies dependencies;
+        dependencies.generate_transaction_id = [] {
+            std::array<std::uint8_t, 16U> identity{};
+            identity.fill(0x5aU);
+            return std::optional{identity};
+        };
+
+        auto result = PrepareConfigurationTransaction(input, dependencies);
+        QVERIFY(result);
+        const auto& record = result.prepared->record();
+        QVERIFY(record.desired_history.has_value());
+        QCOMPARE(record.desired_history->bytes,
+                 std::string("goldendict-history-v1\n7 caf\xC3\xA9\n"
+                             "9 dictionary\n"));
+        QCOMPARE(record.previous_history.existed, previous_history.has_value());
+        QCOMPARE(record.previous_history.payload.has_value(),
+                 previous_history.has_value());
+        if (previous_history)
+            QCOMPARE(record.previous_history.payload->bytes, *previous_history);
+        QCOMPARE(ReadFile(configuration_path), configuration_before);
+        QCOMPARE(std::filesystem::exists(history_path),
+                 previous_history.has_value());
+        if (previous_history)
+            QCOMPARE(ReadFile(history_path), *previous_history);
+    }
+}
+
+void ApplicationServiceTest::PreparationFailuresAreAbortableAndBounded() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto configuration_path = root / "core.conf";
+    const auto history_path = root / "history-v1";
+    SaveConfiguration(configuration_path.string(), {});
+    test::WriteBinaryFile(history_path, "");
+    const auto configuration_before = ReadFile(configuration_path);
+    const auto history_before = ReadFile(history_path);
+
+    ConfigurationTransactionPreparationInput input;
+    input.configuration_path = configuration_path;
+    input.history_path = history_path;
+    input.history_intent = PendingHistoryIntent::kReplace;
+    input.desired_history = {{1U, "word"}};
+    ConfigurationTransactionPreparationDependencies dependencies;
+    dependencies.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x33U);
+        return std::optional{identity};
+    };
+    dependencies.checkpoint = [](PreparationCheckpoint checkpoint,
+                                 const std::filesystem::path& path) {
+        if (checkpoint == PreparationCheckpoint::kAfterPendingRecordStaged)
+            test::WriteBinaryFile(path, "corrupt");
+    };
+    auto mismatch = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(!mismatch);
+    QCOMPARE(mismatch.error->code,
+             ConfigurationPreparationErrorCode::kVerification);
+    QVERIFY(!std::filesystem::exists(
+        root / ".goldendict-transaction-33333333333333333333333333333333"));
+
+    dependencies.checkpoint = {};
+    const auto collision =
+        root / ".goldendict-transaction-33333333333333333333333333333333";
+    QVERIFY(std::filesystem::create_directory(collision));
+    test::WriteBinaryFile(collision / "owned-by-someone-else", "keep");
+    auto collided = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(!collided);
+    QCOMPARE(collided.error->code,
+             ConfigurationPreparationErrorCode::kStagingCollision);
+    QCOMPARE(ReadFile(collision / "owned-by-someone-else"),
+             std::string("keep"));
+
+    dependencies.generate_transaction_id = [] {
+        return std::optional<std::array<std::uint8_t, 16U>>{};
+    };
+    auto no_identity = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(!no_identity);
+    QCOMPARE(no_identity.error->code,
+             ConfigurationPreparationErrorCode::kIdentityGeneration);
+
+    auto missing_input = input;
+    missing_input.configuration_path = root / "missing.conf";
+    auto missing = PrepareConfigurationTransaction(missing_input, dependencies);
+    QCOMPARE(missing.error->code,
+             ConfigurationPreparationErrorCode::kIdentityGeneration);
+    dependencies.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity[0] = 1U;
+        return std::optional{identity};
+    };
+    auto missing_after_identity =
+        PrepareConfigurationTransaction(missing_input, dependencies);
+    QVERIFY(!missing_after_identity);
+    QCOMPARE(missing_after_identity.error->code,
+             ConfigurationPreparationErrorCode::kConfigurationRead);
+
+    auto invalid = input;
+    invalid.desired_configuration.index_directory =
+        std::string("bad\0path", 8U);
+    auto invalid_result =
+        PrepareConfigurationTransaction(invalid, dependencies);
+    QVERIFY(!invalid_result);
+    QCOMPARE(invalid_result.error->code,
+             ConfigurationPreparationErrorCode::kInvalidInput);
+    QCOMPARE(ReadFile(configuration_path), configuration_before);
+    QCOMPARE(ReadFile(history_path), history_before);
+}
+
+void ApplicationServiceTest::PreparationFilesystemFailuresAreDeterministic() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto configuration_path = root / "core.conf";
+    const auto history_path = root / "history-v1";
+    SaveConfiguration(configuration_path.string(), {});
+    test::WriteBinaryFile(history_path, "");
+    const auto configuration_before = ReadFile(configuration_path);
+    const auto history_before = ReadFile(history_path);
+
+    ConfigurationTransactionPreparationInput input;
+    input.configuration_path = configuration_path;
+    input.history_path = history_path;
+    input.history_intent = PendingHistoryIntent::kReplace;
+    input.desired_history = {{1U, "word"}};
+    const auto staging_directory =
+        root / ".goldendict-transaction-66666666666666666666666666666666";
+
+    bool identity_generated = false;
+    ConfigurationTransactionPreparationDependencies dependencies;
+    dependencies.generate_transaction_id = [&identity_generated] {
+        identity_generated = true;
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x66U);
+        return std::optional{identity};
+    };
+    const auto fail = [](PreparationFilesystemOperation failed_operation,
+                         const std::filesystem::path& failed_path = {}) {
+        return [failed_operation, failed_path](
+                   PreparationFilesystemOperation operation,
+                   const std::filesystem::path& path)
+                   -> std::optional<std::error_code> {
+            if (operation == failed_operation &&
+                (failed_path.empty() || path.filename() == failed_path)) {
+                return std::make_error_code(std::errc::io_error);
+            }
+            return std::nullopt;
+        };
+    };
+
+    dependencies.filesystem_failure =
+        fail(PreparationFilesystemOperation::kReadConfiguration);
+    auto configuration_read =
+        PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(identity_generated);
+    QVERIFY(!configuration_read);
+    QCOMPARE(configuration_read.error->code,
+             ConfigurationPreparationErrorCode::kConfigurationRead);
+
+    dependencies.filesystem_failure =
+        fail(PreparationFilesystemOperation::kInspectHistory);
+    auto history_inspect = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(!history_inspect);
+    QCOMPARE(history_inspect.error->code,
+             ConfigurationPreparationErrorCode::kHistoryRead);
+
+    dependencies.filesystem_failure =
+        fail(PreparationFilesystemOperation::kReadHistory);
+    auto history_read = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(!history_read);
+    QCOMPARE(history_read.error->code,
+             ConfigurationPreparationErrorCode::kHistoryRead);
+
+    dependencies.filesystem_failure =
+        fail(PreparationFilesystemOperation::kCreateStagingDirectory);
+    auto staging_create = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(!staging_create);
+    QCOMPARE(staging_create.error->code,
+             ConfigurationPreparationErrorCode::kStagingIo);
+    QVERIFY(!std::filesystem::exists(staging_directory));
+
+    dependencies.filesystem_failure =
+        fail(PreparationFilesystemOperation::kWriteStagingArtifact);
+    auto staging_write = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(!staging_write);
+    QCOMPARE(staging_write.error->code,
+             ConfigurationPreparationErrorCode::kStagingIo);
+    QVERIFY(!std::filesystem::exists(staging_directory));
+
+    dependencies.filesystem_failure =
+        fail(PreparationFilesystemOperation::kReadStagingArtifact,
+             "desired-configuration");
+    auto staging_read = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(!staging_read);
+    QCOMPARE(staging_read.error->code,
+             ConfigurationPreparationErrorCode::kStagingIo);
+    QVERIFY(!std::filesystem::exists(staging_directory));
+
+    dependencies.filesystem_failure =
+        [](PreparationFilesystemOperation operation,
+           const std::filesystem::path& path)
+        -> std::optional<std::error_code> {
+        if ((operation ==
+                 PreparationFilesystemOperation::kRemoveStagingArtifact &&
+             path.filename() == "previous-configuration") ||
+            operation ==
+                PreparationFilesystemOperation::kRemoveStagingDirectory) {
+            return std::make_error_code(std::errc::io_error);
+        }
+        return std::nullopt;
+    };
+    auto cleanup = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(!cleanup);
+    QCOMPARE(cleanup.error->code, ConfigurationPreparationErrorCode::kCleanup);
+    QCOMPARE(cleanup.error->residual_staging_directory, staging_directory);
+    QVERIFY(std::filesystem::exists(staging_directory));
+    std::filesystem::remove_all(staging_directory);
+
+    dependencies.filesystem_failure = {};
+    dependencies.generate_transaction_id = [] {
+        return std::optional{std::array<std::uint8_t, 16U>{}};
+    };
+    auto zero_identity = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(!zero_identity);
+    QCOMPARE(zero_identity.error->code,
+             ConfigurationPreparationErrorCode::kIdentityGeneration);
+
+    dependencies.generate_transaction_id =
+        []() -> std::optional<std::array<std::uint8_t, 16U>> {
+        throw std::runtime_error("injected identity failure");
+    };
+    auto throwing_identity =
+        PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(!throwing_identity);
+    QCOMPARE(throwing_identity.error->code,
+             ConfigurationPreparationErrorCode::kIdentityGeneration);
+
+    QCOMPARE(ReadFile(configuration_path), configuration_before);
+    QCOMPARE(ReadFile(history_path), history_before);
+}
+
+void ApplicationServiceTest::PreparedTransactionOwnsStagingUntilReleased() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto configuration_path = root / "core.conf";
+    SaveConfiguration(configuration_path.string(), {});
+    ConfigurationTransactionPreparationInput input;
+    input.configuration_path = configuration_path;
+    ConfigurationTransactionPreparationDependencies dependencies;
+    dependencies.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x44U);
+        return std::optional{identity};
+    };
+
+    std::filesystem::path staging;
+    {
+        auto result = PrepareConfigurationTransaction(input, dependencies);
+        QVERIFY(result);
+        staging = result.prepared->staged_record_path().parent_path();
+        QVERIFY(std::filesystem::exists(staging));
+        auto moved = std::move(*result.prepared);
+        QVERIFY(!moved.Abort().has_value());
+        QVERIFY(!std::filesystem::exists(staging));
+    }
+
+    dependencies.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x45U);
+        return std::optional{identity};
+    };
+    auto released = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(released);
+    staging = released.prepared->staged_record_path().parent_path();
+    released.prepared->ReleaseForDecision();
+    released.prepared.reset();
+    QVERIFY(std::filesystem::exists(staging));
+    std::filesystem::remove_all(staging);
+
+    dependencies.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x46U);
+        return std::optional{identity};
+    };
+    dependencies.filesystem_failure =
+        [](PreparationFilesystemOperation operation,
+           const std::filesystem::path&) -> std::optional<std::error_code> {
+        if (operation ==
+            PreparationFilesystemOperation::kRemoveStagingDirectory) {
+            return std::make_error_code(std::errc::io_error);
+        }
+        return std::nullopt;
+    };
+    auto cleanup_failure = PrepareConfigurationTransaction(input, dependencies);
+    QVERIFY(cleanup_failure);
+    staging = cleanup_failure.prepared->staged_record_path().parent_path();
+    const auto cleanup_error = cleanup_failure.prepared->Abort();
+    QVERIFY(cleanup_error.has_value());
+    QCOMPARE(cleanup_error->code, ConfigurationPreparationErrorCode::kCleanup);
+    QCOMPARE(cleanup_error->residual_staging_directory, staging);
+    cleanup_failure.prepared->ReleaseForDecision();
+    cleanup_failure.prepared.reset();
+    std::filesystem::remove_all(staging);
 }
 
 void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {
