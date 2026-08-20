@@ -1268,6 +1268,11 @@ instance to the active directory. Activation of a reduced or zero limit may
 irreversibly evict disposable bytes; abandoning a prepared candidate leaves
 the active owner unchanged.
 
+The runtime holds a private move-only storage lease for that fixed directory.
+Only the current lease may attach or mutate its disk cache, and it is released
+after request quiescence and cache destruction. Duplicate acquisition and
+stale release fail without changing the active owner or its storage.
+
 Preference apply validates and prepares a complete candidate before
 persistence and activation. Any validation, preparation, persistence, or
 activation failure preserves the previous persisted policy and active owner.

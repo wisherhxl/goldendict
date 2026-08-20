@@ -26,20 +26,29 @@ constexpr std::int64_t kBytesPerMebibyte = 1024LL * 1024LL;
 class NetworkRuntime::Impl final {
    public:
     explicit Impl(Preparation preparation)
-        : preparation_(std::move(preparation)) {
+        : preparation_(std::move(preparation)),
+          storage_slot_(preparation_.cache_directory),
+          storage_lease_(storage_slot_.Acquire()) {
+        if (!preparation_.cache_directory.empty() && !storage_lease_) {
+            preparation_.cache_available = false;
+            preparation_.diagnostic = NetworkCacheStorage::SetupDiagnostic();
+        }
         worker_.moveToThread(&thread_);
         thread_.start();
         QMetaObject::invokeMethod(
             &worker_,
             [this]() {
                 manager_ = std::make_unique<QNetworkAccessManager>();
-                if (preparation_.cache_available &&
+                if (storage_lease_ && preparation_.cache_available &&
                     preparation_.policy.maximum_megabytes != 0U) {
                     auto cache = std::make_unique<QNetworkDiskCache>();
                     cache->setCacheDirectory(
-                        QString::fromStdString(preparation_.cache_directory));
+                        QString::fromStdString(storage_lease_.directory()));
                     cache->setMaximumCacheSize(MaximumBytes());
                     manager_->setCache(cache.release());
+                } else if (storage_lease_ &&
+                           preparation_.policy.maximum_megabytes == 0U) {
+                    RemoveOwnedDirectory(preparation_);
                 }
             },
             Qt::BlockingQueuedConnection);
@@ -78,10 +87,10 @@ class NetworkRuntime::Impl final {
 
     bool Activate(Preparation preparation) noexcept {
         std::lock_guard<std::mutex> lock(fetch_mutex_);
-        if (stopping_.load() ||
+        if (stopping_.load() || !storage_lease_ ||
             (preparation.policy.maximum_megabytes != 0U &&
              !preparation.cache_available) ||
-            preparation.cache_directory != preparation_.cache_directory) {
+            preparation.cache_directory != storage_lease_.directory()) {
             return false;
         }
         bool activated = false;
@@ -93,13 +102,7 @@ class NetworkRuntime::Impl final {
                         manager_->cache()->clear();
                         manager_->setCache(nullptr);
                     }
-                    if (!NetworkCacheStorage::RemoveOwnedDirectory(
-                            preparation.cache_directory)) {
-                        preparation.diagnostic =
-                            NetworkCacheStorage::CleanupDiagnostic();
-                        qWarning().noquote() << QString::fromLatin1(
-                            NetworkCacheStorage::CleanupDiagnostic());
-                    }
+                    RemoveOwnedDirectory(preparation);
                     activated = true;
                 } else {
                     auto* cache =
@@ -107,8 +110,8 @@ class NetworkRuntime::Impl final {
                     if (cache == nullptr) {
                         auto replacement =
                             std::make_unique<QNetworkDiskCache>();
-                        replacement->setCacheDirectory(QString::fromStdString(
-                            preparation.cache_directory));
+                        replacement->setCacheDirectory(
+                            QString::fromStdString(storage_lease_.directory()));
                         cache = replacement.release();
                         manager_->setCache(cache);
                     }
@@ -134,21 +137,17 @@ class NetworkRuntime::Impl final {
         QMetaObject::invokeMethod(
             &worker_,
             [this]() {
-                if (manager_ != nullptr && preparation_.policy.clear_on_exit) {
+                if (storage_lease_ && manager_ != nullptr &&
+                    preparation_.policy.clear_on_exit) {
                     if (manager_->cache() != nullptr) {
                         manager_->cache()->clear();
                     }
-                    if (!NetworkCacheStorage::RemoveOwnedDirectory(
-                            preparation_.cache_directory)) {
-                        preparation_.diagnostic =
-                            NetworkCacheStorage::CleanupDiagnostic();
-                        qWarning().noquote() << QString::fromLatin1(
-                            NetworkCacheStorage::CleanupDiagnostic());
-                    }
+                    RemoveOwnedDirectory(preparation_);
                 }
                 manager_.reset();
             },
             Qt::BlockingQueuedConnection);
+        storage_lease_.Release();
         thread_.quit();
         thread_.wait();
     }
@@ -159,7 +158,21 @@ class NetworkRuntime::Impl final {
                kBytesPerMebibyte;
     }
 
+    void RemoveOwnedDirectory(Preparation& preparation) {
+        if (!storage_lease_ ||
+            preparation.cache_directory != storage_lease_.directory()) {
+            return;
+        }
+        if (!NetworkCacheStorage::RemoveOwnedDirectory(storage_lease_)) {
+            preparation.diagnostic = NetworkCacheStorage::CleanupDiagnostic();
+            qWarning().noquote() << QString::fromLatin1(
+                NetworkCacheStorage::CleanupDiagnostic());
+        }
+    }
+
     Preparation preparation_;
+    NetworkCacheStorageSlot storage_slot_;
+    NetworkCacheStorageSlot::Lease storage_lease_;
     QObject worker_;
     QThread thread_;
     std::unique_ptr<QNetworkAccessManager> manager_;
@@ -180,15 +193,6 @@ NetworkRuntime::Preparation NetworkRuntime::Prepare(
 
 std::shared_ptr<NetworkRuntime> NetworkRuntime::Create(
     Preparation preparation) {
-    if (preparation.policy.maximum_megabytes == 0U &&
-        !preparation.cache_directory.empty()) {
-        if (!NetworkCacheStorage::RemoveOwnedDirectory(
-                preparation.cache_directory)) {
-            preparation.diagnostic = NetworkCacheStorage::CleanupDiagnostic();
-            qWarning().noquote() << QString::fromLatin1(
-                NetworkCacheStorage::CleanupDiagnostic());
-        }
-    }
     return std::shared_ptr<NetworkRuntime>(
         new NetworkRuntime(std::move(preparation)));
 }

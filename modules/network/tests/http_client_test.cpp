@@ -11,9 +11,11 @@
 #include <chrono>
 #include <future>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "../src/http_client.h"
+#include "../src/network_cache_storage.h"
 #include "goldendict/network/network_runtime.h"
 
 namespace goldendict::network {
@@ -220,12 +222,86 @@ class HttpClientTest : public QObject {
     void EnforcesResponseAndTimeBudgets();
     void ObservesCancellation();
     void SupportsScopedOriginAndProxyAuthentication();
+    void EnforcesMoveOnlyStorageLease();
+    void RejectsDuplicateRuntimeStorageAuthority();
     void PreparesAndCleansOnlyOwnedCacheStorage();
     void OwnsExactIsolatedPersistentCache();
     void DisablesAndClearsOnlyOwnedCache();
     void CancelsAndJoinsBeforeShutdownCleanup();
-    void ActivatesPreparedPolicyTransactionally();
+    void ActivatesPreparedPolicyWithExistingStorageLease();
 };
+
+void HttpClientTest::EnforcesMoveOnlyStorageLease() {
+    static_assert(
+        !std::is_copy_constructible_v<NetworkCacheStorageSlot::Lease>);
+    static_assert(!std::is_copy_assignable_v<NetworkCacheStorageSlot::Lease>);
+    static_assert(std::is_move_constructible_v<NetworkCacheStorageSlot::Lease>);
+
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    const std::string owned =
+        QDir(root.path()).filePath("qt-network-http").toStdString();
+    NetworkCacheStorageSlot first_slot(owned);
+    NetworkCacheStorageSlot duplicate_slot(owned);
+
+    auto first = first_slot.Acquire();
+    QVERIFY(first);
+    QVERIFY(!duplicate_slot.Acquire());
+
+    auto moved = std::move(first);
+    QVERIFY(!first);
+    QVERIFY(moved);
+    QVERIFY(!first.Release());
+    QVERIFY(moved.Release());
+    QVERIFY(!moved.Release());
+
+    auto replacement = duplicate_slot.Acquire();
+    QVERIFY(replacement);
+    QVERIFY(!moved.Release());
+    QVERIFY(!first_slot.Acquire());
+    QVERIFY(replacement.Release());
+}
+
+void HttpClientTest::RejectsDuplicateRuntimeStorageAuthority() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto active = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+    const QString owned = QString::fromStdString(active->cache_directory());
+    QFile sentinel(QDir(owned).filePath("active-storage-sentinel"));
+    QVERIFY(sentinel.open(QIODevice::WriteOnly));
+    QCOMPARE(sentinel.write("active", 6), qint64{6});
+    sentinel.close();
+
+    auto abandoned =
+        NetworkRuntime::Prepare({1U, false}, root.path().toStdString());
+    QVERIFY(abandoned.cache_available);
+    QVERIFY(sentinel.exists());
+
+    auto duplicate = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({0U, false}, root.path().toStdString()));
+    QCOMPARE(duplicate->diagnostic(),
+             std::string(NetworkCacheStorage::SetupDiagnostic()));
+    QVERIFY(QDir(owned).exists());
+    QVERIFY(sentinel.exists());
+    QVERIFY(!duplicate->Activate(std::move(abandoned)));
+    QVERIFY(QDir(owned).exists());
+    QVERIFY(sentinel.exists());
+
+    duplicate->Shutdown();
+    active->Shutdown();
+    QVERIFY(QDir(owned).exists());
+    QVERIFY(sentinel.exists());
+
+    auto restarted = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+    QCOMPARE(restarted->diagnostic(), std::string());
+    QVERIFY(sentinel.exists());
+    auto disabled =
+        NetworkRuntime::Prepare({0U, false}, root.path().toStdString());
+    QVERIFY(restarted->Activate(std::move(disabled)));
+    QVERIFY(!QDir(owned).exists());
+}
 
 void HttpClientTest::FetchesResponseAndFollowsRelativeRedirect() {
     HttpFixture fixture;
@@ -392,6 +468,7 @@ void HttpClientTest::OwnsExactIsolatedPersistentCache() {
     QCOMPARE(std::string(second.body.begin(), second.body.end()),
              std::string("cached"));
     QCOMPARE(fixture.cache_requests(), 1);
+    request.runtime.reset();
     runtime.reset();
 
     auto restarted = NetworkRuntime::Create(
@@ -469,7 +546,7 @@ void HttpClientTest::CancelsAndJoinsBeforeShutdownCleanup() {
                 [&]() { static_cast<void>(runtime->Fetch(rejected)); });
 }
 
-void HttpClientTest::ActivatesPreparedPolicyTransactionally() {
+void HttpClientTest::ActivatesPreparedPolicyWithExistingStorageLease() {
     QTemporaryDir root;
     QTemporaryDir other_root;
     QVERIFY(root.isValid());

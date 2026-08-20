@@ -3,6 +3,7 @@
 #ifndef GOLDENDICT_NETWORK_NETWORK_CACHE_STORAGE_H_
 #define GOLDENDICT_NETWORK_NETWORK_CACHE_STORAGE_H_
 
+#include <cstdint>
 #include <string>
 
 namespace goldendict::network {
@@ -13,6 +14,46 @@ struct NetworkCacheStoragePreparation {
     std::string diagnostic;
 };
 
+// Process-local authority for the one directory-bound Qt Network disk cache.
+// A runtime owns one slot and keeps its move-only lease until its cache has
+// been destroyed.
+class NetworkCacheStorageSlot final {
+   public:
+    class Lease final {
+       public:
+        Lease() = default;
+        ~Lease();
+
+        Lease(const Lease&) = delete;
+        Lease& operator=(const Lease&) = delete;
+        Lease(Lease&& other) noexcept;
+        Lease& operator=(Lease&& other) noexcept;
+
+        explicit operator bool() const noexcept;
+        const std::string& directory() const noexcept;
+        bool Release() noexcept;
+
+       private:
+        friend class NetworkCacheStorageSlot;
+        Lease(std::string directory, std::string key, std::uint64_t generation);
+
+        std::string directory_;
+        std::string key_;
+        std::uint64_t generation_ = 0U;
+        bool active_ = false;
+    };
+
+    explicit NetworkCacheStorageSlot(std::string cache_directory);
+
+    NetworkCacheStorageSlot(const NetworkCacheStorageSlot&) = delete;
+    NetworkCacheStorageSlot& operator=(const NetworkCacheStorageSlot&) = delete;
+    Lease Acquire() const;
+
+   private:
+    std::string directory_;
+    std::string key_;
+};
+
 // Owns filesystem operations for the one GoldenDict-managed Qt Network cache
 // directory. QObject and QNetworkDiskCache ownership remains with
 // NetworkRuntime.
@@ -20,7 +61,8 @@ class NetworkCacheStorage final {
    public:
     static NetworkCacheStoragePreparation Prepare(const std::string& cache_root,
                                                   bool disk_cache_enabled);
-    static bool RemoveOwnedDirectory(const std::string& cache_directory);
+    static bool RemoveOwnedDirectory(
+        const NetworkCacheStorageSlot::Lease& lease);
 
     static const char* SetupDiagnostic() noexcept;
     static const char* CleanupDiagnostic() noexcept;
