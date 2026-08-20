@@ -1288,8 +1288,26 @@ positive. Positive preparation may recreate the empty Qt layout for the
 existing binding after a zero policy removed it; it does not attach another
 cache or change the active policy. Size expiry and zero-policy clearing remain
 outside the later state-publication boundary. The candidate continues to carry
-complete owner-thread policy state, generation, and lease identity, while the
-preallocated command/barrier and one-shot commit remain a later leaf.
+complete owner-thread policy state, generation, and lease identity.
+
+Prepared candidates also carry a fully allocated one-shot commit command and
+ready/completion barriers. Preparation posts the command, performs the existing
+binding's layout work, registers it with a runtime-lifetime owner-thread
+dispatcher, starts its already-created timer, and waits for `ready` before
+returning. The timer remains stopped while the registry is empty and makes a
+single registry pass per tick while candidates exist, so idle runtimes have no
+polling overhead and a ready candidate does not block owner-thread event
+processing. Commit never starts or constructs dispatcher machinery; it quiesces
+requests, validates runtime generation and lease identity, and only signals and
+waits on the prepared command; owner-thread commit and withdrawal execute
+directly to avoid self-deadlock. Abandonment and shutdown withdraw unpublished
+commands without changing the active policy or storage.
+
+Publication changes only the existing gate's enabled state and expiry-
+suppressed maximum, advances the runtime generation, and fixes the result.
+Positive reduction expiry and zero-policy clear/directory removal follow that
+decision. Their failure is reported as published-with-post-work-failure and
+does not roll back the forward-only policy publication.
 
 Preference apply validates and prepares a complete candidate before
 persistence and activation. Any validation, preparation, persistence, or

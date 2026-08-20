@@ -23,6 +23,12 @@ class NetworkRuntime final {
     class Impl;
 
    public:
+    enum class CommitResult {
+        kRejected,
+        kPublished,
+        kPublishedWithPostWorkFailure,
+    };
+
     struct Preparation {
         NetworkCachePolicy policy;
         std::string cache_directory;
@@ -62,6 +68,7 @@ class NetworkRuntime final {
                        const std::function<bool()>& is_cancelled = {});
     bool Activate(Preparation preparation) noexcept;
     PreparedCandidate PrepareCandidate(Preparation preparation);
+    CommitResult Commit(PreparedCandidate& candidate) noexcept;
     void Shutdown() noexcept;
     std::int64_t maximum_cache_bytes() const noexcept;
     const std::string& cache_directory() const noexcept;

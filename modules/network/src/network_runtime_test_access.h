@@ -26,8 +26,28 @@ class NetworkRuntimeTestAccess final {
         const NetworkRuntime::PreparedCandidate& candidate);
     static void ObserveDestruction(NetworkRuntime::PreparedCandidate& candidate,
                                    std::function<void(bool)> observer);
+    static void ObservePublication(NetworkRuntime::PreparedCandidate& candidate,
+                                   std::function<void()> observer);
+    static bool DestroyOnOwnerThread(
+        NetworkRuntime& runtime, NetworkRuntime::PreparedCandidate& candidate);
+    static NetworkRuntime::CommitResult CommitOnOwnerThread(
+        NetworkRuntime& runtime, NetworkRuntime::PreparedCandidate& candidate);
+    static void MakeUnready(NetworkRuntime::PreparedCandidate& candidate);
+    static void InvalidateLeaseIdentity(
+        NetworkRuntime::PreparedCandidate& candidate);
+    static void ForcePostWorkFailure(
+        NetworkRuntime::PreparedCandidate& candidate);
     static const void* BoundDiskCache(const NetworkRuntime& runtime);
     static std::uint64_t DirectoryConfigurationCount(
+        const NetworkRuntime& runtime);
+    static bool DispatcherTimerActive(const NetworkRuntime& runtime);
+    static std::uint64_t DispatcherTimerCreationCount(
+        const NetworkRuntime& runtime);
+    static std::uint64_t DispatcherTimerConnectionCount(
+        const NetworkRuntime& runtime);
+    static std::uint64_t DispatcherTimerStartCount(
+        const NetworkRuntime& runtime);
+    static std::uint64_t DispatcherTimerWakeupCount(
         const NetworkRuntime& runtime);
 };
 

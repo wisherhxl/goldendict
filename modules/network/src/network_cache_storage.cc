@@ -100,6 +100,12 @@ NetworkCacheStorageSlot::Identity NetworkCacheStorageSlot::Lease::identity()
     return active_ ? Identity{key_, generation_} : Identity{};
 }
 
+bool NetworkCacheStorageSlot::Lease::Matches(
+    const Identity& identity) const noexcept {
+    return active_ && identity.key == key_ &&
+           identity.generation == generation_;
+}
+
 bool NetworkCacheStorageSlot::Lease::Release() noexcept {
     if (!active_) {
         return false;

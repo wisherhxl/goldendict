@@ -232,6 +232,11 @@ class HttpClientTest : public QObject {
     void ActivatesPreparedPolicyWithExistingStorageLease();
     void ReusesLifetimeBoundCacheAcrossZeroAndPositivePolicies();
     void PreparesMoveOnlyCandidatesOnOwnerThreadWithoutActiveMutation();
+    void PublishesPreparedCandidatesAndOrdersPostWork();
+    void KeepsOwnerEventLoopResponsiveAtReadyBarrier();
+    void RunsDispatcherTimerOnlyForPreparedCandidates();
+    void RejectsUnreadyAndSupportsOwnerThreadCommit();
+    void ResolvesCandidateDuringConcurrentShutdown();
     void RejectsInvalidCrossRuntimeStaleAndReusedCandidates();
     void AbandonsCandidatesOnOwnerThreadWithoutStorageMutation();
 };
@@ -355,7 +360,7 @@ void HttpClientTest::RejectsInvalidCrossRuntimeStaleAndReusedCandidates() {
     QVERIFY(NetworkRuntimeTestAccess::Consume(*runtime, candidate));
     QVERIFY(!candidate);
     QVERIFY(!NetworkRuntimeTestAccess::Consume(*runtime, candidate));
-    QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
+    QCOMPARE(runtime->maximum_cache_bytes(), 2LL * 1024LL * 1024LL);
 
     auto stale = runtime->PrepareCandidate(
         NetworkRuntime::Prepare({3U, false}, root.path().toStdString()));
@@ -405,6 +410,214 @@ void HttpClientTest::AbandonsCandidatesOnOwnerThreadWithoutStorageMutation() {
     QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
     QVERIFY(QDir(owned).exists());
     QVERIFY(sentinel.exists());
+
+    auto owner_destroyed = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({2U, false}, root.path().toStdString()));
+    QVERIFY(owner_destroyed);
+    bool direct_abort_on_owner = false;
+    NetworkRuntimeTestAccess::ObserveDestruction(
+        owner_destroyed,
+        [&](bool on_owner_thread) { direct_abort_on_owner = on_owner_thread; });
+    QVERIFY(NetworkRuntimeTestAccess::DestroyOnOwnerThread(*runtime,
+                                                           owner_destroyed));
+    QVERIFY(!owner_destroyed);
+    QVERIFY(direct_abort_on_owner);
+    QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
+    QVERIFY(sentinel.exists());
+}
+
+void HttpClientTest::PublishesPreparedCandidatesAndOrdersPostWork() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+    const void* const cache =
+        NetworkRuntimeTestAccess::BoundDiskCache(*runtime);
+    const auto directory_count =
+        NetworkRuntimeTestAccess::DirectoryConfigurationCount(*runtime);
+
+    auto positive = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({3U, true}, root.path().toStdString()));
+    QVERIFY(positive);
+    QCOMPARE(NetworkRuntimeTestAccess::DirectoryConfigurationCount(*runtime),
+             directory_count + 1U);
+    bool positive_published = false;
+    NetworkRuntimeTestAccess::ObservePublication(positive, [&]() {
+        positive_published = true;
+        QCOMPARE(runtime->maximum_cache_bytes(), 3LL * 1024LL * 1024LL);
+        QCOMPARE(NetworkRuntimeTestAccess::BoundDiskCache(*runtime), cache);
+    });
+    QCOMPARE(runtime->Commit(positive),
+             NetworkRuntime::CommitResult::kPublished);
+    QVERIFY(positive_published);
+    QVERIFY(!positive);
+    QCOMPARE(NetworkRuntimeTestAccess::DirectoryConfigurationCount(*runtime),
+             directory_count + 1U);
+
+    const QString owned = QString::fromStdString(runtime->cache_directory());
+    QFile sentinel(QDir(owned).filePath("post-publication-sentinel"));
+    QVERIFY(sentinel.open(QIODevice::WriteOnly));
+    QCOMPARE(sentinel.write("cache", 5), qint64{5});
+    sentinel.close();
+    auto zero = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({0U, false}, root.path().toStdString()));
+    QVERIFY(zero);
+    bool zero_published_before_cleanup = false;
+    NetworkRuntimeTestAccess::ObservePublication(zero, [&]() {
+        zero_published_before_cleanup = true;
+        QCOMPARE(runtime->maximum_cache_bytes(), 0);
+        QVERIFY(sentinel.exists());
+        QCOMPARE(NetworkRuntimeTestAccess::BoundDiskCache(*runtime), cache);
+    });
+    QCOMPARE(runtime->Commit(zero), NetworkRuntime::CommitResult::kPublished);
+    QVERIFY(zero_published_before_cleanup);
+    QVERIFY(!QDir(owned).exists());
+    QCOMPARE(NetworkRuntimeTestAccess::BoundDiskCache(*runtime), cache);
+    QCOMPARE(NetworkRuntimeTestAccess::DirectoryConfigurationCount(*runtime),
+             directory_count + 1U);
+
+    auto restored = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({1U, false}, root.path().toStdString()));
+    QCOMPARE(runtime->Commit(restored),
+             NetworkRuntime::CommitResult::kPublished);
+    auto maintenance_failure = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({0U, false}, root.path().toStdString()));
+    QVERIFY(maintenance_failure);
+    NetworkRuntimeTestAccess::ForcePostWorkFailure(maintenance_failure);
+    QCOMPARE(runtime->Commit(maintenance_failure),
+             NetworkRuntime::CommitResult::kPublishedWithPostWorkFailure);
+    QCOMPARE(runtime->maximum_cache_bytes(), 0);
+    QCOMPARE(runtime->diagnostic(),
+             std::string(NetworkCacheStorage::CleanupDiagnostic()));
+}
+
+void HttpClientTest::KeepsOwnerEventLoopResponsiveAtReadyBarrier() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+    auto candidate = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({4U, false}, root.path().toStdString()));
+    QVERIFY(candidate);
+
+    HttpFixture fixture;
+    HttpRequest request;
+    request.url = fixture.Url("/ok");
+    request.runtime = runtime;
+    const auto response = FetchWhileProcessingEvents(runtime, request);
+    QCOMPARE(response.status_code, 200);
+    QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
+}
+
+void HttpClientTest::RunsDispatcherTimerOnlyForPreparedCandidates() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+
+    QCOMPARE(NetworkRuntimeTestAccess::DispatcherTimerCreationCount(*runtime),
+             1U);
+    QCOMPARE(NetworkRuntimeTestAccess::DispatcherTimerConnectionCount(*runtime),
+             1U);
+    QCOMPARE(NetworkRuntimeTestAccess::DispatcherTimerStartCount(*runtime), 0U);
+    QVERIFY(!NetworkRuntimeTestAccess::DispatcherTimerActive(*runtime));
+    const auto idle_wakeups =
+        NetworkRuntimeTestAccess::DispatcherTimerWakeupCount(*runtime);
+    QTest::qWait(10);
+    QCOMPARE(NetworkRuntimeTestAccess::DispatcherTimerWakeupCount(*runtime),
+             idle_wakeups);
+
+    auto committed = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({4U, false}, root.path().toStdString()));
+    QVERIFY(committed);
+    QVERIFY(NetworkRuntimeTestAccess::DispatcherTimerActive(*runtime));
+    QCOMPARE(NetworkRuntimeTestAccess::DispatcherTimerStartCount(*runtime), 1U);
+    QTest::qWait(5);
+    QVERIFY(NetworkRuntimeTestAccess::DispatcherTimerWakeupCount(*runtime) >
+            idle_wakeups);
+    const auto creations_before_commit =
+        NetworkRuntimeTestAccess::DispatcherTimerCreationCount(*runtime);
+    const auto connections_before_commit =
+        NetworkRuntimeTestAccess::DispatcherTimerConnectionCount(*runtime);
+    const auto starts_before_commit =
+        NetworkRuntimeTestAccess::DispatcherTimerStartCount(*runtime);
+    QCOMPARE(runtime->Commit(committed),
+             NetworkRuntime::CommitResult::kPublished);
+    QVERIFY(!NetworkRuntimeTestAccess::DispatcherTimerActive(*runtime));
+    QCOMPARE(NetworkRuntimeTestAccess::DispatcherTimerCreationCount(*runtime),
+             creations_before_commit);
+    QCOMPARE(NetworkRuntimeTestAccess::DispatcherTimerConnectionCount(*runtime),
+             connections_before_commit);
+    QCOMPARE(NetworkRuntimeTestAccess::DispatcherTimerStartCount(*runtime),
+             starts_before_commit);
+
+    auto aborted = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({2U, false}, root.path().toStdString()));
+    QVERIFY(aborted);
+    QVERIFY(NetworkRuntimeTestAccess::DispatcherTimerActive(*runtime));
+    QCOMPARE(NetworkRuntimeTestAccess::DispatcherTimerStartCount(*runtime),
+             starts_before_commit + 1U);
+    QVERIFY(NetworkRuntimeTestAccess::DestroyOnOwnerThread(*runtime, aborted));
+    QVERIFY(!NetworkRuntimeTestAccess::DispatcherTimerActive(*runtime));
+    const auto terminal_wakeups =
+        NetworkRuntimeTestAccess::DispatcherTimerWakeupCount(*runtime);
+    QTest::qWait(10);
+    QCOMPARE(NetworkRuntimeTestAccess::DispatcherTimerWakeupCount(*runtime),
+             terminal_wakeups);
+}
+
+void HttpClientTest::RejectsUnreadyAndSupportsOwnerThreadCommit() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+
+    auto unready = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({2U, false}, root.path().toStdString()));
+    QVERIFY(unready);
+    NetworkRuntimeTestAccess::MakeUnready(unready);
+    QCOMPARE(runtime->Commit(unready), NetworkRuntime::CommitResult::kRejected);
+    QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
+
+    auto wrong_lease = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({4U, false}, root.path().toStdString()));
+    QVERIFY(wrong_lease);
+    NetworkRuntimeTestAccess::InvalidateLeaseIdentity(wrong_lease);
+    QCOMPARE(runtime->Commit(wrong_lease),
+             NetworkRuntime::CommitResult::kRejected);
+    QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
+
+    auto owner_commit = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({5U, false}, root.path().toStdString()));
+    QVERIFY(owner_commit);
+    QCOMPARE(
+        NetworkRuntimeTestAccess::CommitOnOwnerThread(*runtime, owner_commit),
+        NetworkRuntime::CommitResult::kPublished);
+    QCOMPARE(runtime->maximum_cache_bytes(), 5LL * 1024LL * 1024LL);
+}
+
+void HttpClientTest::ResolvesCandidateDuringConcurrentShutdown() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+    auto candidate = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({3U, false}, root.path().toStdString()));
+    QVERIFY(candidate);
+    std::atomic<bool> finalized_on_owner{false};
+    NetworkRuntimeTestAccess::ObserveDestruction(
+        candidate, [&](bool on_owner_thread) {
+            finalized_on_owner.store(on_owner_thread);
+        });
+
+    auto shutdown =
+        std::async(std::launch::async, [runtime]() { runtime->Shutdown(); });
+    candidate = NetworkRuntime::PreparedCandidate{};
+    QCOMPARE(shutdown.wait_for(std::chrono::seconds(2)),
+             std::future_status::ready);
+    shutdown.get();
+    QVERIFY(finalized_on_owner.load());
+    QVERIFY(!candidate);
 }
 
 void HttpClientTest::RejectsDuplicateRuntimeStorageAuthority() {

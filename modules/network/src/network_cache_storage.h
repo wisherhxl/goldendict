@@ -44,6 +44,7 @@ class NetworkCacheStorageSlot final {
         explicit operator bool() const noexcept;
         const std::string& directory() const noexcept;
         Identity identity() const;
+        bool Matches(const Identity& identity) const noexcept;
         bool Release() noexcept;
 
        private:

@@ -190,6 +190,15 @@ degradation after redacted setup failure, and cancellation/join before owned
 directory cleanup. Preparation does not alter an active runtime; activation
 is the point where reducing or disabling the limit may irreversibly discard
 disposable cache bytes.
+Prepared-candidate coverage additionally pins the NR-4 ready barrier,
+event-loop-responsive owner dispatcher, direct owner-thread abort/commit paths,
+non-owner abandonment, concurrent shutdown withdrawal, one-shot generation
+invalidation, and positive/zero owner-thread publication. It proves the bound
+cache and directory configuration are unchanged during commit and observes
+zero-policy cleanup only after the published result is fixed. Dispatcher timer
+coverage proves idle runtimes receive no periodic wakeups, preparation starts
+the preconstructed timer before readiness, terminal commit/abort stops it, and
+commit creates, connects, and starts no dispatcher machinery.
 The transaction prerequisite keeps one owner-thread disk-cache object bound
 for the runtime lifetime behind a manager-owned enable gate. Candidate
 preparation never attaches a second cache or publishes policy, zero activation
