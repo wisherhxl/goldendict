@@ -489,8 +489,7 @@ PendingConfigurationTransactionRecord ReadPendingRecord(
         if (record.transaction_id != identity) {
             throw PersistenceFailure(
                 PendingFailureDestination::kPendingRecord,
-                PendingFailureCategory::kRejected,
-                "pending_identity_mismatch",
+                PendingFailureCategory::kRejected, "pending_identity_mismatch",
                 "Pending transaction identity does not match request");
         }
         return record;
@@ -544,11 +543,12 @@ void VerifyPendingRecord(
     const PendingConfigurationTransactionRecord& expected,
     const std::filesystem::path& pending_path,
     const ConfigurationPersistenceDependencies& dependencies) {
-    Inject(dependencies, ConfigurationPersistenceOperation::kVerifyPendingRecord,
+    Inject(dependencies,
+           ConfigurationPersistenceOperation::kVerifyPendingRecord,
            pending_path, PendingFailureDestination::kPendingRecord,
            "pending_verification_failed");
-    const auto actual = ReadPendingRecord(pending_path, expected.transaction_id,
-                                          dependencies);
+    const auto actual =
+        ReadPendingRecord(pending_path, expected.transaction_id, dependencies);
     if (!(actual == expected)) {
         throw PersistenceFailure(PendingFailureDestination::kPendingRecord,
                                  PendingFailureCategory::kInvalidData,
@@ -561,8 +561,8 @@ void VerifyPendingRecord(
                "after_pending_record_verification");
 }
 
-ConfigurationPersistenceError RecoveryError(
-    const PersistenceFailure& failure, PendingFailureOperation operation) {
+ConfigurationPersistenceError RecoveryError(const PersistenceFailure& failure,
+                                            PendingFailureOperation operation) {
     auto error = Error(failure);
     error.identity.operation = operation;
     return error;
@@ -1008,6 +1008,160 @@ PreviousPersistenceResult PersistPreviousConfiguration(
     return result;
 }
 
+namespace {
+
+template <typename Operation>
+RuntimeTransitionResult RunRuntimeTransition(Operation&& operation) {
+    RuntimeTransitionResult result;
+    try {
+        operation(result);
+        if (result.outcome ==
+            RuntimeTransitionOutcome::kRejectedBeforePublication) {
+            result.outcome = RuntimeTransitionOutcome::kApplied;
+        }
+    } catch (const PersistenceFailure& failure) {
+        result.error = Error(failure);
+        result.outcome =
+            result.namespace_published_phase.has_value() ||
+                    result.pending_record_removed
+                ? RuntimeTransitionOutcome::kPostPublicationFailure
+                : RuntimeTransitionOutcome::kRejectedBeforePublication;
+    } catch (const std::bad_alloc&) {
+        result.error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kPersistDesired,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kResourceLimit, "allocation_failed"},
+            "Runtime transition allocation failed"};
+    } catch (const std::exception& failure) {
+        result.error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kPersistDesired,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kInvalidData, "runtime_transition_failed"},
+            failure.what()};
+    } catch (...) {
+        result.error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kPersistDesired,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kUnknown, "runtime_transition_failed"},
+            "Unknown runtime transition failure"};
+    }
+    return result;
+}
+
+bool SafeFailureIdentifier(std::string_view identifier) noexcept {
+    if (identifier.empty() || identifier.size() > 64U)
+        return false;
+    for (const unsigned char character : identifier) {
+        if (!((character >= 'a' && character <= 'z') ||
+              (character >= '0' && character <= '9') || character == '_')) {
+            return false;
+        }
+    }
+    return true;
+}
+
+}  // namespace
+
+RuntimeTransitionResult BeginDesiredRuntimePublication(
+    const ConfigurationRecoveryRequest& request,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    return RunRuntimeTransition([&](RuntimeTransitionResult& result) {
+        const auto pending_path =
+            PendingConfigurationTransactionPath(request.configuration_path);
+        auto record = ReadPendingRecord(pending_path, request.transaction_id,
+                                        dependencies);
+        if (record.phase !=
+            PendingTransactionPhase::kDesiredPersistenceApplied) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                PendingFailureCategory::kRejected, "runtime_phase_rejected",
+                "Pending transaction is not ready for runtime publication");
+        }
+        record.phase = PendingTransactionPhase::kDesiredRuntimeApplying;
+        record.failure.reset();
+        PublishRecordUpdate(
+            record, pending_path, "phase-runtime-applying", dependencies,
+            [&] { result.namespace_published_phase = record.phase; },
+            [&] { result.confirmed_durable_phase = record.phase; });
+    });
+}
+
+RuntimeTransitionResult RecordDesiredRuntimeFailure(
+    const ConfigurationRecoveryRequest& request,
+    PendingFailureDestination destination, PendingFailureCategory category,
+    std::string identifier,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    return RunRuntimeTransition([&](RuntimeTransitionResult& result) {
+        if ((destination != PendingFailureDestination::kRuntimeFoundation &&
+             destination != PendingFailureDestination::kRuntimeTransport &&
+             destination != PendingFailureDestination::kRuntimePresentation) ||
+            !SafeFailureIdentifier(identifier)) {
+            throw PersistenceFailure(PendingFailureDestination::kPendingRecord,
+                                     PendingFailureCategory::kRejected,
+                                     "runtime_failure_invalid",
+                                     "Runtime failure evidence is invalid");
+        }
+        const auto pending_path =
+            PendingConfigurationTransactionPath(request.configuration_path);
+        auto record = ReadPendingRecord(pending_path, request.transaction_id,
+                                        dependencies);
+        if (record.phase != PendingTransactionPhase::kDesiredRuntimeApplying) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                PendingFailureCategory::kRejected, "runtime_phase_rejected",
+                "Pending transaction is not applying runtime state");
+        }
+        record.phase = PendingTransactionPhase::kDesiredRuntimeFailed;
+        record.failure = PendingFailureIdentity{
+            PendingFailureOperation::kReconstructDesired, destination, category,
+            std::move(identifier)};
+        PublishRecordUpdate(
+            record, pending_path, "phase-runtime-failed", dependencies,
+            [&] { result.namespace_published_phase = record.phase; },
+            [&] { result.confirmed_durable_phase = record.phase; });
+    });
+}
+
+RuntimeTransitionResult FinishDesiredConfigurationTransaction(
+    const ConfigurationRecoveryRequest& request,
+    const std::filesystem::path& history_path,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    return RunRuntimeTransition([&](RuntimeTransitionResult& result) {
+        const auto pending_path =
+            PendingConfigurationTransactionPath(request.configuration_path);
+        const auto record = ReadPendingRecord(
+            pending_path, request.transaction_id, dependencies);
+        if (record.phase != PendingTransactionPhase::kDesiredRuntimeApplying) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                PendingFailureCategory::kRejected, "runtime_phase_rejected",
+                "Pending transaction is not applying runtime state");
+        }
+        VerifyPayload(request.configuration_path, record.desired_configuration,
+                      dependencies, PendingFailureDestination::kConfiguration);
+        if (record.history_intent == PendingHistoryIntent::kReplace) {
+            VerifyPayload(history_path, *record.desired_history, dependencies,
+                          PendingFailureDestination::kHistory);
+        }
+        Inject(dependencies,
+               ConfigurationPersistenceOperation::kRemoveDestination,
+               pending_path, PendingFailureDestination::kPendingRecord,
+               "pending_remove_failed");
+        std::error_code error;
+        if (!std::filesystem::remove(pending_path, error) || error) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                error ? Category(error) : PendingFailureCategory::kNotFound,
+                "pending_remove_failed",
+                error ? error.message() : "Pending transaction is missing");
+        }
+        result.pending_record_removed = true;
+        SyncDirectory(pending_path.parent_path(), dependencies,
+                      PendingFailureDestination::kPendingRecord,
+                      [&] { result.removal_confirmed_durable = true; });
+    });
+}
+
 ConfigurationRecoveryResult EvaluateConfigurationRecovery(
     const ConfigurationRecoveryRequest& request,
     const ConfigurationPersistenceDependencies& dependencies) {
@@ -1111,8 +1265,8 @@ ConfigurationRecoveryResult EvaluateConfigurationRecovery(
                 result.disposition =
                     ConfigurationRecoveryDisposition::kQuarantinedTerminal;
             } catch (const PersistenceFailure& failure) {
-                result.secondary_error =
-                    RecoveryError(failure, PendingFailureOperation::kQuarantine);
+                result.secondary_error = RecoveryError(
+                    failure, PendingFailureOperation::kQuarantine);
             } catch (const std::exception& failure) {
                 result.secondary_error = ConfigurationPersistenceError{
                     {PendingFailureOperation::kQuarantine,
@@ -1140,8 +1294,8 @@ ConfigurationRecoveryResult EvaluateConfigurationRecovery(
         case PendingTransactionPhase::kDesiredRuntimeApplying:
         case PendingTransactionPhase::kDesiredRuntimeFailed:
         case PendingTransactionPhase::kPreviousRuntimeApplying:
-            result.disposition = ConfigurationRecoveryDisposition::
-                kNoActionDeferToRuntime;
+            result.disposition =
+                ConfigurationRecoveryDisposition::kNoActionDeferToRuntime;
             return result;
         case PendingTransactionPhase::kDesiredCommit:
         case PendingTransactionPhase::kDesiredPersistenceApplying:

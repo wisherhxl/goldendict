@@ -52,6 +52,10 @@ static_assert(
     !std::is_copy_constructible_v<application::PreparedCoreFacadeCandidate>);
 static_assert(
     !std::is_copy_assignable_v<application::PreparedCoreFacadeCandidate>);
+static_assert(std::is_nothrow_move_constructible_v<
+              application::ReservedCoreFacadeCandidate>);
+static_assert(
+    !std::is_copy_constructible_v<application::ReservedCoreFacadeCandidate>);
 
 PendingConfigurationTransactionRecord CompletePendingRecord() {
     PendingConfigurationTransactionRecord record;
@@ -249,6 +253,7 @@ class ApplicationServiceTest : public QObject {
     void PreparationFilesystemFailuresAreDeterministic();
     void PreparedTransactionOwnsStagingUntilReleased();
     void PersistsConfigurationOnlyThroughDurableDecision();
+    void AdvancesAndFinalizesDesiredRuntimeDurably();
     void PersistsConfigurationAndReplacementHistory();
     void PersistenceFailuresBeforePublicationRemainAbortable();
     void PublishedDecisionDirectorySyncFailureRetainsRecoveryState();
@@ -2441,6 +2446,79 @@ void ApplicationServiceTest::PersistsConfigurationOnlyThroughDurableDecision() {
     std::filesystem::remove_all(staging);
 }
 
+void ApplicationServiceTest::AdvancesAndFinalizesDesiredRuntimeDurably() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto configuration_path = root / "core.conf";
+    const auto history_path = root / "history-v1";
+    auto record = CompletePendingRecord();
+    record.failure.reset();
+    test::WriteBinaryFile(configuration_path,
+                          record.desired_configuration.bytes);
+    test::WriteBinaryFile(history_path, record.desired_history->bytes);
+    const auto pending_path =
+        PendingConfigurationTransactionPath(configuration_path);
+    test::WriteBinaryFile(pending_path,
+                          SerializePendingConfigurationTransaction(record));
+    const ConfigurationRecoveryRequest request{configuration_path,
+                                               record.transaction_id};
+
+    const auto applying = BeginDesiredRuntimePublication(request);
+    QCOMPARE(applying.outcome, RuntimeTransitionOutcome::kApplied);
+    QCOMPARE(applying.confirmed_durable_phase,
+             std::optional{PendingTransactionPhase::kDesiredRuntimeApplying});
+    QCOMPARE(ParsePendingConfigurationTransaction(ReadFile(pending_path)).phase,
+             PendingTransactionPhase::kDesiredRuntimeApplying);
+
+    const auto failure = RecordDesiredRuntimeFailure(
+        request, PendingFailureDestination::kRuntimeTransport,
+        PendingFailureCategory::kUnavailable, "network_cleanup_failed");
+    QCOMPARE(failure.outcome, RuntimeTransitionOutcome::kApplied);
+    const auto failed_record =
+        ParsePendingConfigurationTransaction(ReadFile(pending_path));
+    QCOMPARE(failed_record.phase,
+             PendingTransactionPhase::kDesiredRuntimeFailed);
+    QCOMPARE(failed_record.failure->destination,
+             PendingFailureDestination::kRuntimeTransport);
+
+    record.phase = PendingTransactionPhase::kDesiredRuntimeApplying;
+    record.failure.reset();
+    test::WriteBinaryFile(pending_path,
+                          SerializePendingConfigurationTransaction(record));
+    test::WriteBinaryFile(history_path, "wrong history");
+    const auto mismatch =
+        FinishDesiredConfigurationTransaction(request, history_path);
+    QCOMPARE(mismatch.outcome,
+             RuntimeTransitionOutcome::kRejectedBeforePublication);
+    QVERIFY(std::filesystem::exists(pending_path));
+    test::WriteBinaryFile(history_path, record.desired_history->bytes);
+    const auto finished =
+        FinishDesiredConfigurationTransaction(request, history_path);
+    QCOMPARE(finished.outcome, RuntimeTransitionOutcome::kApplied);
+    QVERIFY(finished.pending_record_removed);
+    QVERIFY(finished.removal_confirmed_durable);
+    QVERIFY(!std::filesystem::exists(pending_path));
+
+    test::WriteBinaryFile(pending_path,
+                          SerializePendingConfigurationTransaction(record));
+    ConfigurationPersistenceDependencies injected;
+    injected.filesystem_failure =
+        [](ConfigurationPersistenceOperation operation,
+           const std::filesystem::path&) -> std::optional<std::error_code> {
+        if (operation == ConfigurationPersistenceOperation::kSyncDirectory)
+            return std::make_error_code(std::errc::io_error);
+        return std::nullopt;
+    };
+    const auto post_removal =
+        FinishDesiredConfigurationTransaction(request, history_path, injected);
+    QCOMPARE(post_removal.outcome,
+             RuntimeTransitionOutcome::kPostPublicationFailure);
+    QVERIFY(post_removal.pending_record_removed);
+    QVERIFY(!post_removal.removal_confirmed_durable);
+    QVERIFY(!std::filesystem::exists(pending_path));
+}
+
 void ApplicationServiceTest::PersistsConfigurationAndReplacementHistory() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -3177,9 +3255,10 @@ void ApplicationServiceTest::
 }
 
 void ApplicationServiceTest::RecoveryPolicyDurablyGatesDesiredAttempts() {
-    for (const auto phase : {PendingTransactionPhase::kDesiredCommit,
-                             PendingTransactionPhase::kDesiredPersistenceApplying,
-                             PendingTransactionPhase::kDesiredPersistenceFailed}) {
+    for (const auto phase :
+         {PendingTransactionPhase::kDesiredCommit,
+          PendingTransactionPhase::kDesiredPersistenceApplying,
+          PendingTransactionPhase::kDesiredPersistenceFailed}) {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
         const auto configuration_path = TemporaryPath(directory) / "core.conf";
@@ -3188,8 +3267,8 @@ void ApplicationServiceTest::RecoveryPolicyDurablyGatesDesiredAttempts() {
         record.phase = phase;
         const auto pending_path =
             PendingConfigurationTransactionPath(configuration_path);
-        test::WriteBinaryFile(
-            pending_path, SerializePendingConfigurationTransaction(record));
+        test::WriteBinaryFile(pending_path,
+                              SerializePendingConfigurationTransaction(record));
 
         const auto authorized = EvaluateConfigurationRecovery(
             {configuration_path, record.transaction_id});
@@ -3235,15 +3314,15 @@ void ApplicationServiceTest::RecoveryPolicyCrashCheckpointsRemainBounded() {
                                      "previous configuration");
         const auto pending_path =
             PendingConfigurationTransactionPath(configuration_path);
-        test::WriteBinaryFile(
-            pending_path, SerializePendingConfigurationTransaction(record));
+        test::WriteBinaryFile(pending_path,
+                              SerializePendingConfigurationTransaction(record));
         ConfigurationPersistenceDependencies dependencies;
         dependencies.checkpoint =
             [failed_checkpoint](ConfigurationPersistenceCheckpoint checkpoint,
                                 const std::filesystem::path&) {
-            if (checkpoint == failed_checkpoint)
-                throw std::runtime_error("simulated crash");
-        };
+                if (checkpoint == failed_checkpoint)
+                    throw std::runtime_error("simulated crash");
+            };
         const auto result = EvaluateConfigurationRecovery(
             {configuration_path, record.transaction_id}, dependencies);
         QCOMPARE(result.disposition,
@@ -3252,8 +3331,8 @@ void ApplicationServiceTest::RecoveryPolicyCrashCheckpointsRemainBounded() {
             record.phase, DesiredRecoveryAttempt::kAttempted};
         QCOMPARE(result.namespace_visible_snapshot, std::optional{expected});
         QCOMPARE(result.directory_sync_confirmed_snapshot.has_value(),
-                 failed_checkpoint != ConfigurationPersistenceCheckpoint::
-                                          kAfterRecordReplaced);
+                 failed_checkpoint !=
+                     ConfigurationPersistenceCheckpoint::kAfterRecordReplaced);
         QVERIFY(!result.exact_verification_succeeded);
         record.desired_recovery_attempt = DesiredRecoveryAttempt::kAttempted;
         QCOMPARE(ReadFile(pending_path),
@@ -3276,8 +3355,8 @@ void ApplicationServiceTest::
                                      "previous configuration");
         const auto pending_path =
             PendingConfigurationTransactionPath(configuration_path);
-        test::WriteBinaryFile(
-            pending_path, SerializePendingConfigurationTransaction(record));
+        test::WriteBinaryFile(pending_path,
+                              SerializePendingConfigurationTransaction(record));
         ConfigurationPersistenceDependencies dependencies;
         dependencies.filesystem_failure =
             [fail_verification, &pending_path](
@@ -3289,8 +3368,8 @@ void ApplicationServiceTest::
                      ConfigurationPersistenceOperation::kSyncDirectory &&
                  path == pending_path.parent_path()) ||
                 (fail_verification &&
-                 operation == ConfigurationPersistenceOperation::
-                                  kVerifyPendingRecord &&
+                 operation ==
+                     ConfigurationPersistenceOperation::kVerifyPendingRecord &&
                  path == pending_path))
                 return std::make_error_code(std::errc::io_error);
             return std::nullopt;
@@ -3326,8 +3405,8 @@ void ApplicationServiceTest::RecoveryPolicyQuarantinesTerminalBlocks() {
         const auto root_cause = record.failure;
         const auto pending_path =
             PendingConfigurationTransactionPath(configuration_path);
-        test::WriteBinaryFile(
-            pending_path, SerializePendingConfigurationTransaction(record));
+        test::WriteBinaryFile(pending_path,
+                              SerializePendingConfigurationTransaction(record));
         ConfigurationPersistenceDependencies dependencies;
         if (failure_point != 0) {
             dependencies.filesystem_failure =
@@ -3336,8 +3415,8 @@ void ApplicationServiceTest::RecoveryPolicyQuarantinesTerminalBlocks() {
                     const std::filesystem::path& path)
                 -> std::optional<std::error_code> {
                 if ((failure_point == 1 &&
-                     operation == ConfigurationPersistenceOperation::
-                                      kSyncDirectory &&
+                     operation ==
+                         ConfigurationPersistenceOperation::kSyncDirectory &&
                      path == pending_path.parent_path()) ||
                     (failure_point == 2 &&
                      operation == ConfigurationPersistenceOperation::
@@ -3409,17 +3488,18 @@ void ApplicationServiceTest::RecoveryPolicyDefersAndRejectsWithoutMutation() {
         test::WriteBinaryFile(pending_path, bytes);
         const auto replay = EvaluateConfigurationRecovery(
             {configuration_path, record.transaction_id});
-        QCOMPARE(replay.disposition,
-                 ConfigurationRecoveryDisposition::
-                     kPreviousFallbackReplaySelected);
+        QCOMPARE(
+            replay.disposition,
+            ConfigurationRecoveryDisposition::kPreviousFallbackReplaySelected);
         QCOMPARE(ReadFile(pending_path), bytes);
     }
 
-    for (const auto phase : {PendingTransactionPhase::kPrepared,
-                             PendingTransactionPhase::kDesiredPersistenceApplied,
-                             PendingTransactionPhase::kDesiredRuntimeApplying,
-                             PendingTransactionPhase::kDesiredRuntimeFailed,
-                             PendingTransactionPhase::kPreviousRuntimeApplying}) {
+    for (const auto phase :
+         {PendingTransactionPhase::kPrepared,
+          PendingTransactionPhase::kDesiredPersistenceApplied,
+          PendingTransactionPhase::kDesiredRuntimeApplying,
+          PendingTransactionPhase::kDesiredRuntimeFailed,
+          PendingTransactionPhase::kPreviousRuntimeApplying}) {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
         const auto configuration_path = TemporaryPath(directory) / "core.conf";
@@ -5488,6 +5568,15 @@ void ApplicationServiceTest::
     application::PreparedCoreFacadeCandidate invalid;
     QVERIFY(!owner.Activate(invalid));
 
+    auto abort_candidate = owner.PrepareCandidate({});
+    auto aborted = owner.Reserve(abort_candidate);
+    QVERIFY(aborted);
+    QVERIFY(!abort_candidate);
+    QVERIFY(!owner.Shutdown());
+    aborted.Abort();
+    QVERIFY(!aborted);
+    QVERIFY(!owner.CurrentSnapshot());
+
     auto initial_candidate = owner.PrepareCandidate({});
     QVERIFY(initial_candidate);
     QVERIFY(!owner.CurrentSnapshot());
@@ -5505,12 +5594,14 @@ void ApplicationServiceTest::
     QVERIFY(prepared_facade);
     QVERIFY(!application::IsFullTextIndexExecutorStopped(
         prepared_facade->GetDictionaryService()));
+
     struct HandoffObservation {
         const DictionaryService* old_service = nullptr;
         std::array<application::CoreFacadeActivationEvent, 3U> events{};
         std::array<bool, 3U> old_stopped{};
         std::size_t count = 0U;
     } observation{&initial->GetDictionaryService()};
+
     application::CoreFacadeActivationTestAccess::Observe(
         replacement_candidate,
         [](void* context,
@@ -5527,7 +5618,12 @@ void ApplicationServiceTest::
     QVERIFY(!application::IsFullTextIndexExecutorStopped(
         initial->GetDictionaryService()));
     QVERIFY(initial->GetDictionaryService().GetCatalog().empty());
-    QVERIFY(owner.Activate(replacement_candidate));
+    auto reserved_replacement = owner.Reserve(replacement_candidate);
+    QVERIFY(reserved_replacement);
+    QVERIFY(!replacement_candidate);
+    QVERIFY(!owner.Shutdown());
+    owner.PublishReserved(reserved_replacement);
+    QVERIFY(!reserved_replacement);
     QCOMPARE(observation.count, 3U);
     QCOMPARE(observation.events[0],
              application::CoreFacadeActivationEvent::kPublished);

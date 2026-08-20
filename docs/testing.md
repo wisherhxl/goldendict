@@ -5120,6 +5120,22 @@ two immediate generations. The compile-time publication-operation array is the
 exact Phase B audit allowlist; additions require a reviewed architecture update
 and a corresponding deterministic smoke assertion.
 
+## Post-Decision Reservation Prerequisite Acceptance
+
+`application_service_test` verifies that Core facade reservation is move-only,
+blocks shutdown and competing handoff before decision, aborts without facade or
+executor mutation, and makes the existing publication/old-stop/new-submit
+sequence non-rejecting. It also covers exact durable runtime transitions,
+structured failure evidence, desired-payload verification, pending-record
+removal and directory durability.
+
+`http_client_test` verifies the corresponding Network reservation against the
+existing runtime generation and storage lease, exclusion of competing prepare
+and shutdown, owner-thread abort, and publication without a rejected outcome.
+Existing deterministic post-work injection continues to prove that cleanup
+failure is reported after policy publication and never rolls back the gate,
+generation, cache binding, or lease.
+
 Preferred full Windows Release verification workflow:
 
 ```sh

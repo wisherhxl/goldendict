@@ -385,6 +385,13 @@ class NetworkRuntime::PreparedCandidate::Impl final {
     bool consumed = false;
 };
 
+class NetworkRuntime::CommitReservation::Impl final {
+   public:
+    NetworkRuntime::Impl* owner = nullptr;
+    std::unique_ptr<PreparedCandidate::Impl> candidate;
+    std::uint64_t identity = 0U;
+};
+
 class NetworkRuntime::Impl final {
    public:
     explicit Impl(Preparation preparation)
@@ -425,14 +432,18 @@ class NetworkRuntime::Impl final {
             Qt::BlockingQueuedConnection);
     }
 
-    ~Impl() { Shutdown(); }
+    ~Impl() {
+        if (reservation_active_.load())
+            std::terminate();
+        Shutdown();
+    }
 
     HttpResponse Fetch(const HttpRequest& request,
                        const std::function<bool()>& is_cancelled) {
         std::lock_guard<std::mutex> lock(fetch_mutex_);
-        if (stopping_.load()) {
+        if (stopping_.load() || reservation_active_.load()) {
             throw HttpError(HttpErrorCode::kCancelled,
-                            "HTTP runtime is shutting down");
+                            "HTTP runtime is unavailable for a transaction");
         }
         HttpResponse result;
         std::exception_ptr failure;
@@ -473,7 +484,7 @@ class NetworkRuntime::Impl final {
 
     PreparedCandidate PrepareCandidate(Preparation preparation) {
         std::lock_guard<std::mutex> fetch_lock(fetch_mutex_);
-        if (stopping_.load() || !storage_lease_ ||
+        if (stopping_.load() || reservation_active_.load() || !storage_lease_ ||
             preparation.cache_directory != storage_lease_.directory() ||
             (preparation.policy.maximum_megabytes != 0U &&
              !preparation.cache_available)) {
@@ -606,6 +617,55 @@ class NetworkRuntime::Impl final {
         return candidate_dispatcher_->Commit(candidate.impl_->resource);
     }
 
+    CommitReservation Reserve(PreparedCandidate& candidate) {
+        auto reservation = std::make_unique<CommitReservation::Impl>();
+        std::lock_guard<std::mutex> reservation_lock(reservation_mutex_);
+        std::lock_guard<std::mutex> lock(fetch_mutex_);
+        if (reservation_active_.load() || !CandidateIsCurrentLocked(candidate))
+            return {};
+        candidate.impl_->consumed = true;
+        reservation_active_.store(true);
+        ++reservation_identity_;
+        if (reservation_identity_ == 0U)
+            reservation_identity_ = 1U;
+        reservation->owner = this;
+        reservation->identity = reservation_identity_;
+        reservation->candidate = std::move(candidate.impl_);
+        return CommitReservation(std::move(reservation));
+    }
+
+    void Abort(CommitReservation& reservation) noexcept {
+        if (!reservation.impl_)
+            return;
+        std::lock_guard<std::mutex> reservation_lock(reservation_mutex_);
+        std::lock_guard<std::mutex> lock(fetch_mutex_);
+        if (reservation.impl_->owner != this || !reservation_active_.load() ||
+            reservation.impl_->identity != reservation_identity_) {
+            std::terminate();
+        }
+        reservation_active_.store(false);
+        reservation.impl_.reset();
+    }
+
+    NetworkRuntime::CommitResult Publish(
+        CommitReservation& reservation) noexcept {
+        std::lock_guard<std::mutex> reservation_lock(reservation_mutex_);
+        std::lock_guard<std::mutex> lock(fetch_mutex_);
+        if (!reservation.impl_ || reservation.impl_->owner != this ||
+            !reservation_active_.load() ||
+            reservation.impl_->identity != reservation_identity_ ||
+            !reservation.impl_->candidate) {
+            std::terminate();
+        }
+        auto result = candidate_dispatcher_->Commit(
+            reservation.impl_->candidate->resource);
+        if (result == NetworkRuntime::CommitResult::kRejected)
+            std::terminate();
+        reservation_active_.store(false);
+        reservation.impl_.reset();
+        return result;
+    }
+
     bool CandidateIsCurrent(const PreparedCandidate& candidate) const noexcept {
         std::lock_guard<std::mutex> lock(fetch_mutex_);
         return CandidateIsCurrentLocked(candidate);
@@ -617,8 +677,10 @@ class NetworkRuntime::Impl final {
     }
 
     void Shutdown() noexcept {
-        if (stopping_.exchange(true)) {
-            return;
+        {
+            std::lock_guard<std::mutex> reservation_lock(reservation_mutex_);
+            if (reservation_active_.load() || stopping_.exchange(true))
+                return;
         }
         std::lock_guard<std::mutex> lock(fetch_mutex_);
         QMetaObject::invokeMethod(
@@ -662,6 +724,8 @@ class NetworkRuntime::Impl final {
 
     bool CandidateIsCurrentLocked(
         const PreparedCandidate& candidate) const noexcept {
+        if (reservation_active_.load())
+            return false;
         if (!candidate.impl_ || !candidate.impl_->resource) {
             return false;
         }
@@ -694,10 +758,13 @@ class NetworkRuntime::Impl final {
     std::unique_ptr<QNetworkAccessManager> manager_;
     NetworkDiskCacheGate* cache_gate_ = nullptr;
     mutable std::mutex fetch_mutex_;
+    mutable std::mutex reservation_mutex_;
     std::atomic<bool> stopping_{false};
     std::shared_ptr<CandidateDispatcher> candidate_dispatcher_;
     const std::uint64_t runtime_identity_;
     std::uint64_t generation_ = 1U;
+    std::atomic<bool> reservation_active_{false};
+    std::uint64_t reservation_identity_ = 0U;
 };
 
 NetworkRuntime::Preparation NetworkRuntime::Prepare(
@@ -743,6 +810,31 @@ NetworkRuntime::PreparedCandidate::operator bool() const noexcept {
     return impl_->resource->state == CandidateResource::State::kReady;
 }
 
+NetworkRuntime::CommitReservation::CommitReservation() = default;
+
+NetworkRuntime::CommitReservation::CommitReservation(std::unique_ptr<Impl> impl)
+    : impl_(std::move(impl)) {}
+
+NetworkRuntime::CommitReservation::~CommitReservation() {
+    if (impl_ != nullptr && impl_->owner != nullptr)
+        impl_->owner->Abort(*this);
+}
+
+NetworkRuntime::CommitReservation::CommitReservation(
+    CommitReservation&&) noexcept = default;
+
+NetworkRuntime::CommitReservation& NetworkRuntime::CommitReservation::operator=(
+    CommitReservation&& other) noexcept {
+    if (this != &other && impl_ != nullptr && impl_->owner != nullptr)
+        impl_->owner->Abort(*this);
+    impl_ = std::move(other.impl_);
+    return *this;
+}
+
+NetworkRuntime::CommitReservation::operator bool() const noexcept {
+    return impl_ != nullptr;
+}
+
 HttpResponse NetworkRuntime::Fetch(const HttpRequest& request,
                                    const std::function<bool()>& is_cancelled) {
     return impl_->Fetch(request, is_cancelled);
@@ -760,6 +852,20 @@ NetworkRuntime::PreparedCandidate NetworkRuntime::PrepareCandidate(
 NetworkRuntime::CommitResult NetworkRuntime::Commit(
     PreparedCandidate& candidate) noexcept {
     return impl_->CommitPreparedCandidate(candidate);
+}
+
+NetworkRuntime::CommitReservation NetworkRuntime::Reserve(
+    PreparedCandidate& candidate) {
+    return impl_->Reserve(candidate);
+}
+
+void NetworkRuntime::Abort(CommitReservation& reservation) noexcept {
+    impl_->Abort(reservation);
+}
+
+NetworkRuntime::CommitResult NetworkRuntime::Publish(
+    CommitReservation& reservation) noexcept {
+    return impl_->Publish(reservation);
 }
 
 bool NetworkRuntimeTestAccess::IsCurrent(

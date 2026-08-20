@@ -70,6 +70,7 @@ CreateDesktopFacadeActivationCandidate(
 
 class DesktopFacadeActivationOwner;
 class CoreFacadeActivationTestAccess;
+class ReservedCoreFacadeCandidate;
 
 class GOLDENDICT_EXPORTS PreparedCoreFacadeCandidate final {
    public:
@@ -94,6 +95,28 @@ class GOLDENDICT_EXPORTS PreparedCoreFacadeCandidate final {
 
     friend class DesktopFacadeActivationOwner;
     friend class CoreFacadeActivationTestAccess;
+    friend class ReservedCoreFacadeCandidate;
+};
+
+class GOLDENDICT_EXPORTS ReservedCoreFacadeCandidate final {
+   public:
+    ReservedCoreFacadeCandidate() noexcept;
+    ~ReservedCoreFacadeCandidate();
+    ReservedCoreFacadeCandidate(const ReservedCoreFacadeCandidate&) = delete;
+    ReservedCoreFacadeCandidate& operator=(const ReservedCoreFacadeCandidate&) =
+        delete;
+    ReservedCoreFacadeCandidate(ReservedCoreFacadeCandidate&&) noexcept;
+    ReservedCoreFacadeCandidate& operator=(
+        ReservedCoreFacadeCandidate&&) noexcept;
+
+    explicit operator bool() const noexcept;
+    void Abort() noexcept;
+
+   private:
+    explicit ReservedCoreFacadeCandidate(
+        std::unique_ptr<PreparedCoreFacadeCandidate::Impl> impl) noexcept;
+    std::unique_ptr<PreparedCoreFacadeCandidate::Impl> impl_;
+    friend class DesktopFacadeActivationOwner;
 };
 
 class GOLDENDICT_EXPORTS DesktopFacadeActivationOwner final {
@@ -111,11 +134,15 @@ class GOLDENDICT_EXPORTS DesktopFacadeActivationOwner final {
         const CoreConfiguration& configuration,
         std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources);
     bool Activate(PreparedCoreFacadeCandidate& candidate) noexcept;
+    ReservedCoreFacadeCandidate Reserve(
+        PreparedCoreFacadeCandidate& candidate) noexcept;
+    void PublishReserved(ReservedCoreFacadeCandidate& reserved) noexcept;
     bool Shutdown() noexcept;
     std::shared_ptr<DesktopFacade> CurrentSnapshot() const;
 
    private:
     friend class PreparedCoreFacadeCandidate;
+    friend class ReservedCoreFacadeCandidate;
     friend class CoreFacadeActivationTestAccess;
     class Impl;
     std::shared_ptr<Impl> impl_;

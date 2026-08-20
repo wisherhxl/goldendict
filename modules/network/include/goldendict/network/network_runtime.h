@@ -57,6 +57,25 @@ class NetworkRuntime final {
         std::unique_ptr<Impl> impl_;
     };
 
+    class CommitReservation final {
+       public:
+        CommitReservation();
+        ~CommitReservation();
+        CommitReservation(const CommitReservation&) = delete;
+        CommitReservation& operator=(const CommitReservation&) = delete;
+        CommitReservation(CommitReservation&&) noexcept;
+        CommitReservation& operator=(CommitReservation&&) noexcept;
+
+        explicit operator bool() const noexcept;
+
+       private:
+        friend class NetworkRuntime;
+        friend class NetworkRuntime::Impl;
+        class Impl;
+        explicit CommitReservation(std::unique_ptr<Impl> impl);
+        std::unique_ptr<Impl> impl_;
+    };
+
     static Preparation Prepare(NetworkCachePolicy policy,
                                const std::string& cache_root);
     static std::shared_ptr<NetworkRuntime> Create(Preparation preparation);
@@ -69,6 +88,9 @@ class NetworkRuntime final {
     bool Activate(Preparation preparation) noexcept;
     PreparedCandidate PrepareCandidate(Preparation preparation);
     CommitResult Commit(PreparedCandidate& candidate) noexcept;
+    CommitReservation Reserve(PreparedCandidate& candidate);
+    void Abort(CommitReservation& reservation) noexcept;
+    CommitResult Publish(CommitReservation& reservation) noexcept;
     void Shutdown() noexcept;
     std::int64_t maximum_cache_bytes() const noexcept;
     const std::string& cache_directory() const noexcept;

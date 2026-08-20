@@ -6611,5 +6611,27 @@ new facade. A published-token destructor invokes the same direction;
 wrong-thread, reentrant, stale-owner, or impossible post-decision states are
 fail-stop. `SetFacade` remains compatibility-only.
 
+### Phase 8 post-decision reservation prerequisite
+
+The cross-module configuration coordinator cannot treat a Network commit or
+Core facade activation rejection as an ordinary error after the pending-record
+decision has been published. Both modules therefore provide source-private
+move-only reservations. Reservation performs every owner, generation,
+shutdown, lease and one-shot check before the durable decision and excludes
+competing publication and shutdown. Aborting restores the previous acceptance
+state without publication. After reservation, publication is non-rejecting:
+an impossible token or ownership state is fail-stop, Network preserves its
+prepared owner-thread command, and Core preserves facade publication before
+old-executor join and new-executor submission.
+
+Core persistence owns the matching runtime record transitions. Exact identity
+and phase validation precede mutation; desired runtime application is durably
+marked before module publication, structured runtime failure evidence can be
+retained for forward recovery, and successful completion verifies the desired
+configuration before removing and directory-syncing the pending record.
+Namespace publication followed by sync or cleanup failure is post-publication
+forward work and never rollback. Runtime recovery execution and the cross-
+module coordinator remain separate leaves.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

@@ -233,6 +233,7 @@ class HttpClientTest : public QObject {
     void ReusesLifetimeBoundCacheAcrossZeroAndPositivePolicies();
     void PreparesMoveOnlyCandidatesOnOwnerThreadWithoutActiveMutation();
     void PublishesPreparedCandidatesAndOrdersPostWork();
+    void ReservesPreparedPublicationBeforeDecision();
     void KeepsOwnerEventLoopResponsiveAtReadyBarrier();
     void RunsDispatcherTimerOnlyForPreparedCandidates();
     void RejectsUnreadyAndSupportsOwnerThreadCommit();
@@ -282,6 +283,10 @@ void HttpClientTest::
                   NetworkRuntime::PreparedCandidate>);
     static_assert(
         std::is_nothrow_move_assignable_v<NetworkRuntime::PreparedCandidate>);
+    static_assert(
+        !std::is_copy_constructible_v<NetworkRuntime::CommitReservation>);
+    static_assert(std::is_nothrow_move_constructible_v<
+                  NetworkRuntime::CommitReservation>);
 
     QTemporaryDir root;
     QVERIFY(root.isValid());
@@ -489,6 +494,38 @@ void HttpClientTest::PublishesPreparedCandidatesAndOrdersPostWork() {
     QCOMPARE(runtime->maximum_cache_bytes(), 0);
     QCOMPARE(runtime->diagnostic(),
              std::string(NetworkCacheStorage::CleanupDiagnostic()));
+}
+
+void HttpClientTest::ReservesPreparedPublicationBeforeDecision() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+
+    auto abort_candidate = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({4U, false}, root.path().toStdString()));
+    auto aborted = runtime->Reserve(abort_candidate);
+    QVERIFY(aborted);
+    QVERIFY(!abort_candidate);
+    QVERIFY(!runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({3U, false}, root.path().toStdString())));
+    HttpRequest blocked;
+    blocked.url = "http://127.0.0.1/";
+    VerifyError(HttpErrorCode::kCancelled,
+                [&]() { static_cast<void>(runtime->Fetch(blocked)); });
+    runtime->Shutdown();
+    QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
+    runtime->Abort(aborted);
+    QVERIFY(!aborted);
+
+    auto publish_candidate = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({2U, false}, root.path().toStdString()));
+    auto reserved = runtime->Reserve(publish_candidate);
+    QVERIFY(reserved);
+    QCOMPARE(runtime->Publish(reserved),
+             NetworkRuntime::CommitResult::kPublished);
+    QVERIFY(!reserved);
+    QCOMPARE(runtime->maximum_cache_bytes(), 2LL * 1024LL * 1024LL);
 }
 
 void HttpClientTest::KeepsOwnerEventLoopResponsiveAtReadyBarrier() {

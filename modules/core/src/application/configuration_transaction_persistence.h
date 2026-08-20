@@ -13,6 +13,8 @@
 
 namespace goldendict::core {
 
+struct ConfigurationRecoveryRequest;
+
 enum class ConfigurationPersistenceOperation : std::uint8_t {
     kInspectPath,
     kCreateTemporary,
@@ -109,6 +111,35 @@ struct PreviousPersistenceResult {
 
 PreviousPersistenceResult PersistPreviousConfiguration(
     const PreviousPersistenceRequest& request,
+    const ConfigurationPersistenceDependencies& dependencies = {});
+
+enum class RuntimeTransitionOutcome : std::uint8_t {
+    kRejectedBeforePublication,
+    kApplied,
+    kPostPublicationFailure,
+};
+
+struct RuntimeTransitionResult {
+    RuntimeTransitionOutcome outcome =
+        RuntimeTransitionOutcome::kRejectedBeforePublication;
+    std::optional<PendingTransactionPhase> namespace_published_phase;
+    std::optional<PendingTransactionPhase> confirmed_durable_phase;
+    bool pending_record_removed = false;
+    bool removal_confirmed_durable = false;
+    std::optional<ConfigurationPersistenceError> error;
+};
+
+RuntimeTransitionResult BeginDesiredRuntimePublication(
+    const ConfigurationRecoveryRequest& request,
+    const ConfigurationPersistenceDependencies& dependencies = {});
+RuntimeTransitionResult RecordDesiredRuntimeFailure(
+    const ConfigurationRecoveryRequest& request,
+    PendingFailureDestination destination, PendingFailureCategory category,
+    std::string identifier,
+    const ConfigurationPersistenceDependencies& dependencies = {});
+RuntimeTransitionResult FinishDesiredConfigurationTransaction(
+    const ConfigurationRecoveryRequest& request,
+    const std::filesystem::path& history_path,
     const ConfigurationPersistenceDependencies& dependencies = {});
 
 enum class ConfigurationRecoveryDisposition : std::uint8_t {
