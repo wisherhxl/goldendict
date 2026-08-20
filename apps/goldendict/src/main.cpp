@@ -667,6 +667,8 @@ int main(int argc, char* argv[]) {
         ReloadBoundary::kWidgetsBegin,
         ReloadBoundary::kPersistenceDecision};
     std::size_t preferences_predecision_injection = 0U;
+    std::optional<ReloadBoundary> source_predecision_injection;
+    std::vector<ReloadBoundary> source_reload_boundaries;
     const auto persist_article_tab_session = [&]() {
         auto updated = configuration;
         updated.article_tab_session = facade->ExportArticleTabSession();
@@ -1073,24 +1075,74 @@ int main(int argc, char* argv[]) {
         updated.article_tab_session = facade->ExportArticleTabSession();
         try {
             goldendict::core::ValidateConfiguration(updated);
-            auto replacement =
-                PrepareProductionFacade(updated, network_runtime, facade_owner);
-            goldendict::core::SaveConfiguration(
-                configuration_path.toStdString(), updated);
-            window.SetSourceDirectories(updated.dictionary_paths,
-                                        updated.sound_directories);
-            if (!facade_owner.Activate(replacement.candidate))
-                throw std::runtime_error(
+            auto prepared_network =
+                goldendict::network::NetworkRuntime::Prepare(
+                    {updated.preferences.maximum_network_cache_megabytes,
+                     updated.preferences.clear_network_cache_on_exit},
+                    network_cache_root);
+            std::vector<goldendict::network::RuntimeCompositionDiagnostic>
+                desired_diagnostics;
+            goldendict::app::ConfigurationReloadRequest request{
+                {configuration_path.toStdString(),
+                 history_path.toStdString(),
+                 updated,
+                 goldendict::core::PendingHistoryIntent::kUnchanged,
+                 {}},
+                std::move(prepared_network),
+                {},
+                [&]() -> std::optional<
+                          goldendict::app::PreparedConfigurationReloadCore> {
+                    auto replacement = PrepareProductionFacade(
+                        updated, network_runtime, facade_owner);
+                    desired_diagnostics = std::move(replacement.diagnostics);
+                    return goldendict::app::PreparedConfigurationReloadCore{
+                        std::move(replacement.candidate),
+                        std::move(replacement.facade)};
+                }};
+            goldendict::app::ConfigurationReloadDependencies dependencies;
+            if (HasArgument(argc, argv,
+                            QStringLiteral("--source-directories-smoke"))) {
+                dependencies.observe_boundary = [&](auto boundary) {
+                    source_reload_boundaries.push_back(boundary);
+                };
+                dependencies.inject_failure = [&](auto boundary) {
+                    return source_predecision_injection == boundary;
+                };
+            }
+            const auto result =
+                coordinator.Execute(std::move(request), dependencies);
+            if (result.outcome == goldendict::app::ConfigurationReloadOutcome::
+                                      kRejectedBeforeDecision) {
+                if (result.error)
+                    return QString::fromLocal8Bit(
+                        result.error->message.c_str());
+                return QStringLiteral(
                     "Unable to activate the application runtime");
-            window.SetFacade(replacement.facade.get());
-            facade = replacement.facade;
-            composition_diagnostics = std::move(replacement.diagnostics);
+            }
+
+            facade = facade_owner.CurrentSnapshot();
+            composition_diagnostics = std::move(desired_diagnostics);
             ReportRuntimeCompositionDiagnostics(composition_diagnostics);
             configuration = std::move(updated);
+            window.SetSourceDirectories(configuration.dictionary_paths,
+                                        configuration.sound_directories);
             window.SetOnlineSources(
                 configuration.mediawiki_sources, configuration.website_sources,
                 configuration.forvo_sources, configuration.dict_server_sources,
                 configuration.external_program_sources, {});
+            if (result.outcome == goldendict::app::ConfigurationReloadOutcome::
+                                      kPublishedWithForwardFailure) {
+                qCritical().noquote()
+                    << QStringLiteral(
+                           "Source transaction published with forward failure; "
+                           "durable phase %1: %2")
+                           .arg(result.durable_phase
+                                    ? static_cast<int>(*result.durable_phase)
+                                    : -1)
+                           .arg(result.error ? QString::fromStdString(
+                                                   result.error->message)
+                                             : QString{});
+            }
             return {};
         } catch (const std::exception& error) {
             if (show_error) {
@@ -2045,7 +2097,9 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(
             0, &window,
             [&app, &configuration, &configuration_path, &facade,
-             &apply_source_directories, &apply_sources, &window]() {
+             &apply_source_directories, &apply_sources,
+             &preferences_predecision_boundaries, &source_predecision_injection,
+             &source_reload_boundaries, &facade_owner, &window]() {
                 bool passed = true;
                 try {
                     configuration.dictionary_groups = {
@@ -2060,6 +2114,7 @@ int main(int argc, char* argv[]) {
                     const auto original = configuration;
                     const auto original_session =
                         facade->ExportArticleTabSession();
+                    const auto original_facade = facade;
                     const auto same_as_original = [&](const auto& candidate) {
                         return candidate.dictionary_paths ==
                                    original.dictionary_paths &&
@@ -2105,33 +2160,58 @@ int main(int argc, char* argv[]) {
                         facade->GetDictionaryService().GetCatalog().back().id ==
                             "smoke.external";
 
-                    const QString temporary_path =
-                        configuration_path + QStringLiteral(".tmp");
-                    QDir().mkpath(temporary_path);
-                    auto failed_paths = configuration.dictionary_paths;
-                    failed_paths.push_back("/save-must-fail");
-                    passed =
-                        passed &&
-                        !apply_source_directories(
-                            failed_paths, configuration.sound_directories,
-                            false) &&
-                        same_as_original(configuration) &&
-                        same_as_original(goldendict::core::LoadConfiguration(
-                            configuration_path.toStdString())) &&
-                        facade->ExportArticleTabSession() == original_session &&
-                        facade->GetDictionaryService().GetCatalog().back().id ==
-                            "smoke.external";
-                    QDir(temporary_path).removeRecursively();
-
                     auto successful_paths = configuration.dictionary_paths;
                     successful_paths.push_back(successful_paths.front());
                     auto successful_sounds = configuration.sound_directories;
                     successful_sounds.push_back(
                         {configuration.dictionary_paths.front(), ""});
                     successful_sounds.push_back(successful_sounds.back());
+
+                    for (const auto boundary :
+                         preferences_predecision_boundaries) {
+                        source_reload_boundaries.clear();
+                        source_predecision_injection = boundary;
+                        passed =
+                            passed &&
+                            !apply_source_directories(
+                                successful_paths, successful_sounds, false) &&
+                            !source_reload_boundaries.empty() &&
+                            source_reload_boundaries.back() == boundary &&
+                            same_as_original(configuration) &&
+                            same_as_original(
+                                goldendict::core::LoadConfiguration(
+                                    configuration_path.toStdString())) &&
+                            facade == original_facade &&
+                            facade_owner.CurrentSnapshot() == original_facade &&
+                            !std::filesystem::exists(
+                                goldendict::core::
+                                    PendingConfigurationTransactionPath(
+                                        configuration_path.toStdString()));
+                    }
+                    source_predecision_injection.reset();
+                    const std::vector<ReloadBoundary> successful_boundaries{
+                        ReloadBoundary::kPersistencePrepare,
+                        ReloadBoundary::kNetworkPrepare,
+                        ReloadBoundary::kCorePrepare,
+                        ReloadBoundary::kWidgetsPrepare,
+                        ReloadBoundary::kNetworkReserve,
+                        ReloadBoundary::kCoreReserve,
+                        ReloadBoundary::kWidgetsBegin,
+                        ReloadBoundary::kPersistenceDecision,
+                        ReloadBoundary::kDesiredRuntimeApplying,
+                        ReloadBoundary::kNetworkPublish,
+                        ReloadBoundary::kCorePublish,
+                        ReloadBoundary::kWidgetsPublish,
+                        ReloadBoundary::kNetworkPostWork,
+                        ReloadBoundary::kWidgetsFinish,
+                        ReloadBoundary::kCoreForwardWork,
+                        ReloadBoundary::kFinalizeTransaction};
+                    source_reload_boundaries.clear();
                     passed = passed &&
                              apply_source_directories(successful_paths,
                                                       successful_sounds, false);
+                    passed = passed &&
+                             source_reload_boundaries == successful_boundaries;
                     auto edited_wikis = configuration.mediawiki_sources;
                     edited_wikis.front().enabled = true;
                     const std::vector<
@@ -2142,6 +2222,7 @@ int main(int argc, char* argv[]) {
                     edited_programs.front().name = "Edited External";
                     edited_programs.front().argument_templates = {
                         "%GDWORD%", "", "--literal"};
+                    source_reload_boundaries.clear();
                     passed = passed &&
                              apply_sources(
                                  configuration.dictionary_paths,
@@ -2150,6 +2231,8 @@ int main(int argc, char* argv[]) {
                                  configuration.dict_server_sources,
                                  edited_programs, false)
                                  .isEmpty();
+                    passed = passed &&
+                             source_reload_boundaries == successful_boundaries;
                     const auto persisted = goldendict::core::LoadConfiguration(
                         configuration_path.toStdString());
                     passed =

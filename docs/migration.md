@@ -6252,6 +6252,23 @@ pre-publication rejection or online rollback. Widgets rebinding, transaction
 coordination, recovery, notification, Network, persistence, and source-specific
 recomposition remain later work.
 
+### Phase 8 production source-editor transaction invocation (complete)
+
+The production source editor now routes its shared local-directory,
+online-source, and external-program apply callback through the durable
+configuration-reload coordinator. The complete candidate preserves the current
+article session, records unchanged history intent, prepares the unchanged
+Network cache policy, and publishes Network, Core, and Widgets only after the
+configuration decision is durable. Pre-decision rejection leaves the active
+owners and persisted configuration unchanged; successful publication refreshes
+the source projections and removes the pending record durably.
+
+The existing source smoke injects every pre-decision rejection boundary and
+pins both successful local and online/external publication order. History,
+Favorites, translations, wire formats, cache layout, dependencies, and public
+APIs remain unchanged. Dictionary-group editing is the next independent
+production compatibility caller and is not part of this leaf.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

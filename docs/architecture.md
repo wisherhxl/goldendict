@@ -6660,9 +6660,9 @@ persist structured runtime failure evidence. If that evidence or finalization
 cannot be made durable, the truthful `kDesiredRuntimeApplying` record remains
 restart-visible; no online rollback is permitted.
 
-Production invocation and startup recovery execution remain a separate bounded
-leaf because current application callbacks do not yet provide one unified
-transaction input and still use compatibility replacement paths.
+Production invocation and startup recovery execution are supplied by the
+focused leaves below. Dictionary-group editing remains the only production
+runtime-reconstruction callback on a compatibility replacement path.
 
 ### Phase 8 production facade ownership prerequisite
 
@@ -6674,14 +6674,11 @@ runtime source, prepares a Core candidate, exposes its facade for exact session
 restoration, and retains composition diagnostics. Preparation has no
 persistence or publication side effects.
 
-The existing callbacks still use their compatibility persistence, Network,
-Core, and Widgets handoffs, so their visible acceptance, rejection, warning,
-history, session, and cache behavior remains unchanged. Each successful Core
+The remaining compatibility callback retains its visible acceptance,
+rejection, warning, history, session, and cache behavior. Each successful Core
 replacement advances the same production owner; rejection retains its current
-snapshot. This removes the stale-owner ambiguity that previously prevented a
-later Preferences caller from truthfully supplying FT104 with complete Core
-runtime sources. Coordinator invocation, real-caller failure injection, and
-startup recovery execution remain separate leaves.
+snapshot. This removes stale-owner ambiguity while the transaction leaves
+below move Preferences and source editing onto the durable coordinator.
 
 ### Phase 8 production Preferences transaction invocation
 
@@ -6699,10 +6696,27 @@ Widgets authoritative state unchanged and keeps the dialog open on its existing
 localized failure surface. Published and published-with-forward-failure results
 accept the dialog and advance caller-side configuration, facade, diagnostics,
 and bounded-history mirrors; the latter emits a deterministic critical
-diagnostic and never claims rollback. Source-directory and dictionary-group
-callbacks remain on their owner-backed compatibility paths. Favorites, startup
-recovery execution, wire formats, cache layout, translations, and public APIs
-remain unchanged.
+diagnostic and never claims rollback. Favorites, wire formats, cache layout,
+translations, and public APIs remain unchanged.
+
+### Phase 8 production source-editor transaction invocation
+
+The shared production callback for local dictionary paths, sound directories,
+online sources, and external programs now invokes the same configuration-
+reload coordinator as Preferences. It records unchanged history intent,
+prepares the unchanged Network cache policy, composes the complete Core facade,
+and prepares Widgets before the durable decision. Pre-decision rejection keeps
+configuration bytes and all three active owners unchanged; successful
+publication updates the source projections and composition diagnostics and
+durably removes the pending record. Forward-only failure retains recovery
+evidence and is never reported as rollback.
+
+Focused production smoke coverage injects rejection at every pre-decision
+boundary and observes the complete successful boundary order for both local
+and online/external edits. Article sessions, unrelated configuration, history,
+Favorites, translations, cache layout, persistence formats, and public APIs
+remain unchanged. Dictionary-group editing remains the next independent
+compatibility caller.
 
 ### Phase 8 production startup transaction recovery
 
