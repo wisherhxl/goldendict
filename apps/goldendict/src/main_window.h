@@ -54,6 +54,8 @@ class SuggestionWorker;
 class SourceDirectoriesDialog;
 class PreferencesDialog;
 class RenderedTextMatchPlanController;
+struct WidgetsFacadePreparationRecord;
+class WidgetsFacadeActivationRelay;
 
 namespace goldendict::core {
 class DesktopFacade;
@@ -73,8 +75,32 @@ struct HistoryViewItem {
     std::uint32_t group_id = 0U;
 };
 
+class PreparedWidgetsFacadeCandidate final {
+   public:
+    PreparedWidgetsFacadeCandidate() noexcept;
+    ~PreparedWidgetsFacadeCandidate();
+    PreparedWidgetsFacadeCandidate(const PreparedWidgetsFacadeCandidate&) =
+        delete;
+    PreparedWidgetsFacadeCandidate& operator=(
+        const PreparedWidgetsFacadeCandidate&) = delete;
+    PreparedWidgetsFacadeCandidate(PreparedWidgetsFacadeCandidate&&) noexcept;
+    PreparedWidgetsFacadeCandidate& operator=(
+        PreparedWidgetsFacadeCandidate&&) noexcept;
+
+    explicit operator bool() const noexcept;
+    void Abandon() noexcept;
+
+   private:
+    explicit PreparedWidgetsFacadeCandidate(
+        std::shared_ptr<WidgetsFacadePreparationRecord> record) noexcept;
+    std::shared_ptr<WidgetsFacadePreparationRecord> record_;
+    friend class MainWindow;
+};
+
 class MainWindow final : public QMainWindow {
     Q_OBJECT
+    friend class PreparedWidgetsFacadeCandidate;
+    friend class WidgetsFacadeActivationRelay;
 
    public:
     using SourceApplyCallback = std::function<QString(
@@ -94,6 +120,13 @@ class MainWindow final : public QMainWindow {
     ~MainWindow() override;
 
     void SetFacade(goldendict::core::DesktopFacade* facade);
+    PreparedWidgetsFacadeCandidate PrepareFacadeCandidate(
+        std::shared_ptr<goldendict::core::DesktopFacade> facade,
+        const goldendict::core::ApplicationPreferences& preferences,
+        const std::vector<goldendict::core::DictionaryGroupConfiguration>&
+            groups);
+    bool IsFacadeCandidateCurrent(
+        const PreparedWidgetsFacadeCandidate& candidate) const noexcept;
     void SetPreferences(
         const goldendict::core::ApplicationPreferences& preferences);
     void SetPreferencesApplyCallback(PreferencesApplyCallback apply_callback);
@@ -185,6 +218,8 @@ class MainWindow final : public QMainWindow {
     void RunArticleTabsSmokeCheck(std::function<void(bool)> completion);
     void RunSuggestionPaneSmokeCheck(std::function<void(bool)> completion);
     void RunDictionaryBarSmokeCheck(std::function<void(bool)> completion);
+    void RunWidgetsFacadePreparationSmokeCheck(
+        std::function<void(bool)> completion);
     void RunFullTextDictionaryProjectionSmokeCheck(
         std::function<void(bool)> completion);
     void RunFullTextDialogSmokeCheck(std::function<void(bool)> completion);
@@ -279,6 +314,8 @@ class MainWindow final : public QMainWindow {
     void UpdateFileActions();
     void ShowTabContextMenu(const QPoint& position);
     ArticleView* CreateArticleView(goldendict::core::ArticleTabId tab_id);
+    void HandleArticleLoadFinished(goldendict::core::ArticleTabId tab_id,
+                                   ArticleView* view, bool success);
     ArticleView* ArticleViewForTab(goldendict::core::ArticleTabId tab_id) const;
     goldendict::core::ArticleTabId TabIdAt(int index) const;
     void ShowMessage(const QString& title, const QString& message);
@@ -288,6 +325,9 @@ class MainWindow final : public QMainWindow {
     void SelectGroup(std::uint32_t group_id);
     void RefreshGroupSelector();
     void RefreshDictionaryBar();
+    void ApplyPreparedDictionaryAction(const std::string& dictionary_id,
+                                       bool checked,
+                                       Qt::KeyboardModifiers modifiers);
     void ShowFullTextSearch();
     void NavigateToFullTextResult(
         goldendict::app::FullTextResultActivationIntent intent);
@@ -342,8 +382,16 @@ class MainWindow final : public QMainWindow {
     bool HasUsableMainWindowLayout() const;
     bool DispatchSafeExternalUrl(const QUrl& url);
     void ShowAboutDialog();
+    void AdvancePresentationMutationEpoch() noexcept;
+    void ReclaimAbandonedFacadeCandidates();
+    void ReclaimFacadeCandidate(bool force);
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
+    std::uint64_t facade_preparation_generation_ = 1U;
+    std::uint64_t presentation_mutation_epoch_ = 1U;
+    bool facade_preparation_shutdown_ = false;
+    std::shared_ptr<WidgetsFacadePreparationRecord> facade_preparation_record_;
+    QTimer* facade_candidate_reclaimer_ = nullptr;
     std::vector<std::string> dictionary_paths_;
     std::vector<goldendict::core::SoundDirectoryConfiguration>
         sound_directories_;

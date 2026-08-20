@@ -330,6 +330,14 @@ set_tests_properties(goldendict_dictionary_bar_smoke PROPERTIES
     "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-bar-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-bar-test-home/cache"
   TIMEOUT 20)
 
+add_test(NAME goldendict_widgets_facade_preparation_smoke
+  COMMAND $<TARGET_FILE:goldendict> --widgets-facade-preparation-smoke
+    --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
+set_tests_properties(goldendict_widgets_facade_preparation_smoke PROPERTIES
+  ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/cache"
+  TIMEOUT 20)
+
 add_test(NAME goldendict_article_tab_session_restart_smoke
   COMMAND ${CMAKE_COMMAND}
     -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>

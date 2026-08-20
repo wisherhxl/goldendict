@@ -3,8 +3,11 @@
 #include "main_window.h"
 
 #include <algorithm>
+#include <array>
+#include <atomic>
 #include <exception>
 #include <limits>
+#include <thread>
 
 #include <QAction>
 #include <QApplication>
@@ -53,6 +56,7 @@
 #include <QSpinBox>
 #include <QTabBar>
 #include <QTabWidget>
+#include <QThread>
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
@@ -120,6 +124,448 @@ QString EscapeHtml(QString text) {
 }
 
 }  // namespace
+
+class WidgetsFacadeActivationRelay final : public QObject {
+   public:
+    enum Connection : std::uint32_t {
+        kActions = 1U << 0U,
+        kArticlePages = 1U << 1U,
+        kArticleViews = 1U << 2U,
+        kSuggestions = 1U << 3U,
+        kRenderedMatches = 1U << 4U,
+        kGroupSelector = 1U << 5U,
+        kArticleTabs = 1U << 6U,
+        kFullTextOutputs = 1U << 7U,
+        kAllConnections = kActions | kArticlePages | kArticleViews |
+                          kSuggestions | kRenderedMatches | kGroupSelector |
+                          kArticleTabs | kFullTextOutputs,
+    };
+    enum class Action { kBack, kForward, kNewTab, kFullText, kSave };
+
+    WidgetsFacadeActivationRelay(MainWindow* owner, std::uint64_t generation,
+                                 std::uint64_t epoch, QObject* parent)
+        : QObject(parent),
+          prepared_owner_(owner),
+          prepared_generation_(generation),
+          prepared_epoch_(epoch) {}
+
+    void MarkConnected(Connection connection) noexcept {
+        connection_mask_.fetch_or(connection, std::memory_order_relaxed);
+    }
+
+    bool IsComplete() const noexcept {
+        return connection_mask_.load(std::memory_order_relaxed) ==
+               kAllConnections;
+    }
+
+    bool IsEnabled() const noexcept {
+        return enabled_.load(std::memory_order_acquire);
+    }
+
+    bool CanPublishWithoutAllocation(MainWindow* owner,
+                                     std::uint64_t generation,
+                                     std::uint64_t epoch) const noexcept {
+        return IsComplete() && !IsEnabled() && owner == prepared_owner_ &&
+               generation == prepared_generation_ && epoch == prepared_epoch_;
+    }
+
+    bool PublishAndEnable(MainWindow* owner, std::uint64_t expected_generation,
+                          std::uint64_t expected_epoch,
+                          std::uint64_t published_generation,
+                          std::uint64_t published_epoch) noexcept {
+        if (!CanPublishWithoutAllocation(owner, expected_generation,
+                                         expected_epoch) ||
+            published_generation == 0U || published_epoch == 0U)
+            return false;
+        published_owner_.store(owner, std::memory_order_release);
+        published_generation_.store(published_generation,
+                                    std::memory_order_release);
+        published_epoch_.store(published_epoch, std::memory_order_release);
+        enabled_.store(true, std::memory_order_release);
+        return true;
+    }
+
+    void Disable() noexcept {
+        enabled_.store(false, std::memory_order_release);
+        published_owner_.store(nullptr, std::memory_order_release);
+    }
+
+    std::uint64_t SuppressedDeliveries() const noexcept {
+        return suppressed_deliveries_.load(std::memory_order_relaxed);
+    }
+
+    void SelectGroup(std::uint32_t group_id) {
+        Deliver([&](MainWindow& owner) { owner.SelectGroup(group_id); });
+    }
+
+    void GroupSelectionChanged(int index) {
+        Deliver([&](MainWindow& owner) {
+            owner.AdvancePresentationMutationEpoch();
+            if (index >= 0) {
+                owner.selected_group_id_ =
+                    owner.group_selector_->itemData(index).toUInt();
+            }
+            owner.selected_group_id_ =
+                owner.group_selector_->currentData().value<quint32>();
+            owner.RefreshDictionaryBar();
+            owner.StartSuggestionLookup();
+        });
+    }
+
+    void ActivateTab(int index) {
+        Deliver([&](MainWindow& owner) { owner.ActivateArticleTab(index); });
+    }
+
+    void CloseTab(int index) {
+        Deliver([&](MainWindow& owner) { owner.CloseArticleTab(index); });
+    }
+
+    void TabMoved() {
+        Deliver([](MainWindow& owner) {
+            owner.AdvancePresentationMutationEpoch();
+        });
+    }
+
+    void TabContextMenu(const QPoint& position) {
+        Deliver([&](MainWindow& owner) { owner.ShowTabContextMenu(position); });
+    }
+
+    void DictionaryAction(const std::string& dictionary_id, bool checked,
+                          Qt::KeyboardModifiers modifiers) {
+        Deliver([&](MainWindow& owner) {
+            owner.ApplyPreparedDictionaryAction(dictionary_id, checked,
+                                                modifiers);
+        });
+    }
+
+    void TriggerAction(Action action) {
+        Deliver([&](MainWindow& owner) {
+            switch (action) {
+                case Action::kBack:
+                    owner.NavigateArticleTab(false);
+                    break;
+                case Action::kForward:
+                    owner.NavigateArticleTab(true);
+                    break;
+                case Action::kNewTab:
+                    owner.CreateEmptyArticleTab(
+                        !owner.preferences_.open_new_tabs_in_background);
+                    break;
+                case Action::kFullText:
+                    owner.ShowFullTextSearch();
+                    break;
+                case Action::kSave:
+                    owner.SaveArticle();
+                    break;
+            }
+        });
+    }
+
+    void ArticleLoadStarted(goldendict::core::ArticleTabId tab_id,
+                            ArticleView* view) {
+        Deliver([&](MainWindow& owner) {
+            if (owner.ArticleViewForTab(tab_id) != view)
+                return;
+            owner.InvalidateRenderedTextMatchPlan(tab_id);
+            ++owner.article_navigation_generations_[tab_id];
+            owner.rendered_page_text_transports_.erase(tab_id);
+        });
+    }
+
+    void PageLookup(goldendict::core::ArticleTabId tab_id,
+                    const QString& internal_url,
+                    ArticleLinkDisposition disposition) {
+        Deliver([&](MainWindow& owner) {
+            owner.OpenArticleLink(tab_id, QUrl(internal_url), disposition);
+        });
+    }
+
+    void ArticleLink(goldendict::core::ArticleTabId tab_id, const QUrl& url,
+                     ArticleLinkDisposition disposition) {
+        Deliver([&](MainWindow& owner) {
+            if (disposition == ArticleLinkDisposition::kNewForegroundTab &&
+                owner.preferences_.open_new_tabs_in_background) {
+                disposition = ArticleLinkDisposition::kNewBackgroundTab;
+            }
+            owner.OpenArticleLink(tab_id, url, disposition);
+        });
+    }
+
+    void SelectionLookup(goldendict::core::ArticleTabId tab_id,
+                         const QString& text,
+                         ArticleLinkDisposition disposition) {
+        Deliver([&](MainWindow& owner) {
+            if (disposition == ArticleLinkDisposition::kNewForegroundTab &&
+                owner.preferences_.open_new_tabs_in_background) {
+                disposition = ArticleLinkDisposition::kNewBackgroundTab;
+            }
+            owner.LookupArticleSelection(tab_id, text, disposition);
+        });
+    }
+
+    void SelectionToInput(const QString& text) {
+        Deliver([&](MainWindow& owner) { owner.query_->setText(text); });
+    }
+
+    void ExternalUrl(const QUrl& url) {
+        Deliver([&](MainWindow&) { QDesktopServices::openUrl(url); });
+    }
+
+    void DictionaryResult(goldendict::core::ArticleTabId tab_id,
+                          ArticleView* view, const QString& dictionary_id,
+                          int first_result_index, quint64 generation) {
+        Deliver([&](MainWindow& owner) {
+            const auto found = owner.lookup_results_.find(tab_id);
+            if (found == owner.lookup_results_.end() ||
+                found->second.generation != generation ||
+                owner.ArticleViewForTab(tab_id) != view) {
+                return;
+            }
+            const auto row = std::find_if(
+                found->second.rows.begin(), found->second.rows.end(),
+                [&](const auto& item) {
+                    return item.dictionary_id == dictionary_id.toStdString() &&
+                           item.first_result_index == first_result_index;
+                });
+            if (row != found->second.rows.end())
+                owner.NavigateToArticleResult(view, first_result_index);
+        });
+    }
+
+    void DictionaryResultsPane(goldendict::core::ArticleTabId tab_id,
+                               ArticleView* view, quint64 generation) {
+        Deliver([&](MainWindow& owner) {
+            owner.ShowDictionaryResultsPane(tab_id, view, generation);
+        });
+    }
+
+    void NavigationChanged() {
+        Deliver([](MainWindow& owner) { owner.UpdateNavigationActions(); });
+    }
+
+    void ArticleLoadFinished(goldendict::core::ArticleTabId tab_id,
+                             ArticleView* view, bool success) {
+        Deliver([&](MainWindow& owner) {
+            owner.HandleArticleLoadFinished(tab_id, view, success);
+        });
+    }
+
+    void PdfFinished(goldendict::core::ArticleTabId tab_id, bool success) {
+        Deliver([&](MainWindow& owner) {
+            if (owner.TabIdAt(owner.article_tabs_->currentIndex()) == tab_id) {
+                owner.status_->setText(success
+                                           ? QStringLiteral("PDF saved")
+                                           : QStringLiteral("PDF save failed"));
+            }
+        });
+    }
+
+    void PrintFinished(bool success) {
+        Deliver([&](MainWindow& owner) {
+            owner.print_in_progress_ = false;
+            owner.UpdateFileActions();
+            owner.status_->setText(success ? QStringLiteral("Article printed")
+                                           : QStringLiteral("Printing failed"));
+        });
+    }
+
+    void FullTextNavigation(goldendict::core::ArticleTabId tab_id,
+                            ArticleHighlightNavigationDirection direction) {
+        Deliver([&](MainWindow& owner) {
+            owner.NavigateFullTextHighlight(tab_id, direction);
+        });
+    }
+
+    void ScrollChanged() {
+        Deliver([](MainWindow& owner) {
+            owner.AdvancePresentationMutationEpoch();
+        });
+    }
+
+    void SuggestionFinished(goldendict::core::ArticleTabId tab_id,
+                            std::uint64_t generation,
+                            goldendict::core::SuggestionResponse response) {
+        if (!IsEnabled()) {
+            Suppress();
+            return;
+        }
+        QMetaObject::invokeMethod(
+            this, [this, tab_id, generation,
+                   response = std::move(response)]() mutable {
+                Deliver([&](MainWindow& owner) {
+                    owner.FinishSuggestionLookup(tab_id, generation,
+                                                 std::move(response));
+                });
+            });
+    }
+
+    void RenderedMatchFinished(
+        std::uint64_t generation,
+        goldendict::core::RenderedTextMatchPlanResult result) {
+        Deliver([&](MainWindow& owner) {
+            owner.FinishRenderedTextMatchPlan(generation, std::move(result));
+        });
+    }
+
+    void FullTextResult(
+        goldendict::app::FullTextResultActivationIntent intent) {
+        Deliver([&](MainWindow& owner) {
+            owner.NavigateToFullTextResult(std::move(intent));
+        });
+    }
+
+    void FullTextQueryInvalidated() {
+        Deliver([](MainWindow& owner) {
+            owner.pending_article_search_handoffs_.clear();
+            owner.rendered_page_text_transports_.clear();
+            owner.InvalidateRenderedTextMatchPlan();
+            for (auto& [tab_id, presentation] :
+                 owner.article_search_presentations_) {
+                static_cast<void>(tab_id);
+                presentation.accepted_query_generation = 0U;
+                ++presentation.generation;
+            }
+        });
+    }
+
+    void FullTextGeometry(std::string geometry) {
+        Deliver([&](MainWindow& owner) {
+            emit owner.FullTextDialogGeometryCaptured(std::move(geometry));
+        });
+    }
+
+   private:
+    bool CurrentOwner(MainWindow** owner) const noexcept {
+        if (!IsEnabled())
+            return false;
+        auto* published = published_owner_.load(std::memory_order_acquire);
+        if (published == nullptr || published != prepared_owner_ ||
+            published->facade_preparation_generation_ !=
+                published_generation_.load(std::memory_order_acquire) ||
+            published->facade_preparation_shutdown_) {
+            return false;
+        }
+        *owner = published;
+        return true;
+    }
+
+    void Suppress() noexcept {
+        suppressed_deliveries_.fetch_add(1U, std::memory_order_relaxed);
+    }
+
+    template <typename Callback>
+    void Deliver(Callback&& callback) {
+        MainWindow* owner = nullptr;
+        if (!CurrentOwner(&owner)) {
+            Suppress();
+            return;
+        }
+        callback(*owner);
+    }
+
+    MainWindow* prepared_owner_ = nullptr;
+    std::uint64_t prepared_generation_ = 0U;
+    std::uint64_t prepared_epoch_ = 0U;
+    std::atomic<MainWindow*> published_owner_ = nullptr;
+    std::atomic<std::uint64_t> published_generation_ = 0U;
+    std::atomic<std::uint64_t> published_epoch_ = 0U;
+    std::atomic_bool enabled_ = false;
+    std::atomic<std::uint32_t> connection_mask_ = 0U;
+    std::atomic<std::uint64_t> suppressed_deliveries_ = 0U;
+};
+
+struct WidgetsFacadePreparationResources final {
+    std::shared_ptr<goldendict::core::DesktopFacade> facade;
+    goldendict::core::ApplicationPreferences preferences;
+    std::vector<goldendict::core::DictionaryGroupConfiguration> groups;
+    std::vector<goldendict::core::DictionaryIdentity> catalog;
+    goldendict::core::ArticleTabsState tabs;
+    QString query_text;
+    int query_cursor = 0;
+    int query_selection_start = -1;
+    int query_selection_length = 0;
+    QString article_search_text;
+    std::uint32_t selected_group_id = 0U;
+    std::map<std::uint32_t, std::vector<std::string>> participating_ids;
+    std::map<std::uint32_t, std::vector<std::string>> dictionary_members;
+    std::map<std::uint32_t, std::vector<std::string>> solo_restore_ids;
+    std::vector<goldendict::core::ArticleTabId> mru_tab_ids;
+    std::map<goldendict::core::ArticleTabId, QPointF> scroll_positions;
+    bool dictionary_bar_visible = false;
+    QPointer<QWidget> focused_widget;
+    QPointer<DictionaryBrowser> active_dictionary_browser;
+    QPointer<goldendict::app::FullTextSearchDialog> active_full_text_dialog;
+    QPointer<QWidget> root;
+    QPointer<QComboBox> group_selector;
+    QPointer<QToolBar> dictionary_bar;
+    QPointer<QTabWidget> article_tabs;
+    QPointer<goldendict::app::FullTextSearchDialog> full_text_dialog;
+    QPointer<WidgetsFacadeActivationRelay> relay;
+    std::unique_ptr<SuggestionWorker> suggestion_worker;
+    QPointer<RenderedTextMatchPlanController> match_controller;
+
+    ~WidgetsFacadePreparationResources() {
+        if (suggestion_worker != nullptr)
+            suggestion_worker->Stop();
+        if (match_controller != nullptr)
+            match_controller->Stop();
+        delete root;
+    }
+};
+
+struct WidgetsFacadePreparationRecord final {
+    std::atomic_bool abandoned = false;
+    std::atomic_bool ready = false;
+    std::atomic_bool reclaimed = false;
+    std::atomic_bool reclaimed_on_owner_thread = false;
+    std::atomic<MainWindow*> owner = nullptr;
+    std::uint64_t generation = 0U;
+    std::uint64_t epoch = 0U;
+    // Accessed and destroyed only by the GUI-thread owner registry.
+    WidgetsFacadePreparationResources* resources = nullptr;
+};
+
+PreparedWidgetsFacadeCandidate::PreparedWidgetsFacadeCandidate() noexcept =
+    default;
+
+PreparedWidgetsFacadeCandidate::~PreparedWidgetsFacadeCandidate() {
+    Abandon();
+}
+
+PreparedWidgetsFacadeCandidate::PreparedWidgetsFacadeCandidate(
+    std::shared_ptr<WidgetsFacadePreparationRecord> record) noexcept
+    : record_(std::move(record)) {}
+
+PreparedWidgetsFacadeCandidate::PreparedWidgetsFacadeCandidate(
+    PreparedWidgetsFacadeCandidate&&) noexcept = default;
+
+PreparedWidgetsFacadeCandidate& PreparedWidgetsFacadeCandidate::operator=(
+    PreparedWidgetsFacadeCandidate&& other) noexcept {
+    if (this != &other) {
+        Abandon();
+        record_ = std::move(other.record_);
+    }
+    return *this;
+}
+
+PreparedWidgetsFacadeCandidate::operator bool() const noexcept {
+    return record_ != nullptr &&
+           record_->ready.load(std::memory_order_acquire) &&
+           !record_->abandoned.load(std::memory_order_acquire) &&
+           !record_->reclaimed.load(std::memory_order_acquire);
+}
+
+void PreparedWidgetsFacadeCandidate::Abandon() noexcept {
+    if (record_ != nullptr) {
+        record_->abandoned.store(true, std::memory_order_release);
+        auto* owner = record_->owner.load(std::memory_order_acquire);
+        if (owner != nullptr && qApp != nullptr &&
+            QThread::currentThread() == qApp->thread() &&
+            owner->facade_preparation_record_ == record_)
+            owner->ReclaimAbandonedFacadeCandidates();
+        record_.reset();
+    }
+}
 
 MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     : QMainWindow(parent),
@@ -512,6 +958,11 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
         QByteArrayLiteral("goldendict"), scheme_handler_);
     completion_timer_ = new QTimer(this);
     completion_timer_->setInterval(15);
+    facade_candidate_reclaimer_ = new QTimer(this);
+    facade_candidate_reclaimer_->setInterval(25);
+    facade_candidate_reclaimer_->setSingleShot(false);
+    connect(facade_candidate_reclaimer_, &QTimer::timeout, this,
+            &MainWindow::ReclaimAbandonedFacadeCandidates);
 
     connect(dictionary_sources_button_, &QPushButton::clicked,
             dictionaries_action_, &QAction::trigger);
@@ -556,7 +1007,12 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     connect(query_, &QLineEdit::returnPressed, this, &MainWindow::StartLookup);
     connect(query_, &QLineEdit::textChanged, this,
             &MainWindow::StartSuggestionLookup);
+    connect(query_, &QLineEdit::textChanged, this,
+            &MainWindow::AdvancePresentationMutationEpoch);
+    connect(query_, &QLineEdit::selectionChanged, this,
+            &MainWindow::AdvancePresentationMutationEpoch);
     connect(group_selector_, &QComboBox::currentIndexChanged, this, [this]() {
+        AdvancePresentationMutationEpoch();
         selected_group_id_ = group_selector_->currentData().value<quint32>();
         RefreshDictionaryBar();
         StartSuggestionLookup();
@@ -691,6 +1147,10 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
                     article_search_status_->clear();
                 }
             });
+    connect(article_search_, &QLineEdit::textChanged, this,
+            &MainWindow::AdvancePresentationMutationEpoch);
+    connect(article_search_, &QLineEdit::selectionChanged, this,
+            &MainWindow::AdvancePresentationMutationEpoch);
     connect(previous_action, &QAction::triggered, this,
             [this]() { FindInArticle(true); });
     connect(next_action, &QAction::triggered, this,
@@ -751,6 +1211,26 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
                 FinishRenderedTextMatchPlan(generation, std::move(result));
             },
             this);
+    connect(this, &MainWindow::ArticleTabSessionMutated, this,
+            &MainWindow::AdvancePresentationMutationEpoch);
+    connect(article_tabs_->tabBar(), &QTabBar::tabMoved, this,
+            [this](int, int) { AdvancePresentationMutationEpoch(); });
+    connect(
+        qApp, &QApplication::focusChanged, this,
+        [this](QWidget* old, QWidget* current) {
+            const auto belongs = [this](QWidget* widget) {
+                return widget != nullptr &&
+                       (widget == this || isAncestorOf(widget) ||
+                        (full_text_search_dialog_ != nullptr &&
+                         (widget == full_text_search_dialog_ ||
+                          full_text_search_dialog_->isAncestorOf(widget))) ||
+                        (dictionary_browser_ != nullptr &&
+                         (widget == dictionary_browser_ ||
+                          dictionary_browser_->isAncestorOf(widget))));
+            };
+            if (belongs(old) || belongs(current))
+                AdvancePresentationMutationEpoch();
+        });
     UpdateNavigationActions();
     UpdateFileActions();
     qApp->installEventFilter(this);
@@ -5109,6 +5589,15 @@ void MainWindow::RunDictionaryBrowserExportSmokeCheck(
 }
 
 MainWindow::~MainWindow() {
+    facade_preparation_shutdown_ = true;
+    ++facade_preparation_generation_;
+    AdvancePresentationMutationEpoch();
+    if (facade_candidate_reclaimer_ != nullptr)
+        facade_candidate_reclaimer_->stop();
+    if (facade_preparation_record_ != nullptr)
+        facade_preparation_record_->owner.store(nullptr,
+                                                std::memory_order_release);
+    ReclaimFacadeCandidate(true);
     qApp->removeEventFilter(this);
     if (rendered_text_match_plan_controller_ != nullptr)
         rendered_text_match_plan_controller_->DetachConsumer();
@@ -5154,6 +5643,8 @@ ArticleView* MainWindow::CreateArticleView(
     page->SetFacade(facade_);
     page->SetOpenNewTabsInBackground(preferences_.open_new_tabs_in_background);
     view->setPage(page);
+    connect(page, &QWebEnginePage::scrollPositionChanged, this,
+            [this](const QPointF&) { AdvancePresentationMutationEpoch(); });
     article_navigation_generations_.try_emplace(tab_id, 0U);
     connect(view, &ArticleView::loadStarted, this, [this, tab_id, view]() {
         if (ArticleViewForTab(tab_id) != view)
@@ -5219,52 +5710,7 @@ ArticleView* MainWindow::CreateArticleView(
             &MainWindow::UpdateNavigationActions);
     connect(view, &ArticleView::loadFinished, this,
             [this, tab_id, view](bool success) {
-                const auto scroll =
-                    pending_article_scroll_restorations_.find(tab_id);
-                if (scroll != pending_article_scroll_restorations_.end()) {
-                    const QPointF position = scroll->second;
-                    pending_article_scroll_restorations_.erase(scroll);
-                    if (!success) {
-                        return;
-                    }
-                    view->page()->runJavaScript(
-                        QStringLiteral("window.scrollTo(%1,%2)")
-                            .arg(position.x(), 0, 'f', 0)
-                            .arg(position.y(), 0, 'f', 0));
-                    const auto search =
-                        article_search_presentations_.find(tab_id);
-                    if (search != article_search_presentations_.end() &&
-                        !search->second.query.isEmpty()) {
-                        const QString query = search->second.query;
-                        const std::uint64_t generation =
-                            ++search->second.generation;
-                        view->findText(
-                            query, {},
-                            [this, tab_id, view, query, generation](
-                                const QWebEngineFindTextResult& result) {
-                                const auto current =
-                                    article_search_presentations_.find(tab_id);
-                                if (current ==
-                                        article_search_presentations_.end() ||
-                                    current->second.generation != generation ||
-                                    current->second.query != query ||
-                                    ArticleViewForTab(tab_id) != view) {
-                                    return;
-                                }
-                                current->second.status =
-                                    result.numberOfMatches() == 0
-                                        ? QStringLiteral("No matches")
-                                        : tr("%1 of %2")
-                                              .arg(result.activeMatch())
-                                              .arg(result.numberOfMatches());
-                                if (TabIdAt(article_tabs_->currentIndex()) ==
-                                    tab_id) {
-                                    article_search_status_->setText(
-                                        current->second.status);
-                                }
-                            });
-                    }
-                }
+                HandleArticleLoadFinished(tab_id, view, success);
             });
     connect(view, &ArticleView::pdfPrintingFinished, this,
             [this, tab_id](const QString&, bool success) {
@@ -5288,6 +5734,46 @@ ArticleView* MainWindow::CreateArticleView(
         "<!doctype html><html><body><h1>GoldenDict</h1>"
         "<p>Choose a dictionary folder to begin.</p></body></html>"));
     return view;
+}
+
+void MainWindow::HandleArticleLoadFinished(
+    goldendict::core::ArticleTabId tab_id, ArticleView* view, bool success) {
+    const auto scroll = pending_article_scroll_restorations_.find(tab_id);
+    if (scroll == pending_article_scroll_restorations_.end())
+        return;
+    const QPointF position = scroll->second;
+    pending_article_scroll_restorations_.erase(scroll);
+    if (!success)
+        return;
+    view->page()->runJavaScript(QStringLiteral("window.scrollTo(%1,%2)")
+                                    .arg(position.x(), 0, 'f', 0)
+                                    .arg(position.y(), 0, 'f', 0));
+    const auto search = article_search_presentations_.find(tab_id);
+    if (search == article_search_presentations_.end() ||
+        search->second.query.isEmpty()) {
+        return;
+    }
+    const QString query = search->second.query;
+    const std::uint64_t generation = ++search->second.generation;
+    view->findText(
+        query, {},
+        [this, tab_id, view, query,
+         generation](const QWebEngineFindTextResult& result) {
+            const auto current = article_search_presentations_.find(tab_id);
+            if (current == article_search_presentations_.end() ||
+                current->second.generation != generation ||
+                current->second.query != query ||
+                ArticleViewForTab(tab_id) != view) {
+                return;
+            }
+            current->second.status = result.numberOfMatches() == 0
+                                         ? QStringLiteral("No matches")
+                                         : tr("%1 of %2")
+                                               .arg(result.activeMatch())
+                                               .arg(result.numberOfMatches());
+            if (TabIdAt(article_tabs_->currentIndex()) == tab_id)
+                article_search_status_->setText(current->second.status);
+        });
 }
 
 void MainWindow::OpenArticleLink(goldendict::core::ArticleTabId tab_id,
@@ -5726,6 +6212,7 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 
 void MainWindow::SetDictionaryGroups(
     const std::vector<goldendict::core::DictionaryGroupConfiguration>& groups) {
+    AdvancePresentationMutationEpoch();
     groups_ = groups;
     RefreshGroupSelector();
     RefreshDictionaryBar();
@@ -5894,54 +6381,57 @@ void MainWindow::RefreshDictionaryBar() {
             widget->setAccessibleName(label);
             widget->setToolTip(label);
         }
-        connect(
-            action, &QAction::triggered, this,
-            [this, action, id](bool checked) {
-                auto& enabled = participating_ids_[selected_group_id_];
-                const auto modifiers = QApplication::keyboardModifiers();
-                if (modifiers.testFlag(Qt::ControlModifier) ||
-                    modifiers.testFlag(Qt::ShiftModifier)) {
-                    const bool was_solo =
-                        enabled.size() == 1U && enabled.front() == id;
-                    if (was_solo) {
-                        if (modifiers.testFlag(Qt::ShiftModifier)) {
-                            enabled = solo_restore_ids_[selected_group_id_];
-                        } else {
-                            enabled.clear();
-                            for (auto* candidate : dictionary_bar_->actions())
-                                enabled.push_back(
-                                    candidate->data().toString().toStdString());
-                        }
-                        solo_restore_ids_.erase(selected_group_id_);
-                    } else {
-                        solo_restore_ids_[selected_group_id_] = enabled;
-                        enabled = {id};
-                    }
-                } else {
-                    solo_restore_ids_.erase(selected_group_id_);
-                    const auto found =
-                        std::find(enabled.begin(), enabled.end(), id);
-                    if (checked && found == enabled.end())
-                        enabled.push_back(id);
-                    else if (!checked && found != enabled.end())
-                        enabled.erase(found);
-                }
-                const auto ordered_actions = dictionary_bar_->actions();
-                std::vector<std::string> ordered;
-                for (auto* candidate : ordered_actions) {
-                    const auto candidate_id =
-                        candidate->data().toString().toStdString();
-                    const bool participates =
-                        std::find(enabled.begin(), enabled.end(),
-                                  candidate_id) != enabled.end();
-                    candidate->setChecked(participates);
-                    if (participates)
-                        ordered.push_back(candidate_id);
-                }
-                enabled = std::move(ordered);
-                ApplyDictionaryParticipation();
-            });
+        connect(action, &QAction::triggered, this, [this, id](bool checked) {
+            ApplyPreparedDictionaryAction(id, checked,
+                                          QApplication::keyboardModifiers());
+        });
     }
+}
+
+void MainWindow::ApplyPreparedDictionaryAction(
+    const std::string& dictionary_id, bool checked,
+    Qt::KeyboardModifiers modifiers) {
+    auto& enabled = participating_ids_[selected_group_id_];
+    if (modifiers.testFlag(Qt::ControlModifier) ||
+        modifiers.testFlag(Qt::ShiftModifier)) {
+        const bool was_solo =
+            enabled.size() == 1U && enabled.front() == dictionary_id;
+        if (was_solo) {
+            if (modifiers.testFlag(Qt::ShiftModifier)) {
+                enabled = solo_restore_ids_[selected_group_id_];
+            } else {
+                enabled.clear();
+                for (auto* candidate : dictionary_bar_->actions())
+                    enabled.push_back(
+                        candidate->data().toString().toStdString());
+            }
+            solo_restore_ids_.erase(selected_group_id_);
+        } else {
+            solo_restore_ids_[selected_group_id_] = enabled;
+            enabled = {dictionary_id};
+        }
+    } else {
+        solo_restore_ids_.erase(selected_group_id_);
+        const auto found =
+            std::find(enabled.begin(), enabled.end(), dictionary_id);
+        if (checked && found == enabled.end())
+            enabled.push_back(dictionary_id);
+        else if (!checked && found != enabled.end())
+            enabled.erase(found);
+    }
+    const auto ordered_actions = dictionary_bar_->actions();
+    std::vector<std::string> ordered;
+    for (auto* candidate : ordered_actions) {
+        const auto candidate_id = candidate->data().toString().toStdString();
+        const bool participates = std::find(enabled.begin(), enabled.end(),
+                                            candidate_id) != enabled.end();
+        candidate->setChecked(participates);
+        if (participates)
+            ordered.push_back(candidate_id);
+    }
+    enabled = std::move(ordered);
+    AdvancePresentationMutationEpoch();
+    ApplyDictionaryParticipation();
 }
 
 void MainWindow::ApplyDictionaryFilter(
@@ -6278,6 +6768,199 @@ void MainWindow::RunDictionaryBarSmokeCheck(
         QTimer::singleShot(10, this, *hidden_poll);
     };
     QTimer::singleShot(10, this, *poll);
+}
+
+void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (facade_ == nullptr || facade_candidate_reclaimer_ == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial_session = facade_->ExportArticleTabSession();
+    const QString initial_query = query_->text();
+    const auto initial_group = selected_group_id_;
+    const int initial_tabs = article_tabs_->count();
+    const int initial_actions = dictionary_bar_->actions().size();
+    bool passed = !facade_candidate_reclaimer_->isActive() &&
+                  facade_preparation_record_ == nullptr;
+    auto facade = std::shared_ptr<goldendict::core::DesktopFacade>(
+        facade_, [](goldendict::core::DesktopFacade*) {});
+
+    PreparedWidgetsFacadeCandidate wrong_thread;
+    std::thread preparer([this, facade, &wrong_thread]() mutable {
+        wrong_thread = PrepareFacadeCandidate(facade, preferences_, groups_);
+    });
+    preparer.join();
+    passed = passed && !wrong_thread && facade_preparation_record_ == nullptr &&
+             !facade_candidate_reclaimer_->isActive();
+
+    auto candidate = PrepareFacadeCandidate(facade, preferences_, groups_);
+    auto moved_candidate = std::move(candidate);
+    passed = passed && !candidate && moved_candidate;
+    candidate = std::move(moved_candidate);
+    passed = passed && candidate && !moved_candidate;
+    const auto record = candidate.record_;
+    const auto* staged = record == nullptr ? nullptr : record->resources;
+    const auto active_catalog = facade_->GetDictionaryService().GetCatalog();
+    const bool catalog_matches =
+        staged != nullptr && staged->catalog.size() == active_catalog.size() &&
+        std::equal(staged->catalog.begin(), staged->catalog.end(),
+                   active_catalog.begin(),
+                   [](const auto& left, const auto& right) {
+                       return left.id == right.id && left.name == right.name;
+                   });
+    passed = passed && candidate && IsFacadeCandidateCurrent(candidate) &&
+             facade_candidate_reclaimer_->isActive() && staged != nullptr &&
+             staged->facade.get() == facade_ && catalog_matches &&
+             staged->tabs.tabs.size() ==
+                 facade_->GetArticleTabsState().tabs.size() &&
+             staged->query_text == initial_query &&
+             staged->selected_group_id == initial_group &&
+             staged->root != nullptr && !staged->root->isVisible() &&
+             !staged->root->isEnabled() && staged->group_selector != nullptr &&
+             staged->dictionary_bar != nullptr &&
+             staged->article_tabs != nullptr &&
+             staged->full_text_dialog != nullptr &&
+             !staged->full_text_dialog->isVisible() &&
+             staged->suggestion_worker != nullptr &&
+             staged->match_controller != nullptr && staged->relay != nullptr &&
+             staged->relay->IsComplete() && !staged->relay->IsEnabled() &&
+             staged->relay->CanPublishWithoutAllocation(
+                 this, record->generation, record->epoch) &&
+             article_tabs_->count() == initial_tabs &&
+             dictionary_bar_->actions().size() == initial_actions &&
+             facade_->ExportArticleTabSession() == initial_session;
+
+    const auto epoch_before_inert_emissions = presentation_mutation_epoch_;
+    const auto requests_before_inert_emissions = requests_.size();
+    const auto suppressed_before = staged->relay->SuppressedDeliveries();
+    auto* staged_action = staged->root->findChild<QAction*>(
+        QStringLiteral("widgetsFacadeCandidateBack"));
+    auto* staged_view =
+        staged->article_tabs->count() == 0
+            ? nullptr
+            : qobject_cast<ArticleView*>(staged->article_tabs->widget(0));
+    auto* staged_page = staged_view == nullptr
+                            ? nullptr
+                            : qobject_cast<ArticlePage*>(staged_view->page());
+    if (staged_action != nullptr) {
+        staged_action->setEnabled(true);
+        staged_action->trigger();
+        staged_action->setEnabled(false);
+    }
+    if (staged_page != nullptr) {
+        emit staged_page->LookupRequested(QStringLiteral("inert"),
+                                          QStringLiteral("goldendict://inert"),
+                                          ArticleLinkDisposition::kCurrentTab);
+    }
+    if (staged_view != nullptr)
+        emit staged_view->SelectionToInputRequested(QStringLiteral("inert"));
+    emit staged->group_selector->currentIndexChanged(
+        staged->group_selector->currentIndex());
+    emit staged->article_tabs->currentChanged(
+        staged->article_tabs->currentIndex());
+    emit staged->article_tabs->tabCloseRequested(0);
+    emit staged->article_tabs->tabBar()->tabMoved(0, 0);
+    emit staged->article_tabs->tabBar()->customContextMenuRequested(QPoint{});
+    staged->relay->SuggestionFinished(1U, 1U,
+                                      goldendict::core::SuggestionResponse{});
+    staged->relay->RenderedMatchFinished(
+        1U, goldendict::core::RenderedTextMatchPlanResult{});
+    emit staged->full_text_dialog->AcceptedQueryInvalidated();
+    emit staged->full_text_dialog->GeometryCaptured("inert");
+    passed = passed && staged_action != nullptr && staged_view != nullptr &&
+             staged_page != nullptr &&
+             staged->relay->SuppressedDeliveries() >= suppressed_before + 12U &&
+             presentation_mutation_epoch_ == epoch_before_inert_emissions &&
+             requests_.size() == requests_before_inert_emissions &&
+             selected_group_id_ == initial_group &&
+             article_tabs_->count() == initial_tabs &&
+             query_->text() == initial_query &&
+             facade_->ExportArticleTabSession() == initial_session &&
+             IsFacadeCandidateCurrent(candidate);
+
+    record->owner.store(nullptr, std::memory_order_release);
+    passed = passed && !IsFacadeCandidateCurrent(candidate);
+    record->owner.store(this, std::memory_order_release);
+    passed = passed && IsFacadeCandidateCurrent(candidate);
+    facade_preparation_shutdown_ = true;
+    passed = passed && !IsFacadeCandidateCurrent(candidate);
+    facade_preparation_shutdown_ = false;
+    passed = passed && IsFacadeCandidateCurrent(candidate);
+
+    query_->setText(initial_query + QStringLiteral("x"));
+    passed = passed && !IsFacadeCandidateCurrent(candidate) &&
+             query_->text() == initial_query + QStringLiteral("x") &&
+             facade_->ExportArticleTabSession() == initial_session;
+    candidate.Abandon();
+    passed = passed && facade_preparation_record_ == nullptr &&
+             !facade_candidate_reclaimer_->isActive();
+    query_->setText(initial_query);
+
+    auto invalid_groups = groups_;
+    invalid_groups.push_back({999U, "Invalid", "", {}});
+    invalid_groups.back().encoded_icon_data = "!";
+    auto failed = PrepareFacadeCandidate(facade, preferences_, invalid_groups);
+    passed = passed && !failed && facade_preparation_record_ == nullptr &&
+             !facade_candidate_reclaimer_->isActive() &&
+             facade_->ExportArticleTabSession() == initial_session;
+
+    auto stale = PrepareFacadeCandidate(facade, preferences_, groups_);
+    const bool stale_was_ready = static_cast<bool>(stale);
+    auto superseding = PrepareFacadeCandidate(facade, preferences_, groups_);
+    passed = passed && stale_was_ready && !stale && superseding &&
+             !IsFacadeCandidateCurrent(stale) &&
+             IsFacadeCandidateCurrent(superseding) &&
+             facade_candidate_reclaimer_->isActive();
+    stale.Abandon();
+    passed = passed && IsFacadeCandidateCurrent(superseding);
+    superseding.Abandon();
+    passed = passed && facade_preparation_record_ == nullptr &&
+             !facade_candidate_reclaimer_->isActive();
+
+    auto abandoned = PrepareFacadeCandidate(facade, preferences_, groups_);
+    const auto abandoned_record = abandoned.record_;
+    passed = passed && abandoned && facade_candidate_reclaimer_->isActive();
+    std::thread abandoner(
+        [candidate = std::move(abandoned)]() mutable { candidate.Abandon(); });
+    abandoner.join();
+    passed = passed && facade_preparation_record_ != nullptr &&
+             facade_candidate_reclaimer_->isActive();
+
+    auto* deadline = new QTimer(this);
+    deadline->setSingleShot(true);
+    deadline->setInterval(250);
+    connect(
+        deadline, &QTimer::timeout, this,
+        [this, passed, abandoned_record, deadline,
+         completion = std::move(completion)]() mutable {
+            const bool reclaimed =
+                abandoned_record->reclaimed.load(std::memory_order_acquire);
+            passed = passed && reclaimed &&
+                     abandoned_record->reclaimed_on_owner_thread.load(
+                         std::memory_order_acquire) &&
+                     facade_preparation_record_ == nullptr &&
+                     !facade_candidate_reclaimer_->isActive();
+
+            auto current_facade =
+                std::shared_ptr<goldendict::core::DesktopFacade>(
+                    facade_, [](goldendict::core::DesktopFacade*) {});
+            auto restarted =
+                PrepareFacadeCandidate(current_facade, preferences_, groups_);
+            passed =
+                passed && restarted && facade_candidate_reclaimer_->isActive();
+            const auto restarted_record = restarted.record_;
+            restarted_record->owner.store(nullptr, std::memory_order_release);
+            passed = passed && !IsFacadeCandidateCurrent(restarted);
+            restarted_record->owner.store(this, std::memory_order_release);
+            passed = passed && IsFacadeCandidateCurrent(restarted);
+            restarted.Abandon();
+            passed = passed && facade_preparation_record_ == nullptr &&
+                     !facade_candidate_reclaimer_->isActive();
+            deadline->deleteLater();
+            completion(passed);
+        });
+    deadline->start();
 }
 
 void MainWindow::RunFullTextDictionaryProjectionSmokeCheck(
@@ -7693,7 +8376,425 @@ void MainWindow::RunFullTextDialogSmokeCheck(
     completion(passed);
 }
 
+void MainWindow::AdvancePresentationMutationEpoch() noexcept {
+    ++presentation_mutation_epoch_;
+    if (presentation_mutation_epoch_ == 0U)
+        presentation_mutation_epoch_ = 1U;
+}
+
+void MainWindow::ReclaimFacadeCandidate(bool force) {
+    Q_ASSERT(QThread::currentThread() == thread());
+    if (facade_preparation_record_ == nullptr)
+        return;
+    if (!force && !facade_preparation_record_->abandoned.load(
+                      std::memory_order_acquire)) {
+        return;
+    }
+    auto record = std::move(facade_preparation_record_);
+    record->ready.store(false, std::memory_order_release);
+    record->owner.store(nullptr, std::memory_order_release);
+    if (record->resources != nullptr && record->resources->relay != nullptr)
+        record->resources->relay->Disable();
+    record->reclaimed_on_owner_thread.store(
+        record->resources == nullptr || record->resources->root == nullptr ||
+            record->resources->root->thread() == QThread::currentThread(),
+        std::memory_order_release);
+    delete record->resources;
+    record->resources = nullptr;
+    record->reclaimed.store(true, std::memory_order_release);
+    if (facade_candidate_reclaimer_->isActive())
+        facade_candidate_reclaimer_->stop();
+}
+
+void MainWindow::ReclaimAbandonedFacadeCandidates() {
+    ReclaimFacadeCandidate(false);
+}
+
+PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
+    std::shared_ptr<goldendict::core::DesktopFacade> facade,
+    const goldendict::core::ApplicationPreferences& preferences,
+    const std::vector<goldendict::core::DictionaryGroupConfiguration>& groups) {
+    if (QThread::currentThread() != thread() || qApp == nullptr ||
+        thread() != qApp->thread() || facade_preparation_shutdown_ ||
+        facade == nullptr) {
+        return {};
+    }
+
+    ++facade_preparation_generation_;
+    if (facade_preparation_generation_ == 0U)
+        facade_preparation_generation_ = 1U;
+    if (facade_preparation_record_ != nullptr) {
+        facade_preparation_record_->abandoned.store(true,
+                                                    std::memory_order_release);
+        ReclaimFacadeCandidate(true);
+    }
+
+    const auto generation = facade_preparation_generation_;
+    const auto epoch = presentation_mutation_epoch_;
+    auto record = std::make_shared<WidgetsFacadePreparationRecord>();
+    record->owner.store(this, std::memory_order_release);
+    record->generation = generation;
+    record->epoch = epoch;
+    std::unique_ptr<WidgetsFacadePreparationResources> resources;
+    try {
+        resources = std::make_unique<WidgetsFacadePreparationResources>();
+        resources->facade = std::move(facade);
+        resources->preferences = preferences;
+        resources->groups = groups;
+        resources->catalog =
+            resources->facade->GetDictionaryService().GetCatalog();
+        resources->tabs = resources->facade->GetArticleTabsState();
+        resources->query_text = query_->text();
+        resources->query_cursor = query_->cursorPosition();
+        resources->query_selection_start = query_->selectionStart();
+        resources->query_selection_length = query_->selectedText().size();
+        resources->article_search_text = article_search_->text();
+        resources->selected_group_id = selected_group_id_;
+        resources->participating_ids = participating_ids_;
+        resources->dictionary_members = dictionary_members_;
+        resources->solo_restore_ids = solo_restore_ids_;
+        resources->mru_tab_ids = mru_tab_ids_;
+        resources->dictionary_bar_visible = dictionary_bar_->isVisible();
+        resources->focused_widget = QApplication::focusWidget();
+        resources->active_dictionary_browser = dictionary_browser_;
+        resources->active_full_text_dialog = full_text_search_dialog_;
+        for (int index = 0; index < article_tabs_->count(); ++index) {
+            const auto tab_id = TabIdAt(index);
+            const auto* view =
+                qobject_cast<ArticleView*>(article_tabs_->widget(index));
+            if (tab_id != 0U && view != nullptr)
+                resources->scroll_positions.emplace(
+                    tab_id, view->page()->scrollPosition());
+        }
+
+        auto* root = new QWidget;
+        resources->root = root;
+        root->setObjectName(QStringLiteral("widgetsFacadeCandidateRoot"));
+        root->setAttribute(Qt::WA_DontShowOnScreen, true);
+        root->setEnabled(false);
+        root->hide();
+        auto* relay =
+            new WidgetsFacadeActivationRelay(this, generation, epoch, root);
+        resources->relay = relay;
+        auto* layout = new QVBoxLayout(root);
+        auto* staged_groups = new QComboBox(root);
+        staged_groups->setObjectName(
+            QStringLiteral("widgetsFacadeCandidateGroups"));
+        staged_groups->addItem(tr("All Dictionaries"),
+                               QVariant::fromValue<quint32>(0U));
+        for (const auto& group : groups) {
+            QIcon icon;
+            if (!group.encoded_icon_data.empty()) {
+                QPixmap pixmap;
+                if (!pixmap.loadFromData(QByteArray::fromBase64(
+                        QByteArray::fromStdString(group.encoded_icon_data)))) {
+                    throw std::runtime_error("Invalid dictionary group icon");
+                }
+                icon = QIcon(pixmap);
+            }
+            staged_groups->addItem(icon, QString::fromStdString(group.name),
+                                   QVariant::fromValue<quint32>(group.id));
+            const QKeySequence shortcut(QString::fromStdString(group.shortcut));
+            if (!shortcut.isEmpty()) {
+                auto* action = new QAction(root);
+                action->setShortcut(shortcut);
+                action->setEnabled(false);
+                const auto group_id = group.id;
+                connect(action, &QAction::triggered, relay,
+                        [relay, group_id]() { relay->SelectGroup(group_id); });
+                root->addAction(action);
+            }
+        }
+        resources->group_selector = staged_groups;
+        connect(staged_groups, &QComboBox::currentIndexChanged, relay,
+                [relay](int index) { relay->GroupSelectionChanged(index); });
+        relay->MarkConnected(WidgetsFacadeActivationRelay::kGroupSelector);
+        for (int index = 0; index < staged_groups->count(); ++index) {
+            if (staged_groups->itemData(index).toUInt() == selected_group_id_) {
+                staged_groups->setCurrentIndex(index);
+                break;
+            }
+        }
+        layout->addWidget(staged_groups);
+
+        auto* staged_bar = new QToolBar(root);
+        staged_bar->setObjectName(
+            QStringLiteral("widgetsFacadeCandidateDictionaryBar"));
+        resources->dictionary_bar = staged_bar;
+        const auto member_entry = dictionary_members_.find(selected_group_id_);
+        std::vector<std::string> members;
+        if (member_entry != dictionary_members_.end()) {
+            members = member_entry->second;
+        } else {
+            for (const auto& dictionary : resources->catalog)
+                members.push_back(dictionary.id);
+        }
+        const auto enabled_entry = participating_ids_.find(selected_group_id_);
+        const auto& enabled = enabled_entry == participating_ids_.end()
+                                  ? members
+                                  : enabled_entry->second;
+        for (const auto& dictionary_id : members) {
+            const auto identity = std::find_if(
+                resources->catalog.begin(), resources->catalog.end(),
+                [&dictionary_id](const auto& candidate) {
+                    return candidate.id == dictionary_id;
+                });
+            if (identity == resources->catalog.end())
+                continue;
+            const QString label = QString::fromStdString(
+                identity->name.empty() ? identity->id : identity->name);
+            auto* action = staged_bar->addAction(label);
+            action->setCheckable(true);
+            action->setChecked(std::find(enabled.begin(), enabled.end(),
+                                         identity->id) != enabled.end());
+            action->setData(QString::fromStdString(identity->id));
+            action->setToolTip(label);
+            action->setWhatsThis(
+                tr("Include %1 in dictionary lookups and suggestions")
+                    .arg(label));
+            action->setEnabled(false);
+            connect(action, &QAction::triggered, relay,
+                    [relay, dictionary_id](bool checked) {
+                        relay->DictionaryAction(
+                            dictionary_id, checked,
+                            QApplication::keyboardModifiers());
+                    });
+        }
+        relay->MarkConnected(WidgetsFacadeActivationRelay::kActions);
+        layout->addWidget(staged_bar);
+
+        const auto active_tab = std::find_if(
+            resources->tabs.tabs.begin(), resources->tabs.tabs.end(),
+            [&resources](const auto& tab) {
+                return tab.id == resources->tabs.active_tab_id;
+            });
+        const bool has_active_tab = active_tab != resources->tabs.tabs.end();
+
+        struct PreparedAction {
+            const char* name;
+            bool desired_enabled;
+            WidgetsFacadeActivationRelay::Action action;
+        };
+
+        const std::array<PreparedAction, 5> action_states{{
+            {"widgetsFacadeCandidateBack",
+             has_active_tab && active_tab->can_go_back,
+             WidgetsFacadeActivationRelay::Action::kBack},
+            {"widgetsFacadeCandidateForward",
+             has_active_tab && active_tab->can_go_forward,
+             WidgetsFacadeActivationRelay::Action::kForward},
+            {"widgetsFacadeCandidateNewTab", true,
+             WidgetsFacadeActivationRelay::Action::kNewTab},
+            {"widgetsFacadeCandidateFullText", true,
+             WidgetsFacadeActivationRelay::Action::kFullText},
+            {"widgetsFacadeCandidateSave", has_active_tab,
+             WidgetsFacadeActivationRelay::Action::kSave},
+        }};
+        for (const auto& [name, desired_enabled, prepared_action] :
+             action_states) {
+            auto* action = new QAction(root);
+            action->setObjectName(QString::fromLatin1(name));
+            action->setProperty("desiredEnabled", desired_enabled);
+            action->setEnabled(false);
+            connect(action, &QAction::triggered, relay,
+                    [relay, prepared_action]() {
+                        relay->TriggerAction(prepared_action);
+                    });
+            root->addAction(action);
+        }
+
+        auto* staged_tabs = new QTabWidget(root);
+        staged_tabs->setObjectName(
+            QStringLiteral("widgetsFacadeCandidateArticleTabs"));
+        staged_tabs->setTabBarAutoHide(preferences.hide_single_tab);
+        staged_tabs->setTabsClosable(true);
+        staged_tabs->setDocumentMode(true);
+        staged_tabs->setMovable(false);
+        staged_tabs->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
+        resources->article_tabs = staged_tabs;
+        connect(staged_tabs, &QTabWidget::currentChanged, relay,
+                [relay](int index) { relay->ActivateTab(index); });
+        connect(staged_tabs, &QTabWidget::tabCloseRequested, relay,
+                [relay](int index) { relay->CloseTab(index); });
+        connect(staged_tabs->tabBar(), &QTabBar::tabMoved, relay,
+                [relay](int, int) { relay->TabMoved(); });
+        connect(staged_tabs->tabBar(), &QWidget::customContextMenuRequested,
+                relay, [relay](const QPoint& position) {
+                    relay->TabContextMenu(position);
+                });
+        relay->MarkConnected(WidgetsFacadeActivationRelay::kArticleTabs);
+        int active_index = -1;
+        for (const auto& tab : resources->tabs.tabs) {
+            auto* view = new ArticleView(staged_tabs);
+            view->SetFacade(resources->facade.get());
+            view->SetClickPreferences(preferences.double_click_translates,
+                                      preferences.select_word_by_single_click);
+            view->setProperty("articleTabId",
+                              QVariant::fromValue<qulonglong>(tab.id));
+            auto* page = new ArticlePage(view);
+            page->SetFacade(resources->facade.get());
+            page->SetOpenNewTabsInBackground(
+                preferences.open_new_tabs_in_background);
+            view->setPage(page);
+            connect(page, &QWebEnginePage::scrollPositionChanged, relay,
+                    [relay](const QPointF&) { relay->ScrollChanged(); });
+            connect(view, &ArticleView::loadStarted, relay,
+                    [relay, tab_id = tab.id, view]() {
+                        relay->ArticleLoadStarted(tab_id, view);
+                    });
+            connect(page, &ArticlePage::LookupRequested, relay,
+                    [relay, tab_id = tab.id](
+                        const QString&, const QString& internal_url,
+                        ArticleLinkDisposition disposition) {
+                        relay->PageLookup(tab_id, internal_url, disposition);
+                    });
+            connect(page, &ArticlePage::ExternalUrlRequested, relay,
+                    [relay](const QUrl& url) { relay->ExternalUrl(url); });
+            connect(view, &ArticleView::LinkRequested, relay,
+                    [relay, tab_id = tab.id](
+                        const QUrl& url, ArticleLinkDisposition disposition) {
+                        relay->ArticleLink(tab_id, url, disposition);
+                    });
+            connect(
+                view, &ArticleView::SelectionLookupRequested, relay,
+                [relay, tab_id = tab.id](const QString& text,
+                                         ArticleLinkDisposition disposition) {
+                    relay->SelectionLookup(tab_id, text, disposition);
+                });
+            connect(view, &ArticleView::SelectionToInputRequested, relay,
+                    [relay](const QString& text) {
+                        relay->SelectionToInput(text);
+                    });
+            connect(view, &ArticleView::ExternalUrlRequested, relay,
+                    [relay](const QUrl& url) { relay->ExternalUrl(url); });
+            connect(view, &ArticleView::DictionaryResultRequested, relay,
+                    [relay, tab_id = tab.id, view](
+                        const QString& dictionary_id, int first_result_index,
+                        quint64 presentation_generation) {
+                        relay->DictionaryResult(tab_id, view, dictionary_id,
+                                                first_result_index,
+                                                presentation_generation);
+                    });
+            connect(view, &ArticleView::DictionaryResultsPaneRequested, relay,
+                    [relay, tab_id = tab.id,
+                     view](quint64 presentation_generation) {
+                        relay->DictionaryResultsPane(tab_id, view,
+                                                     presentation_generation);
+                    });
+            connect(view, &ArticleView::urlChanged, relay,
+                    [relay](const QUrl&) { relay->NavigationChanged(); });
+            connect(view, &ArticleView::loadFinished, relay,
+                    [relay, tab_id = tab.id, view](bool success) {
+                        relay->ArticleLoadFinished(tab_id, view, success);
+                    });
+            connect(view, &ArticleView::pdfPrintingFinished, relay,
+                    [relay, tab_id = tab.id](const QString&, bool success) {
+                        relay->PdfFinished(tab_id, success);
+                    });
+            connect(view, &ArticleView::printFinished, relay,
+                    [relay](bool success) { relay->PrintFinished(success); });
+            connect(view, &ArticleView::FullTextNavigationRequested, relay,
+                    [relay, tab_id = tab.id](
+                        ArticleHighlightNavigationDirection direction) {
+                        relay->FullTextNavigation(tab_id, direction);
+                    });
+            const QString title = QString::fromStdString(
+                tab.navigation.title.empty() ? tab.navigation.query
+                                             : tab.navigation.title);
+            const int index = staged_tabs->addTab(view, title);
+            if (tab.id == resources->tabs.active_tab_id)
+                active_index = index;
+        }
+        relay->MarkConnected(WidgetsFacadeActivationRelay::kArticlePages);
+        relay->MarkConnected(WidgetsFacadeActivationRelay::kArticleViews);
+        if (active_index >= 0)
+            staged_tabs->setCurrentIndex(active_index);
+        layout->addWidget(staged_tabs);
+
+        resources->suggestion_worker = std::make_unique<SuggestionWorker>(
+            [relay](goldendict::core::ArticleTabId tab_id,
+                    std::uint64_t work_generation,
+                    goldendict::core::SuggestionResponse response) {
+                relay->SuggestionFinished(tab_id, work_generation,
+                                          std::move(response));
+            });
+        relay->MarkConnected(WidgetsFacadeActivationRelay::kSuggestions);
+        resources->match_controller = new RenderedTextMatchPlanController(
+            [relay](std::uint64_t work_generation,
+                    goldendict::core::RenderedTextMatchPlanResult result) {
+                relay->RenderedMatchFinished(work_generation,
+                                             std::move(result));
+            },
+            root);
+        relay->MarkConnected(WidgetsFacadeActivationRelay::kRenderedMatches);
+        resources->match_controller->SetFacade(resources->facade.get());
+        resources->full_text_dialog = new goldendict::app::FullTextSearchDialog(
+            preferences, &resources->facade->GetDictionaryService(), {}, root);
+        resources->full_text_dialog->setAttribute(Qt::WA_DontShowOnScreen,
+                                                  true);
+        resources->full_text_dialog->setEnabled(false);
+        resources->full_text_dialog->hide();
+        connect(
+            resources->full_text_dialog,
+            &goldendict::app::FullTextSearchDialog::ResultActivationRequested,
+            relay,
+            [relay](auto intent) { relay->FullTextResult(std::move(intent)); });
+        connect(
+            resources->full_text_dialog,
+            &goldendict::app::FullTextSearchDialog::AcceptedQueryInvalidated,
+            relay, [relay]() { relay->FullTextQueryInvalidated(); });
+        connect(resources->full_text_dialog,
+                &goldendict::app::FullTextSearchDialog::GeometryCaptured, relay,
+                [relay](std::string geometry) {
+                    relay->FullTextGeometry(std::move(geometry));
+                });
+        relay->MarkConnected(WidgetsFacadeActivationRelay::kFullTextOutputs);
+
+        if (!relay->IsComplete() ||
+            !relay->CanPublishWithoutAllocation(this, generation, epoch)) {
+            throw std::runtime_error(
+                "Widgets facade activation relay is incomplete");
+        }
+
+        auto* status = new QLabel(
+            tr("%1 dictionary loaded")
+                .arg(static_cast<qulonglong>(resources->catalog.size())),
+            root);
+        status->setObjectName(QStringLiteral("widgetsFacadeCandidateStatus"));
+        layout->addWidget(status);
+    } catch (...) {
+        return {};
+    }
+
+    if (facade_preparation_shutdown_ ||
+        facade_preparation_generation_ != generation ||
+        presentation_mutation_epoch_ != epoch) {
+        return {};
+    }
+    record->resources = resources.release();
+    facade_preparation_record_ = record;
+    if (!facade_candidate_reclaimer_->isActive())
+        facade_candidate_reclaimer_->start();
+    record->ready.store(true, std::memory_order_release);
+    return PreparedWidgetsFacadeCandidate(std::move(record));
+}
+
+bool MainWindow::IsFacadeCandidateCurrent(
+    const PreparedWidgetsFacadeCandidate& candidate) const noexcept {
+    const auto& record = candidate.record_;
+    return QThread::currentThread() == thread() &&
+           !facade_preparation_shutdown_ && record != nullptr &&
+           record == facade_preparation_record_ &&
+           record->owner.load(std::memory_order_acquire) == this &&
+           record->generation == facade_preparation_generation_ &&
+           record->epoch == presentation_mutation_epoch_ &&
+           record->ready.load(std::memory_order_acquire) &&
+           !record->abandoned.load(std::memory_order_acquire) &&
+           !record->reclaimed.load(std::memory_order_acquire);
+}
+
 void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
+    AdvancePresentationMutationEpoch();
     const QSignalBlocker tab_signal_blocker(article_tabs_);
     InvalidateRenderedTextMatchPlan();
     if (rendered_text_match_plan_controller_ != nullptr)
@@ -7764,6 +8865,7 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
 
 void MainWindow::SetPreferences(
     const goldendict::core::ApplicationPreferences& preferences) {
+    AdvancePresentationMutationEpoch();
     preferences_ = preferences;
     if (!preferences_.mru_tab_order)
         FinishMruTraversal();

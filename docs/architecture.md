@@ -6489,6 +6489,44 @@ This source-private seam changes no installed API and adds no Widgets,
 coordinator, recovery, notification, Network, persistence, or recomposition
 behavior.
 
+### Hidden Widgets facade preparation
+
+`MainWindow` is the common Widgets presentation owner used by startup,
+Dictionaries source changes, group edits, and Preferences. It can now prepare
+one complete hidden presentation candidate without calling the destructive
+`SetFacade` path. The move-only token is bound to the owner, a preparation
+generation, and a presentation-mutation epoch. Query/group/participation,
+tab/navigation/session/MRU, scroll, article-search, focus, Preferences, group,
+and legacy facade mutations advance that epoch, so continued use of the active
+window makes an older candidate stale before any later visible mutation.
+
+Preparation is GUI-thread-only. It allocates a hidden disabled widget tree,
+translated models/actions, blank article views/pages, inert signal wiring,
+workers/controllers, facade/service bindings, and continuity snapshots. It
+does not install a scheme handler, load an article, submit work, rebind an
+existing dialog, cancel an active request, or alter the visible presentation.
+The visible forward-only handoff remains a separate leaf.
+
+All prepared producers are connected before readiness to a candidate-owned
+activation relay: group-selector changes, group and dictionary actions,
+navigation actions, article-tab activation/close/move/context signals,
+ArticlePage and ArticleView signals, all full-text dialog outputs, suggestion
+completion, and rendered-match completion. The relay's completeness mask
+tracks each category only after every corresponding connection exists. The
+relay retains the production callbacks but suppresses delivery while hidden.
+A future handoff can publish
+the final owner generation/epoch and enable it using only bounded atomic state
+changes; it does not need to connect, disconnect, replace callbacks, or
+reconstruct prepared objects. Preparation and abandonment never enable it.
+
+Staged QObjects belong to a GUI-thread owner registry rather than the movable
+token. A preconstructed reclamation timer is stopped while the registry is
+empty, starts before readiness is exposed, and stops again after reclamation.
+GUI-thread abandonment is immediate; cross-thread abandonment only marks the
+record and the already-running timer reclaims it on the QObject affinity
+thread within one serviced interval. Owner destruction invalidates tokens and
+reclaims all remaining staged objects on the GUI thread.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

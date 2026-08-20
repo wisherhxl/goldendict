@@ -5067,6 +5067,33 @@ Before considering a change complete, agents should prefer running the smallest
 relevant verification command that is already documented or confirmed by the
 project owner.
 
+## Hidden Widgets Facade Preparation
+
+`goldendict_widgets_facade_preparation_smoke` exercises the source-private
+`MainWindow` preparation boundary with the checked-in Dictd fixture under the
+offscreen WebEngine configuration. It verifies GUI-thread-only construction,
+complete hidden facade/service/catalog/group/tab/controller bindings, blank
+disabled staged widgets, and unchanged active facade session, tabs, dictionary
+actions, query, and selection while the candidate is ready.
+
+It also proves that every prepared group-selector, action, article-tab,
+page/view, full-text-output, suggestion, and rendered-match producer is
+connected to one complete disabled activation relay. Synthetic disabled
+group changes, tab activation/close/move/context requests, and other producer
+emissions are suppressed with zero active request, session, query, selection,
+epoch, or visible UI mutation, and test
+access verifies that later publication/enabling needs no new connection,
+disconnection, callback replacement, or allocation.
+
+The smoke also pins owner/generation/epoch validation: a volatile active-query
+mutation makes the candidate stale rather than restoring old input, owner and
+shutdown mismatches reject without active mutation, and move/abandon/reuse
+paths remain one-shot. The preconstructed reclamation timer is initially
+stopped, active before readiness, remains active across worker-thread
+abandonment, reclaims the staged QObject tree on its GUI affinity thread
+without another preparation, stops when the registry becomes empty, and
+restarts for a later candidate. The test performs no public-network request.
+
 Preferred full Windows Release verification workflow:
 
 ```sh
