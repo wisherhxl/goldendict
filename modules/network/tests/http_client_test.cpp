@@ -16,6 +16,7 @@
 
 #include "../src/http_client.h"
 #include "../src/network_cache_storage.h"
+#include "../src/network_runtime_test_access.h"
 #include "goldendict/network/network_runtime.h"
 
 namespace goldendict::network {
@@ -229,6 +230,9 @@ class HttpClientTest : public QObject {
     void DisablesAndClearsOnlyOwnedCache();
     void CancelsAndJoinsBeforeShutdownCleanup();
     void ActivatesPreparedPolicyWithExistingStorageLease();
+    void PreparesMoveOnlyCandidatesOnOwnerThreadWithoutActiveMutation();
+    void RejectsInvalidCrossRuntimeStaleAndReusedCandidates();
+    void AbandonsCandidatesOnOwnerThreadWithoutStorageMutation();
 };
 
 void HttpClientTest::EnforcesMoveOnlyStorageLease() {
@@ -260,6 +264,146 @@ void HttpClientTest::EnforcesMoveOnlyStorageLease() {
     QVERIFY(!moved.Release());
     QVERIFY(!first_slot.Acquire());
     QVERIFY(replacement.Release());
+}
+
+void HttpClientTest::
+    PreparesMoveOnlyCandidatesOnOwnerThreadWithoutActiveMutation() {
+    static_assert(
+        !std::is_copy_constructible_v<NetworkRuntime::PreparedCandidate>);
+    static_assert(
+        !std::is_copy_assignable_v<NetworkRuntime::PreparedCandidate>);
+    static_assert(std::is_nothrow_move_constructible_v<
+                  NetworkRuntime::PreparedCandidate>);
+    static_assert(
+        std::is_nothrow_move_assignable_v<NetworkRuntime::PreparedCandidate>);
+
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+    const QString owned = QString::fromStdString(runtime->cache_directory());
+    QFile sentinel(QDir(owned).filePath("active-candidate-sentinel"));
+    QVERIFY(sentinel.open(QIODevice::WriteOnly));
+    QCOMPARE(sentinel.write("active", 6), qint64{6});
+    sentinel.close();
+
+    auto positive_preparation =
+        NetworkRuntime::Prepare({3U, true}, root.path().toStdString());
+    auto positive = runtime->PrepareCandidate(std::move(positive_preparation));
+    QVERIFY(positive);
+    QVERIFY(NetworkRuntimeTestAccess::IsCurrent(*runtime, positive));
+    QVERIFY(NetworkRuntimeTestAccess::WasConstructedOnOwnerThread(*runtime,
+                                                                  positive));
+    QCOMPARE(NetworkRuntimeTestAccess::MaximumCacheBytes(positive),
+             3LL * 1024LL * 1024LL);
+    QCOMPARE(NetworkRuntimeTestAccess::CacheDirectory(positive), std::string());
+    QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
+    QVERIFY(sentinel.exists());
+
+    auto moved = std::move(positive);
+    QVERIFY(!positive);
+    QVERIFY(moved);
+    QVERIFY(NetworkRuntimeTestAccess::IsCurrent(*runtime, moved));
+
+    auto zero_preparation =
+        NetworkRuntime::Prepare({0U, false}, root.path().toStdString());
+    auto zero = runtime->PrepareCandidate(std::move(zero_preparation));
+    QVERIFY(zero);
+    QVERIFY(
+        NetworkRuntimeTestAccess::WasConstructedOnOwnerThread(*runtime, zero));
+    QCOMPARE(NetworkRuntimeTestAccess::MaximumCacheBytes(zero), 0);
+    QCOMPARE(NetworkRuntimeTestAccess::CacheDirectory(zero), std::string());
+    QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
+    QVERIFY(QDir(owned).exists());
+    QVERIFY(sentinel.exists());
+}
+
+void HttpClientTest::RejectsInvalidCrossRuntimeStaleAndReusedCandidates() {
+    QTemporaryDir root;
+    QTemporaryDir other_root;
+    QVERIFY(root.isValid());
+    QVERIFY(other_root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+    auto other = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({4U, false}, other_root.path().toStdString()));
+
+    NetworkRuntime::PreparedCandidate invalid;
+    QVERIFY(!invalid);
+    QVERIFY(!NetworkRuntimeTestAccess::Consume(*runtime, invalid));
+
+    auto wrong_directory = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({1U, false}, other_root.path().toStdString()));
+    QVERIFY(!wrong_directory);
+
+    QFile unavailable_root(QDir(root.path()).filePath("not-a-directory"));
+    QVERIFY(unavailable_root.open(QIODevice::WriteOnly));
+    unavailable_root.close();
+    auto unavailable_preparation = NetworkRuntime::Prepare(
+        {1U, false}, unavailable_root.fileName().toStdString());
+    QVERIFY(!unavailable_preparation.cache_available);
+    auto unavailable =
+        runtime->PrepareCandidate(std::move(unavailable_preparation));
+    QVERIFY(!unavailable);
+
+    auto candidate = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({2U, false}, root.path().toStdString()));
+    QVERIFY(candidate);
+    QVERIFY(!NetworkRuntimeTestAccess::IsCurrent(*other, candidate));
+    QVERIFY(!NetworkRuntimeTestAccess::Consume(*other, candidate));
+    QVERIFY(NetworkRuntimeTestAccess::Consume(*runtime, candidate));
+    QVERIFY(!candidate);
+    QVERIFY(!NetworkRuntimeTestAccess::Consume(*runtime, candidate));
+    QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
+
+    auto stale = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({3U, false}, root.path().toStdString()));
+    QVERIFY(stale);
+    QVERIFY(runtime->Activate(
+        NetworkRuntime::Prepare({7U, false}, root.path().toStdString())));
+    QVERIFY(!NetworkRuntimeTestAccess::IsCurrent(*runtime, stale));
+    QVERIFY(!NetworkRuntimeTestAccess::Consume(*runtime, stale));
+    QCOMPARE(runtime->maximum_cache_bytes(), 7LL * 1024LL * 1024LL);
+
+    auto shutdown_candidate = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({5U, false}, root.path().toStdString()));
+    QVERIFY(shutdown_candidate);
+    bool shutdown_cleanup_on_owner_thread = false;
+    NetworkRuntimeTestAccess::ObserveDestruction(
+        shutdown_candidate, [&](bool on_owner_thread) {
+            shutdown_cleanup_on_owner_thread = on_owner_thread;
+        });
+    runtime->Shutdown();
+    QVERIFY(shutdown_cleanup_on_owner_thread);
+    QVERIFY(!NetworkRuntimeTestAccess::IsCurrent(*runtime, shutdown_candidate));
+    QVERIFY(!NetworkRuntimeTestAccess::Consume(*runtime, shutdown_candidate));
+}
+
+void HttpClientTest::AbandonsCandidatesOnOwnerThreadWithoutStorageMutation() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+    const QString owned = QString::fromStdString(runtime->cache_directory());
+    QFile sentinel(QDir(owned).filePath("abandoned-candidate-sentinel"));
+    QVERIFY(sentinel.open(QIODevice::WriteOnly));
+    QCOMPARE(sentinel.write("active", 6), qint64{6});
+    sentinel.close();
+
+    bool destroyed_on_owner_thread = false;
+    {
+        auto candidate = runtime->PrepareCandidate(
+            NetworkRuntime::Prepare({1U, false}, root.path().toStdString()));
+        QVERIFY(candidate);
+        NetworkRuntimeTestAccess::ObserveDestruction(
+            candidate, [&](bool on_owner_thread) {
+                destroyed_on_owner_thread = on_owner_thread;
+            });
+    }
+    QVERIFY(destroyed_on_owner_thread);
+    QCOMPARE(runtime->maximum_cache_bytes(), 8LL * 1024LL * 1024LL);
+    QVERIFY(QDir(owned).exists());
+    QVERIFY(sentinel.exists());
 }
 
 void HttpClientTest::RejectsDuplicateRuntimeStorageAuthority() {

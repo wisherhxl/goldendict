@@ -48,6 +48,10 @@ std::uint64_t NextGeneration(StorageLeaseRegistry& registry) {
 
 }  // namespace
 
+NetworkCacheStorageSlot::Identity::operator bool() const noexcept {
+    return !key.empty() && generation != 0U;
+}
+
 NetworkCacheStorageSlot::Lease::Lease(std::string directory, std::string key,
                                       std::uint64_t generation)
     : directory_(std::move(directory)),
@@ -89,6 +93,11 @@ NetworkCacheStorageSlot::Lease::operator bool() const noexcept {
 
 const std::string& NetworkCacheStorageSlot::Lease::directory() const noexcept {
     return directory_;
+}
+
+NetworkCacheStorageSlot::Identity NetworkCacheStorageSlot::Lease::identity()
+    const {
+    return active_ ? Identity{key_, generation_} : Identity{};
 }
 
 bool NetworkCacheStorageSlot::Lease::Release() noexcept {

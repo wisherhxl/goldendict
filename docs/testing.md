@@ -993,7 +993,11 @@ transaction rollback, request quiescence, owned-cache-only clearing, and
 non-fatal redacted cleanup failure. Filesystem-only cases also cover move-only
 storage authority, duplicate acquisition, stale release, candidate
 abandonment, shutdown release, and persistent reacquisition without issuing a
-network request. The P8-PREF-6 offscreen/restart smoke adds
+network request. Owner-thread candidate cases additionally cover positive and
+zero preallocation, directory-unbound positive caches, runtime-generation and
+lease-identity binding, cross-runtime/stale/reused/shutdown rejection, and
+owner-thread abandonment without active mutation. The P8-PREF-6
+offscreen/restart smoke adds
 the pinned controls, complete-candidate transaction, persisted restart policy,
 owned-directory cleanup, and WebEngine sentinel isolation. Other blocked
 Phase 5/6/7/9/10 capabilities acquire focused Preferences coverage only after

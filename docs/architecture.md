@@ -1273,6 +1273,16 @@ Only the current lease may attach or mutate its disk cache, and it is released
 after request quiescence and cache destruction. Duplicate acquisition and
 stale release fail without changing the active owner or its storage.
 
+The runtime also prepares a private move-only, one-shot policy candidate on
+its existing Qt Network worker thread. A positive candidate preconstructs and
+sizes a directory-unbound `QNetworkDiskCache`; a zero candidate preallocates
+only its complete candidate state. Each candidate records the originating
+runtime generation and storage-lease identity. Wrong-runtime, stale, reused,
+invalid, shutdown, and abandoned candidates fail or clean up on the owner
+thread without touching the active manager, cache, lease, requests, or owned
+directory. Binding and the no-fail commit handoff remain a later transaction
+leaf.
+
 Preference apply validates and prepares a complete candidate before
 persistence and activation. Any validation, preparation, persistence, or
 activation failure preserves the previous persisted policy and active owner.

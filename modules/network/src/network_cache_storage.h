@@ -19,6 +19,18 @@ struct NetworkCacheStoragePreparation {
 // been destroyed.
 class NetworkCacheStorageSlot final {
    public:
+    struct Identity {
+        std::string key;
+        std::uint64_t generation = 0U;
+
+        explicit operator bool() const noexcept;
+
+        friend bool operator==(const Identity& left,
+                               const Identity& right) noexcept {
+            return left.key == right.key && left.generation == right.generation;
+        }
+    };
+
     class Lease final {
        public:
         Lease() = default;
@@ -31,6 +43,7 @@ class NetworkCacheStorageSlot final {
 
         explicit operator bool() const noexcept;
         const std::string& directory() const noexcept;
+        Identity identity() const;
         bool Release() noexcept;
 
        private:
