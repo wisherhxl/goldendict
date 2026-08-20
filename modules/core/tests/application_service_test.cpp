@@ -265,9 +265,11 @@ class ApplicationServiceTest : public QObject {
     void RejectsUnsafePreviousHistoryAbsenceTargets();
     void PreviousPersistenceFailuresRemainForwardAndTruthful();
     void RecoveryPolicyDurablyGatesDesiredAttempts();
+    void StartupRecoveryReplaysDesiredPersistence();
     void RecoveryPolicyReportsMarkerPublicationTruthfully();
     void RecoveryPolicyCrashCheckpointsRemainBounded();
     void RecoveryPolicyQuarantinesTerminalBlocks();
+    void PreviousRuntimeFailureQuarantineIsTerminal();
     void RecoveryPolicyDefersAndRejectsWithoutMutation();
     void MigratesLegacyPathsWithoutTouchingTheSource();
     void MigratesAllLegacyOnlineSourcesAtomically();
@@ -3345,6 +3347,53 @@ void ApplicationServiceTest::RecoveryPolicyCrashCheckpointsRemainBounded() {
     }
 }
 
+void ApplicationServiceTest::StartupRecoveryReplaysDesiredPersistence() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto configuration_path = root / "core.conf";
+    const auto desired_path = root / "desired.conf";
+    const auto history_path = root / "history-v1";
+    CoreConfiguration previous;
+    previous.index_directory = "previous-index";
+    CoreConfiguration desired;
+    desired.index_directory = "desired-index";
+    SaveConfiguration(configuration_path.string(), previous);
+    SaveConfiguration(desired_path.string(), desired);
+    const std::vector<HistoryEntry> desired_history{{7U, "recovered"}};
+    SaveHistory(history_path.string(), desired_history);
+    const auto desired_history_bytes = ReadFile(history_path);
+    std::filesystem::remove(history_path);
+
+    auto record =
+        FallbackRecord(0xa2U, PendingHistoryIntent::kReplace,
+                       ReadFile(configuration_path), {false, std::nullopt});
+    record.phase = PendingTransactionPhase::kDesiredCommit;
+    record.failure.reset();
+    record.desired_configuration =
+        MakePendingTransactionPayload(ReadFile(desired_path));
+    record.desired_history =
+        MakePendingTransactionPayload(desired_history_bytes);
+    const auto pending_path =
+        PendingConfigurationTransactionPath(configuration_path);
+    test::WriteBinaryFile(pending_path,
+                          SerializePendingConfigurationTransaction(record));
+    const ConfigurationRecoveryRequest request{configuration_path,
+                                               record.transaction_id};
+    const auto authorized = EvaluateConfigurationRecovery(request);
+    QCOMPARE(
+        authorized.disposition,
+        ConfigurationRecoveryDisposition::kAutomaticDesiredRecoveryAuthorized);
+    const auto replay = ReplayDesiredConfiguration(request, history_path);
+    QCOMPARE(replay.outcome,
+             ConfigurationPersistenceOutcome::kDesiredPersistenceApplied);
+    QCOMPARE(LoadConfiguration(configuration_path.string()).index_directory,
+             desired.index_directory);
+    QCOMPARE(LoadHistory(history_path.string(), 10U), desired_history);
+    QCOMPARE(ParsePendingConfigurationTransaction(ReadFile(pending_path)).phase,
+             PendingTransactionPhase::kDesiredPersistenceApplied);
+}
+
 void ApplicationServiceTest::
     RecoveryPolicyReportsMarkerPublicationTruthfully() {
     for (const bool fail_verification : {false, true}) {
@@ -3563,6 +3612,83 @@ void ApplicationServiceTest::RecoveryPolicyDefersAndRejectsWithoutMutation() {
     QCOMPARE(directory_hazard.disposition,
              ConfigurationRecoveryDisposition::kRejectedOrFailed);
     QCOMPARE(ReadFile(pending_path / "marker"), std::string("preserved"));
+}
+
+void ApplicationServiceTest::PreviousRuntimeFailureQuarantineIsTerminal() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto configuration_path = TemporaryPath(directory) / "core.conf";
+    const auto pending_path =
+        PendingConfigurationTransactionPath(configuration_path);
+    auto record = FallbackRecord(0xa1U, PendingHistoryIntent::kUnchanged,
+                                 "previous configuration");
+    record.phase = PendingTransactionPhase::kPreviousRuntimeApplying;
+    record.failure.reset();
+    test::WriteBinaryFile(configuration_path, "previous configuration");
+    test::WriteBinaryFile(pending_path,
+                          SerializePendingConfigurationTransaction(record));
+
+    const ConfigurationRecoveryRequest request{configuration_path,
+                                               record.transaction_id};
+    const auto quarantined = QuarantineConfigurationTransaction(
+        request, PendingFailureOperation::kReconstructPrevious,
+        PendingFailureDestination::kRuntimeFoundation,
+        PendingFailureCategory::kUnavailable, "core_construction_failed");
+    QCOMPARE(quarantined.outcome, RuntimeTransitionOutcome::kApplied);
+    QCOMPARE(quarantined.namespace_published_phase,
+             std::optional{PendingTransactionPhase::kQuarantined});
+    QCOMPARE(quarantined.confirmed_durable_phase,
+             std::optional{PendingTransactionPhase::kQuarantined});
+    const auto persisted =
+        ParsePendingConfigurationTransaction(ReadFile(pending_path));
+    QCOMPARE(persisted.phase, PendingTransactionPhase::kQuarantined);
+    QCOMPARE(persisted.failure->operation,
+             PendingFailureOperation::kReconstructPrevious);
+    QCOMPARE(persisted.failure->destination,
+             PendingFailureDestination::kRuntimeFoundation);
+
+    int mutations = 0;
+    ConfigurationPersistenceDependencies observe;
+    observe.filesystem_failure =
+        [&mutations](
+            ConfigurationPersistenceOperation operation,
+            const std::filesystem::path&) -> std::optional<std::error_code> {
+        if (operation == ConfigurationPersistenceOperation::kCreateTemporary ||
+            operation ==
+                ConfigurationPersistenceOperation::kReplaceDestination ||
+            operation == ConfigurationPersistenceOperation::kSyncDirectory)
+            ++mutations;
+        return std::nullopt;
+    };
+    const auto repeated = EvaluateConfigurationRecovery(request, observe);
+    QCOMPARE(repeated.disposition,
+             ConfigurationRecoveryDisposition::kQuarantinedTerminal);
+    QCOMPARE(mutations, 0);
+
+    record.phase = PendingTransactionPhase::kPreviousRuntimeApplying;
+    test::WriteBinaryFile(pending_path,
+                          SerializePendingConfigurationTransaction(record));
+    ConfigurationPersistenceDependencies uncertain;
+    uncertain.filesystem_failure =
+        [&pending_path](ConfigurationPersistenceOperation operation,
+                        const std::filesystem::path& path)
+        -> std::optional<std::error_code> {
+        if (operation == ConfigurationPersistenceOperation::kSyncDirectory &&
+            path == pending_path.parent_path())
+            return std::make_error_code(std::errc::io_error);
+        return std::nullopt;
+    };
+    const auto namespace_only = QuarantineConfigurationTransaction(
+        request, PendingFailureOperation::kReconstructPrevious,
+        PendingFailureDestination::kRuntimeTransport,
+        PendingFailureCategory::kIo, "network_construction_failed", uncertain);
+    QCOMPARE(namespace_only.outcome,
+             RuntimeTransitionOutcome::kPostPublicationFailure);
+    QCOMPARE(namespace_only.namespace_published_phase,
+             std::optional{PendingTransactionPhase::kQuarantined});
+    QVERIFY(!namespace_only.confirmed_durable_phase.has_value());
+    QCOMPARE(ParsePendingConfigurationTransaction(ReadFile(pending_path)).phase,
+             PendingTransactionPhase::kQuarantined);
 }
 
 void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {

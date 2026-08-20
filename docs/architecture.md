@@ -6704,5 +6704,35 @@ callbacks remain on their owner-backed compatibility paths. Favorites, startup
 recovery execution, wire formats, cache layout, translations, and public APIs
 remain unchanged.
 
+### Phase 8 production startup transaction recovery
+
+Production startup now derives the pending-record path only from the trusted
+current configuration location and converges it before legacy migration,
+command-line overrides, Favorites, callbacks, the Preferences coordinator, or
+interactive presentation. Core-private recovery reads regular files without
+following links, validates the complete v1 identity/schema/payload digests,
+durably gates one desired persistence replay, and otherwise restores the exact
+previous configuration plus the recorded replaced, empty, absent, or unchanged
+history state.
+
+After persistence convergence, startup constructs fresh Network, Core, and
+hidden Widgets owners on the GUI thread. Desired recovery is durably marked
+runtime-applying first; previous fallback uses `kPreviousRuntimeApplying` as
+its attempt-start marker. Only the process that created that previous marker
+may construct the previous runtime. A later process seeing the marker
+quarantines it without constructing Network, Core, or Widgets, so a crash or
+failed quarantine publication cannot repeat the failed runtime attempt.
+Transport, foundation, and presentation failures retain bounded structured
+identities; successful reconstruction verifies persistence again and durably
+removes the pending record before normal Preferences transactions can begin.
+
+Every `kQuarantined` identity blocks automatic startup and presents the safe
+startup diagnostic. Persistence-only quarantine is classified separately but
+also blocks: v1 retains insufficient provenance to prove that constructing a
+currently complete payload would not repeat an earlier runtime attempt.
+Changing or removing quarantine evidence is explicit remediation outside this
+leaf. Favorites, wire formats, cache layout, public APIs, dependencies, and
+online rollback remain unchanged.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

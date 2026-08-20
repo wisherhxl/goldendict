@@ -178,6 +178,37 @@ struct ConfigurationRecoveryResult {
     std::optional<ConfigurationPersistenceError> secondary_error;
 };
 
+struct PendingConfigurationInspectionResult {
+    bool present = false;
+    std::optional<PendingConfigurationTransactionRecord> record;
+    std::optional<ConfigurationPersistenceError> error;
+};
+
+PendingConfigurationInspectionResult InspectPendingConfigurationTransaction(
+    const std::filesystem::path& configuration_path,
+    const ConfigurationPersistenceDependencies& dependencies = {});
+
+ConfigurationPersistenceResult ReplayDesiredConfiguration(
+    const ConfigurationRecoveryRequest& request,
+    const std::filesystem::path& history_path,
+    const ConfigurationPersistenceDependencies& dependencies = {});
+
+RuntimeTransitionResult QuarantineConfigurationTransaction(
+    const ConfigurationRecoveryRequest& request,
+    PendingFailureOperation operation, PendingFailureDestination destination,
+    PendingFailureCategory category, std::string identifier,
+    const ConfigurationPersistenceDependencies& dependencies = {});
+
+RuntimeTransitionResult FinishRecoveredConfigurationTransaction(
+    const ConfigurationRecoveryRequest& request,
+    const std::filesystem::path& history_path, bool desired,
+    const ConfigurationPersistenceDependencies& dependencies = {});
+
+RuntimeTransitionResult DiscardPreparedConfigurationTransaction(
+    const ConfigurationRecoveryRequest& request,
+    const std::filesystem::path& history_path,
+    const ConfigurationPersistenceDependencies& dependencies = {});
+
 ConfigurationRecoveryResult EvaluateConfigurationRecovery(
     const ConfigurationRecoveryRequest& request,
     const ConfigurationPersistenceDependencies& dependencies = {});

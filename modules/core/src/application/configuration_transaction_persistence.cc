@@ -676,6 +676,25 @@ void RestoreAbsence(const std::filesystem::path& destination,
                "after_history_absence_verification");
 }
 
+void VerifyAbsence(const std::filesystem::path& destination,
+                   const ConfigurationPersistenceDependencies& dependencies) {
+    RequireSafeExisting(destination, true, dependencies,
+                        PendingFailureDestination::kHistory);
+    Inject(dependencies, ConfigurationPersistenceOperation::kVerifyAbsence,
+           destination, PendingFailureDestination::kHistory,
+           "absence_verification_failed");
+    std::error_code error;
+    const auto status = std::filesystem::symlink_status(destination, error);
+    if (error != std::errc::no_such_file_or_directory &&
+        (error || std::filesystem::exists(status))) {
+        throw PersistenceFailure(
+            PendingFailureDestination::kHistory,
+            error ? Category(error) : PendingFailureCategory::kInvalidData,
+            "absence_verification_failed",
+            "History destination unexpectedly exists");
+    }
+}
+
 }  // namespace
 
 std::filesystem::path PendingConfigurationTransactionPath(
@@ -882,6 +901,7 @@ PreviousPersistenceResult PersistPreviousConfiguration(
         }
         if (record.phase !=
                 PendingTransactionPhase::kDesiredPersistenceFailed &&
+            record.phase != PendingTransactionPhase::kDesiredRuntimeFailed &&
             record.phase !=
                 PendingTransactionPhase::kPreviousPersistenceApplying &&
             record.phase !=
@@ -1308,6 +1328,266 @@ ConfigurationRecoveryResult EvaluateConfigurationRecovery(
          PendingFailureCategory::kInvariant, "recovery_phase_rejected"},
         "Pending transaction phase is not valid for recovery policy"};
     return result;
+}
+
+PendingConfigurationInspectionResult InspectPendingConfigurationTransaction(
+    const std::filesystem::path& configuration_path,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    PendingConfigurationInspectionResult result;
+    const auto path = PendingConfigurationTransactionPath(configuration_path);
+    try {
+        RequireSafeExisting(path, true, dependencies,
+                            PendingFailureDestination::kPendingRecord);
+        std::error_code error;
+        const auto status = std::filesystem::symlink_status(path, error);
+        if (error == std::errc::no_such_file_or_directory ||
+            (!error && !std::filesystem::exists(status))) {
+            return result;
+        }
+        if (error) {
+            throw PersistenceFailure(PendingFailureDestination::kPendingRecord,
+                                     Category(error), "path_inspection_failed",
+                                     error.message());
+        }
+        result.present = true;
+        auto parsed = ParsePendingConfigurationTransaction(ReadFile(
+            path, dependencies, PendingFailureDestination::kPendingRecord));
+        result.record =
+            ReadPendingRecord(path, parsed.transaction_id, dependencies);
+    } catch (const PersistenceFailure& failure) {
+        result.error =
+            RecoveryError(failure, PendingFailureOperation::kReadRecord);
+    } catch (const std::exception& failure) {
+        result.error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kValidateRecord,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kInvalidData, "pending_record_invalid"},
+            failure.what()};
+    }
+    return result;
+}
+
+ConfigurationPersistenceResult ReplayDesiredConfiguration(
+    const ConfigurationRecoveryRequest& request,
+    const std::filesystem::path& history_path,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    ConfigurationPersistenceResult result;
+    const auto pending_path =
+        PendingConfigurationTransactionPath(request.configuration_path);
+    PendingConfigurationTransactionRecord record;
+    try {
+        record = ReadPendingRecord(pending_path, request.transaction_id,
+                                   dependencies);
+        if ((record.phase != PendingTransactionPhase::kDesiredCommit &&
+             record.phase !=
+                 PendingTransactionPhase::kDesiredPersistenceApplying &&
+             record.phase !=
+                 PendingTransactionPhase::kDesiredPersistenceFailed) ||
+            record.desired_recovery_attempt !=
+                DesiredRecoveryAttempt::kAttempted) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                PendingFailureCategory::kRejected,
+                "desired_replay_phase_rejected",
+                "Pending transaction does not permit desired replay");
+        }
+        record.phase = PendingTransactionPhase::kDesiredPersistenceApplying;
+        record.failure.reset();
+        PublishRecordUpdate(
+            record, pending_path, "recovery-desired-applying", dependencies,
+            [&] { result.namespace_published_phase = record.phase; },
+            [&] { result.confirmed_durable_phase = record.phase; });
+        PublishPayload(
+            record.desired_configuration, request.configuration_path,
+            "recovery-configuration", record.transaction_id, dependencies,
+            PendingFailureDestination::kConfiguration,
+            ConfigurationPersistenceCheckpoint::kAfterConfigurationReplaced,
+            ConfigurationPersistenceCheckpoint::kAfterConfigurationVerified);
+        if (record.history_intent == PendingHistoryIntent::kReplace) {
+            PublishPayload(
+                *record.desired_history, history_path, "recovery-history",
+                record.transaction_id, dependencies,
+                PendingFailureDestination::kHistory,
+                ConfigurationPersistenceCheckpoint::kAfterHistoryReplaced,
+                ConfigurationPersistenceCheckpoint::kAfterHistoryVerified);
+        }
+        record.phase = PendingTransactionPhase::kDesiredPersistenceApplied;
+        PublishRecordUpdate(
+            record, pending_path, "recovery-desired-applied", dependencies,
+            [&] { result.namespace_published_phase = record.phase; },
+            [&] { result.confirmed_durable_phase = record.phase; });
+        result.outcome =
+            ConfigurationPersistenceOutcome::kDesiredPersistenceApplied;
+        result.decision_path_published = true;
+        return result;
+    } catch (const PersistenceFailure& failure) {
+        result.error = Error(failure);
+    } catch (const std::exception& failure) {
+        result.error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kPersistDesired,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kInvalidData, "recovery_replay_failed"},
+            failure.what()};
+    }
+    result.outcome = ConfigurationPersistenceOutcome::kPostDecisionFailure;
+    if (record.transaction_id == request.transaction_id) {
+        record.phase = PendingTransactionPhase::kDesiredPersistenceFailed;
+        record.failure = result.error->identity;
+        try {
+            PublishRecordUpdate(
+                record, pending_path, "recovery-desired-failed", dependencies,
+                [&] { result.failure_evidence_namespace_published = true; },
+                [&] { result.failure_evidence_durable = true; });
+        } catch (const PersistenceFailure& failure) {
+            result.failure_evidence_error = Error(failure);
+        }
+    }
+    return result;
+}
+
+RuntimeTransitionResult QuarantineConfigurationTransaction(
+    const ConfigurationRecoveryRequest& request,
+    PendingFailureOperation operation, PendingFailureDestination destination,
+    PendingFailureCategory category, std::string identifier,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    return RunRuntimeTransition([&](RuntimeTransitionResult& result) {
+        const bool runtime_identity =
+            operation == PendingFailureOperation::kReconstructPrevious &&
+            (destination == PendingFailureDestination::kRuntimeTransport ||
+             destination == PendingFailureDestination::kRuntimeFoundation ||
+             destination == PendingFailureDestination::kRuntimePresentation);
+        const bool persistence_identity =
+            operation == PendingFailureOperation::kPersistPrevious &&
+            (destination == PendingFailureDestination::kPendingRecord ||
+             destination == PendingFailureDestination::kConfiguration ||
+             destination == PendingFailureDestination::kHistory);
+        if ((!runtime_identity && !persistence_identity) ||
+            !SafeFailureIdentifier(identifier)) {
+            throw PersistenceFailure(PendingFailureDestination::kPendingRecord,
+                                     PendingFailureCategory::kRejected,
+                                     "quarantine_failure_invalid",
+                                     "Quarantine failure identity is invalid");
+        }
+        const auto path =
+            PendingConfigurationTransactionPath(request.configuration_path);
+        auto record =
+            ReadPendingRecord(path, request.transaction_id, dependencies);
+        if (record.phase != PendingTransactionPhase::kPreviousRuntimeApplying &&
+            record.phase !=
+                PendingTransactionPhase::kPreviousPersistenceBlocked) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                PendingFailureCategory::kRejected, "quarantine_phase_rejected",
+                "Pending transaction cannot be quarantined");
+        }
+        record.phase = PendingTransactionPhase::kQuarantined;
+        record.failure = PendingFailureIdentity{
+            operation, destination, category, std::move(identifier)};
+        PublishRecordUpdate(
+            record, path, "quarantine", dependencies,
+            [&] { result.namespace_published_phase = record.phase; },
+            [&] { result.confirmed_durable_phase = record.phase; });
+        VerifyPendingRecord(record, path, dependencies);
+    });
+}
+
+RuntimeTransitionResult FinishRecoveredConfigurationTransaction(
+    const ConfigurationRecoveryRequest& request,
+    const std::filesystem::path& history_path, bool desired,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    return RunRuntimeTransition([&](RuntimeTransitionResult& result) {
+        const auto path =
+            PendingConfigurationTransactionPath(request.configuration_path);
+        const auto record =
+            ReadPendingRecord(path, request.transaction_id, dependencies);
+        const auto expected =
+            desired ? PendingTransactionPhase::kDesiredRuntimeApplying
+                    : PendingTransactionPhase::kPreviousRuntimeApplying;
+        if (record.phase != expected) {
+            throw PersistenceFailure(PendingFailureDestination::kPendingRecord,
+                                     PendingFailureCategory::kRejected,
+                                     "runtime_phase_rejected",
+                                     "Recovered runtime phase is invalid");
+        }
+        const auto& configuration =
+            desired ? record.desired_configuration
+                    : *record.previous_configuration.payload;
+        VerifyPayload(request.configuration_path, configuration, dependencies,
+                      PendingFailureDestination::kConfiguration);
+        if (record.history_intent == PendingHistoryIntent::kReplace) {
+            if (desired || record.previous_history.existed) {
+                const auto& history = desired
+                                          ? *record.desired_history
+                                          : *record.previous_history.payload;
+                VerifyPayload(history_path, history, dependencies,
+                              PendingFailureDestination::kHistory);
+            } else {
+                VerifyAbsence(history_path, dependencies);
+            }
+        }
+        Inject(dependencies,
+               ConfigurationPersistenceOperation::kRemoveDestination, path,
+               PendingFailureDestination::kPendingRecord,
+               "pending_remove_failed");
+        std::error_code error;
+        if (!std::filesystem::remove(path, error) || error) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                error ? Category(error) : PendingFailureCategory::kNotFound,
+                "pending_remove_failed", error.message());
+        }
+        result.pending_record_removed = true;
+        SyncDirectory(path.parent_path(), dependencies,
+                      PendingFailureDestination::kPendingRecord,
+                      [&] { result.removal_confirmed_durable = true; });
+    });
+}
+
+RuntimeTransitionResult DiscardPreparedConfigurationTransaction(
+    const ConfigurationRecoveryRequest& request,
+    const std::filesystem::path& history_path,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    return RunRuntimeTransition([&](RuntimeTransitionResult& result) {
+        const auto path =
+            PendingConfigurationTransactionPath(request.configuration_path);
+        const auto record =
+            ReadPendingRecord(path, request.transaction_id, dependencies);
+        if (record.phase != PendingTransactionPhase::kPrepared ||
+            !record.previous_configuration.existed ||
+            !record.previous_configuration.payload) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                PendingFailureCategory::kRejected, "prepared_discard_rejected",
+                "Prepared transaction cannot be discarded");
+        }
+        VerifyPayload(request.configuration_path,
+                      *record.previous_configuration.payload, dependencies,
+                      PendingFailureDestination::kConfiguration);
+        if (record.history_intent == PendingHistoryIntent::kReplace) {
+            if (record.previous_history.existed) {
+                VerifyPayload(history_path, *record.previous_history.payload,
+                              dependencies,
+                              PendingFailureDestination::kHistory);
+            } else {
+                VerifyAbsence(history_path, dependencies);
+            }
+        }
+        Inject(dependencies,
+               ConfigurationPersistenceOperation::kRemoveDestination, path,
+               PendingFailureDestination::kPendingRecord,
+               "pending_remove_failed");
+        std::error_code error;
+        if (!std::filesystem::remove(path, error) || error) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                error ? Category(error) : PendingFailureCategory::kNotFound,
+                "pending_remove_failed", error.message());
+        }
+        result.pending_record_removed = true;
+        SyncDirectory(path.parent_path(), dependencies,
+                      PendingFailureDestination::kPendingRecord,
+                      [&] { result.removal_confirmed_durable = true; });
+    });
 }
 
 }  // namespace goldendict::core

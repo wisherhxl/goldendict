@@ -53,6 +53,157 @@ struct PreparedProductionFacade {
     bool session_restored = true;
 };
 
+struct StartupRecoverySelection {
+    std::optional<goldendict::core::ConfigurationRecoveryRequest> request;
+    bool desired = true;
+    bool previous_attempt_started_here = false;
+    bool history_replaced = false;
+    std::optional<goldendict::core::ConfigurationPersistenceError> error;
+};
+
+StartupRecoverySelection ConvergeStartupPersistence(
+    const std::filesystem::path& configuration_path,
+    const std::filesystem::path& history_path) {
+    using namespace goldendict::core;
+    StartupRecoverySelection selection;
+    auto inspected = InspectPendingConfigurationTransaction(configuration_path);
+    if (inspected.error) {
+        selection.error = inspected.error;
+        return selection;
+    }
+    if (!inspected.present)
+        return selection;
+    if (!inspected.record) {
+        selection.error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kReadRecord,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kInvalidData, "pending_record_invalid"},
+            "Pending configuration transaction is missing"};
+        return selection;
+    }
+
+    auto record = *inspected.record;
+    selection.history_replaced =
+        record.history_intent == PendingHistoryIntent::kReplace;
+    selection.request =
+        ConfigurationRecoveryRequest{configuration_path, record.transaction_id};
+    const auto fail =
+        [&](const std::optional<ConfigurationPersistenceError>& error,
+            const char* message) {
+            selection.error = error.value_or(ConfigurationPersistenceError{
+                {PendingFailureOperation::kValidateRecord,
+                 PendingFailureDestination::kPendingRecord,
+                 PendingFailureCategory::kInvariant, "startup_recovery_failed"},
+                message});
+        };
+
+    if (record.phase == PendingTransactionPhase::kQuarantined) {
+        fail(std::optional{ConfigurationPersistenceError{
+                 *record.failure, "Pending transaction is quarantined"}},
+             "Pending transaction is quarantined");
+        return selection;
+    }
+    if (record.phase == PendingTransactionPhase::kPreviousRuntimeApplying) {
+        const auto quarantined = QuarantineConfigurationTransaction(
+            *selection.request, PendingFailureOperation::kReconstructPrevious,
+            PendingFailureDestination::kRuntimeFoundation,
+            PendingFailureCategory::kUnavailable,
+            "previous_runtime_interrupted");
+        fail(quarantined.error, "Previous runtime recovery was interrupted");
+        return selection;
+    }
+    if (record.phase == PendingTransactionPhase::kPreviousPersistenceBlocked) {
+        const auto evaluated =
+            EvaluateConfigurationRecovery(*selection.request);
+        fail(evaluated.primary_error,
+             "Previous configuration persistence is blocked");
+        return selection;
+    }
+    if (record.phase == PendingTransactionPhase::kPrepared) {
+        const auto discarded = DiscardPreparedConfigurationTransaction(
+            *selection.request, history_path);
+        if (discarded.outcome != RuntimeTransitionOutcome::kApplied ||
+            !discarded.removal_confirmed_durable) {
+            fail(discarded.error,
+                 "A pre-decision configuration transaction could not be "
+                 "discarded");
+        } else {
+            selection.request.reset();
+        }
+        return selection;
+    }
+
+    const bool desired_persistence =
+        record.phase == PendingTransactionPhase::kDesiredCommit ||
+        record.phase == PendingTransactionPhase::kDesiredPersistenceApplying ||
+        record.phase == PendingTransactionPhase::kDesiredPersistenceFailed;
+    if (desired_persistence) {
+        const auto policy = EvaluateConfigurationRecovery(*selection.request);
+        if (policy.disposition == ConfigurationRecoveryDisposition::
+                                      kAutomaticDesiredRecoveryAuthorized) {
+            const auto replay =
+                ReplayDesiredConfiguration(*selection.request, history_path);
+            if (replay.outcome !=
+                ConfigurationPersistenceOutcome::kDesiredPersistenceApplied) {
+                fail(replay.error, "Desired configuration recovery failed");
+                return selection;
+            }
+            record.phase = PendingTransactionPhase::kDesiredPersistenceApplied;
+        } else if (policy.disposition == ConfigurationRecoveryDisposition::
+                                             kPreviousFallbackSelected) {
+            const auto previous = PersistPreviousConfiguration(
+                {configuration_path, history_path, record.transaction_id});
+            if (previous.outcome !=
+                PreviousPersistenceOutcome::kPreviousPersistenceApplied) {
+                fail(previous.error, "Previous configuration recovery failed");
+                return selection;
+            }
+            selection.desired = false;
+            selection.previous_attempt_started_here = true;
+            return selection;
+        } else {
+            fail(policy.primary_error, "Configuration recovery policy failed");
+            return selection;
+        }
+    }
+
+    if (record.phase == PendingTransactionPhase::kDesiredRuntimeFailed) {
+        const auto previous = PersistPreviousConfiguration(
+            {configuration_path, history_path, record.transaction_id});
+        if (previous.outcome !=
+            PreviousPersistenceOutcome::kPreviousPersistenceApplied) {
+            fail(previous.error, "Previous configuration recovery failed");
+            return selection;
+        }
+        selection.desired = false;
+        selection.previous_attempt_started_here = true;
+        return selection;
+    }
+    if (record.phase == PendingTransactionPhase::kPreviousPersistenceApplying) {
+        const auto previous = PersistPreviousConfiguration(
+            {configuration_path, history_path, record.transaction_id});
+        if (previous.outcome !=
+            PreviousPersistenceOutcome::kPreviousPersistenceApplied) {
+            fail(previous.error, "Previous configuration recovery failed");
+            return selection;
+        }
+        selection.desired = false;
+        selection.previous_attempt_started_here = true;
+        return selection;
+    }
+    if (record.phase == PendingTransactionPhase::kDesiredPersistenceApplied) {
+        const auto applying =
+            BeginDesiredRuntimePublication(*selection.request);
+        if (applying.outcome != RuntimeTransitionOutcome::kApplied) {
+            fail(applying.error, "Cannot begin desired runtime recovery");
+        }
+    } else if (record.phase !=
+               PendingTransactionPhase::kDesiredRuntimeApplying) {
+        fail({}, "Pending transaction phase is not recoverable at startup");
+    }
+    return selection;
+}
+
 PreparedProductionFacade PrepareProductionFacade(
     const goldendict::core::CoreConfiguration& configuration,
     const std::shared_ptr<goldendict::network::NetworkRuntime>& network_runtime,
@@ -280,6 +431,23 @@ int main(int argc, char* argv[]) {
         configuration_locations.current_favorites_path.string());
     const QString legacy_favorites_path = QString::fromStdString(
         configuration_locations.legacy_favorites_path.string());
+    auto startup_recovery = ConvergeStartupPersistence(
+        configuration_path.toStdString(), history_path.toStdString());
+    if (startup_recovery.error) {
+        qCritical().noquote()
+            << "Configuration startup recovery blocked:"
+            << QString::fromStdString(startup_recovery.error->message)
+            << QString::fromStdString(
+                   startup_recovery.error->identity.identifier);
+        QMessageBox::warning(
+            nullptr, QStringLiteral("GoldenDict"),
+            QCoreApplication::translate(
+                "GoldenDictStartup",
+                "GoldenDict could not safely recover an interrupted "
+                "configuration change. Startup has been stopped to avoid "
+                "repeating the failure."));
+        return 1;
+    }
     const std::string default_index_directory =
         QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
             .filePath(QStringLiteral("indexes"))
@@ -292,25 +460,29 @@ int main(int argc, char* argv[]) {
     } catch (const std::exception& error) {
         QMessageBox::warning(nullptr, QStringLiteral("GoldenDict"),
                              QString::fromLocal8Bit(error.what()));
+        if (startup_recovery.request)
+            return 1;
     }
     if (configuration.index_directory.empty()) {
         configuration.index_directory = default_index_directory;
     }
     const QString command_line_root = DictionaryRootArgument(argc, argv);
-    if (!command_line_root.isEmpty()) {
+    if (!startup_recovery.request && !command_line_root.isEmpty()) {
         configuration.dictionary_paths = {command_line_root.toStdString()};
     }
-    if (HasArgument(argc, argv, QStringLiteral("--source-directories-smoke")) ||
-        HasArgument(argc, argv, QStringLiteral("--dictionary-bar-smoke")) ||
-        HasArgument(argc, argv,
-                    QStringLiteral("--widgets-facade-preparation-smoke")) ||
-        HasArgument(
-            argc, argv,
-            QStringLiteral("--configuration-reload-coordinator-smoke")) ||
-        HasArgument(
-            argc, argv,
-            QStringLiteral("--full-text-dictionary-projection-smoke")) ||
-        HasArgument(argc, argv, QStringLiteral("--full-text-dialog-smoke"))) {
+    if (!startup_recovery.request &&
+        (HasArgument(argc, argv,
+                     QStringLiteral("--source-directories-smoke")) ||
+         HasArgument(argc, argv, QStringLiteral("--dictionary-bar-smoke")) ||
+         HasArgument(argc, argv,
+                     QStringLiteral("--widgets-facade-preparation-smoke")) ||
+         HasArgument(
+             argc, argv,
+             QStringLiteral("--configuration-reload-coordinator-smoke")) ||
+         HasArgument(
+             argc, argv,
+             QStringLiteral("--full-text-dictionary-projection-smoke")) ||
+         HasArgument(argc, argv, QStringLiteral("--full-text-dialog-smoke")))) {
         configuration.mediawiki_sources = {
             {"smoke.wiki", "Smoke Wiki", false, "https://wiki.example.test/w"}};
         configuration.website_sources = {
@@ -337,19 +509,70 @@ int main(int argc, char* argv[]) {
     const std::string network_cache_root =
         QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
             .toStdString();
-    auto network_preparation = goldendict::network::NetworkRuntime::Prepare(
-        {configuration.preferences.maximum_network_cache_megabytes,
-         configuration.preferences.clear_network_cache_on_exit},
-        network_cache_root);
-    auto network_runtime = goldendict::network::NetworkRuntime::Create(
-        std::move(network_preparation));
+    const auto block_runtime_recovery =
+        [&](goldendict::core::PendingFailureDestination destination,
+            const char* identifier, const QString& detail) {
+            if (startup_recovery.request) {
+                if (startup_recovery.desired) {
+                    (void)goldendict::core::RecordDesiredRuntimeFailure(
+                        *startup_recovery.request, destination,
+                        goldendict::core::PendingFailureCategory::kUnavailable,
+                        identifier);
+                } else if (startup_recovery.previous_attempt_started_here) {
+                    (void)goldendict::core::QuarantineConfigurationTransaction(
+                        *startup_recovery.request,
+                        goldendict::core::PendingFailureOperation::
+                            kReconstructPrevious,
+                        destination,
+                        goldendict::core::PendingFailureCategory::kUnavailable,
+                        identifier);
+                }
+            }
+            qCritical().noquote()
+                << "Configuration runtime recovery blocked:" << detail;
+            QMessageBox::warning(
+                nullptr, QStringLiteral("GoldenDict"),
+                QCoreApplication::translate(
+                    "GoldenDictStartup",
+                    "GoldenDict could not safely reconstruct an interrupted "
+                    "configuration change. Startup has been stopped to avoid "
+                    "repeating the failure."));
+        };
+    std::shared_ptr<goldendict::network::NetworkRuntime> network_runtime;
+    try {
+        auto network_preparation = goldendict::network::NetworkRuntime::Prepare(
+            {configuration.preferences.maximum_network_cache_megabytes,
+             configuration.preferences.clear_network_cache_on_exit},
+            network_cache_root);
+        network_runtime = goldendict::network::NetworkRuntime::Create(
+            std::move(network_preparation));
+    } catch (const std::exception& error) {
+        if (!startup_recovery.request)
+            throw;
+        block_runtime_recovery(
+            goldendict::core::PendingFailureDestination::kRuntimeTransport,
+            "network_construction_failed",
+            QString::fromLocal8Bit(error.what()));
+        return 1;
+    }
     if (!network_runtime->diagnostic().empty()) {
         qWarning().noquote()
             << QString::fromStdString(network_runtime->diagnostic());
     }
     goldendict::core::application::DesktopFacadeActivationOwner facade_owner;
-    auto initial_facade = PrepareProductionFacade(
-        configuration, network_runtime, facade_owner, false);
+    std::optional<PreparedProductionFacade> prepared_initial_facade;
+    try {
+        prepared_initial_facade.emplace(PrepareProductionFacade(
+            configuration, network_runtime, facade_owner, false));
+    } catch (const std::exception& error) {
+        if (!startup_recovery.request)
+            throw;
+        block_runtime_recovery(
+            goldendict::core::PendingFailureDestination::kRuntimeFoundation,
+            "core_construction_failed", QString::fromLocal8Bit(error.what()));
+        return 1;
+    }
+    auto initial_facade = std::move(*prepared_initial_facade);
     ReportRuntimeCompositionDiagnostics(initial_facade.diagnostics);
     if (!initial_facade.session_restored) {
         QMessageBox::warning(
@@ -358,8 +581,16 @@ int main(int argc, char* argv[]) {
     }
     auto composition_diagnostics = std::move(initial_facade.diagnostics);
     auto facade = initial_facade.facade;
-    if (!facade_owner.Activate(initial_facade.candidate))
-        throw std::runtime_error("Unable to activate the application runtime");
+    if (!facade_owner.Activate(initial_facade.candidate)) {
+        if (!startup_recovery.request)
+            throw std::runtime_error(
+                "Unable to activate the application runtime");
+        block_runtime_recovery(
+            goldendict::core::PendingFailureDestination::kRuntimeFoundation,
+            "core_activation_failed",
+            QStringLiteral("Unable to activate the application runtime"));
+        return 1;
+    }
     std::vector<goldendict::core::HistoryEntry> history;
     try {
         goldendict::app::ValidateAutoDiscoveredLegacyHistory(
@@ -370,6 +601,8 @@ int main(int argc, char* argv[]) {
     } catch (const std::exception& error) {
         QMessageBox::warning(nullptr, QStringLiteral("GoldenDict history"),
                              QString::fromLocal8Bit(error.what()));
+        if (startup_recovery.request && startup_recovery.history_replaced)
+            return 1;
     }
     goldendict::core::Favorites favorites;
     try {
@@ -381,7 +614,19 @@ int main(int argc, char* argv[]) {
         QMessageBox::warning(nullptr, QStringLiteral("GoldenDict favorites"),
                              QString::fromLocal8Bit(error.what()));
     }
-    MainWindow window(configuration_directory);
+    std::unique_ptr<MainWindow> owned_window;
+    try {
+        owned_window = std::make_unique<MainWindow>(configuration_directory);
+    } catch (const std::exception& error) {
+        if (!startup_recovery.request)
+            throw;
+        block_runtime_recovery(
+            goldendict::core::PendingFailureDestination::kRuntimePresentation,
+            "widgets_construction_failed",
+            QString::fromLocal8Bit(error.what()));
+        return 1;
+    }
+    MainWindow& window = *owned_window;
     window.SetPreferences(configuration.preferences);
     window.SetNetworkCacheDirectory(
         QString::fromStdString(network_runtime->cache_directory()));
@@ -392,6 +637,23 @@ int main(int argc, char* argv[]) {
     window.SetSourceDirectories(configuration.dictionary_paths,
                                 configuration.sound_directories);
     window.SetFacade(facade.get());
+    if (startup_recovery.request) {
+        const auto finalized =
+            goldendict::core::FinishRecoveredConfigurationTransaction(
+                *startup_recovery.request, history_path.toStdString(),
+                startup_recovery.desired);
+        if (finalized.outcome !=
+                goldendict::core::RuntimeTransitionOutcome::kApplied ||
+            !finalized.removal_confirmed_durable) {
+            QMessageBox::warning(
+                nullptr, QStringLiteral("GoldenDict"),
+                QCoreApplication::translate(
+                    "GoldenDictStartup",
+                    "GoldenDict could not safely finalize an interrupted "
+                    "configuration change. Startup has been stopped."));
+            return 1;
+        }
+    }
     goldendict::app::ConfigurationReloadTransactionCoordinator coordinator(
         network_runtime, facade_owner, window);
     using ReloadBoundary = goldendict::app::ConfigurationReloadBoundary;
