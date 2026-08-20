@@ -222,7 +222,7 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
     if (Inject(dependencies, ConfigurationReloadBoundary::kNetworkPublish)) {
         record_failure(core::PendingFailureDestination::kRuntimeTransport,
                        ConfigurationReloadBoundary::kNetworkPublish,
-                       "network-publication");
+                       "network_publication");
         FailStop(dependencies);
         return result;
     }
@@ -233,7 +233,7 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
     if (Inject(dependencies, ConfigurationReloadBoundary::kCorePublish)) {
         record_failure(core::PendingFailureDestination::kRuntimeFoundation,
                        ConfigurationReloadBoundary::kCorePublish,
-                       "core-publication");
+                       "core_publication");
         FailStop(dependencies);
         return result;
     }
@@ -243,7 +243,7 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
     if (Inject(dependencies, ConfigurationReloadBoundary::kWidgetsPublish)) {
         record_failure(core::PendingFailureDestination::kRuntimePresentation,
                        ConfigurationReloadBoundary::kWidgetsPublish,
-                       "widgets-publication");
+                       "widgets_publication");
         FailStop(dependencies);
         return result;
     }
@@ -264,7 +264,7 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
         forward_failure = true;
         record_failure(core::PendingFailureDestination::kRuntimeTransport,
                        ConfigurationReloadBoundary::kNetworkPostWork,
-                       "network-post-work");
+                       "network_post_work");
     }
 
     const bool widgets_failure_injected =
@@ -277,13 +277,13 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
         forward_failure = true;
         record_failure(core::PendingFailureDestination::kRuntimePresentation,
                        ConfigurationReloadBoundary::kWidgetsFinish,
-                       "widgets-forward-maintenance");
+                       "widgets_forward_maintenance");
     }
 
     if (Inject(dependencies, ConfigurationReloadBoundary::kCoreForwardWork)) {
         record_failure(core::PendingFailureDestination::kRuntimeFoundation,
                        ConfigurationReloadBoundary::kCoreForwardWork,
-                       "core-forward-maintenance");
+                       "core_forward_maintenance");
         FailStop(dependencies);
         return result;
     }

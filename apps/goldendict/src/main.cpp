@@ -669,6 +669,8 @@ int main(int argc, char* argv[]) {
     std::size_t preferences_predecision_injection = 0U;
     std::optional<ReloadBoundary> source_predecision_injection;
     std::vector<ReloadBoundary> source_reload_boundaries;
+    std::optional<ReloadBoundary> group_reload_injection;
+    std::vector<std::vector<ReloadBoundary>> group_reload_traces;
     const auto persist_article_tab_session = [&]() {
         auto updated = configuration;
         updated.article_tab_session = facade->ExportArticleTabSession();
@@ -1190,21 +1192,89 @@ int main(int argc, char* argv[]) {
         &window, &MainWindow::DictionaryGroupsEdited, &window, [&]() {
             auto updated = configuration;
             updated.dictionary_groups = window.DictionaryGroups();
-            updated.article_tab_session = facade->ExportArticleTabSession();
             try {
-                auto replacement = PrepareProductionFacade(
-                    updated, network_runtime, facade_owner);
-                goldendict::core::SaveConfiguration(
-                    configuration_path.toStdString(), updated);
-                window.SetDictionaryGroups(updated.dictionary_groups);
-                if (!facade_owner.Activate(replacement.candidate))
-                    throw std::runtime_error(
-                        "Unable to activate the application runtime");
-                window.SetFacade(replacement.facade.get());
-                facade = replacement.facade;
-                composition_diagnostics = std::move(replacement.diagnostics);
+                goldendict::core::ValidateConfiguration(updated);
+                auto prepared_network =
+                    goldendict::network::NetworkRuntime::Prepare(
+                        {updated.preferences.maximum_network_cache_megabytes,
+                         updated.preferences.clear_network_cache_on_exit},
+                        network_cache_root);
+                std::vector<goldendict::network::RuntimeCompositionDiagnostic>
+                    desired_diagnostics;
+                goldendict::core::ConfigurationTransactionPreparationInput
+                    persistence;
+                persistence.configuration_path =
+                    configuration_path.toStdString();
+                persistence.history_path = history_path.toStdString();
+                persistence.desired_configuration = updated;
+                persistence.history_intent =
+                    goldendict::core::PendingHistoryIntent::kUnchanged;
+                auto runtime_configuration = updated;
+                runtime_configuration.article_tab_session =
+                    facade->ExportArticleTabSession();
+                goldendict::app::ConfigurationReloadRequest request{
+                    std::move(persistence),
+                    std::move(prepared_network),
+                    {},
+                    [&]()
+                        -> std::optional<
+                            goldendict::app::PreparedConfigurationReloadCore> {
+                        auto replacement = PrepareProductionFacade(
+                            runtime_configuration, network_runtime,
+                            facade_owner);
+                        desired_diagnostics =
+                            std::move(replacement.diagnostics);
+                        return goldendict::app::PreparedConfigurationReloadCore{
+                            std::move(replacement.candidate),
+                            std::move(replacement.facade)};
+                    }};
+                goldendict::app::ConfigurationReloadDependencies dependencies;
+                if (HasArgument(argc, argv,
+                                QStringLiteral("--dictionary-groups-smoke"))) {
+                    dependencies.observe_boundary = [&](auto boundary) {
+                        if (!group_reload_traces.empty())
+                            group_reload_traces.back().push_back(boundary);
+                    };
+                    dependencies.inject_failure = [&](auto boundary) {
+                        return group_reload_injection == boundary;
+                    };
+                }
+                const auto result =
+                    coordinator.Execute(std::move(request), dependencies);
+                if (result.outcome ==
+                    goldendict::app::ConfigurationReloadOutcome::
+                        kRejectedBeforeDecision) {
+                    window.SetDictionaryGroups(configuration.dictionary_groups);
+                    const auto message =
+                        result.error
+                            ? QString::fromLocal8Bit(
+                                  result.error->message.c_str())
+                            : QStringLiteral(
+                                  "Unable to activate the application runtime");
+                    QMessageBox::warning(
+                        &window, QStringLiteral("Dictionary Groups"), message);
+                    return;
+                }
+
+                facade = facade_owner.CurrentSnapshot();
+                composition_diagnostics = std::move(desired_diagnostics);
                 ReportRuntimeCompositionDiagnostics(composition_diagnostics);
                 configuration = std::move(updated);
+                if (result.outcome ==
+                    goldendict::app::ConfigurationReloadOutcome::
+                        kPublishedWithForwardFailure) {
+                    qCritical().noquote()
+                        << QStringLiteral(
+                               "Dictionary-group transaction published with "
+                               "forward failure; durable phase %1: %2")
+                               .arg(
+                                   result.durable_phase
+                                       ? static_cast<int>(*result.durable_phase)
+                                       : -1)
+                               .arg(result.error ? QString::fromStdString(
+                                                       result.error->message)
+                                                 : QString{});
+                }
             } catch (const std::exception& error) {
                 window.SetDictionaryGroups(configuration.dictionary_groups);
                 QMessageBox::warning(&window,
@@ -2056,10 +2126,162 @@ int main(int argc, char* argv[]) {
                            QStringLiteral("--dictionary-groups-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(
-            0, &window, [&app, &configuration, &configuration_path, &window]() {
+            0, &window,
+            [&app, &configuration, &configuration_path, &facade, &facade_owner,
+             &favorites_path, &group_reload_injection, &group_reload_traces,
+             &history_path, &preferences_predecision_boundaries, &window]() {
+                const auto read_bytes = [](const QString& path) {
+                    QFile file(path);
+                    return file.open(QIODevice::ReadOnly) ? file.readAll()
+                                                          : QByteArray{};
+                };
+                struct SmokeState {
+                    bool preserved = true;
+                    bool transaction_files_unchanged = false;
+                    bool exact_desired_configuration = false;
+                    QByteArray configuration_bytes;
+                    QByteArray history_bytes;
+                    QByteArray favorites_bytes;
+                    bool history_present = false;
+                    bool favorites_present = false;
+                    goldendict::core::CoreConfiguration initial_configuration;
+                    std::shared_ptr<goldendict::core::DesktopFacade>
+                        initial_facade;
+                };
+                auto state = std::make_shared<SmokeState>();
+                try {
+                    configuration.dictionary_groups.clear();
+                    window.SetDictionaryGroups({});
+                    if (!QDir().mkpath(
+                            QFileInfo(configuration_path).absolutePath())) {
+                        throw std::runtime_error(
+                            "Unable to prepare dictionary-group smoke");
+                    }
+                    goldendict::core::SaveConfiguration(
+                        configuration_path.toStdString(), configuration);
+                    state->initial_configuration = configuration;
+                } catch (const std::exception& error) {
+                    qWarning().noquote()
+                        << "Unable to seed dictionary-group smoke:"
+                        << error.what();
+                    app.exit(1);
+                    return;
+                }
+                state->configuration_bytes = read_bytes(configuration_path);
+                state->history_bytes = read_bytes(history_path);
+                state->favorites_bytes = read_bytes(favorites_path);
+                state->history_present = QFileInfo::exists(history_path);
+                state->favorites_present = QFileInfo::exists(favorites_path);
+                state->initial_facade = facade;
                 window.RunDictionaryGroupsSmokeCheck(
-                    [&app, &configuration, &configuration_path](bool passed) {
+                    [&, state, read_bytes](std::size_t attempt) {
+                        if (attempt == 10U) {
+                            auto expected = state->initial_configuration;
+                            expected.dictionary_groups =
+                                window.DictionaryGroups();
+                            const QString expected_path =
+                                configuration_path +
+                                QStringLiteral(".expected");
+                            goldendict::core::SaveConfiguration(
+                                expected_path.toStdString(), expected);
+                            state->exact_desired_configuration =
+                                read_bytes(configuration_path) ==
+                                read_bytes(expected_path);
+                            QFile::remove(expected_path);
+                            state->transaction_files_unchanged =
+                                QFileInfo::exists(history_path) ==
+                                    state->history_present &&
+                                read_bytes(history_path) ==
+                                    state->history_bytes &&
+                                QFileInfo::exists(favorites_path) ==
+                                    state->favorites_present &&
+                                read_bytes(favorites_path) ==
+                                    state->favorites_bytes;
+                            return;
+                        }
+                        if (attempt > 0U && attempt <= 8U) {
+                            state->preserved =
+                                state->preserved &&
+                                read_bytes(configuration_path) ==
+                                    state->configuration_bytes &&
+                                facade == state->initial_facade &&
+                                facade_owner.CurrentSnapshot() ==
+                                    state->initial_facade &&
+                                !std::filesystem::exists(
+                                    goldendict::core::
+                                        PendingConfigurationTransactionPath(
+                                            configuration_path
+                                                .toStdString())) &&
+                                QFileInfo::exists(history_path) ==
+                                    state->history_present &&
+                                read_bytes(history_path) ==
+                                    state->history_bytes &&
+                                QFileInfo::exists(favorites_path) ==
+                                    state->favorites_present &&
+                                read_bytes(favorites_path) ==
+                                    state->favorites_bytes;
+                        }
+                        group_reload_traces.emplace_back();
+                        if (attempt <
+                            preferences_predecision_boundaries.size()) {
+                            group_reload_injection =
+                                preferences_predecision_boundaries[attempt];
+                        } else if (attempt == 9U) {
+                            group_reload_injection =
+                                ReloadBoundary::kNetworkPostWork;
+                        } else {
+                            group_reload_injection.reset();
+                        }
+                    },
+                    [&app, &configuration, &configuration_path, &facade,
+                     &facade_owner, &favorites_path, &group_reload_traces,
+                     &history_path, &preferences_predecision_boundaries,
+                     read_bytes, state](bool passed) {
+                        const bool window_passed = passed;
                         try {
+                            const std::vector<ReloadBoundary>
+                                successful_boundaries{
+                                    ReloadBoundary::kPersistencePrepare,
+                                    ReloadBoundary::kNetworkPrepare,
+                                    ReloadBoundary::kCorePrepare,
+                                    ReloadBoundary::kWidgetsPrepare,
+                                    ReloadBoundary::kNetworkReserve,
+                                    ReloadBoundary::kCoreReserve,
+                                    ReloadBoundary::kWidgetsBegin,
+                                    ReloadBoundary::kPersistenceDecision,
+                                    ReloadBoundary::kDesiredRuntimeApplying,
+                                    ReloadBoundary::kNetworkPublish,
+                                    ReloadBoundary::kCorePublish,
+                                    ReloadBoundary::kWidgetsPublish,
+                                    ReloadBoundary::kNetworkPostWork,
+                                    ReloadBoundary::kWidgetsFinish,
+                                    ReloadBoundary::kCoreForwardWork,
+                                    ReloadBoundary::kFinalizeTransaction};
+                            passed = passed && state->preserved &&
+                                     state->transaction_files_unchanged &&
+                                     group_reload_traces.size() == 10U;
+                            for (std::size_t index = 0U;
+                                 passed &&
+                                 index <
+                                     preferences_predecision_boundaries.size();
+                                 ++index) {
+                                passed = !group_reload_traces[index].empty() &&
+                                         group_reload_traces[index].back() ==
+                                             preferences_predecision_boundaries
+                                                 [index];
+                            }
+                            passed =
+                                passed &&
+                                group_reload_traces[8] ==
+                                    successful_boundaries &&
+                                !group_reload_traces[9].empty() &&
+                                group_reload_traces[9].back() ==
+                                    ReloadBoundary::kCoreForwardWork &&
+                                std::find(
+                                    group_reload_traces[9].begin(),
+                                    group_reload_traces[9].end(),
+                                    ReloadBoundary::kRecordRuntimeFailure) !=
+                                    group_reload_traces[9].end();
                             const auto persisted =
                                 goldendict::core::LoadConfiguration(
                                     configuration_path.toStdString());
@@ -2067,26 +2289,59 @@ int main(int argc, char* argv[]) {
                                 passed &&
                                 persisted.dictionary_groups.size() == 1U &&
                                 persisted.dictionary_groups.front().id == 7U &&
+                                persisted.dictionary_groups.front().name ==
+                                    "Forward Published" &&
                                 persisted.dictionary_paths ==
                                     configuration.dictionary_paths &&
                                 persisted.index_directory ==
                                     configuration.index_directory &&
                                 persisted.sound_directories ==
-                                    configuration.sound_directories;
-                            auto invalid = persisted;
-                            invalid.dictionary_groups.front().name.clear();
-                            try {
-                                goldendict::core::SaveConfiguration(
-                                    configuration_path.toStdString(), invalid);
-                                passed = false;
-                            } catch (const std::exception&) {}
-                            passed =
-                                passed && goldendict::core::LoadConfiguration(
-                                              configuration_path.toStdString())
-                                                  .dictionary_groups ==
-                                              persisted.dictionary_groups;
+                                    configuration.sound_directories &&
+                                state->exact_desired_configuration &&
+                                configuration.dictionary_groups ==
+                                    persisted.dictionary_groups;
+                            const auto inspected = goldendict::core::
+                                InspectPendingConfigurationTransaction(
+                                    configuration_path.toStdString());
+                            passed = passed &&
+                                     facade != state->initial_facade &&
+                                     facade_owner.CurrentSnapshot() == facade &&
+                                     QFileInfo::exists(favorites_path) ==
+                                         state->favorites_present &&
+                                     read_bytes(favorites_path) ==
+                                         state->favorites_bytes &&
+                                     inspected.present && inspected.record &&
+                                     inspected.record->history_intent ==
+                                         goldendict::core::
+                                             PendingHistoryIntent::kUnchanged &&
+                                     !inspected.record->desired_history
+                                          .has_value() &&
+                                     inspected.record->failure.has_value();
+                            if (!passed) {
+                                qWarning()
+                                    << "group evidence" << inspected.present
+                                    << inspected.record.has_value()
+                                    << (inspected.record &&
+                                        inspected.record->desired_history
+                                            .has_value())
+                                    << (inspected.record &&
+                                        inspected.record->failure.has_value())
+                                    << state->transaction_files_unchanged
+                                    << (read_bytes(favorites_path) ==
+                                        state->favorites_bytes);
+                            }
                         } catch (const std::exception&) {
                             passed = false;
+                        }
+                        if (!passed) {
+                            qWarning()
+                                << "Dictionary-group coordinator smoke failed"
+                                << window_passed << state->preserved
+                                << group_reload_traces.size()
+                                << (facade != state->initial_facade)
+                                << (facade_owner.CurrentSnapshot() == facade);
+                            for (const auto& trace : group_reload_traces)
+                                qWarning() << "group trace" << trace.size();
                         }
                         app.exit(passed ? 0 : 1);
                     });

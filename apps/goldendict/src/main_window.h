@@ -284,7 +284,9 @@ class MainWindow final : public QMainWindow {
     void RunDictionaryBrowserSmokeCheck(std::function<void(bool)> completion);
     void RunDictionaryBrowserExportSmokeCheck(
         const QString& path, std::function<void(bool)> completion);
-    void RunDictionaryGroupsSmokeCheck(std::function<void(bool)> completion);
+    void RunDictionaryGroupsSmokeCheck(
+        std::function<void(std::size_t)> before_attempt,
+        std::function<void(bool)> completion);
     void RunSourceDirectoriesSmokeCheck(std::function<void(bool)> completion);
     void RunArticleTabsSmokeCheck(std::function<void(bool)> completion);
     void RunSuggestionPaneSmokeCheck(std::function<void(bool)> completion);

@@ -6870,6 +6870,7 @@ void MainWindow::EditDictionaryGroups() {
 }
 
 void MainWindow::RunDictionaryGroupsSmokeCheck(
+    std::function<void(std::size_t)> before_attempt,
     std::function<void(bool)> completion) {
     if (facade_ == nullptr ||
         facade_->GetDictionaryService().GetCatalog().empty()) {
@@ -6878,12 +6879,33 @@ void MainWindow::RunDictionaryGroupsSmokeCheck(
     }
     const auto catalog = facade_->GetDictionaryService().GetCatalog();
     const std::string first_id = catalog.front().id;
-    GroupEditor editor({}, catalog, this);
-    const bool edited = editor.RunSmokeEdits();
-    groups_ = editor.Groups();
-    emit DictionaryGroupsEdited();
+    const auto original_groups = groups_;
+    bool edited = true;
+    for (std::size_t attempt = 0U; attempt < 10U; ++attempt) {
+        GroupEditor editor({}, catalog, this);
+        edited = edited && editor.RunSmokeEdits();
+        groups_ = editor.Groups();
+        if (attempt == 9U && !groups_.empty())
+            groups_.front().name = "Forward Published";
+        if (before_attempt)
+            before_attempt(attempt);
+        QTimer::singleShot(10, this, []() {
+            auto* warning =
+                qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+            if (warning != nullptr)
+                warning->accept();
+        });
+        emit DictionaryGroupsEdited();
+        if (attempt < 8U) {
+            edited = edited && groups_ == original_groups &&
+                     group_selector_->count() == 1;
+        }
+    }
+    if (before_attempt)
+        before_attempt(10U);
     const bool saved = edited && groups_.size() == 1U &&
                        groups_.front().id == 7U &&
+                       groups_.front().name == "Forward Published" &&
                        groups_.front().dictionary_ids.size() == 2U &&
                        groups_.front().muted_dictionary_ids ==
                            std::vector<std::string>{first_id} &&

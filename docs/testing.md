@@ -5083,7 +5083,7 @@ The configuration-reload coordinator smoke starts from the same production
 `DesktopFacadeActivationOwner` used by ordinary startup and reconstruction. It
 also verifies that a successful coordinated publication replaces that owner's
 current facade snapshot. Existing source-directory, online-source,
-dictionary-group, Preferences, history, cache, tab/session, dictionary-bar,
+Preferences, history, cache, tab/session, dictionary-bar,
 search/find, and full-text smokes continue to cover the compatibility callers
 and the production Preferences caller.
 
@@ -5097,6 +5097,17 @@ coordinator, Widgets preparation, history, cache, source/group, dictionary-bar,
 search/find, full-text, and tab/session smokes cover successful publication and
 continuity; coordinator boundary coverage retains representative forward-only
 failure and fail-stop evidence.
+
+The production dictionary-group smoke drives the accepted editor result through
+the same coordinator. It deterministically injects every pre-decision boundary,
+proves byte-exact configuration rollback, unchanged facade authority and visible
+groups, retryability, and no history/Favorites creation or mutation. It then
+pins the complete successful boundary order and a Network post-work failure
+whose published group state remains authoritative and whose pending record has
+`kUnchanged` history intent, no desired-history payload, and durable runtime-
+failure evidence. Existing group-aware lookup/history restoration, dictionary
+bar, query/find/F3/full-text, source ordering, cache, and tab/session smokes
+retain continuity coverage.
 
 ## Full Verification
 

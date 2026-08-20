@@ -182,7 +182,9 @@ bool GroupEditor::RunSmokeEdits() {
     shortcut_->setText(QStringLiteral("Ctrl+7"));
     auto& edited = groups_.front();
     edited.icon = "fixture.svg";
-    edited.encoded_icon_data = "aWNvbg==";
+    edited.encoded_icon_data =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+"
+        "A8AAQUBAScY42YAAAAASUVORK5CYII=";
     if (available_->count() == 0)
         return false;
     available_->item(0)->setSelected(true);

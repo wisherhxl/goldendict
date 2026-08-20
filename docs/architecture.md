@@ -6661,8 +6661,9 @@ cannot be made durable, the truthful `kDesiredRuntimeApplying` record remains
 restart-visible; no online rollback is permitted.
 
 Production invocation and startup recovery execution are supplied by the
-focused leaves below. Dictionary-group editing remains the only production
-runtime-reconstruction callback on a compatibility replacement path.
+focused leaves below. Preferences, source editing, and dictionary-group editing
+now share the coordinator; no production runtime-reconstruction callback
+remains on a compatibility replacement path.
 
 ### Phase 8 production facade ownership prerequisite
 
@@ -6715,8 +6716,23 @@ Focused production smoke coverage injects rejection at every pre-decision
 boundary and observes the complete successful boundary order for both local
 and online/external edits. Article sessions, unrelated configuration, history,
 Favorites, translations, cache layout, persistence formats, and public APIs
-remain unchanged. Dictionary-group editing remains the next independent
-compatibility caller.
+remain unchanged.
+
+### Phase 8 production dictionary-group transaction invocation
+
+The accepted dictionary-group editor result now invokes the same coordinator
+with a desired configuration that changes only `dictionary_groups`. It records
+unchanged history intent with no desired-history payload, prepares unchanged
+Network policy and the complete production Core/Widgets candidates, and uses
+the standard durable decision and ordered publication path.
+
+Pre-decision rejection restores the authoritative visible groups without
+changing configuration bytes or runtime owners, so the existing warning and
+retry behavior remain available. Published outcomes advance the configuration,
+facade, and diagnostics mirrors once; a forward failure retains the published
+state and startup-recovery evidence. History, Favorites, source configuration,
+sessions, cache policy/layout, translations, dependencies, and public APIs are
+unchanged. This is the final production reconstruction caller migration.
 
 ### Phase 8 production startup transaction recovery
 

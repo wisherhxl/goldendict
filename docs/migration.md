@@ -6269,6 +6269,23 @@ Favorites, translations, wire formats, cache layout, dependencies, and public
 APIs remain unchanged. Dictionary-group editing is the next independent
 production compatibility caller and is not part of this leaf.
 
+### Phase 8 production dictionary-group transaction invocation (complete)
+
+Dictionary-group editing now routes the final production runtime-
+reconstruction callback through the durable configuration-reload coordinator.
+The desired configuration changes only the accepted group fields, records
+unchanged history intent without a desired-history payload, prepares unchanged
+Network policy and complete Core/Widgets candidates, and publishes authoritative
+configuration and facade mirrors once.
+
+The production dictionary-group smoke rejects every pre-decision boundary and
+pins exact configuration bytes, owner identity, visible group rollback, retry,
+and zero history/Favorites I/O. It also pins successful publication order and a
+representative forward-only failure with restart-visible evidence. Startup
+recovery, public APIs, translations, dependencies, source ordering, cache
+layout, and unrelated application behavior remain unchanged. This completes
+the production configuration-reconstruction caller migration.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
