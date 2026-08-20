@@ -40,6 +40,10 @@ class NetworkRuntimeTestAccess final {
     static const void* BoundDiskCache(const NetworkRuntime& runtime);
     static std::uint64_t DirectoryConfigurationCount(
         const NetworkRuntime& runtime);
+    static void ObserveManagerCacheDestruction(NetworkRuntime& runtime,
+                                               std::function<void()> observer);
+    static void ObserveDirectoryCleanup(NetworkRuntime& runtime,
+                                        std::function<void()> observer);
     static bool DispatcherTimerActive(const NetworkRuntime& runtime);
     static std::uint64_t DispatcherTimerCreationCount(
         const NetworkRuntime& runtime);

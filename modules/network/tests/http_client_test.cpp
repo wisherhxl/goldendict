@@ -917,6 +917,21 @@ void HttpClientTest::DisablesAndClearsOnlyOwnedCache() {
         NetworkRuntime::Prepare({1U, true}, root.path().toStdString()));
     const QString owned = QString::fromStdString(clearing->cache_directory());
     QVERIFY(QDir(owned).exists());
+    std::vector<std::string> shutdown_events;
+    NetworkRuntimeTestAccess::ObserveManagerCacheDestruction(
+        *clearing,
+        [&shutdown_events]() { shutdown_events.emplace_back("cache"); });
+    NetworkRuntimeTestAccess::ObserveDirectoryCleanup(
+        *clearing,
+        [&shutdown_events]() { shutdown_events.emplace_back("directory"); });
+    clearing->Shutdown();
+    QVERIFY(shutdown_events ==
+            std::vector<std::string>({"cache", "directory"}));
+    QVERIFY(!QDir(owned).exists());
+    QVERIFY(sibling.exists());
+    clearing->Shutdown();
+    QVERIFY(shutdown_events ==
+            std::vector<std::string>({"cache", "directory"}));
     clearing.reset();
     QVERIFY(!QDir(owned).exists());
     QVERIFY(sibling.exists());

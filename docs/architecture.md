@@ -1256,8 +1256,11 @@ runtime. Path or cache setup failure produces a redacted diagnostic and
 degrades online sources to uncached traffic without blocking local
 dictionaries. When clear-on-exit is false, entries may persist across clean
 restarts. When it is true, coordinated shutdown first prevents new requests,
-cancels or joins outstanding requests, and then clears only the owned Qt
-Network cache. Crashes and forced termination provide no cleanup guarantee;
+cancels or joins outstanding requests, disables and clears the owned cache,
+destroys the manager and its attached cache on their owner thread, stops that
+thread, and only then removes the owned Qt Network cache directory. This
+prevents queued cache teardown from recreating the directory after cleanup.
+Crashes and forced termination provide no cleanup guarantee;
 cleanup failure is non-fatal and may be retried on a later clean shutdown.
 Diagnostics must not expose URLs, cache keys, credentials, or response data.
 

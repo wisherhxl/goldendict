@@ -772,15 +772,20 @@ class NetworkRuntime::Impl final {
                         cache_gate_->Disable();
                         cache_gate_->clear();
                     }
-                    RemoveOwnedDirectory(preparation_);
                 }
                 manager_.reset();
                 cache_gate_ = nullptr;
+                if (manager_cache_destruction_observer_) {
+                    manager_cache_destruction_observer_();
+                }
             },
             Qt::BlockingQueuedConnection);
-        storage_lease_.Release();
         thread_.quit();
         thread_.wait();
+        if (storage_lease_ && preparation_.policy.clear_on_exit) {
+            RemoveOwnedDirectory(preparation_);
+        }
+        storage_lease_.Release();
     }
 
     std::int64_t MaximumBytes() const noexcept {
@@ -790,9 +795,11 @@ class NetworkRuntime::Impl final {
     }
 
     void RemoveOwnedDirectory(Preparation& preparation) {
-        if (!storage_lease_ ||
-            preparation.cache_directory != storage_lease_.directory()) {
+        if (!storage_lease_) {
             return;
+        }
+        if (directory_cleanup_observer_) {
+            directory_cleanup_observer_();
         }
         if (!NetworkCacheStorage::RemoveOwnedDirectory(storage_lease_)) {
             preparation.diagnostic = NetworkCacheStorage::CleanupDiagnostic();
@@ -836,6 +843,8 @@ class NetworkRuntime::Impl final {
     QThread thread_;
     std::unique_ptr<QNetworkAccessManager> manager_;
     NetworkDiskCacheGate* cache_gate_ = nullptr;
+    std::function<void()> manager_cache_destruction_observer_;
+    std::function<void()> directory_cleanup_observer_;
     mutable std::mutex fetch_mutex_;
     mutable std::mutex reservation_mutex_;
     std::atomic<bool> stopping_{false};
@@ -1122,6 +1131,16 @@ std::uint64_t NetworkRuntimeTestAccess::DirectoryConfigurationCount(
     return runtime.impl_->cache_gate_ == nullptr
                ? 0U
                : runtime.impl_->cache_gate_->directory_configuration_count();
+}
+
+void NetworkRuntimeTestAccess::ObserveManagerCacheDestruction(
+    NetworkRuntime& runtime, std::function<void()> observer) {
+    runtime.impl_->manager_cache_destruction_observer_ = std::move(observer);
+}
+
+void NetworkRuntimeTestAccess::ObserveDirectoryCleanup(
+    NetworkRuntime& runtime, std::function<void()> observer) {
+    runtime.impl_->directory_cleanup_observer_ = std::move(observer);
 }
 
 bool NetworkRuntimeTestAccess::DispatcherTimerActive(
