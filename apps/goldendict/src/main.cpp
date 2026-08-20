@@ -14,10 +14,12 @@
 #include <QWebEngineUrlScheme>
 
 #include <algorithm>
+#include <filesystem>
 #include <memory>
 #include <stdexcept>
 #include <vector>
 
+#include "configuration_reload_transaction_coordinator.h"
 #include "goldendict/core/application.h"
 #include "goldendict/core/favorites_store.h"
 #include "goldendict/core/history_store.h"
@@ -262,6 +264,9 @@ int main(int argc, char* argv[]) {
                     QStringLiteral("--widgets-facade-preparation-smoke")) ||
         HasArgument(
             argc, argv,
+            QStringLiteral("--configuration-reload-coordinator-smoke")) ||
+        HasArgument(
+            argc, argv,
             QStringLiteral("--full-text-dictionary-projection-smoke")) ||
         HasArgument(argc, argv, QStringLiteral("--full-text-dialog-smoke"))) {
         configuration.mediawiki_sources = {
@@ -334,6 +339,8 @@ int main(int argc, char* argv[]) {
         QMessageBox::warning(nullptr, QStringLiteral("GoldenDict favorites"),
                              QString::fromLocal8Bit(error.what()));
     }
+    std::unique_ptr<goldendict::core::application::DesktopFacadeActivationOwner>
+        coordinator_smoke_owner;
     MainWindow window(configuration_directory);
     window.SetPreferences(configuration.preferences);
     window.SetNetworkCacheDirectory(
@@ -345,6 +352,21 @@ int main(int argc, char* argv[]) {
     window.SetSourceDirectories(configuration.dictionary_paths,
                                 configuration.sound_directories);
     window.SetFacade(facade.get());
+    std::unique_ptr<goldendict::app::ConfigurationReloadTransactionCoordinator>
+        coordinator_smoke;
+    if (HasArgument(
+            argc, argv,
+            QStringLiteral("--configuration-reload-coordinator-smoke"))) {
+        coordinator_smoke_owner = std::make_unique<
+            goldendict::core::application::DesktopFacadeActivationOwner>();
+        auto initial = coordinator_smoke_owner->PrepareCandidate({});
+        if (!coordinator_smoke_owner->Activate(initial))
+            return 1;
+        window.SetFacade(coordinator_smoke_owner->CurrentSnapshot().get());
+        coordinator_smoke = std::make_unique<
+            goldendict::app::ConfigurationReloadTransactionCoordinator>(
+            network_runtime, *coordinator_smoke_owner, window);
+    }
     const auto persist_article_tab_session = [&]() {
         auto updated = configuration;
         updated.article_tab_session = facade->ExportArticleTabSession();
@@ -1411,6 +1433,90 @@ int main(int argc, char* argv[]) {
             window.RunWidgetsFacadePreparationSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral(
+                               "--configuration-reload-coordinator-smoke"))) {
+        QTimer::singleShot(15000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window,
+            [&app, &configuration, &configuration_path, &history_path,
+             &network_cache_root, &coordinator_smoke]() {
+                auto desired = configuration;
+                desired.dictionary_paths.clear();
+                desired.sound_directories.clear();
+                desired.mediawiki_sources.clear();
+                desired.website_sources.clear();
+                desired.forvo_sources.clear();
+                desired.dict_server_sources.clear();
+                desired.external_program_sources.clear();
+                desired.dictionary_groups.clear();
+                try {
+                    goldendict::core::SaveConfiguration(
+                        configuration_path.toStdString(), configuration);
+                } catch (...) {
+                    app.exit(1);
+                    return;
+                }
+                auto network = goldendict::network::NetworkRuntime::Prepare(
+                    {desired.preferences.maximum_network_cache_megabytes,
+                     desired.preferences.clear_network_cache_on_exit},
+                    network_cache_root);
+                goldendict::app::ConfigurationReloadRequest request{
+                    {configuration_path.toStdString(),
+                     history_path.toStdString(),
+                     desired,
+                     goldendict::core::PendingHistoryIntent::kUnchanged,
+                     {}},
+                    std::move(network),
+                    {}};
+                std::vector<goldendict::app::ConfigurationReloadBoundary> trace;
+                goldendict::app::ConfigurationReloadDependencies dependencies;
+                dependencies.observe_boundary = [&](auto boundary) {
+                    trace.push_back(boundary);
+                };
+                const auto result = coordinator_smoke->Execute(
+                    std::move(request), dependencies);
+                using Boundary = goldendict::app::ConfigurationReloadBoundary;
+                const std::vector<Boundary> expected{
+                    Boundary::kPersistencePrepare,
+                    Boundary::kNetworkPrepare,
+                    Boundary::kCorePrepare,
+                    Boundary::kWidgetsPrepare,
+                    Boundary::kNetworkReserve,
+                    Boundary::kCoreReserve,
+                    Boundary::kWidgetsBegin,
+                    Boundary::kPersistenceDecision,
+                    Boundary::kDesiredRuntimeApplying,
+                    Boundary::kNetworkPublish,
+                    Boundary::kCorePublish,
+                    Boundary::kWidgetsPublish,
+                    Boundary::kNetworkPostWork,
+                    Boundary::kWidgetsFinish,
+                    Boundary::kCoreForwardWork,
+                    Boundary::kFinalizeTransaction};
+                const bool passed =
+                    result.outcome ==
+                        goldendict::app::ConfigurationReloadOutcome::
+                            kPublished &&
+                    result.network_published && result.core_published &&
+                    result.widgets_published && trace == expected &&
+                    !std::filesystem::exists(
+                        goldendict::core::PendingConfigurationTransactionPath(
+                            configuration_path.toStdString()));
+                if (!passed) {
+                    qWarning()
+                        << "coordinator smoke failed"
+                        << static_cast<int>(result.outcome)
+                        << result.network_published << result.core_published
+                        << result.widgets_published << trace.size();
+                    for (const auto boundary : trace)
+                        qWarning() << static_cast<int>(boundary);
+                    if (result.error)
+                        qWarning().noquote()
+                            << QString::fromStdString(result.error->message);
+                }
+                app.exit(passed ? 0 : 1);
+            });
     } else if (HasArgument(
                    argc, argv,
                    QStringLiteral("--full-text-dictionary-projection-smoke"))) {

@@ -5,6 +5,7 @@
 #include "http_client.h"
 #include "network_cache_storage.h"
 #include "network_runtime_test_access.h"
+#include "network_runtime_transaction.h"
 
 #include <QAbstractNetworkCache>
 #include <QDebug>
@@ -151,9 +152,11 @@ struct CandidateResource final {
     std::string cache_directory;
     std::string cleanup_diagnostic;
     std::function<void(CandidateResource&)> publish;
+    std::function<void(CandidateResource&)> post_work;
     std::function<void()> publication_observer;
     std::function<void(bool)> destruction_observer;
     bool force_post_work_failure = false;
+    bool expiry_deferred = false;
 };
 
 class CandidateDispatcher final {
@@ -227,6 +230,26 @@ class CandidateDispatcher final {
         return resource->result;
     }
 
+    void PublishOnly(const std::shared_ptr<CandidateResource>& resource) {
+        {
+            std::lock_guard<std::mutex> lock(resource->mutex);
+            if (resource->state != CandidateResource::State::kReady)
+                std::terminate();
+            resource->state = CandidateResource::State::kCommitRequested;
+        }
+        InvokeOnOwner(resource, false);
+        std::lock_guard<std::mutex> lock(resource->mutex);
+        if (resource->state != CandidateResource::State::kPublished)
+            std::terminate();
+    }
+
+    NetworkRuntime::CommitResult FinishPublished(
+        const std::shared_ptr<CandidateResource>& resource) noexcept {
+        InvokeOnOwner(resource, true);
+        std::lock_guard<std::mutex> lock(resource->mutex);
+        return resource->result;
+    }
+
     void ShutdownOnOwnerThread() noexcept {
         stopping_.store(true);
         for (const auto& resource : resources_) {
@@ -262,6 +285,52 @@ class CandidateDispatcher final {
     }
 
    private:
+    void InvokeOnOwner(const std::shared_ptr<CandidateResource>& resource,
+                       bool finish) noexcept {
+        if (QThread::currentThread() == thread_) {
+            if (finish)
+                FinishOne(resource);
+            else
+                PublishOne(resource);
+            EraseTerminal();
+            return;
+        }
+        QMetaObject::invokeMethod(
+            worker_,
+            [this, resource, finish]() {
+                if (finish)
+                    FinishOne(resource);
+                else
+                    PublishOne(resource);
+                EraseTerminal();
+            },
+            Qt::BlockingQueuedConnection);
+    }
+
+    void PublishOne(const std::shared_ptr<CandidateResource>& resource) {
+        try {
+            resource->publish(*resource);
+        } catch (...) {
+            std::terminate();
+        }
+    }
+
+    void FinishOne(
+        const std::shared_ptr<CandidateResource>& resource) noexcept {
+        try {
+            resource->post_work(*resource);
+        } catch (...) {
+            std::lock_guard<std::mutex> lock(resource->mutex);
+            resource->result =
+                NetworkRuntime::CommitResult::kPublishedWithPostWorkFailure;
+        }
+        {
+            std::lock_guard<std::mutex> lock(resource->mutex);
+            resource->state = CandidateResource::State::kTerminal;
+        }
+        resource->changed.notify_all();
+    }
+
     static bool IsTerminal(const std::shared_ptr<CandidateResource>& resource) {
         std::lock_guard<std::mutex> lock(resource->mutex);
         return resource->state == CandidateResource::State::kTerminal;
@@ -312,6 +381,7 @@ class CandidateDispatcher final {
         }
         try {
             resource->publish(*resource);
+            resource->post_work(*resource);
         } catch (...) {
             std::lock_guard<std::mutex> lock(resource->mutex);
             if (resource->state == CandidateResource::State::kPublished ||
@@ -392,8 +462,17 @@ class NetworkRuntime::CommitReservation::Impl final {
     std::uint64_t identity = 0U;
 };
 
+class NetworkRuntimeTransaction::Published::Impl final {
+   public:
+    NetworkRuntime::Impl* owner = nullptr;
+    std::uint64_t identity = 0U;
+    std::unique_ptr<NetworkRuntime::PreparedCandidate::Impl> candidate;
+};
+
 class NetworkRuntime::Impl final {
    public:
+    friend class NetworkRuntimeTransaction;
+
     explicit Impl(Preparation preparation)
         : preparation_(std::move(preparation)),
           storage_slot_(preparation_.cache_directory),
@@ -513,9 +592,8 @@ class NetworkRuntime::Impl final {
                 return;
             }
             const bool positive = command.maximum_cache_bytes != 0;
-            bool expiry_deferred = false;
             if (positive) {
-                expiry_deferred = cache_gate_->PublishPositiveMaximum(
+                command.expiry_deferred = cache_gate_->PublishPositiveMaximum(
                     command.maximum_cache_bytes);
             } else {
                 cache_gate_->Disable();
@@ -531,14 +609,15 @@ class NetworkRuntime::Impl final {
                 command.state = CandidateResource::State::kPublished;
                 command.result = NetworkRuntime::CommitResult::kPublished;
             }
-
+            if (command.publication_observer)
+                command.publication_observer();
+        };
+        resource->post_work = [this](CandidateResource& command) {
+            const bool positive = command.maximum_cache_bytes != 0;
             bool post_work_failed = false;
             try {
-                if (command.publication_observer) {
-                    command.publication_observer();
-                }
                 if (positive) {
-                    if (expiry_deferred) {
+                    if (command.expiry_deferred) {
                         cache_gate_->FinishDeferredExpiry();
                     }
                 } else {
@@ -866,6 +945,71 @@ void NetworkRuntime::Abort(CommitReservation& reservation) noexcept {
 NetworkRuntime::CommitResult NetworkRuntime::Publish(
     CommitReservation& reservation) noexcept {
     return impl_->Publish(reservation);
+}
+
+NetworkRuntimeTransaction::Published::Published() noexcept = default;
+
+NetworkRuntimeTransaction::Published::Published(
+    std::unique_ptr<Impl> impl) noexcept
+    : impl_(std::move(impl)) {}
+
+NetworkRuntimeTransaction::Published::~Published() {
+    if (impl_)
+        std::terminate();
+}
+
+NetworkRuntimeTransaction::Published::Published(Published&&) noexcept = default;
+
+NetworkRuntimeTransaction::Published&
+NetworkRuntimeTransaction::Published::operator=(Published&& other) noexcept {
+    if (this != &other && impl_)
+        std::terminate();
+    impl_ = std::move(other.impl_);
+    return *this;
+}
+
+NetworkRuntimeTransaction::Published::operator bool() const noexcept {
+    return impl_ != nullptr;
+}
+
+NetworkRuntimeTransaction::Published NetworkRuntimeTransaction::Publish(
+    NetworkRuntime& runtime,
+    NetworkRuntime::CommitReservation& reservation) noexcept {
+    auto& owner = *runtime.impl_;
+    std::lock_guard<std::mutex> reservation_lock(owner.reservation_mutex_);
+    std::lock_guard<std::mutex> fetch_lock(owner.fetch_mutex_);
+    if (!reservation.impl_ || reservation.impl_->owner != &owner ||
+        !owner.reservation_active_.load() ||
+        reservation.impl_->identity != owner.reservation_identity_ ||
+        !reservation.impl_->candidate) {
+        std::terminate();
+    }
+    owner.candidate_dispatcher_->PublishOnly(
+        reservation.impl_->candidate->resource);
+    auto published = std::make_unique<Published::Impl>();
+    published->owner = &owner;
+    published->identity = reservation.impl_->identity;
+    published->candidate = std::move(reservation.impl_->candidate);
+    reservation.impl_.reset();
+    return Published(std::move(published));
+}
+
+NetworkRuntime::CommitResult NetworkRuntimeTransaction::Finish(
+    NetworkRuntime& runtime, Published& published) noexcept {
+    auto& owner = *runtime.impl_;
+    std::lock_guard<std::mutex> reservation_lock(owner.reservation_mutex_);
+    std::lock_guard<std::mutex> fetch_lock(owner.fetch_mutex_);
+    if (!published.impl_ || published.impl_->owner != &owner ||
+        !owner.reservation_active_.load() ||
+        published.impl_->identity != owner.reservation_identity_ ||
+        !published.impl_->candidate) {
+        std::terminate();
+    }
+    const auto result = owner.candidate_dispatcher_->FinishPublished(
+        published.impl_->candidate->resource);
+    owner.reservation_active_.store(false);
+    published.impl_.reset();
+    return result;
 }
 
 bool NetworkRuntimeTestAccess::IsCurrent(

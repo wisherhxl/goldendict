@@ -39,6 +39,14 @@ class PreparedCoreFacadeCandidate::Impl final {
     void* observer_context = nullptr;
 };
 
+class PublishedCoreFacadeCandidate::Impl final {
+   public:
+    std::shared_ptr<DesktopFacadeActivationOwner::Impl> owner;
+    std::optional<DesktopFacadeActivationOwner::Impl::PublishedComposition> old;
+    CoreFacadeActivationTestAccess::Observer observer = nullptr;
+    void* observer_context = nullptr;
+};
+
 PreparedCoreFacadeCandidate::PreparedCoreFacadeCandidate() noexcept = default;
 
 PreparedCoreFacadeCandidate::PreparedCoreFacadeCandidate(
@@ -102,6 +110,32 @@ void ReservedCoreFacadeCandidate::Abort() noexcept {
     impl_.reset();
 }
 
+PublishedCoreFacadeCandidate::PublishedCoreFacadeCandidate() noexcept = default;
+
+PublishedCoreFacadeCandidate::PublishedCoreFacadeCandidate(
+    std::unique_ptr<Impl> impl) noexcept
+    : impl_(std::move(impl)) {}
+
+PublishedCoreFacadeCandidate::~PublishedCoreFacadeCandidate() {
+    if (impl_)
+        std::terminate();
+}
+
+PublishedCoreFacadeCandidate::PublishedCoreFacadeCandidate(
+    PublishedCoreFacadeCandidate&&) noexcept = default;
+
+PublishedCoreFacadeCandidate& PublishedCoreFacadeCandidate::operator=(
+    PublishedCoreFacadeCandidate&& other) noexcept {
+    if (this != &other && impl_)
+        std::terminate();
+    impl_ = std::move(other.impl_);
+    return *this;
+}
+
+PublishedCoreFacadeCandidate::operator bool() const noexcept {
+    return impl_ != nullptr;
+}
+
 DesktopFacadeActivationOwner::DesktopFacadeActivationOwner()
     : impl_(std::make_shared<Impl>()) {}
 
@@ -144,6 +178,16 @@ PreparedCoreFacadeCandidate DesktopFacadeActivationOwner::PrepareCandidate(
     return PreparedCoreFacadeCandidate(std::move(candidate));
 }
 
+std::shared_ptr<DesktopFacade>
+DesktopFacadeActivationOwner::PreparedFacadeSnapshot(
+    const PreparedCoreFacadeCandidate& candidate) const noexcept {
+    if (!candidate.impl_ || candidate.impl_->owner.lock() != impl_ ||
+        !candidate.impl_->ready || candidate.impl_->consumed) {
+        return nullptr;
+    }
+    return candidate.impl_->facade;
+}
+
 bool DesktopFacadeActivationOwner::Activate(
     PreparedCoreFacadeCandidate& candidate) noexcept {
     auto reserved = Reserve(candidate);
@@ -176,13 +220,20 @@ ReservedCoreFacadeCandidate DesktopFacadeActivationOwner::Reserve(
 
 void DesktopFacadeActivationOwner::PublishReserved(
     ReservedCoreFacadeCandidate& reserved) noexcept {
+    auto published = PublishReservedOnly(reserved);
+    FinishPublished(published);
+}
+
+PublishedCoreFacadeCandidate DesktopFacadeActivationOwner::PublishReservedOnly(
+    ReservedCoreFacadeCandidate& reserved) noexcept {
     if (!reserved.impl_)
         std::terminate();
     const auto candidate_owner = reserved.impl_->owner.lock();
     if (candidate_owner != impl_)
         std::terminate();
 
-    std::optional<Impl::PublishedComposition> old;
+    auto published = std::make_unique<PublishedCoreFacadeCandidate::Impl>();
+    published->owner = impl_;
     {
         std::lock_guard lock(impl_->mutex);
         if (impl_->state != Impl::State::kHandoffReserved ||
@@ -191,7 +242,7 @@ void DesktopFacadeActivationOwner::PublishReserved(
             std::terminate();
         }
         if (impl_->current.has_value()) {
-            old.emplace(std::move(*impl_->current));
+            published->old.emplace(std::move(*impl_->current));
             impl_->current.reset();
         }
         // Irreversible publication is deliberately limited to nothrow moves
@@ -210,11 +261,22 @@ void DesktopFacadeActivationOwner::PublishReserved(
                                  CoreFacadeActivationEvent::kPublished);
     }
 
-    if (old.has_value() && old->activation.has_value()) {
-        old->activation->ShutdownAndJoin();
-        if (reserved.impl_->observer != nullptr) {
-            reserved.impl_->observer(
-                reserved.impl_->observer_context,
+    published->observer = reserved.impl_->observer;
+    published->observer_context = reserved.impl_->observer_context;
+    reserved.impl_.reset();
+    return PublishedCoreFacadeCandidate(std::move(published));
+}
+
+void DesktopFacadeActivationOwner::FinishPublished(
+    PublishedCoreFacadeCandidate& published) noexcept {
+    if (!published.impl_ || published.impl_->owner != impl_)
+        std::terminate();
+    if (published.impl_->old.has_value() &&
+        published.impl_->old->activation.has_value()) {
+        published.impl_->old->activation->ShutdownAndJoin();
+        if (published.impl_->observer != nullptr) {
+            published.impl_->observer(
+                published.impl_->observer_context,
                 CoreFacadeActivationEvent::kOldExecutorStopped);
         }
     }
@@ -224,16 +286,16 @@ void DesktopFacadeActivationOwner::PublishReserved(
                            impl_->current->activation->SubmitOnceWithDefaults();
     if (!submitted)
         std::terminate();
-    if (reserved.impl_->observer != nullptr) {
-        reserved.impl_->observer(
-            reserved.impl_->observer_context,
+    if (published.impl_->observer != nullptr) {
+        published.impl_->observer(
+            published.impl_->observer_context,
             CoreFacadeActivationEvent::kNewExecutorSubmitted);
     }
     {
         std::lock_guard lock(impl_->mutex);
         impl_->state = Impl::State::kOpen;
     }
-    reserved.impl_.reset();
+    published.impl_.reset();
 }
 
 bool DesktopFacadeActivationOwner::Shutdown() noexcept {

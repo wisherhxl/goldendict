@@ -5061,6 +5061,24 @@ Use `ctest --preset conan-debug` after a Debug build and
 change complete, prefer Release tests unless the change is Debug-specific or
 Release cannot be built locally.
 
+## Cross-Module Configuration Transaction Coordinator
+
+The source-private coordinator exposes deterministic observation and failure
+boundaries for persistence/Network/Core/Widgets preparation, both reservations,
+Widgets Phase A, durable decision and runtime-applying transitions, the three
+ordered publications, Network and Widgets cleanup, Core executor forward work,
+runtime-failure recording, and finalization. Pre-decision cases assert exact
+reverse abort and old authority; post-decision cases assert forward-only
+publication plus a structured failure or restart-visible applying record.
+
+Relevant Release verification builds `goldendict_core`,
+`goldendict_network`, and `goldendict`; runs `application_service_test`,
+`http_client_test`, the Widgets facade preparation smoke, configuration/history
+and Network cache smokes, then the feasible full Release suite. Held Network
+storage leases, held Widgets binding leases, retained old facades/executors,
+reentrancy, shutdown, staleness, wrong-thread use, and every durable checkpoint
+remain part of the owning-module and coordinator boundary matrix.
+
 ## Full Verification
 
 Before considering a change complete, agents should prefer running the smallest

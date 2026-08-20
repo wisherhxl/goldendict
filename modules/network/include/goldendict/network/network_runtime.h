@@ -11,6 +11,7 @@
 namespace goldendict::network {
 
 class NetworkRuntimeTestAccess;
+class NetworkRuntimeTransaction;
 struct HttpRequest;
 struct HttpResponse;
 
@@ -52,6 +53,7 @@ class NetworkRuntime final {
         friend class NetworkRuntime;
         friend class NetworkRuntime::Impl;
         friend class NetworkRuntimeTestAccess;
+        friend class NetworkRuntimeTransaction;
         class Impl;
         explicit PreparedCandidate(std::unique_ptr<Impl> impl);
         std::unique_ptr<Impl> impl_;
@@ -71,6 +73,7 @@ class NetworkRuntime final {
        private:
         friend class NetworkRuntime;
         friend class NetworkRuntime::Impl;
+        friend class NetworkRuntimeTransaction;
         class Impl;
         explicit CommitReservation(std::unique_ptr<Impl> impl);
         std::unique_ptr<Impl> impl_;
@@ -98,6 +101,7 @@ class NetworkRuntime final {
 
    private:
     friend class NetworkRuntimeTestAccess;
+    friend class NetworkRuntimeTransaction;
     explicit NetworkRuntime(Preparation preparation);
     std::unique_ptr<Impl> impl_;
 };

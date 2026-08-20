@@ -17,6 +17,7 @@
 #include "../src/http_client.h"
 #include "../src/network_cache_storage.h"
 #include "../src/network_runtime_test_access.h"
+#include "../src/network_runtime_transaction.h"
 #include "goldendict/network/network_runtime.h"
 
 namespace goldendict::network {
@@ -526,6 +527,27 @@ void HttpClientTest::ReservesPreparedPublicationBeforeDecision() {
              NetworkRuntime::CommitResult::kPublished);
     QVERIFY(!reserved);
     QCOMPARE(runtime->maximum_cache_bytes(), 2LL * 1024LL * 1024LL);
+
+    auto split_candidate = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({0U, false}, root.path().toStdString()));
+    auto split_reservation = runtime->Reserve(split_candidate);
+    QVERIFY(split_reservation);
+    const QString split_owned =
+        QString::fromStdString(runtime->cache_directory());
+    QDir().mkpath(split_owned);
+    QFile split_sentinel(QDir(split_owned).filePath("split-sentinel"));
+    QVERIFY(split_sentinel.open(QIODevice::WriteOnly));
+    split_sentinel.close();
+    auto published =
+        NetworkRuntimeTransaction::Publish(*runtime, split_reservation);
+    QVERIFY(published);
+    QVERIFY(!split_reservation);
+    QCOMPARE(runtime->maximum_cache_bytes(), 0);
+    QVERIFY(split_sentinel.exists());
+    QCOMPARE(NetworkRuntimeTransaction::Finish(*runtime, published),
+             NetworkRuntime::CommitResult::kPublished);
+    QVERIFY(!published);
+    QVERIFY(!QDir(split_owned).exists());
 }
 
 void HttpClientTest::KeepsOwnerEventLoopResponsiveAtReadyBarrier() {

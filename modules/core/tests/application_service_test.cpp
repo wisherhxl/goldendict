@@ -5622,12 +5622,21 @@ void ApplicationServiceTest::
     QVERIFY(reserved_replacement);
     QVERIFY(!replacement_candidate);
     QVERIFY(!owner.Shutdown());
-    owner.PublishReserved(reserved_replacement);
+    auto published_replacement =
+        owner.PublishReservedOnly(reserved_replacement);
     QVERIFY(!reserved_replacement);
-    QCOMPARE(observation.count, 3U);
+    QVERIFY(published_replacement);
+    QCOMPARE(observation.count, 1U);
     QCOMPARE(observation.events[0],
              application::CoreFacadeActivationEvent::kPublished);
     QVERIFY(!observation.old_stopped[0]);
+    QCOMPARE(owner.CurrentSnapshot(), prepared_facade);
+    QVERIFY(!application::IsFullTextIndexExecutorStopped(
+        initial->GetDictionaryService()));
+    QVERIFY(!owner.Shutdown());
+    owner.FinishPublished(published_replacement);
+    QVERIFY(!published_replacement);
+    QCOMPARE(observation.count, 3U);
     QCOMPARE(observation.events[1],
              application::CoreFacadeActivationEvent::kOldExecutorStopped);
     QVERIFY(observation.old_stopped[1]);

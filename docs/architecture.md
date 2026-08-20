@@ -6633,5 +6633,36 @@ Namespace publication followed by sync or cleanup failure is post-publication
 forward work and never rollback. Runtime recovery execution and the cross-
 module coordinator remain separate leaves.
 
+### Phase 8 source-private cross-module transaction coordinator
+
+The application now has the first production-private coordinator seam joining
+configuration/history persistence, NetworkRuntime, the Core facade/executor
+owner, and the MainWindow presentation owner. It is GUI-thread-affine,
+synchronous, non-reentrant, generation-bound, and owns all candidate and
+reservation tokens for exactly one transaction. No existing Preferences,
+source, group, history, startup, or recovery path invokes it yet.
+
+All fallible preparation precedes Network and Core reservation and Widgets
+reversible maintenance. Pre-decision rejection unwinds Widgets, Core, Network,
+and persistence in exact reverse order. The irreversible path first publishes
+and converges desired persistence, durably marks
+`kDesiredRuntimeApplying`, then publishes Network, Core, and Widgets in that
+order without event-loop reentry. Network cleanup, Widgets cleanup, and Core
+old-executor stop/new-executor submission are separate forward continuations
+run in that order before exact verification and pending-record removal.
+
+Network and Core retain their compatibility commit operations, which delegate
+to the new source-private publish/finish split. A published token cannot be
+abandoned: destruction, wrong owner/thread/generation, impossible submission,
+or shutdown inside the irreversible interval is fail-stop. Post-decision
+maintenance failure preserves every reached publication and attempts to
+persist structured runtime failure evidence. If that evidence or finalization
+cannot be made durable, the truthful `kDesiredRuntimeApplying` record remains
+restart-visible; no online rollback is permitted.
+
+Production invocation and startup recovery execution remain a separate bounded
+leaf because current application callbacks do not yet provide one unified
+transaction input and still use compatibility replacement paths.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

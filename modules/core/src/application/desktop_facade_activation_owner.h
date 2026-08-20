@@ -71,6 +71,7 @@ CreateDesktopFacadeActivationCandidate(
 class DesktopFacadeActivationOwner;
 class CoreFacadeActivationTestAccess;
 class ReservedCoreFacadeCandidate;
+class PublishedCoreFacadeCandidate;
 
 class GOLDENDICT_EXPORTS PreparedCoreFacadeCandidate final {
    public:
@@ -119,6 +120,26 @@ class GOLDENDICT_EXPORTS ReservedCoreFacadeCandidate final {
     friend class DesktopFacadeActivationOwner;
 };
 
+class GOLDENDICT_EXPORTS PublishedCoreFacadeCandidate final {
+   public:
+    PublishedCoreFacadeCandidate() noexcept;
+    ~PublishedCoreFacadeCandidate();
+    PublishedCoreFacadeCandidate(const PublishedCoreFacadeCandidate&) = delete;
+    PublishedCoreFacadeCandidate& operator=(
+        const PublishedCoreFacadeCandidate&) = delete;
+    PublishedCoreFacadeCandidate(PublishedCoreFacadeCandidate&&) noexcept;
+    PublishedCoreFacadeCandidate& operator=(
+        PublishedCoreFacadeCandidate&&) noexcept;
+
+    explicit operator bool() const noexcept;
+
+   private:
+    class Impl;
+    explicit PublishedCoreFacadeCandidate(std::unique_ptr<Impl> impl) noexcept;
+    std::unique_ptr<Impl> impl_;
+    friend class DesktopFacadeActivationOwner;
+};
+
 class GOLDENDICT_EXPORTS DesktopFacadeActivationOwner final {
    public:
     DesktopFacadeActivationOwner();
@@ -133,16 +154,22 @@ class GOLDENDICT_EXPORTS DesktopFacadeActivationOwner final {
     PreparedCoreFacadeCandidate PrepareCandidate(
         const CoreConfiguration& configuration,
         std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources);
+    std::shared_ptr<DesktopFacade> PreparedFacadeSnapshot(
+        const PreparedCoreFacadeCandidate& candidate) const noexcept;
     bool Activate(PreparedCoreFacadeCandidate& candidate) noexcept;
     ReservedCoreFacadeCandidate Reserve(
         PreparedCoreFacadeCandidate& candidate) noexcept;
     void PublishReserved(ReservedCoreFacadeCandidate& reserved) noexcept;
+    PublishedCoreFacadeCandidate PublishReservedOnly(
+        ReservedCoreFacadeCandidate& reserved) noexcept;
+    void FinishPublished(PublishedCoreFacadeCandidate& published) noexcept;
     bool Shutdown() noexcept;
     std::shared_ptr<DesktopFacade> CurrentSnapshot() const;
 
    private:
     friend class PreparedCoreFacadeCandidate;
     friend class ReservedCoreFacadeCandidate;
+    friend class PublishedCoreFacadeCandidate;
     friend class CoreFacadeActivationTestAccess;
     class Impl;
     std::shared_ptr<Impl> impl_;

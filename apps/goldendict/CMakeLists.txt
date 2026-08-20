@@ -2,6 +2,10 @@
 
 ti_add_qt_app(goldendict MODULES core network
   EXTRAS ${qt_link} ${qt_print_support_link})
+target_sources(goldendict PRIVATE
+  ../../modules/core/src/application/configuration_transaction_persistence.cc
+  ../../modules/core/src/application/configuration_transaction_preparation.cc
+  ../../modules/core/src/application/pending_configuration_transaction.cc)
 target_compile_definitions(goldendict PRIVATE
   GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}")
 if(UNIX AND NOT APPLE AND TIGER_INSTALL_RUNTIME_DEPENDENCIES)
@@ -348,6 +352,15 @@ set_tests_properties(goldendict_widgets_facade_preparation_smoke PROPERTIES
   ENVIRONMENT
     "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/cache"
   TIMEOUT 20)
+
+add_test(NAME goldendict_configuration_reload_coordinator_smoke
+  COMMAND $<TARGET_FILE:goldendict>
+    --configuration-reload-coordinator-smoke)
+set_tests_properties(goldendict_configuration_reload_coordinator_smoke
+  PROPERTIES
+    ENVIRONMENT
+      "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/configuration-reload-coordinator-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/configuration-reload-coordinator-test-home/cache"
+    TIMEOUT 20)
 
 add_test(NAME goldendict_article_tab_session_restart_smoke
   COMMAND ${CMAKE_COMMAND}
