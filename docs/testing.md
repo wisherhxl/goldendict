@@ -190,6 +190,11 @@ degradation after redacted setup failure, and cancellation/join before owned
 directory cleanup. Preparation does not alter an active runtime; activation
 is the point where reducing or disabling the limit may irreversibly discard
 disposable cache bytes.
+The transaction prerequisite keeps one owner-thread disk-cache object bound
+for the runtime lifetime behind a manager-owned enable gate. Candidate
+preparation never attaches a second cache or publishes policy, zero activation
+disables delegation before eviction, and later positive activation reuses the
+same fixed binding and Qt cache format.
 P5a.2 coverage adds four-family ordering, Forvo language-child identities and
 configured-source provenance, redacted missing-credential diagnostics, secret
 non-disclosure, and atomic malformed/inconsistent credential rejection. Local

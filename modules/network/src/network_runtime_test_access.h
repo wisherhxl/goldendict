@@ -26,6 +26,9 @@ class NetworkRuntimeTestAccess final {
         const NetworkRuntime::PreparedCandidate& candidate);
     static void ObserveDestruction(NetworkRuntime::PreparedCandidate& candidate,
                                    std::function<void(bool)> observer);
+    static const void* BoundDiskCache(const NetworkRuntime& runtime);
+    static std::uint64_t DirectoryConfigurationCount(
+        const NetworkRuntime& runtime);
 };
 
 }  // namespace goldendict::network

@@ -6,6 +6,7 @@
 #include "network_cache_storage.h"
 #include "network_runtime_test_access.h"
 
+#include <QAbstractNetworkCache>
 #include <QDebug>
 #include <QNetworkAccessManager>
 #include <QNetworkDiskCache>
@@ -34,17 +35,98 @@ std::uint64_t NextRuntimeIdentity() noexcept {
 }
 
 class PreparedNetworkDiskCache final : public QNetworkDiskCache {
+   public:
+    void SetMaximumCacheSizeWithoutExpiry(qint64 size) {
+        suppress_expiry_ = true;
+        setMaximumCacheSize(size);
+        suppress_expiry_ = false;
+    }
+
+    void FinishDeferredExpiry() { QNetworkDiskCache::expire(); }
+
    protected:
     qint64 expire() override {
+        if (suppress_expiry_) {
+            return maximumCacheSize();
+        }
         if (cacheDirectory().isEmpty()) {
             return 0;
         }
         return QNetworkDiskCache::expire();
     }
+
+   private:
+    bool suppress_expiry_ = false;
+};
+
+// QNetworkAccessManager owns this gate for the runtime lifetime. The one disk
+// cache behind it is bound during runtime construction and is never replaced;
+// candidates can only prepare the layout for that existing binding.
+class NetworkDiskCacheGate final : public QAbstractNetworkCache {
+   public:
+    NetworkDiskCacheGate(std::unique_ptr<PreparedNetworkDiskCache> cache,
+                         bool enabled)
+        : cache_(std::move(cache)), enabled_(enabled) {}
+
+    QNetworkCacheMetaData metaData(const QUrl& url) override {
+        return enabled_ ? cache_->metaData(url) : QNetworkCacheMetaData{};
+    }
+
+    void updateMetaData(const QNetworkCacheMetaData& metadata) override {
+        if (enabled_) {
+            cache_->updateMetaData(metadata);
+        }
+    }
+
+    QIODevice* data(const QUrl& url) override {
+        return enabled_ ? cache_->data(url) : nullptr;
+    }
+
+    bool remove(const QUrl& url) override {
+        return enabled_ && cache_->remove(url);
+    }
+
+    qint64 cacheSize() const override {
+        return enabled_ ? cache_->cacheSize() : 0;
+    }
+
+    QIODevice* prepare(const QNetworkCacheMetaData& metadata) override {
+        return enabled_ ? cache_->prepare(metadata) : nullptr;
+    }
+
+    void insert(QIODevice* device) override { cache_->insert(device); }
+
+    void clear() override { cache_->clear(); }
+
+    bool PublishPositiveMaximum(qint64 maximum_cache_bytes) {
+        const bool reduced = maximum_cache_bytes < cache_->maximumCacheSize();
+        cache_->SetMaximumCacheSizeWithoutExpiry(maximum_cache_bytes);
+        enabled_ = true;
+        return reduced;
+    }
+
+    void FinishDeferredExpiry() { cache_->FinishDeferredExpiry(); }
+
+    void Disable() noexcept { enabled_ = false; }
+
+    void PrepareExistingBindingLayout() {
+        cache_->setCacheDirectory(cache_->cacheDirectory());
+        ++directory_configuration_count_;
+    }
+
+    PreparedNetworkDiskCache& disk_cache() noexcept { return *cache_; }
+
+    std::uint64_t directory_configuration_count() const noexcept {
+        return directory_configuration_count_;
+    }
+
+   private:
+    std::unique_ptr<PreparedNetworkDiskCache> cache_;
+    bool enabled_ = false;
+    std::uint64_t directory_configuration_count_ = 1U;
 };
 
 struct CandidateResource final {
-    std::unique_ptr<QNetworkDiskCache> cache;
     QThread* construction_thread = nullptr;
     QThread* owner_thread = nullptr;
     std::int64_t maximum_cache_bytes = 0;
@@ -94,7 +176,6 @@ class CandidateOwner final {
     void ResetOnOwnerThread(
         const std::shared_ptr<CandidateResource>& resource) noexcept {
         auto reset = [resource]() {
-            resource->cache.reset();
             if (resource->destruction_observer) {
                 try {
                     resource->destruction_observer(QThread::currentThread() ==
@@ -162,16 +243,21 @@ class NetworkRuntime::Impl final {
             &worker_,
             [this]() {
                 manager_ = std::make_unique<QNetworkAccessManager>();
-                if (storage_lease_ && preparation_.cache_available &&
-                    preparation_.policy.maximum_megabytes != 0U) {
-                    auto cache = std::make_unique<QNetworkDiskCache>();
+                if (storage_lease_) {
+                    auto cache = std::make_unique<PreparedNetworkDiskCache>();
+                    cache->setMaximumCacheSize(MaximumBytes());
                     cache->setCacheDirectory(
                         QString::fromStdString(storage_lease_.directory()));
-                    cache->setMaximumCacheSize(MaximumBytes());
-                    manager_->setCache(cache.release());
-                } else if (storage_lease_ &&
-                           preparation_.policy.maximum_megabytes == 0U) {
-                    RemoveOwnedDirectory(preparation_);
+                    const bool enabled =
+                        preparation_.cache_available &&
+                        preparation_.policy.maximum_megabytes != 0U;
+                    auto gate = std::make_unique<NetworkDiskCacheGate>(
+                        std::move(cache), enabled);
+                    cache_gate_ = gate.get();
+                    manager_->setCache(gate.release());
+                    if (!enabled) {
+                        RemoveOwnedDirectory(preparation_);
+                    }
                 }
             },
             Qt::BlockingQueuedConnection);
@@ -221,28 +307,25 @@ class NetworkRuntime::Impl final {
             &worker_,
             [this, &preparation, &activated]() {
                 if (preparation.policy.maximum_megabytes == 0U) {
-                    if (manager_->cache() != nullptr) {
-                        manager_->cache()->clear();
-                        manager_->setCache(nullptr);
+                    if (cache_gate_ != nullptr) {
+                        cache_gate_->Disable();
+                        activated = true;
+                        cache_gate_->clear();
+                        RemoveOwnedDirectory(preparation);
                     }
-                    RemoveOwnedDirectory(preparation);
-                    activated = true;
                 } else {
-                    auto* cache =
-                        qobject_cast<QNetworkDiskCache*>(manager_->cache());
-                    if (cache == nullptr) {
-                        auto replacement =
-                            std::make_unique<QNetworkDiskCache>();
-                        replacement->setCacheDirectory(
-                            QString::fromStdString(storage_lease_.directory()));
-                        cache = replacement.release();
-                        manager_->setCache(cache);
+                    if (cache_gate_ != nullptr) {
+                        cache_gate_->PrepareExistingBindingLayout();
+                        const bool expiry_deferred =
+                            cache_gate_->PublishPositiveMaximum(
+                                static_cast<std::int64_t>(
+                                    preparation.policy.maximum_megabytes) *
+                                kBytesPerMebibyte);
+                        activated = true;
+                        if (expiry_deferred) {
+                            cache_gate_->FinishDeferredExpiry();
+                        }
                     }
-                    cache->setMaximumCacheSize(
-                        static_cast<std::int64_t>(
-                            preparation.policy.maximum_megabytes) *
-                        kBytesPerMebibyte);
-                    activated = true;
                 }
                 if (activated) {
                     preparation_ = std::move(preparation);
@@ -275,23 +358,19 @@ class NetworkRuntime::Impl final {
         auto resource = candidate->resource;
         const std::uint32_t maximum_megabytes =
             candidate->preparation.policy.maximum_megabytes;
+        NetworkDiskCacheGate* const cache_gate = cache_gate_;
         std::exception_ptr failure;
         QMetaObject::invokeMethod(
             &worker_,
-            [resource, maximum_megabytes, &failure]() {
+            [resource, maximum_megabytes, cache_gate, &failure]() {
                 try {
                     resource->construction_thread = QThread::currentThread();
                     resource->owner_thread = QThread::currentThread();
                     if (maximum_megabytes != 0U) {
-                        resource->cache =
-                            std::make_unique<PreparedNetworkDiskCache>();
+                        cache_gate->PrepareExistingBindingLayout();
                         resource->maximum_cache_bytes =
                             static_cast<std::int64_t>(maximum_megabytes) *
                             kBytesPerMebibyte;
-                        resource->cache->setMaximumCacheSize(
-                            resource->maximum_cache_bytes);
-                        resource->cache_directory =
-                            resource->cache->cacheDirectory().toStdString();
                     }
                 } catch (...) {
                     failure = std::current_exception();
@@ -330,12 +409,14 @@ class NetworkRuntime::Impl final {
             [this]() {
                 if (storage_lease_ && manager_ != nullptr &&
                     preparation_.policy.clear_on_exit) {
-                    if (manager_->cache() != nullptr) {
-                        manager_->cache()->clear();
+                    if (cache_gate_ != nullptr) {
+                        cache_gate_->Disable();
+                        cache_gate_->clear();
                     }
                     RemoveOwnedDirectory(preparation_);
                 }
                 manager_.reset();
+                cache_gate_ = nullptr;
             },
             Qt::BlockingQueuedConnection);
         storage_lease_.Release();
@@ -376,6 +457,7 @@ class NetworkRuntime::Impl final {
     QObject worker_;
     QThread thread_;
     std::unique_ptr<QNetworkAccessManager> manager_;
+    NetworkDiskCacheGate* cache_gate_ = nullptr;
     mutable std::mutex fetch_mutex_;
     std::atomic<bool> stopping_{false};
     std::shared_ptr<CandidateOwner> candidate_owner_;
@@ -449,8 +531,7 @@ bool NetworkRuntimeTestAccess::Consume(
 
 std::int64_t NetworkRuntimeTestAccess::MaximumCacheBytes(
     const NetworkRuntime::PreparedCandidate& candidate) {
-    if (!candidate.impl_ || !candidate.impl_->resource ||
-        !candidate.impl_->resource->cache) {
+    if (!candidate.impl_ || !candidate.impl_->resource) {
         return 0;
     }
     return candidate.impl_->resource->maximum_cache_bytes;
@@ -458,8 +539,7 @@ std::int64_t NetworkRuntimeTestAccess::MaximumCacheBytes(
 
 std::string NetworkRuntimeTestAccess::CacheDirectory(
     const NetworkRuntime::PreparedCandidate& candidate) {
-    if (!candidate.impl_ || !candidate.impl_->resource ||
-        !candidate.impl_->resource->cache) {
+    if (!candidate.impl_ || !candidate.impl_->resource) {
         return {};
     }
     return candidate.impl_->resource->cache_directory;
@@ -479,6 +559,20 @@ void NetworkRuntimeTestAccess::ObserveDestruction(
     if (candidate.impl_ && candidate.impl_->resource) {
         candidate.impl_->resource->destruction_observer = std::move(observer);
     }
+}
+
+const void* NetworkRuntimeTestAccess::BoundDiskCache(
+    const NetworkRuntime& runtime) {
+    return runtime.impl_->cache_gate_ == nullptr
+               ? nullptr
+               : &runtime.impl_->cache_gate_->disk_cache();
+}
+
+std::uint64_t NetworkRuntimeTestAccess::DirectoryConfigurationCount(
+    const NetworkRuntime& runtime) {
+    return runtime.impl_->cache_gate_ == nullptr
+               ? 0U
+               : runtime.impl_->cache_gate_->directory_configuration_count();
 }
 
 void NetworkRuntime::Shutdown() noexcept {

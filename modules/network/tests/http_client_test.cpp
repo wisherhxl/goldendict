@@ -230,6 +230,7 @@ class HttpClientTest : public QObject {
     void DisablesAndClearsOnlyOwnedCache();
     void CancelsAndJoinsBeforeShutdownCleanup();
     void ActivatesPreparedPolicyWithExistingStorageLease();
+    void ReusesLifetimeBoundCacheAcrossZeroAndPositivePolicies();
     void PreparesMoveOnlyCandidatesOnOwnerThreadWithoutActiveMutation();
     void RejectsInvalidCrossRuntimeStaleAndReusedCandidates();
     void AbandonsCandidatesOnOwnerThreadWithoutStorageMutation();
@@ -715,6 +716,52 @@ void HttpClientTest::ActivatesPreparedPolicyWithExistingStorageLease() {
     QVERIFY(runtime->Activate(std::move(disabled)));
     QCOMPARE(runtime->maximum_cache_bytes(), 0);
     QVERIFY(!QDir(owned).exists());
+}
+
+void HttpClientTest::ReusesLifetimeBoundCacheAcrossZeroAndPositivePolicies() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+    const void* const cache =
+        NetworkRuntimeTestAccess::BoundDiskCache(*runtime);
+    QVERIFY(cache != nullptr);
+    QCOMPARE(NetworkRuntimeTestAccess::DirectoryConfigurationCount(*runtime),
+             1U);
+
+    QVERIFY(runtime->Activate(
+        NetworkRuntime::Prepare({0U, false}, root.path().toStdString())));
+    QCOMPARE(NetworkRuntimeTestAccess::BoundDiskCache(*runtime), cache);
+    QCOMPARE(runtime->maximum_cache_bytes(), 0);
+    const QString owned = QString::fromStdString(runtime->cache_directory());
+    QVERIFY(!QDir(owned).exists());
+
+    {
+        auto abandoned = runtime->PrepareCandidate(
+            NetworkRuntime::Prepare({3U, false}, root.path().toStdString()));
+        QVERIFY(abandoned);
+        QCOMPARE(NetworkRuntimeTestAccess::BoundDiskCache(*runtime), cache);
+        QCOMPARE(
+            NetworkRuntimeTestAccess::DirectoryConfigurationCount(*runtime),
+            2U);
+        QCOMPARE(runtime->maximum_cache_bytes(), 0);
+    }
+    QCOMPARE(runtime->maximum_cache_bytes(), 0);
+
+    QVERIFY(runtime->Activate(
+        NetworkRuntime::Prepare({3U, false}, root.path().toStdString())));
+    QCOMPARE(NetworkRuntimeTestAccess::BoundDiskCache(*runtime), cache);
+    QCOMPARE(NetworkRuntimeTestAccess::DirectoryConfigurationCount(*runtime),
+             3U);
+    QCOMPARE(runtime->maximum_cache_bytes(), 3LL * 1024LL * 1024LL);
+
+    HttpFixture fixture;
+    HttpRequest request;
+    request.url = fixture.Url("/cache");
+    request.runtime = runtime;
+    static_cast<void>(FetchWhileProcessingEvents(runtime, request));
+    static_cast<void>(FetchWhileProcessingEvents(runtime, request));
+    QCOMPARE(fixture.cache_requests(), 1);
 }
 
 }  // namespace goldendict::network
