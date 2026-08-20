@@ -6468,6 +6468,27 @@ safety, `full-text-v1`, find/F3, translations and exactly 109 registrations
 remain locked. P8-FT-88 selects or names no successor. Next dependency: none
 selected.
 
+### Phase 8 prepared Core facade activation
+
+At revision `25dc64dd2dac735e63183b1f6d018ce90a31dff4`, the private owner
+still joined the old executor and submitted the candidate before facade
+publication. The durable transaction boundary instead requires publication to
+be the last rejectable point. Core needs no further prerequisite because
+`ServiceState` construction already completes source discovery, policy
+reconciliation, facade/service construction, and allocation of an idle
+executor worker.
+
+The owner now prepares a complete move-only candidate bound to its identity and
+generation. Activation validates and consumes it under the owner lock,
+publishes it with bounded moves, and advances generation. Only afterward does
+it stop and join the old executor and submit the already-created new executor.
+A post-publication submission invariant failure is fail-stop; it is never
+reported as rejection and no rollback is attempted. Abandoned, moved-from,
+cross-owner, stale, reused, and shutdown candidates cannot mutate active state.
+This source-private seam changes no installed API and adds no Widgets,
+coordinator, recovery, notification, Network, persistence, or recomposition
+behavior.
+
 WebEngine's default-profile cache path, size, type, cookies, and persistent
 storage are not changed or cleared by these controls. A WebEngine profile
 policy or broader browser-data deletion promise requires a separate reviewed

@@ -5040,6 +5040,22 @@ serial/coalesced/no-retry execution, persistence/snapshot safety,
 `full-text-v1`, find/F3 and translations remain locked. No successor beyond
 P8-FT-88 is selected or named. Next dependency: none selected.
 
+## Prepared Core Facade Activation Acceptance
+
+The existing `application_service_test` registration covers the private
+move-only prepared facade seam. Preparation and construction failure do not
+publish, stop, or submit active work; the active service remains usable while
+a candidate is ready; and abandonment leaves it intact. Coverage also includes
+successful replacement, sibling generation staleness, cross-owner, reused,
+invalid, moved-from, and shutdown rejection, concurrent candidates, and
+retained old-facade readability after executor handoff.
+
+Publication precedes old-executor stop/join and new-executor submission. Those
+operations are forward-only; an impossible new submission failure is fail-stop
+rather than rejection. Existing `application_service_test` and
+`full_text_index_test` cases retain one-shot submission, idle construction,
+shutdown/join, lifecycle, lookup, and snapshot compatibility coverage.
+
 Use `ctest --preset conan-debug` after a Debug build and
 `ctest --preset conan-release` after a Release build. Before considering a
 change complete, prefer Release tests unless the change is Debug-specific or

@@ -4,8 +4,6 @@
 #define GOLDENDICT_CORE_SRC_APPLICATION_DESKTOP_FACADE_ACTIVATION_OWNER_H_
 
 #include <memory>
-#include <mutex>
-#include <optional>
 #include <vector>
 
 #include "goldendict/base/goldendict_def.tp.h"
@@ -70,37 +68,57 @@ CreateDesktopFacadeActivationCandidate(
     const CoreConfiguration& configuration,
     std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources);
 
+class DesktopFacadeActivationOwner;
+class CoreFacadeActivationTestAccess;
+
+class GOLDENDICT_EXPORTS PreparedCoreFacadeCandidate final {
+   public:
+    PreparedCoreFacadeCandidate() noexcept;
+    ~PreparedCoreFacadeCandidate();
+
+    PreparedCoreFacadeCandidate(const PreparedCoreFacadeCandidate&) = delete;
+    PreparedCoreFacadeCandidate& operator=(const PreparedCoreFacadeCandidate&) =
+        delete;
+    PreparedCoreFacadeCandidate(PreparedCoreFacadeCandidate&&) noexcept;
+    PreparedCoreFacadeCandidate& operator=(
+        PreparedCoreFacadeCandidate&&) noexcept;
+
+    explicit operator bool() const noexcept;
+    void Abandon() noexcept;
+
+   private:
+    class Impl;
+    explicit PreparedCoreFacadeCandidate(std::unique_ptr<Impl> impl) noexcept;
+
+    std::unique_ptr<Impl> impl_;
+
+    friend class DesktopFacadeActivationOwner;
+    friend class CoreFacadeActivationTestAccess;
+};
+
 class GOLDENDICT_EXPORTS DesktopFacadeActivationOwner final {
    public:
-    DesktopFacadeActivationOwner() = default;
+    DesktopFacadeActivationOwner();
     ~DesktopFacadeActivationOwner();
 
     DesktopFacadeActivationOwner(const DesktopFacadeActivationOwner&) = delete;
     DesktopFacadeActivationOwner& operator=(
         const DesktopFacadeActivationOwner&) = delete;
 
-    bool BuildAndInstallCandidate(const CoreConfiguration& configuration);
-    bool BuildAndInstallCandidate(
+    PreparedCoreFacadeCandidate PrepareCandidate(
+        const CoreConfiguration& configuration);
+    PreparedCoreFacadeCandidate PrepareCandidate(
         const CoreConfiguration& configuration,
         std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources);
-    bool Activate();
+    bool Activate(PreparedCoreFacadeCandidate& candidate) noexcept;
     bool Shutdown() noexcept;
     std::shared_ptr<DesktopFacade> CurrentSnapshot() const;
 
    private:
-    enum class State { kOpen, kHandoffReserved, kShutdown };
-
-    struct PublishedComposition {
-        std::shared_ptr<DesktopFacade> facade;
-        std::optional<ServiceStateActivationHandle> activation;
-    };
-
-    bool InstallCandidate(DesktopFacadeActivationCandidate candidate);
-
-    mutable std::mutex mutex_;
-    State state_ = State::kOpen;
-    std::optional<PublishedComposition> current_;
-    std::optional<DesktopFacadeActivationCandidate> candidate_;
+    friend class PreparedCoreFacadeCandidate;
+    friend class CoreFacadeActivationTestAccess;
+    class Impl;
+    std::shared_ptr<Impl> impl_;
 };
 
 }  // namespace goldendict::core::application

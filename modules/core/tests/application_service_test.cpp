@@ -4,6 +4,7 @@
 
 #include <QCryptographicHash>
 
+#include <array>
 #include <condition_variable>
 #include <filesystem>
 #include <fstream>
@@ -14,6 +15,7 @@
 
 #include "../src/application/configuration_transaction_persistence.h"
 #include "../src/application/configuration_transaction_preparation.h"
+#include "../src/application/core_facade_activation_test_access.h"
 #include "../src/application/desktop_facade_activation_owner.h"
 #include "../src/application/full_text_index_lifecycle_inspection.h"
 #include "../src/application/pending_configuration_transaction.h"
@@ -42,6 +44,14 @@ static_assert(std::is_move_constructible_v<PreparedConfigurationTransaction>);
 static_assert(!std::is_move_assignable_v<PreparedConfigurationTransaction>);
 static_assert(!std::is_copy_constructible_v<PreparedConfigurationTransaction>);
 static_assert(!std::is_copy_assignable_v<PreparedConfigurationTransaction>);
+static_assert(std::is_nothrow_move_constructible_v<
+              application::PreparedCoreFacadeCandidate>);
+static_assert(std::is_nothrow_move_assignable_v<
+              application::PreparedCoreFacadeCandidate>);
+static_assert(
+    !std::is_copy_constructible_v<application::PreparedCoreFacadeCandidate>);
+static_assert(
+    !std::is_copy_assignable_v<application::PreparedCoreFacadeCandidate>);
 
 PendingConfigurationTransactionRecord CompletePendingRecord() {
     PendingConfigurationTransactionRecord record;
@@ -5475,17 +5485,59 @@ void ApplicationServiceTest::
     ActivatesAndReplacesPrivateDesktopFacadeCompositions() {
     application::DesktopFacadeActivationOwner owner;
     QVERIFY(!owner.CurrentSnapshot());
-    QVERIFY(!owner.Activate());
+    application::PreparedCoreFacadeCandidate invalid;
+    QVERIFY(!owner.Activate(invalid));
 
-    QVERIFY(owner.BuildAndInstallCandidate({}));
-    QVERIFY(owner.Activate());
+    auto initial_candidate = owner.PrepareCandidate({});
+    QVERIFY(initial_candidate);
+    QVERIFY(!owner.CurrentSnapshot());
+    QVERIFY(owner.Activate(initial_candidate));
     const auto initial = owner.CurrentSnapshot();
     QVERIFY(initial);
     QVERIFY(initial->GetDictionaryService().GetCatalog().empty());
-    QVERIFY(!owner.Activate());
+    QVERIFY(!owner.Activate(initial_candidate));
 
-    QVERIFY(owner.BuildAndInstallCandidate({}));
-    QVERIFY(owner.Activate());
+    auto replacement_candidate = owner.PrepareCandidate({});
+    QVERIFY(replacement_candidate);
+    const auto prepared_facade =
+        application::CoreFacadeActivationTestAccess::Facade(
+            replacement_candidate);
+    QVERIFY(prepared_facade);
+    QVERIFY(!application::IsFullTextIndexExecutorStopped(
+        prepared_facade->GetDictionaryService()));
+    struct HandoffObservation {
+        const DictionaryService* old_service = nullptr;
+        std::array<application::CoreFacadeActivationEvent, 3U> events{};
+        std::array<bool, 3U> old_stopped{};
+        std::size_t count = 0U;
+    } observation{&initial->GetDictionaryService()};
+    application::CoreFacadeActivationTestAccess::Observe(
+        replacement_candidate,
+        [](void* context,
+           application::CoreFacadeActivationEvent event) noexcept {
+            auto& observed = *static_cast<HandoffObservation*>(context);
+            observed.events[observed.count] = event;
+            observed.old_stopped[observed.count] =
+                application::IsFullTextIndexExecutorStopped(
+                    *observed.old_service);
+            ++observed.count;
+        },
+        &observation);
+    QCOMPARE(owner.CurrentSnapshot(), initial);
+    QVERIFY(!application::IsFullTextIndexExecutorStopped(
+        initial->GetDictionaryService()));
+    QVERIFY(initial->GetDictionaryService().GetCatalog().empty());
+    QVERIFY(owner.Activate(replacement_candidate));
+    QCOMPARE(observation.count, 3U);
+    QCOMPARE(observation.events[0],
+             application::CoreFacadeActivationEvent::kPublished);
+    QVERIFY(!observation.old_stopped[0]);
+    QCOMPARE(observation.events[1],
+             application::CoreFacadeActivationEvent::kOldExecutorStopped);
+    QVERIFY(observation.old_stopped[1]);
+    QCOMPARE(observation.events[2],
+             application::CoreFacadeActivationEvent::kNewExecutorSubmitted);
+    QVERIFY(observation.old_stopped[2]);
     const auto replacement = owner.CurrentSnapshot();
     QVERIFY(replacement);
     QVERIFY(replacement != initial);
@@ -5496,8 +5548,9 @@ void ApplicationServiceTest::
     QVERIFY(owner.Shutdown());
     QVERIFY(owner.Shutdown());
     QVERIFY(!owner.CurrentSnapshot());
-    QVERIFY(!owner.BuildAndInstallCandidate({}));
-    QVERIFY(!owner.Activate());
+    QVERIFY(!owner.PrepareCandidate({}));
+    auto shutdown_candidate = owner.PrepareCandidate({});
+    QVERIFY(!owner.Activate(shutdown_candidate));
     QVERIFY(initial->GetDictionaryService().GetCatalog().empty());
     QVERIFY(replacement->GetDictionaryService().GetCatalog().empty());
 }
@@ -5505,21 +5558,26 @@ void ApplicationServiceTest::
 void ApplicationServiceTest::
     PreservesInstalledCandidateWhenAnotherBuildFails() {
     application::DesktopFacadeActivationOwner owner;
-    QVERIFY(owner.BuildAndInstallCandidate({}));
+    auto prepared = owner.PrepareCandidate({});
+    QVERIFY(prepared);
 
     std::vector<std::unique_ptr<RuntimeDictionarySource>> invalid;
     invalid.push_back(std::make_unique<InspectionRuntimeSource>());
     invalid.push_back(std::make_unique<InspectionRuntimeSource>());
-    QVERIFY_EXCEPTION_THROWN(
-        owner.BuildAndInstallCandidate({}, std::move(invalid)),
-        std::runtime_error);
+    QVERIFY_EXCEPTION_THROWN(owner.PrepareCandidate({}, std::move(invalid)),
+                             std::runtime_error);
 
-    QVERIFY(owner.Activate());
+    QVERIFY(owner.Activate(prepared));
     const auto current = owner.CurrentSnapshot();
     QVERIFY(current);
     QVERIFY(current->GetDictionaryService().GetCatalog().empty());
 
-    QVERIFY(owner.BuildAndInstallCandidate({}));
+    auto abandoned = owner.PrepareCandidate({});
+    QVERIFY(abandoned);
+    abandoned.Abandon();
+    QVERIFY(!abandoned);
+    QVERIFY(!owner.Activate(abandoned));
+    QCOMPARE(owner.CurrentSnapshot(), current);
 }
 
 void ApplicationServiceTest::
@@ -5544,32 +5602,41 @@ void ApplicationServiceTest::
 
     auto first_build = std::async(std::launch::async, [&] {
         wait_for_start();
-        return owner.BuildAndInstallCandidate({});
+        return owner.PrepareCandidate({});
     });
     auto second_build = std::async(std::launch::async, [&] {
         wait_for_start();
-        return owner.BuildAndInstallCandidate({});
+        return owner.PrepareCandidate({});
     });
     release();
-    QCOMPARE(static_cast<unsigned>(first_build.get()) +
-                 static_cast<unsigned>(second_build.get()),
-             1U);
+    auto first_candidate = first_build.get();
+    auto second_candidate = second_build.get();
+    QVERIFY(first_candidate);
+    QVERIFY(second_candidate);
 
     ready = 0U;
     start = false;
     auto first_activation = std::async(std::launch::async, [&] {
         wait_for_start();
-        return owner.Activate();
+        return owner.Activate(first_candidate);
     });
     auto second_activation = std::async(std::launch::async, [&] {
         wait_for_start();
-        return owner.Activate();
+        return owner.Activate(second_candidate);
     });
     release();
     QCOMPARE(static_cast<unsigned>(first_activation.get()) +
                  static_cast<unsigned>(second_activation.get()),
              1U);
     QVERIFY(owner.CurrentSnapshot());
+    QVERIFY(!owner.Activate(first_candidate));
+    QVERIFY(!owner.Activate(second_candidate));
+
+    application::DesktopFacadeActivationOwner other;
+    auto cross_owner = other.PrepareCandidate({});
+    QVERIFY(cross_owner);
+    QVERIFY(!owner.Activate(cross_owner));
+    QVERIFY(other.Activate(cross_owner));
 }
 
 void ApplicationServiceTest::ActivationHandleIsOneShotAndStopsOnDestruction() {
@@ -5598,8 +5665,9 @@ void ApplicationServiceTest::
     std::string dictionary_id;
     {
         application::DesktopFacadeActivationOwner owner;
-        QVERIFY(owner.BuildAndInstallCandidate(configuration));
-        QVERIFY(owner.Activate());
+        auto candidate = owner.PrepareCandidate(configuration);
+        QVERIFY(candidate);
+        QVERIFY(owner.Activate(candidate));
         retained = owner.CurrentSnapshot();
         QVERIFY(retained);
         dictionary_id =

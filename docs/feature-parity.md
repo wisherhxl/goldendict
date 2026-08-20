@@ -1844,6 +1844,18 @@ serial/coalesced/no-retry execution, persistence/snapshot safety,
 locked. No successor beyond P8-FT-88 is selected or named. Next dependency:
 none selected.
 
+### Phase 8 prepared Core facade activation (complete)
+
+Core now has a source-private move-only prepared facade candidate containing
+the complete desired facade/service state and idle allocated executor. It is
+bound to one owner generation and rejects invalid, stale, cross-owner, reused,
+abandoned, and shutdown use. Preparing or abandoning it does not affect the
+active composition. Successful activation publishes and advances generation
+before forward-only old-executor quiescence and new-executor submission.
+Installed Core contracts and completed full-text behavior remain unchanged;
+Widgets, coordination, recovery, notification, Network, persistence formats,
+and source-specific recomposition are excluded.
+
 ## Resources And Platform Integration
 
 | Capability | Status | Target gate | Verification |

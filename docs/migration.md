@@ -6235,6 +6235,23 @@ serial/coalesced/no-retry behavior, persistence/snapshot safety,
 locked. No successor beyond P8-FT-88 is selected or named. Next dependency:
 none selected.
 
+### Phase 8 prepared Core facade activation (complete)
+
+The leaf grounded at
+`25dc64dd2dac735e63183b1f6d018ce90a31dff4` converts the P8-FT-88 owner into
+the prepared Core facade activation required by durable transactions. A
+complete facade, service state, runtime-source composition, coordinator, and
+idle allocated executor are constructed before activation. The move-only
+candidate is owner/generation-bound and one-shot; preparation, rejection, and
+abandonment leave the active facade and executor usable.
+
+Activation performs only validation, bounded publication, and a generation
+advance at the irreversible point. Old-executor stop/join and exactly-once new
+submission follow as forward-only handoff. No post-publication failure becomes
+pre-publication rejection or online rollback. Widgets rebinding, transaction
+coordination, recovery, notification, Network, persistence, and source-specific
+recomposition remain later work.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
