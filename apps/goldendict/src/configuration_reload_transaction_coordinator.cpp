@@ -79,8 +79,14 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
         return result;
     auto persistence = core::PrepareConfigurationTransaction(
         request.persistence, dependencies.preparation);
-    if (!persistence)
+    if (!persistence) {
+        if (persistence.error) {
+            result.error =
+                BoundaryError(ConfigurationReloadBoundary::kPersistencePrepare,
+                              persistence.error->message.c_str());
+        }
         return result;
+    }
     const auto transaction_id = persistence.prepared->record().transaction_id;
 
     if (Inject(dependencies, ConfigurationReloadBoundary::kNetworkPrepare))
@@ -92,14 +98,34 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
 
     if (Inject(dependencies, ConfigurationReloadBoundary::kCorePrepare))
         return result;
-    auto core_candidate =
-        core_owner_->PrepareCandidate(request.persistence.desired_configuration,
-                                      std::move(request.runtime_sources));
-    if (!core_candidate)
+    core::application::PreparedCoreFacadeCandidate core_candidate;
+    std::shared_ptr<core::DesktopFacade> candidate_facade;
+    try {
+        if (request.prepare_core) {
+            auto prepared = request.prepare_core();
+            if (!prepared)
+                return result;
+            core_candidate = std::move(prepared->candidate);
+            candidate_facade = std::move(prepared->facade);
+        } else {
+            core_candidate = core_owner_->PrepareCandidate(
+                request.persistence.desired_configuration,
+                std::move(request.runtime_sources));
+            if (core_candidate) {
+                candidate_facade =
+                    core_owner_->PreparedFacadeSnapshot(core_candidate);
+            }
+        }
+    } catch (const std::exception& error) {
+        result.error = BoundaryError(ConfigurationReloadBoundary::kCorePrepare,
+                                     error.what());
         return result;
-    auto candidate_facade = core_owner_->PreparedFacadeSnapshot(core_candidate);
-    if (!candidate_facade)
+    }
+    if (!core_candidate || !candidate_facade ||
+        core_owner_->PreparedFacadeSnapshot(core_candidate) !=
+            candidate_facade) {
         return result;
+    }
 
     if (Inject(dependencies, ConfigurationReloadBoundary::kWidgetsPrepare))
         return result;

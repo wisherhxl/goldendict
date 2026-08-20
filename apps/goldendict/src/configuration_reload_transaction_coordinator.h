@@ -41,10 +41,17 @@ enum class ConfigurationReloadBoundary {
     kFinalizeTransaction,
 };
 
+struct PreparedConfigurationReloadCore {
+    core::application::PreparedCoreFacadeCandidate candidate;
+    std::shared_ptr<core::DesktopFacade> facade;
+};
+
 struct ConfigurationReloadRequest {
     core::ConfigurationTransactionPreparationInput persistence;
     network::NetworkRuntime::Preparation network;
     std::vector<std::unique_ptr<core::RuntimeDictionarySource>> runtime_sources;
+    std::function<std::optional<PreparedConfigurationReloadCore>()>
+        prepare_core;
 };
 
 struct ConfigurationReloadDependencies {

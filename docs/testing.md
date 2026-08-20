@@ -5085,7 +5085,18 @@ also verifies that a successful coordinated publication replaces that owner's
 current facade snapshot. Existing source-directory, online-source,
 dictionary-group, Preferences, history, cache, tab/session, dictionary-bar,
 search/find, and full-text smokes continue to cover the compatibility callers
-while production invocation remains deferred.
+and the production Preferences caller.
+
+The production Preferences invocation adds an offscreen real-caller smoke that
+drives the F4 dialog through persistence, Network, Core, and Widgets preparation,
+both reservations, Widgets maintenance, and durable-decision injection. Every
+case keeps the dialog unaccepted with a visible existing failure surface and
+proves unchanged configuration bytes, owner facade identity, preferences,
+article-tab session, and pending-record absence. The existing Preferences,
+coordinator, Widgets preparation, history, cache, source/group, dictionary-bar,
+search/find, full-text, and tab/session smokes cover successful publication and
+continuity; coordinator boundary coverage retains representative forward-only
+failure and fail-stop evidence.
 
 ## Full Verification
 

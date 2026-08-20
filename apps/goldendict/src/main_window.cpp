@@ -2352,6 +2352,49 @@ void MainWindow::RunHistoryPreferencesSmokeCheck(
     completion(passed);
 }
 
+void MainWindow::RunPreferencesCoordinatorPredecisionSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (preferences_action_ == nullptr || facade_ == nullptr) {
+        completion(false);
+        return;
+    }
+    const auto initial_preferences = preferences_;
+    const auto initial_session = facade_->ExportArticleTabSession();
+    auto* const initial_facade = facade_;
+    bool passed = true;
+    for (int attempt = 0; attempt < 8; ++attempt) {
+        preferences_dialog_executor_ = [&passed](PreferencesDialog& dialog) {
+            auto* background = dialog.findChild<QCheckBox*>(
+                QStringLiteral("newTabsOpenInBackground"));
+            auto* buttons = dialog.findChild<QDialogButtonBox*>(
+                QStringLiteral("preferencesButtonBox"));
+            passed = passed && background != nullptr && buttons != nullptr;
+            if (background != nullptr)
+                background->setChecked(!background->isChecked());
+            if (buttons != nullptr)
+                buttons->button(QDialogButtonBox::Ok)->click();
+            auto* error = dialog.findChild<QLabel*>(
+                QStringLiteral("preferencesValidationError"));
+            passed = passed && dialog.result() != QDialog::Accepted &&
+                     error != nullptr && !error->isHidden() &&
+                     !error->text().isEmpty();
+            dialog.reject();
+            return dialog.result();
+        };
+        preferences_action_->trigger();
+        const bool attempt_passed =
+            preferences_ == initial_preferences && facade_ == initial_facade &&
+            facade_->ExportArticleTabSession() == initial_session &&
+            preferences_action_->isEnabled() && !preferences_busy_;
+        if (!attempt_passed)
+            qWarning() << "Preferences predecision smoke attempt failed"
+                       << attempt;
+        passed = passed && attempt_passed;
+    }
+    preferences_dialog_executor_ = {};
+    completion(passed);
+}
+
 void MainWindow::RunFavoritesPreferencesSmokeCheck(
     std::function<void(bool)> completion) {
     if (preferences_action_ == nullptr || favorites_tree_ == nullptr ||
@@ -9528,6 +9571,7 @@ MainWindow::FinishPublishedFacadeCommitInternal() noexcept {
     auto* resources = record->resources;
     bool failed = widgets_cleanup_failure_injected_;
     try {
+        SetPreferences(resources->preferences);
         full_text_search_dialog_ = published_full_text_search_dialog_;
         if (retired_suggestion_worker_ != nullptr)
             retired_suggestion_worker_->Stop();
@@ -10697,7 +10741,8 @@ void MainWindow::EditPreferences() {
             preferences_apply_callback_
                 ? preferences_apply_callback_
                 : [](const auto&) {
-                      return QStringLiteral(
+                      return QCoreApplication::translate(
+                          "MainWindow",
                           "Preferences cannot be applied in this context");
                   },
             network_cache_directory_,

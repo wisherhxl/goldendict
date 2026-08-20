@@ -362,6 +362,15 @@ set_tests_properties(goldendict_configuration_reload_coordinator_smoke
       "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/configuration-reload-coordinator-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/configuration-reload-coordinator-test-home/cache"
     TIMEOUT 20)
 
+add_test(NAME goldendict_preferences_coordinator_predecision_smoke
+  COMMAND $<TARGET_FILE:goldendict>
+    --preferences-coordinator-predecision-smoke)
+set_tests_properties(goldendict_preferences_coordinator_predecision_smoke
+  PROPERTIES
+    ENVIRONMENT
+      "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/preferences-coordinator-predecision-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/preferences-coordinator-predecision-test-home/cache"
+    TIMEOUT 20)
+
 add_test(NAME goldendict_article_tab_session_restart_smoke
   COMMAND ${CMAKE_COMMAND}
     -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>

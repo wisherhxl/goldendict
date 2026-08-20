@@ -95,6 +95,17 @@ bool HasArgument(int argc, char* argv[], const QString& expected) {
     return false;
 }
 
+bool HasPreferencesSmokeArgument(int argc, char* argv[]) {
+    for (int i = 1; i < argc; ++i) {
+        const QString argument = QString::fromLocal8Bit(argv[i]);
+        if (argument.contains(QStringLiteral("preferences-smoke")) ||
+            argument == QStringLiteral("--edit-menu-smoke")) {
+            return true;
+        }
+    }
+    return false;
+}
+
 QString DictionaryRootArgument(int argc, char* argv[]) {
     for (int i = 1; i + 1 < argc; ++i) {
         if (QString::fromLocal8Bit(argv[i]) ==
@@ -381,15 +392,19 @@ int main(int argc, char* argv[]) {
     window.SetSourceDirectories(configuration.dictionary_paths,
                                 configuration.sound_directories);
     window.SetFacade(facade.get());
-    std::unique_ptr<goldendict::app::ConfigurationReloadTransactionCoordinator>
-        coordinator_smoke;
-    if (HasArgument(
-            argc, argv,
-            QStringLiteral("--configuration-reload-coordinator-smoke"))) {
-        coordinator_smoke = std::make_unique<
-            goldendict::app::ConfigurationReloadTransactionCoordinator>(
-            network_runtime, facade_owner, window);
-    }
+    goldendict::app::ConfigurationReloadTransactionCoordinator coordinator(
+        network_runtime, facade_owner, window);
+    using ReloadBoundary = goldendict::app::ConfigurationReloadBoundary;
+    const std::vector<ReloadBoundary> preferences_predecision_boundaries{
+        ReloadBoundary::kPersistencePrepare,
+        ReloadBoundary::kNetworkPrepare,
+        ReloadBoundary::kCorePrepare,
+        ReloadBoundary::kWidgetsPrepare,
+        ReloadBoundary::kNetworkReserve,
+        ReloadBoundary::kCoreReserve,
+        ReloadBoundary::kWidgetsBegin,
+        ReloadBoundary::kPersistenceDecision};
+    std::size_t preferences_predecision_injection = 0U;
     const auto persist_article_tab_session = [&]() {
         auto updated = configuration;
         updated.article_tab_session = facade->ExportArticleTabSession();
@@ -895,76 +910,210 @@ int main(int argc, char* argv[]) {
                 bounded_history.resize(preferences.maximum_history_entries);
             }
             const bool history_changed = bounded_history != history;
-            bool history_saved = false;
             try {
                 goldendict::core::ValidateConfiguration(updated);
-                const bool cache_policy_changed =
-                    preferences.maximum_network_cache_megabytes !=
-                        configuration.preferences
-                            .maximum_network_cache_megabytes ||
-                    preferences.clear_network_cache_on_exit !=
-                        configuration.preferences.clear_network_cache_on_exit;
-                auto prepared_cache =
-                    goldendict::network::NetworkRuntime::Preparation{};
-                if (cache_policy_changed) {
-                    prepared_cache =
-                        goldendict::network::NetworkRuntime::Prepare(
-                            {preferences.maximum_network_cache_megabytes,
-                             preferences.clear_network_cache_on_exit},
-                            network_cache_root);
-                    if (preferences.maximum_network_cache_megabytes != 0U &&
-                        !prepared_cache.cache_available) {
-                        throw std::runtime_error(prepared_cache.diagnostic);
-                    }
+                auto prepared_network =
+                    goldendict::network::NetworkRuntime::Prepare(
+                        {preferences.maximum_network_cache_megabytes,
+                         preferences.clear_network_cache_on_exit},
+                        network_cache_root);
+                if (preferences.maximum_network_cache_megabytes != 0U &&
+                    !prepared_network.cache_available) {
+                    throw std::runtime_error(prepared_network.diagnostic);
                 }
-                auto replacement = PrepareProductionFacade(
-                    updated, network_runtime, facade_owner);
-                if (history_changed) {
-                    goldendict::core::SaveHistory(history_path.toStdString(),
-                                                  bounded_history);
-                    history_saved = true;
+
+                std::vector<goldendict::network::RuntimeCompositionDiagnostic>
+                    desired_diagnostics;
+                goldendict::app::ConfigurationReloadRequest request{
+                    {configuration_path.toStdString(),
+                     history_path.toStdString(), updated,
+                     history_changed
+                         ? goldendict::core::PendingHistoryIntent::kReplace
+                         : goldendict::core::PendingHistoryIntent::kUnchanged,
+                     history_changed
+                         ? bounded_history
+                         : std::vector<goldendict::core::HistoryEntry>{}},
+                    std::move(prepared_network),
+                    {},
+                    [&]()
+                        -> std::optional<
+                            goldendict::app::PreparedConfigurationReloadCore> {
+                        auto replacement = PrepareProductionFacade(
+                            updated, network_runtime, facade_owner);
+                        desired_diagnostics =
+                            std::move(replacement.diagnostics);
+                        return goldendict::app::PreparedConfigurationReloadCore{
+                            std::move(replacement.candidate),
+                            std::move(replacement.facade)};
+                    }};
+                goldendict::app::ConfigurationReloadDependencies dependencies;
+                std::optional<ReloadBoundary> last_boundary;
+                dependencies.observe_boundary = [&](auto boundary) {
+                    last_boundary = boundary;
+                };
+                if (HasArgument(
+                        argc, argv,
+                        QStringLiteral(
+                            "--preferences-coordinator-predecision-smoke"))) {
+                    dependencies.inject_failure = [&](auto boundary) {
+                        if (preferences_predecision_injection >=
+                            preferences_predecision_boundaries.size()) {
+                            return false;
+                        }
+                        if (boundary !=
+                            preferences_predecision_boundaries
+                                [preferences_predecision_injection]) {
+                            return false;
+                        }
+                        ++preferences_predecision_injection;
+                        return true;
+                    };
                 }
-                goldendict::core::SaveConfiguration(
-                    configuration_path.toStdString(), updated);
-                if (cache_policy_changed &&
-                    !network_runtime->Activate(std::move(prepared_cache))) {
-                    goldendict::core::SaveConfiguration(
-                        configuration_path.toStdString(), configuration);
-                    throw std::runtime_error(
-                        "Unable to activate the Qt Network cache policy");
+                const auto result =
+                    coordinator.Execute(std::move(request), dependencies);
+                if (result.outcome ==
+                    goldendict::app::ConfigurationReloadOutcome::
+                        kRejectedBeforeDecision) {
+                    qWarning().noquote()
+                        << "Preferences transaction rejected before decision at"
+                        << (last_boundary ? static_cast<int>(*last_boundary)
+                                          : -1)
+                        << (result.error
+                                ? QString::fromStdString(result.error->message)
+                                : QString{});
+                    if (result.error)
+                        return QString::fromLocal8Bit(
+                            result.error->message.c_str());
+                    return QCoreApplication::translate(
+                        "MainWindow",
+                        "Preferences cannot be applied in this context");
                 }
-                window.SetPreferences(updated.preferences);
-                if (!facade_owner.Activate(replacement.candidate))
-                    throw std::runtime_error(
-                        "Unable to activate the application runtime");
-                window.SetFacade(replacement.facade.get());
-                facade = replacement.facade;
-                composition_diagnostics = std::move(replacement.diagnostics);
-                ReportRuntimeCompositionDiagnostics(composition_diagnostics);
+
                 configuration = std::move(updated);
+                facade = facade_owner.CurrentSnapshot();
+                composition_diagnostics = std::move(desired_diagnostics);
+                ReportRuntimeCompositionDiagnostics(composition_diagnostics);
                 if (history_changed) {
                     history = std::move(bounded_history);
                     refresh_history();
                 }
+                if (result.outcome ==
+                    goldendict::app::ConfigurationReloadOutcome::
+                        kPublishedWithForwardFailure) {
+                    qCritical().noquote()
+                        << QStringLiteral(
+                               "Preferences transaction published with "
+                               "forward failure; durable phase %1: %2")
+                               .arg(
+                                   result.durable_phase
+                                       ? static_cast<int>(*result.durable_phase)
+                                       : -1)
+                               .arg(result.error ? QString::fromStdString(
+                                                       result.error->message)
+                                                 : QString{});
+                }
                 return QString{};
             } catch (const std::exception& error) {
-                if (history_saved) {
-                    try {
-                        goldendict::core::SaveHistory(
-                            history_path.toStdString(), history);
-                    } catch (const std::exception& rollback_error) {
-                        return QStringLiteral(
-                                   "%1; unable to restore history: %2")
-                            .arg(QString::fromLocal8Bit(error.what()),
-                                 QString::fromLocal8Bit(rollback_error.what()));
-                    }
-                }
+                qWarning().noquote()
+                    << "Unable to prepare Preferences transaction:"
+                    << error.what();
                 return QString::fromLocal8Bit(error.what());
             }
         });
     window.show();
 
-    if (HasArgument(argc, argv, QStringLiteral("--search-menu-smoke"))) {
+    if (HasPreferencesSmokeArgument(argc, argv)) {
+        try {
+            if (!QDir().mkpath(configuration_directory))
+                throw std::runtime_error(
+                    "Unable to prepare Preferences smoke configuration");
+            goldendict::core::SaveConfiguration(
+                configuration_path.toStdString(), configuration);
+        } catch (const std::exception& error) {
+            qWarning().noquote()
+                << "Unable to seed Preferences smoke configuration:"
+                << error.what();
+        }
+    }
+
+    if (HasArgument(
+            argc, argv,
+            QStringLiteral("--preferences-coordinator-predecision-smoke"))) {
+        configuration.main_window_geometry.clear();
+        configuration.main_window_state.clear();
+        configuration.full_text_dialog_geometry.clear();
+        configuration.article_tab_session.reset();
+        configuration.index_directory = default_index_directory;
+        configuration.dictionary_paths.clear();
+        configuration.sound_directories.clear();
+        const auto initial_configuration = configuration;
+        const auto initial_facade_snapshot = facade;
+        QTimer::singleShot(15000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(
+            0, &window,
+            [&app, &configuration_directory, &configuration_path, &history_path,
+             &window, initial_configuration, initial_facade_snapshot,
+             &facade_owner, &preferences_predecision_injection,
+             &preferences_predecision_boundaries]() {
+                QByteArray initial_configuration_bytes;
+                try {
+                    if (!QDir().mkpath(configuration_directory))
+                        throw std::runtime_error(
+                            "Unable to prepare smoke configuration directory");
+                    goldendict::core::SaveConfiguration(
+                        configuration_path.toStdString(),
+                        initial_configuration);
+                    QFile file(configuration_path);
+                    if (!file.open(QIODevice::ReadOnly))
+                        throw std::runtime_error(
+                            "Unable to inspect smoke configuration");
+                    initial_configuration_bytes = file.readAll();
+                } catch (const std::exception& error) {
+                    qWarning().noquote()
+                        << "Unable to prepare Preferences coordinator smoke:"
+                        << error.what();
+                    app.exit(1);
+                    return;
+                }
+                window.RunPreferencesCoordinatorPredecisionSmokeCheck(
+                    [&](bool passed) {
+                        try {
+                            QFile file(configuration_path);
+                            if (!file.open(QIODevice::ReadOnly))
+                                throw std::runtime_error(
+                                    "Unable to inspect smoke configuration");
+                            passed =
+                                passed &&
+                                file.readAll() == initial_configuration_bytes &&
+                                facade_owner.CurrentSnapshot() ==
+                                    initial_facade_snapshot &&
+                                preferences_predecision_injection ==
+                                    preferences_predecision_boundaries.size() &&
+                                !std::filesystem::exists(
+                                    goldendict::core::
+                                        PendingConfigurationTransactionPath(
+                                            configuration_path.toStdString()));
+                            if (!passed) {
+                                qWarning()
+                                    << "Preferences coordinator predecision "
+                                       "smoke failed"
+                                    << preferences_predecision_injection
+                                    << preferences_predecision_boundaries.size()
+                                    << (facade_owner.CurrentSnapshot() ==
+                                        initial_facade_snapshot);
+                            }
+                            if (std::filesystem::exists(
+                                    history_path.toStdString())) {
+                                (void)goldendict::core::LoadHistory(
+                                    history_path.toStdString());
+                            }
+                        } catch (...) {
+                            passed = false;
+                        }
+                        app.exit(passed ? 0 : 1);
+                    });
+            });
+    } else if (HasArgument(argc, argv, QStringLiteral("--search-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(0, &window, [&app, &window]() {
             window.RunSearchMenuSmokeCheck(
@@ -1452,7 +1601,7 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(
             0, &window,
             [&app, &configuration, &configuration_path, &history_path,
-             &network_cache_root, &coordinator_smoke, &facade_owner]() {
+             &network_cache_root, &coordinator, &facade_owner]() {
                 const auto previous_facade = facade_owner.CurrentSnapshot();
                 auto desired = configuration;
                 desired.dictionary_paths.clear();
@@ -1481,14 +1630,15 @@ int main(int argc, char* argv[]) {
                      goldendict::core::PendingHistoryIntent::kUnchanged,
                      {}},
                     std::move(network),
+                    {},
                     {}};
                 std::vector<goldendict::app::ConfigurationReloadBoundary> trace;
                 goldendict::app::ConfigurationReloadDependencies dependencies;
                 dependencies.observe_boundary = [&](auto boundary) {
                     trace.push_back(boundary);
                 };
-                const auto result = coordinator_smoke->Execute(
-                    std::move(request), dependencies);
+                const auto result =
+                    coordinator.Execute(std::move(request), dependencies);
                 using Boundary = goldendict::app::ConfigurationReloadBoundary;
                 const std::vector<Boundary> expected{
                     Boundary::kPersistencePrepare,
@@ -1925,5 +2075,12 @@ int main(int argc, char* argv[]) {
             });
     }
 
-    return app.exec();
+    const int result = app.exec();
+    coordinator.Shutdown();
+    window.SetFacade(nullptr);
+    facade.reset();
+    initial_facade.facade.reset();
+    facade_owner.Shutdown();
+    network_runtime->Shutdown();
+    return result;
 }

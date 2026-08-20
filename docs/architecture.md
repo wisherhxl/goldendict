@@ -6683,5 +6683,26 @@ later Preferences caller from truthfully supplying FT104 with complete Core
 runtime sources. Coordinator invocation, real-caller failure injection, and
 startup recovery execution remain separate leaves.
 
+### Phase 8 production Preferences transaction invocation
+
+The accepted Preferences/F4 path is now the first production caller of the
+configuration-reload coordinator. It captures the current article-tab session,
+builds exact unchanged-or-replace history intent, prepares the requested
+Network cache policy, and invokes the shared production composition helper
+inside the coordinator's Core-preparation boundary. That helper supplies one
+owner-bound Core candidate, its exact facade snapshot, restored session, and
+composition diagnostics; neither Core nor Widgets is prepared twice.
+
+The modal callback remains GUI-thread-affine, synchronous, busy-guarded, and
+non-reentrant. Pre-decision rejection leaves persistence, Network, Core, and
+Widgets authoritative state unchanged and keeps the dialog open on its existing
+localized failure surface. Published and published-with-forward-failure results
+accept the dialog and advance caller-side configuration, facade, diagnostics,
+and bounded-history mirrors; the latter emits a deterministic critical
+diagnostic and never claims rollback. Source-directory and dictionary-group
+callbacks remain on their owner-backed compatibility paths. Favorites, startup
+recovery execution, wire formats, cache layout, translations, and public APIs
+remain unchanged.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.
