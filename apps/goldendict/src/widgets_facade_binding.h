@@ -161,6 +161,8 @@ class WidgetsFacadeBindingRegistry final {
     std::optional<std::uint8_t> Prepare(
         WidgetsFacadeBindingDescriptor descriptor);
     bool Publish(std::uint8_t prepared_slot) noexcept;
+    bool CanPublish(std::uint8_t prepared_slot) const noexcept;
+    void PublishPreparedUnchecked(std::uint8_t prepared_slot) noexcept;
     void ClearPublished() noexcept;
     void Abandon(std::uint8_t prepared_slot) noexcept;
     Lease Acquire() const noexcept;

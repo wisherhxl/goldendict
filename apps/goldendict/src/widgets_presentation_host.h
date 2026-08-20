@@ -4,7 +4,6 @@
 #define GOLDENDICT_APPS_GOLDENDICT_WIDGETS_PRESENTATION_HOST_H_
 
 #include <QList>
-#include <QPointer>
 #include <QStackedWidget>
 #include <QString>
 
@@ -21,6 +20,9 @@ class WidgetsPresentationHost final : public QStackedWidget {
     QWidget* ActivePage() const noexcept;
     QWidget* InactivePage() const noexcept;
     bool Prepared() const noexcept;
+    bool BeginMaintenanceSwitch() noexcept;
+    void ReverseMaintenanceSwitch() noexcept;
+    void PublishMaintenanceSwitch() noexcept;
     bool AuditMaintenanceSwitch() noexcept;
     void PreserveFirstShownWidth() noexcept;
     void RefreshPreservedWidth() noexcept;
@@ -30,8 +32,8 @@ class WidgetsPresentationHost final : public QStackedWidget {
    private:
     void showEvent(QShowEvent* event) override;
 
-    QPointer<QWidget> active_;
-    QPointer<QWidget> inactive_;
+    QWidget* active_ = nullptr;
+    QWidget* inactive_ = nullptr;
     bool preserve_width_ = false;
     int preserved_width_ = -1;
 };
@@ -49,6 +51,9 @@ class DictionaryBarPresentationHost final : public QStackedWidget {
     QList<QAction*> ActiveActions() const;
     QWidget* ActiveWidgetForAction(QAction* action) const noexcept;
     bool Prepared() const noexcept;
+    bool BeginMaintenanceSwitch() noexcept;
+    void ReverseMaintenanceSwitch() noexcept;
+    void PublishMaintenanceSwitch() noexcept;
     bool AuditMaintenanceSwitch() noexcept;
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;

@@ -6582,5 +6582,34 @@ request, filesystem/network operation, ownership move or reference-count
 change. Retired presentation and descriptor cleanup is explicit forward
 maintenance after publication.
 
+### Widgets visible facade commit
+
+The source-private Widgets handoff is a three-phase, GUI-thread-affine state
+machine. `BeginFacadeCandidateMaintenance` closes a non-reentrant interaction
+gate, performs the bounded Qt presentation switch, stages candidate and
+displaced ownership in preallocated owner slots, and returns a move-only
+`MaintainedWidgetsCommit`. Every validation or injected-maintenance failure
+executes the same inverse path. Before a global coordinator decision,
+`AbortMaintainedFacadeCommit` is the exact reverse; destruction of a maintained
+token on the GUI thread has the same result.
+
+`PublishMaintainedFacadeCommit` is the irreversible boundary. Its audit list is
+limited to Ready-to-Active binding state, packed slot/generation publication,
+old-slot retirement and lease closure, raw facade/presentation/host aliases,
+relay identity and enable atomics, owner generation/epoch, gate opening, and
+token transaction state. It performs no Qt operation, allocation, ownership or
+reference-count change, callback/connection work, request, URL, I/O,
+translation, or icon work. This permits a later coordinator to synchronously
+interpose Core and Network ordering between maintenance and publication without
+event-loop reentry.
+
+`FinishPublishedFacadeCommit` is forward-only. It stops retired producers,
+releases their controller ownership, reclaims closed binding slots when leases
+drain, and retains the newly published resources. Failure returns the
+deterministic `kPublishedWithCleanupFailure` outcome and never rolls back the
+new facade. A published-token destructor invokes the same direction;
+wrong-thread, reentrant, stale-owner, or impossible post-decision states are
+fail-stop. `SetFacade` remains compatibility-only.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

@@ -74,15 +74,24 @@ std::optional<std::uint8_t> WidgetsFacadeBindingRegistry::Prepare(
 
 bool WidgetsFacadeBindingRegistry::Publish(
     std::uint8_t prepared_slot) noexcept {
-    if (prepared_slot >= slots_.size() ||
-        shutdown_.load(std::memory_order_acquire))
+    if (!CanPublish(prepared_slot))
         return false;
+    PublishPreparedUnchecked(prepared_slot);
+    return true;
+}
+
+bool WidgetsFacadeBindingRegistry::CanPublish(
+    std::uint8_t prepared_slot) const noexcept {
+    return prepared_slot < slots_.size() &&
+           !shutdown_.load(std::memory_order_acquire) &&
+           slots_[prepared_slot].state.load(std::memory_order_acquire) ==
+               SlotState::kReady;
+}
+
+void WidgetsFacadeBindingRegistry::PublishPreparedUnchecked(
+    std::uint8_t prepared_slot) noexcept {
     auto& prepared = slots_[prepared_slot];
-    auto expected = SlotState::kReady;
-    if (!prepared.state.compare_exchange_strong(expected, SlotState::kActive,
-                                                std::memory_order_release,
-                                                std::memory_order_acquire))
-        return false;
+    prepared.state.store(SlotState::kActive, std::memory_order_release);
     const auto generation = prepared.generation.load(std::memory_order_acquire);
     const auto old = published_.exchange(Pack(prepared_slot, generation),
                                          std::memory_order_acq_rel);
@@ -92,7 +101,6 @@ bool WidgetsFacadeBindingRegistry::Publish(
         retired.state.store(SlotState::kRetired, std::memory_order_release);
         Close(retired);
     }
-    return true;
 }
 
 void WidgetsFacadeBindingRegistry::ClearPublished() noexcept {

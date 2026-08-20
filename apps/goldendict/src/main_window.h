@@ -3,6 +3,7 @@
 #ifndef GOLDENDICT_APPS_GOLDENDICT_MAIN_WINDOW_H_
 #define GOLDENDICT_APPS_GOLDENDICT_MAIN_WINDOW_H_
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -54,7 +55,9 @@ class SuggestionWorker;
 class SourceDirectoriesDialog;
 class PreferencesDialog;
 class RenderedTextMatchPlanController;
+class MainWindow;
 struct WidgetsFacadePreparationRecord;
+struct WidgetsFacadePreparationResources;
 class WidgetsFacadeActivationRelay;
 class WidgetsPresentationHost;
 class DictionaryBarPresentationHost;
@@ -103,10 +106,62 @@ class PreparedWidgetsFacadeCandidate final {
     friend class MainWindow;
 };
 
+enum class WidgetsCommitOutcome : std::uint8_t {
+    kRejectedBeforePublication,
+    kMaintainedAbortable,
+    kPublished,
+    kPublishedWithCleanupFailure,
+};
+
+class MaintainedWidgetsCommit final {
+   public:
+    MaintainedWidgetsCommit() noexcept = default;
+    ~MaintainedWidgetsCommit();
+    MaintainedWidgetsCommit(const MaintainedWidgetsCommit&) = delete;
+    MaintainedWidgetsCommit& operator=(const MaintainedWidgetsCommit&) = delete;
+    MaintainedWidgetsCommit(MaintainedWidgetsCommit&& other) noexcept;
+    MaintainedWidgetsCommit& operator=(
+        MaintainedWidgetsCommit&& other) noexcept;
+
+    explicit operator bool() const noexcept { return owner_ != nullptr; }
+
+   private:
+    MainWindow* owner_ = nullptr;
+    WidgetsFacadePreparationRecord* record_ = nullptr;
+    std::uint64_t generation_ = 0U;
+    friend class MainWindow;
+};
+
+class PublishedWidgetsCommit final {
+   public:
+    PublishedWidgetsCommit() noexcept = default;
+    ~PublishedWidgetsCommit();
+    PublishedWidgetsCommit(const PublishedWidgetsCommit&) = delete;
+    PublishedWidgetsCommit& operator=(const PublishedWidgetsCommit&) = delete;
+    PublishedWidgetsCommit(PublishedWidgetsCommit&& other) noexcept;
+    PublishedWidgetsCommit& operator=(PublishedWidgetsCommit&& other) noexcept;
+
+    explicit operator bool() const noexcept { return owner_ != nullptr; }
+
+   private:
+    MainWindow* owner_ = nullptr;
+    WidgetsFacadePreparationRecord* record_ = nullptr;
+    std::uint64_t generation_ = 0U;
+    friend class MainWindow;
+};
+
+struct BeginWidgetsMaintenanceResult final {
+    WidgetsCommitOutcome outcome =
+        WidgetsCommitOutcome::kRejectedBeforePublication;
+    MaintainedWidgetsCommit maintained;
+};
+
 class MainWindow final : public QMainWindow {
     Q_OBJECT
     friend class PreparedWidgetsFacadeCandidate;
     friend class WidgetsFacadeActivationRelay;
+    friend class MaintainedWidgetsCommit;
+    friend class PublishedWidgetsCommit;
 
    public:
     using SourceApplyCallback = std::function<QString(
@@ -133,6 +188,14 @@ class MainWindow final : public QMainWindow {
             groups);
     bool IsFacadeCandidateCurrent(
         const PreparedWidgetsFacadeCandidate& candidate) const noexcept;
+    BeginWidgetsMaintenanceResult BeginFacadeCandidateMaintenance(
+        PreparedWidgetsFacadeCandidate& candidate);
+    void AbortMaintainedFacadeCommit(
+        MaintainedWidgetsCommit&& maintained) noexcept;
+    PublishedWidgetsCommit PublishMaintainedFacadeCommit(
+        MaintainedWidgetsCommit&& maintained) noexcept;
+    WidgetsCommitOutcome FinishPublishedFacadeCommit(
+        PublishedWidgetsCommit&& published) noexcept;
     void SetPreferences(
         const goldendict::core::ApplicationPreferences& preferences);
     void SetPreferencesApplyCallback(PreferencesApplyCallback apply_callback);
@@ -391,15 +454,28 @@ class MainWindow final : public QMainWindow {
     void AdvancePresentationMutationEpoch() noexcept;
     void ReclaimAbandonedFacadeCandidates();
     void ReclaimFacadeCandidate(bool force);
+    void AbortMaintainedFacadeCommitInternal() noexcept;
+    WidgetsCommitOutcome FinishPublishedFacadeCommitInternal() noexcept;
+    bool WidgetsInteractionBlocked() const noexcept;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
     std::uint64_t facade_preparation_generation_ = 1U;
     std::uint64_t presentation_mutation_epoch_ = 1U;
     bool facade_preparation_shutdown_ = false;
     std::shared_ptr<WidgetsFacadePreparationRecord> facade_preparation_record_;
+    std::shared_ptr<WidgetsFacadePreparationRecord> maintained_facade_record_;
+    std::unique_ptr<WidgetsFacadePreparationResources> active_facade_resources_;
+    std::unique_ptr<WidgetsFacadePreparationResources>
+        retired_facade_resources_;
+    std::atomic_bool widgets_interaction_gate_closed_ = false;
+    bool widgets_maintenance_active_ = false;
+    bool widgets_publication_decided_ = false;
+    bool widgets_cleanup_failure_injected_ = false;
     QTimer* facade_candidate_reclaimer_ = nullptr;
     QTimer* facade_binding_reclaimer_ = nullptr;
     int facade_preparation_failure_step_ = -1;
+    int facade_maintenance_failure_step_ = -1;
+    bool facade_final_validation_failure_ = false;
     std::unique_ptr<goldendict::widgets::WidgetsFacadeBindingRegistry>
         facade_binding_registry_;
     WidgetsPresentationHost* group_selector_host_ = nullptr;
@@ -488,6 +564,8 @@ class MainWindow final : public QMainWindow {
     QAction* search_in_page_action_ = nullptr;
     QAction* full_text_search_action_ = nullptr;
     QPointer<goldendict::app::FullTextSearchDialog> full_text_search_dialog_;
+    goldendict::app::FullTextSearchDialog* published_full_text_search_dialog_ =
+        nullptr;
     std::string full_text_dialog_geometry_;
     QAction* visit_homepage_action_ = nullptr;
     QAction* open_config_folder_action_ = nullptr;
@@ -587,8 +665,12 @@ class MainWindow final : public QMainWindow {
         pending_rendered_text_match_plan_;
     std::map<goldendict::core::ArticleTabId, RenderedTextMatchPlanState>
         rendered_text_match_plans_;
+    RenderedTextMatchPlanController* rendered_text_match_plan_controller_ =
+        nullptr;
     std::unique_ptr<RenderedTextMatchPlanController>
-        rendered_text_match_plan_controller_;
+        rendered_text_match_plan_controller_owner_;
+    std::unique_ptr<RenderedTextMatchPlanController>
+        retired_rendered_text_match_plan_controller_;
     std::map<goldendict::core::ArticleTabId, QPointF>
         pending_article_scroll_restorations_;
 
@@ -602,7 +684,9 @@ class MainWindow final : public QMainWindow {
     std::map<goldendict::core::ArticleTabId, SuggestionPresentation>
         suggestions_;
     std::uint64_t suggestion_generation_ = 0U;
-    std::unique_ptr<SuggestionWorker> suggestion_worker_;
+    SuggestionWorker* suggestion_worker_ = nullptr;
+    std::unique_ptr<SuggestionWorker> suggestion_worker_owner_;
+    std::unique_ptr<SuggestionWorker> retired_suggestion_worker_;
     DictionaryBrowser* dictionary_browser_ = nullptr;
     std::unique_ptr<QPrinter> printer_;
     bool print_in_progress_ = false;

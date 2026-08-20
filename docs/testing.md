@@ -5111,6 +5111,15 @@ audit permits only preallocated pointer, integer and atomic stores; all Qt,
 allocation, ownership/refcount, connection/callback, translation/icon, URL,
 request and I/O operations remain outside the irreversible list.
 
+The same offscreen smoke covers the visible-commit leaf. It injects every
+Phase A inverse boundary, verifies gate and host restoration, exercises
+maintained-token abort and synchronous coordinator interposition, publishes
+with an old binding lease held, drains that lease through the on-demand
+reclaimer, preserves publication under injected cleanup failure, and performs
+two immediate generations. The compile-time publication-operation array is the
+exact Phase B audit allowlist; additions require a reviewed architecture update
+and a corresponding deterministic smoke assertion.
+
 Preferred full Windows Release verification workflow:
 
 ```sh

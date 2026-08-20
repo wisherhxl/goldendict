@@ -58,6 +58,23 @@ bool WidgetsPresentationHost::Prepared() const noexcept {
            currentWidget() == active_ && !inactive_->isEnabled();
 }
 
+bool WidgetsPresentationHost::BeginMaintenanceSwitch() noexcept {
+    if (!Prepared())
+        return false;
+    setCurrentWidget(inactive_);
+    return currentWidget() == inactive_;
+}
+
+void WidgetsPresentationHost::ReverseMaintenanceSwitch() noexcept {
+    setCurrentWidget(active_);
+}
+
+void WidgetsPresentationHost::PublishMaintenanceSwitch() noexcept {
+    QWidget* const old_active = active_;
+    active_ = inactive_;
+    inactive_ = old_active;
+}
+
 bool WidgetsPresentationHost::AuditMaintenanceSwitch() noexcept {
     if (!Prepared())
         return false;
@@ -227,6 +244,21 @@ bool DictionaryBarPresentationHost::Prepared() const noexcept {
     return inactive_ != nullptr && count() == 2 &&
            indexOf(active_->page) == 0 && indexOf(inactive_->page) == 1 &&
            currentWidget() == active_->page && !inactive_->page->isEnabled();
+}
+
+bool DictionaryBarPresentationHost::BeginMaintenanceSwitch() noexcept {
+    if (!Prepared())
+        return false;
+    setCurrentWidget(inactive_->page);
+    return currentWidget() == inactive_->page;
+}
+
+void DictionaryBarPresentationHost::ReverseMaintenanceSwitch() noexcept {
+    setCurrentWidget(active_->page);
+}
+
+void DictionaryBarPresentationHost::PublishMaintenanceSwitch() noexcept {
+    std::swap(active_, inactive_);
 }
 
 bool DictionaryBarPresentationHost::AuditMaintenanceSwitch() noexcept {
