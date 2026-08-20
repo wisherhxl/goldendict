@@ -5,7 +5,6 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
-#include <fstream>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
@@ -303,14 +302,90 @@ std::string ReadFile(const std::filesystem::path& path,
                      PendingFailureDestination destination) {
     Inject(dependencies, ConfigurationPersistenceOperation::kReadVerification,
            path, destination, "verification_read_failed");
-    RequireSafeExisting(path, false, dependencies, destination);
-    std::ifstream input(path, std::ios::binary);
-    if (!input)
-        throw PersistenceFailure(destination, PendingFailureCategory::kIo,
-                                 "verification_read_failed",
-                                 "Cannot open persisted destination");
-    return std::string(std::istreambuf_iterator<char>(input),
-                       std::istreambuf_iterator<char>());
+    Inject(dependencies, ConfigurationPersistenceOperation::kInspectPath, path,
+           destination, "path_inspection_failed");
+    std::string bytes;
+#ifdef _WIN32
+    const HANDLE handle = CreateFileW(
+        path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+    if (handle == INVALID_HANDLE_VALUE) {
+        const auto error = std::error_code(static_cast<int>(GetLastError()),
+                                           std::system_category());
+        throw PersistenceFailure(destination, Category(error),
+                                 "verification_read_failed", error.message());
+    }
+    BY_HANDLE_FILE_INFORMATION information{};
+    if (!GetFileInformationByHandle(handle, &information) ||
+        (information.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U ||
+        (information.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0U) {
+        CloseHandle(handle);
+        throw PersistenceFailure(destination, PendingFailureCategory::kRejected,
+                                 "unsafe_path_type",
+                                 "Persistence path is not a regular file");
+    }
+    std::array<char, 8192U> buffer{};
+    for (;;) {
+        DWORD count = 0U;
+        if (!::ReadFile(handle, buffer.data(),
+                        static_cast<DWORD>(buffer.size()), &count, nullptr)) {
+            const auto error = std::error_code(static_cast<int>(GetLastError()),
+                                               std::system_category());
+            CloseHandle(handle);
+            throw PersistenceFailure(destination, Category(error),
+                                     "verification_read_failed",
+                                     error.message());
+        }
+        if (count == 0U)
+            break;
+        bytes.append(buffer.data(), count);
+    }
+    CloseHandle(handle);
+#else
+    int flags = O_RDONLY;
+#ifdef O_NOFOLLOW
+    flags |= O_NOFOLLOW;
+#endif
+    const int descriptor = ::open(path.c_str(), flags);
+    if (descriptor < 0) {
+        const auto error = std::error_code(errno, std::generic_category());
+        throw PersistenceFailure(
+            destination, Category(error),
+            errno == ELOOP ? "unsafe_path_type" : "verification_read_failed",
+            error.message());
+    }
+
+    struct stat status {};
+
+    if (::fstat(descriptor, &status) != 0) {
+        const auto error = std::error_code(errno, std::generic_category());
+        ::close(descriptor);
+        throw PersistenceFailure(destination, Category(error),
+                                 "verification_read_failed", error.message());
+    }
+    if (!S_ISREG(status.st_mode)) {
+        ::close(descriptor);
+        throw PersistenceFailure(destination, PendingFailureCategory::kRejected,
+                                 "unsafe_path_type",
+                                 "Persistence path is not a regular file");
+    }
+    std::array<char, 8192U> buffer{};
+    for (;;) {
+        const auto count = ::read(descriptor, buffer.data(), buffer.size());
+        if (count < 0) {
+            const auto error = std::error_code(errno, std::generic_category());
+            ::close(descriptor);
+            throw PersistenceFailure(destination, Category(error),
+                                     "verification_read_failed",
+                                     error.message());
+        }
+        if (count == 0)
+            break;
+        bytes.append(buffer.data(), static_cast<std::size_t>(count));
+    }
+    ::close(descriptor);
+#endif
+    return bytes;
 }
 
 void VerifyPayload(const std::filesystem::path& path,
@@ -325,6 +400,10 @@ void VerifyPayload(const std::filesystem::path& path,
         try {
             matches =
                 MakePendingTransactionPayload(bytes).sha256 == payload.sha256;
+        } catch (const std::bad_alloc&) {
+            throw PersistenceFailure(
+                destination, PendingFailureCategory::kResourceLimit,
+                "allocation_failed", "Payload verification allocation failed");
         } catch (...) {
             matches = false;
         }
@@ -357,6 +436,12 @@ std::filesystem::path TemporaryPath(
 
 ConfigurationPersistenceError Error(const PersistenceFailure& failure) {
     return {failure.identity(), failure.what()};
+}
+
+ConfigurationPersistenceError PreviousError(const PersistenceFailure& failure) {
+    auto error = Error(failure);
+    error.identity.operation = PendingFailureOperation::kPersistPrevious;
+    return error;
 }
 
 void RequirePendingIdentity(
@@ -450,6 +535,76 @@ void PublishPayload(const PendingTransactionPayload& payload,
     VerifyPayload(destination, payload, dependencies, failure_destination);
     Checkpoint(dependencies, verified_checkpoint, destination,
                failure_destination, "after_destination_verification");
+}
+
+void RestoreAbsence(const std::filesystem::path& destination,
+                    const ConfigurationPersistenceDependencies& dependencies) {
+    RequireSafeExisting(destination, true, dependencies,
+                        PendingFailureDestination::kHistory);
+    std::error_code status_error;
+    const auto status =
+        std::filesystem::symlink_status(destination, status_error);
+    if (status_error == std::errc::no_such_file_or_directory ||
+        (!status_error && !std::filesystem::exists(status))) {
+        Inject(dependencies, ConfigurationPersistenceOperation::kVerifyAbsence,
+               destination, PendingFailureDestination::kHistory,
+               "absence_verification_failed");
+        Checkpoint(
+            dependencies,
+            ConfigurationPersistenceCheckpoint::kAfterHistoryAbsenceVerified,
+            destination, PendingFailureDestination::kHistory,
+            "after_history_absence_verification");
+        return;
+    }
+    if (status_error) {
+        throw PersistenceFailure(
+            PendingFailureDestination::kHistory, Category(status_error),
+            "path_inspection_failed", status_error.message());
+    }
+
+    Inject(dependencies, ConfigurationPersistenceOperation::kRemoveDestination,
+           destination, PendingFailureDestination::kHistory,
+           "destination_remove_failed");
+#ifdef _WIN32
+    if (!DeleteFileW(destination.c_str())) {
+        const auto error = std::error_code(static_cast<int>(GetLastError()),
+                                           std::system_category());
+        throw PersistenceFailure(PendingFailureDestination::kHistory,
+                                 Category(error), "destination_remove_failed",
+                                 error.message());
+    }
+#else
+    if (::unlink(destination.c_str()) != 0) {
+        const auto error = std::error_code(errno, std::generic_category());
+        throw PersistenceFailure(PendingFailureDestination::kHistory,
+                                 Category(error), "destination_remove_failed",
+                                 error.message());
+    }
+#endif
+    Checkpoint(dependencies,
+               ConfigurationPersistenceCheckpoint::kAfterHistoryRemoved,
+               destination, PendingFailureDestination::kHistory,
+               "after_history_remove");
+    SyncDirectory(destination.parent_path(), dependencies,
+                  PendingFailureDestination::kHistory);
+    Inject(dependencies, ConfigurationPersistenceOperation::kVerifyAbsence,
+           destination, PendingFailureDestination::kHistory,
+           "absence_verification_failed");
+    std::error_code verify_error;
+    const auto verify_status =
+        std::filesystem::symlink_status(destination, verify_error);
+    if (verify_error != std::errc::no_such_file_or_directory &&
+        (verify_error || std::filesystem::exists(verify_status))) {
+        throw PersistenceFailure(
+            PendingFailureDestination::kHistory,
+            verify_error ? Category(verify_error) : PendingFailureCategory::kIo,
+            "absence_verification_failed",
+            "History destination is still present");
+    }
+    Checkpoint(dependencies,
+               ConfigurationPersistenceCheckpoint::kAfterHistoryAbsenceVerified,
+               destination, PendingFailureDestination::kHistory,
+               "after_history_absence_verification");
 }
 
 }  // namespace
@@ -619,6 +774,164 @@ ConfigurationPersistenceResult PersistDesiredConfiguration(
     } catch (...) {
         result.failure_evidence_error = ConfigurationPersistenceError{
             {PendingFailureOperation::kPersistDesired,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kUnknown, "failure_record_publish_failed"},
+            "Unknown failure-evidence publication failure"};
+    }
+    return result;
+}
+
+PreviousPersistenceResult PersistPreviousConfiguration(
+    const PreviousPersistenceRequest& request,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    PreviousPersistenceResult result;
+    const auto pending_path =
+        PendingConfigurationTransactionPath(request.configuration_path);
+    PendingConfigurationTransactionRecord record;
+    bool evidence_eligible = false;
+
+    try {
+        RequireSafeExisting(pending_path, false, dependencies,
+                            PendingFailureDestination::kPendingRecord);
+        try {
+            record = ParsePendingConfigurationTransaction(
+                ReadFile(pending_path, dependencies,
+                         PendingFailureDestination::kPendingRecord));
+        } catch (const PersistenceFailure&) {
+            throw;
+        } catch (...) {
+            throw PersistenceFailure(PendingFailureDestination::kPendingRecord,
+                                     PendingFailureCategory::kInvalidData,
+                                     "pending_record_invalid",
+                                     "Pending transaction record is invalid");
+        }
+        if (record.transaction_id != request.transaction_id) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                PendingFailureCategory::kRejected, "pending_identity_mismatch",
+                "Pending transaction identity does not match request");
+        }
+        if (record.phase !=
+                PendingTransactionPhase::kDesiredPersistenceFailed &&
+            record.phase !=
+                PendingTransactionPhase::kPreviousPersistenceApplying &&
+            record.phase !=
+                PendingTransactionPhase::kPreviousPersistenceBlocked) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                PendingFailureCategory::kRejected, "fallback_phase_rejected",
+                "Pending transaction phase does not permit fallback");
+        }
+        evidence_eligible = true;
+        if (!record.previous_configuration.existed ||
+            !record.previous_configuration.payload) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kConfiguration,
+                PendingFailureCategory::kInvariant,
+                "previous_configuration_missing",
+                "Previous configuration payload is required");
+        }
+
+        record.phase = PendingTransactionPhase::kPreviousPersistenceApplying;
+        record.failure.reset();
+        PublishRecordUpdate(
+            record, pending_path, "phase-previous-applying", dependencies,
+            [&result, &record] {
+                result.namespace_published_phase = record.phase;
+            },
+            [&result, &record] {
+                result.confirmed_durable_phase = record.phase;
+            });
+
+        PublishPayload(
+            *record.previous_configuration.payload, request.configuration_path,
+            "previous-configuration", record.transaction_id, dependencies,
+            PendingFailureDestination::kConfiguration,
+            ConfigurationPersistenceCheckpoint::kAfterConfigurationReplaced,
+            ConfigurationPersistenceCheckpoint::kAfterConfigurationVerified);
+
+        if (record.history_intent == PendingHistoryIntent::kReplace) {
+            if (record.previous_history.existed) {
+                PublishPayload(
+                    *record.previous_history.payload, request.history_path,
+                    "previous-history", record.transaction_id, dependencies,
+                    PendingFailureDestination::kHistory,
+                    ConfigurationPersistenceCheckpoint::kAfterHistoryReplaced,
+                    ConfigurationPersistenceCheckpoint::kAfterHistoryVerified);
+            } else {
+                RestoreAbsence(request.history_path, dependencies);
+            }
+        }
+
+        record.phase = PendingTransactionPhase::kPreviousRuntimeApplying;
+        record.failure.reset();
+        PublishRecordUpdate(
+            record, pending_path, "phase-previous-runtime", dependencies,
+            [&result, &record] {
+                result.namespace_published_phase = record.phase;
+            },
+            [&result, &record] {
+                result.confirmed_durable_phase = record.phase;
+            });
+        result.outcome =
+            PreviousPersistenceOutcome::kPreviousPersistenceApplied;
+        return result;
+    } catch (const PersistenceFailure& failure) {
+        result.error = PreviousError(failure);
+    } catch (const std::bad_alloc&) {
+        result.error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kPersistPrevious,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kResourceLimit, "allocation_failed"},
+            "Previous persistence allocation failed"};
+    } catch (const std::exception& failure) {
+        result.error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kPersistPrevious,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kInvalidData, "codec_failed"},
+            failure.what()};
+    } catch (...) {
+        result.error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kPersistPrevious,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kUnknown, "unknown_failure"},
+            "Unknown previous persistence failure"};
+    }
+
+    if (!evidence_eligible)
+        return result;
+
+    record.phase = PendingTransactionPhase::kPreviousPersistenceBlocked;
+    record.failure = result.error->identity;
+    try {
+        PublishRecordUpdate(
+            record, pending_path, "phase-previous-blocked", dependencies,
+            [&result, &record] {
+                result.namespace_published_phase = record.phase;
+                result.failure_evidence_namespace_published = true;
+            },
+            [&result, &record] {
+                result.confirmed_durable_phase = record.phase;
+                result.failure_evidence_durable = true;
+            });
+    } catch (const PersistenceFailure& failure) {
+        result.failure_evidence_error = PreviousError(failure);
+    } catch (const std::bad_alloc&) {
+        result.failure_evidence_error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kPersistPrevious,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kResourceLimit, "allocation_failed"},
+            "Failure-evidence allocation failed"};
+    } catch (const std::exception& failure) {
+        result.failure_evidence_error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kPersistPrevious,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kInvalidData,
+             "failure_record_codec_failed"},
+            failure.what()};
+    } catch (...) {
+        result.failure_evidence_error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kPersistPrevious,
              PendingFailureDestination::kPendingRecord,
              PendingFailureCategory::kUnknown, "failure_record_publish_failed"},
             "Unknown failure-evidence publication failure"};

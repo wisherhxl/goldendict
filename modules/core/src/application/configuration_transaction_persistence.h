@@ -23,8 +23,10 @@ enum class ConfigurationPersistenceOperation : std::uint8_t {
     kReplaceDestination,
     kSyncDirectory,
     kRemoveTemporary,
+    kRemoveDestination,
     kReadVerification,
     kVerifyPayload,
+    kVerifyAbsence,
 };
 
 enum class ConfigurationPersistenceCheckpoint : std::uint8_t {
@@ -36,6 +38,8 @@ enum class ConfigurationPersistenceCheckpoint : std::uint8_t {
     kAfterConfigurationVerified,
     kAfterHistoryReplaced,
     kAfterHistoryVerified,
+    kAfterHistoryRemoved,
+    kAfterHistoryAbsenceVerified,
 };
 
 struct ConfigurationPersistenceDependencies {
@@ -76,6 +80,32 @@ std::filesystem::path PendingConfigurationTransactionPath(
 
 ConfigurationPersistenceResult PersistDesiredConfiguration(
     PreparedConfigurationTransaction prepared,
+    const ConfigurationPersistenceDependencies& dependencies = {});
+
+enum class PreviousPersistenceOutcome : std::uint8_t {
+    kPreviousPersistenceApplied,
+    kPreviousPersistenceFailed,
+};
+
+struct PreviousPersistenceRequest {
+    std::filesystem::path configuration_path;
+    std::filesystem::path history_path;
+    std::array<std::uint8_t, 16U> transaction_id{};
+};
+
+struct PreviousPersistenceResult {
+    PreviousPersistenceOutcome outcome =
+        PreviousPersistenceOutcome::kPreviousPersistenceFailed;
+    std::optional<PendingTransactionPhase> namespace_published_phase;
+    std::optional<PendingTransactionPhase> confirmed_durable_phase;
+    std::optional<ConfigurationPersistenceError> error;
+    bool failure_evidence_namespace_published = false;
+    bool failure_evidence_durable = false;
+    std::optional<ConfigurationPersistenceError> failure_evidence_error;
+};
+
+PreviousPersistenceResult PersistPreviousConfiguration(
+    const PreviousPersistenceRequest& request,
     const ConfigurationPersistenceDependencies& dependencies = {});
 
 }  // namespace goldendict::core
