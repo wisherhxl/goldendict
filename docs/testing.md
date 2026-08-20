@@ -5094,6 +5094,23 @@ abandonment, reclaims the staged QObject tree on its GUI affinity thread
 without another preparation, stops when the registry becomes empty, and
 restarts for a later candidate. The test performs no public-network request.
 
+The same smoke also pins the stable live presentation anchors and the prepared
+binding descriptor. It verifies that the candidate selector, dictionary
+content and article tabs are children of their permanent inactive slots while
+the active widget identities, focus chain, toolbar registration/toggle action,
+saved `QMainWindow` state, shortcuts, tab session and visible presentation stay
+unchanged. Supersession, same-thread and cross-thread abandonment reclaim only
+candidate-owned objects on the GUI thread.
+
+The binding seam checks the three permanent slots, complete consumer mask and
+closed-bit/count lease protocol. Deterministic interleavings cover a stale
+publication load losing its increment after close, an increment won before
+close draining afterward, generation revalidation, a late validated release,
+shutdown draining and closed reconstruction before slot reuse. The publication
+audit permits only preallocated pointer, integer and atomic stores; all Qt,
+allocation, ownership/refcount, connection/callback, translation/icon, URL,
+request and I/O operations remain outside the irreversible list.
+
 Preferred full Windows Release verification workflow:
 
 ```sh

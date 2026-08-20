@@ -56,6 +56,12 @@ class PreferencesDialog;
 class RenderedTextMatchPlanController;
 struct WidgetsFacadePreparationRecord;
 class WidgetsFacadeActivationRelay;
+class WidgetsPresentationHost;
+class DictionaryBarPresentationHost;
+
+namespace goldendict::widgets {
+class WidgetsFacadeBindingRegistry;
+}
 
 namespace goldendict::core {
 class DesktopFacade;
@@ -392,6 +398,13 @@ class MainWindow final : public QMainWindow {
     bool facade_preparation_shutdown_ = false;
     std::shared_ptr<WidgetsFacadePreparationRecord> facade_preparation_record_;
     QTimer* facade_candidate_reclaimer_ = nullptr;
+    QTimer* facade_binding_reclaimer_ = nullptr;
+    int facade_preparation_failure_step_ = -1;
+    std::unique_ptr<goldendict::widgets::WidgetsFacadeBindingRegistry>
+        facade_binding_registry_;
+    WidgetsPresentationHost* group_selector_host_ = nullptr;
+    DictionaryBarPresentationHost* dictionary_bar_host_ = nullptr;
+    WidgetsPresentationHost* article_tabs_host_ = nullptr;
     std::vector<std::string> dictionary_paths_;
     std::vector<goldendict::core::SoundDirectoryConfiguration>
         sound_directories_;

@@ -182,6 +182,10 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
     });
 }
 
+DictionaryBrowser::~DictionaryBrowser() {
+    QuiesceBindingConsumer(true);
+}
+
 void DictionaryBrowser::RunExportSmokeCheck(
     const QString& path, const QString& prefix, const QByteArray& expected,
     std::function<void(bool)> completion) {
@@ -199,6 +203,11 @@ void DictionaryBrowser::RunExportSmokeCheck(
         });
 }
 
+bool DictionaryBrowser::StartLifecycleExportForTest(const QString& path) {
+    StartHeadwordExport(path);
+    return export_operation_ != nullptr;
+}
+
 void DictionaryBrowser::SetFacade(goldendict::core::DesktopFacade* facade) {
     facade_ = facade;
     catalog_ = facade_ == nullptr
@@ -211,6 +220,43 @@ void DictionaryBrowser::SetFacade(goldendict::core::DesktopFacade* facade) {
     }
     RefreshDictionaryInfo();
     RefreshHeadwords();
+}
+
+void DictionaryBrowser::SetBindingRegistry(
+    const goldendict::widgets::WidgetsFacadeBindingRegistry*
+        registry) noexcept {
+    registry_ = registry;
+    binding_acquisition_enabled_ = registry != nullptr;
+}
+
+void DictionaryBrowser::QuiesceBindingConsumer(bool shutting_down) noexcept {
+    binding_acquisition_enabled_ = false;
+    registry_ = nullptr;
+    if (export_poll_timer_ != nullptr) {
+        export_poll_timer_->stop();
+        export_poll_timer_->disconnect(this);
+        delete export_poll_timer_;
+        export_poll_timer_ = nullptr;
+    }
+    if (export_progress_ != nullptr) {
+        export_progress_->disconnect(this);
+        export_progress_->close();
+        delete export_progress_;
+        export_progress_ = nullptr;
+    }
+    if (export_operation_ != nullptr) {
+        export_operation_->Cancel();
+        static_cast<void>(export_operation_->Await());
+        export_operation_.reset();
+        if (!shutting_down && result_status_ != nullptr)
+            result_status_->setText(
+                QStringLiteral("Headword export cancelled"));
+    }
+    export_binding_ = {};
+    if (!shutting_down) {
+        dictionaries_->setEnabled(true);
+        export_headwords_->setEnabled(false);
+    }
 }
 
 void DictionaryBrowser::RunSmokeCheck(const QString& expected_dictionary,
@@ -334,6 +380,13 @@ QString DictionaryBrowser::CurrentSourceDirectory() const {
 }
 
 void DictionaryBrowser::RefreshHeadwords() {
+    auto binding =
+        !binding_acquisition_enabled_ || registry_ == nullptr
+            ? goldendict::widgets::WidgetsFacadeBindingRegistry::Lease{}
+            : registry_->Acquire();
+    auto* bound_facade = binding                        ? binding->facade
+                         : binding_acquisition_enabled_ ? facade_
+                                                        : nullptr;
     const QString selected_headword = headwords_->currentItem() == nullptr
                                           ? QString()
                                           : headwords_->currentItem()->text();
@@ -345,7 +398,7 @@ void DictionaryBrowser::RefreshHeadwords() {
     const QString prefix = mode == goldendict::core::HeadwordFilterMode::kPrefix
                                ? prefix_->text().trimmed()
                                : prefix_->text();
-    if (facade_ == nullptr || index < 0 ||
+    if (bound_facade == nullptr || index < 0 ||
         static_cast<std::size_t>(index) >= catalog_.size()) {
         result_status_->setText(QStringLiteral("No dictionary selected"));
         return;
@@ -367,7 +420,7 @@ void DictionaryBrowser::RefreshHeadwords() {
     query.result_limit = 100U;
     query.filter_mode = mode;
     query.match_case = match_case_->isChecked();
-    const auto response = facade_->GetDictionaryService().Suggest(query);
+    const auto response = bound_facade->GetDictionaryService().Suggest(query);
     for (const auto& suggestion : response.suggestions) {
         headwords_->addItem(QString::fromStdString(suggestion.headword));
     }
@@ -404,8 +457,15 @@ QString DictionaryBrowser::DefaultExportFileName() const {
 
 void DictionaryBrowser::StartHeadwordExport(
     const QString& path, std::function<void(bool)> completion) {
+    auto binding =
+        !binding_acquisition_enabled_ || registry_ == nullptr
+            ? goldendict::widgets::WidgetsFacadeBindingRegistry::Lease{}
+            : registry_->Acquire();
+    auto* bound_facade = binding                        ? binding->facade
+                         : binding_acquisition_enabled_ ? facade_
+                                                        : nullptr;
     const int index = dictionaries_->currentIndex();
-    if (facade_ == nullptr || export_operation_ != nullptr || index < 0 ||
+    if (bound_facade == nullptr || export_operation_ != nullptr || index < 0 ||
         static_cast<std::size_t>(index) >= catalog_.size() ||
         !catalog_[static_cast<std::size_t>(index)]
              .supports_headword_enumeration) {
@@ -418,7 +478,8 @@ void DictionaryBrowser::StartHeadwordExport(
     goldendict::core::HeadwordExportRequest request;
     request.dictionary_id = catalog_[static_cast<std::size_t>(index)].id;
     request.destination_path = path.toStdString();
-    export_operation_ = facade_->StartHeadwordExport(std::move(request));
+    export_operation_ = bound_facade->StartHeadwordExport(std::move(request));
+    export_binding_ = std::move(binding);
     export_headwords_->setEnabled(false);
     dictionaries_->setEnabled(false);
     export_progress_ = new QProgressDialog(
@@ -447,6 +508,7 @@ void DictionaryBrowser::StartHeadwordExport(
                        nullptr);
             export_progress_->close();
             export_operation_.reset();
+            export_binding_ = {};
             export_progress_->deleteLater();
             export_progress_ = nullptr;
             export_poll_timer_->deleteLater();

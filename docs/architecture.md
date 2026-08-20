@@ -6533,5 +6533,54 @@ policy or broader browser-data deletion promise requires a separate reviewed
 prerequisite. Mandatory article CSP and sanitization also cannot be weakened
 by restoring the legacy optional cross-site-content checkbox.
 
+### Stable Widgets presentation slots and bindings
+
+The hidden Widgets preparation is completed by source-private dual-page hosts
+that occupy the live `MainWindow` layout positions. The active group selector
+and article tabs retain their identities as the current pages of permanent
+stack hosts; fully laid-out candidate pages are installed as their inactive
+pages. The sole registered dictionary `QToolBar` retains its identity and one
+permanent widget action whose content host owns both logical action pages and
+their overflow controls. No second toolbar or candidate toolbar action enters
+`QMainWindow` state or toggle enumeration. Inactive subtrees are disabled,
+unfocusable, mouse-inert and absent from window shortcut enumeration.
+Preparation and GUI-thread reclamation may attach, detach and destroy candidate
+objects. A later publication boundary may not do so.
+
+Facade/service binding uses three permanent record slots. Each immutable
+descriptor owns its facade and precomputes the catalog plus individually
+registered scheme-handler, dictionary-browser, full-text controller/dialog,
+article-page, article-view, suggestion-worker and rendered-match-controller
+bindings. Readiness rejects a missing or duplicate required registration.
+The published identity is a packed permanent-slot index and nonwrapping
+generation. Each slot has one atomic lease word whose high bit closes the slot
+and whose remaining bits count readers. A consumer increments by CAS only while
+open, then revalidates publication, state, generation and shutdown before
+accessing the descriptor. Retirement publishes the successor first, marks and
+atomically closes the old slot, then destroys it only after the closed count
+drains to zero. Closure makes the zero-to-destruction interval exclusive; no
+grace-period or repeated-zero assumption is used, and a slot is reconstructed
+Preparation also reserves the single retired-record capacity: it cannot claim
+an empty third slot while any prior generation remains retired or reclaiming.
+The legacy `SetFacade` compatibility path therefore quiesces the full-text
+controller/dialog and dictionary-browser export consumer, releases their
+leases, and reclaims a retired record before preparing its replacement. A
+remaining capacity rejection retains the old publication and rebinds those
+consumers instead of terminating or exposing a mixed facade. Main-window
+teardown performs the same idempotent quiescence, removes the scheme producer,
+and only then shuts down and drains the permanent registry; registry shutdown
+never depends on a child timer or GUI callback to release its last lease.
+
+The exact later visible handoff remains disabled. Its rejectable forward phase
+owns every Qt hide/show, enablement, focus/accessibility, layout, toolbar-content
+and repaint operation under a non-reentrant interaction gate. Only after that
+phase succeeds may the irreversible section store the prepared binding slot,
+raw presentation aliases, fixed generations and relay/gate atomics. It contains
+no QObject construction/destruction, reparenting, layout or toolbar insertion,
+connect/disconnect, callback replacement, translation/icon work, URL load,
+request, filesystem/network operation, ownership move or reference-count
+change. Retired presentation and descriptor cleanup is explicit forward
+maintenance after publication.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

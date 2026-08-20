@@ -10,6 +10,7 @@
 #include <QObject>
 
 #include "goldendict/core/dictionary_service.h"
+#include "widgets_facade_binding.h"
 
 class FullTextRequestWorker;
 
@@ -23,11 +24,22 @@ class FullTextRequestController final : public QObject {
     ~FullTextRequestController() override;
 
     void SetService(const goldendict::core::DictionaryService* service);
+    void SetBindingRegistry(
+        const goldendict::widgets::WidgetsFacadeBindingRegistry*
+            registry) noexcept;
+
+    bool UsesBindingRegistry(
+        const goldendict::widgets::WidgetsFacadeBindingRegistry* registry)
+        const noexcept {
+        return registry_ == registry;
+    }
+
     void Submit(goldendict::core::FullTextQuery query,
                 std::uint64_t generation);
     void Cancel();
     void DetachConsumer();
     void Stop();
+    void QuiesceBindingConsumer() noexcept;
     bool IsRunning() const noexcept;
 
    private:
@@ -37,6 +49,9 @@ class FullTextRequestController final : public QObject {
 
     Completion completion_;
     const goldendict::core::DictionaryService* service_ = nullptr;
+    const goldendict::widgets::WidgetsFacadeBindingRegistry* registry_ =
+        nullptr;
+    goldendict::widgets::WidgetsFacadeBindingRegistry::Lease active_binding_;
     std::unique_ptr<FullTextRequestWorker> worker_;
     std::uint64_t generation_ = 0U;
     bool has_generation_ = false;

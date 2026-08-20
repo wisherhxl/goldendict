@@ -55,7 +55,18 @@ class FullTextSearchDialog final : public QDialog {
     ~FullTextSearchDialog() override;
 
     void SetService(const goldendict::core::DictionaryService* service);
+    void SetBindingRegistry(
+        const goldendict::widgets::WidgetsFacadeBindingRegistry*
+            registry) noexcept;
+
+    bool UsesBindingRegistry(
+        const goldendict::widgets::WidgetsFacadeBindingRegistry* registry)
+        const noexcept {
+        return controller_.UsesBindingRegistry(registry);
+    }
+
     void DetachController();
+    void QuiesceBindingConsumer() noexcept;
     void InitializeQuery(const QString& text);
     void SetProjectedQuery(goldendict::core::FullTextQuery query);
     const goldendict::core::FullTextQuery& ProjectedQuery() const noexcept;

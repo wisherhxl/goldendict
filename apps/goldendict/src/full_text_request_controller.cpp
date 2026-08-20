@@ -160,16 +160,28 @@ void FullTextRequestController::SetService(
         StartWorker();
 }
 
+void FullTextRequestController::SetBindingRegistry(
+    const goldendict::widgets::WidgetsFacadeBindingRegistry*
+        registry) noexcept {
+    registry_ = registry;
+}
+
 void FullTextRequestController::Submit(goldendict::core::FullTextQuery query,
                                        std::uint64_t generation) {
-    if (detached_ || service_ == nullptr || worker_ == nullptr)
+    auto binding =
+        registry_ == nullptr
+            ? goldendict::widgets::WidgetsFacadeBindingRegistry::Lease{}
+            : registry_->Acquire();
+    const auto* service = binding ? binding->service : service_;
+    if (detached_ || service == nullptr || worker_ == nullptr)
         return;
     if (has_generation_ && generation <= generation_)
         return;
     generation_ = generation;
     has_generation_ = true;
     running_ = true;
-    worker_->Submit(service_, std::move(query), generation);
+    active_binding_ = std::move(binding);
+    worker_->Submit(service, std::move(query), generation);
 }
 
 void FullTextRequestController::Cancel() {
@@ -177,6 +189,7 @@ void FullTextRequestController::Cancel() {
     running_ = false;
     if (worker_ != nullptr)
         worker_->Cancel();
+    active_binding_ = {};
 }
 
 void FullTextRequestController::DetachConsumer() {
@@ -194,6 +207,12 @@ void FullTextRequestController::Stop() {
         worker_->Stop();
         worker_.reset();
     }
+    active_binding_ = {};
+}
+
+void FullTextRequestController::QuiesceBindingConsumer() noexcept {
+    Stop();
+    registry_ = nullptr;
 }
 
 bool FullTextRequestController::IsRunning() const noexcept {
@@ -219,4 +238,5 @@ void FullTextRequestController::Finish(
     running_ = false;
     if (completion_)
         completion_(generation, std::move(response));
+    active_binding_ = {};
 }

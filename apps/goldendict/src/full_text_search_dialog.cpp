@@ -222,6 +222,12 @@ void FullTextSearchDialog::SetService(
     controller_.SetService(service);
 }
 
+void FullTextSearchDialog::SetBindingRegistry(
+    const goldendict::widgets::WidgetsFacadeBindingRegistry*
+        registry) noexcept {
+    controller_.SetBindingRegistry(registry);
+}
+
 void FullTextSearchDialog::DetachController() {
     emit AcceptedQueryInvalidated();
     active_generation_.reset();
@@ -229,6 +235,15 @@ void FullTextSearchDialog::DetachController() {
     pending_activation_context_.reset();
     RestoreIdleState();
     controller_.DetachConsumer();
+}
+
+void FullTextSearchDialog::QuiesceBindingConsumer() noexcept {
+    emit AcceptedQueryInvalidated();
+    active_generation_.reset();
+    pending_activation_scope_.reset();
+    pending_activation_context_.reset();
+    RestoreIdleState();
+    controller_.QuiesceBindingConsumer();
 }
 
 void FullTextSearchDialog::InitializeQuery(const QString& text) {

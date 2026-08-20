@@ -11,6 +11,7 @@
 
 #include "goldendict/core/dictionary_service.h"
 #include "goldendict/core/headword_export.h"
+#include "widgets_facade_binding.h"
 
 class QLabel;
 class QLineEdit;
@@ -31,14 +32,28 @@ class DictionaryBrowser final : public QDialog {
 
    public:
     explicit DictionaryBrowser(QWidget* parent = nullptr);
+    ~DictionaryBrowser() override;
 
     void SetFacade(goldendict::core::DesktopFacade* facade);
+    void SetBindingRegistry(
+        const goldendict::widgets::WidgetsFacadeBindingRegistry*
+            registry) noexcept;
+
+    bool UsesBindingRegistry(
+        const goldendict::widgets::WidgetsFacadeBindingRegistry* registry)
+        const noexcept {
+        return registry_ == registry;
+    }
+
+    void QuiesceBindingConsumer(bool shutting_down) noexcept;
+
     void RunSmokeCheck(const QString& expected_dictionary,
                        const QString& prefix, const QString& expected_headword,
                        std::function<void(bool)> completion);
     void RunExportSmokeCheck(const QString& path, const QString& prefix,
                              const QByteArray& expected,
                              std::function<void(bool)> completion);
+    bool StartLifecycleExportForTest(const QString& path);
 
    signals:
     void HeadwordSelected(const QString& headword);
@@ -53,6 +68,8 @@ class DictionaryBrowser final : public QDialog {
     QString CurrentSourceDirectory() const;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
+    const goldendict::widgets::WidgetsFacadeBindingRegistry* registry_ =
+        nullptr;
     std::vector<goldendict::core::DictionaryIdentity> catalog_;
     QComboBox* dictionaries_ = nullptr;
     QLabel* identifier_ = nullptr;
@@ -75,6 +92,8 @@ class DictionaryBrowser final : public QDialog {
     QTimer* export_poll_timer_ = nullptr;
     std::unique_ptr<goldendict::core::HeadwordExportOperation>
         export_operation_;
+    goldendict::widgets::WidgetsFacadeBindingRegistry::Lease export_binding_;
+    bool binding_acquisition_enabled_ = true;
 };
 
 #endif  // GOLDENDICT_APPS_GOLDENDICT_DICTIONARY_BROWSER_H_

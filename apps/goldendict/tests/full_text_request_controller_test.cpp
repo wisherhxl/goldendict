@@ -323,6 +323,7 @@ class FullTextRequestControllerTest final : public QObject {
     void RejectsStaleAndDetachedCompletions();
     void ReplacesServiceOnlyAfterJoin();
     void DestructionAndStopJoinWorker();
+    void BindingQuiesceReleasesRetiredGeneration();
     void MatchPlanUsesByValueWorkerAndGuiDelivery();
     void MatchPlanPreservesTypedResults();
     void MatchPlanCancelsReplacementPendingDetachAndFacadeChange();
@@ -503,6 +504,54 @@ void FullTextRequestControllerTest::DestructionAndStopJoinWorker() {
         controller.Stop();
     }
     QVERIFY(service.WaitForCancellation());
+}
+
+void FullTextRequestControllerTest::BindingQuiesceReleasesRetiredGeneration() {
+    FakeDictionaryService service;
+    service.behavior_ = FakeDictionaryService::Behavior::kWaitForCancellation;
+    FakeDesktopFacade facade;
+    goldendict::widgets::WidgetsFacadeBindingRegistry registry;
+    const auto descriptor = [&facade, &service](std::uint32_t consumers) {
+        goldendict::widgets::WidgetsFacadeBindingDescriptor binding;
+        binding.facade_owner = std::shared_ptr<goldendict::core::DesktopFacade>(
+            &facade, [](goldendict::core::DesktopFacade*) {});
+        binding.facade = &facade;
+        binding.service = &service;
+        binding.consumers = consumers;
+        return binding;
+    };
+    const auto first = registry.Prepare(
+        descriptor(goldendict::widgets::kCompleteFacadeBindingConsumers));
+    QVERIFY(first.has_value());
+    QVERIFY(registry.Publish(*first));
+
+    FullTextRequestController controller(
+        [](std::uint64_t, goldendict::core::FullTextResponse) {});
+    controller.SetService(&service);
+    controller.SetBindingRegistry(&registry);
+    controller.Submit(Query("held"), 1U);
+    QVERIFY(service.WaitForCalls(1));
+
+    const auto second = registry.Prepare(
+        descriptor(goldendict::widgets::kCompleteFacadeBindingConsumers));
+    QVERIFY(second.has_value());
+    QVERIFY(registry.Publish(*second));
+    registry.ReclaimRetired();
+    QVERIFY(registry.NeedsReclaim());
+
+    controller.QuiesceBindingConsumer();
+    controller.QuiesceBindingConsumer();
+    QVERIFY(service.WaitForCancellation());
+    registry.ReclaimRetired();
+    QVERIFY(!registry.NeedsReclaim());
+
+    const auto third = registry.Prepare(
+        descriptor(goldendict::widgets::kCompleteFacadeBindingConsumers));
+    QVERIFY(third.has_value());
+    QVERIFY(registry.Publish(*third));
+    registry.ReclaimRetired();
+    registry.Shutdown();
+    QVERIFY(registry.AuditClosedLeaseProtocol());
 }
 
 void FullTextRequestControllerTest::MatchPlanUsesByValueWorkerAndGuiDelivery() {

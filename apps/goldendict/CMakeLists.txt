@@ -52,7 +52,8 @@ add_test(NAME legacy_configuration_location_test
 ti_add_executable(full_text_request_controller_test
   tests/full_text_request_controller_test.cpp
   src/full_text_request_controller.cpp
-  src/rendered_text_match_plan_controller.cpp)
+  src/rendered_text_match_plan_controller.cpp
+  src/widgets_facade_binding.cpp)
 target_include_directories(full_text_request_controller_test PRIVATE src)
 ti_target_include_modules_recurse(full_text_request_controller_test
   goldendict_core)
@@ -60,6 +61,15 @@ ti_target_link_libraries(full_text_request_controller_test
   goldendict_core ${QT_NAMESPACE}::Test)
 add_test(NAME full_text_request_controller_test
   COMMAND full_text_request_controller_test)
+
+ti_add_executable(widgets_facade_binding_test
+  tests/widgets_facade_binding_test.cpp
+  src/widgets_facade_binding.cpp)
+target_include_directories(widgets_facade_binding_test PRIVATE src)
+ti_target_include_modules_recurse(widgets_facade_binding_test
+  goldendict_core)
+ti_target_link_libraries(widgets_facade_binding_test goldendict_core)
+add_test(NAME widgets_facade_binding_test COMMAND widgets_facade_binding_test)
 
 ti_add_executable(full_text_response_model_test
   tests/full_text_response_model_test.cpp
@@ -93,7 +103,8 @@ ti_add_executable(full_text_search_dialog_test
   src/full_text_search_dialog.cpp
   src/full_text_query_composer.cpp
   src/full_text_response_model.cpp
-  src/full_text_request_controller.cpp)
+  src/full_text_request_controller.cpp
+  src/widgets_facade_binding.cpp)
 target_include_directories(full_text_search_dialog_test PRIVATE src)
 ti_target_include_modules_recurse(full_text_search_dialog_test
   goldendict_core)

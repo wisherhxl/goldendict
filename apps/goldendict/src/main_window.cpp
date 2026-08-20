@@ -83,6 +83,8 @@
 #include "rendered_text_match_plan_controller.h"
 #include "source_directories_dialog.h"
 #include "suggestion_worker.h"
+#include "widgets_facade_binding.h"
+#include "widgets_presentation_host.h"
 
 namespace {
 
@@ -497,18 +499,37 @@ struct WidgetsFacadePreparationResources final {
     QPointer<goldendict::app::FullTextSearchDialog> active_full_text_dialog;
     QPointer<QWidget> root;
     QPointer<QComboBox> group_selector;
-    QPointer<QToolBar> dictionary_bar;
+    QPointer<QWidget> dictionary_bar;
     QPointer<QTabWidget> article_tabs;
     QPointer<goldendict::app::FullTextSearchDialog> full_text_dialog;
     QPointer<WidgetsFacadeActivationRelay> relay;
     std::unique_ptr<SuggestionWorker> suggestion_worker;
     QPointer<RenderedTextMatchPlanController> match_controller;
+    WidgetsPresentationHost* group_host = nullptr;
+    DictionaryBarPresentationHost* dictionary_host = nullptr;
+    WidgetsPresentationHost* article_tabs_host = nullptr;
+    goldendict::widgets::WidgetsFacadeBindingRegistry* binding_registry =
+        nullptr;
+    std::optional<std::uint8_t> binding_slot;
+    std::unique_ptr<goldendict::widgets::WidgetsFacadeBindingDescriptor>
+        binding_descriptor;
 
     ~WidgetsFacadePreparationResources() {
         if (suggestion_worker != nullptr)
             suggestion_worker->Stop();
         if (match_controller != nullptr)
             match_controller->Stop();
+        if (binding_registry != nullptr && binding_slot.has_value())
+            binding_registry->Abandon(*binding_slot);
+        if (group_host != nullptr)
+            group_host->DetachInactive(group_selector);
+        if (dictionary_host != nullptr)
+            dictionary_host->DetachInactivePage(dictionary_bar);
+        if (article_tabs_host != nullptr)
+            article_tabs_host->DetachInactive(article_tabs);
+        delete group_selector;
+        delete dictionary_bar;
+        delete article_tabs;
         delete root;
     }
 };
@@ -635,7 +656,11 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     add_tab_button->setMenu(add_tab_menu);
     add_tab_button->setPopupMode(QToolButton::MenuButtonPopup);
     article_tabs_->setCornerWidget(add_tab_button, Qt::TopLeftCorner);
-    layout->addWidget(article_tabs_, 1);
+    article_tabs_host_ = new WidgetsPresentationHost(central);
+    article_tabs_host_->setObjectName(
+        QStringLiteral("widgetsArticleTabsPresentationHost"));
+    article_tabs_host_->InstallActive(article_tabs_);
+    layout->addWidget(article_tabs_host_, 1);
 
     auto* history_dock = new QDockWidget(QStringLiteral("&History Pane"), this);
     history_dock->setObjectName(QString::fromLatin1(kHistoryPaneName));
@@ -723,7 +748,12 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     query_->setParent(lookup_controls);
     lookup_button_->setParent(lookup_controls);
     group_selector_->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    lookup_layout->addWidget(group_selector_);
+    group_selector_host_ = new WidgetsPresentationHost(lookup_controls);
+    group_selector_host_->setObjectName(
+        QStringLiteral("widgetsGroupPresentationHost"));
+    group_selector_host_->InstallActive(group_selector_);
+    group_selector_host_->PreserveFirstShownWidth();
+    lookup_layout->addWidget(group_selector_host_);
     lookup_layout->addWidget(query_, 1);
     lookup_layout->addWidget(lookup_button_);
     lookup_controls->setSizePolicy(QSizePolicy::Expanding,
@@ -824,6 +854,10 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     dictionary_bar_->setMinimumWidth(0);
     dictionary_bar_->setSizePolicy(QSizePolicy::Ignored,
                                    QSizePolicy::Preferred);
+    dictionary_bar_host_ = new DictionaryBarPresentationHost(dictionary_bar_);
+    dictionary_bar_host_->setObjectName(
+        QStringLiteral("widgetsDictionaryPresentationHost"));
+    dictionary_bar_->addWidget(dictionary_bar_host_);
 
     auto* app_menu_bar = menuBar();
     app_menu_bar->setObjectName(QStringLiteral("menubar"));
@@ -963,6 +997,16 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     facade_candidate_reclaimer_->setSingleShot(false);
     connect(facade_candidate_reclaimer_, &QTimer::timeout, this,
             &MainWindow::ReclaimAbandonedFacadeCandidates);
+    facade_binding_registry_ =
+        std::make_unique<goldendict::widgets::WidgetsFacadeBindingRegistry>();
+    scheme_handler_->SetBindingRegistry(facade_binding_registry_.get());
+    facade_binding_reclaimer_ = new QTimer(this);
+    facade_binding_reclaimer_->setInterval(10);
+    connect(facade_binding_reclaimer_, &QTimer::timeout, this, [this]() {
+        facade_binding_registry_->ReclaimRetired();
+        if (!facade_binding_registry_->NeedsReclaim())
+            facade_binding_reclaimer_->stop();
+    });
 
     connect(dictionary_sources_button_, &QPushButton::clicked,
             dictionaries_action_, &QAction::trigger);
@@ -4487,7 +4531,8 @@ void MainWindow::RunArticleTabsSmokeCheck(
         nav_actions[1] == forward_action_ &&
         nav_toolbar->widgetForAction(nav_actions[0]) == back_button &&
         nav_toolbar->widgetForAction(nav_actions[1]) == forward_button &&
-        group_selector_->parentWidget() == query_->parentWidget() &&
+        group_selector_->parentWidget() == group_selector_host_ &&
+        group_selector_host_->parentWidget() == query_->parentWidget() &&
         query_->parentWidget() == lookup_button_->parentWidget() &&
         query_->parentWidget()->parentWidget() == nav_toolbar &&
         group_selector_->objectName() == QStringLiteral("groupSelector") &&
@@ -5582,10 +5627,35 @@ void MainWindow::RunDictionaryBrowserSmokeCheck(
 void MainWindow::RunDictionaryBrowserExportSmokeCheck(
     const QString& path, std::function<void(bool)> completion) {
     ShowDictionaryBrowser();
+    auto* quiesced = new DictionaryBrowser(this);
+    quiesced->SetBindingRegistry(facade_binding_registry_.get());
+    quiesced->SetFacade(facade_);
+    const bool quiesce_started = quiesced->StartLifecycleExportForTest(
+        path + QStringLiteral(".quiesce"));
+    quiesced->QuiesceBindingConsumer(false);
+    quiesced->QuiesceBindingConsumer(false);
+    delete quiesced;
+    auto* destroyed = new DictionaryBrowser(this);
+    destroyed->SetBindingRegistry(facade_binding_registry_.get());
+    destroyed->SetFacade(facade_);
+    const bool destruction_started = destroyed->StartLifecycleExportForTest(
+        path + QStringLiteral(".destruction"));
+    delete destroyed;
+    facade_binding_registry_->ReclaimRetired();
+    if (!quiesce_started || !destruction_started ||
+        !facade_binding_registry_->AuditClosedLeaseProtocol()) {
+        completion(false);
+        return;
+    }
     dictionary_browser_->RunExportSmokeCheck(
         path, QStringLiteral("app"),
         QByteArray::fromHex("efbbbf") + "00databaseshort\napple\napplication\n",
-        std::move(completion));
+        [this, path, completion = std::move(completion)](bool passed) mutable {
+            const bool shutdown_export_started =
+                dictionary_browser_->StartLifecycleExportForTest(
+                    path + QStringLiteral(".shutdown"));
+            completion(passed && shutdown_export_started);
+        });
 }
 
 MainWindow::~MainWindow() {
@@ -5594,6 +5664,8 @@ MainWindow::~MainWindow() {
     AdvancePresentationMutationEpoch();
     if (facade_candidate_reclaimer_ != nullptr)
         facade_candidate_reclaimer_->stop();
+    if (facade_binding_reclaimer_ != nullptr)
+        facade_binding_reclaimer_->stop();
     if (facade_preparation_record_ != nullptr)
         facade_preparation_record_->owner.store(nullptr,
                                                 std::memory_order_release);
@@ -5605,6 +5677,8 @@ MainWindow::~MainWindow() {
     rendered_text_match_plans_.clear();
     rendered_page_text_transports_.clear();
     article_navigation_generations_.clear();
+    if (dictionary_browser_ != nullptr)
+        dictionary_browser_->QuiesceBindingConsumer(true);
     if (full_text_search_dialog_ != nullptr)
         full_text_search_dialog_->DetachController();
     StopSuggestionWorker();
@@ -5614,6 +5688,12 @@ MainWindow::~MainWindow() {
     }
     QWebEngineProfile::defaultProfile()->removeUrlSchemeHandler(
         scheme_handler_);
+    scheme_handler_->SetBindingRegistry(nullptr);
+    if (facade_binding_registry_ != nullptr) {
+        facade_binding_registry_->ClearPublished();
+        facade_binding_registry_->ReclaimRetired();
+        facade_binding_registry_->Shutdown();
+    }
 }
 
 goldendict::core::ArticleTabId MainWindow::TabIdAt(int index) const {
@@ -6297,6 +6377,7 @@ void MainWindow::RefreshGroupSelector() {
         }
     }
     SelectGroup(previous);
+    group_selector_host_->RefreshPreservedWidth();
 }
 
 std::vector<std::string> MainWindow::ParticipatingDictionaryIds(
@@ -6364,12 +6445,13 @@ void MainWindow::RefreshDictionaryBar() {
     participating_ids_[selected_group_id_] = reconciled;
     dictionary_members_[selected_group_id_] = members;
 
-    dictionary_bar_->clear();
+    dictionary_bar_host_->ClearActive();
     for (const auto& id : members) {
         const auto& identity = identities.at(id);
         const QString label = QString::fromStdString(
             identity.name.empty() ? identity.id : identity.name);
-        auto* action = dictionary_bar_->addAction(label);
+        auto* action = dictionary_bar_host_->AddAction(
+            dictionary_bar_host_->ActivePage(), label);
         action->setCheckable(true);
         action->setChecked(std::find(reconciled.begin(), reconciled.end(),
                                      id) != reconciled.end());
@@ -6377,7 +6459,8 @@ void MainWindow::RefreshDictionaryBar() {
         action->setToolTip(label);
         action->setWhatsThis(
             tr("Include %1 in dictionary lookups and suggestions").arg(label));
-        if (auto* widget = dictionary_bar_->widgetForAction(action)) {
+        if (auto* widget =
+                dictionary_bar_host_->ActiveWidgetForAction(action)) {
             widget->setAccessibleName(label);
             widget->setToolTip(label);
         }
@@ -6401,7 +6484,7 @@ void MainWindow::ApplyPreparedDictionaryAction(
                 enabled = solo_restore_ids_[selected_group_id_];
             } else {
                 enabled.clear();
-                for (auto* candidate : dictionary_bar_->actions())
+                for (auto* candidate : dictionary_bar_host_->ActiveActions())
                     enabled.push_back(
                         candidate->data().toString().toStdString());
             }
@@ -6419,7 +6502,7 @@ void MainWindow::ApplyPreparedDictionaryAction(
         else if (!checked && found != enabled.end())
             enabled.erase(found);
     }
-    const auto ordered_actions = dictionary_bar_->actions();
+    const auto ordered_actions = dictionary_bar_host_->ActiveActions();
     std::vector<std::string> ordered;
     for (auto* candidate : ordered_actions) {
         const auto candidate_id = candidate->data().toString().toStdString();
@@ -6490,6 +6573,8 @@ void MainWindow::ShowFullTextSearch() {
         full_text_search_dialog_ = new goldendict::app::FullTextSearchDialog(
             preferences_, &facade_->GetDictionaryService(),
             full_text_dialog_geometry_, this);
+        full_text_search_dialog_->SetBindingRegistry(
+            facade_binding_registry_.get());
         connect(
             full_text_search_dialog_,
             &goldendict::app::FullTextSearchDialog::ResultActivationRequested,
@@ -6674,7 +6759,7 @@ void MainWindow::RunDictionaryBarSmokeCheck(
     show();
     QApplication::processEvents();
     const auto catalog = facade_->GetDictionaryService().GetCatalog();
-    const auto toolbar_actions = dictionary_bar_->actions();
+    const auto toolbar_actions = dictionary_bar_host_->ActiveActions();
     bool identities =
         toolbar_actions.size() == static_cast<qsizetype>(catalog.size());
     for (qsizetype index = 0; identities && index < toolbar_actions.size();
@@ -6682,7 +6767,8 @@ void MainWindow::RunDictionaryBarSmokeCheck(
         const auto& dictionary = catalog[static_cast<std::size_t>(index)];
         const QString label = QString::fromStdString(
             dictionary.name.empty() ? dictionary.id : dictionary.name);
-        auto* widget = dictionary_bar_->widgetForAction(toolbar_actions[index]);
+        auto* widget =
+            dictionary_bar_host_->ActiveWidgetForAction(toolbar_actions[index]);
         identities = toolbar_actions[index]->isCheckable() &&
                      toolbar_actions[index]->isChecked() &&
                      toolbar_actions[index]->data().toString() ==
@@ -6706,7 +6792,7 @@ void MainWindow::RunDictionaryBarSmokeCheck(
                           {catalog[0].id}}});
     SelectGroup(7U);
     RefreshDictionaryBar();
-    const auto group_actions = dictionary_bar_->actions();
+    const auto group_actions = dictionary_bar_host_->ActiveActions();
     const bool group_baseline = group_actions.size() == 2 &&
                                 group_actions[0]->isChecked() &&
                                 !group_actions[1]->isChecked() &&
@@ -6716,7 +6802,7 @@ void MainWindow::RunDictionaryBarSmokeCheck(
                                     QString::fromStdString(catalog[0].id);
     SelectGroup(0U);
     RefreshDictionaryBar();
-    const auto all_actions = dictionary_bar_->actions();
+    const auto all_actions = dictionary_bar_host_->ActiveActions();
     if (all_actions.empty()) {
         completion(false);
         return;
@@ -6724,12 +6810,14 @@ void MainWindow::RunDictionaryBarSmokeCheck(
     all_actions.front()->trigger();
     SelectGroup(7U);
     RefreshDictionaryBar();
-    const bool group_isolation = dictionary_bar_->actions()[0]->isChecked() &&
-                                 !dictionary_bar_->actions()[1]->isChecked();
+    const bool group_isolation =
+        dictionary_bar_host_->ActiveActions()[0]->isChecked() &&
+        !dictionary_bar_host_->ActiveActions()[1]->isChecked();
     SelectGroup(0U);
     RefreshDictionaryBar();
-    const bool all_scope_retained = !dictionary_bar_->actions()[0]->isChecked();
-    for (auto* action : dictionary_bar_->actions()) {
+    const bool all_scope_retained =
+        !dictionary_bar_host_->ActiveActions()[0]->isChecked();
+    for (auto* action : dictionary_bar_host_->ActiveActions()) {
         if (action->isChecked())
             action->trigger();
     }
@@ -6780,7 +6868,14 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
     const QString initial_query = query_->text();
     const auto initial_group = selected_group_id_;
     const int initial_tabs = article_tabs_->count();
-    const int initial_actions = dictionary_bar_->actions().size();
+    const int initial_actions = dictionary_bar_host_->ActiveActions().size();
+    const QByteArray initial_window_state = saveState(kMainWindowStateVersion);
+    const auto initial_toolbars =
+        findChildren<QToolBar*>(QString(), Qt::FindDirectChildrenOnly);
+    QAction* const initial_dictionary_toggle =
+        dictionary_bar_->toggleViewAction();
+    QWidget* const initial_focus_successor =
+        group_selector_->nextInFocusChain();
     bool passed = !facade_candidate_reclaimer_->isActive() &&
                   facade_preparation_record_ == nullptr;
     auto facade = std::shared_ptr<goldendict::core::DesktopFacade>(
@@ -6793,6 +6888,21 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
     preparer.join();
     passed = passed && !wrong_thread && facade_preparation_record_ == nullptr &&
              !facade_candidate_reclaimer_->isActive();
+
+    for (int failure_step = 0; failure_step < 19; ++failure_step) {
+        facade_preparation_failure_step_ = failure_step;
+        auto injected = PrepareFacadeCandidate(facade, preferences_, groups_);
+        passed = passed && !injected && facade_preparation_record_ == nullptr &&
+                 !facade_candidate_reclaimer_->isActive() &&
+                 group_selector_host_->InactivePage() == nullptr &&
+                 article_tabs_host_->InactivePage() == nullptr &&
+                 !dictionary_bar_host_->Prepared() &&
+                 group_selector_host_->ActivePage() == group_selector_ &&
+                 article_tabs_host_->ActivePage() == article_tabs_ &&
+                 saveState(kMainWindowStateVersion) == initial_window_state &&
+                 facade_binding_registry_->AuditClosedLeaseProtocol();
+    }
+    facade_preparation_failure_step_ = -1;
 
     auto candidate = PrepareFacadeCandidate(facade, preferences_, groups_);
     auto moved_candidate = std::move(candidate);
@@ -6809,27 +6919,60 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                    [](const auto& left, const auto& right) {
                        return left.id == right.id && left.name == right.name;
                    });
-    passed = passed && candidate && IsFacadeCandidateCurrent(candidate) &&
-             facade_candidate_reclaimer_->isActive() && staged != nullptr &&
-             staged->facade.get() == facade_ && catalog_matches &&
-             staged->tabs.tabs.size() ==
-                 facade_->GetArticleTabsState().tabs.size() &&
-             staged->query_text == initial_query &&
-             staged->selected_group_id == initial_group &&
-             staged->root != nullptr && !staged->root->isVisible() &&
-             !staged->root->isEnabled() && staged->group_selector != nullptr &&
-             staged->dictionary_bar != nullptr &&
-             staged->article_tabs != nullptr &&
-             staged->full_text_dialog != nullptr &&
-             !staged->full_text_dialog->isVisible() &&
-             staged->suggestion_worker != nullptr &&
-             staged->match_controller != nullptr && staged->relay != nullptr &&
-             staged->relay->IsComplete() && !staged->relay->IsEnabled() &&
-             staged->relay->CanPublishWithoutAllocation(
-                 this, record->generation, record->epoch) &&
-             article_tabs_->count() == initial_tabs &&
-             dictionary_bar_->actions().size() == initial_actions &&
-             facade_->ExportArticleTabSession() == initial_session;
+    const bool prepared_window_state_unchanged =
+        saveState(kMainWindowStateVersion) == initial_window_state;
+    const bool maintenance_switches_without_topology_change =
+        group_selector_host_->AuditMaintenanceSwitch() &&
+        article_tabs_host_->AuditMaintenanceSwitch() &&
+        dictionary_bar_host_->AuditMaintenanceSwitch();
+    passed =
+        passed && candidate && IsFacadeCandidateCurrent(candidate) &&
+        facade_candidate_reclaimer_->isActive() && staged != nullptr &&
+        staged->facade.get() == facade_ && catalog_matches &&
+        staged->tabs.tabs.size() ==
+            facade_->GetArticleTabsState().tabs.size() &&
+        staged->query_text == initial_query &&
+        staged->selected_group_id == initial_group && staged->root != nullptr &&
+        !staged->root->isVisible() && !staged->root->isEnabled() &&
+        staged->group_selector != nullptr &&
+        staged->dictionary_bar != nullptr && staged->article_tabs != nullptr &&
+        group_selector_host_->ActivePage() == group_selector_ &&
+        group_selector_host_->InactivePage() == staged->group_selector &&
+        group_selector_host_->Prepared() &&
+        group_selector_host_->parentWidget()->layout()->indexOf(
+            group_selector_host_) == 0 &&
+        article_tabs_host_->ActivePage() == article_tabs_ &&
+        article_tabs_host_->InactivePage() == staged->article_tabs &&
+        article_tabs_host_->Prepared() &&
+        centralWidget()->layout()->indexOf(article_tabs_host_) >= 0 &&
+        dictionary_bar_host_->ActivePage() != staged->dictionary_bar &&
+        dictionary_bar_host_->Prepared() &&
+        dictionary_bar_->actions().size() == 1 &&
+        dictionary_bar_->widgetForAction(dictionary_bar_->actions().front()) ==
+            dictionary_bar_host_ &&
+        maintenance_switches_without_topology_change &&
+        staged->full_text_dialog != nullptr &&
+        !staged->full_text_dialog->isVisible() &&
+        staged->suggestion_worker != nullptr &&
+        staged->match_controller != nullptr && staged->relay != nullptr &&
+        staged->relay->IsComplete() && !staged->relay->IsEnabled() &&
+        staged->relay->CanPublishWithoutAllocation(this, record->generation,
+                                                   record->epoch) &&
+        article_tabs_->count() == initial_tabs &&
+        dictionary_bar_host_->ActiveActions().size() == initial_actions &&
+        prepared_window_state_unchanged &&
+        findChildren<QToolBar*>(QString(), Qt::FindDirectChildrenOnly) ==
+            initial_toolbars &&
+        dictionary_bar_->toggleViewAction() == initial_dictionary_toggle &&
+        group_selector_->nextInFocusChain() == initial_focus_successor &&
+        staged->binding_slot.has_value() &&
+        facade_binding_registry_->Ready(*staged->binding_slot) &&
+        facade_binding_registry_->AuditClosedLeaseProtocol() &&
+        goldendict::widgets::WidgetsFacadeBindingRegistry::
+            AuditPublicationOperations() &&
+        goldendict::widgets::WidgetsFacadeBindingRegistry::
+            RunClosedLeaseProtocolSmokeCheck() &&
+        facade_->ExportArticleTabSession() == initial_session;
 
     const auto epoch_before_inert_emissions = presentation_mutation_epoch_;
     const auto requests_before_inert_emissions = requests_.size();
@@ -6957,6 +7100,15 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
             restarted.Abandon();
             passed = passed && facade_preparation_record_ == nullptr &&
                      !facade_candidate_reclaimer_->isActive();
+            auto* const compatibility_facade = facade_;
+            SetFacade(compatibility_facade);
+            SetFacade(compatibility_facade);
+            facade_binding_registry_->ReclaimRetired();
+            const auto binding = facade_binding_registry_->Acquire();
+            passed = passed && binding &&
+                     binding->facade == compatibility_facade &&
+                     !facade_binding_registry_->NeedsReclaim() &&
+                     facade_binding_registry_->AuditClosedLeaseProtocol();
             deadline->deleteLater();
             completion(passed);
         });
@@ -6992,7 +7144,7 @@ void MainWindow::RunFullTextDictionaryProjectionSmokeCheck(
     const auto all = ComposeFullTextQuery(composer);
 
     QAction* supported_action = nullptr;
-    for (auto* action : dictionary_bar_->actions()) {
+    for (auto* action : dictionary_bar_host_->ActiveActions()) {
         if (action->data().toString().toStdString() == supported.front()) {
             supported_action = action;
             break;
@@ -8443,6 +8595,32 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
         resources->groups = groups;
         resources->catalog =
             resources->facade->GetDictionaryService().GetCatalog();
+        resources->binding_descriptor = std::make_unique<
+            goldendict::widgets::WidgetsFacadeBindingDescriptor>();
+        auto& binding = *resources->binding_descriptor;
+        binding.facade_owner = resources->facade;
+        binding.facade = resources->facade.get();
+        binding.service = &resources->facade->GetDictionaryService();
+        binding.catalog = resources->catalog;
+        for (std::size_t index = 0U; index < binding.catalog.size(); ++index)
+            binding.catalog_index.emplace(binding.catalog[index].id, index);
+        int binding_failure_step = 10;
+        const auto register_binding = [this, &binding, &binding_failure_step](
+                                          auto consumer, bool installed) {
+            if (!installed || !binding.RegisterConsumer(consumer))
+                throw std::runtime_error("Incomplete facade consumer binding");
+            if (facade_preparation_failure_step_ == binding_failure_step++)
+                throw std::runtime_error("Injected consumer-binding failure");
+        };
+        register_binding(
+            goldendict::widgets::FacadeBindingConsumer::kSchemeHandler,
+            scheme_handler_ != nullptr && scheme_handler_->UsesBindingRegistry(
+                                              facade_binding_registry_.get()));
+        register_binding(
+            goldendict::widgets::FacadeBindingConsumer::kDictionaryBrowser,
+            dictionary_browser_ == nullptr ||
+                dictionary_browser_->UsesBindingRegistry(
+                    facade_binding_registry_.get()));
         resources->tabs = resources->facade->GetArticleTabsState();
         resources->query_text = query_->text();
         resources->query_cursor = query_->cursorPosition();
@@ -8477,7 +8655,7 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
             new WidgetsFacadeActivationRelay(this, generation, epoch, root);
         resources->relay = relay;
         auto* layout = new QVBoxLayout(root);
-        auto* staged_groups = new QComboBox(root);
+        auto* staged_groups = new QComboBox;
         staged_groups->setObjectName(
             QStringLiteral("widgetsFacadeCandidateGroups"));
         staged_groups->addItem(tr("All Dictionaries"),
@@ -8506,21 +8684,33 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
             }
         }
         resources->group_selector = staged_groups;
+        resources->group_host = group_selector_host_;
+        if (!group_selector_host_->AttachInactive(staged_groups))
+            throw std::runtime_error("Unable to attach group presentation");
+        if (facade_preparation_failure_step_ == 0)
+            throw std::runtime_error("Injected group-slot failure");
         connect(staged_groups, &QComboBox::currentIndexChanged, relay,
                 [relay](int index) { relay->GroupSelectionChanged(index); });
         relay->MarkConnected(WidgetsFacadeActivationRelay::kGroupSelector);
+        if (facade_preparation_failure_step_ == 3)
+            throw std::runtime_error("Injected group-action failure");
         for (int index = 0; index < staged_groups->count(); ++index) {
             if (staged_groups->itemData(index).toUInt() == selected_group_id_) {
                 staged_groups->setCurrentIndex(index);
                 break;
             }
         }
-        layout->addWidget(staged_groups);
 
-        auto* staged_bar = new QToolBar(root);
+        auto* staged_bar = dictionary_bar_host_->AttachInactivePage();
+        if (staged_bar == nullptr)
+            throw std::runtime_error(
+                "Unable to attach dictionary presentation");
         staged_bar->setObjectName(
             QStringLiteral("widgetsFacadeCandidateDictionaryBar"));
         resources->dictionary_bar = staged_bar;
+        resources->dictionary_host = dictionary_bar_host_;
+        if (facade_preparation_failure_step_ == 1)
+            throw std::runtime_error("Injected dictionary-slot failure");
         const auto member_entry = dictionary_members_.find(selected_group_id_);
         std::vector<std::string> members;
         if (member_entry != dictionary_members_.end()) {
@@ -8543,7 +8733,9 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
                 continue;
             const QString label = QString::fromStdString(
                 identity->name.empty() ? identity->id : identity->name);
-            auto* action = staged_bar->addAction(label);
+            auto* action = dictionary_bar_host_->AddAction(staged_bar, label);
+            if (action == nullptr)
+                throw std::runtime_error("Unable to add dictionary action");
             action->setCheckable(true);
             action->setChecked(std::find(enabled.begin(), enabled.end(),
                                          identity->id) != enabled.end());
@@ -8561,7 +8753,8 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
                     });
         }
         relay->MarkConnected(WidgetsFacadeActivationRelay::kActions);
-        layout->addWidget(staged_bar);
+        if (facade_preparation_failure_step_ == 4)
+            throw std::runtime_error("Injected dictionary-action failure");
 
         const auto active_tab = std::find_if(
             resources->tabs.tabs.begin(), resources->tabs.tabs.end(),
@@ -8603,7 +8796,7 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
             root->addAction(action);
         }
 
-        auto* staged_tabs = new QTabWidget(root);
+        auto* staged_tabs = new QTabWidget;
         staged_tabs->setObjectName(
             QStringLiteral("widgetsFacadeCandidateArticleTabs"));
         staged_tabs->setTabBarAutoHide(preferences.hide_single_tab);
@@ -8612,6 +8805,11 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
         staged_tabs->setMovable(false);
         staged_tabs->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
         resources->article_tabs = staged_tabs;
+        resources->article_tabs_host = article_tabs_host_;
+        if (!article_tabs_host_->AttachInactive(staged_tabs))
+            throw std::runtime_error("Unable to attach article presentation");
+        if (facade_preparation_failure_step_ == 2)
+            throw std::runtime_error("Injected article-slot failure");
         connect(staged_tabs, &QTabWidget::currentChanged, relay,
                 [relay](int index) { relay->ActivateTab(index); });
         connect(staged_tabs, &QTabWidget::tabCloseRequested, relay,
@@ -8707,9 +8905,20 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
         }
         relay->MarkConnected(WidgetsFacadeActivationRelay::kArticlePages);
         relay->MarkConnected(WidgetsFacadeActivationRelay::kArticleViews);
+        if (facade_preparation_failure_step_ == 5)
+            throw std::runtime_error("Injected article-view failure");
+        if (facade_preparation_failure_step_ == 6)
+            throw std::runtime_error("Injected relay-completion failure");
+        register_binding(
+            goldendict::widgets::FacadeBindingConsumer::kArticlePages,
+            staged_tabs->count() ==
+                static_cast<int>(resources->tabs.tabs.size()));
+        register_binding(
+            goldendict::widgets::FacadeBindingConsumer::kArticleViews,
+            staged_tabs->count() ==
+                static_cast<int>(resources->tabs.tabs.size()));
         if (active_index >= 0)
             staged_tabs->setCurrentIndex(active_index);
-        layout->addWidget(staged_tabs);
 
         resources->suggestion_worker = std::make_unique<SuggestionWorker>(
             [relay](goldendict::core::ArticleTabId tab_id,
@@ -8719,6 +8928,11 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
                                           std::move(response));
             });
         relay->MarkConnected(WidgetsFacadeActivationRelay::kSuggestions);
+        if (facade_preparation_failure_step_ == 7)
+            throw std::runtime_error("Injected suggestion-worker failure");
+        register_binding(
+            goldendict::widgets::FacadeBindingConsumer::kSuggestions,
+            resources->suggestion_worker != nullptr);
         resources->match_controller = new RenderedTextMatchPlanController(
             [relay](std::uint64_t work_generation,
                     goldendict::core::RenderedTextMatchPlanResult result) {
@@ -8728,8 +8942,22 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
             root);
         relay->MarkConnected(WidgetsFacadeActivationRelay::kRenderedMatches);
         resources->match_controller->SetFacade(resources->facade.get());
+        if (facade_preparation_failure_step_ == 8)
+            throw std::runtime_error("Injected rendered-controller failure");
+        register_binding(
+            goldendict::widgets::FacadeBindingConsumer::kRenderedMatches,
+            resources->match_controller != nullptr);
         resources->full_text_dialog = new goldendict::app::FullTextSearchDialog(
             preferences, &resources->facade->GetDictionaryService(), {}, root);
+        resources->full_text_dialog->SetBindingRegistry(
+            facade_binding_registry_.get());
+        if (facade_preparation_failure_step_ == 9)
+            throw std::runtime_error("Injected full-text-dialog failure");
+        register_binding(
+            goldendict::widgets::FacadeBindingConsumer::kFullTextDialog,
+            resources->full_text_dialog != nullptr &&
+                resources->full_text_dialog->UsesBindingRegistry(
+                    facade_binding_registry_.get()));
         resources->full_text_dialog->setAttribute(Qt::WA_DontShowOnScreen,
                                                   true);
         resources->full_text_dialog->setEnabled(false);
@@ -8750,11 +8978,17 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
                 });
         relay->MarkConnected(WidgetsFacadeActivationRelay::kFullTextOutputs);
 
-        if (!relay->IsComplete() ||
-            !relay->CanPublishWithoutAllocation(this, generation, epoch)) {
-            throw std::runtime_error(
-                "Widgets facade activation relay is incomplete");
-        }
+        const auto isolate_surface = [](QWidget* surface) {
+            surface->setFocusPolicy(Qt::NoFocus);
+            surface->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+            for (auto* child : surface->findChildren<QWidget*>()) {
+                child->setFocusPolicy(Qt::NoFocus);
+                child->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+            }
+        };
+        isolate_surface(staged_groups);
+        isolate_surface(staged_bar);
+        isolate_surface(staged_tabs);
 
         auto* status = new QLabel(
             tr("%1 dictionary loaded")
@@ -8762,6 +8996,26 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
             root);
         status->setObjectName(QStringLiteral("widgetsFacadeCandidateStatus"));
         layout->addWidget(status);
+
+        resources->binding_registry = facade_binding_registry_.get();
+        resources->binding_slot = facade_binding_registry_->Prepare(
+            std::move(*resources->binding_descriptor));
+        resources->binding_descriptor.reset();
+        if (facade_preparation_failure_step_ == 17)
+            throw std::runtime_error("Injected facade-binding failure");
+        if (!resources->binding_slot.has_value() ||
+            !facade_binding_registry_->Ready(*resources->binding_slot) ||
+            !facade_binding_registry_->AuditClosedLeaseProtocol()) {
+            throw std::runtime_error("Widgets facade binding is incomplete");
+        }
+
+        if (!relay->IsComplete() ||
+            !relay->CanPublishWithoutAllocation(this, generation, epoch)) {
+            throw std::runtime_error(
+                "Widgets facade activation relay is incomplete");
+        }
+        if (facade_preparation_failure_step_ == 18)
+            throw std::runtime_error("Injected final-audit failure");
     } catch (...) {
         return {};
     }
@@ -8795,6 +9049,76 @@ bool MainWindow::IsFacadeCandidateCurrent(
 
 void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     AdvancePresentationMutationEpoch();
+    if (facade_preparation_record_ != nullptr) {
+        facade_preparation_record_->abandoned.store(true,
+                                                    std::memory_order_release);
+        ReclaimFacadeCandidate(true);
+    }
+    auto* const previous_facade = facade_;
+    if (dictionary_browser_ != nullptr)
+        dictionary_browser_->QuiesceBindingConsumer(false);
+    if (full_text_search_dialog_ != nullptr)
+        full_text_search_dialog_->QuiesceBindingConsumer();
+    const auto restore_previous_binding_consumers = [this, previous_facade]() {
+        if (full_text_search_dialog_ != nullptr && previous_facade != nullptr) {
+            full_text_search_dialog_->SetBindingRegistry(
+                facade_binding_registry_.get());
+            full_text_search_dialog_->SetService(
+                &previous_facade->GetDictionaryService());
+        }
+        if (dictionary_browser_ != nullptr) {
+            dictionary_browser_->SetBindingRegistry(
+                facade_binding_registry_.get());
+            dictionary_browser_->SetFacade(previous_facade);
+        }
+    };
+    if (facade_binding_registry_ != nullptr) {
+        facade_binding_registry_->ReclaimRetired();
+        if (facade == nullptr) {
+            facade_binding_registry_->ClearPublished();
+        } else {
+            goldendict::widgets::WidgetsFacadeBindingDescriptor binding;
+            binding.facade_owner =
+                std::shared_ptr<goldendict::core::DesktopFacade>(
+                    facade, [](goldendict::core::DesktopFacade*) {});
+            binding.facade = facade;
+            binding.service = &facade->GetDictionaryService();
+            binding.catalog = binding.service->GetCatalog();
+            for (std::size_t index = 0U; index < binding.catalog.size();
+                 ++index)
+                binding.catalog_index.emplace(binding.catalog[index].id, index);
+            for (const auto consumer : {
+                     goldendict::widgets::FacadeBindingConsumer::kSchemeHandler,
+                     goldendict::widgets::FacadeBindingConsumer::
+                         kDictionaryBrowser,
+                     goldendict::widgets::FacadeBindingConsumer::
+                         kFullTextDialog,
+                     goldendict::widgets::FacadeBindingConsumer::kArticlePages,
+                     goldendict::widgets::FacadeBindingConsumer::kArticleViews,
+                     goldendict::widgets::FacadeBindingConsumer::
+                         kRenderedMatches,
+                     goldendict::widgets::FacadeBindingConsumer::kSuggestions,
+                 }) {
+                if (!binding.RegisterConsumer(consumer))
+                    std::terminate();
+            }
+            const auto slot =
+                facade_binding_registry_->Prepare(std::move(binding));
+            if (!slot.has_value()) {
+                restore_previous_binding_consumers();
+                return;
+            }
+            if (!facade_binding_registry_->Publish(*slot)) {
+                facade_binding_registry_->Abandon(*slot);
+                restore_previous_binding_consumers();
+                return;
+            }
+        }
+        facade_binding_registry_->ReclaimRetired();
+        if (facade_binding_registry_->NeedsReclaim() &&
+            !facade_binding_reclaimer_->isActive())
+            facade_binding_reclaimer_->start();
+    }
     const QSignalBlocker tab_signal_blocker(article_tabs_);
     InvalidateRenderedTextMatchPlan();
     if (rendered_text_match_plan_controller_ != nullptr)
@@ -8834,6 +9158,8 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
         full_text_search_dialog_->SetService(nullptr);
     facade_ = facade;
     if (full_text_search_dialog_ != nullptr && facade_ != nullptr) {
+        full_text_search_dialog_->SetBindingRegistry(
+            facade_binding_registry_.get());
         full_text_search_dialog_->SetService(&facade_->GetDictionaryService());
     }
     full_text_search_action_->setEnabled(facade_ != nullptr);
@@ -8841,6 +9167,7 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
     RefreshDictionaryBar();
     scheme_handler_->SetFacade(facade);
     if (dictionary_browser_ != nullptr) {
+        dictionary_browser_->SetBindingRegistry(facade_binding_registry_.get());
         dictionary_browser_->SetFacade(facade);
     }
     const auto count = facade == nullptr
@@ -9317,6 +9644,7 @@ bool MainWindow::HasUsableMainWindowLayout() const {
 void MainWindow::ShowDictionaryBrowser() {
     if (dictionary_browser_ == nullptr) {
         dictionary_browser_ = new DictionaryBrowser(this);
+        dictionary_browser_->SetBindingRegistry(facade_binding_registry_.get());
         dictionary_browser_->SetFacade(facade_);
         connect(dictionary_browser_, &DictionaryBrowser::HeadwordSelected, this,
                 [this](const QString& word) {
