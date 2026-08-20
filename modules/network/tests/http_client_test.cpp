@@ -220,6 +220,7 @@ class HttpClientTest : public QObject {
     void EnforcesResponseAndTimeBudgets();
     void ObservesCancellation();
     void SupportsScopedOriginAndProxyAuthentication();
+    void PreparesAndCleansOnlyOwnedCacheStorage();
     void OwnsExactIsolatedPersistentCache();
     void DisablesAndClearsOnlyOwnedCache();
     void CancelsAndJoinsBeforeShutdownCleanup();
@@ -335,6 +336,38 @@ void HttpClientTest::SupportsScopedOriginAndProxyAuthentication() {
         QVERIFY(!message.contains("secret-user"));
         QVERIFY(!message.contains("secret-password"));
     }
+}
+
+void HttpClientTest::PreparesAndCleansOnlyOwnedCacheStorage() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    QFile sibling(QDir(root.path()).filePath("webengine-sentinel"));
+    QVERIFY(sibling.open(QIODevice::WriteOnly));
+    QCOMPARE(sibling.write("browser"), qint64{7});
+    sibling.close();
+
+    const auto prepared =
+        NetworkRuntime::Prepare({1U, false}, root.path().toStdString());
+    QVERIFY(prepared.cache_available);
+    QCOMPARE(prepared.cache_directory,
+             QDir(root.path()).filePath("qt-network-http").toStdString());
+    QVERIFY(QDir(QString::fromStdString(prepared.cache_directory)).exists());
+    QVERIFY(
+        !QFile::exists(QDir(QString::fromStdString(prepared.cache_directory))
+                           .filePath(".goldendict-write-test")));
+
+    auto disabled = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({0U, false}, root.path().toStdString()));
+    QVERIFY(
+        !QDir(QString::fromStdString(disabled->cache_directory())).exists());
+    QVERIFY(sibling.exists());
+    disabled.reset();
+
+    auto idempotent = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({0U, false}, root.path().toStdString()));
+    QVERIFY(
+        !QDir(QString::fromStdString(idempotent->cache_directory())).exists());
+    QVERIFY(sibling.exists());
 }
 
 void HttpClientTest::OwnsExactIsolatedPersistentCache() {

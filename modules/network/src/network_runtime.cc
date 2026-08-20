@@ -3,10 +3,9 @@
 #include "goldendict/network/network_runtime.h"
 
 #include "http_client.h"
+#include "network_cache_storage.h"
 
 #include <QDebug>
-#include <QDir>
-#include <QFile>
 #include <QNetworkAccessManager>
 #include <QNetworkDiskCache>
 #include <QThread>
@@ -21,11 +20,6 @@ namespace goldendict::network {
 namespace {
 
 constexpr std::int64_t kBytesPerMebibyte = 1024LL * 1024LL;
-constexpr char kOwnedDirectory[] = "qt-network-http";
-constexpr char kSetupDiagnostic[] =
-    "Qt Network cache setup failed; HTTP traffic will remain uncached";
-constexpr char kCleanupDiagnostic[] =
-    "Qt Network cache cleanup failed; cached data may remain";
 
 }  // namespace
 
@@ -99,13 +93,12 @@ class NetworkRuntime::Impl final {
                         manager_->cache()->clear();
                         manager_->setCache(nullptr);
                     }
-                    QDir owned(
-                        QString::fromStdString(preparation.cache_directory));
-                    if (!preparation.cache_directory.empty() &&
-                        owned.exists() && !owned.removeRecursively()) {
-                        preparation.diagnostic = kCleanupDiagnostic;
-                        qWarning().noquote()
-                            << QString::fromLatin1(kCleanupDiagnostic);
+                    if (!NetworkCacheStorage::RemoveOwnedDirectory(
+                            preparation.cache_directory)) {
+                        preparation.diagnostic =
+                            NetworkCacheStorage::CleanupDiagnostic();
+                        qWarning().noquote() << QString::fromLatin1(
+                            NetworkCacheStorage::CleanupDiagnostic());
                     }
                     activated = true;
                 } else {
@@ -145,13 +138,12 @@ class NetworkRuntime::Impl final {
                     if (manager_->cache() != nullptr) {
                         manager_->cache()->clear();
                     }
-                    QDir owned(
-                        QString::fromStdString(preparation_.cache_directory));
-                    if (!preparation_.cache_directory.empty() &&
-                        owned.exists() && !owned.removeRecursively()) {
-                        preparation_.diagnostic = kCleanupDiagnostic;
-                        qWarning().noquote()
-                            << QString::fromLatin1(kCleanupDiagnostic);
+                    if (!NetworkCacheStorage::RemoveOwnedDirectory(
+                            preparation_.cache_directory)) {
+                        preparation_.diagnostic =
+                            NetworkCacheStorage::CleanupDiagnostic();
+                        qWarning().noquote() << QString::fromLatin1(
+                            NetworkCacheStorage::CleanupDiagnostic());
                     }
                 }
                 manager_.reset();
@@ -180,48 +172,21 @@ NetworkRuntime::Preparation NetworkRuntime::Prepare(
     if (policy.maximum_megabytes > 10240U) {
         throw std::invalid_argument("Network cache size is outside its bounds");
     }
-    Preparation result{policy, {}, false, {}};
-    if (cache_root.empty()) {
-        result.diagnostic = kSetupDiagnostic;
-        return result;
-    }
-    result.cache_directory = QDir(QString::fromStdString(cache_root))
-                                 .filePath(QString::fromLatin1(kOwnedDirectory))
-                                 .toStdString();
-    if (policy.maximum_megabytes == 0U) {
-        return result;
-    }
-    QDir directory;
-    const QString owned = QString::fromStdString(result.cache_directory);
-    if (!directory.mkpath(owned)) {
-        result.diagnostic = kSetupDiagnostic;
-        return result;
-    }
-    QFile probe(QDir(owned).filePath(QStringLiteral(".goldendict-write-test")));
-    if (!probe.open(QIODevice::WriteOnly | QIODevice::Truncate) ||
-        probe.write("ok", 2) != 2) {
-        probe.close();
-        probe.remove();
-        result.diagnostic = kSetupDiagnostic;
-        return result;
-    }
-    probe.close();
-    if (!probe.remove()) {
-        result.diagnostic = kSetupDiagnostic;
-        return result;
-    }
-    result.cache_available = true;
-    return result;
+    auto storage = NetworkCacheStorage::Prepare(cache_root,
+                                                policy.maximum_megabytes != 0U);
+    return {policy, std::move(storage.directory), storage.available,
+            std::move(storage.diagnostic)};
 }
 
 std::shared_ptr<NetworkRuntime> NetworkRuntime::Create(
     Preparation preparation) {
     if (preparation.policy.maximum_megabytes == 0U &&
         !preparation.cache_directory.empty()) {
-        QDir owned(QString::fromStdString(preparation.cache_directory));
-        if (owned.exists() && !owned.removeRecursively()) {
-            preparation.diagnostic = kCleanupDiagnostic;
-            qWarning().noquote() << QString::fromLatin1(kCleanupDiagnostic);
+        if (!NetworkCacheStorage::RemoveOwnedDirectory(
+                preparation.cache_directory)) {
+            preparation.diagnostic = NetworkCacheStorage::CleanupDiagnostic();
+            qWarning().noquote() << QString::fromLatin1(
+                NetworkCacheStorage::CleanupDiagnostic());
         }
     }
     return std::shared_ptr<NetworkRuntime>(
