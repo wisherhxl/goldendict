@@ -27,6 +27,8 @@ enum class ConfigurationPersistenceOperation : std::uint8_t {
     kReadVerification,
     kVerifyPayload,
     kVerifyAbsence,
+    kValidatePendingIdentity,
+    kVerifyPendingRecord,
 };
 
 enum class ConfigurationPersistenceCheckpoint : std::uint8_t {
@@ -40,6 +42,7 @@ enum class ConfigurationPersistenceCheckpoint : std::uint8_t {
     kAfterHistoryVerified,
     kAfterHistoryRemoved,
     kAfterHistoryAbsenceVerified,
+    kAfterPendingRecordVerified,
 };
 
 struct ConfigurationPersistenceDependencies {
@@ -106,6 +109,46 @@ struct PreviousPersistenceResult {
 
 PreviousPersistenceResult PersistPreviousConfiguration(
     const PreviousPersistenceRequest& request,
+    const ConfigurationPersistenceDependencies& dependencies = {});
+
+enum class ConfigurationRecoveryDisposition : std::uint8_t {
+    kNoActionDeferToRuntime,
+    kAutomaticDesiredRecoveryAuthorized,
+    kPreviousFallbackSelected,
+    kPreviousFallbackReplaySelected,
+    kQuarantinedTerminal,
+    kRejectedOrFailed,
+};
+
+struct ConfigurationRecoveryRequest {
+    std::filesystem::path configuration_path;
+    std::array<std::uint8_t, 16U> transaction_id{};
+};
+
+struct ConfigurationRecoverySnapshot {
+    PendingTransactionPhase phase = PendingTransactionPhase::kPrepared;
+    DesiredRecoveryAttempt desired_recovery_attempt =
+        DesiredRecoveryAttempt::kNotAttempted;
+
+    bool operator==(const ConfigurationRecoverySnapshot& other) const noexcept {
+        return phase == other.phase &&
+               desired_recovery_attempt == other.desired_recovery_attempt;
+    }
+};
+
+struct ConfigurationRecoveryResult {
+    ConfigurationRecoveryDisposition disposition =
+        ConfigurationRecoveryDisposition::kRejectedOrFailed;
+    std::optional<ConfigurationRecoverySnapshot> namespace_visible_snapshot;
+    std::optional<ConfigurationRecoverySnapshot>
+        directory_sync_confirmed_snapshot;
+    bool exact_verification_succeeded = false;
+    std::optional<ConfigurationPersistenceError> primary_error;
+    std::optional<ConfigurationPersistenceError> secondary_error;
+};
+
+ConfigurationRecoveryResult EvaluateConfigurationRecovery(
+    const ConfigurationRecoveryRequest& request,
     const ConfigurationPersistenceDependencies& dependencies = {});
 
 }  // namespace goldendict::core

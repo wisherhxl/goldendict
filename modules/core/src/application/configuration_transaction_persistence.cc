@@ -452,12 +452,48 @@ void RequirePendingIdentity(
         const auto record = ParsePendingConfigurationTransaction(
             ReadFile(pending_path, dependencies,
                      PendingFailureDestination::kPendingRecord));
+        Inject(dependencies,
+               ConfigurationPersistenceOperation::kValidatePendingIdentity,
+               pending_path, PendingFailureDestination::kPendingRecord,
+               "pending_identity_validation_failed");
         if (record.transaction_id != identity) {
             throw PersistenceFailure(PendingFailureDestination::kPendingRecord,
                                      PendingFailureCategory::kRejected,
                                      "pending_identity_mismatch",
                                      "Pending transaction identity changed");
         }
+    } catch (const PersistenceFailure&) {
+        throw;
+    } catch (...) {
+        throw PersistenceFailure(PendingFailureDestination::kPendingRecord,
+                                 PendingFailureCategory::kInvalidData,
+                                 "pending_record_invalid",
+                                 "Pending transaction record is invalid");
+    }
+}
+
+PendingConfigurationTransactionRecord ReadPendingRecord(
+    const std::filesystem::path& pending_path,
+    const std::array<std::uint8_t, 16U>& identity,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    RequireSafeExisting(pending_path, false, dependencies,
+                        PendingFailureDestination::kPendingRecord);
+    try {
+        auto record = ParsePendingConfigurationTransaction(
+            ReadFile(pending_path, dependencies,
+                     PendingFailureDestination::kPendingRecord));
+        Inject(dependencies,
+               ConfigurationPersistenceOperation::kValidatePendingIdentity,
+               pending_path, PendingFailureDestination::kPendingRecord,
+               "pending_identity_validation_failed");
+        if (record.transaction_id != identity) {
+            throw PersistenceFailure(
+                PendingFailureDestination::kPendingRecord,
+                PendingFailureCategory::kRejected,
+                "pending_identity_mismatch",
+                "Pending transaction identity does not match request");
+        }
+        return record;
     } catch (const PersistenceFailure&) {
         throw;
     } catch (...) {
@@ -502,6 +538,39 @@ void PublishRecordUpdate(
     SyncDirectory(pending_path.parent_path(), dependencies,
                   PendingFailureDestination::kPendingRecord,
                   after_durability_confirmation);
+}
+
+void VerifyPendingRecord(
+    const PendingConfigurationTransactionRecord& expected,
+    const std::filesystem::path& pending_path,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    Inject(dependencies, ConfigurationPersistenceOperation::kVerifyPendingRecord,
+           pending_path, PendingFailureDestination::kPendingRecord,
+           "pending_verification_failed");
+    const auto actual = ReadPendingRecord(pending_path, expected.transaction_id,
+                                          dependencies);
+    if (!(actual == expected)) {
+        throw PersistenceFailure(PendingFailureDestination::kPendingRecord,
+                                 PendingFailureCategory::kInvalidData,
+                                 "pending_verification_failed",
+                                 "Pending transaction verification failed");
+    }
+    Checkpoint(dependencies,
+               ConfigurationPersistenceCheckpoint::kAfterPendingRecordVerified,
+               pending_path, PendingFailureDestination::kPendingRecord,
+               "after_pending_record_verification");
+}
+
+ConfigurationPersistenceError RecoveryError(
+    const PersistenceFailure& failure, PendingFailureOperation operation) {
+    auto error = Error(failure);
+    error.identity.operation = operation;
+    return error;
+}
+
+ConfigurationRecoverySnapshot RecoverySnapshot(
+    const PendingConfigurationTransactionRecord& record) {
+    return {record.phase, record.desired_recovery_attempt};
 }
 
 void PublishPayload(const PendingTransactionPayload& payload,
@@ -936,6 +1005,154 @@ PreviousPersistenceResult PersistPreviousConfiguration(
              PendingFailureCategory::kUnknown, "failure_record_publish_failed"},
             "Unknown failure-evidence publication failure"};
     }
+    return result;
+}
+
+ConfigurationRecoveryResult EvaluateConfigurationRecovery(
+    const ConfigurationRecoveryRequest& request,
+    const ConfigurationPersistenceDependencies& dependencies) {
+    ConfigurationRecoveryResult result;
+    const auto pending_path =
+        PendingConfigurationTransactionPath(request.configuration_path);
+    PendingConfigurationTransactionRecord record;
+    try {
+        record = ReadPendingRecord(pending_path, request.transaction_id,
+                                   dependencies);
+    } catch (const PersistenceFailure& failure) {
+        result.primary_error =
+            RecoveryError(failure, PendingFailureOperation::kReadRecord);
+        return result;
+    } catch (const std::bad_alloc&) {
+        result.primary_error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kReadRecord,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kResourceLimit, "allocation_failed"},
+            "Recovery policy allocation failed"};
+        return result;
+    } catch (const std::exception& failure) {
+        result.primary_error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kValidateRecord,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kInvalidData, "pending_record_invalid"},
+            failure.what()};
+        return result;
+    } catch (...) {
+        result.primary_error = ConfigurationPersistenceError{
+            {PendingFailureOperation::kValidateRecord,
+             PendingFailureDestination::kPendingRecord,
+             PendingFailureCategory::kUnknown, "unknown_failure"},
+            "Unknown recovery-policy failure"};
+        return result;
+    }
+
+    const auto publish = [&](PendingConfigurationTransactionRecord updated,
+                             std::string_view purpose) {
+        PublishRecordUpdate(
+            updated, pending_path, purpose, dependencies,
+            [&result, &updated] {
+                result.namespace_visible_snapshot = RecoverySnapshot(updated);
+            },
+            [&result, &updated] {
+                result.directory_sync_confirmed_snapshot =
+                    RecoverySnapshot(updated);
+            });
+        VerifyPendingRecord(updated, pending_path, dependencies);
+        result.exact_verification_succeeded = true;
+    };
+
+    const bool desired_persistence_phase =
+        record.phase == PendingTransactionPhase::kDesiredCommit ||
+        record.phase == PendingTransactionPhase::kDesiredPersistenceApplying ||
+        record.phase == PendingTransactionPhase::kDesiredPersistenceFailed;
+    if (desired_persistence_phase) {
+        if (record.desired_recovery_attempt ==
+            DesiredRecoveryAttempt::kAttempted) {
+            result.disposition =
+                ConfigurationRecoveryDisposition::kPreviousFallbackSelected;
+            return result;
+        }
+        record.desired_recovery_attempt = DesiredRecoveryAttempt::kAttempted;
+        try {
+            publish(record, "desired-recovery-attempt");
+            result.disposition = ConfigurationRecoveryDisposition::
+                kAutomaticDesiredRecoveryAuthorized;
+        } catch (const PersistenceFailure& failure) {
+            result.primary_error = RecoveryError(
+                failure, PendingFailureOperation::kPersistDesired);
+        } catch (const std::exception& failure) {
+            result.primary_error = ConfigurationPersistenceError{
+                {PendingFailureOperation::kPersistDesired,
+                 PendingFailureDestination::kPendingRecord,
+                 PendingFailureCategory::kInvalidData,
+                 "recovery_record_publish_failed"},
+                failure.what()};
+        } catch (...) {
+            result.primary_error = ConfigurationPersistenceError{
+                {PendingFailureOperation::kPersistDesired,
+                 PendingFailureDestination::kPendingRecord,
+                 PendingFailureCategory::kUnknown,
+                 "recovery_record_publish_failed"},
+                "Unknown desired-recovery marker publication failure"};
+        }
+        return result;
+    }
+
+    switch (record.phase) {
+        case PendingTransactionPhase::kPreviousPersistenceApplying:
+            result.disposition = ConfigurationRecoveryDisposition::
+                kPreviousFallbackReplaySelected;
+            return result;
+        case PendingTransactionPhase::kPreviousPersistenceBlocked:
+            result.primary_error = ConfigurationPersistenceError{
+                *record.failure, "Previous persistence is terminally blocked"};
+            record.phase = PendingTransactionPhase::kQuarantined;
+            try {
+                publish(record, "quarantine");
+                result.disposition =
+                    ConfigurationRecoveryDisposition::kQuarantinedTerminal;
+            } catch (const PersistenceFailure& failure) {
+                result.secondary_error =
+                    RecoveryError(failure, PendingFailureOperation::kQuarantine);
+            } catch (const std::exception& failure) {
+                result.secondary_error = ConfigurationPersistenceError{
+                    {PendingFailureOperation::kQuarantine,
+                     PendingFailureDestination::kPendingRecord,
+                     PendingFailureCategory::kInvalidData,
+                     "quarantine_publish_failed"},
+                    failure.what()};
+            } catch (...) {
+                result.secondary_error = ConfigurationPersistenceError{
+                    {PendingFailureOperation::kQuarantine,
+                     PendingFailureDestination::kPendingRecord,
+                     PendingFailureCategory::kUnknown,
+                     "quarantine_publish_failed"},
+                    "Unknown quarantine publication failure"};
+            }
+            return result;
+        case PendingTransactionPhase::kQuarantined:
+            result.disposition =
+                ConfigurationRecoveryDisposition::kQuarantinedTerminal;
+            result.primary_error = ConfigurationPersistenceError{
+                *record.failure, "Pending transaction is quarantined"};
+            return result;
+        case PendingTransactionPhase::kPrepared:
+        case PendingTransactionPhase::kDesiredPersistenceApplied:
+        case PendingTransactionPhase::kDesiredRuntimeApplying:
+        case PendingTransactionPhase::kDesiredRuntimeFailed:
+        case PendingTransactionPhase::kPreviousRuntimeApplying:
+            result.disposition = ConfigurationRecoveryDisposition::
+                kNoActionDeferToRuntime;
+            return result;
+        case PendingTransactionPhase::kDesiredCommit:
+        case PendingTransactionPhase::kDesiredPersistenceApplying:
+        case PendingTransactionPhase::kDesiredPersistenceFailed:
+            break;
+    }
+    result.primary_error = ConfigurationPersistenceError{
+        {PendingFailureOperation::kValidateRecord,
+         PendingFailureDestination::kPendingRecord,
+         PendingFailureCategory::kInvariant, "recovery_phase_rejected"},
+        "Pending transaction phase is not valid for recovery policy"};
     return result;
 }
 
