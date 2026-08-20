@@ -12,6 +12,7 @@
 #include <thread>
 #include <type_traits>
 
+#include "../src/application/configuration_transaction_persistence.h"
 #include "../src/application/configuration_transaction_preparation.h"
 #include "../src/application/desktop_facade_activation_owner.h"
 #include "../src/application/full_text_index_lifecycle_inspection.h"
@@ -214,6 +215,13 @@ class ApplicationServiceTest : public QObject {
     void PreparationFailuresAreAbortableAndBounded();
     void PreparationFilesystemFailuresAreDeterministic();
     void PreparedTransactionOwnsStagingUntilReleased();
+    void PersistsConfigurationOnlyThroughDurableDecision();
+    void PersistsConfigurationAndReplacementHistory();
+    void PersistenceFailuresBeforePublicationRemainAbortable();
+    void PublishedDecisionDirectorySyncFailureRetainsRecoveryState();
+    void PostDecisionPersistenceFailuresConvergeOnlyForward();
+    void FailureEvidenceNeverOverwritesCorruptPendingRecord();
+    void PersistenceCrashCheckpointsReportTruthfulBoundaries();
     void MigratesLegacyPathsWithoutTouchingTheSource();
     void MigratesAllLegacyOnlineSourcesAtomically();
     void RejectsUnsupportedLegacyOnlineSourcesAtomically();
@@ -2322,6 +2330,520 @@ void ApplicationServiceTest::PreparedTransactionOwnsStagingUntilReleased() {
     cleanup_failure.prepared->ReleaseForDecision();
     cleanup_failure.prepared.reset();
     std::filesystem::remove_all(staging);
+}
+
+void ApplicationServiceTest::PersistsConfigurationOnlyThroughDurableDecision() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto configuration_path = root / "core.conf";
+    const auto history_path = root / "history-v1";
+    CoreConfiguration previous;
+    previous.index_directory = "previous";
+    SaveConfiguration(configuration_path.string(), previous);
+    QVERIFY(std::filesystem::create_directory(history_path));
+    test::WriteBinaryFile(history_path / "marker", "untouched");
+
+    ConfigurationTransactionPreparationInput input;
+    input.configuration_path = configuration_path;
+    input.history_path = history_path;
+    input.desired_configuration.index_directory = "desired";
+    ConfigurationTransactionPreparationDependencies preparation;
+    preparation.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x71U);
+        return std::optional{identity};
+    };
+    auto prepared = PrepareConfigurationTransaction(input, preparation);
+    QVERIFY(prepared);
+    const auto desired_bytes =
+        prepared.prepared->record().desired_configuration.bytes;
+    const auto staging = prepared.prepared->staged_record_path().parent_path();
+    std::vector<PendingTransactionPhase> published_phases;
+    ConfigurationPersistenceDependencies persistence;
+    persistence.checkpoint = [&](ConfigurationPersistenceCheckpoint checkpoint,
+                                 const std::filesystem::path& path) {
+        if (checkpoint ==
+                ConfigurationPersistenceCheckpoint::kAfterDecisionPublished ||
+            checkpoint ==
+                ConfigurationPersistenceCheckpoint::kAfterRecordReplaced) {
+            published_phases.push_back(
+                ParsePendingConfigurationTransaction(ReadFile(path)).phase);
+        }
+    };
+
+    const auto result =
+        PersistDesiredConfiguration(std::move(*prepared.prepared), persistence);
+    QCOMPARE(result.outcome,
+             ConfigurationPersistenceOutcome::kDesiredPersistenceApplied);
+    QVERIFY(result.decision_path_published);
+    QCOMPARE(
+        result.namespace_published_phase,
+        std::optional{PendingTransactionPhase::kDesiredPersistenceApplied});
+    QCOMPARE(
+        result.confirmed_durable_phase,
+        std::optional{PendingTransactionPhase::kDesiredPersistenceApplied});
+    QCOMPARE(published_phases,
+             (std::vector<PendingTransactionPhase>{
+                 PendingTransactionPhase::kDesiredCommit,
+                 PendingTransactionPhase::kDesiredPersistenceApplying,
+                 PendingTransactionPhase::kDesiredPersistenceApplied}));
+    QCOMPARE(ReadFile(configuration_path), desired_bytes);
+    QCOMPARE(ReadFile(history_path / "marker"), std::string("untouched"));
+    QCOMPARE(
+        ParsePendingConfigurationTransaction(
+            ReadFile(PendingConfigurationTransactionPath(configuration_path)))
+            .phase,
+        PendingTransactionPhase::kDesiredPersistenceApplied);
+    QVERIFY(std::filesystem::exists(staging));
+    std::filesystem::remove_all(staging);
+}
+
+void ApplicationServiceTest::PersistsConfigurationAndReplacementHistory() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto configuration_path = root / "core.conf";
+    const auto history_path = root / "history-v1";
+    SaveConfiguration(configuration_path.string(), {});
+    test::WriteBinaryFile(history_path, "");
+
+    ConfigurationTransactionPreparationInput input;
+    input.configuration_path = configuration_path;
+    input.history_path = history_path;
+    input.desired_configuration.index_directory = "replacement";
+    input.history_intent = PendingHistoryIntent::kReplace;
+    input.desired_history = {{7U, "first"}, {9U, "second"}};
+    ConfigurationTransactionPreparationDependencies preparation;
+    preparation.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x72U);
+        return std::optional{identity};
+    };
+    auto prepared = PrepareConfigurationTransaction(input, preparation);
+    QVERIFY(prepared);
+    const auto expected_configuration =
+        prepared.prepared->record().desired_configuration.bytes;
+    const auto expected_history =
+        prepared.prepared->record().desired_history->bytes;
+    const auto staging = prepared.prepared->staged_record_path().parent_path();
+
+    const auto result =
+        PersistDesiredConfiguration(std::move(*prepared.prepared));
+    QCOMPARE(result.outcome,
+             ConfigurationPersistenceOutcome::kDesiredPersistenceApplied);
+    QCOMPARE(ReadFile(configuration_path), expected_configuration);
+    QCOMPARE(ReadFile(history_path), expected_history);
+    const auto pending = ParsePendingConfigurationTransaction(
+        ReadFile(PendingConfigurationTransactionPath(configuration_path)));
+    QCOMPARE(pending.phase,
+             PendingTransactionPhase::kDesiredPersistenceApplied);
+    QCOMPARE(pending.desired_configuration.bytes, expected_configuration);
+    QCOMPARE(pending.desired_history->bytes, expected_history);
+    std::filesystem::remove_all(staging);
+}
+
+void ApplicationServiceTest::
+    PersistenceFailuresBeforePublicationRemainAbortable() {
+    for (const auto failed_operation :
+         {ConfigurationPersistenceOperation::kSyncTemporary,
+          ConfigurationPersistenceOperation::kPublishDecision}) {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto root = TemporaryPath(directory);
+        const auto configuration_path = root / "core.conf";
+        SaveConfiguration(configuration_path.string(), {});
+        const auto before = ReadFile(configuration_path);
+
+        ConfigurationTransactionPreparationInput input;
+        input.configuration_path = configuration_path;
+        input.desired_configuration.index_directory = "desired";
+        ConfigurationTransactionPreparationDependencies preparation;
+        preparation.generate_transaction_id = [] {
+            std::array<std::uint8_t, 16U> identity{};
+            identity.fill(0x73U);
+            return std::optional{identity};
+        };
+        auto prepared = PrepareConfigurationTransaction(input, preparation);
+        QVERIFY(prepared);
+        const auto staging =
+            prepared.prepared->staged_record_path().parent_path();
+        ConfigurationPersistenceDependencies persistence;
+        persistence.filesystem_failure =
+            [failed_operation](ConfigurationPersistenceOperation operation,
+                               const std::filesystem::path&)
+            -> std::optional<std::error_code> {
+            if (operation == failed_operation)
+                return std::make_error_code(std::errc::io_error);
+            return std::nullopt;
+        };
+
+        auto result = PersistDesiredConfiguration(std::move(*prepared.prepared),
+                                                  persistence);
+        QCOMPARE(result.outcome,
+                 ConfigurationPersistenceOutcome::kPreDecisionFailure);
+        QVERIFY(!result.decision_path_published);
+        QVERIFY(!result.namespace_published_phase.has_value());
+        QVERIFY(!result.confirmed_durable_phase.has_value());
+        QVERIFY(result.abortable_prepared.has_value());
+        QCOMPARE(ReadFile(configuration_path), before);
+        QVERIFY(!std::filesystem::exists(
+            PendingConfigurationTransactionPath(configuration_path)));
+        QVERIFY(std::filesystem::exists(staging));
+        QVERIFY(!result.abortable_prepared->Abort().has_value());
+        QVERIFY(!std::filesystem::exists(staging));
+    }
+
+    QTemporaryDir collision_directory;
+    QVERIFY(collision_directory.isValid());
+    const auto collision_root = TemporaryPath(collision_directory);
+    const auto configuration_path = collision_root / "core.conf";
+    SaveConfiguration(configuration_path.string(), {});
+    ConfigurationTransactionPreparationInput input;
+    input.configuration_path = configuration_path;
+    ConfigurationTransactionPreparationDependencies preparation;
+    preparation.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x73U);
+        return std::optional{identity};
+    };
+    auto prepared = PrepareConfigurationTransaction(input, preparation);
+    QVERIFY(prepared);
+    const auto pending_path =
+        PendingConfigurationTransactionPath(configuration_path);
+    test::WriteBinaryFile(pending_path, "unrelated-pending-artifact");
+    auto collision = PersistDesiredConfiguration(std::move(*prepared.prepared));
+    QCOMPARE(collision.outcome,
+             ConfigurationPersistenceOutcome::kPreDecisionFailure);
+    QCOMPARE(ReadFile(pending_path), std::string("unrelated-pending-artifact"));
+    QVERIFY(collision.abortable_prepared.has_value());
+    QVERIFY(!collision.abortable_prepared->Abort().has_value());
+
+    QVERIFY(std::filesystem::remove(pending_path));
+    const auto unrelated_target = collision_root / "unrelated-target";
+    test::WriteBinaryFile(unrelated_target, "do-not-overwrite");
+    std::error_code symlink_error;
+    std::filesystem::create_symlink(unrelated_target, pending_path,
+                                    symlink_error);
+    QVERIFY(!symlink_error);
+    preparation.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x79U);
+        return std::optional{identity};
+    };
+    auto symlink_prepared = PrepareConfigurationTransaction(input, preparation);
+    QVERIFY(symlink_prepared);
+    auto symlink_result =
+        PersistDesiredConfiguration(std::move(*symlink_prepared.prepared));
+    QCOMPARE(symlink_result.outcome,
+             ConfigurationPersistenceOutcome::kPreDecisionFailure);
+    QVERIFY(std::filesystem::is_symlink(
+        std::filesystem::symlink_status(pending_path)));
+    QCOMPARE(ReadFile(unrelated_target), std::string("do-not-overwrite"));
+    QVERIFY(symlink_result.abortable_prepared.has_value());
+    QVERIFY(!symlink_result.abortable_prepared->Abort().has_value());
+}
+
+void ApplicationServiceTest::
+    PublishedDecisionDirectorySyncFailureRetainsRecoveryState() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto configuration_path = root / "core.conf";
+    SaveConfiguration(configuration_path.string(), {});
+    const auto configuration_before = ReadFile(configuration_path);
+
+    ConfigurationTransactionPreparationInput input;
+    input.configuration_path = configuration_path;
+    input.desired_configuration.index_directory = "desired";
+    ConfigurationTransactionPreparationDependencies preparation;
+    preparation.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x74U);
+        return std::optional{identity};
+    };
+    auto prepared = PrepareConfigurationTransaction(input, preparation);
+    QVERIFY(prepared);
+    const auto staging = prepared.prepared->staged_record_path().parent_path();
+    int directory_syncs = 0;
+    ConfigurationPersistenceDependencies persistence;
+    persistence.filesystem_failure =
+        [&directory_syncs](
+            ConfigurationPersistenceOperation operation,
+            const std::filesystem::path&) -> std::optional<std::error_code> {
+        if (operation == ConfigurationPersistenceOperation::kSyncDirectory &&
+            directory_syncs++ == 0) {
+            return std::make_error_code(std::errc::io_error);
+        }
+        return std::nullopt;
+    };
+
+    const auto result =
+        PersistDesiredConfiguration(std::move(*prepared.prepared), persistence);
+    QCOMPARE(result.outcome,
+             ConfigurationPersistenceOutcome::kPostDecisionFailure);
+    QVERIFY(result.decision_path_published);
+    QVERIFY(!result.abortable_prepared.has_value());
+    QVERIFY(result.failure_evidence_namespace_published);
+    QVERIFY(result.failure_evidence_durable);
+    QCOMPARE(result.confirmed_durable_phase,
+             std::optional{PendingTransactionPhase::kDesiredPersistenceFailed});
+    QCOMPARE(ReadFile(configuration_path), configuration_before);
+    QVERIFY(std::filesystem::exists(staging));
+    const auto pending = ParsePendingConfigurationTransaction(
+        ReadFile(PendingConfigurationTransactionPath(configuration_path)));
+    QCOMPARE(pending.phase, PendingTransactionPhase::kDesiredPersistenceFailed);
+    QCOMPARE(pending.failure->identifier, std::string("directory_sync_failed"));
+    std::filesystem::remove_all(staging);
+
+    QTemporaryDir secondary_directory;
+    QVERIFY(secondary_directory.isValid());
+    const auto secondary_root = TemporaryPath(secondary_directory);
+    const auto secondary_configuration = secondary_root / "core.conf";
+    SaveConfiguration(secondary_configuration.string(), {});
+    input.configuration_path = secondary_configuration;
+    preparation.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x77U);
+        return std::optional{identity};
+    };
+    auto secondary_prepared =
+        PrepareConfigurationTransaction(input, preparation);
+    QVERIFY(secondary_prepared);
+    const auto secondary_staging =
+        secondary_prepared.prepared->staged_record_path().parent_path();
+    persistence.filesystem_failure =
+        [](ConfigurationPersistenceOperation operation,
+           const std::filesystem::path&) -> std::optional<std::error_code> {
+        if (operation == ConfigurationPersistenceOperation::kSyncDirectory)
+            return std::make_error_code(std::errc::io_error);
+        return std::nullopt;
+    };
+    const auto secondary = PersistDesiredConfiguration(
+        std::move(*secondary_prepared.prepared), persistence);
+    QCOMPARE(secondary.outcome,
+             ConfigurationPersistenceOutcome::kPostDecisionFailure);
+    QVERIFY(secondary.decision_path_published);
+    QVERIFY(secondary.failure_evidence_namespace_published);
+    QVERIFY(!secondary.failure_evidence_durable);
+    QVERIFY(!secondary.confirmed_durable_phase.has_value());
+    QVERIFY(secondary.failure_evidence_error.has_value());
+    QCOMPARE(secondary.failure_evidence_error->identity.identifier,
+             std::string("directory_sync_failed"));
+    QCOMPARE(ParsePendingConfigurationTransaction(
+                 ReadFile(PendingConfigurationTransactionPath(
+                     secondary_configuration)))
+                 .phase,
+             PendingTransactionPhase::kDesiredPersistenceFailed);
+    QVERIFY(std::filesystem::exists(secondary_staging));
+    std::filesystem::remove_all(secondary_staging);
+}
+
+void ApplicationServiceTest::
+    PostDecisionPersistenceFailuresConvergeOnlyForward() {
+    for (const auto failed_operation :
+         {ConfigurationPersistenceOperation::kInspectPath,
+          ConfigurationPersistenceOperation::kCreateTemporary,
+          ConfigurationPersistenceOperation::kWriteTemporary,
+          ConfigurationPersistenceOperation::kFlushTemporary,
+          ConfigurationPersistenceOperation::kSyncTemporary,
+          ConfigurationPersistenceOperation::kReplaceDestination,
+          ConfigurationPersistenceOperation::kSyncDirectory,
+          ConfigurationPersistenceOperation::kReadVerification,
+          ConfigurationPersistenceOperation::kVerifyPayload,
+          ConfigurationPersistenceOperation::kRemoveTemporary}) {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto root = TemporaryPath(directory);
+        const auto configuration_path = root / "core.conf";
+        CoreConfiguration previous;
+        previous.index_directory = "previous";
+        SaveConfiguration(configuration_path.string(), previous);
+        const auto previous_bytes = ReadFile(configuration_path);
+
+        ConfigurationTransactionPreparationInput input;
+        input.configuration_path = configuration_path;
+        input.desired_configuration.index_directory = "desired";
+        ConfigurationTransactionPreparationDependencies preparation;
+        preparation.generate_transaction_id = [] {
+            std::array<std::uint8_t, 16U> identity{};
+            identity.fill(0x75U);
+            return std::optional{identity};
+        };
+        auto prepared = PrepareConfigurationTransaction(input, preparation);
+        QVERIFY(prepared);
+        const auto desired_bytes =
+            prepared.prepared->record().desired_configuration.bytes;
+        const auto staging =
+            prepared.prepared->staged_record_path().parent_path();
+        int directory_syncs = 0;
+        ConfigurationPersistenceDependencies persistence;
+        persistence.filesystem_failure =
+            [failed_operation, &directory_syncs, &configuration_path](
+                ConfigurationPersistenceOperation operation,
+                const std::filesystem::path& path)
+            -> std::optional<std::error_code> {
+            if (operation != failed_operation)
+                return std::nullopt;
+            bool selected = false;
+            if (operation ==
+                ConfigurationPersistenceOperation::kSyncDirectory) {
+                selected = directory_syncs++ == 2;
+            } else if (operation ==
+                       ConfigurationPersistenceOperation::kRemoveTemporary) {
+                selected = true;
+            } else {
+                selected = path == configuration_path ||
+                           path.string().find("-configuration.tmp") !=
+                               std::string::npos;
+            }
+            return selected ? std::optional{std::make_error_code(
+                                  std::errc::io_error)}
+                            : std::nullopt;
+        };
+
+        auto result = PersistDesiredConfiguration(std::move(*prepared.prepared),
+                                                  persistence);
+        QCOMPARE(result.outcome,
+                 ConfigurationPersistenceOutcome::kPostDecisionFailure);
+        QVERIFY(result.decision_path_published);
+        QVERIFY(!result.abortable_prepared.has_value());
+        QVERIFY(result.failure_evidence_durable);
+        QCOMPARE(
+            result.confirmed_durable_phase,
+            std::optional{PendingTransactionPhase::kDesiredPersistenceFailed});
+        const auto persisted = ReadFile(configuration_path);
+        QVERIFY(persisted == previous_bytes || persisted == desired_bytes);
+        const auto pending = ParsePendingConfigurationTransaction(
+            ReadFile(PendingConfigurationTransactionPath(configuration_path)));
+        QCOMPARE(pending.phase,
+                 PendingTransactionPhase::kDesiredPersistenceFailed);
+        QCOMPARE(pending.failure, std::optional{result.error->identity});
+        QVERIFY(std::filesystem::exists(staging));
+        std::filesystem::remove_all(staging);
+    }
+}
+
+void ApplicationServiceTest::
+    FailureEvidenceNeverOverwritesCorruptPendingRecord() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto configuration_path = root / "core.conf";
+    SaveConfiguration(configuration_path.string(), {});
+
+    ConfigurationTransactionPreparationInput input;
+    input.configuration_path = configuration_path;
+    input.desired_configuration.index_directory = "desired";
+    ConfigurationTransactionPreparationDependencies preparation;
+    preparation.generate_transaction_id = [] {
+        std::array<std::uint8_t, 16U> identity{};
+        identity.fill(0x76U);
+        return std::optional{identity};
+    };
+    auto prepared = PrepareConfigurationTransaction(input, preparation);
+    QVERIFY(prepared);
+    const auto staging = prepared.prepared->staged_record_path().parent_path();
+    const auto pending_path =
+        PendingConfigurationTransactionPath(configuration_path);
+    ConfigurationPersistenceDependencies persistence;
+    persistence.checkpoint = [](ConfigurationPersistenceCheckpoint checkpoint,
+                                const std::filesystem::path& path) {
+        if (checkpoint ==
+            ConfigurationPersistenceCheckpoint::kAfterDecisionPublished) {
+            test::WriteBinaryFile(path, "unrelated-corrupt-record");
+            throw std::runtime_error("simulated crash boundary");
+        }
+    };
+
+    const auto result =
+        PersistDesiredConfiguration(std::move(*prepared.prepared), persistence);
+    QCOMPARE(result.outcome,
+             ConfigurationPersistenceOutcome::kPostDecisionFailure);
+    QVERIFY(result.decision_path_published);
+    QCOMPARE(result.namespace_published_phase,
+             std::optional{PendingTransactionPhase::kDesiredCommit});
+    QVERIFY(!result.confirmed_durable_phase.has_value());
+    QVERIFY(!result.failure_evidence_namespace_published);
+    QVERIFY(!result.failure_evidence_durable);
+    QVERIFY(result.failure_evidence_error.has_value());
+    QCOMPARE(result.failure_evidence_error->identity.identifier,
+             std::string("pending_record_invalid"));
+    QCOMPARE(ReadFile(pending_path), std::string("unrelated-corrupt-record"));
+    QVERIFY(std::filesystem::exists(staging));
+    std::filesystem::remove_all(staging);
+}
+
+void ApplicationServiceTest::
+    PersistenceCrashCheckpointsReportTruthfulBoundaries() {
+    for (const auto failed_checkpoint :
+         {ConfigurationPersistenceCheckpoint::kAfterTemporarySynced,
+          ConfigurationPersistenceCheckpoint::kAfterDecisionPublished,
+          ConfigurationPersistenceCheckpoint::kAfterRecordReplaced,
+          ConfigurationPersistenceCheckpoint::kAfterDirectorySynced,
+          ConfigurationPersistenceCheckpoint::kAfterConfigurationReplaced,
+          ConfigurationPersistenceCheckpoint::kAfterConfigurationVerified,
+          ConfigurationPersistenceCheckpoint::kAfterHistoryReplaced,
+          ConfigurationPersistenceCheckpoint::kAfterHistoryVerified}) {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto root = TemporaryPath(directory);
+        const auto configuration_path = root / "core.conf";
+        const auto history_path = root / "history-v1";
+        SaveConfiguration(configuration_path.string(), {});
+        test::WriteBinaryFile(history_path, "goldendict-history-v1\n1 old\n");
+
+        ConfigurationTransactionPreparationInput input;
+        input.configuration_path = configuration_path;
+        input.history_path = history_path;
+        input.desired_configuration.index_directory = "desired";
+        input.history_intent = PendingHistoryIntent::kReplace;
+        input.desired_history = {{2U, "new"}};
+        ConfigurationTransactionPreparationDependencies preparation;
+        preparation.generate_transaction_id = [] {
+            std::array<std::uint8_t, 16U> identity{};
+            identity.fill(0x78U);
+            return std::optional{identity};
+        };
+        auto prepared = PrepareConfigurationTransaction(input, preparation);
+        QVERIFY(prepared);
+        const auto staging =
+            prepared.prepared->staged_record_path().parent_path();
+        bool injected = false;
+        ConfigurationPersistenceDependencies persistence;
+        persistence.checkpoint =
+            [failed_checkpoint, &injected](
+                ConfigurationPersistenceCheckpoint checkpoint,
+                const std::filesystem::path&) {
+                if (!injected && checkpoint == failed_checkpoint) {
+                    injected = true;
+                    throw std::runtime_error("simulated crash");
+                }
+            };
+
+        auto result = PersistDesiredConfiguration(std::move(*prepared.prepared),
+                                                  persistence);
+        QVERIFY(injected);
+        if (failed_checkpoint ==
+            ConfigurationPersistenceCheckpoint::kAfterTemporarySynced) {
+            QCOMPARE(result.outcome,
+                     ConfigurationPersistenceOutcome::kPreDecisionFailure);
+            QVERIFY(!result.decision_path_published);
+            QVERIFY(result.abortable_prepared.has_value());
+            QVERIFY(!result.abortable_prepared->Abort().has_value());
+        } else {
+            QCOMPARE(result.outcome,
+                     ConfigurationPersistenceOutcome::kPostDecisionFailure);
+            QVERIFY(result.decision_path_published);
+            QVERIFY(!result.abortable_prepared.has_value());
+            QVERIFY(result.failure_evidence_durable);
+            QCOMPARE(result.confirmed_durable_phase,
+                     std::optional{
+                         PendingTransactionPhase::kDesiredPersistenceFailed});
+            QVERIFY(std::filesystem::exists(staging));
+            std::filesystem::remove_all(staging);
+        }
+    }
 }
 
 void ApplicationServiceTest::MigratesLegacyPathsWithoutTouchingTheSource() {

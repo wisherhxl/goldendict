@@ -334,6 +334,7 @@ endif()
 
 if(TARGET application_service_test)
   target_sources(application_service_test PRIVATE
+    src/application/configuration_transaction_persistence.cc
     src/application/configuration_transaction_preparation.cc
     src/application/pending_configuration_transaction.cc
   )
