@@ -2,6 +2,8 @@
 
 #include <QtTest>
 
+#include <QCryptographicHash>
+
 #include <condition_variable>
 #include <filesystem>
 #include <fstream>
@@ -12,6 +14,7 @@
 
 #include "../src/application/desktop_facade_activation_owner.h"
 #include "../src/application/full_text_index_lifecycle_inspection.h"
+#include "../src/application/pending_configuration_transaction.h"
 #include "goldendict/core/application.h"
 #include "goldendict/core/headword_export.h"
 #include "support/aard_fixture.h"
@@ -32,6 +35,50 @@
 
 namespace goldendict::core {
 namespace {
+
+PendingConfigurationTransactionRecord CompletePendingRecord() {
+    PendingConfigurationTransactionRecord record;
+    for (std::size_t index = 0U; index < record.transaction_id.size(); ++index)
+        record.transaction_id[index] = static_cast<std::uint8_t>(index);
+    record.phase = PendingTransactionPhase::kDesiredPersistenceApplied;
+    record.desired_recovery_attempt = DesiredRecoveryAttempt::kAttempted;
+    record.desired_configuration =
+        MakePendingTransactionPayload(std::string("config\0bytes", 12U));
+    record.history_intent = PendingHistoryIntent::kReplace;
+    record.desired_history = MakePendingTransactionPayload("desired history");
+    record.previous_configuration = {
+        true, MakePendingTransactionPayload("previous configuration")};
+    record.previous_history = {
+        true, MakePendingTransactionPayload("previous history")};
+    record.failure = PendingFailureIdentity{
+        PendingFailureOperation::kPersistDesired,
+        PendingFailureDestination::kHistory, PendingFailureCategory::kIo,
+        "atomic_replace_failed"};
+    return record;
+}
+
+std::size_t PendingFieldOffset(const std::string& bytes, std::uint8_t field) {
+    constexpr std::string_view kHeader = "goldendict-pending-transaction-v1\n";
+    std::size_t position = kHeader.size();
+    while (position + 5U <= bytes.size()) {
+        if (static_cast<std::uint8_t>(bytes[position]) == field)
+            return position;
+        const auto length =
+            (static_cast<std::uint32_t>(
+                 static_cast<unsigned char>(bytes[position + 1U]))
+             << 24U) |
+            (static_cast<std::uint32_t>(
+                 static_cast<unsigned char>(bytes[position + 2U]))
+             << 16U) |
+            (static_cast<std::uint32_t>(
+                 static_cast<unsigned char>(bytes[position + 3U]))
+             << 8U) |
+            static_cast<std::uint32_t>(
+                static_cast<unsigned char>(bytes[position + 4U]));
+        position += 5U + length;
+    }
+    return std::string::npos;
+}
 
 class CancelledToken final : public CancellationToken {
    public:
@@ -152,6 +199,10 @@ class ApplicationServiceTest : public QObject {
     void ConfigurationRejectsMalformedPreferencesAtomically();
     void ConfigurationRejectsGroupBoundsAndDuplicatesAtomically();
     void ConfigurationRejectsMalformedGroups();
+    void PendingTransactionRoundTripsDeterministically();
+    void PendingTransactionAcceptsBoundaries();
+    void PendingTransactionRejectsMalformedRecords();
+    void PendingTransactionRejectsInvalidValues();
     void MigratesLegacyPathsWithoutTouchingTheSource();
     void MigratesAllLegacyOnlineSourcesAtomically();
     void RejectsUnsupportedLegacyOnlineSourcesAtomically();
@@ -1535,6 +1586,328 @@ void ApplicationServiceTest::ConfigurationRejectsMalformedGroups() {
                           "dictionary_group=9|Name|\n"
                           "dictionary_group_metadata=9|||not-base64|0|0\n");
     QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                             std::runtime_error);
+}
+
+void ApplicationServiceTest::PendingTransactionRoundTripsDeterministically() {
+    const auto expected = CompletePendingRecord();
+    const auto first = SerializePendingConfigurationTransaction(expected);
+    const auto actual = ParsePendingConfigurationTransaction(first);
+    QCOMPARE(actual, expected);
+    QCOMPARE(SerializePendingConfigurationTransaction(actual), first);
+
+    auto unchanged = expected;
+    unchanged.history_intent = PendingHistoryIntent::kUnchanged;
+    unchanged.desired_history.reset();
+    unchanged.previous_configuration = {};
+    unchanged.previous_history = {};
+    unchanged.failure.reset();
+    const auto unchanged_bytes =
+        SerializePendingConfigurationTransaction(unchanged);
+    QCOMPARE(ParsePendingConfigurationTransaction(unchanged_bytes), unchanged);
+
+    unchanged.failure = PendingFailureIdentity{
+        PendingFailureOperation::kValidateRecord,
+        PendingFailureDestination::kPendingRecord,
+        PendingFailureCategory::kInvalidData, "phase_evidence"};
+
+    for (const auto phase :
+         {PendingTransactionPhase::kPrepared,
+          PendingTransactionPhase::kDesiredCommit,
+          PendingTransactionPhase::kDesiredPersistenceApplying,
+          PendingTransactionPhase::kDesiredPersistenceApplied,
+          PendingTransactionPhase::kDesiredPersistenceFailed,
+          PendingTransactionPhase::kDesiredRuntimeApplying,
+          PendingTransactionPhase::kDesiredRuntimeFailed,
+          PendingTransactionPhase::kPreviousPersistenceApplying,
+          PendingTransactionPhase::kPreviousPersistenceBlocked,
+          PendingTransactionPhase::kPreviousRuntimeApplying,
+          PendingTransactionPhase::kQuarantined}) {
+        unchanged.phase = phase;
+        QCOMPARE(ParsePendingConfigurationTransaction(
+                     SerializePendingConfigurationTransaction(unchanged)),
+                 unchanged);
+    }
+
+    for (const auto attempt : {DesiredRecoveryAttempt::kNotAttempted,
+                               DesiredRecoveryAttempt::kAttempted}) {
+        unchanged.desired_recovery_attempt = attempt;
+        QCOMPARE(ParsePendingConfigurationTransaction(
+                     SerializePendingConfigurationTransaction(unchanged)),
+                 unchanged);
+    }
+
+    for (const auto operation : {PendingFailureOperation::kReadRecord,
+                                 PendingFailureOperation::kValidateRecord,
+                                 PendingFailureOperation::kPersistDesired,
+                                 PendingFailureOperation::kReconstructDesired,
+                                 PendingFailureOperation::kPersistPrevious,
+                                 PendingFailureOperation::kReconstructPrevious,
+                                 PendingFailureOperation::kQuarantine}) {
+        unchanged.failure = PendingFailureIdentity{
+            operation, PendingFailureDestination::kPendingRecord,
+            PendingFailureCategory::kUnknown, "classified"};
+        QCOMPARE(ParsePendingConfigurationTransaction(
+                     SerializePendingConfigurationTransaction(unchanged)),
+                 unchanged);
+    }
+    for (const auto destination :
+         {PendingFailureDestination::kPendingRecord,
+          PendingFailureDestination::kConfiguration,
+          PendingFailureDestination::kHistory,
+          PendingFailureDestination::kRuntimeFoundation,
+          PendingFailureDestination::kRuntimeTransport,
+          PendingFailureDestination::kRuntimePresentation}) {
+        unchanged.failure = PendingFailureIdentity{
+            PendingFailureOperation::kReconstructDesired, destination,
+            PendingFailureCategory::kUnknown, "classified"};
+        QCOMPARE(ParsePendingConfigurationTransaction(
+                     SerializePendingConfigurationTransaction(unchanged)),
+                 unchanged);
+    }
+    for (const auto category :
+         {PendingFailureCategory::kNotFound,
+          PendingFailureCategory::kInvalidData, PendingFailureCategory::kIo,
+          PendingFailureCategory::kPermission,
+          PendingFailureCategory::kResourceLimit,
+          PendingFailureCategory::kUnavailable,
+          PendingFailureCategory::kRejected, PendingFailureCategory::kCancelled,
+          PendingFailureCategory::kTimeout, PendingFailureCategory::kInvariant,
+          PendingFailureCategory::kUnknown}) {
+        unchanged.failure = PendingFailureIdentity{
+            PendingFailureOperation::kReconstructPrevious,
+            PendingFailureDestination::kRuntimePresentation, category,
+            "classified"};
+        QCOMPARE(ParsePendingConfigurationTransaction(
+                     SerializePendingConfigurationTransaction(unchanged)),
+                 unchanged);
+    }
+}
+
+void ApplicationServiceTest::PendingTransactionAcceptsBoundaries() {
+    const auto empty = MakePendingTransactionPayload({});
+    QCOMPARE(QByteArray(reinterpret_cast<const char*>(empty.sha256.data()),
+                        static_cast<qsizetype>(empty.sha256.size()))
+                 .toHex(),
+             QByteArray("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934"
+                        "ca495991b7852b855"));
+    const auto abc = MakePendingTransactionPayload("abc");
+    QCOMPARE(QByteArray(reinterpret_cast<const char*>(abc.sha256.data()),
+                        static_cast<qsizetype>(abc.sha256.size()))
+                 .toHex(),
+             QByteArray("ba7816bf8f01cfea414140de5dae2223b00361a396177a9c"
+                        "b410ff61f20015ad"));
+
+    PendingConfigurationTransactionRecord canonical;
+    for (std::size_t index = 0U; index < canonical.transaction_id.size();
+         ++index)
+        canonical.transaction_id[index] = static_cast<std::uint8_t>(index);
+    canonical.desired_configuration = empty;
+    const auto canonical_bytes =
+        SerializePendingConfigurationTransaction(canonical);
+    QCOMPARE(canonical_bytes.size(), 193U);
+    QCOMPARE(
+        QCryptographicHash::hash(QByteArray::fromStdString(canonical_bytes),
+                                 QCryptographicHash::Sha256)
+            .toHex(),
+        QByteArray("1286aebc6231087894d7e27d6cb859eda614bd81028b04b6"
+                   "0a9c3ddc0b0e85f1"));
+
+    PendingConfigurationTransactionRecord record;
+    record.transaction_id.fill(0xffU);
+    record.desired_configuration =
+        MakePendingTransactionPayload(std::string(1024U * 1024U, '\0'));
+    record.history_intent = PendingHistoryIntent::kReplace;
+    record.desired_history =
+        MakePendingTransactionPayload(std::string(1024U * 1024U, 'h'));
+    record.previous_configuration = {
+        true, MakePendingTransactionPayload(std::string(1024U * 1024U, 'c'))};
+    record.previous_history = {
+        true, MakePendingTransactionPayload(std::string(1024U * 1024U, 'p'))};
+    record.failure = PendingFailureIdentity{
+        PendingFailureOperation::kPersistPrevious,
+        PendingFailureDestination::kPendingRecord,
+        PendingFailureCategory::kResourceLimit, std::string(64U, 'a')};
+    QCOMPARE(ParsePendingConfigurationTransaction(
+                 SerializePendingConfigurationTransaction(record)),
+             record);
+
+    record.desired_configuration = MakePendingTransactionPayload({});
+    record.desired_history = MakePendingTransactionPayload({});
+    record.previous_configuration.payload = MakePendingTransactionPayload({});
+    record.previous_history.payload = MakePendingTransactionPayload({});
+    QCOMPARE(ParsePendingConfigurationTransaction(
+                 SerializePendingConfigurationTransaction(record)),
+             record);
+}
+
+void ApplicationServiceTest::PendingTransactionRejectsMalformedRecords() {
+    const auto valid =
+        SerializePendingConfigurationTransaction(CompletePendingRecord());
+    for (std::size_t size = 0U; size < valid.size(); ++size) {
+        QVERIFY_EXCEPTION_THROWN(
+            ParsePendingConfigurationTransaction(valid.substr(0U, size)),
+            std::runtime_error);
+    }
+
+    auto malformed = valid;
+    malformed[0] = 'X';
+    QVERIFY_EXCEPTION_THROWN(ParsePendingConfigurationTransaction(malformed),
+                             std::runtime_error);
+
+    malformed = valid;
+    malformed[PendingFieldOffset(malformed, 1U) + 5U] = 2;
+    QVERIFY_EXCEPTION_THROWN(ParsePendingConfigurationTransaction(malformed),
+                             std::runtime_error);
+
+    malformed = valid;
+    std::fill_n(malformed.begin() + static_cast<std::ptrdiff_t>(
+                                        PendingFieldOffset(malformed, 2U) + 5U),
+                32U, '0');
+    QVERIFY_EXCEPTION_THROWN(ParsePendingConfigurationTransaction(malformed),
+                             std::runtime_error);
+
+    malformed = valid;
+    const auto identity = PendingFieldOffset(malformed, 2U);
+    malformed[identity + 5U] = 'A';
+    QVERIFY_EXCEPTION_THROWN(ParsePendingConfigurationTransaction(malformed),
+                             std::runtime_error);
+    malformed = valid;
+    malformed[identity + 1U] = 0U;
+    malformed[identity + 2U] = 0U;
+    malformed[identity + 3U] = 0U;
+    malformed[identity + 4U] = 31U;
+    QVERIFY_EXCEPTION_THROWN(ParsePendingConfigurationTransaction(malformed),
+                             std::runtime_error);
+
+    malformed = valid;
+    malformed[PendingFieldOffset(malformed, 3U)] = 1;
+    QVERIFY_EXCEPTION_THROWN(ParsePendingConfigurationTransaction(malformed),
+                             std::runtime_error);
+    malformed = valid;
+    malformed[PendingFieldOffset(malformed, 3U)] = 99;
+    QVERIFY_EXCEPTION_THROWN(ParsePendingConfigurationTransaction(malformed),
+                             std::runtime_error);
+
+    for (const auto field : {4U, 6U, 13U, 14U, 15U}) {
+        malformed = valid;
+        malformed[PendingFieldOffset(malformed, field) + 5U] =
+            static_cast<char>(0xffU);
+        QVERIFY_EXCEPTION_THROWN(
+            ParsePendingConfigurationTransaction(malformed),
+            std::runtime_error);
+    }
+
+    for (const auto field : {8U, 10U, 12U}) {
+        malformed = valid;
+        malformed[PendingFieldOffset(malformed, field) + 5U] = 2;
+        QVERIFY_EXCEPTION_THROWN(
+            ParsePendingConfigurationTransaction(malformed),
+            std::runtime_error);
+    }
+
+    malformed = valid;
+    const auto payload = PendingFieldOffset(malformed, 5U) + 5U;
+    malformed[payload + 7U] ^= 1;
+    QVERIFY_EXCEPTION_THROWN(ParsePendingConfigurationTransaction(malformed),
+                             std::runtime_error);
+    malformed = valid;
+    malformed[payload + 8U] ^= 1;
+    QVERIFY_EXCEPTION_THROWN(ParsePendingConfigurationTransaction(malformed),
+                             std::runtime_error);
+
+    malformed = valid;
+    malformed.append("trailing");
+    QVERIFY_EXCEPTION_THROWN(ParsePendingConfigurationTransaction(malformed),
+                             std::runtime_error);
+    QVERIFY_EXCEPTION_THROWN(ParsePendingConfigurationTransaction(
+                                 std::string(4U * 1024U * 1024U + 4097U, 'x')),
+                             std::runtime_error);
+}
+
+void ApplicationServiceTest::PendingTransactionRejectsInvalidValues() {
+    auto record = CompletePendingRecord();
+    record.version = static_cast<PendingTransactionVersion>(0xffU);
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+    record = CompletePendingRecord();
+    record.transaction_id.fill(0U);
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+    record = CompletePendingRecord();
+    record.phase = static_cast<PendingTransactionPhase>(0xffU);
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+    record = CompletePendingRecord();
+    record.desired_recovery_attempt =
+        static_cast<DesiredRecoveryAttempt>(0xffU);
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+    record = CompletePendingRecord();
+    record.history_intent = PendingHistoryIntent::kUnchanged;
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+    record = CompletePendingRecord();
+    record.desired_history.reset();
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+    record = CompletePendingRecord();
+    record.history_intent = PendingHistoryIntent::kUnchanged;
+    record.desired_history.reset();
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+    record = CompletePendingRecord();
+    record.history_intent = PendingHistoryIntent::kUnchanged;
+    record.desired_history.reset();
+    record.previous_history.existed = false;
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+    record = CompletePendingRecord();
+    record.previous_configuration.existed = false;
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+
+    for (const auto phase :
+         {PendingTransactionPhase::kDesiredPersistenceFailed,
+          PendingTransactionPhase::kDesiredRuntimeFailed,
+          PendingTransactionPhase::kPreviousPersistenceBlocked,
+          PendingTransactionPhase::kQuarantined}) {
+        record = CompletePendingRecord();
+        record.phase = phase;
+        record.failure.reset();
+        QVERIFY_EXCEPTION_THROWN(
+            SerializePendingConfigurationTransaction(record),
+            std::runtime_error);
+    }
+
+    record = CompletePendingRecord();
+    ++record.desired_configuration.size;
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+    record = CompletePendingRecord();
+    record.desired_configuration.sha256[0] ^= 1U;
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+    QVERIFY_EXCEPTION_THROWN(
+        MakePendingTransactionPayload(std::string(1024U * 1024U + 1U, 'x')),
+        std::runtime_error);
+
+    for (const auto identifier :
+         {"", "contains space", "../secret", "/absolute",
+          "https://example.test", "message:detail", "line\nbreak"}) {
+        record = CompletePendingRecord();
+        record.failure->identifier = identifier;
+        QVERIFY_EXCEPTION_THROWN(
+            SerializePendingConfigurationTransaction(record),
+            std::runtime_error);
+    }
+    record = CompletePendingRecord();
+    record.failure->identifier.assign(65U, 'x');
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
+                             std::runtime_error);
+    record = CompletePendingRecord();
+    record.failure->category = static_cast<PendingFailureCategory>(0xffU);
+    QVERIFY_EXCEPTION_THROWN(SerializePendingConfigurationTransaction(record),
                              std::runtime_error);
 }
 

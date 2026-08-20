@@ -333,6 +333,9 @@ if(TARGET article_composer_test)
 endif()
 
 if(TARGET application_service_test)
+  target_sources(application_service_test PRIVATE
+    src/application/pending_configuration_transaction.cc
+  )
   target_link_libraries(application_service_test
     PRIVATE BZip2::BZip2 Vorbis::vorbisenc Vorbis::vorbisfile ZLIB::ZLIB
   )
