@@ -5079,6 +5079,14 @@ storage leases, held Widgets binding leases, retained old facades/executors,
 reentrancy, shutdown, staleness, wrong-thread use, and every durable checkpoint
 remain part of the owning-module and coordinator boundary matrix.
 
+The configuration-reload coordinator smoke starts from the same production
+`DesktopFacadeActivationOwner` used by ordinary startup and reconstruction. It
+also verifies that a successful coordinated publication replaces that owner's
+current facade snapshot. Existing source-directory, online-source,
+dictionary-group, Preferences, history, cache, tab/session, dictionary-bar,
+search/find, and full-text smokes continue to cover the compatibility callers
+while production invocation remains deferred.
+
 ## Full Verification
 
 Before considering a change complete, agents should prefer running the smallest

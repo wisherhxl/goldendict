@@ -6664,5 +6664,24 @@ Production invocation and startup recovery execution remain a separate bounded
 leaf because current application callbacks do not yet provide one unified
 transaction input and still use compatibility replacement paths.
 
+### Phase 8 production facade ownership prerequisite
+
+The production composition root now owns its initial and replacement Core
+facades through one application-lifetime `DesktopFacadeActivationOwner`.
+Startup and the existing source, group, and Preferences reconstruction paths
+share one source-private preparation step that composes every configured
+runtime source, prepares a Core candidate, exposes its facade for exact session
+restoration, and retains composition diagnostics. Preparation has no
+persistence or publication side effects.
+
+The existing callbacks still use their compatibility persistence, Network,
+Core, and Widgets handoffs, so their visible acceptance, rejection, warning,
+history, session, and cache behavior remains unchanged. Each successful Core
+replacement advances the same production owner; rejection retains its current
+snapshot. This removes the stale-owner ambiguity that previously prevented a
+later Preferences caller from truthfully supplying FT104 with complete Core
+runtime sources. Coordinator invocation, real-caller failure injection, and
+startup recovery execution remain separate leaves.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

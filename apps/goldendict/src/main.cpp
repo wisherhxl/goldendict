@@ -46,6 +46,37 @@ void ReportRuntimeCompositionDiagnostics(
     }
 }
 
+struct PreparedProductionFacade {
+    goldendict::core::application::PreparedCoreFacadeCandidate candidate;
+    std::shared_ptr<goldendict::core::DesktopFacade> facade;
+    std::vector<goldendict::network::RuntimeCompositionDiagnostic> diagnostics;
+    bool session_restored = true;
+};
+
+PreparedProductionFacade PrepareProductionFacade(
+    const goldendict::core::CoreConfiguration& configuration,
+    const std::shared_ptr<goldendict::network::NetworkRuntime>& network_runtime,
+    goldendict::core::application::DesktopFacadeActivationOwner& owner,
+    bool require_session_restoration = true) {
+    auto composition = goldendict::network::ComposeConfiguredRuntimeSources(
+        configuration, {}, network_runtime);
+    auto candidate =
+        owner.PrepareCandidate(configuration, std::move(composition.sources));
+    if (!candidate)
+        throw std::runtime_error("Unable to prepare the application runtime");
+    auto facade = owner.PreparedFacadeSnapshot(candidate);
+    if (!facade)
+        throw std::runtime_error("Unable to inspect the application runtime");
+    const bool session_restored =
+        !configuration.article_tab_session.has_value() ||
+        facade->RestoreArticleTabSession(*configuration.article_tab_session);
+    if (require_session_restoration && !session_restored) {
+        throw std::runtime_error("Unable to restore the article tab session");
+    }
+    return {std::move(candidate), std::move(facade),
+            std::move(composition.diagnostics), session_restored};
+}
+
 bool HasSmokeArgument(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         if (QString::fromLocal8Bit(argv[i]) == QStringLiteral("--smoke")) {
@@ -305,19 +336,19 @@ int main(int argc, char* argv[]) {
         qWarning().noquote()
             << QString::fromStdString(network_runtime->diagnostic());
     }
-    auto application_composition =
-        goldendict::network::ComposeConfiguredApplication(configuration, {},
-                                                          network_runtime);
-    ReportRuntimeCompositionDiagnostics(application_composition.diagnostics);
-    auto facade = std::move(application_composition.facade);
-    auto composition_diagnostics =
-        std::move(application_composition.diagnostics);
-    if (configuration.article_tab_session.has_value() &&
-        !facade->RestoreArticleTabSession(*configuration.article_tab_session)) {
+    goldendict::core::application::DesktopFacadeActivationOwner facade_owner;
+    auto initial_facade = PrepareProductionFacade(
+        configuration, network_runtime, facade_owner, false);
+    ReportRuntimeCompositionDiagnostics(initial_facade.diagnostics);
+    if (!initial_facade.session_restored) {
         QMessageBox::warning(
             nullptr, QStringLiteral("GoldenDict"),
             QStringLiteral("Unable to restore the saved article tab session"));
     }
+    auto composition_diagnostics = std::move(initial_facade.diagnostics);
+    auto facade = initial_facade.facade;
+    if (!facade_owner.Activate(initial_facade.candidate))
+        throw std::runtime_error("Unable to activate the application runtime");
     std::vector<goldendict::core::HistoryEntry> history;
     try {
         goldendict::app::ValidateAutoDiscoveredLegacyHistory(
@@ -339,8 +370,6 @@ int main(int argc, char* argv[]) {
         QMessageBox::warning(nullptr, QStringLiteral("GoldenDict favorites"),
                              QString::fromLocal8Bit(error.what()));
     }
-    std::unique_ptr<goldendict::core::application::DesktopFacadeActivationOwner>
-        coordinator_smoke_owner;
     MainWindow window(configuration_directory);
     window.SetPreferences(configuration.preferences);
     window.SetNetworkCacheDirectory(
@@ -357,15 +386,9 @@ int main(int argc, char* argv[]) {
     if (HasArgument(
             argc, argv,
             QStringLiteral("--configuration-reload-coordinator-smoke"))) {
-        coordinator_smoke_owner = std::make_unique<
-            goldendict::core::application::DesktopFacadeActivationOwner>();
-        auto initial = coordinator_smoke_owner->PrepareCandidate({});
-        if (!coordinator_smoke_owner->Activate(initial))
-            return 1;
-        window.SetFacade(coordinator_smoke_owner->CurrentSnapshot().get());
         coordinator_smoke = std::make_unique<
             goldendict::app::ConfigurationReloadTransactionCoordinator>(
-            network_runtime, *coordinator_smoke_owner, window);
+            network_runtime, facade_owner, window);
     }
     const auto persist_article_tab_session = [&]() {
         auto updated = configuration;
@@ -774,20 +797,16 @@ int main(int argc, char* argv[]) {
         try {
             goldendict::core::ValidateConfiguration(updated);
             auto replacement =
-                goldendict::network::ComposeConfiguredApplication(
-                    updated, {}, network_runtime);
-            if (!replacement.facade->RestoreArticleTabSession(
-                    *updated.article_tab_session)) {
-                throw std::runtime_error(
-                    "Unable to restore the article tab "
-                    "session");
-            }
+                PrepareProductionFacade(updated, network_runtime, facade_owner);
             goldendict::core::SaveConfiguration(
                 configuration_path.toStdString(), updated);
             window.SetSourceDirectories(updated.dictionary_paths,
                                         updated.sound_directories);
+            if (!facade_owner.Activate(replacement.candidate))
+                throw std::runtime_error(
+                    "Unable to activate the application runtime");
             window.SetFacade(replacement.facade.get());
-            facade = std::move(replacement.facade);
+            facade = replacement.facade;
             composition_diagnostics = std::move(replacement.diagnostics);
             ReportRuntimeCompositionDiagnostics(composition_diagnostics);
             configuration = std::move(updated);
@@ -844,20 +863,16 @@ int main(int argc, char* argv[]) {
             updated.dictionary_groups = window.DictionaryGroups();
             updated.article_tab_session = facade->ExportArticleTabSession();
             try {
-                auto replacement =
-                    goldendict::network::ComposeConfiguredApplication(
-                        updated, {}, network_runtime);
-                if (!replacement.facade->RestoreArticleTabSession(
-                        *updated.article_tab_session)) {
-                    throw std::runtime_error(
-                        "Unable to restore the article tab "
-                        "session");
-                }
+                auto replacement = PrepareProductionFacade(
+                    updated, network_runtime, facade_owner);
                 goldendict::core::SaveConfiguration(
                     configuration_path.toStdString(), updated);
                 window.SetDictionaryGroups(updated.dictionary_groups);
+                if (!facade_owner.Activate(replacement.candidate))
+                    throw std::runtime_error(
+                        "Unable to activate the application runtime");
                 window.SetFacade(replacement.facade.get());
-                facade = std::move(replacement.facade);
+                facade = replacement.facade;
                 composition_diagnostics = std::move(replacement.diagnostics);
                 ReportRuntimeCompositionDiagnostics(composition_diagnostics);
                 configuration = std::move(updated);
@@ -902,14 +917,8 @@ int main(int argc, char* argv[]) {
                         throw std::runtime_error(prepared_cache.diagnostic);
                     }
                 }
-                auto replacement =
-                    goldendict::network::ComposeConfiguredApplication(
-                        updated, {}, network_runtime);
-                if (!replacement.facade->RestoreArticleTabSession(
-                        *updated.article_tab_session)) {
-                    throw std::runtime_error(
-                        "Unable to restore the article tab session");
-                }
+                auto replacement = PrepareProductionFacade(
+                    updated, network_runtime, facade_owner);
                 if (history_changed) {
                     goldendict::core::SaveHistory(history_path.toStdString(),
                                                   bounded_history);
@@ -925,8 +934,11 @@ int main(int argc, char* argv[]) {
                         "Unable to activate the Qt Network cache policy");
                 }
                 window.SetPreferences(updated.preferences);
+                if (!facade_owner.Activate(replacement.candidate))
+                    throw std::runtime_error(
+                        "Unable to activate the application runtime");
                 window.SetFacade(replacement.facade.get());
-                facade = std::move(replacement.facade);
+                facade = replacement.facade;
                 composition_diagnostics = std::move(replacement.diagnostics);
                 ReportRuntimeCompositionDiagnostics(composition_diagnostics);
                 configuration = std::move(updated);
@@ -1440,7 +1452,8 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(
             0, &window,
             [&app, &configuration, &configuration_path, &history_path,
-             &network_cache_root, &coordinator_smoke]() {
+             &network_cache_root, &coordinator_smoke, &facade_owner]() {
+                const auto previous_facade = facade_owner.CurrentSnapshot();
                 auto desired = configuration;
                 desired.dictionary_paths.clear();
                 desired.sound_directories.clear();
@@ -1500,6 +1513,9 @@ int main(int argc, char* argv[]) {
                             kPublished &&
                     result.network_published && result.core_published &&
                     result.widgets_published && trace == expected &&
+                    previous_facade != nullptr &&
+                    facade_owner.CurrentSnapshot() != nullptr &&
+                    facade_owner.CurrentSnapshot() != previous_facade &&
                     !std::filesystem::exists(
                         goldendict::core::PendingConfigurationTransactionPath(
                             configuration_path.toStdString()));
