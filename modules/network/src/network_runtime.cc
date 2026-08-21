@@ -195,7 +195,6 @@ class CandidateDispatcher final {
         }
         if (QThread::currentThread() == thread_) {
             AbortOnOwnerThread(resource);
-            EraseTerminal();
             return;
         }
         std::unique_lock<std::mutex> lock(resource->mutex);
@@ -219,7 +218,6 @@ class CandidateDispatcher final {
         }
         if (QThread::currentThread() == thread_) {
             ProcessOne(resource);
-            EraseTerminal();
         } else {
             std::unique_lock<std::mutex> lock(resource->mutex);
             resource->changed.wait(lock, [&resource]() {
@@ -252,7 +250,8 @@ class CandidateDispatcher final {
 
     void ShutdownOnOwnerThread() noexcept {
         stopping_.store(true);
-        for (const auto& resource : resources_) {
+        const auto resources = resources_;
+        for (const auto& resource : resources) {
             AbortOnOwnerThread(resource);
         }
         resources_.clear();
@@ -292,7 +291,6 @@ class CandidateDispatcher final {
                 FinishOne(resource);
             else
                 PublishOne(resource);
-            EraseTerminal();
             return;
         }
         QMetaObject::invokeMethod(
@@ -302,7 +300,6 @@ class CandidateDispatcher final {
                     FinishOne(resource);
                 else
                     PublishOne(resource);
-                EraseTerminal();
             },
             Qt::BlockingQueuedConnection);
     }
@@ -324,16 +321,7 @@ class CandidateDispatcher final {
             resource->result =
                 NetworkRuntime::CommitResult::kPublishedWithPostWorkFailure;
         }
-        {
-            std::lock_guard<std::mutex> lock(resource->mutex);
-            resource->state = CandidateResource::State::kTerminal;
-        }
-        resource->changed.notify_all();
-    }
-
-    static bool IsTerminal(const std::shared_ptr<CandidateResource>& resource) {
-        std::lock_guard<std::mutex> lock(resource->mutex);
-        return resource->state == CandidateResource::State::kTerminal;
+        RetireAndExposeTerminal(resource);
     }
 
     void AbortOnOwnerThread(
@@ -348,7 +336,6 @@ class CandidateDispatcher final {
                 return;
             }
             resource->state = CandidateResource::State::kAbortRequested;
-            resource->state = CandidateResource::State::kTerminal;
             observer = std::move(resource->destruction_observer);
         }
         if (observer) {
@@ -356,7 +343,7 @@ class CandidateDispatcher final {
                 observer(QThread::currentThread() == resource->owner_thread);
             } catch (...) {}
         }
-        resource->changed.notify_all();
+        RetireAndExposeTerminal(resource);
     }
 
     void ProcessOne(const std::shared_ptr<CandidateResource>& resource) {
@@ -396,31 +383,31 @@ class CandidateDispatcher final {
                 resource->result = NetworkRuntime::CommitResult::kRejected;
             }
         }
-        {
-            std::lock_guard<std::mutex> lock(resource->mutex);
-            resource->state = CandidateResource::State::kTerminal;
-        }
-        resource->changed.notify_all();
+        RetireAndExposeTerminal(resource);
     }
 
     void ProcessReadyCommands() {
         timer_wakeup_count_.fetch_add(1U);
-        for (const auto& resource : resources_) {
+        const auto resources = resources_;
+        for (const auto& resource : resources) {
             ProcessOne(resource);
         }
-        EraseTerminal();
     }
 
-    void EraseTerminal() {
-        resources_.erase(std::remove_if(resources_.begin(), resources_.end(),
-                                        [](const auto& resource) {
-                                            return IsTerminal(resource);
-                                        }),
+    void RetireAndExposeTerminal(
+        const std::shared_ptr<CandidateResource>& resource) noexcept {
+        resources_.erase(std::remove(resources_.begin(), resources_.end(),
+                                     resource),
                          resources_.end());
         if (resources_.empty() && timer_ && timer_->isActive()) {
             timer_->stop();
             timer_active_.store(false);
         }
+        {
+            std::lock_guard<std::mutex> lock(resource->mutex);
+            resource->state = CandidateResource::State::kTerminal;
+        }
+        resource->changed.notify_all();
     }
 
     QObject* worker_ = nullptr;

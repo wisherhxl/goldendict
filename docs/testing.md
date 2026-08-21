@@ -197,8 +197,9 @@ invalidation, and positive/zero owner-thread publication. It proves the bound
 cache and directory configuration are unchanged during commit and observes
 zero-policy cleanup only after the published result is fixed. Dispatcher timer
 coverage proves idle runtimes receive no periodic wakeups, preparation starts
-the preconstructed timer before readiness, terminal commit/abort stops it, and
-commit creates, connects, and starts no dispatcher machinery.
+the preconstructed timer before readiness, terminal commit/abort synchronously
+exposes the stopped idle timer, and commit creates, connects, and starts no
+dispatcher machinery.
 The transaction prerequisite keeps one owner-thread disk-cache object bound
 for the runtime lifetime behind a manager-owned enable gate. Candidate
 preparation never attaches a second cache or publishes policy, zero activation

@@ -1300,7 +1300,9 @@ dispatcher, starts its already-created timer, and waits for `ready` before
 returning. The timer remains stopped while the registry is empty and makes a
 single registry pass per tick while candidates exist, so idle runtimes have no
 polling overhead and a ready candidate does not block owner-thread event
-processing. Commit never starts or constructs dispatcher machinery; it quiesces
+processing. Terminal commit or withdrawal removes the candidate and stops an
+idle dispatcher timer before exposing terminal state to any waiting thread.
+Commit never starts or constructs dispatcher machinery; it quiesces
 requests, validates runtime generation and lease identity, and only signals and
 waits on the prepared command; owner-thread commit and withdrawal execute
 directly to avoid self-deadlock. Abandonment and shutdown withdraw unpublished
