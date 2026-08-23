@@ -20,6 +20,8 @@ set(installed_icon
   "${INSTALL_PREFIX}/share/icons/hicolor/256x256/apps/goldendict.png")
 set(installed_metainfo
   "${INSTALL_PREFIX}/share/metainfo/org.goldendict.GoldenDict.metainfo.xml")
+set(installed_help_directory
+  "${INSTALL_PREFIX}/share/goldendict/help")
 set(installed_library_directory "${INSTALL_PREFIX}/${INSTALL_LIBDIR}")
 set(harfbuzz_subset
   "${installed_library_directory}/libharfbuzz-subset.so.0")
@@ -62,6 +64,26 @@ foreach(required_entry IN ITEMS
       "Installed Linux metainfo omitted required entry: ${required_entry}")
   endif()
 endforeach()
+foreach(help_file IN ITEMS gdhelp_en.qch gdhelp_ru.qch)
+  if(NOT EXISTS "${installed_help_directory}/${help_file}")
+    message(FATAL_ERROR
+      "Runtime install omitted GoldenDict help collection: ${help_file}")
+  endif()
+endforeach()
+file(SHA256 "${installed_help_directory}/gdhelp_en.qch"
+  installed_english_help_sha256)
+if(NOT installed_english_help_sha256 STREQUAL
+    "abea4be4b9097aac81a3304c5ba1ed1dde5b31668a5efbbca9b11391897589ed")
+  message(FATAL_ERROR
+    "Installed English help collection differs from pinned legacy asset")
+endif()
+file(SHA256 "${installed_help_directory}/gdhelp_ru.qch"
+  installed_russian_help_sha256)
+if(NOT installed_russian_help_sha256 STREQUAL
+    "ac38e0b62219d15ce4cbad52fe352f370167943cefb1eca29cb5c2e51a592f8c")
+  message(FATAL_ERROR
+    "Installed Russian help collection differs from pinned legacy asset")
+endif()
 if(NOT EXISTS "${harfbuzz_subset}")
   message(FATAL_ERROR
     "Runtime install omitted Qt WebEngine dependency libharfbuzz-subset.so.0")

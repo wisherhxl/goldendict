@@ -18,6 +18,11 @@ if(UNIX AND NOT APPLE)
   install(FILES linux/org.goldendict.GoldenDict.metainfo.xml
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/metainfo"
     COMPONENT libs)
+  install(FILES
+      help/gdhelp_en.qch
+      help/gdhelp_ru.qch
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/goldendict/help"
+    COMPONENT libs)
 endif()
 if(UNIX AND NOT APPLE AND TIGER_INSTALL_RUNTIME_DEPENDENCIES)
   set_target_properties(goldendict PROPERTIES

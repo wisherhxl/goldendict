@@ -6864,5 +6864,12 @@ one `%u` operand to the executable and registers only the `goldendict` and
 metainfo points back to that same desktop ID. This boundary does not add
 another parser, writer, runtime registration step, or Core interface.
 
+### Linux Installed Help Resources
+
+The Linux application install owns the pinned legacy English and Russian Qt
+help collections under `share/goldendict/help`. This resource boundary does
+not select a help presentation, locale policy, configuration field, Qt Help
+dependency, facade operation, or public Core interface.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

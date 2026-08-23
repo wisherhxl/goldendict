@@ -6406,6 +6406,20 @@ smoke verifies the metainfo contract when runtime dependency installation is
 enabled; the normal Linux Release baseline remains exactly 114 tests and does
 not include that conditional smoke. No successor is selected.
 
+The next bounded Phase 9 Linux leaf installs the pinned legacy English and
+Russian Qt help collections under `share/goldendict/help`. The application
+install remains the sole resource owner, and the existing conditional
+installed-runtime smoke verifies both paths and exact pinned hashes.
+
+Help presentation, locale selection, configuration, Qt Help linkage,
+translations, Windows/macOS, Debug, public or installed Core changes,
+dependencies, and unrelated packaging expansion remain excluded. A fresh
+normal/default library-mode Release configuration still registers exactly 114
+tests and must pass 114/114; it does not register the conditional smoke. A
+separate fresh supported `install_mode=runtime` Release configuration registers
+and explicitly runs `goldendict_installed_runtime_smoke`. No later successor is
+selected.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

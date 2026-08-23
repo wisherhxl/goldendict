@@ -84,8 +84,9 @@ The verified default Linux Release install destination is
 Linux runtime installation also places GoldenDict's desktop launcher in
 `share/applications` and its 256-pixel icon in the corresponding hicolor
 application-icon directory. Matching AppStream metainfo is installed in
-`share/metainfo`. Desktop-environment cache and handler registration remain the
-installer's or system administrator's responsibility.
+`share/metainfo`. The pinned English and Russian Qt help collections are
+installed in `share/goldendict/help`. Desktop-environment cache and handler
+registration remain the installer's or system administrator's responsibility.
 
 Use `-o '&:install_mode=runtime'` when preparing deployable install/package
 output that should contain only runtime files. Runtime mode installs the project

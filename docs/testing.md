@@ -5301,6 +5301,15 @@ component ID, metadata and project licenses, and launchable desktop ID. The
 normal `install_mode=library` Release profile still registers exactly 114 tests
 and does not include this conditional smoke.
 
+The same conditional runtime smoke requires the pinned legacy English and
+Russian Qt help collections in `share/goldendict/help` and verifies their exact
+SHA-256 digests. Verify this with two fresh Release configurations: the normal
+default library mode must register exactly 114 tests and pass 114/114, while a
+separate supported `install_mode=runtime` configuration must register and
+explicitly pass `goldendict_installed_runtime_smoke`. Report each mode's
+registration and results separately; the conditional smoke is not part of the
+normal 114-test baseline.
+
 ## Expected Verification Areas
 
 - configure;
