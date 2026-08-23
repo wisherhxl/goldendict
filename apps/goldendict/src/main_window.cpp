@@ -10787,6 +10787,14 @@ void MainWindow::StartLookup() {
                      goldendict::core::TabActivationPolicy::kActivate);
 }
 
+void MainWindow::SubmitInitialLookup(const QString& word) {
+    if (facade_ == nullptr || word.isEmpty()) {
+        return;
+    }
+    query_->setText(word);
+    StartLookup();
+}
+
 void MainWindow::StartLookupInTab(
     goldendict::core::TabOpenPolicy open_policy,
     goldendict::core::TabActivationPolicy activation,

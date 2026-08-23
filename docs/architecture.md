@@ -6769,5 +6769,23 @@ Changing or removing quarantine evidence is explicit remediation outside this
 leaf. Favorites, wire formats, cache layout, public APIs, dependencies, and
 online rollback remain unchanged.
 
+### Private Initial Command-Line Lookup Boundary
+
+The composition root owns a source-private, move-only initial lookup value. It
+accepts exactly one bounded plain word or the case-sensitive legacy
+`goldendict://[/]...` and `dict://[/]...` forms and rejects options, ambiguity,
+unsupported schemes, malformed percent encoding, invalid UTF-8, NUL, empty
+text, and over-limit input. Parsing never opens a URL, starts a process, reads
+configuration, or performs network or persistence work.
+
+The value remains inert while Network, Core, the restored article session, and
+Widgets are prepared. Only after Core activation publishes the facade and
+`MainWindow` binds that exact facade does the composition root consume the
+value. Widgets forwards it through the same current-tab
+`DesktopFacade::OpenArticleTab` and lookup boundary used by interactive input.
+Therefore complete-but-unpublished, rejected, abandoned, and retired facade
+candidates have no command-line ingress, and the Shared-Library and GUI
+Boundary remains intact without a new installed Core contract.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

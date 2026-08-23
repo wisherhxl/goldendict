@@ -6286,6 +6286,31 @@ recovery, public APIs, translations, dependencies, source ordering, cache
 layout, and unrelated application behavior remain unchanged. This completes
 the production configuration-reconstruction caller migration.
 
+### Phase 8 private initial command-line lookup ingress
+
+The application accepts at most one ordinary startup lookup operand. A
+source-private parser accepts a nonempty plain word or the pinned legacy,
+case-sensitive `goldendict://[/]...` and `dict://[/]...` forms. Legacy URI
+normalization removes the optional third slash, removes one trailing slash
+only from a payload longer than one character, and strictly percent-decodes
+UTF-8. Both input and normalized text use the existing 4096-byte lookup bound.
+Empty, malformed, unsupported-scheme, option-bearing, and multiple-operand
+command lines produce no lookup.
+
+The move-only parsed value is consumed exactly once after the configured
+article session is restored, the complete Core facade candidate is activated,
+and Widgets is bound to that published facade. `MainWindow` then uses its
+existing current-tab `DesktopFacade::OpenArticleTab` navigation path and normal
+lookup handoff. Prepared, rejected, abandoned, or retired facade candidates
+cannot receive the request. No-operand startup is unchanged.
+
+This leaf follows the Shared-Library And GUI Boundary: parsing and presentation
+handoff stay private to `apps/goldendict`, while validation, tab/session
+mutation, history signaling, and dictionary requests retain their established
+facade/Core ownership. It adds no installed API, persistence, dependency,
+single-instance forwarding, arbitrary URL handling, desktop integration, scan,
+hotkey, tray, X11, Wayland, Windows, shell, network, or process-launch behavior.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

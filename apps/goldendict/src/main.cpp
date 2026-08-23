@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "command_line_lookup.h"
 #include "configuration_reload_transaction_coordinator.h"
 #include "goldendict/core/application.h"
 #include "goldendict/core/favorites_store.h"
@@ -377,6 +378,15 @@ goldendict::app::DesktopPlatform CurrentDesktopPlatform() {
 #endif
 }
 
+QStringList RawCommandLineArguments(int argc, char* argv[]) {
+    QStringList arguments;
+    arguments.reserve(argc);
+    for (int index = 0; index < argc; ++index) {
+        arguments.push_back(QString::fromLocal8Bit(argv[index]));
+    }
+    return arguments;
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -384,13 +394,14 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    auto initial_lookup = goldendict::app::ParseInitialLookup(
+        RawCommandLineArguments(argc, argv));
     RegisterArticleScheme();
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("GoldenDict"));
     QApplication::setApplicationVersion(
         QStringLiteral(GOLDENDICT_APPLICATION_VERSION));
     QApplication::setOrganizationName(QStringLiteral("GoldenDict"));
-
     const QString standard_configuration_directory =
         QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
     const QString current_configuration_directory =
@@ -1405,6 +1416,10 @@ int main(int argc, char* argv[]) {
             }
         });
     window.show();
+
+    if (initial_lookup.has_value()) {
+        window.SubmitInitialLookup(initial_lookup->TakeWord());
+    }
 
     if (HasPreferencesSmokeArgument(argc, argv)) {
         try {

@@ -53,6 +53,16 @@ ti_target_link_libraries(legacy_configuration_location_test
 add_test(NAME legacy_configuration_location_test
   COMMAND legacy_configuration_location_test)
 
+ti_add_executable(command_line_lookup_test
+  tests/command_line_lookup_test.cpp
+  src/command_line_lookup.cpp)
+target_include_directories(command_line_lookup_test PRIVATE src)
+ti_target_include_modules_recurse(command_line_lookup_test
+  goldendict_core)
+ti_target_link_libraries(command_line_lookup_test
+  goldendict_core ${QT_NAMESPACE}::Test)
+add_test(NAME command_line_lookup_test COMMAND command_line_lookup_test)
+
 ti_add_executable(full_text_request_controller_test
   tests/full_text_request_controller_test.cpp
   src/full_text_request_controller.cpp

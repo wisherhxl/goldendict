@@ -5242,6 +5242,15 @@ install for this check: it intentionally omits third-party runtime deployment.
 - Use QTest for sample and project tests.
 - Qt is expected as a dependency for all tests.
 
+`command_line_lookup_test` pins the private startup operand grammar and
+one-shot value. It covers plain UTF-8 words, both legacy schemes with two or
+three slashes, percent decoding and trailing-slash compatibility, the 4096-byte
+limit, and rejection of no operand, options, multiple operands, unsupported
+schemes, malformed encoding, invalid UTF-8, NUL, and empty output. Existing
+facade activation, tab/session, and application smokes retain publication,
+atomic navigation, history, request, rejected-candidate, and retired-facade
+coverage for the handoff boundary.
+
 ## Expected Verification Areas
 
 - configure;
