@@ -5289,6 +5289,12 @@ other mouse buttons, and the unchanged tab-bar middle-button close contract.
 No test registration is added and the Linux Release baseline remains exactly
 114 tests.
 
+The existing installed-runtime smoke also verifies the Linux desktop launcher
+and pinned legacy icon. It requires the standard install paths, the `%u`
+executable handoff, both supported URI-scheme declarations, and the exact icon
+digest. No test registration is added, so the Linux Release baseline remains
+exactly 114 tests.
+
 ## Expected Verification Areas
 
 - configure;

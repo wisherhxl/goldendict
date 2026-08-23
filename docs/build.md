@@ -81,6 +81,11 @@ cmake --install build/Release
 The verified default Linux Release install destination is
 `build/Release/install`.
 
+Linux runtime installation also places GoldenDict's desktop launcher in
+`share/applications` and its 256-pixel icon in the corresponding hicolor
+application-icon directory. Desktop-environment cache and handler registration
+remain the installer's or system administrator's responsibility.
+
 Use `-o '&:install_mode=runtime'` when preparing deployable install/package
 output that should contain only runtime files. Runtime mode installs the project
 executables, runtime shared libraries/plugins/resources needed by those

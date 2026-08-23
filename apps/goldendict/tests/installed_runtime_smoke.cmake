@@ -14,12 +14,37 @@ endif()
 
 set(installed_executable "${INSTALL_PREFIX}/bin/goldendict")
 set(installed_wrapper "${INSTALL_PREFIX}/bin/goldendict.sh")
+set(installed_launcher
+  "${INSTALL_PREFIX}/share/applications/org.goldendict.GoldenDict.desktop")
+set(installed_icon
+  "${INSTALL_PREFIX}/share/icons/hicolor/256x256/apps/goldendict.png")
 set(installed_library_directory "${INSTALL_PREFIX}/${INSTALL_LIBDIR}")
 set(harfbuzz_subset
   "${installed_library_directory}/libharfbuzz-subset.so.0")
 set(harfbuzz_main "${installed_library_directory}/libharfbuzz.so.0")
 if(NOT EXISTS "${installed_executable}" OR NOT EXISTS "${installed_wrapper}")
   message(FATAL_ERROR "Runtime install omitted the GoldenDict executable or wrapper")
+endif()
+if(NOT EXISTS "${installed_launcher}" OR NOT EXISTS "${installed_icon}")
+  message(FATAL_ERROR "Runtime install omitted the Linux launcher or icon")
+endif()
+file(READ "${installed_launcher}" launcher_contents)
+foreach(required_entry IN ITEMS
+    "Type=Application"
+    "Terminal=false"
+    "Icon=goldendict"
+    "Exec=goldendict %u"
+    "MimeType=x-scheme-handler/goldendict;x-scheme-handler/dict;")
+  string(FIND "${launcher_contents}" "${required_entry}" entry_offset)
+  if(entry_offset EQUAL -1)
+    message(FATAL_ERROR
+      "Installed Linux launcher omitted required entry: ${required_entry}")
+  endif()
+endforeach()
+file(SHA256 "${installed_icon}" installed_icon_sha256)
+if(NOT installed_icon_sha256 STREQUAL
+    "935ccc5467aa896e6fc2061c059ef2b79fb791213fda76e508bb6b539af23bec")
+  message(FATAL_ERROR "Installed Linux launcher icon differs from pinned legacy asset")
 endif()
 if(NOT EXISTS "${harfbuzz_subset}")
   message(FATAL_ERROR

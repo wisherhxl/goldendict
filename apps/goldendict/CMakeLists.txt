@@ -8,6 +8,14 @@ target_sources(goldendict PRIVATE
   ../../modules/core/src/application/pending_configuration_transaction.cc)
 target_compile_definitions(goldendict PRIVATE
   GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}")
+if(UNIX AND NOT APPLE)
+  install(FILES linux/org.goldendict.GoldenDict.desktop
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
+    COMPONENT libs)
+  install(FILES linux/goldendict.png
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps"
+    COMPONENT libs)
+endif()
 if(UNIX AND NOT APPLE AND TIGER_INSTALL_RUNTIME_DEPENDENCIES)
   set_target_properties(goldendict PROPERTIES
     INSTALL_RPATH "\$ORIGIN/../${TIGER_LIB_INSTALL_PATH};\$ORIGIN"

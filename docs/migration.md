@@ -6382,6 +6382,18 @@ modifiers, hotkeys, tray, audio, desktop metadata, Windows/macOS, Debug, public
 or installed Core changes, dependencies, persistence, and unrelated refactoring
 remain excluded. No successor is selected.
 
+The next bounded Phase 9 Linux leaf installs the pinned legacy desktop launcher
+and 256-pixel application icon. The launcher passes one URI with `%u` into the
+existing private command-line parser and declares only the already-supported
+`goldendict` and `dict` scheme handlers. Installation is Linux-only and uses
+the standard applications and hicolor icon directories.
+
+Runtime registration commands, metainfo, MIME databases, tray behavior,
+Windows/macOS, Debug, public or installed Core changes, dependencies, and
+unrelated packaging expansion remain excluded. The existing installed-runtime
+smoke verifies the files and exact handler contract, so the Release baseline
+remains exactly 114 tests. No successor is selected.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
