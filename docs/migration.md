@@ -6307,9 +6307,25 @@ cannot receive the request. No-operand startup is unchanged.
 This leaf follows the Shared-Library And GUI Boundary: parsing and presentation
 handoff stay private to `apps/goldendict`, while validation, tab/session
 mutation, history signaling, and dictionary requests retain their established
-facade/Core ownership. It adds no installed API, persistence, dependency,
-single-instance forwarding, arbitrary URL handling, desktop integration, scan,
-hotkey, tray, X11, Wayland, Windows, shell, network, or process-launch behavior.
+facade/Core ownership. That Phase 8 leaf adds no installed API, persistence,
+dependency, single-instance forwarding, arbitrary URL handling, desktop
+integration, scan, hotkey, tray, X11, Wayland, Windows, shell, network, or
+process-launch behavior.
+
+The first Phase 9 Linux leaf adds private single-instance lookup forwarding.
+A per-user, configuration-profile-derived runtime lock elects the only
+application writer; only its owner may recover the local-server endpoint.
+Secondary processes reuse the accepted Phase 8 parser and forward only its
+normalized bounded value in a private, versioned, user-only local frame.
+Missing or rejected operands exit as no-ops, and failed forwarding never
+creates another full application instance.
+
+The primary queues accepted values in a bounded FIFO until its exact Core and
+Widgets facade publication completes. The composition root then installs one
+consumer and drains through the existing `MainWindow::SubmitInitialLookup`
+current-tab path. Desktop activation, MIME/icon metadata, arbitrary URL,
+process and network behavior, Windows/macOS support, public Core/C ABI, and
+additional lookup writers remain excluded.
 
 ### Phase 9 — Linux Integration And Release Quality
 

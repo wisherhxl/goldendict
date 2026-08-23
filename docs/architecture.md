@@ -6787,5 +6787,23 @@ Therefore complete-but-unpublished, rejected, abandoned, and retired facade
 candidates have no command-line ingress, and the Shared-Library and GUI
 Boundary remains intact without a new installed Core contract.
 
+### Private Linux Single-Instance Lookup Transport
+
+Linux startup elects one application process per resolved configuration
+profile through a per-user runtime lock.
+Only the lock owner may remove a stale local-server endpoint and publish a
+user-access-only server. A secondary process reuses the initial command-line
+parser, sends only its normalized bounded UTF-8 lookup in a versioned bounded
+frame, waits for explicit acceptance, and exits. Invalid or absent operands are
+no-ops, and forwarding failure never starts a competing application writer.
+
+Accepted frames remain in a bounded FIFO while runtime composition is
+unpublished. The composition root installs the sole consumer only after the
+exact Core facade and Widgets presentation are published; it then drains each
+value once through `MainWindow::SubmitInitialLookup`. The transport never owns
+navigation and cannot bypass the existing current-tab
+`DesktopFacade::OpenArticleTab` boundary. It adds no installed API, Core ABI,
+network behavior, URL dispatch, process launch, or Windows/macOS behavior.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

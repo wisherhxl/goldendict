@@ -17,6 +17,7 @@ class InitialLookupRequest {
     InitialLookupRequest(InitialLookupRequest&&) noexcept = default;
     InitialLookupRequest& operator=(InitialLookupRequest&&) noexcept = default;
 
+    const QString& Word() const noexcept;
     QString TakeWord() noexcept;
 
    private:
@@ -30,6 +31,8 @@ class InitialLookupRequest {
 
 std::optional<InitialLookupRequest> ParseInitialLookup(
     const QStringList& arguments);
+
+bool IsNormalizedLookupText(const QString& text);
 
 }  // namespace goldendict::app
 

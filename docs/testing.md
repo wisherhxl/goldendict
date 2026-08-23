@@ -5251,6 +5251,13 @@ facade activation, tab/session, and application smokes retain publication,
 atomic navigation, history, request, rejected-candidate, and retired-facade
 coverage for the handoff boundary.
 
+On Linux the same registered test also launches real secondary processes
+against unique configuration-profile private endpoints. It pins sole-primary
+election, normalized legacy-URI forwarding, acknowledgement without
+pre-publication delivery, ordered drain after publication, absent-operand no-op
+behavior, and rejection of an unsupported wire version. No test registration
+and no public or installed test contract is added.
+
 ## Expected Verification Areas
 
 - configure;

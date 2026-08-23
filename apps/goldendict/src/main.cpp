@@ -28,6 +28,9 @@
 #include "goldendict/network/runtime_composition.h"
 #include "legacy_configuration_location.h"
 #include "main_window.h"
+#if defined(Q_OS_LINUX)
+#include "linux_single_instance_lookup.h"
+#endif
 
 namespace {
 
@@ -402,6 +405,29 @@ int main(int argc, char* argv[]) {
     QApplication::setApplicationVersion(
         QStringLiteral(GOLDENDICT_APPLICATION_VERSION));
     QApplication::setOrganizationName(QStringLiteral("GoldenDict"));
+#if defined(Q_OS_LINUX)
+    const QString single_instance_endpoint =
+        goldendict::app::LinuxSingleInstanceEndpoint();
+    if (single_instance_endpoint.isEmpty()) {
+        qCritical() << "Unable to resolve the private single-instance endpoint";
+        return 1;
+    }
+    goldendict::app::LinuxSingleInstanceLookup single_instance(
+        single_instance_endpoint);
+    const auto single_instance_result = single_instance.Start(
+        initial_lookup ? initial_lookup->Word() : QString{});
+    if (single_instance_result !=
+        goldendict::app::SingleInstanceStartResult::kPrimary) {
+        return single_instance_result ==
+                           goldendict::app::SingleInstanceStartResult::
+                               kForwarded ||
+                       single_instance_result ==
+                           goldendict::app::SingleInstanceStartResult::
+                               kSecondaryNoOp
+                   ? 0
+                   : 1;
+    }
+#endif
     const QString standard_configuration_directory =
         QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
     const QString current_configuration_directory =
@@ -1420,6 +1446,10 @@ int main(int argc, char* argv[]) {
     if (initial_lookup.has_value()) {
         window.SubmitInitialLookup(initial_lookup->TakeWord());
     }
+#if defined(Q_OS_LINUX)
+    single_instance.PublishConsumer(
+        [&window](QString lookup) { window.SubmitInitialLookup(lookup); });
+#endif
 
     if (HasPreferencesSmokeArgument(argc, argv)) {
         try {

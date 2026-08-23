@@ -71,8 +71,16 @@ std::optional<QString> DecodeLegacyUri(QString operand, const QString& scheme) {
 
 }  // namespace
 
+bool IsNormalizedLookupText(const QString& text) {
+    return !text.isEmpty() && text == text.trimmed() && IsBoundedText(text);
+}
+
 InitialLookupRequest::InitialLookupRequest(QString word)
     : word_(std::move(word)) {}
+
+const QString& InitialLookupRequest::Word() const noexcept {
+    return word_;
+}
 
 QString InitialLookupRequest::TakeWord() noexcept {
     return std::exchange(word_, {});
@@ -101,7 +109,7 @@ std::optional<InitialLookupRequest> ParseInitialLookup(
     } else {
         word = operand.trimmed();
     }
-    if (!word || word->isEmpty() || !IsBoundedText(*word)) {
+    if (!word || !IsNormalizedLookupText(*word)) {
         return std::nullopt;
     }
     return InitialLookupRequest(std::move(*word));

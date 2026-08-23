@@ -61,6 +61,11 @@ ti_target_include_modules_recurse(command_line_lookup_test
   goldendict_core)
 ti_target_link_libraries(command_line_lookup_test
   goldendict_core ${QT_NAMESPACE}::Test)
+if(UNIX AND NOT APPLE)
+  target_sources(command_line_lookup_test PRIVATE
+    src/linux_single_instance_lookup.cpp)
+  ti_target_link_libraries(command_line_lookup_test ${QT_NAMESPACE}::Network)
+endif()
 add_test(NAME command_line_lookup_test COMMAND command_line_lookup_test)
 
 ti_add_executable(full_text_request_controller_test
