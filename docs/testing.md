@@ -5273,6 +5273,15 @@ still produces no message. The existing Widgets smoke supplies the reveal,
 restore, raise, and activation behavior coverage, so no GUI test registration
 is added and the Linux Release baseline remains exactly 114 tests.
 
+The Linux-only portion of the same registration also pins display-platform
+selection before application construction. Case-insensitive Wayland session
+values select `xcb` and replace a preexisting Qt platform value, while X11,
+empty, absent, and unknown session values preserve the prior environment. No
+test registration is added and the Linux Release baseline remains exactly 114
+tests. Repository-owned headless invocations declare a synthetic X11 session
+so their explicit `offscreen` test platform remains authoritative on Wayland
+hosts.
+
 ## Expected Verification Areas
 
 - configure;

@@ -6355,6 +6355,20 @@ Desktop metadata, broader commands, Windows/macOS behavior, Debug verification,
 public or installed Core changes, persistence, network behavior, packaging,
 and unrelated refactoring remain excluded. No successor is selected.
 
+The first post-activation Phase 9 Linux leaf restores the pinned legacy
+XWayland fallback. Before `QApplication` construction, one source-private
+application helper compares `XDG_SESSION_TYPE` with `wayland`
+case-insensitively and selects Qt's `xcb` platform, replacing any existing
+`QT_QPA_PLATFORM` value. Absent, empty, X11, and unknown session values leave
+the platform environment unchanged. Focused coverage remains in the existing
+command-line test registration and the Release baseline remains exactly 114
+tests.
+
+This leaf adds no native Wayland promise, desktop metadata, audio, clipboard,
+hotkey, scan-popup, tray, translation, dependency, persistence, network,
+Windows/macOS, Debug, public or installed Core API, or unrelated refactoring.
+No successor is selected.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

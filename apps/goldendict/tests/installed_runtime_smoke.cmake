@@ -79,6 +79,7 @@ execute_process(
   COMMAND /usr/bin/env -i
     "PATH=/usr/bin:/bin"
     "HOME=${TEST_HOME}"
+    "XDG_SESSION_TYPE=x11"
     "QT_QPA_PLATFORM=offscreen"
     "QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu"
     "XDG_CONFIG_HOME=${TEST_HOME}/config"

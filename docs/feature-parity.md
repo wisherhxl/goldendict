@@ -1879,7 +1879,7 @@ unchanged. The Release baseline remains 114 tests and no successor is selected.
 | Help | mapped | Phase 9 | installed resource checks |
 | Desktop icon/metainfo/launcher | mapped | Phase 9 | package install checks |
 | X11 integration | mapped | Phase 9 | X11 session checks |
-| Wayland behavior | mapped | Phase 9 | native/fallback matrix |
+| Wayland behavior | slice | Phase 9 | pinned legacy case-insensitive Wayland-session selection forces Qt `xcb` before application construction; native Wayland and remaining fallback matrix stay mapped |
 | Windows/macOS packaging and native hooks | post-linux | Phase 10 | platform CI/installers |
 
 ## Formal Linux Release Gate

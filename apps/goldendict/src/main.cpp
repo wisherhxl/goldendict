@@ -29,6 +29,7 @@
 #include "legacy_configuration_location.h"
 #include "main_window.h"
 #if defined(Q_OS_LINUX)
+#include "linux_display_platform.h"
 #include "linux_single_instance_lookup.h"
 #endif
 
@@ -397,6 +398,9 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+#if defined(Q_OS_LINUX)
+    goldendict::app::ConfigureLinuxDisplayPlatform();
+#endif
     const QStringList raw_arguments = RawCommandLineArguments(argc, argv);
     auto initial_lookup = goldendict::app::ParseInitialLookup(raw_arguments);
     RegisterArticleScheme();

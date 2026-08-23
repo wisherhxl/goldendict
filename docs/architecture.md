@@ -6832,5 +6832,14 @@ de-minimize, raise, and activate boundary.
 Desktop metadata, broader command forwarding, Windows/macOS behavior, and
 public or installed Core interfaces remain outside this boundary.
 
+### Private Linux XWayland Platform Selection
+
+Before constructing `QApplication`, the Linux composition root applies the
+pinned legacy display fallback. A case-insensitive `wayland` value in
+`XDG_SESSION_TYPE` selects Qt's `xcb` platform, replacing any existing
+`QT_QPA_PLATFORM` value. Other, empty, or absent session values leave the
+platform environment unchanged. The source-private helper adds no Core API,
+Widgets ownership, persistence, network behavior, or non-Linux behavior.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

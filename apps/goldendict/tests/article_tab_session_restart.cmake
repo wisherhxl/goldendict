@@ -9,6 +9,7 @@ file(REMOVE_RECURSE "${TEST_HOME}")
 file(MAKE_DIRECTORY "${TEST_HOME}/config" "${TEST_HOME}/cache")
 
 set(smoke_environment
+  "XDG_SESSION_TYPE=x11"
   "QT_QPA_PLATFORM=offscreen"
   "QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu"
   "XDG_CONFIG_HOME=${TEST_HOME}/config"

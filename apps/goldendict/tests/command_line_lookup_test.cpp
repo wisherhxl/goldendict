@@ -12,6 +12,7 @@
 #include "command_line_lookup.h"
 #include "goldendict/core/dictionary_service.h"
 #if defined(Q_OS_LINUX)
+#include "linux_display_platform.h"
 #include "linux_single_instance_lookup.h"
 #endif
 
@@ -28,6 +29,8 @@ class CommandLineLookupTest : public QObject {
     void RejectsAmbiguousOrUnsupportedInput();
     void EnforcesBoundsAndOneShotConsumption();
 #if defined(Q_OS_LINUX)
+    void ConfiguresLinuxDisplayPlatform_data();
+    void ConfiguresLinuxDisplayPlatform();
     void ForwardsOnlyAfterPublication();
     void RejectsInvalidFrames();
 #endif
@@ -131,6 +134,68 @@ void CommandLineLookupTest::EnforcesBoundsAndOneShotConsumption() {
 }
 
 #if defined(Q_OS_LINUX)
+void CommandLineLookupTest::ConfiguresLinuxDisplayPlatform_data() {
+    QTest::addColumn<bool>("session_present");
+    QTest::addColumn<QByteArray>("session");
+    QTest::addColumn<bool>("platform_present");
+    QTest::addColumn<QByteArray>("platform");
+    QTest::addColumn<bool>("expected_present");
+    QTest::addColumn<QByteArray>("expected");
+
+    QTest::newRow("wayland") << true << QByteArray("wayland") << false
+                             << QByteArray() << true << QByteArray("xcb");
+    QTest::newRow("mixed-case-wayland")
+        << true << QByteArray("WayLand") << false << QByteArray() << true
+        << QByteArray("xcb");
+    QTest::newRow("wayland-replaces-platform")
+        << true << QByteArray("wayland") << true << QByteArray("offscreen")
+        << true << QByteArray("xcb");
+    QTest::newRow("x11-preserves-platform")
+        << true << QByteArray("x11") << true << QByteArray("offscreen") << true
+        << QByteArray("offscreen");
+    QTest::newRow("empty-preserves-platform")
+        << true << QByteArray() << true << QByteArray("minimal") << true
+        << QByteArray("minimal");
+    QTest::newRow("absent-preserves-absence")
+        << false << QByteArray() << false << QByteArray() << false
+        << QByteArray();
+    QTest::newRow("unknown-preserves-absence")
+        << true << QByteArray("mir") << false << QByteArray() << false
+        << QByteArray();
+}
+
+void CommandLineLookupTest::ConfiguresLinuxDisplayPlatform() {
+    QFETCH(bool, session_present);
+    QFETCH(QByteArray, session);
+    QFETCH(bool, platform_present);
+    QFETCH(QByteArray, platform);
+    QFETCH(bool, expected_present);
+    QFETCH(QByteArray, expected);
+
+    const bool saved_session_present =
+        qEnvironmentVariableIsSet("XDG_SESSION_TYPE");
+    const QByteArray saved_session = qgetenv("XDG_SESSION_TYPE");
+    const bool saved_platform_present =
+        qEnvironmentVariableIsSet("QT_QPA_PLATFORM");
+    const QByteArray saved_platform = qgetenv("QT_QPA_PLATFORM");
+
+    session_present ? qputenv("XDG_SESSION_TYPE", session)
+                    : qunsetenv("XDG_SESSION_TYPE");
+    platform_present ? qputenv("QT_QPA_PLATFORM", platform)
+                     : qunsetenv("QT_QPA_PLATFORM");
+    goldendict::app::ConfigureLinuxDisplayPlatform();
+    const bool actual_present = qEnvironmentVariableIsSet("QT_QPA_PLATFORM");
+    const QByteArray actual = qgetenv("QT_QPA_PLATFORM");
+
+    saved_session_present ? qputenv("XDG_SESSION_TYPE", saved_session)
+                          : qunsetenv("XDG_SESSION_TYPE");
+    saved_platform_present ? qputenv("QT_QPA_PLATFORM", saved_platform)
+                           : qunsetenv("QT_QPA_PLATFORM");
+
+    QCOMPARE(actual_present, expected_present);
+    QCOMPARE(actual, expected);
+}
+
 void CommandLineLookupTest::ForwardsOnlyAfterPublication() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());

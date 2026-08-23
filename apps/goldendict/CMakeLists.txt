@@ -63,6 +63,7 @@ ti_target_link_libraries(command_line_lookup_test
   goldendict_core ${QT_NAMESPACE}::Test)
 if(UNIX AND NOT APPLE)
   target_sources(command_line_lookup_test PRIVATE
+    src/linux_display_platform.cpp
     src/linux_single_instance_lookup.cpp)
   ti_target_link_libraries(command_line_lookup_test ${QT_NAMESPACE}::Network)
 endif()
@@ -101,7 +102,7 @@ ti_target_link_libraries(full_text_response_model_test
 add_test(NAME full_text_response_model_test
   COMMAND full_text_response_model_test)
 set_tests_properties(full_text_response_model_test PROPERTIES
-  ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+  ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen")
 
 ti_add_executable(full_text_query_composer_test
   tests/full_text_query_composer_test.cpp
@@ -115,7 +116,7 @@ ti_target_link_libraries(full_text_query_composer_test
 add_test(NAME full_text_query_composer_test
   COMMAND full_text_query_composer_test)
 set_tests_properties(full_text_query_composer_test PROPERTIES
-  ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+  ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen")
 
 ti_add_executable(full_text_search_dialog_test
   tests/full_text_search_dialog_test.cpp
@@ -132,14 +133,14 @@ ti_target_link_libraries(full_text_search_dialog_test
 add_test(NAME full_text_search_dialog_test
   COMMAND full_text_search_dialog_test)
 set_tests_properties(full_text_search_dialog_test PROPERTIES
-  ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+  ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen")
 
 add_test(NAME goldendict_full_text_dictionary_projection_smoke
   COMMAND $<TARGET_FILE:goldendict> --full-text-dictionary-projection-smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
 set_tests_properties(goldendict_full_text_dictionary_projection_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dictionary-projection-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dictionary-projection-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dictionary-projection-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dictionary-projection-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_full_text_dialog_smoke
@@ -147,7 +148,7 @@ add_test(NAME goldendict_full_text_dialog_smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
 set_tests_properties(goldendict_full_text_dialog_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dialog-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dialog-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dialog-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dialog-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_smoke COMMAND $<TARGET_FILE:goldendict> --smoke)
@@ -168,70 +169,70 @@ add_test(NAME goldendict_file_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --file-menu-smoke)
 set_tests_properties(goldendict_file_menu_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/file-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/file-menu-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/file-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/file-menu-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_search_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --search-menu-smoke)
 set_tests_properties(goldendict_search_menu_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/search-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/search-menu-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/search-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/search-menu-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_edit_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --edit-menu-smoke)
 set_tests_properties(goldendict_edit_menu_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/edit-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/edit-menu-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/edit-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/edit-menu-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_history_preferences_smoke
   COMMAND $<TARGET_FILE:goldendict> --history-preferences-smoke)
 set_tests_properties(goldendict_history_preferences_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-preferences-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-preferences-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_favorites_preferences_smoke
   COMMAND $<TARGET_FILE:goldendict> --favorites-preferences-smoke)
 set_tests_properties(goldendict_favorites_preferences_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-preferences-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-preferences-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_articles_preferences_smoke
   COMMAND $<TARGET_FILE:goldendict> --articles-preferences-smoke)
 set_tests_properties(goldendict_articles_preferences_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/articles-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/articles-preferences-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/articles-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/articles-preferences-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_synonym_preferences_smoke
   COMMAND $<TARGET_FILE:goldendict> --synonym-preferences-smoke)
 set_tests_properties(goldendict_synonym_preferences_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/synonym-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/synonym-preferences-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/synonym-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/synonym-preferences-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_optional_parts_preferences_smoke
   COMMAND $<TARGET_FILE:goldendict> --optional-parts-preferences-smoke)
 set_tests_properties(goldendict_optional_parts_preferences_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/optional-parts-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/optional-parts-preferences-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/optional-parts-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/optional-parts-preferences-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_hide_single_tab_preferences_smoke
   COMMAND $<TARGET_FILE:goldendict> --hide-single-tab-preferences-smoke)
 set_tests_properties(goldendict_hide_single_tab_preferences_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/hide-single-tab-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/hide-single-tab-preferences-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/hide-single-tab-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/hide-single-tab-preferences-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_mru_tab_order_preferences_smoke
   COMMAND $<TARGET_FILE:goldendict> --mru-tab-order-preferences-smoke)
 set_tests_properties(goldendict_mru_tab_order_preferences_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/mru-tab-order-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/mru-tab-order-preferences-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/mru-tab-order-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/mru-tab-order-preferences-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_escape_hides_main_window_preferences_smoke
@@ -269,56 +270,56 @@ add_test(NAME goldendict_view_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --view-menu-smoke)
 set_tests_properties(goldendict_view_menu_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/view-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/view-menu-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/view-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/view-menu-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_history_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --history-menu-smoke)
 set_tests_properties(goldendict_history_menu_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-menu-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-menu-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_favorites_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --favorites-menu-smoke)
 set_tests_properties(goldendict_favorites_menu_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-menu-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-menu-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_help_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --help-menu-smoke)
 set_tests_properties(goldendict_help_menu_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_webengine_smoke
   COMMAND $<TARGET_FILE:goldendict> --webengine-smoke)
 set_tests_properties(goldendict_webengine_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_webengine_interaction_smoke
   COMMAND $<TARGET_FILE:goldendict> --webengine-interaction-smoke)
 set_tests_properties(goldendict_webengine_interaction_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_article_context_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --article-context-menu-smoke)
 set_tests_properties(goldendict_article_context_menu_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-context-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-context-menu-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-context-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-context-menu-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_dictionary_context_navigation_smoke
   COMMAND $<TARGET_FILE:goldendict> --dictionary-context-navigation-smoke)
 set_tests_properties(goldendict_dictionary_context_navigation_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-navigation-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-navigation-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-navigation-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-navigation-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_dictionary_context_preferences_smoke
@@ -333,7 +334,7 @@ add_test(NAME goldendict_system_print_smoke
   COMMAND $<TARGET_FILE:goldendict> --system-print-smoke)
 set_tests_properties(goldendict_system_print_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/system-print-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/system-print-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/system-print-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/system-print-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_article_tabs_smoke
@@ -341,7 +342,7 @@ add_test(NAME goldendict_article_tabs_smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
 set_tests_properties(goldendict_article_tabs_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-tabs-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-tabs-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-tabs-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-tabs-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_suggestion_pane_smoke
@@ -349,7 +350,7 @@ add_test(NAME goldendict_suggestion_pane_smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
 set_tests_properties(goldendict_suggestion_pane_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/suggestion-pane-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/suggestion-pane-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/suggestion-pane-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/suggestion-pane-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_dictionary_bar_smoke
@@ -357,7 +358,7 @@ add_test(NAME goldendict_dictionary_bar_smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
 set_tests_properties(goldendict_dictionary_bar_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-bar-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-bar-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-bar-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-bar-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_widgets_facade_preparation_smoke
@@ -365,7 +366,7 @@ add_test(NAME goldendict_widgets_facade_preparation_smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
 set_tests_properties(goldendict_widgets_facade_preparation_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_configuration_reload_coordinator_smoke
@@ -374,7 +375,7 @@ add_test(NAME goldendict_configuration_reload_coordinator_smoke
 set_tests_properties(goldendict_configuration_reload_coordinator_smoke
   PROPERTIES
     ENVIRONMENT
-      "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/configuration-reload-coordinator-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/configuration-reload-coordinator-test-home/cache"
+      "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/configuration-reload-coordinator-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/configuration-reload-coordinator-test-home/cache"
     TIMEOUT 20)
 
 add_test(NAME goldendict_preferences_coordinator_predecision_smoke
@@ -383,7 +384,7 @@ add_test(NAME goldendict_preferences_coordinator_predecision_smoke
 set_tests_properties(goldendict_preferences_coordinator_predecision_smoke
   PROPERTIES
     ENVIRONMENT
-      "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/preferences-coordinator-predecision-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/preferences-coordinator-predecision-test-home/cache"
+      "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/preferences-coordinator-predecision-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/preferences-coordinator-predecision-test-home/cache"
     TIMEOUT 20)
 
 add_test(NAME goldendict_article_tab_session_restart_smoke
@@ -399,7 +400,7 @@ add_test(NAME goldendict_history_smoke
   COMMAND $<TARGET_FILE:goldendict> --history-smoke)
 set_tests_properties(goldendict_history_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_dictionary_groups_smoke
@@ -407,7 +408,7 @@ add_test(NAME goldendict_dictionary_groups_smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
 set_tests_properties(goldendict_dictionary_groups_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-groups-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-groups-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-groups-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-groups-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_source_directories_smoke
@@ -415,28 +416,28 @@ add_test(NAME goldendict_source_directories_smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
 set_tests_properties(goldendict_source_directories_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/source-directories-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/source-directories-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/source-directories-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/source-directories-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_favorites_smoke
   COMMAND $<TARGET_FILE:goldendict> --favorites-smoke)
 set_tests_properties(goldendict_favorites_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-management-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-management-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-management-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-management-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_favorites_transfer_smoke
   COMMAND $<TARGET_FILE:goldendict> --favorites-transfer-smoke)
 set_tests_properties(goldendict_favorites_transfer_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-transfer-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-transfer-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-transfer-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-transfer-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_favorites_cross_folder_move_smoke
   COMMAND $<TARGET_FILE:goldendict> --favorites-cross-folder-move-smoke)
 set_tests_properties(goldendict_favorites_cross_folder_move_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-cross-folder-move-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-cross-folder-move-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-cross-folder-move-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-cross-folder-move-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_dictionary_browser_smoke
@@ -444,7 +445,7 @@ add_test(NAME goldendict_dictionary_browser_smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
 set_tests_properties(goldendict_dictionary_browser_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-browser-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-browser-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-browser-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-browser-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_dictionary_browser_export_smoke
@@ -452,26 +453,26 @@ add_test(NAME goldendict_dictionary_browser_export_smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
 set_tests_properties(goldendict_dictionary_browser_export_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-browser-export-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-browser-export-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-browser-export-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-browser-export-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_history_management_smoke
   COMMAND $<TARGET_FILE:goldendict> --history-management-smoke)
 set_tests_properties(goldendict_history_management_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-management-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-management-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-management-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-management-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_history_export_smoke
   COMMAND $<TARGET_FILE:goldendict> --history-export-smoke)
 set_tests_properties(goldendict_history_export_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-export-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-export-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-export-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-export-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_history_import_smoke
   COMMAND $<TARGET_FILE:goldendict> --history-import-smoke)
 set_tests_properties(goldendict_history_import_smoke PROPERTIES
   ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-import-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-import-test-home/cache"
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-import-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-import-test-home/cache"
   TIMEOUT 20)
