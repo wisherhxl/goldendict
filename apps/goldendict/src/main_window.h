@@ -216,6 +216,7 @@ class MainWindow final : public QMainWindow {
         const std::vector<std::string>& dictionary_paths,
         const std::vector<goldendict::core::SoundDirectoryConfiguration>&
             sound_directories);
+    void ActivateFromSingleInstanceLookup();
     void SubmitInitialLookup(const QString& word);
     void SetOnlineSources(
         const std::vector<goldendict::core::MediaWikiSourceConfiguration>&

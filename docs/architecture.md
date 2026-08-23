@@ -6805,5 +6805,19 @@ navigation and cannot bypass the existing current-tab
 `DesktopFacade::OpenArticleTab` boundary. It adds no installed API, Core ABI,
 network behavior, URL dispatch, process launch, or Windows/macOS behavior.
 
+### Private Linux Single-Instance Lookup Activation
+
+Each accepted forwarded lookup uses the sole post-publication consumer to ask
+the published `MainWindow` to reveal and activate itself before the existing
+`SubmitInitialLookup` handoff. Widgets shows a hidden window, removes only the
+minimized state so a maximized window remains maximized, then raises and
+requests activation. The transport continues to own only bounded normalized
+lookup delivery and has no window dependency.
+
+Ordinary initial startup and a secondary invocation without an accepted lookup
+do not use this activation path. Activation-only commands, desktop metadata,
+broader command forwarding, Windows/macOS behavior, and public or installed
+Core interfaces remain outside this leaf.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

@@ -3290,6 +3290,16 @@ void MainWindow::RunEscapeHidesMainWindowPreferencesSmokeCheck(
     query_->setFocus();
     send_escape(query_);
     passed = passed && !isVisible();
+    ActivateFromSingleInstanceLookup();
+    QApplication::processEvents();
+    passed = passed && isVisible() && !isMinimized();
+
+    setWindowState(Qt::WindowMaximized | Qt::WindowMinimized);
+    QApplication::processEvents();
+    ActivateFromSingleInstanceLookup();
+    QApplication::processEvents();
+    passed = passed && isVisible() && !isMinimized() && isMaximized();
+    showNormal();
     show_window();
     auto* article = qobject_cast<QWidget*>(article_tabs_->currentWidget());
     article->setFocus();
@@ -10785,6 +10795,17 @@ void MainWindow::EditPreferences() {
 void MainWindow::StartLookup() {
     StartLookupInTab(goldendict::core::TabOpenPolicy::kCurrentTab,
                      goldendict::core::TabActivationPolicy::kActivate);
+}
+
+void MainWindow::ActivateFromSingleInstanceLookup() {
+    if (!isVisible()) {
+        show();
+    }
+    if (isMinimized()) {
+        setWindowState(windowState() & ~Qt::WindowMinimized);
+    }
+    raise();
+    activateWindow();
 }
 
 void MainWindow::SubmitInitialLookup(const QString& word) {

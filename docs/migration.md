@@ -6327,6 +6327,19 @@ current-tab path. Desktop activation, MIME/icon metadata, arbitrary URL,
 process and network behavior, Windows/macOS support, public Core/C ABI, and
 additional lookup writers remain excluded.
 
+This bounded Linux leaf restores activation for those accepted forwarded
+lookups. The sole consumer first asks the published `MainWindow` to show or
+restore itself, raise, and request activation, then performs the unchanged
+current-tab lookup handoff. Hidden and minimized behavior is pinned in the
+existing GUI smoke, maximized state is preserved, and the Release baseline
+remains exactly 114 registered tests.
+
+This leaf does not add an activation-only wire message: a secondary invocation
+without a lookup remains a no-op. Desktop metadata, broader command forwarding,
+Windows/macOS behavior, Debug verification, public or installed Core changes,
+persistence, network behavior, and unrelated refactoring remain excluded. A
+later activation-only message is the next dependency unlocked.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

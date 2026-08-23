@@ -1447,8 +1447,10 @@ int main(int argc, char* argv[]) {
         window.SubmitInitialLookup(initial_lookup->TakeWord());
     }
 #if defined(Q_OS_LINUX)
-    single_instance.PublishConsumer(
-        [&window](QString lookup) { window.SubmitInitialLookup(lookup); });
+    single_instance.PublishConsumer([&window](QString lookup) {
+        window.ActivateFromSingleInstanceLookup();
+        window.SubmitInitialLookup(lookup);
+    });
 #endif
 
     if (HasPreferencesSmokeArgument(argc, argv)) {

@@ -5258,6 +5258,13 @@ pre-publication delivery, ordered drain after publication, absent-operand no-op
 behavior, and rejection of an unsupported wire version. No test registration
 and no public or installed test contract is added.
 
+The existing Escape-main-window smoke also covers the application-private
+single-instance activation operation. It verifies that the operation reveals a
+hidden window, clears minimization, and preserves maximization. Together with
+the transport consumer-count assertions, this pins one GUI activation handoff
+per accepted forwarded lookup after publication. The Linux Release registration
+baseline remains 114 tests.
+
 ## Expected Verification Areas
 
 - configure;

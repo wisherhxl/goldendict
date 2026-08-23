@@ -1859,6 +1859,15 @@ and source-specific recomposition are excluded.
 
 ## Resources And Platform Integration
 
+Linux single-instance lookup forwarding now restores the published main window
+before submitting each accepted forwarded lookup. The application-private
+Widgets operation reveals hidden windows, removes minimization while preserving
+maximization, raises, and requests activation. Initial startup and secondary
+invocations without a lookup remain unchanged. The transport, installed/Core
+interfaces, Windows/macOS behavior, persistence, network behavior, and desktop
+metadata remain unchanged, and the Release baseline remains 114 tests. A
+separate activation-only message is the next dependency unlocked.
+
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |
 | Core styles for vertical slice | slice | Phase 4/7 | responsive shell and sanitizer tests |
