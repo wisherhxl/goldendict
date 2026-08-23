@@ -6857,11 +6857,12 @@ audio, persistence, dependency, or non-Linux behavior.
 
 ### Linux Desktop URI Launcher
 
-The Linux runtime install owns one desktop launcher and its pinned legacy
-application icon. The launcher forwards one `%u` operand to the executable and
-registers only the `goldendict` and `dict` schemes already accepted by the
-private command-line ingress. It does not add another parser, writer, runtime
-registration step, or Core interface.
+The Linux runtime install owns one desktop launcher, its pinned legacy
+application icon, and the matching AppStream metainfo. The launcher forwards
+one `%u` operand to the executable and registers only the `goldendict` and
+`dict` schemes already accepted by the private command-line ingress. The
+metainfo points back to that same desktop ID. This boundary does not add
+another parser, writer, runtime registration step, or Core interface.
 
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

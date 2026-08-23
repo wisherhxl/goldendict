@@ -6394,6 +6394,18 @@ unrelated packaging expansion remain excluded. The existing installed-runtime
 smoke verifies the files and exact handler contract, so the Release baseline
 remains exactly 114 tests. No successor is selected.
 
+The next bounded Phase 9 Linux leaf installs the pinned legacy AppStream
+metainfo beside the existing launcher and icon. The application install remains
+the sole metadata owner, and the metainfo launchable references the already
+installed `org.goldendict.GoldenDict.desktop` ID.
+
+Runtime registration commands, MIME databases, metadata modernization,
+Windows/macOS, Debug, public or installed Core changes, dependencies, and
+unrelated packaging expansion remain excluded. The conditional installed-runtime
+smoke verifies the metainfo contract when runtime dependency installation is
+enabled; the normal Linux Release baseline remains exactly 114 tests and does
+not include that conditional smoke. No successor is selected.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

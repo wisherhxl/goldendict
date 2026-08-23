@@ -1877,7 +1877,7 @@ unchanged. The Release baseline remains 114 tests and no successor is selected.
 | Complete styles and icons | mapped | Phase 8/9 | visual parity checklist |
 | Translations | mapped | Phase 9 | Linguist build and locale smoke |
 | Help | mapped | Phase 9 | installed resource checks |
-| Desktop icon/metainfo/launcher | mapped | Phase 9 | Linux desktop launcher, pinned legacy 256-pixel icon, and existing `goldendict`/`dict` URI handlers are installed; metainfo and runtime registration remain mapped |
+| Desktop icon/metainfo/launcher | slice | Phase 9 | Linux desktop launcher, pinned legacy 256-pixel icon, matching AppStream metainfo, and existing `goldendict`/`dict` URI handlers are installed; runtime registration remains mapped |
 | X11 integration | mapped | Phase 9 | X11 session checks |
 | Wayland behavior | slice | Phase 9 | pinned legacy case-insensitive Wayland-session selection forces Qt `xcb` before application construction; native Wayland and remaining fallback matrix stay mapped |
 | Windows/macOS packaging and native hooks | post-linux | Phase 10 | platform CI/installers |

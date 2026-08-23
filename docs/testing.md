@@ -5295,6 +5295,12 @@ executable handoff, both supported URI-scheme declarations, and the exact icon
 digest. No test registration is added, so the Linux Release baseline remains
 exactly 114 tests.
 
+When configured with `install_mode=runtime`, that conditional smoke also
+requires the Linux AppStream metainfo in `share/metainfo` and verifies its
+component ID, metadata and project licenses, and launchable desktop ID. The
+normal `install_mode=library` Release profile still registers exactly 114 tests
+and does not include this conditional smoke.
+
 ## Expected Verification Areas
 
 - configure;

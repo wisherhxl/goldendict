@@ -15,6 +15,9 @@ if(UNIX AND NOT APPLE)
   install(FILES linux/goldendict.png
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps"
     COMPONENT libs)
+  install(FILES linux/org.goldendict.GoldenDict.metainfo.xml
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/metainfo"
+    COMPONENT libs)
 endif()
 if(UNIX AND NOT APPLE AND TIGER_INSTALL_RUNTIME_DEPENDENCIES)
   set_target_properties(goldendict PROPERTIES
