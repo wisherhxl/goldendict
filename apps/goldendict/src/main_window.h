@@ -361,6 +361,11 @@ class MainWindow final : public QMainWindow {
    private:
     bool eventFilter(QObject* watched, QEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+#if defined(Q_OS_LINUX)
+    bool HandleLinuxPrimarySelectionMousePress(QMouseEvent* event,
+                                               const QString& selection);
+#endif
     void StartLookupInTab(goldendict::core::TabOpenPolicy open_policy,
                           goldendict::core::TabActivationPolicy activation,
                           const QString& internal_url = {},

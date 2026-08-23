@@ -5191,6 +5191,44 @@ void MainWindow::RunArticleTabsSmokeCheck(
                                    configured_state.tabs[1].id == 20U &&
                                    configured_state.active_tab_id ==
                                        configured_state.tabs[2].id;
+#if defined(Q_OS_LINUX)
+                    const auto before_selection =
+                        facade_->ExportArticleTabSession();
+                    QMouseEvent left_selection_event(
+                        QEvent::MouseButtonPress, QPointF{}, QPointF{},
+                        Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+                    smoke_passed =
+                        smoke_passed &&
+                        !HandleLinuxPrimarySelectionMousePress(
+                            &left_selection_event,
+                            QStringLiteral("ignored selection")) &&
+                        facade_->ExportArticleTabSession() == before_selection;
+                    QMouseEvent empty_selection_event(
+                        QEvent::MouseButtonPress, QPointF{}, QPointF{},
+                        Qt::MiddleButton, Qt::MiddleButton, Qt::NoModifier);
+                    smoke_passed =
+                        smoke_passed &&
+                        HandleLinuxPrimarySelectionMousePress(
+                            &empty_selection_event, QString{}) &&
+                        empty_selection_event.isAccepted() &&
+                        facade_->ExportArticleTabSession() == before_selection;
+                    QMouseEvent selection_event(
+                        QEvent::MouseButtonPress, QPointF{}, QPointF{},
+                        Qt::MiddleButton, Qt::MiddleButton, Qt::NoModifier);
+                    smoke_passed = smoke_passed &&
+                                   HandleLinuxPrimarySelectionMousePress(
+                                       &selection_event,
+                                       QStringLiteral("primary selection")) &&
+                                   selection_event.isAccepted();
+                    configured_state = facade_->GetArticleTabsState();
+                    smoke_passed =
+                        smoke_passed &&
+                        query_->text() == QStringLiteral("primary selection") &&
+                        configured_state.tabs[2].navigation.kind ==
+                            goldendict::core::TabNavigationKind::kLookup &&
+                        configured_state.tabs[2].navigation.query ==
+                            "primary selection";
+#endif
                     completion(smoke_passed);
                 });
             });
@@ -6458,6 +6496,29 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
     }
     QMainWindow::keyPressEvent(event);
 }
+
+void MainWindow::mousePressEvent(QMouseEvent* event) {
+#if defined(Q_OS_LINUX)
+    if (event->button() == Qt::MiddleButton &&
+        HandleLinuxPrimarySelectionMousePress(
+            event, QApplication::clipboard()->text(QClipboard::Selection))) {
+        return;
+    }
+#endif
+    QMainWindow::mousePressEvent(event);
+}
+
+#if defined(Q_OS_LINUX)
+bool MainWindow::HandleLinuxPrimarySelectionMousePress(
+    QMouseEvent* event, const QString& selection) {
+    if (event->button() != Qt::MiddleButton) {
+        return false;
+    }
+    SubmitInitialLookup(selection);
+    event->accept();
+    return true;
+}
+#endif
 
 void MainWindow::SetDictionaryGroups(
     const std::vector<goldendict::core::DictionaryGroupConfiguration>& groups) {

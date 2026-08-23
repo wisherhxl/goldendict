@@ -5282,6 +5282,13 @@ tests. Repository-owned headless invocations declare a synthetic X11 session
 so their explicit `offscreen` test platform remains authoritative on Wayland
 hosts.
 
+The existing article-tabs GUI smoke also covers Linux main-window
+middle-button lookup from the X11 primary selection. It pins current-tab lookup
+submission for nonempty text, empty-selection no-op behavior, delegation of
+other mouse buttons, and the unchanged tab-bar middle-button close contract.
+No test registration is added and the Linux Release baseline remains exactly
+114 tests.
+
 ## Expected Verification Areas
 
 - configure;

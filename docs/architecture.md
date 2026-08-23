@@ -6841,5 +6841,19 @@ pinned legacy display fallback. A case-insensitive `wayland` value in
 platform environment unchanged. The source-private helper adds no Core API,
 Widgets ownership, persistence, network behavior, or non-Linux behavior.
 
+### Private Linux Primary-Selection Lookup
+
+On Linux, a middle-button press delivered to the main window reads Qt's X11
+primary selection and submits that text through the existing current-tab lookup
+operation. Empty selection text remains a no-op, non-middle presses retain
+normal `QMainWindow` handling, and the existing tab-bar middle-button close
+filter remains authoritative for tab clicks.
+
+Widgets owns the desktop selection read and presentation gesture. Lookup
+validation, navigation, history, requests, and article presentation continue
+through the already-published desktop facade. This adds no Core API, native
+Wayland behavior, continuous clipboard monitoring, scan popup, hotkey, tray,
+audio, persistence, dependency, or non-Linux behavior.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

@@ -110,7 +110,7 @@ not authorize dropping a legacy format.
 | Dictionary info/headword browser | slice | Phase 8 | facade-backed catalog identity, redacted source, language, count, and selectable plain-text description display for metadata-bearing migrated formats; copy-source/open-containing-folder actions, bounded per-dictionary prefix, wildcard, and regular-expression filtering, lookup activation, atomic complete single-dictionary headword export through bounded enumeration, and fixture-backed UI smokes; R3a.1-R3a.3 provide authenticated bounded full-list enumeration for StarDict, 11 article formats, LSA, sound directories, and ZIP sounds, and R3b streams that enumeration to a legacy-compatible UTF-8 text file |
 | Scan popup | mapped | Phase 9 | X11 and Wayland behavior |
 | Global hotkeys | mapped | Phase 9 | X11 and Wayland behavior |
-| Clipboard/selection lookup | mapped | Phase 9 | X11 and Wayland behavior |
+| Clipboard/selection lookup | mapped | Phase 9 | Linux main-window middle-click lookup through the X11 primary selection is restored; continuous monitoring, scan-popup presentation, modifiers, and native Wayland behavior remain mapped |
 | Tray integration | mapped | Phase 9 | desktop smoke test |
 
 Legacy configuration, groups, history, and favorites must not be silently

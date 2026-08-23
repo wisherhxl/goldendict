@@ -6369,6 +6369,19 @@ hotkey, scan-popup, tray, translation, dependency, persistence, network,
 Windows/macOS, Debug, public or installed Core API, or unrelated refactoring.
 No successor is selected.
 
+The next bounded Phase 9 Linux leaf restores the pinned legacy main-window
+middle-click lookup. A middle-button press delivered to the main window reads
+Qt's X11 primary selection and submits it through the existing published-facade
+current-tab lookup path. Empty selection text remains a no-op, other buttons
+retain normal main-window handling, and the existing tab-bar middle-click close
+contract remains unchanged. Focused coverage stays in the existing article-tab
+GUI smoke and the Release baseline remains exactly 114 tests.
+
+Native Wayland selection, continuous clipboard monitoring, scan popup,
+modifiers, hotkeys, tray, audio, desktop metadata, Windows/macOS, Debug, public
+or installed Core changes, dependencies, persistence, and unrelated refactoring
+remain excluded. No successor is selected.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan
