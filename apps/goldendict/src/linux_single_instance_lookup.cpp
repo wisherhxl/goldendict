@@ -23,7 +23,8 @@
 namespace goldendict::app {
 namespace {
 
-constexpr quint32 kProtocolMagic = 0x47444C49U;
+constexpr quint32 kLookupProtocolMagic = 0x47444C49U;
+constexpr quint32 kActivationProtocolMagic = 0x47444149U;
 constexpr quint16 kProtocolVersion = 1U;
 constexpr char kAcknowledgement[] = "accepted";
 constexpr qsizetype kHeaderSize =
@@ -31,18 +32,41 @@ constexpr qsizetype kHeaderSize =
 constexpr qsizetype kMaximumFrameSize =
     kHeaderSize + goldendict::core::kMaximumLookupTextBytes;
 
-QByteArray Encode(const QString& lookup) {
-    const QByteArray payload = lookup.toUtf8();
+QByteArray Encode(const SingleInstanceMessage& message) {
+    const QByteArray payload = message.LookupText().toUtf8();
     QByteArray frame;
     QDataStream stream(&frame, QIODevice::WriteOnly);
     stream.setVersion(QDataStream::Qt_6_0);
-    stream << kProtocolMagic << kProtocolVersion
-           << static_cast<quint32>(payload.size());
+    stream << (message.Kind() == SingleInstanceMessageKind::kActivation
+                   ? kActivationProtocolMagic
+                   : kLookupProtocolMagic)
+           << kProtocolVersion << static_cast<quint32>(payload.size());
     stream.writeRawData(payload.constData(), payload.size());
     return frame;
 }
 
 }  // namespace
+
+SingleInstanceMessage::SingleInstanceMessage(SingleInstanceMessageKind kind,
+                                             QString lookup)
+    : kind_(kind), lookup_(std::move(lookup)) {}
+
+SingleInstanceMessage SingleInstanceMessage::Activation() {
+    return SingleInstanceMessage(SingleInstanceMessageKind::kActivation);
+}
+
+SingleInstanceMessage SingleInstanceMessage::Lookup(QString normalized_lookup) {
+    return SingleInstanceMessage(SingleInstanceMessageKind::kLookup,
+                                 std::move(normalized_lookup));
+}
+
+SingleInstanceMessageKind SingleInstanceMessage::Kind() const noexcept {
+    return kind_;
+}
+
+const QString& SingleInstanceMessage::LookupText() const noexcept {
+    return lookup_;
+}
 
 LinuxSingleInstanceLookup::LinuxSingleInstanceLookup(QString endpoint,
                                                      QObject* parent)
@@ -59,7 +83,7 @@ LinuxSingleInstanceLookup::~LinuxSingleInstanceLookup() {
 }
 
 SingleInstanceStartResult LinuxSingleInstanceLookup::Start(
-    const QString& normalized_lookup) {
+    const std::optional<SingleInstanceMessage>& message) {
     if (lock_->tryLock(0)) {
         QLocalServer::removeServer(endpoint_);
         server_->setSocketOptions(QLocalServer::UserAccessOption);
@@ -75,23 +99,22 @@ SingleInstanceStartResult LinuxSingleInstanceLookup::Start(
     if (lock_->error() != QLockFile::LockFailedError) {
         return SingleInstanceStartResult::kForwardFailed;
     }
-    if (normalized_lookup.isEmpty()) {
+    if (!message) {
         return SingleInstanceStartResult::kSecondaryNoOp;
     }
-    return Forward(normalized_lookup)
-               ? SingleInstanceStartResult::kForwarded
-               : SingleInstanceStartResult::kForwardFailed;
+    return Forward(*message) ? SingleInstanceStartResult::kForwarded
+                             : SingleInstanceStartResult::kForwardFailed;
 }
 
 void LinuxSingleInstanceLookup::PublishConsumer(
-    std::function<void(QString)> consumer) {
+    std::function<void(SingleInstanceMessage)> consumer) {
     if (!primary_ || consumer_ || !consumer) {
         return;
     }
     consumer_ = std::move(consumer);
-    const QList<QString> pending = std::exchange(pending_, {});
-    for (const auto& lookup : pending) {
-        consumer_(lookup);
+    QList<SingleInstanceMessage> pending = std::exchange(pending_, {});
+    for (auto& message : pending) {
+        consumer_(std::move(message));
     }
 }
 
@@ -99,8 +122,11 @@ bool LinuxSingleInstanceLookup::IsPrimary() const noexcept {
     return primary_;
 }
 
-bool LinuxSingleInstanceLookup::Forward(const QString& normalized_lookup) {
-    if (!IsNormalizedLookupText(normalized_lookup)) {
+bool LinuxSingleInstanceLookup::Forward(const SingleInstanceMessage& message) {
+    if ((message.Kind() == SingleInstanceMessageKind::kActivation &&
+         !message.LookupText().isEmpty()) ||
+        (message.Kind() == SingleInstanceMessageKind::kLookup &&
+         !IsNormalizedLookupText(message.LookupText()))) {
         return false;
     }
     QLocalSocket socket;
@@ -119,7 +145,7 @@ bool LinuxSingleInstanceLookup::Forward(const QString& normalized_lookup) {
     if (socket.state() != QLocalSocket::ConnectedState) {
         return false;
     }
-    const QByteArray frame = Encode(normalized_lookup);
+    const QByteArray frame = Encode(message);
     if (socket.write(frame) != frame.size() ||
         !socket.waitForBytesWritten(kForwardTimeoutMilliseconds) ||
         !socket.waitForReadyRead(kForwardTimeoutMilliseconds)) {
@@ -143,12 +169,12 @@ void LinuxSingleInstanceLookup::ReceiveConnections() {
 
 void LinuxSingleInstanceLookup::ReceiveMessage(QObject* connection) {
     auto* socket = qobject_cast<QLocalSocket*>(connection);
-    if (socket == nullptr || socket->property("lookupAccepted").toBool()) {
+    if (socket == nullptr || socket->property("messageAccepted").toBool()) {
         return;
     }
-    QByteArray bytes = socket->property("lookupFrame").toByteArray();
+    QByteArray bytes = socket->property("messageFrame").toByteArray();
     bytes.append(socket->readAll());
-    socket->setProperty("lookupFrame", bytes);
+    socket->setProperty("messageFrame", bytes);
     if (bytes.size() < kHeaderSize) {
         return;
     }
@@ -163,7 +189,8 @@ void LinuxSingleInstanceLookup::ReceiveMessage(QObject* connection) {
     quint32 payload_size = 0;
     stream >> magic >> version >> payload_size;
     const qsizetype expected = kHeaderSize + payload_size;
-    if (magic != kProtocolMagic || version != kProtocolVersion ||
+    if ((magic != kLookupProtocolMagic && magic != kActivationProtocolMagic) ||
+        version != kProtocolVersion ||
         payload_size > goldendict::core::kMaximumLookupTextBytes ||
         expected > kMaximumFrameSize) {
         socket->disconnectFromServer();
@@ -182,17 +209,22 @@ void LinuxSingleInstanceLookup::ReceiveMessage(QObject* connection) {
         return;
     }
     const QString lookup = QString::fromUtf8(payload);
-    if (lookup.toUtf8() != payload || !IsNormalizedLookupText(lookup) ||
-        (!consumer_ && pending_.size() >= kMaximumPendingLookups)) {
+    const bool activation = magic == kActivationProtocolMagic;
+    if (lookup.toUtf8() != payload ||
+        (activation ? !lookup.isEmpty() : !IsNormalizedLookupText(lookup)) ||
+        (!consumer_ && pending_.size() >= kMaximumPendingMessages)) {
         socket->disconnectFromServer();
         return;
     }
+    SingleInstanceMessage message = activation
+                                        ? SingleInstanceMessage::Activation()
+                                        : SingleInstanceMessage::Lookup(lookup);
     if (consumer_) {
-        consumer_(lookup);
+        consumer_(std::move(message));
     } else {
-        pending_.push_back(lookup);
+        pending_.push_back(std::move(message));
     }
-    socket->setProperty("lookupAccepted", true);
+    socket->setProperty("messageAccepted", true);
     socket->write(kAcknowledgement);
     socket->flush();
     socket->disconnectFromServer();

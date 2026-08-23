@@ -6340,6 +6340,21 @@ Windows/macOS behavior, Debug verification, public or installed Core changes,
 persistence, network behavior, and unrelated refactoring remain excluded. A
 later activation-only message is the next dependency unlocked.
 
+The next bounded Linux leaf restores the pinned legacy bare `bringToFront`
+behavior. An exactly argument-free secondary invocation sends a distinct
+application-private activation message with no lookup payload. The existing
+sole transport owner queues and acknowledges it, and the post-publication
+consumer invokes only the established Widgets reveal, restore, raise, and
+activation operation. Normalized lookup framing and ingress remain unchanged;
+malformed, unsupported, option-bearing, and ambiguous input remains a no-op,
+and activation never changes the query or starts navigation. Focused coverage
+stays in the existing command-line test registration and the Release baseline
+remains exactly 114 tests.
+
+Desktop metadata, broader commands, Windows/macOS behavior, Debug verification,
+public or installed Core changes, persistence, network behavior, packaging,
+and unrelated refactoring remain excluded. No successor is selected.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

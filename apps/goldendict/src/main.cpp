@@ -397,8 +397,8 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    auto initial_lookup = goldendict::app::ParseInitialLookup(
-        RawCommandLineArguments(argc, argv));
+    const QStringList raw_arguments = RawCommandLineArguments(argc, argv);
+    auto initial_lookup = goldendict::app::ParseInitialLookup(raw_arguments);
     RegisterArticleScheme();
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("GoldenDict"));
@@ -414,8 +414,18 @@ int main(int argc, char* argv[]) {
     }
     goldendict::app::LinuxSingleInstanceLookup single_instance(
         single_instance_endpoint);
-    const auto single_instance_result = single_instance.Start(
-        initial_lookup ? initial_lookup->Word() : QString{});
+    std::optional<goldendict::app::SingleInstanceMessage>
+        single_instance_message;
+    if (initial_lookup) {
+        single_instance_message =
+            goldendict::app::SingleInstanceMessage::Lookup(
+                initial_lookup->Word());
+    } else if (raw_arguments.size() == 1) {
+        single_instance_message =
+            goldendict::app::SingleInstanceMessage::Activation();
+    }
+    const auto single_instance_result =
+        single_instance.Start(single_instance_message);
     if (single_instance_result !=
         goldendict::app::SingleInstanceStartResult::kPrimary) {
         return single_instance_result ==
@@ -1447,10 +1457,14 @@ int main(int argc, char* argv[]) {
         window.SubmitInitialLookup(initial_lookup->TakeWord());
     }
 #if defined(Q_OS_LINUX)
-    single_instance.PublishConsumer([&window](QString lookup) {
-        window.ActivateFromSingleInstanceLookup();
-        window.SubmitInitialLookup(lookup);
-    });
+    single_instance.PublishConsumer(
+        [&window](goldendict::app::SingleInstanceMessage message) {
+            window.ActivateFromSingleInstanceLookup();
+            if (message.Kind() ==
+                goldendict::app::SingleInstanceMessageKind::kLookup) {
+                window.SubmitInitialLookup(message.LookupText());
+            }
+        });
 #endif
 
     if (HasPreferencesSmokeArgument(argc, argv)) {

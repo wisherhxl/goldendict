@@ -101,7 +101,7 @@ not authorize dropping a legacy format.
 | --- | --- | --- | --- |
 | Minimal application window | done | Phase 2 | smoke test |
 | Minimal lookup and article view | slice | Phase 4 | vertical-slice workflow |
-| Initial command-line lookup | slice | Phase 8/9 | one bounded plain word or case-sensitive legacy `goldendict://[/]...`/`dict://[/]...` operand is normalized privately and handed exactly once to published-facade current-tab navigation; on Linux a per-user private single-instance transport forwards that same normalized value, queues it until publication, and admits no duplicate application writer; options, ambiguity, malformed or unsupported input are no-ops |
+| Initial command-line lookup | slice | Phase 8/9 | one bounded plain word or case-sensitive legacy `goldendict://[/]...`/`dict://[/]...` operand is normalized privately and handed exactly once to published-facade current-tab navigation; on Linux a per-user private single-instance transport forwards that same normalized value, while an exactly bare invocation forwards a distinct activation-only message; both queue until publication and admit no duplicate application writer; options, ambiguity, malformed or unsupported input are no-ops |
 | Main tabs and navigation | slice | Phase 8 | bounded lifecycle and current-format persisted session, visible retained WebEngine tabs, configurable append/after-current placement and default activation with explicit overrides, positional or symmetric runtime-only MRU keyboard traversal without persisted reordering, deterministic close behavior, synchronized state, facade-backed navigation, a legacy-compatible active-tab results-navigation pane and accepted bounded per-dictionary article-context navigation backed by ordered lookup identities, and a cancellable per-tab prefix-suggestion pane backed only by the existing bounded suggestion service; the pinned legacy application has no persisted article-session format to migrate |
 | Dictionary/group controls | slice | Phase 8 | config round-trip, ordered catalog-resolved lookup/suggestion/article filtering, visible all/configured-group selector, bounded ordered group/member/metadata/muting editor, and a legacy-compatible ephemeral per-group `dictionaryBar` whose visible checks filter lookup and suggestions without configuration mutation |
 | Preferences and source editor | slice | Phase 8 | source editing and the backed General controls for tab placement/activation, hide-single-tab, MRU traversal, ESC hiding with child/modal precedence, article double-click translation and single-click selection through an isolated bounded WebEngine boundary, history, Favorites deletion, article collapsing, input limits, diacritics, synonyms, DSL optional parts, dictionary context-menu capacity with zero-to-results-pane handoff, credential-free manual HTTP CONNECT proxying for every configured HTTP and raw-TCP DICT source, and the pinned Qt Network cache size/clear-on-exit policy are accepted through atomic complete-candidate coverage; Preferences, the shared local/online/external source apply callback, and dictionary-group editing invoke the durable Network/Core/Widgets transaction with production pre-decision rejection, successful-order, continuity, and forward-failure coverage, completing the production configuration-reconstruction caller migration; Preferences as a whole remains open and no next Preferences leaf is independently ready; full-text persistence exists but its enablement, format exclusions, and size policy remain unselected behind index-lifecycle decisions and are explicitly outside P8-FT-1; languages/appearance, tray/autostart, hotkeys/scan, audio, unsupported proxy modes, and updates retain explicit Phase 7/9/10 prerequisites; Qt Network exclusively owns the managed HTTP/HTTPS cache while WebEngine cache, cookies, and storage remain outside the controls; delayed history/Favorites saves, WebKit plugins, optional cross-site weakening, unapproved header suppression, Windows scan technologies, and non-dialog legacy fields are intentionally excluded with documented evidence |
@@ -1862,11 +1862,14 @@ and source-specific recomposition are excluded.
 Linux single-instance lookup forwarding now restores the published main window
 before submitting each accepted forwarded lookup. The application-private
 Widgets operation reveals hidden windows, removes minimization while preserving
-maximization, raises, and requests activation. Initial startup and secondary
-invocations without a lookup remain unchanged. The transport, installed/Core
-interfaces, Windows/macOS behavior, persistence, network behavior, and desktop
-metadata remain unchanged, and the Release baseline remains 114 tests. A
-separate activation-only message is the next dependency unlocked.
+maximization, raises, and requests activation. An exactly bare Linux secondary
+invocation now sends a separate empty-payload activation message through the
+same transport and invokes only that Widgets operation; it does not create a
+lookup or change the query. Rejected input remains a no-op, normalized lookup
+framing remains unchanged, and queued activation and lookup messages preserve
+FIFO order. Installed/Core interfaces, Windows/macOS behavior, persistence,
+network behavior, desktop metadata, broader commands, and packaging remain
+unchanged. The Release baseline remains 114 tests and no successor is selected.
 
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |

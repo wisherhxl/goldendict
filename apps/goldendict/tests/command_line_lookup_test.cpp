@@ -136,8 +136,15 @@ void CommandLineLookupTest::ForwardsOnlyAfterPublication() {
     QVERIFY(directory.isValid());
     const QString endpoint = directory.filePath(QStringLiteral("instance"));
     goldendict::app::LinuxSingleInstanceLookup primary(endpoint);
-    QCOMPARE(primary.Start({}),
+    QCOMPARE(primary.Start(std::nullopt),
              goldendict::app::SingleInstanceStartResult::kPrimary);
+
+    QProcess activation;
+    activation.start(QCoreApplication::applicationFilePath(),
+                     {QStringLiteral("--forward-helper"), endpoint});
+    QVERIFY(activation.waitForStarted());
+    QTRY_COMPARE_WITH_TIMEOUT(activation.state(), QProcess::NotRunning, 12000);
+    QCOMPARE(activation.exitCode(), 0);
 
     QProcess secondary;
     secondary.start(QCoreApplication::applicationFilePath(),
@@ -157,16 +164,26 @@ void CommandLineLookupTest::ForwardsOnlyAfterPublication() {
 
     QStringList received;
     primary.PublishConsumer(
-        [&received](QString lookup) { received.push_back(std::move(lookup)); });
-    QCOMPARE(received, QStringList({QStringLiteral("two words"),
-                                    QStringLiteral("second")}));
+        [&received](goldendict::app::SingleInstanceMessage message) {
+            if (message.Kind() ==
+                goldendict::app::SingleInstanceMessageKind::kActivation) {
+                received.push_back(QStringLiteral("activation"));
+            } else {
+                received.push_back(QStringLiteral("lookup:") +
+                                   message.LookupText());
+            }
+        });
+    QCOMPARE(received, QStringList({QStringLiteral("activation"),
+                                    QStringLiteral("lookup:two words"),
+                                    QStringLiteral("lookup:second")}));
 
     QProcess no_op;
     no_op.start(QCoreApplication::applicationFilePath(),
-                {QStringLiteral("--forward-helper"), endpoint});
+                {QStringLiteral("--forward-helper"), endpoint,
+                 QStringLiteral("--invalid")});
     QVERIFY(no_op.waitForFinished());
     QCOMPARE(no_op.exitCode(), 0);
-    QCOMPARE(received.size(), 2);
+    QCOMPARE(received.size(), 3);
 }
 
 void CommandLineLookupTest::RejectsInvalidFrames() {
@@ -174,21 +191,36 @@ void CommandLineLookupTest::RejectsInvalidFrames() {
     QVERIFY(directory.isValid());
     const QString endpoint = directory.filePath(QStringLiteral("instance"));
     goldendict::app::LinuxSingleInstanceLookup primary(endpoint);
-    QCOMPARE(primary.Start({}),
+    QCOMPARE(primary.Start(std::nullopt),
              goldendict::app::SingleInstanceStartResult::kPrimary);
 
-    QLocalSocket socket;
-    socket.connectToServer(endpoint);
-    QVERIFY(socket.waitForConnected());
-    QByteArray frame;
-    QDataStream stream(&frame, QIODevice::WriteOnly);
-    stream.setVersion(QDataStream::Qt_6_0);
-    stream << quint32{0x47444C49U} << quint16{99U} << quint32{4U};
-    stream.writeRawData("word", 4);
-    QCOMPARE(socket.write(frame), frame.size());
-    QVERIFY(socket.waitForBytesWritten());
-    QTRY_COMPARE(socket.state(), QLocalSocket::UnconnectedState);
-    QVERIFY(socket.readAll().isEmpty());
+    const auto reject_frame = [&endpoint](quint32 magic, quint16 version,
+                                          const QByteArray& payload) {
+        QLocalSocket socket;
+        socket.connectToServer(endpoint);
+        if (!socket.waitForConnected()) {
+            return false;
+        }
+        QByteArray frame;
+        QDataStream stream(&frame, QIODevice::WriteOnly);
+        stream.setVersion(QDataStream::Qt_6_0);
+        stream << magic << version << static_cast<quint32>(payload.size());
+        stream.writeRawData(payload.constData(), payload.size());
+        if (socket.write(frame) != frame.size() ||
+            !socket.waitForBytesWritten()) {
+            return false;
+        }
+        for (int attempt = 0;
+             attempt < 1000 && socket.state() != QLocalSocket::UnconnectedState;
+             ++attempt) {
+            QCoreApplication::processEvents();
+        }
+        return socket.state() == QLocalSocket::UnconnectedState &&
+               socket.readAll().isEmpty();
+    };
+
+    QVERIFY(reject_frame(0x47444C49U, 99U, QByteArray("word")));
+    QVERIFY(reject_frame(0x47444149U, 1U, QByteArray("word")));
 }
 #endif
 
@@ -204,9 +236,15 @@ int main(int argc, char* argv[]) {
                           ? goldendict::app::ParseInitialLookup(
                                 {arguments[0], arguments[3]})
                           : std::nullopt;
+        std::optional<goldendict::app::SingleInstanceMessage> message;
+        if (lookup) {
+            message = goldendict::app::SingleInstanceMessage::Lookup(
+                lookup->TakeWord());
+        } else if (arguments.size() == 3) {
+            message = goldendict::app::SingleInstanceMessage::Activation();
+        }
         goldendict::app::LinuxSingleInstanceLookup secondary(arguments[2]);
-        const auto result =
-            secondary.Start(lookup ? lookup->TakeWord() : QString{});
+        const auto result = secondary.Start(message);
         return result == goldendict::app::SingleInstanceStartResult::
                                kForwarded ||
                        result == goldendict::app::SingleInstanceStartResult::

@@ -9,6 +9,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 
 class QLocalServer;
 class QLockFile;
@@ -23,12 +24,33 @@ enum class SingleInstanceStartResult {
     kSecondaryNoOp,
 };
 
+enum class SingleInstanceMessageKind {
+    kActivation,
+    kLookup,
+};
+
+class SingleInstanceMessage final {
+   public:
+    static SingleInstanceMessage Activation();
+    static SingleInstanceMessage Lookup(QString normalized_lookup);
+
+    SingleInstanceMessageKind Kind() const noexcept;
+    const QString& LookupText() const noexcept;
+
+   private:
+    explicit SingleInstanceMessage(SingleInstanceMessageKind kind,
+                                   QString lookup = {});
+
+    SingleInstanceMessageKind kind_;
+    QString lookup_;
+};
+
 class LinuxSingleInstanceLookup final : public QObject {
     Q_OBJECT
 
    public:
     static constexpr int kForwardTimeoutMilliseconds = 10000;
-    static constexpr qsizetype kMaximumPendingLookups = 32;
+    static constexpr qsizetype kMaximumPendingMessages = 32;
 
     explicit LinuxSingleInstanceLookup(QString endpoint,
                                        QObject* parent = nullptr);
@@ -38,20 +60,21 @@ class LinuxSingleInstanceLookup final : public QObject {
     LinuxSingleInstanceLookup& operator=(const LinuxSingleInstanceLookup&) =
         delete;
 
-    SingleInstanceStartResult Start(const QString& normalized_lookup);
-    void PublishConsumer(std::function<void(QString)> consumer);
+    SingleInstanceStartResult Start(
+        const std::optional<SingleInstanceMessage>& message);
+    void PublishConsumer(std::function<void(SingleInstanceMessage)> consumer);
     bool IsPrimary() const noexcept;
 
    private:
-    bool Forward(const QString& normalized_lookup);
+    bool Forward(const SingleInstanceMessage& message);
     void ReceiveConnections();
     void ReceiveMessage(QObject* connection);
 
     QString endpoint_;
     std::unique_ptr<QLockFile> lock_;
     std::unique_ptr<QLocalServer> server_;
-    QList<QString> pending_;
-    std::function<void(QString)> consumer_;
+    QList<SingleInstanceMessage> pending_;
+    std::function<void(SingleInstanceMessage)> consumer_;
     bool primary_ = false;
 };
 

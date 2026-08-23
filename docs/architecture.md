@@ -6815,9 +6815,22 @@ requests activation. The transport continues to own only bounded normalized
 lookup delivery and has no window dependency.
 
 Ordinary initial startup and a secondary invocation without an accepted lookup
-do not use this activation path. Activation-only commands, desktop metadata,
-broader command forwarding, Windows/macOS behavior, and public or installed
-Core interfaces remain outside this leaf.
+do not use this lookup-coupled activation path.
+
+An exactly bare Linux secondary invocation uses the same private transport and
+sole post-publication consumer but carries a distinct activation message with
+no lookup payload. Widgets performs the existing reveal, restore, raise, and
+activation operation without changing the query or starting navigation. The
+lookup wire representation remains unchanged, rejected command-line input
+remains a no-op, and activation and lookup messages retain FIFO order while
+publication is pending.
+
+This restores pinned legacy `main.cc:365-396` and
+`mainwindow.cc:3997-4003`, together with QtSingleApplication's distinct
+de-minimize, raise, and activate boundary.
+
+Desktop metadata, broader command forwarding, Windows/macOS behavior, and
+public or installed Core interfaces remain outside this boundary.
 
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

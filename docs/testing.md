@@ -5265,6 +5265,14 @@ the transport consumer-count assertions, this pins one GUI activation handoff
 per accepted forwarded lookup after publication. The Linux Release registration
 baseline remains 114 tests.
 
+The same `command_line_lookup_test` registration covers the distinct bare
+activation message. A real secondary helper sends an empty-payload activation
+frame before publication, followed by normalized lookup frames; publication
+drains one activation event and the exact lookups in FIFO order. Rejected input
+still produces no message. The existing Widgets smoke supplies the reveal,
+restore, raise, and activation behavior coverage, so no GUI test registration
+is added and the Linux Release baseline remains exactly 114 tests.
+
 ## Expected Verification Areas
 
 - configure;
