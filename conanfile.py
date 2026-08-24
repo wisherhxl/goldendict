@@ -67,6 +67,8 @@ class GoldenDictRecipe(ConanFile):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
+        if self.settings.os == "Linux":
+            self.options["qt"].qttools = True
 
     def layout(self):
         cmake_layout(self)

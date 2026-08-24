@@ -29,6 +29,7 @@
 #include "legacy_configuration_location.h"
 #include "main_window.h"
 #if defined(Q_OS_LINUX)
+#include "help_window.h"
 #include "linux_display_platform.h"
 #include "linux_single_instance_lookup.h"
 #endif
@@ -410,6 +411,20 @@ int main(int argc, char* argv[]) {
         QStringLiteral(GOLDENDICT_APPLICATION_VERSION));
     QApplication::setOrganizationName(QStringLiteral("GoldenDict"));
 #if defined(Q_OS_LINUX)
+    const int help_presentation_argument =
+        raw_arguments.indexOf(QStringLiteral("--help-presentation-smoke"));
+    if (help_presentation_argument >= 0) {
+        const QString help_directory =
+            help_presentation_argument + 1 < raw_arguments.size()
+                ? raw_arguments[help_presentation_argument + 1]
+                : QString();
+        goldendict::app::HelpWindow help_window(
+            help_directory, QStringLiteral("en_US"), {}, {}, nullptr);
+        return help_window.IsReady() &&
+                       help_window.ShowIdentifier(QStringLiteral("Content"))
+                   ? 0
+                   : 1;
+    }
     const QString single_instance_endpoint =
         goldendict::app::LinuxSingleInstanceEndpoint();
     if (single_instance_endpoint.isEmpty()) {
@@ -1980,9 +1995,16 @@ int main(int argc, char* argv[]) {
             });
     } else if (HasArgument(argc, argv, QStringLiteral("--help-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
-        QTimer::singleShot(0, &window, [&app, &window]() {
-            window.RunHelpMenuSmokeCheck(
-                [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        const int help_argument =
+            raw_arguments.indexOf(QStringLiteral("--help-menu-smoke"));
+        const QString help_directory =
+            help_argument >= 0 && help_argument + 1 < raw_arguments.size()
+                ? raw_arguments[help_argument + 1]
+                : QString();
+        QTimer::singleShot(0, &window, [&app, &window, help_directory]() {
+            window.RunHelpMenuSmokeCheck(help_directory, [&app](bool passed) {
+                app.exit(passed ? 0 : 1);
+            });
         });
     } else if (HasArgument(argc, argv, QStringLiteral("--webengine-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });

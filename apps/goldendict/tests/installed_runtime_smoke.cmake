@@ -153,3 +153,19 @@ if(NOT smoke_result EQUAL 0)
   message(FATAL_ERROR
     "Installed GoldenDict clean-environment smoke failed: ${smoke_result}")
 endif()
+
+execute_process(
+  COMMAND /usr/bin/env -i
+    "PATH=/usr/bin:/bin"
+    "HOME=${TEST_HOME}"
+    "XDG_SESSION_TYPE=x11"
+    "QT_QPA_PLATFORM=offscreen"
+    "XDG_CONFIG_HOME=${TEST_HOME}/config"
+    "XDG_CACHE_HOME=${TEST_HOME}/cache"
+    "${installed_wrapper}" --help-presentation-smoke
+      "${installed_help_directory}"
+  RESULT_VARIABLE help_smoke_result)
+if(NOT help_smoke_result EQUAL 0)
+  message(FATAL_ERROR
+    "Installed GoldenDict help presentation smoke failed: ${help_smoke_result}")
+endif()

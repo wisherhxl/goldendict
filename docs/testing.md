@@ -5304,11 +5304,18 @@ and does not include this conditional smoke.
 The same conditional runtime smoke requires the pinned legacy English and
 Russian Qt help collections in `share/goldendict/help` and verifies their exact
 SHA-256 digests. Verify this with two fresh Release configurations: the normal
-default library mode must register exactly 114 tests and pass 114/114, while a
+default library mode must register exactly 115 tests and pass 115/115, while a
 separate supported `install_mode=runtime` configuration must register and
 explicitly pass `goldendict_installed_runtime_smoke`. Report each mode's
 registration and results separately; the conditional smoke is not part of the
-normal 114-test baseline.
+normal 115-test baseline.
+
+The Linux-only `help_window_test` pins help-language, interface-language, and
+system-locale precedence; Russian selection; English fallback for other or
+malformed values; exact collection filenames; valid Qt Help registration and
+initial `Content` lookup; and contained missing/corrupt-resource failure. The
+existing Help-menu smoke pins the restored `GoldenDict reference` F1 action and
+single lazy presenter without changing query, tabs, or main-window state.
 
 ## Expected Verification Areas
 

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 ti_add_qt_app(goldendict MODULES core network
-  EXTRAS ${qt_link} ${qt_print_support_link})
+  EXTRAS ${qt_link} ${qt_print_support_link} ${qt_help_link})
 target_sources(goldendict PRIVATE
   ../../modules/core/src/application/configuration_transaction_persistence.cc
   ../../modules/core/src/application/configuration_transaction_preparation.cc
@@ -9,6 +9,9 @@ target_sources(goldendict PRIVATE
 target_compile_definitions(goldendict PRIVATE
   GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}")
 if(UNIX AND NOT APPLE)
+  target_sources(goldendict PRIVATE
+    src/help_window.cpp
+    src/help_window.h)
   install(FILES linux/org.goldendict.GoldenDict.desktop
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
     COMPONENT libs)
@@ -23,6 +26,20 @@ if(UNIX AND NOT APPLE)
       help/gdhelp_ru.qch
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/goldendict/help"
     COMPONENT libs)
+endif()
+
+if(UNIX AND NOT APPLE)
+  ti_add_executable(help_window_test
+    tests/help_window_test.cpp
+    src/help_window.cpp
+    src/help_window.h)
+  target_include_directories(help_window_test PRIVATE src)
+  ti_target_link_libraries(help_window_test
+    ${QT_NAMESPACE}::Help ${QT_NAMESPACE}::Test ${QT_NAMESPACE}::Widgets)
+  add_test(NAME help_window_test COMMAND help_window_test)
+  set_tests_properties(help_window_test PROPERTIES
+    ENVIRONMENT
+      "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;GOLDENDICT_HELP_TEST_DIR=${CMAKE_CURRENT_SOURCE_DIR}/help")
 endif()
 if(UNIX AND NOT APPLE AND TIGER_INSTALL_RUNTIME_DEPENDENCIES)
   set_target_properties(goldendict PROPERTIES
@@ -304,7 +321,8 @@ set_tests_properties(goldendict_favorites_menu_smoke PROPERTIES
   TIMEOUT 20)
 
 add_test(NAME goldendict_help_menu_smoke
-  COMMAND $<TARGET_FILE:goldendict> --help-menu-smoke)
+  COMMAND $<TARGET_FILE:goldendict> --help-menu-smoke
+    ${CMAKE_CURRENT_SOURCE_DIR}/help)
 set_tests_properties(goldendict_help_menu_smoke PROPERTIES
   ENVIRONMENT
     "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/cache"

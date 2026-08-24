@@ -12,6 +12,10 @@ set(qt_modules
 
 find_package(Qt6 6.11.1 REQUIRED COMPONENTS ${qt_modules})
 find_package(Qt6 6.11.1 REQUIRED COMPONENTS PrintSupport)
+if(UNIX AND NOT APPLE)
+    find_package(Qt6 6.11.1 REQUIRED COMPONENTS Help)
+    set(qt_help_link "Qt6::Help")
+endif()
 set(QT_MAJOR 6)
 set(QT_NAMESPACE Qt6)
 set(QT_DIR ${Qt6_DIR})

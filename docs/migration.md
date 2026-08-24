@@ -6420,6 +6420,20 @@ separate fresh supported `install_mode=runtime` Release configuration registers
 and explicitly runs `goldendict_installed_runtime_smoke`. No later successor is
 selected.
 
+The next bounded Phase 9 Linux leaf privately presents those installed help
+collections through Qt Help and Widgets. The existing help-language,
+interface-language, and system-locale precedence is retained, but selection is
+bounded to Russian or the English fallback. The application composition root
+owns one lazy help window and restores the pinned `GoldenDict reference`/F1
+entry without adding a Core or facade operation.
+
+Help settings UI, translation generation, help geometry and zoom persistence,
+full-text help-intent wiring, Windows/macOS, Debug, public or installed Core
+changes, and unrelated refactoring remain excluded. The Linux Release library
+baseline is 115 tests after the focused private help test; runtime mode adds the
+existing conditional installed-runtime smoke. The next dependency-ready leaf
+is private full-text help-intent routing to the installed collection.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

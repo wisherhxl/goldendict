@@ -36,6 +36,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QLocale>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -80,6 +81,9 @@
 #include "full_text_search_dialog.h"
 #include "goldendict/core/desktop_facade.h"
 #include "group_editor.h"
+#if defined(Q_OS_LINUX)
+#include "help_window.h"
+#endif
 #include "preferences_dialog.h"
 #include "rendered_text_match_plan_controller.h"
 #include "source_directories_dialog.h"
@@ -1061,6 +1065,16 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     UpdateFavoritesActions();
     auto* help_menu = app_menu_bar->addMenu(QStringLiteral("&Help"));
     help_menu->setObjectName(QStringLiteral("menu_Help"));
+#if defined(Q_OS_LINUX)
+    show_reference_action_ =
+        new QAction(QStringLiteral("GoldenDict reference"), this);
+    show_reference_action_->setObjectName(QStringLiteral("showReference"));
+    show_reference_action_->setShortcut(QKeySequence(Qt::Key_F1));
+    show_reference_action_->setShortcutContext(Qt::WindowShortcut);
+    show_reference_action_->setMenuRole(QAction::NoRole);
+    help_menu->addAction(show_reference_action_);
+    help_menu->addSeparator();
+#endif
     visit_homepage_action_ = new QAction(QStringLiteral("&Homepage"), this);
     visit_homepage_action_->setObjectName(QStringLiteral("visitHomepage"));
     visit_homepage_action_->setMenuRole(QAction::NoRole);
@@ -1322,6 +1336,32 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     });
     connect(full_text_search_action_, &QAction::triggered, this,
             &MainWindow::ShowFullTextSearch);
+#if defined(Q_OS_LINUX)
+    connect(show_reference_action_, &QAction::triggered, this, [this]() {
+        if (help_window_ != nullptr) {
+            help_window_->show();
+            help_window_->raise();
+            help_window_->activateWindow();
+            return;
+        }
+        const QString help_directory =
+            help_directory_override_.isEmpty()
+                ? goldendict::app::InstalledHelpDirectory()
+                : help_directory_override_;
+        auto* window = new goldendict::app::HelpWindow(
+            help_directory, QString::fromStdString(preferences_.help_language),
+            QString::fromStdString(preferences_.interface_language),
+            QLocale::system().name(), this);
+        if (!window->IsReady()) {
+            window->deleteLater();
+            return;
+        }
+        window->setAttribute(Qt::WA_DeleteOnClose, false);
+        help_window_ = window;
+        window->ShowIdentifier(QStringLiteral("Content"));
+        window->show();
+    });
+#endif
     connect(visit_homepage_action_, &QAction::triggered, this, [this]() {
         DispatchSafeExternalUrl(
             QUrl(QStringLiteral("https://goldendict.org/")));
@@ -1424,7 +1464,8 @@ void MainWindow::ShowAboutDialog() {
     dialog.exec();
 }
 
-void MainWindow::RunHelpMenuSmokeCheck(std::function<void(bool)> completion) {
+void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
+                                       std::function<void(bool)> completion) {
     auto* help_menu = findChild<QMenu*>(QStringLiteral("menu_Help"));
     if (help_menu == nullptr) {
         completion(false);
@@ -1435,10 +1476,21 @@ void MainWindow::RunHelpMenuSmokeCheck(std::function<void(bool)> completion) {
         menuBar()->actions().size() == 7 &&
         menuBar()->actions().back()->menu() == help_menu &&
         findChildren<QMenu*>(QStringLiteral("menu_Help")).size() == 1 &&
-        help_menu->title() == QStringLiteral("&Help") && actions.size() == 5 &&
-        actions[0] == visit_homepage_action_ && actions[1]->isSeparator() &&
-        actions[2] == open_config_folder_action_ && actions[3]->isSeparator() &&
-        actions[4] == about_action_ &&
+        help_menu->title() == QStringLiteral("&Help") &&
+#if defined(Q_OS_LINUX)
+        actions.size() == 7 && actions[0] == show_reference_action_ &&
+        actions[1]->isSeparator() && actions[2] == visit_homepage_action_ &&
+        actions[3]->isSeparator() && actions[4] == open_config_folder_action_ &&
+        actions[5]->isSeparator() && actions[6] == about_action_ &&
+        show_reference_action_->text() ==
+            QStringLiteral("GoldenDict reference") &&
+        show_reference_action_->shortcut() == QKeySequence(Qt::Key_F1) &&
+        show_reference_action_->shortcutContext() == Qt::WindowShortcut &&
+#else
+        actions.size() == 5 && actions[0] == visit_homepage_action_ &&
+        actions[1]->isSeparator() && actions[2] == open_config_folder_action_ &&
+        actions[3]->isSeparator() && actions[4] == about_action_ &&
+#endif
         visit_homepage_action_->text() == QStringLiteral("&Homepage") &&
         visit_homepage_action_->menuRole() == QAction::NoRole &&
         visit_homepage_action_->shortcut().isEmpty() &&
@@ -1455,7 +1507,11 @@ void MainWindow::RunHelpMenuSmokeCheck(std::function<void(bool)> completion) {
         findChildren<QAction*>(QStringLiteral("openConfigFolder")).size() ==
             1 &&
         findChildren<QAction*>(QStringLiteral("about")).size() == 1 &&
+#if defined(Q_OS_LINUX)
+        findChildren<QAction*>(QStringLiteral("showReference")).size() == 1 &&
+#else
         findChildren<QAction*>(QStringLiteral("showReference")).isEmpty() &&
+#endif
         findChildren<QAction*>(QStringLiteral("visitForum")).isEmpty();
 
     const auto all_actions = findChildren<QAction*>();
@@ -1464,16 +1520,38 @@ void MainWindow::RunHelpMenuSmokeCheck(std::function<void(bool)> completion) {
                            [](const QAction* action) {
                                return action->menuRole() == QAction::AboutRole;
                            }) == 1 &&
-             std::none_of(all_actions.cbegin(), all_actions.cend(),
-                          [](const QAction* action) {
-                              return action->shortcuts().contains(
-                                  QKeySequence(Qt::Key_F1));
-                          });
+             std::count_if(all_actions.cbegin(), all_actions.cend(),
+                           [](const QAction* action) {
+                               return action->shortcuts().contains(
+                                   QKeySequence(Qt::Key_F1));
+                           }) ==
+#if defined(Q_OS_LINUX)
+                 1;
+#else
+                 0;
+#endif
 
+#if defined(Q_OS_LINUX)
+    help_directory_override_ = help_directory;
     const std::string initial_layout = CaptureMainWindowState();
     const QString initial_query = query_->text();
     const int initial_tab_count = article_tabs_->count();
     const int initial_tab_index = article_tabs_->currentIndex();
+    show_reference_action_->trigger();
+    auto* first_help_window = help_window_.data();
+    show_reference_action_->trigger();
+    passed = passed && first_help_window != nullptr &&
+             first_help_window == help_window_.data() &&
+             first_help_window->isVisible() && first_help_window->IsReady();
+#else
+    Q_UNUSED(help_directory);
+#endif
+#if !defined(Q_OS_LINUX)
+    const std::string initial_layout = CaptureMainWindowState();
+    const QString initial_query = query_->text();
+    const int initial_tab_count = article_tabs_->count();
+    const int initial_tab_index = article_tabs_->currentIndex();
+#endif
     QList<QUrl> dispatched_urls;
     external_url_dispatcher_ = [&dispatched_urls](const QUrl& url) {
         dispatched_urls.push_back(url);

@@ -30,6 +30,7 @@ class DictionaryBrowser;
 namespace goldendict::app {
 class FullTextQueryComposer;
 class FullTextSearchDialog;
+class HelpWindow;
 struct FullTextResultActivationIntent;
 }  // namespace goldendict::app
 class QAction;
@@ -307,7 +308,8 @@ class MainWindow final : public QMainWindow {
                                std::function<void(bool)> completion);
     void RunEditMenuSmokeCheck(std::function<void(bool)> completion);
     void RunSearchMenuSmokeCheck(std::function<void(bool)> completion);
-    void RunHelpMenuSmokeCheck(std::function<void(bool)> completion);
+    void RunHelpMenuSmokeCheck(const QString& help_directory,
+                               std::function<void(bool)> completion);
     void RunArticleTabSessionRestartSmokeCheck(
         bool prepare, std::function<void(bool)> completion);
 
@@ -579,6 +581,11 @@ class MainWindow final : public QMainWindow {
         nullptr;
     std::string full_text_dialog_geometry_;
     QAction* visit_homepage_action_ = nullptr;
+#if defined(Q_OS_LINUX)
+    QAction* show_reference_action_ = nullptr;
+    QPointer<goldendict::app::HelpWindow> help_window_;
+    QString help_directory_override_;
+#endif
     QAction* open_config_folder_action_ = nullptr;
     QAction* about_action_ = nullptr;
     QString configuration_directory_;

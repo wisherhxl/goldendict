@@ -85,7 +85,10 @@ Linux runtime installation also places GoldenDict's desktop launcher in
 `share/applications` and its 256-pixel icon in the corresponding hicolor
 application-icon directory. Matching AppStream metainfo is installed in
 `share/metainfo`. The pinned English and Russian Qt help collections are
-installed in `share/goldendict/help`. Desktop-environment cache and handler
+presented by the Linux executable through Qt Help. The Conan Qt dependency
+therefore enables its `qttools` option on Linux only; `Qt6::Help` remains a
+private application dependency. The collections are installed in
+`share/goldendict/help`. Desktop-environment cache and handler
 registration remain the installer's or system administrator's responsibility.
 
 Use `-o '&:install_mode=runtime'` when preparing deployable install/package

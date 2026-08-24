@@ -6871,5 +6871,13 @@ help collections under `share/goldendict/help`. This resource boundary does
 not select a help presentation, locale policy, configuration field, Qt Help
 dependency, facade operation, or public Core interface.
 
+The application now also owns a Linux-only private Qt Help/Widgets presenter.
+It locates that install directory relative to the executable, applies the
+existing help-language, interface-language, then system-locale precedence, and
+bounds the result to Russian or the English fallback. `MainWindow` composes one
+lazy help dialog behind the pinned `GoldenDict reference` F1 action. Qt Help is
+an executable-private dependency; shared modules and installed Core contracts
+remain unchanged.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.
