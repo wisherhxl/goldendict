@@ -4,6 +4,7 @@
 
 #include <algorithm>
 
+#include <QAction>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -100,12 +101,29 @@ SourceDirectoriesDialog::SourceDirectoriesDialog(
     validation_error_->setWordWrap(true);
     validation_error_->hide();
     layout->addWidget(validation_error_);
-    auto* buttons = new QDialogButtonBox(
-        QDialogButtonBox::Apply | QDialogButtonBox::Cancel, this);
+    auto standard_buttons = QDialogButtonBox::Apply | QDialogButtonBox::Cancel;
+#if defined(Q_OS_LINUX)
+    standard_buttons |= QDialogButtonBox::Help;
+#endif
+    auto* buttons = new QDialogButtonBox(standard_buttons, this);
+    buttons->setObjectName(QStringLiteral("sourceDirectoriesButtonBox"));
     buttons->button(QDialogButtonBox::Apply)->setText(QStringLiteral("Apply"));
     connect(buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked,
             this, &SourceDirectoriesDialog::Apply);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+#if defined(Q_OS_LINUX)
+    buttons->button(QDialogButtonBox::Help)
+        ->setObjectName(QStringLiteral("sourceDirectoriesHelpButton"));
+    connect(buttons, &QDialogButtonBox::helpRequested, this,
+            &SourceDirectoriesDialog::HelpRequested);
+    auto* help_action = new QAction(this);
+    help_action->setObjectName(QStringLiteral("sourceDirectoriesHelpAction"));
+    help_action->setShortcut(QKeySequence(Qt::Key_F1));
+    help_action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    addAction(help_action);
+    connect(help_action, &QAction::triggered, this,
+            &SourceDirectoriesDialog::HelpRequested);
+#endif
     layout->addWidget(buttons);
 
     for (const auto& path : dictionary_paths)

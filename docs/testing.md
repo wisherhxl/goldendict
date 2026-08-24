@@ -5322,6 +5322,11 @@ dialog's existing button intent through the same lazy presenter to
 `fulltextsearch.html`. It also routes the dictionary browser's private Help/F1
 intent through that presenter to `headwords.html` while preserving the
 single help-window identity; no test registration is added.
+The same smoke routes the Manage Dictionaries dialog's Linux-private Help/F1
+intent to `dicts.html` through that same presenter while
+preserving its Apply/Cancel behavior. The Release baseline remains 115 tests;
+because this route changes no installed or runtime path, the installed-runtime
+smoke is not applicable to this leaf.
 
 ## Expected Verification Areas
 

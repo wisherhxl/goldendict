@@ -20,6 +20,7 @@ enum class HelpIntent {
     kFullTextSearch,
     kDictionaryHeadwords,
     kPreferences,
+    kManageDictionaries,
 };
 
 QString HelpIdentifier(HelpIntent intent);

@@ -6460,6 +6460,19 @@ library baseline remains exactly 115 tests. The next dependency unlocked is a
 fresh bounded audit of the remaining dialog-owned help routes; no ownership
 choice or successor is selected.
 
+The next bounded Phase 9 Linux leaf restores the pinned legacy Manage
+Dictionaries `Help` button and dialog-scoped F1 action, then routes their
+single private intent through the composition-root-owned lazy presenter to the
+installed `Manage dictionaries` identifier. The migrated source-directories
+dialog remains presentation-only and does not own a help window.
+
+The leaf adds no test registration, Core/facade/installed API, help settings or
+persistence, collection or installed-runtime changes, translation generation,
+Windows/macOS behavior, Debug gate, dependency, or unrelated refactoring. The
+Linux Release library baseline remains exactly 115 tests. The next dependency
+unlocked is a fresh bounded audit of the remaining help routes and settings;
+no successor is selected or ranked.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

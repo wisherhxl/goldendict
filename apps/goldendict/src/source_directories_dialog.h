@@ -68,6 +68,11 @@ class SourceDirectoriesDialog final : public QDialog {
     std::vector<goldendict::core::ExternalProgramSourceConfiguration>
     ExternalProgramSources();
 
+#if defined(Q_OS_LINUX)
+   signals:
+    void HelpRequested();
+#endif
+
    private:
     QWidget* CreateDictionaryTab();
     QWidget* CreateSoundTab();

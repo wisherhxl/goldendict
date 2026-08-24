@@ -1579,6 +1579,36 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
     };
     preferences_action_->trigger();
     preferences_dialog_executor_ = {};
+    source_dialog_executor_ = [&passed, this, first_help_window,
+                               help_browser](SourceDirectoriesDialog& dialog) {
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("sourceDirectoriesButtonBox"));
+        auto* help_action = dialog.findChild<QAction*>(
+            QStringLiteral("sourceDirectoriesHelpAction"));
+        auto* help_button = buttons == nullptr
+                                ? nullptr
+                                : buttons->button(QDialogButtonBox::Help);
+        passed =
+            passed && help_button != nullptr && help_action != nullptr &&
+            help_button->objectName() ==
+                QStringLiteral("sourceDirectoriesHelpButton") &&
+            help_action->shortcut() == QKeySequence(Qt::Key_F1) &&
+            help_action->shortcutContext() == Qt::WidgetWithChildrenShortcut;
+        if (help_button != nullptr)
+            help_button->click();
+        passed = passed && first_help_window == help_window_.data() &&
+                 help_browser->source().path().endsWith(
+                     QStringLiteral("/dicts.html"));
+        if (help_action != nullptr)
+            help_action->trigger();
+        passed = passed && first_help_window == help_window_.data() &&
+                 help_browser->source().path().endsWith(
+                     QStringLiteral("/dicts.html"));
+        dialog.reject();
+        return dialog.result();
+    };
+    EditSourceDirectories();
+    source_dialog_executor_ = {};
 #else
     Q_UNUSED(help_directory);
 #endif
@@ -10970,6 +11000,12 @@ void MainWindow::EditSourceDirectories() {
             dictionary_paths_, sound_directories_, mediawiki_sources_,
             website_sources_, forvo_sources_, dict_server_sources_,
             external_program_sources_, source_apply_callback_, this);
+#if defined(Q_OS_LINUX)
+        connect(&dialog, &SourceDirectoriesDialog::HelpRequested, this,
+                [this]() {
+                    ShowHelp(goldendict::app::HelpIntent::kManageDictionaries);
+                });
+#endif
         if (source_dialog_executor_)
             source_dialog_executor_(dialog);
         else
