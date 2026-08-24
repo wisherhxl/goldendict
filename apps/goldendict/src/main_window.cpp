@@ -1549,6 +1549,36 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
              first_help_window == help_window_.data() &&
              help_browser->source().path().endsWith(
                  QStringLiteral("/headwords.html"));
+    preferences_dialog_executor_ = [&passed, this, first_help_window,
+                                    help_browser](PreferencesDialog& dialog) {
+        auto* buttons = dialog.findChild<QDialogButtonBox*>(
+            QStringLiteral("preferencesButtonBox"));
+        auto* help_action =
+            dialog.findChild<QAction*>(QStringLiteral("preferencesHelpAction"));
+        auto* help_button = buttons == nullptr
+                                ? nullptr
+                                : buttons->button(QDialogButtonBox::Help);
+        passed =
+            passed && help_button != nullptr && help_action != nullptr &&
+            help_button->objectName() ==
+                QStringLiteral("preferencesHelpButton") &&
+            help_action->shortcut() == QKeySequence(Qt::Key_F1) &&
+            help_action->shortcutContext() == Qt::WidgetWithChildrenShortcut;
+        if (help_button != nullptr)
+            help_button->click();
+        passed = passed && first_help_window == help_window_.data() &&
+                 help_browser->source().path().endsWith(
+                     QStringLiteral("/options.html"));
+        if (help_action != nullptr)
+            help_action->trigger();
+        passed = passed && first_help_window == help_window_.data() &&
+                 help_browser->source().path().endsWith(
+                     QStringLiteral("/options.html"));
+        dialog.reject();
+        return dialog.result();
+    };
+    preferences_action_->trigger();
+    preferences_dialog_executor_ = {};
 #else
     Q_UNUSED(help_directory);
 #endif
@@ -10970,6 +11000,11 @@ void MainWindow::EditPreferences() {
                   },
             network_cache_directory_,
             this);
+#if defined(Q_OS_LINUX)
+        connect(&dialog, &PreferencesDialog::HelpRequested, this, [this]() {
+            ShowHelp(goldendict::app::HelpIntent::kPreferences);
+        });
+#endif
         if (preferences_dialog_executor_)
             preferences_dialog_executor_(dialog);
         else

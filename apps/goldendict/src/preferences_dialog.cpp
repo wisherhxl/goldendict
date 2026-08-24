@@ -4,6 +4,7 @@
 
 #include <utility>
 
+#include <QAction>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -354,13 +355,29 @@ PreferencesDialog::PreferencesDialog(
     validation_error_->hide();
     layout->addWidget(validation_error_);
 
-    auto* buttons = new QDialogButtonBox(
-        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    auto standard_buttons = QDialogButtonBox::Ok | QDialogButtonBox::Cancel;
+#if defined(Q_OS_LINUX)
+    standard_buttons |= QDialogButtonBox::Help;
+#endif
+    auto* buttons = new QDialogButtonBox(standard_buttons, this);
     buttons->setObjectName(QStringLiteral("preferencesButtonBox"));
     connect(buttons->button(QDialogButtonBox::Ok), &QPushButton::clicked, this,
             &PreferencesDialog::Apply);
     connect(buttons, &QDialogButtonBox::rejected, this,
             &PreferencesDialog::reject);
+#if defined(Q_OS_LINUX)
+    buttons->button(QDialogButtonBox::Help)
+        ->setObjectName(QStringLiteral("preferencesHelpButton"));
+    connect(buttons, &QDialogButtonBox::helpRequested, this,
+            &PreferencesDialog::HelpRequested);
+    auto* help_action = new QAction(this);
+    help_action->setObjectName(QStringLiteral("preferencesHelpAction"));
+    help_action->setShortcut(QKeySequence(Qt::Key_F1));
+    help_action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    addAction(help_action);
+    connect(help_action, &QAction::triggered, this,
+            &PreferencesDialog::HelpRequested);
+#endif
     layout->addWidget(buttons);
 }
 

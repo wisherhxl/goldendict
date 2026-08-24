@@ -29,6 +29,11 @@ class PreferencesDialog final : public QDialog {
         ApplyCallback apply_callback, const QString& network_cache_directory,
         QWidget* parent = nullptr);
 
+#if defined(Q_OS_LINUX)
+   signals:
+    void HelpRequested();
+#endif
+
    private:
     void Apply();
 
