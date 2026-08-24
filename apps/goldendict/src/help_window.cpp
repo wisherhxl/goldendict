@@ -42,6 +42,8 @@ QString HelpIdentifier(HelpIntent intent) {
             return QStringLiteral("Content");
         case HelpIntent::kFullTextSearch:
             return QStringLiteral("Full-text search");
+        case HelpIntent::kDictionaryHeadwords:
+            return QStringLiteral("Dictionary headwords");
     }
     return {};
 }

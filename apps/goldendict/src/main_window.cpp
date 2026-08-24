@@ -1537,6 +1537,18 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
              full_text_help_action != nullptr && help_browser != nullptr &&
              help_browser->source().path().endsWith(
                  QStringLiteral("/fulltextsearch.html"));
+    ShowDictionaryBrowser();
+    auto* dictionary_help_action =
+        dictionary_browser_ == nullptr
+            ? nullptr
+            : dictionary_browser_->findChild<QAction*>(
+                  QStringLiteral("dictionaryBrowserHelpAction"));
+    if (dictionary_help_action != nullptr)
+        dictionary_help_action->trigger();
+    passed = passed && dictionary_help_action != nullptr &&
+             first_help_window == help_window_.data() &&
+             help_browser->source().path().endsWith(
+                 QStringLiteral("/headwords.html"));
 #else
     Q_UNUSED(help_directory);
 #endif
@@ -10439,6 +10451,13 @@ void MainWindow::ShowDictionaryBrowser() {
                     query_->setText(word);
                     StartLookup();
                 });
+#if defined(Q_OS_LINUX)
+        connect(dictionary_browser_, &DictionaryBrowser::HelpRequested, this,
+                [this]() {
+                    ShowHelp(
+                        goldendict::app::HelpIntent::kDictionaryHeadwords);
+                });
+#endif
     }
     dictionary_browser_->show();
     dictionary_browser_->raise();

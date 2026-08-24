@@ -57,6 +57,7 @@ class DictionaryBrowser final : public QDialog {
 
    signals:
     void HeadwordSelected(const QString& headword);
+    void HelpRequested();
 
    private:
     void RefreshDictionaryInfo();
@@ -88,6 +89,7 @@ class DictionaryBrowser final : public QDialog {
     QListWidget* headwords_ = nullptr;
     QLabel* result_status_ = nullptr;
     QPushButton* export_headwords_ = nullptr;
+    QPushButton* help_button_ = nullptr;
     QProgressDialog* export_progress_ = nullptr;
     QTimer* export_poll_timer_ = nullptr;
     std::unique_ptr<goldendict::core::HeadwordExportOperation>

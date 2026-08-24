@@ -47,6 +47,8 @@ void HelpWindowTest::MapsPrivateHelpIntents() {
     QCOMPARE(HelpIdentifier(HelpIntent::kReference), QStringLiteral("Content"));
     QCOMPARE(HelpIdentifier(HelpIntent::kFullTextSearch),
              QStringLiteral("Full-text search"));
+    QCOMPARE(HelpIdentifier(HelpIntent::kDictionaryHeadwords),
+             QStringLiteral("Dictionary headwords"));
 }
 
 void HelpWindowTest::OpensInstalledCollections() {
@@ -61,6 +63,8 @@ void HelpWindowTest::OpensInstalledCollections() {
             goldendict::app::HelpIntent::kReference)));
         QVERIFY(window.ShowIdentifier(goldendict::app::HelpIdentifier(
             goldendict::app::HelpIntent::kFullTextSearch)));
+        QVERIFY(window.ShowIdentifier(goldendict::app::HelpIdentifier(
+            goldendict::app::HelpIntent::kDictionaryHeadwords)));
         QCOMPARE(window.windowTitle(), QStringLiteral("GoldenDict help"));
         QVERIFY(!(window.windowFlags() & Qt::WindowContextHelpButtonHint));
         auto* browser =
@@ -73,7 +77,7 @@ void HelpWindowTest::OpensInstalledCollections() {
             window.findChild<QAction*>(QStringLiteral("helpNormalSizeAction"));
         QVERIFY(browser != nullptr);
         QVERIFY(browser->source().path().endsWith(
-            QStringLiteral("/fulltextsearch.html")));
+            QStringLiteral("/headwords.html")));
         QVERIFY(zoom_in != nullptr);
         QVERIFY(zoom_out != nullptr);
         QVERIFY(normal != nullptr);

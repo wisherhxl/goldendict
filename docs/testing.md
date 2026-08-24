@@ -5319,7 +5319,9 @@ single lazy presenter without changing query, tabs, or main-window state.
 The same private test resolves the exact `Full-text search` identifier in both
 installed collections. The Help-menu smoke routes the published full-text
 dialog's existing button intent through the same lazy presenter to
-`fulltextsearch.html`; no test registration is added.
+`fulltextsearch.html`. It also routes the dictionary browser's private Help/F1
+intent through that presenter to `headwords.html` while preserving the
+single help-window identity; no test registration is added.
 
 ## Expected Verification Areas
 

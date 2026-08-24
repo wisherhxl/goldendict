@@ -5,6 +5,7 @@
 #include <limits>
 #include <utility>
 
+#include <QAction>
 #include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>
@@ -128,7 +129,19 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
         new QPushButton(QStringLiteral("Export All Headwords..."), this);
     export_headwords_->setObjectName(QStringLiteral("exportHeadwords"));
     export_headwords_->setEnabled(false);
-    layout->addWidget(export_headwords_);
+    help_button_ = new QPushButton(QStringLiteral("Help"), this);
+    help_button_->setObjectName(QStringLiteral("dictionaryBrowserHelpButton"));
+    auto* bottom_actions = new QHBoxLayout();
+    bottom_actions->addWidget(export_headwords_);
+    bottom_actions->addStretch(1);
+    bottom_actions->addWidget(help_button_);
+    layout->addLayout(bottom_actions);
+
+    auto* help_action = new QAction(this);
+    help_action->setObjectName(QStringLiteral("dictionaryBrowserHelpAction"));
+    help_action->setShortcut(QKeySequence(Qt::Key_F1));
+    help_action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    addAction(help_action);
 
     connect(dictionaries_, qOverload<int>(&QComboBox::currentIndexChanged),
             this, [this]() {
@@ -180,6 +193,10 @@ DictionaryBrowser::DictionaryBrowser(QWidget* parent) : QDialog(parent) {
             QDesktopServices::openUrl(QUrl::fromLocalFile(directory));
         }
     });
+    connect(help_button_, &QPushButton::clicked, this,
+            &DictionaryBrowser::HelpRequested);
+    connect(help_action, &QAction::triggered, this,
+            &DictionaryBrowser::HelpRequested);
 }
 
 DictionaryBrowser::~DictionaryBrowser() {

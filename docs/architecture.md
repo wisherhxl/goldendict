@@ -6885,5 +6885,12 @@ installed collection. Only a published dialog is connected, so prepared
 Widgets candidates remain inert. The routing adds no Core, facade, installed,
 configuration, or non-Linux contract.
 
+The composition-root-owned dictionary browser also routes its private `Help`
+button and dialog-scoped F1 intent through that same presenter to the pinned
+`Dictionary headwords` identifier. This preserves the legacy shared-window
+route without giving the browser Qt Help ownership or adding a Core, facade,
+installed, configuration, or non-Linux contract. Preferences and Manage
+Dictionaries retain an unresolved legacy dialog-owned-help ownership choice.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

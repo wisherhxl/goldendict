@@ -6446,6 +6446,20 @@ library baseline remains exactly 115 tests, and runtime mode retains its
 conditional installed-runtime smoke. The next dependency unlocked is a fresh
 bounded help-parity audit; no successor is selected or ranked.
 
+That bounded audit identifies one independently dependency-ready successor:
+the migrated dictionary browser restores its pinned legacy `Help` button and
+dialog-scoped F1 action, then routes their single private intent through the
+same lazy Linux presenter to `Dictionary headwords`. Legacy Preferences and
+Manage Dictionaries help remain separate because their dialog-owned help
+windows require a composition and ownership decision.
+
+The leaf adds no test registration, Core/facade/installed API, help settings or
+persistence, collection changes, translation generation, Windows/macOS
+behavior, Debug gate, dependency, or unrelated refactoring. The Linux Release
+library baseline remains exactly 115 tests. The next dependency unlocked is a
+fresh bounded audit of the remaining dialog-owned help routes; no ownership
+choice or successor is selected.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

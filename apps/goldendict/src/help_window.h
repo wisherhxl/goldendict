@@ -18,6 +18,7 @@ namespace goldendict::app {
 enum class HelpIntent {
     kReference,
     kFullTextSearch,
+    kDictionaryHeadwords,
 };
 
 QString HelpIdentifier(HelpIntent intent);
