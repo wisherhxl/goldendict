@@ -1558,8 +1558,17 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
         auto* help_button = buttons == nullptr
                                 ? nullptr
                                 : buttons->button(QDialogButtonBox::Help);
+        auto* help_language =
+            dialog.findChild<QComboBox*>(QStringLiteral("helpLanguage"));
         passed =
             passed && help_button != nullptr && help_action != nullptr &&
+            help_language != nullptr && help_language->count() == 3 &&
+            help_language->itemText(0) == QStringLiteral("Default") &&
+            help_language->itemData(0).toString().isEmpty() &&
+            help_language->itemText(1) == QStringLiteral("English") &&
+            help_language->itemData(1).toString() == QStringLiteral("en_US") &&
+            help_language->itemText(2) == QStringLiteral("Russian") &&
+            help_language->itemData(2).toString() == QStringLiteral("ru_RU") &&
             help_button->objectName() ==
                 QStringLiteral("preferencesHelpButton") &&
             help_action->shortcut() == QKeySequence(Qt::Key_F1) &&
@@ -1574,11 +1583,34 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
         passed = passed && first_help_window == help_window_.data() &&
                  help_browser->source().path().endsWith(
                      QStringLiteral("/options.html"));
-        dialog.reject();
+        if (help_language != nullptr)
+            help_language->setCurrentIndex(
+                help_language->currentIndex() == 2 ? 1 : 2);
+        auto* ok = buttons == nullptr ? nullptr
+                                      : buttons->button(QDialogButtonBox::Ok);
+        if (ok != nullptr)
+            ok->click();
+        passed =
+            passed && ok != nullptr && dialog.result() == QDialog::Accepted;
         return dialog.result();
     };
     preferences_action_->trigger();
     preferences_dialog_executor_ = {};
+    passed = passed && help_window_ == nullptr &&
+             (preferences_.help_language == "en_US" ||
+              preferences_.help_language == "ru_RU");
+    show_reference_action_->trigger();
+    first_help_window = help_window_.data();
+    help_browser = first_help_window == nullptr
+                       ? nullptr
+                       : first_help_window->findChild<QTextBrowser*>(
+                             QStringLiteral("helpBrowser"));
+    passed = passed && first_help_window != nullptr &&
+             help_browser != nullptr &&
+             first_help_window->CollectionPath().endsWith(
+                 preferences_.help_language == "ru_RU"
+                     ? QStringLiteral("/gdhelp_ru.qch")
+                     : QStringLiteral("/gdhelp_en.qch"));
     source_dialog_executor_ = [&passed, this, first_help_window,
                                help_browser](SourceDirectoriesDialog& dialog) {
         auto* buttons = dialog.findChild<QDialogButtonBox*>(
@@ -10052,6 +10084,13 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
 void MainWindow::SetPreferences(
     const goldendict::core::ApplicationPreferences& preferences) {
     AdvancePresentationMutationEpoch();
+#if defined(Q_OS_LINUX)
+    if (preferences_.help_language != preferences.help_language &&
+        help_window_ != nullptr) {
+        delete help_window_.data();
+        help_window_ = nullptr;
+    }
+#endif
     preferences_ = preferences;
     if (!preferences_.mru_tab_order)
         FinishMruTraversal();

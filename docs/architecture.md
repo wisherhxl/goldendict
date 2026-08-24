@@ -6890,7 +6890,16 @@ button and dialog-scoped F1 intent through that same presenter to the pinned
 `Dictionary headwords` identifier. This preserves the legacy shared-window
 route without giving the browser Qt Help ownership or adding a Core, facade,
 installed, configuration, or non-Linux contract. Preferences and Manage
-Dictionaries retain an unresolved legacy dialog-owned-help ownership choice.
+Dictionaries likewise emit private Help/F1 intent to the composition root;
+neither dialog owns a presenter.
+
+Linux Preferences exposes the bounded installed help languages through the
+existing persisted `help_language` preference: Default retains the established
+interface-language/system-locale precedence, while English and Russian select
+their installed collections explicitly. An accepted language change makes
+`MainWindow` discard its owned lazy presenter so the next request recreates it
+with the selected collection. This adds no dialog-owned presenter, side store,
+Core field, facade operation, installed API, or non-Linux behavior.
 
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

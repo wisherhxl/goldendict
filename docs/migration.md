@@ -6473,6 +6473,21 @@ Linux Release library baseline remains exactly 115 tests. The next dependency
 unlocked is a fresh bounded audit of the remaining help routes and settings;
 no successor is selected or ranked.
 
+That bounded audit selects one dependency-ready Linux settings leaf. The
+Preferences General page now exposes the installed help collections as
+`Default`, `English`, and `Russian`, using the already persisted
+`help_language` preference. Default retains the existing help-language,
+interface-language, then system-locale selection path. Accepting a changed
+choice invalidates the composition-root-owned lazy presenter; the next help
+request recreates it with the selected collection.
+
+The leaf adds no configuration field, Core/facade/installed API, dialog-owned
+presenter, collection or installed-runtime change, translation generation,
+Windows/macOS behavior, Debug gate, dependency, or unrelated refactoring. The
+Linux Release library baseline remains exactly 115 tests. Help geometry and
+zoom persistence require separate configuration-backed leaves and remain
+unselected.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

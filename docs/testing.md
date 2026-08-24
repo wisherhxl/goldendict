@@ -5327,6 +5327,14 @@ intent to `dicts.html` through that same presenter while
 preserving its Apply/Cancel behavior. The Release baseline remains 115 tests;
 because this route changes no installed or runtime path, the installed-runtime
 smoke is not applicable to this leaf.
+The same smoke pins the Linux Preferences Help language control's exact
+Default/English/Russian values, accepts a changed explicit installed language
+through the production apply path, verifies that the old composition-root-owned
+presenter is discarded, and observes the next reference request using the
+selected collection. Existing Core configuration tests remain authoritative
+for current and strict legacy `help_language` persistence. No test registration
+or installed/runtime path changes; the Release baseline remains 115 tests and
+installed-runtime smoke is not applicable.
 
 ## Expected Verification Areas
 

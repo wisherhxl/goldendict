@@ -1876,7 +1876,7 @@ unchanged. The Release baseline remains 114 tests and no successor is selected.
 | Core styles for vertical slice | slice | Phase 4/7 | responsive shell and sanitizer tests |
 | Complete styles and icons | mapped | Phase 8/9 | visual parity checklist |
 | Translations | mapped | Phase 9 | Linguist build and locale smoke |
-| Help | slice | Phase 9 | pinned legacy English and Russian Qt help collections are installed and privately presented on Linux with bounded legacy locale selection; full-text, dictionary-browser, Preferences, and Manage Dictionaries Help/F1 route privately through the single presenter to their installed identifiers; help settings UI and persistence remain mapped |
+| Help | slice | Phase 9 | pinned legacy English and Russian Qt help collections are installed and privately presented on Linux with bounded legacy locale selection; full-text, dictionary-browser, Preferences, and Manage Dictionaries Help/F1 route privately through the single presenter to their installed identifiers; Linux Preferences persists the bounded Default/English/Russian help-language choice through the existing setting; help geometry and zoom persistence remain mapped |
 | Desktop icon/metainfo/launcher | slice | Phase 9 | Linux desktop launcher, pinned legacy 256-pixel icon, matching AppStream metainfo, and existing `goldendict`/`dict` URI handlers are installed; runtime registration remains mapped |
 | X11 integration | mapped | Phase 9 | X11 session checks |
 | Wayland behavior | slice | Phase 9 | pinned legacy case-insensitive Wayland-session selection forces Qt `xcb` before application construction; native Wayland and remaining fallback matrix stay mapped |

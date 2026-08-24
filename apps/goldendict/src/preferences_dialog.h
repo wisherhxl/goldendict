@@ -46,6 +46,9 @@ class PreferencesDialog final : public QDialog {
     QCheckBox* escape_hides_main_window_ = nullptr;
     QCheckBox* double_click_translates_ = nullptr;
     QCheckBox* select_word_by_single_click_ = nullptr;
+#if defined(Q_OS_LINUX)
+    QComboBox* help_language_ = nullptr;
+#endif
     QCheckBox* store_history_ = nullptr;
     QSpinBox* maximum_history_entries_ = nullptr;
     QCheckBox* confirm_favorites_deletion_ = nullptr;

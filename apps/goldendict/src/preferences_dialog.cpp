@@ -93,6 +93,26 @@ PreferencesDialog::PreferencesDialog(
         preferences.select_word_by_single_click);
     general_layout->addWidget(select_word_by_single_click_);
 
+#if defined(Q_OS_LINUX)
+    auto* help_language_layout = new QHBoxLayout;
+    auto* help_language_label =
+        new QLabel(QStringLiteral("Help language:"), general_page);
+    help_language_label->setObjectName(QStringLiteral("helpLanguageLabel"));
+    help_language_ = new QComboBox(general_page);
+    help_language_->setObjectName(QStringLiteral("helpLanguage"));
+    help_language_->addItem(QStringLiteral("Default"), QString());
+    help_language_->addItem(QStringLiteral("English"), QStringLiteral("en_US"));
+    help_language_->addItem(QStringLiteral("Russian"), QStringLiteral("ru_RU"));
+    const int help_language_index = help_language_->findData(
+        QString::fromStdString(preferences.help_language));
+    help_language_->setCurrentIndex(qMax(0, help_language_index));
+    help_language_label->setBuddy(help_language_);
+    help_language_layout->addWidget(help_language_label);
+    help_language_layout->addWidget(help_language_);
+    help_language_layout->addStretch();
+    general_layout->addLayout(help_language_layout);
+#endif
+
     auto* history_group =
         new QGroupBox(QStringLiteral("History"), general_page);
     history_group->setObjectName(QStringLiteral("preferencesHistoryGroup"));
@@ -391,6 +411,10 @@ void PreferencesDialog::Apply() {
     candidate.double_click_translates = double_click_translates_->isChecked();
     candidate.select_word_by_single_click =
         select_word_by_single_click_->isChecked();
+#if defined(Q_OS_LINUX)
+    candidate.help_language =
+        help_language_->currentData().toString().toStdString();
+#endif
     candidate.store_history = store_history_->isChecked();
     candidate.maximum_history_entries =
         static_cast<std::uint32_t>(maximum_history_entries_->value());
