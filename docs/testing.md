@@ -5316,6 +5316,10 @@ malformed values; exact collection filenames; valid Qt Help registration and
 initial `Content` lookup; and contained missing/corrupt-resource failure. The
 existing Help-menu smoke pins the restored `GoldenDict reference` F1 action and
 single lazy presenter without changing query, tabs, or main-window state.
+The same private test resolves the exact `Full-text search` identifier in both
+installed collections. The Help-menu smoke routes the published full-text
+dialog's existing button intent through the same lazy presenter to
+`fulltextsearch.html`; no test registration is added.
 
 ## Expected Verification Areas
 

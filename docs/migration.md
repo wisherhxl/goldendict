@@ -6434,6 +6434,18 @@ baseline is 115 tests after the focused private help test; runtime mode adds the
 existing conditional installed-runtime smoke. The next dependency-ready leaf
 is private full-text help-intent routing to the installed collection.
 
+That dependency-ready successor now routes the existing private full-text Help
+intent to the pinned `Full-text search` identifier in the selected installed
+English or Russian collection. The published dialog connects to the existing
+single lazy Linux presenter; prepared Widgets candidates remain inert.
+
+The leaf adds no test registration, Core/facade/installed API, help settings or
+persistence, collection changes, translation generation, Windows/macOS
+behavior, Debug gate, dependency, or unrelated refactoring. The Linux Release
+library baseline remains exactly 115 tests, and runtime mode retains its
+conditional installed-runtime smoke. The next dependency unlocked is a fresh
+bounded help-parity audit; no successor is selected or ranked.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

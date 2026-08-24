@@ -58,6 +58,7 @@
 #include <QSpinBox>
 #include <QTabBar>
 #include <QTabWidget>
+#include <QTextBrowser>
 #include <QThread>
 #include <QTimer>
 #include <QToolBar>
@@ -1337,30 +1338,8 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     connect(full_text_search_action_, &QAction::triggered, this,
             &MainWindow::ShowFullTextSearch);
 #if defined(Q_OS_LINUX)
-    connect(show_reference_action_, &QAction::triggered, this, [this]() {
-        if (help_window_ != nullptr) {
-            help_window_->show();
-            help_window_->raise();
-            help_window_->activateWindow();
-            return;
-        }
-        const QString help_directory =
-            help_directory_override_.isEmpty()
-                ? goldendict::app::InstalledHelpDirectory()
-                : help_directory_override_;
-        auto* window = new goldendict::app::HelpWindow(
-            help_directory, QString::fromStdString(preferences_.help_language),
-            QString::fromStdString(preferences_.interface_language),
-            QLocale::system().name(), this);
-        if (!window->IsReady()) {
-            window->deleteLater();
-            return;
-        }
-        window->setAttribute(Qt::WA_DeleteOnClose, false);
-        help_window_ = window;
-        window->ShowIdentifier(QStringLiteral("Content"));
-        window->show();
-    });
+    connect(show_reference_action_, &QAction::triggered, this,
+            [this]() { ShowHelp(goldendict::app::HelpIntent::kReference); });
 #endif
     connect(visit_homepage_action_, &QAction::triggered, this, [this]() {
         DispatchSafeExternalUrl(
@@ -1540,9 +1519,24 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
     show_reference_action_->trigger();
     auto* first_help_window = help_window_.data();
     show_reference_action_->trigger();
+    full_text_search_action_->trigger();
+    auto* full_text_help_action =
+        full_text_search_dialog_ == nullptr
+            ? nullptr
+            : full_text_search_dialog_->findChild<QAction*>(
+                  QStringLiteral("fullTextHelpAction"));
+    if (full_text_help_action != nullptr)
+        full_text_help_action->trigger();
+    auto* help_browser = first_help_window == nullptr
+                             ? nullptr
+                             : first_help_window->findChild<QTextBrowser*>(
+                                   QStringLiteral("helpBrowser"));
     passed = passed && first_help_window != nullptr &&
              first_help_window == help_window_.data() &&
-             first_help_window->isVisible() && first_help_window->IsReady();
+             first_help_window->isVisible() && first_help_window->IsReady() &&
+             full_text_help_action != nullptr && help_browser != nullptr &&
+             help_browser->source().path().endsWith(
+                 QStringLiteral("/fulltextsearch.html"));
 #else
     Q_UNUSED(help_directory);
 #endif
@@ -6908,6 +6902,16 @@ void MainWindow::ShowFullTextSearch() {
                 });
         full_text_search_dialog_->InitializeQuery(query_->text());
     }
+#if defined(Q_OS_LINUX)
+    if (help_connected_full_text_dialog_ != full_text_search_dialog_) {
+        connect(full_text_search_dialog_,
+                &goldendict::app::FullTextSearchDialog::HelpRequested, this,
+                [this]() {
+                    ShowHelp(goldendict::app::HelpIntent::kFullTextSearch);
+                });
+        help_connected_full_text_dialog_ = full_text_search_dialog_;
+    }
+#endif
     auto* composer = full_text_search_dialog_
                          ->findChild<goldendict::app::FullTextQueryComposer*>(
                              QStringLiteral("fullTextQueryComposer"));
@@ -6917,6 +6921,35 @@ void MainWindow::ShowFullTextSearch() {
     full_text_search_dialog_->raise();
     full_text_search_dialog_->activateWindow();
 }
+
+#if defined(Q_OS_LINUX)
+void MainWindow::ShowHelp(goldendict::app::HelpIntent intent) {
+    bool created = false;
+    if (help_window_ == nullptr) {
+        const QString help_directory =
+            help_directory_override_.isEmpty()
+                ? goldendict::app::InstalledHelpDirectory()
+                : help_directory_override_;
+        auto* window = new goldendict::app::HelpWindow(
+            help_directory, QString::fromStdString(preferences_.help_language),
+            QString::fromStdString(preferences_.interface_language),
+            QLocale::system().name(), this);
+        if (!window->IsReady()) {
+            window->deleteLater();
+            return;
+        }
+        window->setAttribute(Qt::WA_DeleteOnClose, false);
+        help_window_ = window;
+        created = true;
+    }
+    if ((created || intent != goldendict::app::HelpIntent::kReference) &&
+        !help_window_->ShowIdentifier(goldendict::app::HelpIdentifier(intent)))
+        return;
+    help_window_->show();
+    help_window_->raise();
+    help_window_->activateWindow();
+}
+#endif
 
 void MainWindow::SetFullTextDialogGeometry(std::string geometry) {
     full_text_dialog_geometry_ = std::move(geometry);

@@ -15,6 +15,12 @@ class QUrl;
 
 namespace goldendict::app {
 
+enum class HelpIntent {
+    kReference,
+    kFullTextSearch,
+};
+
+QString HelpIdentifier(HelpIntent intent);
 QString SelectHelpCollectionName(const QString& help_language,
                                  const QString& interface_language,
                                  const QString& system_locale);

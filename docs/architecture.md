@@ -6879,5 +6879,11 @@ lazy help dialog behind the pinned `GoldenDict reference` F1 action. Qt Help is
 an executable-private dependency; shared modules and installed Core contracts
 remain unchanged.
 
+The private full-text dialog's existing Help intent now routes through that
+same lazy presenter to the pinned `Full-text search` identifier in either
+installed collection. Only a published dialog is connected, so prepared
+Widgets candidates remain inert. The routing adds no Core, facade, installed,
+configuration, or non-Linux contract.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

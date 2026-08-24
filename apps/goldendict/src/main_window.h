@@ -31,6 +31,7 @@ namespace goldendict::app {
 class FullTextQueryComposer;
 class FullTextSearchDialog;
 class HelpWindow;
+enum class HelpIntent;
 struct FullTextResultActivationIntent;
 }  // namespace goldendict::app
 class QAction;
@@ -411,6 +412,9 @@ class MainWindow final : public QMainWindow {
                                        bool checked,
                                        Qt::KeyboardModifiers modifiers);
     void ShowFullTextSearch();
+#if defined(Q_OS_LINUX)
+    void ShowHelp(goldendict::app::HelpIntent intent);
+#endif
     void NavigateToFullTextResult(
         goldendict::app::FullTextResultActivationIntent intent);
     goldendict::core::FullTextQuery ComposeFullTextQuery(
@@ -584,6 +588,8 @@ class MainWindow final : public QMainWindow {
 #if defined(Q_OS_LINUX)
     QAction* show_reference_action_ = nullptr;
     QPointer<goldendict::app::HelpWindow> help_window_;
+    QPointer<goldendict::app::FullTextSearchDialog>
+        help_connected_full_text_dialog_;
     QString help_directory_override_;
 #endif
     QAction* open_config_folder_action_ = nullptr;

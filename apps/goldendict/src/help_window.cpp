@@ -36,6 +36,16 @@ bool IsRussian(const QString& locale_name) {
 
 }  // namespace
 
+QString HelpIdentifier(HelpIntent intent) {
+    switch (intent) {
+        case HelpIntent::kReference:
+            return QStringLiteral("Content");
+        case HelpIntent::kFullTextSearch:
+            return QStringLiteral("Full-text search");
+    }
+    return {};
+}
+
 QString SelectHelpCollectionName(const QString& help_language,
                                  const QString& interface_language,
                                  const QString& system_locale) {

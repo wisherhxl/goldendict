@@ -16,6 +16,7 @@ class HelpWindowTest final : public QObject {
 
    private slots:
     void SelectsBoundedLegacyLocale();
+    void MapsPrivateHelpIntents();
     void OpensInstalledCollections();
     void RejectsMissingAndCorruptCollections();
     void FiltersExternalLinks();
@@ -40,6 +41,14 @@ void HelpWindowTest::SelectsBoundedLegacyLocale() {
              QStringLiteral("gdhelp_en.qch"));
 }
 
+void HelpWindowTest::MapsPrivateHelpIntents() {
+    using goldendict::app::HelpIdentifier;
+    using goldendict::app::HelpIntent;
+    QCOMPARE(HelpIdentifier(HelpIntent::kReference), QStringLiteral("Content"));
+    QCOMPARE(HelpIdentifier(HelpIntent::kFullTextSearch),
+             QStringLiteral("Full-text search"));
+}
+
 void HelpWindowTest::OpensInstalledCollections() {
     const QString directory = qEnvironmentVariable("GOLDENDICT_HELP_TEST_DIR");
     QVERIFY(!directory.isEmpty());
@@ -48,7 +57,10 @@ void HelpWindowTest::OpensInstalledCollections() {
         goldendict::app::HelpWindow window(directory, locale, {}, {}, nullptr);
         QVERIFY(window.IsReady());
         QVERIFY(QFile::exists(window.CollectionPath()));
-        QVERIFY(window.ShowIdentifier(QStringLiteral("Content")));
+        QVERIFY(window.ShowIdentifier(goldendict::app::HelpIdentifier(
+            goldendict::app::HelpIntent::kReference)));
+        QVERIFY(window.ShowIdentifier(goldendict::app::HelpIdentifier(
+            goldendict::app::HelpIntent::kFullTextSearch)));
         QCOMPARE(window.windowTitle(), QStringLiteral("GoldenDict help"));
         QVERIFY(!(window.windowFlags() & Qt::WindowContextHelpButtonHint));
         auto* browser =
@@ -60,6 +72,8 @@ void HelpWindowTest::OpensInstalledCollections() {
         auto* normal =
             window.findChild<QAction*>(QStringLiteral("helpNormalSizeAction"));
         QVERIFY(browser != nullptr);
+        QVERIFY(browser->source().path().endsWith(
+            QStringLiteral("/fulltextsearch.html")));
         QVERIFY(zoom_in != nullptr);
         QVERIFY(zoom_out != nullptr);
         QVERIFY(normal != nullptr);
