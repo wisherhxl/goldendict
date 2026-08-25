@@ -370,6 +370,7 @@ bool MakeFavoritePath(const QList<int>& path,
 void RegisterArticleScheme() {
     QWebEngineUrlScheme scheme(QByteArrayLiteral("goldendict"));
     scheme.setSyntax(QWebEngineUrlScheme::Syntax::HostAndPort);
+    scheme.setDefaultPort(0);
     scheme.setFlags(QWebEngineUrlScheme::SecureScheme |
                     QWebEngineUrlScheme::LocalScheme |
                     QWebEngineUrlScheme::LocalAccessAllowed);
