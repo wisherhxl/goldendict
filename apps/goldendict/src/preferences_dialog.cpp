@@ -94,6 +94,25 @@ PreferencesDialog::PreferencesDialog(
     general_layout->addWidget(select_word_by_single_click_);
 
 #if defined(Q_OS_LINUX)
+    auto* interface_language_layout = new QHBoxLayout;
+    auto* interface_language_label =
+        new QLabel(tr("Interface language:"), general_page);
+    interface_language_label->setObjectName(
+        QStringLiteral("interfaceLanguageLabel"));
+    interface_language_ = new QComboBox(general_page);
+    interface_language_->setObjectName(QStringLiteral("interfaceLanguage"));
+    interface_language_->addItem(tr("Default"), QString());
+    interface_language_->addItem(tr("English"), QStringLiteral("en_US"));
+    interface_language_->addItem(tr("Russian"), QStringLiteral("ru_RU"));
+    const int interface_language_index = interface_language_->findData(
+        QString::fromStdString(preferences.interface_language));
+    interface_language_->setCurrentIndex(qMax(0, interface_language_index));
+    interface_language_label->setBuddy(interface_language_);
+    interface_language_layout->addWidget(interface_language_label);
+    interface_language_layout->addWidget(interface_language_);
+    interface_language_layout->addStretch();
+    general_layout->addLayout(interface_language_layout);
+
     auto* help_language_layout = new QHBoxLayout;
     auto* help_language_label =
         new QLabel(QStringLiteral("Help language:"), general_page);
@@ -412,6 +431,8 @@ void PreferencesDialog::Apply() {
     candidate.select_word_by_single_click =
         select_word_by_single_click_->isChecked();
 #if defined(Q_OS_LINUX)
+    candidate.interface_language =
+        interface_language_->currentData().toString().toStdString();
     candidate.help_language =
         help_language_->currentData().toString().toStdString();
 #endif

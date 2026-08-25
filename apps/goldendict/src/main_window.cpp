@@ -1560,8 +1560,19 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
                                 : buttons->button(QDialogButtonBox::Help);
         auto* help_language =
             dialog.findChild<QComboBox*>(QStringLiteral("helpLanguage"));
+        auto* interface_language =
+            dialog.findChild<QComboBox*>(QStringLiteral("interfaceLanguage"));
         passed =
             passed && help_button != nullptr && help_action != nullptr &&
+            interface_language != nullptr && interface_language->count() == 3 &&
+            interface_language->itemText(0) == QStringLiteral("Default") &&
+            interface_language->itemData(0).toString().isEmpty() &&
+            interface_language->itemText(1) == QStringLiteral("English") &&
+            interface_language->itemData(1).toString() ==
+                QStringLiteral("en_US") &&
+            interface_language->itemText(2) == QStringLiteral("Russian") &&
+            interface_language->itemData(2).toString() ==
+                QStringLiteral("ru_RU") &&
             help_language != nullptr && help_language->count() == 3 &&
             help_language->itemText(0) == QStringLiteral("Default") &&
             help_language->itemData(0).toString().isEmpty() &&
@@ -1586,6 +1597,8 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
         if (help_language != nullptr)
             help_language->setCurrentIndex(
                 help_language->currentIndex() == 2 ? 1 : 2);
+        if (interface_language != nullptr)
+            interface_language->setCurrentIndex(2);
         auto* ok = buttons == nullptr ? nullptr
                                       : buttons->button(QDialogButtonBox::Ok);
         if (ok != nullptr)
@@ -1597,6 +1610,10 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
     preferences_action_->trigger();
     preferences_dialog_executor_ = {};
     passed = passed && help_window_ == nullptr &&
+             preferences_.interface_language == "ru_RU" &&
+             QCoreApplication::translate("GoldenDictInterfaceTranslations",
+                                         "Interface translation smoke") ==
+                 QStringLiteral("Interface translation smoke") &&
              (preferences_.help_language == "en_US" ||
               preferences_.help_language == "ru_RU");
     show_reference_action_->trigger();
@@ -10553,8 +10570,7 @@ void MainWindow::ShowDictionaryBrowser() {
 #if defined(Q_OS_LINUX)
         connect(dictionary_browser_, &DictionaryBrowser::HelpRequested, this,
                 [this]() {
-                    ShowHelp(
-                        goldendict::app::HelpIntent::kDictionaryHeadwords);
+                    ShowHelp(goldendict::app::HelpIntent::kDictionaryHeadwords);
                 });
 #endif
     }

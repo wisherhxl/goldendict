@@ -184,6 +184,12 @@ Qt tools, but only works when the Qt package exports the corresponding static
 plugin target. Use `off` only when the app handles plugin imports itself.
 
 Conan profiles or command-line options own dependency shared/static linkage.
+On Linux the GoldenDict recipe enables Qt's `qttranslations` module. The
+resolved Qt package supplies `qt_ru.qm` and `qtbase_ru.qm`; CMake stages and
+installs those files with the generated GoldenDict `ru_RU.qm` under
+`share/goldendict/locale`. Configuration fails when that declared Qt module
+does not publish the required catalogs rather than reading an uncontrolled Qt
+source or build cache.
 Do not hardcode dependency linkage in `conanfile.py` unless the project requires
 one mode. Runtime deployment logic must support shared, static, and optional
 dependencies without requiring per-app workarounds.

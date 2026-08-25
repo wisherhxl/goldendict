@@ -22,7 +22,9 @@ Phase 2 directly declares these external components:
 
 - Qt 6.11.1, including Qt WebEngine, resolved by Conan. The Conan recipe
   declares `LGPL-3.0-only`; the packaged Qt sources and binaries carry their
-  complete module and bundled third-party notices.
+  complete module and bundled third-party notices. Linux also enables Qt
+  Translations and installs its Russian runtime catalogs beside GoldenDict's
+  GPL-licensed application catalog.
 - ICU 74.2, used privately for Unicode lookup folding and legacy encoding
   conversion, under the Unicode License V3.
 - zlib 1.3.1, used privately for compressed dictionary data, under the zlib

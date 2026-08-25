@@ -6488,6 +6488,23 @@ Linux Release library baseline remains exactly 115 tests. Help geometry and
 zoom persistence require separate configuration-backed leaves and remain
 unselected.
 
+The next bounded Phase 9 Linux leaf restores initial English/Russian interface
+translation under the application-private composition boundary. English uses
+source strings. Russian uses the application catalog ported from pinned legacy
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` plus Conan Qt's Russian catalogs,
+all staged and installed under `share/goldendict/locale`. The existing
+`interface_language` preference has precedence over the system locale;
+unsupported selections fall back to English. Linux Preferences exposes
+Default, English, and Russian, with accepted changes taking effect only after
+restart. The independent `help_language` behavior is unchanged.
+
+The leaf adds no locale beyond Russian, live retranslation, Help geometry or
+zoom, Windows/macOS behavior, Debug gate, public/Core API, or unrelated
+translation sweep. The Linux Release library baseline is exactly 116 tests;
+runtime mode retains its conditional installed-runtime smoke. The next
+dependency unlocked is a fresh bounded audit of remaining Phase 9 Linux
+integration and release-quality work; no successor is selected.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

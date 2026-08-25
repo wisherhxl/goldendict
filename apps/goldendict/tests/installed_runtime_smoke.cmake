@@ -154,6 +154,30 @@ if(NOT smoke_result EQUAL 0)
     "Installed GoldenDict clean-environment smoke failed: ${smoke_result}")
 endif()
 
+set(installed_locale_directory
+  "${INSTALL_PREFIX}/share/goldendict/locale")
+foreach(catalog IN ITEMS ru_RU.qm qt_ru.qm qtbase_ru.qm)
+  if(NOT EXISTS "${installed_locale_directory}/${catalog}")
+    message(FATAL_ERROR "Missing installed translation catalog: ${catalog}")
+  endif()
+endforeach()
+
+execute_process(
+  COMMAND /usr/bin/env -i
+    "PATH=/usr/bin:/bin"
+    "HOME=${TEST_HOME}"
+    "LANG=ru_RU.UTF-8"
+    "XDG_SESSION_TYPE=x11"
+    "QT_QPA_PLATFORM=offscreen"
+    "XDG_CONFIG_HOME=${TEST_HOME}/translation-config"
+    "XDG_CACHE_HOME=${TEST_HOME}/translation-cache"
+    "${installed_wrapper}" --interface-language-russian-smoke
+  RESULT_VARIABLE translation_smoke_result)
+if(NOT translation_smoke_result EQUAL 0)
+  message(FATAL_ERROR
+    "Installed GoldenDict translation smoke failed: ${translation_smoke_result}")
+endif()
+
 execute_process(
   COMMAND /usr/bin/env -i
     "PATH=/usr/bin:/bin"

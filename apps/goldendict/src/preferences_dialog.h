@@ -47,6 +47,7 @@ class PreferencesDialog final : public QDialog {
     QCheckBox* double_click_translates_ = nullptr;
     QCheckBox* select_word_by_single_click_ = nullptr;
 #if defined(Q_OS_LINUX)
+    QComboBox* interface_language_ = nullptr;
     QComboBox* help_language_ = nullptr;
 #endif
     QCheckBox* store_history_ = nullptr;

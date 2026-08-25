@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+set(TIGER_QT_TRANSLATIONS "")
 ti_add_qt_app(goldendict MODULES core network
   EXTRAS ${qt_link} ${qt_print_support_link} ${qt_help_link})
 target_sources(goldendict PRIVATE
@@ -11,7 +12,50 @@ target_compile_definitions(goldendict PRIVATE
 if(UNIX AND NOT APPLE)
   target_sources(goldendict PRIVATE
     src/help_window.cpp
-    src/help_window.h)
+    src/help_window.h
+    src/interface_translations.cpp
+    src/interface_translations.h)
+  if(NOT QT6_INSTALL_PREFIX OR NOT QT6_INSTALL_TRANSLATIONS)
+    message(FATAL_ERROR
+      "Qt 6 does not publish its translation install directory")
+  endif()
+  set(qt_translation_directory
+    "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_TRANSLATIONS}")
+  set(qt_russian_catalogs
+    "${qt_translation_directory}/qt_ru.qm"
+    "${qt_translation_directory}/qtbase_ru.qm")
+  foreach(qt_russian_catalog IN LISTS qt_russian_catalogs)
+    if(NOT EXISTS "${qt_russian_catalog}")
+      message(FATAL_ERROR
+        "The Conan Qt package is missing required catalog: ${qt_russian_catalog}")
+    endif()
+  endforeach()
+  if(NOT QT_LRELEASE_EXECUTABLE)
+    message(FATAL_ERROR "Qt lrelease is required for GoldenDict translations")
+  endif()
+  set(goldendict_russian_catalog
+    "${CMAKE_CURRENT_BINARY_DIR}/ru_RU.qm")
+  add_custom_command(
+    OUTPUT "${goldendict_russian_catalog}"
+    COMMAND ${QT_LRELEASE_EXECUTABLE} -silent
+      "${CMAKE_CURRENT_SOURCE_DIR}/lang/ru_RU.ts"
+      -qm "${goldendict_russian_catalog}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/lang/ru_RU.ts"
+    VERBATIM)
+  add_custom_target(goldendict_translations
+    DEPENDS "${goldendict_russian_catalog}")
+  add_dependencies(goldendict goldendict_translations)
+  add_custom_command(TARGET goldendict POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+      "$<TARGET_FILE_DIR:goldendict>/../share/goldendict/locale"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "${goldendict_russian_catalog}"
+      ${qt_russian_catalogs}
+      "$<TARGET_FILE_DIR:goldendict>/../share/goldendict/locale"
+    VERBATIM)
+  install(FILES "${goldendict_russian_catalog}" ${qt_russian_catalogs}
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/goldendict/locale"
+    COMPONENT libs)
   install(FILES linux/org.goldendict.GoldenDict.desktop
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
     COMPONENT libs)
@@ -327,6 +371,14 @@ set_tests_properties(goldendict_help_menu_smoke PROPERTIES
   ENVIRONMENT
     "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/cache"
   TIMEOUT 20)
+
+add_test(NAME goldendict_interface_language_smoke
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DHELP_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}/help
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/interface-language-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/interface_language_restart.cmake)
+set_tests_properties(goldendict_interface_language_smoke PROPERTIES TIMEOUT 60)
 
 add_test(NAME goldendict_webengine_smoke
   COMMAND $<TARGET_FILE:goldendict> --webengine-smoke)

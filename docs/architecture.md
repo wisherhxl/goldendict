@@ -6901,5 +6901,18 @@ their installed collections explicitly. An accepted language change makes
 with the selected collection. This adds no dialog-owned presenter, side store,
 Core field, facade operation, installed API, or non-Linux behavior.
 
+### Linux Interface Translations
+
+The Linux composition root owns application-lifetime Qt and GoldenDict
+translators. It resolves the existing persisted `interface_language` before
+constructing Widgets: an explicit value precedes the system locale, Russian
+variants select `ru_RU`, and every other value uses English source strings.
+The build and installed executable both resolve catalogs from the same
+executable-relative `share/goldendict/locale` layout. Conan's Qt package owns
+the `qttranslations` input; application catalogs remain GoldenDict resources.
+Preferences only persists the bounded Default/English/Russian selection, so
+there is no live retranslation or new Core/facade interface. Help-language
+selection remains independently owned by the existing Help path.
+
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.

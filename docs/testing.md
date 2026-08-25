@@ -5336,6 +5336,16 @@ for current and strict legacy `help_language` persistence. No test registration
 or installed/runtime path changes; the Release baseline remains 115 tests and
 installed-runtime smoke is not applicable.
 
+`goldendict_interface_language_smoke` runs the real Linux application across
+isolated restarts. It pins the exact Default/English/Russian Preferences data,
+production persistence, restart-only activation, Russian application and Qt
+catalog loading, English source strings, explicit preference precedence, and
+unsupported/unmatched English fallback while retaining the independent Help
+language behavior. The normal Release baseline is exactly 116 tests. The
+conditional installed-runtime smoke also requires `ru_RU.qm`, `qt_ru.qm`, and
+`qtbase_ru.qm` under `share/goldendict/locale` and exercises Russian startup
+from the clean installed wrapper.
+
 ## Expected Verification Areas
 
 - configure;

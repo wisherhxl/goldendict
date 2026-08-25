@@ -1875,7 +1875,7 @@ unchanged. The Release baseline remains 114 tests and no successor is selected.
 | --- | --- | --- | --- |
 | Core styles for vertical slice | slice | Phase 4/7 | responsive shell and sanitizer tests |
 | Complete styles and icons | mapped | Phase 8/9 | visual parity checklist |
-| Translations | mapped | Phase 9 | Linguist build and locale smoke |
+| Translations | slice | Phase 9 | Linux privately loads English source strings or the ported pinned-legacy Russian application catalog plus Conan Qt Russian catalogs from `share/goldendict/locale`; the bounded persisted Preferences selector is restart-only, unsupported locales fall back to English, and additional locales/string migration remain mapped |
 | Help | slice | Phase 9 | pinned legacy English and Russian Qt help collections are installed and privately presented on Linux with bounded legacy locale selection; full-text, dictionary-browser, Preferences, and Manage Dictionaries Help/F1 route privately through the single presenter to their installed identifiers; Linux Preferences persists the bounded Default/English/Russian help-language choice through the existing setting; help geometry and zoom persistence remain mapped |
 | Desktop icon/metainfo/launcher | slice | Phase 9 | Linux desktop launcher, pinned legacy 256-pixel icon, matching AppStream metainfo, and existing `goldendict`/`dict` URI handlers are installed; runtime registration remains mapped |
 | X11 integration | mapped | Phase 9 | X11 session checks |

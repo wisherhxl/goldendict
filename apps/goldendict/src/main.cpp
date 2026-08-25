@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QLocale>
 #include <QMessageBox>
 #include <QSaveFile>
 #include <QStandardPaths>
@@ -30,6 +31,7 @@
 #include "main_window.h"
 #if defined(Q_OS_LINUX)
 #include "help_window.h"
+#include "interface_translations.h"
 #include "linux_display_platform.h"
 #include "linux_single_instance_lookup.h"
 #endif
@@ -256,7 +258,8 @@ bool HasPreferencesSmokeArgument(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         const QString argument = QString::fromLocal8Bit(argv[i]);
         if (argument.contains(QStringLiteral("preferences-smoke")) ||
-            argument == QStringLiteral("--edit-menu-smoke")) {
+            argument == QStringLiteral("--edit-menu-smoke") ||
+            argument == QStringLiteral("--help-menu-smoke")) {
             return true;
         }
     }
@@ -536,6 +539,54 @@ int main(int argc, char* argv[]) {
     if (!startup_recovery.request && !command_line_root.isEmpty()) {
         configuration.dictionary_paths = {command_line_root.toStdString()};
     }
+#if defined(Q_OS_LINUX)
+    if (HasArgument(argc, argv,
+                    QStringLiteral("--interface-language-unsupported-smoke"))) {
+        configuration.preferences.interface_language = "unsupported_LOCALE";
+    }
+    if (HasArgument(argc, argv,
+                    QStringLiteral("--interface-language-russian-smoke"))) {
+        configuration.preferences.interface_language = "ru_RU";
+    }
+    goldendict::app::InterfaceTranslations interface_translations(
+        app, goldendict::app::ApplicationLocaleDirectory(),
+        QString::fromStdString(configuration.preferences.interface_language),
+        QLocale::system().name());
+    if (HasArgument(argc, argv,
+                    QStringLiteral("--interface-language-startup-smoke")) ||
+        HasArgument(argc, argv,
+                    QStringLiteral("--interface-language-unsupported-smoke")) ||
+        HasArgument(argc, argv,
+                    QStringLiteral("--interface-language-russian-smoke"))) {
+        const bool russian = interface_translations.locale() ==
+                             goldendict::app::InterfaceLocale::kRussian;
+        const QString application_smoke = QCoreApplication::translate(
+            "GoldenDictInterfaceTranslations", "Interface translation smoke");
+        const QString qt_cancel =
+            QCoreApplication::translate("QPlatformTheme", "Cancel");
+        const bool passed =
+            russian
+                ? interface_translations.application_catalog_loaded() &&
+                      interface_translations.qt_catalog_loaded() &&
+                      application_smoke ==
+                          QString::fromUtf8("Проверка перевода интерфейса") &&
+                      qt_cancel == QString::fromUtf8("Отмена")
+                : application_smoke ==
+                          QStringLiteral("Interface translation smoke") &&
+                      qt_cancel == QStringLiteral("Cancel");
+        if (!passed) {
+            qWarning().noquote()
+                << "Interface translation startup smoke failed:" << "russian="
+                << russian << "application_catalog_loaded="
+                << interface_translations.application_catalog_loaded()
+                << "qt_catalog_loaded="
+                << interface_translations.qt_catalog_loaded()
+                << "application_translation=" << application_smoke
+                << "qt_translation=" << qt_cancel;
+        }
+        return passed ? 0 : 1;
+    }
+#endif
     if (!startup_recovery.request &&
         (HasArgument(argc, argv,
                      QStringLiteral("--source-directories-smoke")) ||

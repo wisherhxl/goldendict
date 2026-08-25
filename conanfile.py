@@ -30,6 +30,7 @@ class GoldenDictRecipe(ConanFile):
         "qt_windows_platform_plugin": "auto",
         "qt/*:qtdeclarative": True,
         "qt/*:qtshadertools": True,
+        "qt/*:qttranslations": True,
         "qt/*:qtwebchannel": True,
         "qt/*:qtwebengine": True,
         "qt/*:with_dbus": True,
