@@ -5346,6 +5346,15 @@ conditional installed-runtime smoke also requires `ru_RU.qm`, `qt_ru.qm`, and
 `qtbase_ru.qm` under `share/goldendict/locale` and exercises Russian startup
 from the clean installed wrapper.
 
+`legacy_catalog_source_inventory_test` validates the complete 45-file pinned
+legacy `.ts` source inventory and its deterministic build classification. It
+requires Russian to remain the only enabled source and every other imported
+source to remain explicitly disabled. For this source-only leaf, also compare
+the 44 disabled files byte-for-byte with `locale/*.ts` at legacy revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, then inspect install and package
+file lists to confirm that no disabled `.ts` or additional `.qm` is shipped.
+The normal Linux Release baseline is exactly 117 tests.
+
 ## Expected Verification Areas
 
 - configure;

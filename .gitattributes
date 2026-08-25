@@ -1,0 +1,3 @@
+# Preserve pinned Qt Linguist catalogs byte-for-byte, including translator
+# whitespace that predates this migration.
+apps/goldendict/lang/*.ts -whitespace

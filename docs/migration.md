@@ -6505,6 +6505,14 @@ runtime mode retains its conditional installed-runtime smoke. The next
 dependency unlocked is a fresh bounded audit of remaining Phase 9 Linux
 integration and release-quality work; no successor is selected.
 
+The following source-only Phase 9 leaf imports the complete 45-file pinned
+legacy GoldenDict Qt Linguist catalog inventory. Forty-four byte-identical
+sources remain explicitly disabled; they are neither compiled nor installed.
+The previously accepted derived Russian source remains the sole enabled
+application catalog, so English/Russian runtime behavior is unchanged. The
+inventory records its GPL-3.0-or-later provenance and requires a separate
+Qt 6 context review and focused runtime smoke before enabling any locale.
+
 ### Phase 9 — Linux Integration And Release Quality
 
 - Complete audio, clipboard and selection monitoring, global hotkeys, scan

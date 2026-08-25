@@ -10,6 +10,7 @@ target_sources(goldendict PRIVATE
 target_compile_definitions(goldendict PRIVATE
   GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}")
 if(UNIX AND NOT APPLE)
+  include(lang/catalog_sources.cmake)
   target_sources(goldendict PRIVATE
     src/help_window.cpp
     src/help_window.h
@@ -33,14 +34,23 @@ if(UNIX AND NOT APPLE)
   if(NOT QT_LRELEASE_EXECUTABLE)
     message(FATAL_ERROR "Qt lrelease is required for GoldenDict translations")
   endif()
+  list(LENGTH GOLDENDICT_ENABLED_CATALOG_SOURCES
+    goldendict_enabled_catalog_count)
+  if(NOT goldendict_enabled_catalog_count EQUAL 1 OR
+      NOT GOLDENDICT_ENABLED_CATALOG_SOURCES STREQUAL "ru_RU.ts")
+    message(FATAL_ERROR
+      "The source-import leaf must keep Russian as the only enabled catalog")
+  endif()
+  set(goldendict_russian_catalog_source
+    "${CMAKE_CURRENT_SOURCE_DIR}/lang/${GOLDENDICT_ENABLED_CATALOG_SOURCES}")
   set(goldendict_russian_catalog
     "${CMAKE_CURRENT_BINARY_DIR}/ru_RU.qm")
   add_custom_command(
     OUTPUT "${goldendict_russian_catalog}"
     COMMAND ${QT_LRELEASE_EXECUTABLE} -silent
-      "${CMAKE_CURRENT_SOURCE_DIR}/lang/ru_RU.ts"
+      "${goldendict_russian_catalog_source}"
       -qm "${goldendict_russian_catalog}"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/lang/ru_RU.ts"
+    DEPENDS "${goldendict_russian_catalog_source}"
     VERBATIM)
   add_custom_target(goldendict_translations
     DEPENDS "${goldendict_russian_catalog}")
@@ -71,6 +81,15 @@ if(UNIX AND NOT APPLE)
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/goldendict/help"
     COMPONENT libs)
 endif()
+
+ti_add_executable(legacy_catalog_source_inventory_test
+  tests/legacy_catalog_source_inventory_test.cpp)
+target_compile_definitions(legacy_catalog_source_inventory_test PRIVATE
+  GOLDENDICT_CATALOG_SOURCE_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/lang")
+ti_target_link_libraries(legacy_catalog_source_inventory_test
+  ${QT_NAMESPACE}::Core ${QT_NAMESPACE}::Test)
+add_test(NAME legacy_catalog_source_inventory_test
+  COMMAND legacy_catalog_source_inventory_test)
 
 if(UNIX AND NOT APPLE)
   ti_add_executable(help_window_test
