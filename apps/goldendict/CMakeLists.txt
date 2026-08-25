@@ -249,6 +249,9 @@ set_tests_properties(goldendict_full_text_dialog_smoke PROPERTIES
 
 add_test(NAME goldendict_smoke COMMAND $<TARGET_FILE:goldendict> --smoke)
 
+add_test(NAME goldendict_article_scheme_registration_smoke
+  COMMAND $<TARGET_FILE:goldendict> --article-scheme-registration-smoke)
+
 if(UNIX AND NOT APPLE AND TIGER_INSTALL_RUNTIME_DEPENDENCIES)
   add_test(NAME goldendict_installed_runtime_smoke
     COMMAND ${CMAKE_COMMAND}

@@ -377,6 +377,17 @@ void RegisterArticleScheme() {
     QWebEngineUrlScheme::registerScheme(scheme);
 }
 
+bool ArticleSchemeRegistrationIsValid() {
+    const auto scheme =
+        QWebEngineUrlScheme::schemeByName(QByteArrayLiteral("goldendict"));
+    return scheme.name() == QByteArrayLiteral("goldendict") &&
+           scheme.syntax() == QWebEngineUrlScheme::Syntax::HostAndPort &&
+           scheme.defaultPort() == 0 &&
+           scheme.flags() == (QWebEngineUrlScheme::SecureScheme |
+                              QWebEngineUrlScheme::LocalScheme |
+                              QWebEngineUrlScheme::LocalAccessAllowed);
+}
+
 goldendict::app::DesktopPlatform CurrentDesktopPlatform() {
 #if defined(Q_OS_WIN)
     return goldendict::app::DesktopPlatform::kWindows;
@@ -409,6 +420,10 @@ int main(int argc, char* argv[]) {
     const QStringList raw_arguments = RawCommandLineArguments(argc, argv);
     auto initial_lookup = goldendict::app::ParseInitialLookup(raw_arguments);
     RegisterArticleScheme();
+    if (HasArgument(argc, argv,
+                    QStringLiteral("--article-scheme-registration-smoke"))) {
+        return ArticleSchemeRegistrationIsValid() ? 0 : 1;
+    }
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("GoldenDict"));
     QApplication::setApplicationVersion(

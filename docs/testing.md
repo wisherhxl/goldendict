@@ -374,6 +374,12 @@ dialog, verifies build/runtime product, version, Qt, and license content, and
 confirms unchanged central, article-tab, query, and private layout state. The
 unsupported offline reference, F1 shortcut, Forum, About Qt, and updater
 surfaces are explicitly absent.
+`goldendict_article_scheme_registration_smoke` runs before `QApplication`
+construction and verifies that Qt WebEngine accepted the private `goldendict`
+scheme with `HostAndPort` syntax, default port `0`, and exactly the secure,
+local, and local-access flags required by the article-resource handler. This
+keeps a rejected early registration from being hidden by unrelated passing GUI
+smokes.
 `goldendict_file_menu_smoke` pins the unique leading `menuFile`, exact supported
 legacy identities, order, separators, roles, shortcuts, and single shortcut
 ownership. It verifies exact action reuse by the tab control, article toolbar,
