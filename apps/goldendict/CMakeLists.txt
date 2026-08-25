@@ -384,12 +384,12 @@ set_tests_properties(goldendict_favorites_menu_smoke PROPERTIES
   TIMEOUT 20)
 
 add_test(NAME goldendict_help_menu_smoke
-  COMMAND $<TARGET_FILE:goldendict> --help-menu-smoke
-    ${CMAKE_CURRENT_SOURCE_DIR}/help)
-set_tests_properties(goldendict_help_menu_smoke PROPERTIES
-  ENVIRONMENT
-    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home/cache"
-  TIMEOUT 20)
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DHELP_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}/help
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/help-menu-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/help_menu_smoke.cmake)
+set_tests_properties(goldendict_help_menu_smoke PROPERTIES TIMEOUT 20)
 
 add_test(NAME goldendict_interface_language_smoke
   COMMAND ${CMAKE_COMMAND}
