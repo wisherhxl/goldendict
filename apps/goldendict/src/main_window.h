@@ -398,6 +398,10 @@ class MainWindow final : public QMainWindow {
     void ShowTabContextMenu(const QPoint& position);
     ArticleView* CreateArticleView(goldendict::core::ArticleTabId tab_id);
     void ReloadCurrentArticle();
+    void StartPendingArticleReload(goldendict::core::ArticleTabId tab_id,
+                                   ArticleView* view);
+    void HandleArticleReloadStarted(goldendict::core::ArticleTabId tab_id,
+                                    ArticleView* view);
     void HandleArticleLoadFinished(goldendict::core::ArticleTabId tab_id,
                                    ArticleView* view, bool success);
     ArticleView* ArticleViewForTab(goldendict::core::ArticleTabId tab_id) const;
@@ -433,9 +437,9 @@ class MainWindow final : public QMainWindow {
     void DispatchArticleSearch(goldendict::core::ArticleTabId tab_id,
                                ArticleView* view, const QString& text,
                                std::uint64_t generation, bool backwards);
-    void RunArticleSearchReloadCheck(
-        goldendict::core::ArticleTabId tab_id, bool passed,
-        std::function<void(bool)> completion);
+    void RunArticleSearchReloadCheck(goldendict::core::ArticleTabId tab_id,
+                                     bool passed,
+                                     std::function<void(bool)> completion);
     void ExtractRenderedPageText(goldendict::core::ArticleTabId tab_id,
                                  ArticleView* view,
                                  std::uint64_t accepted_query_generation,
@@ -575,6 +579,7 @@ class MainWindow final : public QMainWindow {
     QLabel* article_search_status_ = nullptr;
     QAction* back_action_ = nullptr;
     QAction* forward_action_ = nullptr;
+    QAction* reload_action_ = nullptr;
     QAction* new_tab_action_ = nullptr;
     QAction* print_preview_action_ = nullptr;
     QAction* print_action_ = nullptr;
@@ -634,6 +639,16 @@ class MainWindow final : public QMainWindow {
 
     std::map<goldendict::core::ArticleTabId, ArticleSearchPresentation>
         article_search_presentations_;
+
+    struct ArticleReloadState {
+        std::uint64_t generation = 0U;
+        std::optional<std::uint64_t> in_flight_generation;
+        bool load_started = false;
+        QPointer<ArticleView> view;
+    };
+
+    std::map<goldendict::core::ArticleTabId, ArticleReloadState>
+        article_reload_states_;
 
     struct PendingArticleSearchHandoff {
         QString query;

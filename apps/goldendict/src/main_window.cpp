@@ -877,7 +877,7 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     auto* article_toolbar = addToolBar(QStringLiteral("Article"));
     article_toolbar->setObjectName(QStringLiteral("articleToolbar"));
     insertToolBar(article_toolbar, nav_toolbar);
-    auto* reload_action = article_toolbar->addAction(QStringLiteral("Reload"));
+    reload_action_ = article_toolbar->addAction(QStringLiteral("Reload"));
     article_toolbar->addSeparator();
     add_favorite_action_ =
         article_toolbar->addAction(QStringLiteral("Add to Favorites"));
@@ -1278,7 +1278,7 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
             [this]() { NavigateArticleTab(false); });
     connect(forward_action_, &QAction::triggered, this,
             [this]() { NavigateArticleTab(true); });
-    connect(reload_action, &QAction::triggered, this,
+    connect(reload_action_, &QAction::triggered, this,
             [this]() { ReloadCurrentArticle(); });
     connect(article_search_, &QLineEdit::returnPressed, this,
             [this]() { FindInArticle(false); });
@@ -4005,10 +4005,22 @@ void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
                                  passed, initial_session, initial_state,
                                  first_tab_id, first_view, second_tab_id,
                                  trigger_connection, triggers]() mutable {
+                                    const QPointer<ArticleView> closing_view =
+                                        ArticleViewForTab(second_tab_id);
+                                    reload_action_->trigger();
+                                    const auto pending_reload =
+                                        article_reload_states_.find(
+                                            second_tab_id);
                                     *passed =
                                         *passed &&
                                         article_search_status_->text() ==
                                             QStringLiteral("No matches") &&
+                                        pending_reload !=
+                                            article_reload_states_.end() &&
+                                        pending_reload->second.generation ==
+                                            1U &&
+                                        pending_reload->second
+                                            .in_flight_generation.has_value() &&
                                         facade_->ActivateArticleTab(
                                             first_tab_id);
                                     if (!*passed)
@@ -4027,12 +4039,23 @@ void MainWindow::RunSearchMenuSmokeCheck(std::function<void(bool)> completion) {
                                         *triggers == 1 &&
                                         facade_->CloseArticleTab(second_tab_id);
                                     SyncArticleTabs();
+                                    if (closing_view != nullptr)
+                                        emit closing_view->loadFinished(true);
+                                    QApplication::processEvents();
                                     *passed =
                                         *passed &&
+                                        article_reload_states_.find(
+                                            second_tab_id) ==
+                                            article_reload_states_.end() &&
                                         article_search_presentations_.find(
                                             second_tab_id) ==
                                             article_search_presentations_
                                                 .end() &&
+                                        article_view_ == first_view &&
+                                        article_search_->text() ==
+                                            QStringLiteral("alpha") &&
+                                        article_search_status_->text() ==
+                                            QStringLiteral("1 of 2") &&
                                         facade_->ExportArticleTabSession() ==
                                             initial_session &&
                                         CaptureMainWindowState() ==
@@ -4376,57 +4399,165 @@ void MainWindow::RunArticleSearchReloadCheck(
     goldendict::core::ArticleTabId tab_id, bool passed,
     std::function<void(bool)> completion) {
     const auto search = article_search_presentations_.find(tab_id);
-    if (search == article_search_presentations_.end()) {
+    if (search == article_search_presentations_.end() ||
+        reload_action_ == nullptr || article_view_ == nullptr) {
         completion(false);
         return;
     }
     search->second.query = QStringLiteral("needle 😀");
     search->second.status.clear();
     ++search->second.generation;
-    article_search_status_->clear();
-    connect(
-        article_view_, &ArticleView::loadFinished, this,
-        [this, tab_id, passed,
-         completion = std::move(completion)](bool reloaded) mutable {
-            if (!reloaded) {
-                completion(false);
+    RefreshArticleSearch();
+    article_reload_states_.erase(tab_id);
+    auto load_starts = std::make_shared<int>(0);
+    auto failed_finishes = std::make_shared<int>(0);
+    auto successful_finishes = std::make_shared<int>(0);
+    auto controlled_extra_finish = std::make_shared<bool>(false);
+    auto extra_finishes = std::make_shared<int>(0);
+    auto late_completion_rejected = std::make_shared<bool>(false);
+    auto second_reload_requested = std::make_shared<bool>(false);
+    auto started_connection = std::make_shared<QMetaObject::Connection>();
+    auto finished_connection = std::make_shared<QMetaObject::Connection>();
+    *started_connection = connect(
+        article_view_, &ArticleView::loadStarted, this,
+        [this, tab_id, load_starts, second_reload_requested,
+         controlled_extra_finish, late_completion_rejected]() {
+            ++*load_starts;
+            if (!*second_reload_requested) {
+                *second_reload_requested = true;
+                reload_action_->trigger();
+                article_view_->page()->triggerAction(QWebEnginePage::Stop);
                 return;
             }
-            auto attempts = std::make_shared<int>(0);
-            auto poll = std::make_shared<std::function<void()>>();
-            *poll = [this, tab_id, passed,
-                     completion = std::move(completion), attempts,
-                     poll]() mutable {
-                const auto current = article_search_presentations_.find(tab_id);
-                if (current != article_search_presentations_.end() &&
-                    current->second.status.endsWith(QStringLiteral("of 2"))) {
-                    article_view_->findText(QString());
-                    article_view_->page()->toHtml(
-                        [this, passed, completion = std::move(completion)](
-                            const QString& html) mutable {
-                            article_view_->printToPdf(
-                                [passed, html,
-                                 completion = std::move(completion)](
-                                    const QByteArray& pdf) mutable {
-                                    completion(
-                                        passed &&
-                                        html.contains(
-                                            QStringLiteral("needle")) &&
-                                        pdf.startsWith("%PDF-"));
-                                });
-                        });
+            if (*load_starts != 2)
+                return;
+            const bool loading = article_view_->page()->isLoading();
+            *controlled_extra_finish = true;
+            emit article_view_->loadFinished(true);
+            *controlled_extra_finish = false;
+            const auto reload = article_reload_states_.find(tab_id);
+            *late_completion_rejected =
+                loading && reload != article_reload_states_.end() &&
+                reload->second.generation == 2U &&
+                reload->second.in_flight_generation == 2U &&
+                reload->second.load_started;
+        });
+    *finished_connection =
+        connect(article_view_, &ArticleView::loadFinished, this,
+                [failed_finishes, successful_finishes, controlled_extra_finish,
+                 extra_finishes](bool success) {
+                    if (*controlled_extra_finish) {
+                        ++*extra_finishes;
+                        return;
+                    }
+                    if (success)
+                        ++*successful_finishes;
+                    else
+                        ++*failed_finishes;
+                });
+    reload_action_->trigger();
+
+    auto attempts = std::make_shared<int>(0);
+    auto poll = std::make_shared<std::function<void()>>();
+    *poll = [this, tab_id, passed, completion = std::move(completion), attempts,
+             poll, load_starts, failed_finishes, successful_finishes,
+             controlled_extra_finish, extra_finishes, late_completion_rejected,
+             second_reload_requested, started_connection,
+             finished_connection]() mutable {
+        const auto current = article_search_presentations_.find(tab_id);
+        const auto reload = article_reload_states_.find(tab_id);
+        if (current != article_search_presentations_.end() &&
+            reload != article_reload_states_.end() &&
+            current->second.status.endsWith(QStringLiteral("of 2")) &&
+            reload->second.generation == 2U &&
+            !reload->second.in_flight_generation.has_value() &&
+            *second_reload_requested && *load_starts >= 2 &&
+            *failed_finishes >= 1 && *successful_finishes >= 1 &&
+            *extra_finishes == 1 && *late_completion_rejected &&
+            !*controlled_extra_finish) {
+            passed = passed &&
+                     current->second.query == QStringLiteral("needle 😀") &&
+                     article_search_->text() == QStringLiteral("needle 😀") &&
+                     article_search_status_->text() == current->second.status;
+            const QString initial_status = current->second.status;
+            const QString next_status =
+                initial_status == QStringLiteral("1 of 2")
+                    ? QStringLiteral("2 of 2")
+                    : QStringLiteral("1 of 2");
+            FindInArticle(false);
+            auto next_attempts = std::make_shared<int>(0);
+            auto next_poll = std::make_shared<std::function<void()>>();
+            *next_poll = [this, tab_id, passed,
+                          completion = std::move(completion), next_attempts,
+                          next_poll, started_connection, finished_connection,
+                          initial_status, next_status]() mutable {
+                const auto next = article_search_presentations_.find(tab_id);
+                if (next != article_search_presentations_.end() &&
+                    next->second.status == next_status &&
+                    article_search_status_->text() == next_status) {
+                    FindInArticle(true);
+                    auto previous_attempts = std::make_shared<int>(0);
+                    auto previous_poll =
+                        std::make_shared<std::function<void()>>();
+                    *previous_poll = [this, tab_id, passed,
+                                      completion = std::move(completion),
+                                      previous_attempts, previous_poll,
+                                      started_connection, finished_connection,
+                                      initial_status]() mutable {
+                        const auto previous =
+                            article_search_presentations_.find(tab_id);
+                        if (previous != article_search_presentations_.end() &&
+                            previous->second.status == initial_status &&
+                            article_search_status_->text() == initial_status) {
+                            disconnect(*started_connection);
+                            disconnect(*finished_connection);
+                            article_view_->findText(QString());
+                            completion(passed);
+                            return;
+                        }
+                        if (++*previous_attempts >= 200) {
+                            disconnect(*started_connection);
+                            disconnect(*finished_connection);
+                            completion(false);
+                            return;
+                        }
+                        QTimer::singleShot(10, this, *previous_poll);
+                    };
+                    QTimer::singleShot(0, this, *previous_poll);
                     return;
                 }
-                if (++*attempts >= 200) {
+                if (++*next_attempts >= 200) {
+                    disconnect(*started_connection);
+                    disconnect(*finished_connection);
                     completion(false);
                     return;
                 }
-                QTimer::singleShot(10, this, *poll);
+                QTimer::singleShot(10, this, *next_poll);
             };
-            QTimer::singleShot(0, this, *poll);
-        },
-        Qt::SingleShotConnection);
-    ReloadCurrentArticle();
+            QTimer::singleShot(0, this, *next_poll);
+            return;
+        }
+        if (++*attempts >= 200) {
+            qWarning() << "article reload smoke timed out" << *load_starts
+                       << *failed_finishes << *successful_finishes
+                       << *extra_finishes << *late_completion_rejected
+                       << *second_reload_requested
+                       << (current == article_search_presentations_.end()
+                               ? QStringLiteral("missing search")
+                               : current->second.status)
+                       << (reload == article_reload_states_.end()
+                               ? 0U
+                               : reload->second.generation)
+                       << (reload != article_reload_states_.end() &&
+                           reload->second.in_flight_generation.has_value());
+            disconnect(*started_connection);
+            disconnect(*finished_connection);
+            completion(false);
+            return;
+        }
+        QTimer::singleShot(10, this, *poll);
+    };
+    QTimer::singleShot(0, this, *poll);
 }
 
 void MainWindow::RunArticleContextMenuCheck(
@@ -6154,6 +6285,7 @@ ArticleView* MainWindow::CreateArticleView(
     connect(view, &ArticleView::loadStarted, this, [this, tab_id, view]() {
         if (ArticleViewForTab(tab_id) != view)
             return;
+        HandleArticleReloadStarted(tab_id, view);
         InvalidateRenderedTextMatchPlan(tab_id);
         ++article_navigation_generations_[tab_id];
         rendered_page_text_transports_.erase(tab_id);
@@ -6246,25 +6378,82 @@ void MainWindow::ReloadCurrentArticle() {
     auto* view = article_view_;
     if (tab_id == 0U || view == nullptr)
         return;
-    connect(
-        view, &ArticleView::loadFinished, this,
-        [this, tab_id, view](bool success) {
-            const auto search = article_search_presentations_.find(tab_id);
-            if (!success || search == article_search_presentations_.end() ||
-                search->second.query.isEmpty() ||
-                ArticleViewForTab(tab_id) != view) {
-                return;
-            }
-            const QString query = search->second.query;
-            const std::uint64_t generation = ++search->second.generation;
-            DispatchArticleSearch(tab_id, view, query, generation, false);
-        },
-        Qt::SingleShotConnection);
+    auto& reload = article_reload_states_[tab_id];
+    ++reload.generation;
+    reload.view = view;
+    if (!reload.in_flight_generation.has_value())
+        StartPendingArticleReload(tab_id, view);
+}
+
+void MainWindow::StartPendingArticleReload(
+    goldendict::core::ArticleTabId tab_id, ArticleView* view) {
+    const auto reload = article_reload_states_.find(tab_id);
+    if (reload == article_reload_states_.end() || reload->second.view != view ||
+        ArticleViewForTab(tab_id) != view ||
+        reload->second.in_flight_generation.has_value()) {
+        return;
+    }
+    reload->second.in_flight_generation = reload->second.generation;
+    reload->second.load_started = false;
     view->reload();
+}
+
+void MainWindow::HandleArticleReloadStarted(
+    goldendict::core::ArticleTabId tab_id, ArticleView* view) {
+    const auto reload = article_reload_states_.find(tab_id);
+    if (reload == article_reload_states_.end() || reload->second.view != view ||
+        !reload->second.in_flight_generation.has_value()) {
+        return;
+    }
+    reload->second.load_started = true;
 }
 
 void MainWindow::HandleArticleLoadFinished(
     goldendict::core::ArticleTabId tab_id, ArticleView* view, bool success) {
+    const auto reload = article_reload_states_.find(tab_id);
+    if (reload != article_reload_states_.end()) {
+        // A terminal completion for the current WebEngine load cannot arrive
+        // while that page still reports loading.
+        const bool current_load_finished =
+            reload->second.in_flight_generation.has_value() &&
+            reload->second.load_started && !view->page()->isLoading();
+        if (reload->second.view != view || ArticleViewForTab(tab_id) != view) {
+            article_reload_states_.erase(reload);
+        } else if (current_load_finished) {
+            const std::uint64_t completed_generation =
+                *reload->second.in_flight_generation;
+            reload->second.in_flight_generation.reset();
+            reload->second.load_started = false;
+            if (completed_generation != reload->second.generation) {
+                const std::uint64_t pending_generation =
+                    reload->second.generation;
+                QTimer::singleShot(
+                    0, this, [this, tab_id, view, pending_generation]() {
+                        const auto pending =
+                            article_reload_states_.find(tab_id);
+                        if (pending == article_reload_states_.end() ||
+                            pending->second.generation != pending_generation ||
+                            pending->second.in_flight_generation.has_value() ||
+                            pending->second.view != view ||
+                            ArticleViewForTab(tab_id) != view) {
+                            return;
+                        }
+                        StartPendingArticleReload(tab_id, view);
+                    });
+            } else {
+                const auto search = article_search_presentations_.find(tab_id);
+                if (success && search != article_search_presentations_.end() &&
+                    !search->second.query.isEmpty()) {
+                    const QString query = search->second.query;
+                    const std::uint64_t generation =
+                        ++search->second.generation;
+                    DispatchArticleSearch(tab_id, view, query, generation,
+                                          false);
+                }
+            }
+        }
+    }
+
     const auto scroll = pending_article_scroll_restorations_.find(tab_id);
     if (scroll == pending_article_scroll_restorations_.end())
         return;
@@ -6412,6 +6601,7 @@ void MainWindow::SyncArticleTabs() {
             lookup_results_.erase(id);
             suggestions_.erase(id);
             article_search_presentations_.erase(id);
+            article_reload_states_.erase(id);
             pending_article_search_handoffs_.erase(id);
             InvalidateRenderedTextMatchPlan(id);
             article_navigation_generations_.erase(id);
