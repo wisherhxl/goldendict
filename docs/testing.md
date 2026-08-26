@@ -385,13 +385,14 @@ scheme with `HostAndPort` syntax, default port `0`, and exactly the secure,
 local, and local-access flags required by the article-resource handler. This
 keeps a rejected early registration from being hidden by unrelated passing GUI
 smokes.
-`article_scheme_handler_test` loads a generated StarDict SVG through the real
-WebEngine handler, published Widgets binding, Core facade, and dictionary
-resource service. It also pins the synthetic local article-content base used
-by `ArticleView`: an empty `setHtml()` base has an opaque origin and cannot
-request resources from the local `goldendict` scheme, while assembled article
-CSP and URL rewriting continue to admit only the intended internal resource
-types.
+`article_scheme_handler_test` loads a generated nested, space-containing
+StarDict SVG through the real WebEngine handler, published Widgets binding,
+Core facade, and dictionary resource service. It preserves the fully encoded
+internal URL across the Qt/Core boundary. The test also pins the synthetic
+local article-content base used by `ArticleView`: an empty `setHtml()` base has
+an opaque origin and cannot request resources from the local `goldendict`
+scheme, while assembled article CSP and URL rewriting continue to admit only
+the intended internal resource types.
 `goldendict_file_menu_smoke` pins the unique leading `menuFile`, exact supported
 legacy identities, order, separators, roles, shortcuts, and single shortcut
 ownership. It verifies exact action reuse by the tab control, article toolbar,

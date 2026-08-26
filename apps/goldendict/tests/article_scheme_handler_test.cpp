@@ -22,8 +22,6 @@
 
 namespace {
 
-constexpr auto kSchemeName = "goldendict";
-
 void RegisterArticleScheme() {
     QWebEngineUrlScheme scheme(QByteArrayLiteral("goldendict"));
     scheme.setSyntax(QWebEngineUrlScheme::Syntax::HostAndPort);
@@ -54,12 +52,12 @@ bool WriteStardictFixture(const QString& directory) {
         "\n"
         "sametypesequence=m\n";
     QDir root(directory);
-    return root.mkpath(QStringLiteral("res")) &&
+    return root.mkpath(QStringLiteral("res/images")) &&
            WriteFile(root.filePath(QStringLiteral("fixture.ifo")), info) &&
            WriteFile(root.filePath(QStringLiteral("fixture.idx")), index) &&
            WriteFile(root.filePath(QStringLiteral("fixture.dict")),
                      QByteArrayLiteral("fixture")) &&
-           WriteFile(root.filePath(QStringLiteral("res/payload.svg")),
+           WriteFile(root.filePath(QStringLiteral("res/images/pixel one.svg")),
                      QByteArrayLiteral(
                          "<svg xmlns='http://www.w3.org/2000/svg'>"
                          "<text x='0' y='20'>Article scheme resource ready"
@@ -112,12 +110,15 @@ int main(int argc, char* argv[]) {
     if (catalog.size() != 1U)
         return 1;
 
-    QUrl resource_url;
-    resource_url.setScheme(QString::fromLatin1(kSchemeName));
-    resource_url.setHost(QStringLiteral("resource"));
-    resource_url.setPath(QStringLiteral("/") +
-                         QString::fromStdString(catalog.front().id) +
-                         QStringLiteral("/payload.svg"));
+    const QUrl resource_url = QUrl::fromEncoded(
+        QByteArrayLiteral("goldendict://resource/") +
+        QUrl::toPercentEncoding(QString::fromStdString(catalog.front().id)) +
+        QByteArrayLiteral("/") +
+        QUrl::toPercentEncoding(QStringLiteral("images/pixel one.svg")));
+    if (!resource_url.toEncoded().contains(
+            QByteArrayLiteral("images%2Fpixel%20one.svg"))) {
+        return 1;
+    }
     const auto resolved =
         facade->ResolveArticleUrl(resource_url.toEncoded().toStdString());
     if (!resolved.has_value() ||

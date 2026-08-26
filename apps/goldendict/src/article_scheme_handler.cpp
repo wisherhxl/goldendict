@@ -35,7 +35,7 @@ void ArticleSchemeHandler::requestStarted(QWebEngineUrlRequestJob* request) {
         return;
     }
     const auto resolved = facade->ResolveArticleUrl(
-        request->requestUrl().toString().toStdString());
+        request->requestUrl().toEncoded().toStdString());
     if (!resolved.has_value() ||
         resolved->kind != goldendict::core::ArticleUrlKind::kResource) {
         request->fail(QWebEngineUrlRequestJob::UrlNotFound);
