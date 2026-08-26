@@ -29,11 +29,19 @@ class GoldenDictRecipe(ConanFile):
         "qt_linux_platform_plugin": "auto",
         "qt_windows_platform_plugin": "auto",
         "qt/*:qtdeclarative": True,
+        "qt/*:qtimageformats": True,
+        "qt/*:qtmultimedia": True,
         "qt/*:qtshadertools": True,
+        "qt/*:qtspeech": True,
+        "qt/*:qtsvg": True,
         "qt/*:qttranslations": True,
+        "qt/*:qtwayland": False,
         "qt/*:qtwebchannel": True,
         "qt/*:qtwebengine": True,
         "qt/*:with_dbus": True,
+        "qt/*:with_gstreamer": False,
+        "qt/*:with_libjpeg": "libjpeg-turbo",
+        "qt/*:with_openal": True,
     }
 
     def set_name(self):

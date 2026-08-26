@@ -154,6 +154,33 @@ Linux WebEngine also requires Qt's `with_dbus` option. The application links Qt
 Core, Gui, Widgets, Network, WebChannel, WebEngineCore, and WebEngineWidgets
 through `TigerFindQt.cmake`.
 
+The first-formal-Linux Qt package is a deliberate superset so later parity work
+does not repeatedly rebuild Qt WebEngine. In addition to the modules above, the
+recipe enables `qtimageformats`, `qtmultimedia`, `qtspeech`, and `qtsvg`, uses
+`libjpeg-turbo`, and retains Qt Multimedia's OpenAL integration. These modules
+cover the mapped legacy image, SVG/icon, audio, and speech boundaries. Enabling
+a Qt module does not bypass its feature gate: audio playback and Linux speech
+still require their separately approved service ownership and focused tests.
+
+The envelope deliberately keeps `qtwayland=False`. The accepted Linux behavior
+currently forces the `xcb` platform under a Wayland session; native Wayland is
+still an independently mapped platform capability. It also keeps
+`with_gstreamer=False`: the Qt 6.11.1 Conan recipe pins GStreamer 1.19.2, whose
+GLib constraint conflicts with Qt WebEngine's resolved graph. Native Wayland or
+GStreamer enablement therefore requires its own dependency decision and Qt
+package-ID prerequisite rather than silently expanding an ordinary feature
+build.
+
+The frozen legacy dependency inventory also includes Hunspell, FFmpeg, TIFF,
+LZO, xz/lzma, zstd, OpenCC, EPWING/libeb, X11/XTest, Vorbis/Ogg, and libao.
+These are not all Qt build options. Hunspell, FFmpeg, libtiff, LZO, xz, and
+zstd have Conan Center recipes and can be added as private capability
+dependencies without rebuilding Qt. OpenCC and libeb have no Conan Center
+recipe in the verified inventory and need focused Conan recipes or a replacement
+implementation before their feature gates. The obsolete libao backend is not
+part of the Qt package envelope; Qt Multimedia/OpenAL, a direct FFmpeg adapter,
+and an external-player adapter remain separate approved audio choices.
+
 Qt WebEngine's source configure requires the Python `html5lib` module, but
 Conan Center does not currently provide it. Export the focused local recipe at
 `conan/recipes/python-html5lib/` before dependency resolution and use
