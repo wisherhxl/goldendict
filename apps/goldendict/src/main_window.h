@@ -397,6 +397,7 @@ class MainWindow final : public QMainWindow {
     void UpdateFileActions();
     void ShowTabContextMenu(const QPoint& position);
     ArticleView* CreateArticleView(goldendict::core::ArticleTabId tab_id);
+    void ReloadCurrentArticle();
     void HandleArticleLoadFinished(goldendict::core::ArticleTabId tab_id,
                                    ArticleView* view, bool success);
     ArticleView* ArticleViewForTab(goldendict::core::ArticleTabId tab_id) const;
@@ -432,6 +433,9 @@ class MainWindow final : public QMainWindow {
     void DispatchArticleSearch(goldendict::core::ArticleTabId tab_id,
                                ArticleView* view, const QString& text,
                                std::uint64_t generation, bool backwards);
+    void RunArticleSearchReloadCheck(
+        goldendict::core::ArticleTabId tab_id, bool passed,
+        std::function<void(bool)> completion);
     void ExtractRenderedPageText(goldendict::core::ArticleTabId tab_id,
                                  ArticleView* view,
                                  std::uint64_t accepted_query_generation,

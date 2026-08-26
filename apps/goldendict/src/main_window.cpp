@@ -1278,10 +1278,8 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
             [this]() { NavigateArticleTab(false); });
     connect(forward_action_, &QAction::triggered, this,
             [this]() { NavigateArticleTab(true); });
-    connect(reload_action, &QAction::triggered, this, [this]() {
-        if (article_view_ != nullptr)
-            article_view_->reload();
-    });
+    connect(reload_action, &QAction::triggered, this,
+            [this]() { ReloadCurrentArticle(); });
     connect(article_search_, &QLineEdit::returnPressed, this,
             [this]() { FindInArticle(false); });
     connect(article_search_, &QLineEdit::textChanged, this,
@@ -4342,31 +4340,11 @@ void MainWindow::RunWebEngineInteractionCheck(
                                                 final_search->second.status ==
                                                     QStringLiteral(
                                                         "stable status");
-                                            article_view_->findText(QString());
-                                            article_view_->page()->toHtml(
-                                                [this,
-                                                 passed = interaction_passed &&
-                                                          stale_safe,
-                                                 completion =
-                                                     std::move(completion)](
-                                                    const QString&
-                                                        html) mutable {
-                                                    article_view_->printToPdf(
-                                                        [passed, html,
-                                                         completion = std::move(
-                                                             completion)](
-                                                            const QByteArray&
-                                                                pdf) mutable {
-                                                            completion(
-                                                                passed &&
-                                                                html.contains(
-                                                                    QStringLiteral(
-                                                                        "needl"
-                                                                        "e")) &&
-                                                                pdf.startsWith(
-                                                                    "%PDF-"));
-                                                        });
-                                                });
+                                            RunArticleSearchReloadCheck(
+                                                tab_id,
+                                                interaction_passed &&
+                                                    stale_safe,
+                                                std::move(completion));
                                         });
                                     return;
                                 }
@@ -4392,6 +4370,63 @@ void MainWindow::RunWebEngineInteractionCheck(
     article_view_->setHtml(
         QStringLiteral("<!doctype html><html><body><p>needle 😀</p><p>needle "
                        "😀</p></body></html>"));
+}
+
+void MainWindow::RunArticleSearchReloadCheck(
+    goldendict::core::ArticleTabId tab_id, bool passed,
+    std::function<void(bool)> completion) {
+    const auto search = article_search_presentations_.find(tab_id);
+    if (search == article_search_presentations_.end()) {
+        completion(false);
+        return;
+    }
+    search->second.query = QStringLiteral("needle 😀");
+    search->second.status.clear();
+    ++search->second.generation;
+    article_search_status_->clear();
+    connect(
+        article_view_, &ArticleView::loadFinished, this,
+        [this, tab_id, passed,
+         completion = std::move(completion)](bool reloaded) mutable {
+            if (!reloaded) {
+                completion(false);
+                return;
+            }
+            auto attempts = std::make_shared<int>(0);
+            auto poll = std::make_shared<std::function<void()>>();
+            *poll = [this, tab_id, passed,
+                     completion = std::move(completion), attempts,
+                     poll]() mutable {
+                const auto current = article_search_presentations_.find(tab_id);
+                if (current != article_search_presentations_.end() &&
+                    current->second.status.endsWith(QStringLiteral("of 2"))) {
+                    article_view_->findText(QString());
+                    article_view_->page()->toHtml(
+                        [this, passed, completion = std::move(completion)](
+                            const QString& html) mutable {
+                            article_view_->printToPdf(
+                                [passed, html,
+                                 completion = std::move(completion)](
+                                    const QByteArray& pdf) mutable {
+                                    completion(
+                                        passed &&
+                                        html.contains(
+                                            QStringLiteral("needle")) &&
+                                        pdf.startsWith("%PDF-"));
+                                });
+                        });
+                    return;
+                }
+                if (++*attempts >= 200) {
+                    completion(false);
+                    return;
+                }
+                QTimer::singleShot(10, this, *poll);
+            };
+            QTimer::singleShot(0, this, *poll);
+        },
+        Qt::SingleShotConnection);
+    ReloadCurrentArticle();
 }
 
 void MainWindow::RunArticleContextMenuCheck(
@@ -6204,6 +6239,28 @@ ArticleView* MainWindow::CreateArticleView(
         "<!doctype html><html><body><h1>GoldenDict</h1>"
         "<p>Choose a dictionary folder to begin.</p></body></html>"));
     return view;
+}
+
+void MainWindow::ReloadCurrentArticle() {
+    const auto tab_id = TabIdAt(article_tabs_->currentIndex());
+    auto* view = article_view_;
+    if (tab_id == 0U || view == nullptr)
+        return;
+    connect(
+        view, &ArticleView::loadFinished, this,
+        [this, tab_id, view](bool success) {
+            const auto search = article_search_presentations_.find(tab_id);
+            if (!success || search == article_search_presentations_.end() ||
+                search->second.query.isEmpty() ||
+                ArticleViewForTab(tab_id) != view) {
+                return;
+            }
+            const QString query = search->second.query;
+            const std::uint64_t generation = ++search->second.generation;
+            DispatchArticleSearch(tab_id, view, query, generation, false);
+        },
+        Qt::SingleShotConnection);
+    view->reload();
 }
 
 void MainWindow::HandleArticleLoadFinished(
