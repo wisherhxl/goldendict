@@ -89,6 +89,9 @@ class ArticleView final : public QWidget {
     QWebEnginePage* page() const;
     void setPage(QWebEnginePage* page);
     void setHtml(const QString& html, const QUrl& base_url = QUrl());
+    quint64 ReserveHtmlNavigation();
+    void SetHtmlNavigation(quint64 navigation_token, const QString& html,
+                           const QUrl& base_url = QUrl());
     void reload();
     void findText(const QString& text, QWebEnginePage::FindFlags options = {},
                   const std::function<void(const QWebEngineFindTextResult&)>&
@@ -133,6 +136,8 @@ class ArticleView final : public QWidget {
    signals:
     void loadStarted();
     void loadFinished(bool success);
+    void HtmlNavigationFinished(quint64 navigation_token, bool success);
+    void PageReplaced();
     void urlChanged(const QUrl& url);
     void pdfPrintingFinished(const QString& file_path, bool success);
     void printFinished(bool success);
@@ -184,6 +189,8 @@ class ArticleView final : public QWidget {
     bool select_word_by_single_click_ = false;
     quint64 document_generation_ = 0U;
     quint64 pointer_generation_ = 0U;
+    quint64 next_html_navigation_token_ = 0U;
+    QMetaObject::Connection page_loading_connection_;
     QList<ArticleDictionaryContextEntry> dictionary_context_entries_;
     bool dictionary_context_overflow_ = false;
     quint64 dictionary_context_generation_ = 0U;

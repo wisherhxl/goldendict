@@ -16,6 +16,7 @@
 #include <QPointF>
 #include <QPointer>
 #include <QStringList>
+#include <QUrl>
 
 #include "goldendict/core/application.h"
 #include "goldendict/core/desktop_facade.h"
@@ -404,6 +405,20 @@ class MainWindow final : public QMainWindow {
                                     ArticleView* view);
     void HandleArticleLoadFinished(goldendict::core::ArticleTabId tab_id,
                                    ArticleView* view, bool success);
+    void HandleArticleHtmlNavigationFinished(
+        goldendict::core::ArticleTabId tab_id, ArticleView* view,
+        quint64 navigation_token, bool success);
+    void BindPendingArticleScrollRestoration(
+        goldendict::core::ArticleTabId tab_id, ArticleView* view,
+        quint64 navigation_token);
+    void DeferPendingArticleScrollRestoration(
+        goldendict::core::ArticleTabId tab_id, ArticleView* view);
+    std::optional<QPointF> TakePendingArticleScrollRestoration(
+        goldendict::core::ArticleTabId tab_id, ArticleView* view,
+        quint64 navigation_token, bool success);
+    void PublishArticleHtml(goldendict::core::ArticleTabId tab_id,
+                            ArticleView* view, const QString& html,
+                            const QUrl& base_url = QUrl());
     ArticleView* ArticleViewForTab(goldendict::core::ArticleTabId tab_id) const;
     goldendict::core::ArticleTabId TabIdAt(int index) const;
     void ShowMessage(const QString& title, const QString& message);
@@ -714,7 +729,15 @@ class MainWindow final : public QMainWindow {
         rendered_text_match_plan_controller_owner_;
     std::unique_ptr<RenderedTextMatchPlanController>
         retired_rendered_text_match_plan_controller_;
-    std::map<goldendict::core::ArticleTabId, QPointF>
+
+    struct PendingArticleScrollRestoration {
+        QPointF position;
+        QPointer<ArticleView> view;
+        QPointer<QWebEnginePage> page;
+        quint64 navigation_token = 0U;
+    };
+
+    std::map<goldendict::core::ArticleTabId, PendingArticleScrollRestoration>
         pending_article_scroll_restorations_;
 
     struct SuggestionPresentation {

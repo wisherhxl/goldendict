@@ -22,8 +22,10 @@
 #include <QMouseEvent>
 #include <QPointer>
 #include <QPushButton>
+#include <QUrlQuery>
 #include <QVBoxLayout>
 #include <QWebEngineContextMenuRequest>
+#include <QWebEngineLoadingInfo>
 #include <QWebEnginePage>
 #include <QWebEngineScript>
 #include <QWebEngineView>
@@ -503,13 +505,54 @@ QWebEnginePage* ArticleView::page() const {
 }
 
 void ArticleView::setPage(QWebEnginePage* page) {
+    disconnect(page_loading_connection_);
     web_view_->setPage(page);
+    page_loading_connection_ = connect(
+        page, &QWebEnginePage::loadingChanged, this,
+        [this](const QWebEngineLoadingInfo& info) {
+            if (info.status() != QWebEngineLoadingInfo::LoadSucceededStatus &&
+                info.status() != QWebEngineLoadingInfo::LoadFailedStatus &&
+                info.status() != QWebEngineLoadingInfo::LoadStoppedStatus) {
+                return;
+            }
+            const QUrlQuery query(info.url());
+            bool valid = false;
+            const quint64 token =
+                query.queryItemValue(QStringLiteral("gd-navigation-token"))
+                    .toULongLong(&valid);
+            if (valid && token != 0U) {
+                emit HtmlNavigationFinished(
+                    token, info.status() ==
+                               QWebEngineLoadingInfo::LoadSucceededStatus);
+            }
+        });
+    emit PageReplaced();
 }
 
 void ArticleView::setHtml(const QString& html, const QUrl& base_url) {
-    web_view_->setHtml(html, base_url.isEmpty()
-                                 ? goldendict::app::ArticleContentBaseUrl()
-                                 : base_url);
+    SetHtmlNavigation(ReserveHtmlNavigation(), html, base_url);
+}
+
+quint64 ArticleView::ReserveHtmlNavigation() {
+    ++next_html_navigation_token_;
+    if (next_html_navigation_token_ == 0U)
+        ++next_html_navigation_token_;
+    return next_html_navigation_token_;
+}
+
+void ArticleView::SetHtmlNavigation(quint64 navigation_token,
+                                    const QString& html, const QUrl& base_url) {
+    Q_ASSERT(navigation_token != 0U &&
+             navigation_token == next_html_navigation_token_);
+    QUrl navigation_url = base_url.isEmpty()
+                              ? goldendict::app::ArticleContentBaseUrl()
+                              : base_url;
+    QUrlQuery query(navigation_url);
+    query.removeAllQueryItems(QStringLiteral("gd-navigation-token"));
+    query.addQueryItem(QStringLiteral("gd-navigation-token"),
+                       QString::number(navigation_token));
+    navigation_url.setQuery(query);
+    web_view_->setHtml(html, navigation_url);
 }
 
 void ArticleView::reload() {

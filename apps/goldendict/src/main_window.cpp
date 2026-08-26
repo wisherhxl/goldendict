@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cmath>
 #include <exception>
 #include <limits>
 #include <thread>
@@ -69,6 +70,7 @@
 #include <QWebEngineHistory>
 #include <QWebEngineProfile>
 #include <QWebEngineScript>
+#include <QWebEngineScriptCollection>
 #include <QWebEngineView>
 #include <QWidget>
 
@@ -107,6 +109,13 @@ constexpr auto kResultsPaneName = "dictsPane";
 constexpr auto kSearchPaneName = "searchPane";
 constexpr auto kPreviousHistoryDockName = "historyDock";
 constexpr auto kPreviousFavoritesDockName = "favoritesDock";
+
+std::optional<QPointF> QtPageScrollToCssScroll(const QPointF& position,
+                                               qreal zoom_factor) {
+    if (!std::isfinite(zoom_factor) || zoom_factor <= 0.0)
+        return std::nullopt;
+    return QPointF(position.x() / zoom_factor, position.y() / zoom_factor);
+}
 
 class EscapeConsumer final : public QObject {
    public:
@@ -355,6 +364,23 @@ class WidgetsFacadeActivationRelay final : public QObject {
                              ArticleView* view, bool success) {
         Deliver([&](MainWindow& owner) {
             owner.HandleArticleLoadFinished(tab_id, view, success);
+        });
+    }
+
+    void ArticleHtmlNavigationFinished(goldendict::core::ArticleTabId tab_id,
+                                       ArticleView* view,
+                                       quint64 navigation_token, bool success) {
+        Deliver([&](MainWindow& owner) {
+            owner.HandleArticleHtmlNavigationFinished(
+                tab_id, view, navigation_token, success);
+        });
+    }
+
+    void ArticlePageReplaced(goldendict::core::ArticleTabId tab_id,
+                             ArticleView* view) {
+        Deliver([&](MainWindow& owner) {
+            if (owner.ArticleViewForTab(tab_id) == view)
+                owner.pending_article_scroll_restorations_.erase(tab_id);
         });
     }
 
@@ -4984,6 +5010,237 @@ void MainWindow::RunArticleTabsSmokeCheck(
         return;
     }
     SyncArticleTabs();
+    bool scroll_restoration_ownership = true;
+    goldendict::core::TabNavigationState restored_navigation;
+    restored_navigation.kind = goldendict::core::TabNavigationKind::kLookup;
+    restored_navigation.query = "application";
+    restored_navigation.title = "application";
+    const goldendict::core::ArticleTabSession restored_session = {
+        {{1U, {restored_navigation}, 0U}}, 1U};
+    if (!facade_->RestoreArticleTabSession(restored_session)) {
+        completion(false);
+        return;
+    }
+    RebuildArticleTabs();
+    const auto restoration_tab_id = TabIdAt(0);
+    const auto wait_for_request = [this, restoration_tab_id]() {
+        QElapsedTimer timer;
+        timer.start();
+        while (requests_.count(restoration_tab_id) == 1U &&
+               !requests_.at(restoration_tab_id)->IsFinished() &&
+               timer.elapsed() < 2000) {
+            QApplication::processEvents(QEventLoop::AllEvents, 25);
+        }
+        if (requests_.count(restoration_tab_id) == 1U &&
+            requests_.at(restoration_tab_id)->IsFinished()) {
+            FinishLookup();
+            return true;
+        }
+        return requests_.count(restoration_tab_id) == 0U;
+    };
+    scroll_restoration_ownership = wait_for_request();
+    auto* restoration_old_view = ArticleViewForTab(restoration_tab_id);
+    if (restoration_old_view == nullptr) {
+        completion(false);
+        return;
+    }
+    QElapsedTimer initial_load_timer;
+    initial_load_timer.start();
+    while (restoration_old_view->page()->isLoading() &&
+           initial_load_timer.elapsed() < 2000) {
+        QApplication::processEvents(QEventLoop::AllEvents, 25);
+    }
+    restoration_old_view->setZoomFactor(5.0);
+    bool scroll_ready = false;
+    restoration_old_view->page()->runJavaScript(
+        QStringLiteral("document.body.insertAdjacentHTML('beforeend',"
+                       "'<div style=\"height:3000px\"></div>');"
+                       "window.scrollTo(11,75); window.scrollY;"),
+        [&scroll_ready](const QVariant&) { scroll_ready = true; });
+    QElapsedTimer scroll_timer;
+    scroll_timer.start();
+    while ((!scroll_ready ||
+            restoration_old_view->page()->scrollPosition().y() < 60.0) &&
+           scroll_timer.elapsed() < 2000) {
+        QApplication::processEvents(QEventLoop::AllEvents, 25);
+    }
+    const QPointF saved_scroll = restoration_old_view->page()->scrollPosition();
+    scroll_restoration_ownership =
+        scroll_restoration_ownership && scroll_ready && saved_scroll.y() >= 60;
+    QWebEngineScript scroll_observer;
+    scroll_observer.setName(QStringLiteral("scroll-restoration-smoke"));
+    scroll_observer.setInjectionPoint(QWebEngineScript::DocumentReady);
+    scroll_observer.setWorldId(QWebEngineScript::MainWorld);
+    scroll_observer.setRunsOnSubFrames(false);
+    scroll_observer.setSourceCode(
+        QStringLiteral("globalThis.__goldendictRestoredScroll = null;"
+                       "const originalScrollTo = window.scrollTo.bind(window);"
+                       "window.scrollTo = (x, y) => {"
+                       "globalThis.__goldendictRestoredScroll = [x, y];"
+                       "return originalScrollTo(x, y);};"));
+    QWebEngineProfile::defaultProfile()->scripts()->insert(scroll_observer);
+    const quint64 stale_navigation_token =
+        restoration_old_view->ReserveHtmlNavigation();
+    const QPointer<ArticleView> restoration_old_view_guard =
+        restoration_old_view;
+    auto& restoration_search =
+        article_search_presentations_[restoration_tab_id];
+    restoration_search.query =
+        QStringLiteral("absent-scroll-restoration-query");
+    const std::uint64_t search_generation = restoration_search.generation;
+    SetFacade(facade_);
+    auto* restoration_view = ArticleViewForTab(restoration_tab_id);
+    if (restoration_view != nullptr)
+        restoration_view->setZoomFactor(5.0);
+    scroll_restoration_ownership =
+        scroll_restoration_ownership && wait_for_request();
+    const auto pending_success =
+        pending_article_scroll_restorations_.find(restoration_tab_id);
+    scroll_restoration_ownership =
+        restoration_old_view_guard.isNull() && restoration_view != nullptr &&
+        pending_success != pending_article_scroll_restorations_.end() &&
+        pending_success->second.navigation_token != 0U &&
+        pending_success->second.navigation_token != stale_navigation_token;
+    const quint64 matching_navigation_token =
+        pending_success == pending_article_scroll_restorations_.end()
+            ? 0U
+            : pending_success->second.navigation_token;
+    if (restoration_view != nullptr) {
+        emit restoration_view->HtmlNavigationFinished(stale_navigation_token,
+                                                      true);
+    }
+    scroll_restoration_ownership =
+        scroll_restoration_ownership &&
+        pending_article_scroll_restorations_.count(restoration_tab_id) == 1U &&
+        restoration_search.generation == search_generation;
+    QElapsedTimer restoration_timer;
+    restoration_timer.start();
+    while (
+        (pending_article_scroll_restorations_.count(restoration_tab_id) == 1U ||
+         (restoration_view != nullptr &&
+          restoration_view->page()->scrollPosition().y() < 60.0)) &&
+        restoration_timer.elapsed() < 2000) {
+        QApplication::processEvents(QEventLoop::AllEvents, 25);
+    }
+    QPointF requested_scroll;
+    QPointF actual_javascript_scroll;
+    bool requested_scroll_ready = false;
+    if (restoration_view != nullptr) {
+        restoration_view->page()->runJavaScript(
+            QStringLiteral(
+                "[globalThis.__goldendictRestoredScroll, window.scrollX, "
+                "window.scrollY]"),
+            [&requested_scroll, &actual_javascript_scroll,
+             &requested_scroll_ready](const QVariant& value) {
+                const QVariantList result = value.toList();
+                const QVariantList coordinates = result.value(0).toList();
+                if (coordinates.size() == 2) {
+                    requested_scroll = QPointF(coordinates[0].toDouble(),
+                                               coordinates[1].toDouble());
+                }
+                if (result.size() == 3) {
+                    actual_javascript_scroll =
+                        QPointF(result[1].toDouble(), result[2].toDouble());
+                }
+                requested_scroll_ready = true;
+            });
+    }
+    QElapsedTimer requested_scroll_timer;
+    requested_scroll_timer.start();
+    while (!requested_scroll_ready && requested_scroll_timer.elapsed() < 2000)
+        QApplication::processEvents(QEventLoop::AllEvents, 25);
+    QWebEngineProfile::defaultProfile()->scripts()->remove(scroll_observer);
+    const QPointF expected_css_scroll(saved_scroll.x() / 5.0,
+                                      saved_scroll.y() / 5.0);
+    scroll_restoration_ownership =
+        scroll_restoration_ownership &&
+        pending_article_scroll_restorations_.count(restoration_tab_id) == 0U &&
+        restoration_search.generation == search_generation + 1U &&
+        restoration_view != nullptr && requested_scroll_ready &&
+        qAbs(restoration_view->page()->scrollPosition().x() -
+             saved_scroll.x()) < 0.5 &&
+        qAbs(restoration_view->page()->scrollPosition().y() -
+             saved_scroll.y()) < 0.5 &&
+        qAbs(requested_scroll.x() - expected_css_scroll.x()) < 0.5 &&
+        qAbs(requested_scroll.y() - expected_css_scroll.y()) < 0.5 &&
+        qAbs(actual_javascript_scroll.x() - expected_css_scroll.x()) < 0.5 &&
+        qAbs(actual_javascript_scroll.y() - expected_css_scroll.y()) < 0.5;
+    if (restoration_view != nullptr) {
+        emit restoration_view->HtmlNavigationFinished(matching_navigation_token,
+                                                      true);
+    }
+    scroll_restoration_ownership =
+        scroll_restoration_ownership &&
+        restoration_search.generation == search_generation + 1U;
+
+    SetFacade(facade_);
+    scroll_restoration_ownership =
+        scroll_restoration_ownership && wait_for_request();
+    restoration_view = ArticleViewForTab(restoration_tab_id);
+    const auto pending_failure =
+        pending_article_scroll_restorations_.find(restoration_tab_id);
+    const quint64 failed_navigation_token =
+        pending_failure == pending_article_scroll_restorations_.end()
+            ? 0U
+            : pending_failure->second.navigation_token;
+    if (restoration_view != nullptr) {
+        emit restoration_view->HtmlNavigationFinished(failed_navigation_token,
+                                                      false);
+    }
+    scroll_restoration_ownership =
+        scroll_restoration_ownership && failed_navigation_token != 0U &&
+        pending_article_scroll_restorations_.count(restoration_tab_id) == 0U &&
+        restoration_search.generation == search_generation + 1U;
+
+    SetFacade(facade_);
+    scroll_restoration_ownership =
+        scroll_restoration_ownership &&
+        pending_article_scroll_restorations_.count(restoration_tab_id) == 1U;
+    restoration_search.query.clear();
+    restoration_view = ArticleViewForTab(restoration_tab_id);
+    ReloadCurrentArticle();
+    scroll_restoration_ownership =
+        scroll_restoration_ownership &&
+        pending_article_scroll_restorations_.count(restoration_tab_id) == 0U;
+    QElapsedTimer reload_timer;
+    reload_timer.start();
+    while (restoration_view != nullptr &&
+           restoration_view->page()->isLoading() &&
+           reload_timer.elapsed() < 2000) {
+        QApplication::processEvents(QEventLoop::AllEvents, 25);
+    }
+    scroll_restoration_ownership =
+        scroll_restoration_ownership &&
+        pending_article_scroll_restorations_.count(restoration_tab_id) == 0U;
+
+    SetFacade(facade_);
+    const auto replacement_restoration_tab_id = TabIdAt(0);
+    restoration_view = ArticleViewForTab(replacement_restoration_tab_id);
+    scroll_restoration_ownership = scroll_restoration_ownership &&
+                                   pending_article_scroll_restorations_.count(
+                                       replacement_restoration_tab_id) == 1U;
+    if (restoration_view != nullptr) {
+        auto* replacement_page = new ArticlePage(restoration_view);
+        replacement_page->SetFacade(facade_);
+        restoration_view->setPage(replacement_page);
+    }
+    scroll_restoration_ownership = scroll_restoration_ownership &&
+                                   pending_article_scroll_restorations_.count(
+                                       replacement_restoration_tab_id) == 0U;
+
+    SetFacade(facade_);
+    const auto closing_restoration_tab_id = TabIdAt(0);
+    scroll_restoration_ownership = scroll_restoration_ownership &&
+                                   pending_article_scroll_restorations_.count(
+                                       closing_restoration_tab_id) == 1U;
+    CloseArticleTab(0);
+    scroll_restoration_ownership = scroll_restoration_ownership &&
+                                   pending_article_scroll_restorations_.count(
+                                       closing_restoration_tab_id) == 0U;
+    scroll_restoration_ownership =
+        scroll_restoration_ownership &&
+        facade_->RestoreArticleTabSession(initial_session);
+    SetFacade(facade_);
     const QSize default_size = size();
     const std::string saved_geometry = CaptureMainWindowGeometry();
     resize(default_size + QSize(37, 29));
@@ -5071,6 +5328,7 @@ void MainWindow::RunArticleTabsSmokeCheck(
     }
     query_->clear();
     const bool default_shell =
+        scroll_restoration_ownership &&
         findChildren<QDockWidget*>(QString::fromLatin1(kHistoryPaneName))
                 .size() == 1 &&
         findChildren<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName))
@@ -6229,6 +6487,7 @@ MainWindow::~MainWindow() {
     rendered_text_match_plans_.clear();
     rendered_page_text_transports_.clear();
     article_navigation_generations_.clear();
+    pending_article_scroll_restorations_.clear();
     if (dictionary_browser_ != nullptr)
         dictionary_browser_->QuiesceBindingConsumer(true);
     if (full_text_search_dialog_ != nullptr)
@@ -6271,6 +6530,10 @@ ArticleView* MainWindow::ArticleViewForTab(
 ArticleView* MainWindow::CreateArticleView(
     goldendict::core::ArticleTabId tab_id) {
     auto* view = new ArticleView(article_tabs_);
+    connect(view, &ArticleView::PageReplaced, this, [this, tab_id, view]() {
+        if (ArticleViewForTab(tab_id) == view)
+            pending_article_scroll_restorations_.erase(tab_id);
+    });
     view->SetFacade(facade_);
     view->SetClickPreferences(preferences_.double_click_translates,
                               preferences_.select_word_by_single_click);
@@ -6349,6 +6612,11 @@ ArticleView* MainWindow::CreateArticleView(
             [this, tab_id, view](bool success) {
                 HandleArticleLoadFinished(tab_id, view, success);
             });
+    connect(view, &ArticleView::HtmlNavigationFinished, this,
+            [this, tab_id, view](quint64 navigation_token, bool success) {
+                HandleArticleHtmlNavigationFinished(tab_id, view,
+                                                    navigation_token, success);
+            });
     connect(view, &ArticleView::pdfPrintingFinished, this,
             [this, tab_id](const QString&, bool success) {
                 if (TabIdAt(article_tabs_->currentIndex()) == tab_id) {
@@ -6367,9 +6635,6 @@ ArticleView* MainWindow::CreateArticleView(
             [this, tab_id](ArticleHighlightNavigationDirection direction) {
                 NavigateFullTextHighlight(tab_id, direction);
             });
-    view->setHtml(QStringLiteral(
-        "<!doctype html><html><body><h1>GoldenDict</h1>"
-        "<p>Choose a dictionary folder to begin.</p></body></html>"));
     return view;
 }
 
@@ -6378,6 +6643,7 @@ void MainWindow::ReloadCurrentArticle() {
     auto* view = article_view_;
     if (tab_id == 0U || view == nullptr)
         return;
+    pending_article_scroll_restorations_.erase(tab_id);
     auto& reload = article_reload_states_[tab_id];
     ++reload.generation;
     reload.view = view;
@@ -6453,17 +6719,22 @@ void MainWindow::HandleArticleLoadFinished(
             }
         }
     }
+}
 
-    const auto scroll = pending_article_scroll_restorations_.find(tab_id);
-    if (scroll == pending_article_scroll_restorations_.end())
+void MainWindow::HandleArticleHtmlNavigationFinished(
+    goldendict::core::ArticleTabId tab_id, ArticleView* view,
+    quint64 navigation_token, bool success) {
+    const auto position = TakePendingArticleScrollRestoration(
+        tab_id, view, navigation_token, success);
+    if (!position.has_value())
         return;
-    const QPointF position = scroll->second;
-    pending_article_scroll_restorations_.erase(scroll);
-    if (!success)
+    const auto css_position =
+        QtPageScrollToCssScroll(*position, view->zoomFactor());
+    if (!css_position.has_value())
         return;
     view->page()->runJavaScript(QStringLiteral("window.scrollTo(%1,%2)")
-                                    .arg(position.x(), 0, 'f', 0)
-                                    .arg(position.y(), 0, 'f', 0));
+                                    .arg(css_position->x(), 0, 'f', 6)
+                                    .arg(css_position->y(), 0, 'f', 6));
     const auto search = article_search_presentations_.find(tab_id);
     if (search == article_search_presentations_.end() ||
         search->second.query.isEmpty()) {
@@ -6490,6 +6761,62 @@ void MainWindow::HandleArticleLoadFinished(
             if (TabIdAt(article_tabs_->currentIndex()) == tab_id)
                 article_search_status_->setText(current->second.status);
         });
+}
+
+void MainWindow::BindPendingArticleScrollRestoration(
+    goldendict::core::ArticleTabId tab_id, ArticleView* view,
+    quint64 navigation_token) {
+    const auto pending = pending_article_scroll_restorations_.find(tab_id);
+    if (pending == pending_article_scroll_restorations_.end() ||
+        view == nullptr || view->page() == nullptr ||
+        ArticleViewForTab(tab_id) != view) {
+        return;
+    }
+    pending->second.view = view;
+    pending->second.page = view->page();
+    pending->second.navigation_token = navigation_token;
+}
+
+void MainWindow::DeferPendingArticleScrollRestoration(
+    goldendict::core::ArticleTabId tab_id, ArticleView* view) {
+    const auto pending = pending_article_scroll_restorations_.find(tab_id);
+    if (pending == pending_article_scroll_restorations_.end())
+        return;
+    pending->second.view = view;
+    pending->second.page = view == nullptr ? nullptr : view->page();
+    pending->second.navigation_token = 0U;
+}
+
+std::optional<QPointF> MainWindow::TakePendingArticleScrollRestoration(
+    goldendict::core::ArticleTabId tab_id, ArticleView* view,
+    quint64 navigation_token, bool success) {
+    const auto pending = pending_article_scroll_restorations_.find(tab_id);
+    if (pending == pending_article_scroll_restorations_.end())
+        return std::nullopt;
+    auto* const current_view = ArticleViewForTab(tab_id);
+    if (current_view == nullptr || pending->second.view.isNull() ||
+        pending->second.page.isNull() || pending->second.view != current_view ||
+        pending->second.page != current_view->page()) {
+        pending_article_scroll_restorations_.erase(pending);
+        return std::nullopt;
+    }
+    if (current_view != view || pending->second.navigation_token == 0U ||
+        pending->second.navigation_token != navigation_token) {
+        return std::nullopt;
+    }
+    const QPointF position = pending->second.position;
+    pending_article_scroll_restorations_.erase(pending);
+    return success ? std::optional<QPointF>(position) : std::nullopt;
+}
+
+void MainWindow::PublishArticleHtml(goldendict::core::ArticleTabId tab_id,
+                                    ArticleView* view, const QString& html,
+                                    const QUrl& base_url) {
+    if (view == nullptr)
+        return;
+    const quint64 navigation_token = view->ReserveHtmlNavigation();
+    BindPendingArticleScrollRestoration(tab_id, view, navigation_token);
+    view->SetHtmlNavigation(navigation_token, html, base_url);
 }
 
 void MainWindow::OpenArticleLink(goldendict::core::ArticleTabId tab_id,
@@ -6606,6 +6933,7 @@ void MainWindow::SyncArticleTabs() {
             InvalidateRenderedTextMatchPlan(id);
             article_navigation_generations_.erase(id);
             rendered_page_text_transports_.erase(id);
+            pending_article_scroll_restorations_.erase(id);
             QWidget* widget = article_tabs_->widget(index);
             article_tabs_->removeTab(index);
             widget->deleteLater();
@@ -6614,11 +6942,13 @@ void MainWindow::SyncArticleTabs() {
     for (std::size_t desired = 0; desired < state.tabs.size(); ++desired) {
         const auto& tab = state.tabs[desired];
         auto* view = ArticleViewForTab(tab.id);
+        bool created = false;
         if (view == nullptr) {
             view = CreateArticleView(tab.id);
             article_tabs_->insertTab(
                 static_cast<int>(desired), view,
                 QString::fromStdString(tab.navigation.title));
+            created = true;
         }
         const int current = article_tabs_->indexOf(view);
         if (current != static_cast<int>(desired)) {
@@ -6630,6 +6960,13 @@ void MainWindow::SyncArticleTabs() {
         article_tabs_->setTabText(
             static_cast<int>(desired),
             QString::fromStdString(tab.navigation.title).replace('&', "&&"));
+        if (created) {
+            PublishArticleHtml(
+                tab.id, view,
+                QStringLiteral("<!doctype html><html><body><h1>GoldenDict</h1>"
+                               "<p>Choose a dictionary folder to "
+                               "begin.</p></body></html>"));
+        }
     }
     const auto active = std::find_if(
         state.tabs.begin(), state.tabs.end(),
@@ -7859,6 +8196,117 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
             passed = passed && !WidgetsInteractionBlocked() &&
                      facade_preparation_record_ == nullptr;
 
+            goldendict::core::TabNavigationState restored_navigation;
+            restored_navigation.kind =
+                goldendict::core::TabNavigationKind::kLookup;
+            restored_navigation.query = "application";
+            restored_navigation.title = "application";
+            const goldendict::core::ArticleTabSession restored_session = {
+                {{91U, {restored_navigation}, 0U}}, 91U};
+            passed =
+                passed && facade_->RestoreArticleTabSession(restored_session);
+            RebuildArticleTabs();
+            const auto restoration_tab_id = TabIdAt(0);
+            const auto finish_restoration_lookup = [this,
+                                                    restoration_tab_id]() {
+                QElapsedTimer timer;
+                timer.start();
+                while (requests_.count(restoration_tab_id) == 1U &&
+                       !requests_.at(restoration_tab_id)->IsFinished() &&
+                       timer.elapsed() < 2000) {
+                    QApplication::processEvents(QEventLoop::AllEvents, 25);
+                }
+                if (requests_.count(restoration_tab_id) == 1U &&
+                    requests_.at(restoration_tab_id)->IsFinished()) {
+                    FinishLookup();
+                    return true;
+                }
+                return requests_.count(restoration_tab_id) == 0U;
+            };
+            passed = passed && finish_restoration_lookup();
+            auto* restoration_old_view = ArticleViewForTab(restoration_tab_id);
+            passed = passed && restoration_old_view != nullptr;
+            bool fixture_navigation_finished = false;
+            bool fixture_navigation_succeeded = false;
+            quint64 fixture_navigation_token = 0U;
+            QMetaObject::Connection fixture_navigation_connection;
+            if (restoration_old_view != nullptr) {
+                QElapsedTimer load_timer;
+                load_timer.start();
+                while (restoration_old_view->page()->isLoading() &&
+                       load_timer.elapsed() < 2000) {
+                    QApplication::processEvents(QEventLoop::AllEvents, 25);
+                }
+                restoration_old_view->setZoomFactor(5.0);
+                fixture_navigation_connection = connect(
+                    restoration_old_view, &ArticleView::HtmlNavigationFinished,
+                    this,
+                    [&fixture_navigation_finished,
+                     &fixture_navigation_succeeded, &fixture_navigation_token](
+                        quint64 navigation_token, bool success) {
+                        fixture_navigation_finished = true;
+                        fixture_navigation_succeeded = success;
+                        fixture_navigation_token = navigation_token;
+                    });
+                PublishArticleHtml(
+                    restoration_tab_id, restoration_old_view,
+                    QStringLiteral(
+                        "<!doctype html><html><body style=\"margin:0\">"
+                        "<div style=\"height:3000px\"></div>"
+                        "</body></html>"),
+                    QUrl(QStringLiteral("https://prepared-scroll.test/")));
+            }
+            QElapsedTimer fixture_navigation_timer;
+            fixture_navigation_timer.start();
+            while (!fixture_navigation_finished &&
+                   fixture_navigation_timer.elapsed() < 2000) {
+                QApplication::processEvents(QEventLoop::AllEvents, 25);
+            }
+            QObject::disconnect(fixture_navigation_connection);
+            passed = passed && fixture_navigation_finished &&
+                     fixture_navigation_succeeded &&
+                     fixture_navigation_token != 0U;
+            bool scroll_ready = false;
+            if (restoration_old_view != nullptr) {
+                restoration_old_view->page()->runJavaScript(
+                    QStringLiteral("window.scrollTo(0,75); window.scrollY;"),
+                    [&scroll_ready](const QVariant&) { scroll_ready = true; });
+            }
+            QElapsedTimer scroll_timer;
+            scroll_timer.start();
+            while (
+                restoration_old_view != nullptr &&
+                (!scroll_ready ||
+                 restoration_old_view->page()->scrollPosition().y() < 300.0) &&
+                scroll_timer.elapsed() < 2000) {
+                QApplication::processEvents(QEventLoop::AllEvents, 25);
+            }
+            const QPointF saved_scroll =
+                restoration_old_view == nullptr
+                    ? QPointF{}
+                    : restoration_old_view->page()->scrollPosition();
+            passed = passed && scroll_ready && saved_scroll.y() >= 300.0;
+            auto& restoration_search =
+                article_search_presentations_[restoration_tab_id];
+            restoration_search.query =
+                QStringLiteral("absent-prepared-scroll-query");
+            const std::uint64_t restoration_search_generation =
+                restoration_search.generation;
+            QWebEngineScript scroll_observer;
+            scroll_observer.setName(
+                QStringLiteral("prepared-scroll-restoration-smoke"));
+            scroll_observer.setInjectionPoint(QWebEngineScript::DocumentReady);
+            scroll_observer.setWorldId(QWebEngineScript::MainWorld);
+            scroll_observer.setRunsOnSubFrames(false);
+            scroll_observer.setSourceCode(QStringLiteral(
+                "globalThis.__goldendictPreparedRestoredScroll = null;"
+                "const preparedOriginalScrollTo = window.scrollTo.bind(window);"
+                "window.scrollTo = (x, y) => {"
+                "globalThis.__goldendictPreparedRestoredScroll = [x, y];"
+                "return preparedOriginalScrollTo(x, y);};"));
+            QWebEngineProfile::defaultProfile()->scripts()->insert(
+                scroll_observer);
+
             auto publish_candidate =
                 PrepareFacadeCandidate(current_facade, preferences_, groups_);
             auto maintained =
@@ -7870,11 +8318,87 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                 PublishMaintainedFacadeCommit(std::move(maintained.maintained));
             passed = passed && published && !WidgetsInteractionBlocked() &&
                      held_old_binding;
+            auto* restoration_view = ArticleViewForTab(restoration_tab_id);
+            if (restoration_view != nullptr)
+                restoration_view->setZoomFactor(5.0);
             const auto first_outcome =
                 FinishPublishedFacadeCommit(std::move(published));
             passed = passed &&
                      first_outcome == WidgetsCommitOutcome::kPublished &&
                      facade_binding_registry_->NeedsReclaim();
+            passed = passed && finish_restoration_lookup();
+            const auto pending_restoration =
+                pending_article_scroll_restorations_.find(restoration_tab_id);
+            const quint64 matching_navigation_token =
+                pending_restoration ==
+                        pending_article_scroll_restorations_.end()
+                    ? 0U
+                    : pending_restoration->second.navigation_token;
+            QElapsedTimer restoration_timer;
+            restoration_timer.start();
+            while ((pending_article_scroll_restorations_.count(
+                        restoration_tab_id) == 1U ||
+                    (restoration_view != nullptr &&
+                     restoration_view->page()->scrollPosition().y() < 300.0)) &&
+                   restoration_timer.elapsed() < 2000) {
+                QApplication::processEvents(QEventLoop::AllEvents, 25);
+            }
+            QPointF requested_scroll;
+            QPointF actual_javascript_scroll;
+            bool observed_scroll = false;
+            if (restoration_view != nullptr) {
+                restoration_view->page()->runJavaScript(
+                    QStringLiteral(
+                        "[globalThis.__goldendictPreparedRestoredScroll,"
+                        "window.scrollX,window.scrollY]"),
+                    [&requested_scroll, &actual_javascript_scroll,
+                     &observed_scroll](const QVariant& value) {
+                        const QVariantList result = value.toList();
+                        const QVariantList coordinates =
+                            result.value(0).toList();
+                        if (coordinates.size() == 2) {
+                            requested_scroll =
+                                QPointF(coordinates[0].toDouble(),
+                                        coordinates[1].toDouble());
+                        }
+                        if (result.size() == 3) {
+                            actual_javascript_scroll = QPointF(
+                                result[1].toDouble(), result[2].toDouble());
+                        }
+                        observed_scroll = true;
+                    });
+            }
+            QElapsedTimer observer_timer;
+            observer_timer.start();
+            while (!observed_scroll && observer_timer.elapsed() < 2000)
+                QApplication::processEvents(QEventLoop::AllEvents, 25);
+            QWebEngineProfile::defaultProfile()->scripts()->remove(
+                scroll_observer);
+            const QPointF expected_css_scroll(saved_scroll.x() / 5.0,
+                                              saved_scroll.y() / 5.0);
+            passed =
+                passed && matching_navigation_token != 0U &&
+                pending_article_scroll_restorations_.count(
+                    restoration_tab_id) == 0U &&
+                restoration_search.generation ==
+                    restoration_search_generation + 1U &&
+                restoration_view != nullptr && observed_scroll &&
+                qAbs(restoration_view->page()->scrollPosition().x() -
+                     saved_scroll.x()) < 0.5 &&
+                qAbs(restoration_view->page()->scrollPosition().y() -
+                     saved_scroll.y()) < 0.5 &&
+                qAbs(requested_scroll.x() - expected_css_scroll.x()) < 0.5 &&
+                qAbs(requested_scroll.y() - expected_css_scroll.y()) < 0.5 &&
+                qAbs(actual_javascript_scroll.x() - expected_css_scroll.x()) <
+                    0.5 &&
+                qAbs(actual_javascript_scroll.y() - expected_css_scroll.y()) <
+                    0.5;
+            if (restoration_view != nullptr) {
+                emit restoration_view->HtmlNavigationFinished(
+                    matching_navigation_token, true);
+            }
+            passed = passed && restoration_search.generation ==
+                                   restoration_search_generation + 1U;
             held_old_binding = {};
             facade_binding_registry_->ReclaimRetired();
             passed = passed && !facade_binding_registry_->NeedsReclaim();
@@ -9625,6 +10149,10 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
         int active_index = -1;
         for (const auto& tab : resources->tabs.tabs) {
             auto* view = new ArticleView(staged_tabs);
+            connect(view, &ArticleView::PageReplaced, relay,
+                    [relay, tab_id = tab.id, view]() {
+                        relay->ArticlePageReplaced(tab_id, view);
+                    });
             view->SetFacade(resources->facade.get());
             view->SetClickPreferences(preferences.double_click_translates,
                                       preferences.select_word_by_single_click);
@@ -9685,6 +10213,12 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
             connect(view, &ArticleView::loadFinished, relay,
                     [relay, tab_id = tab.id, view](bool success) {
                         relay->ArticleLoadFinished(tab_id, view, success);
+                    });
+            connect(view, &ArticleView::HtmlNavigationFinished, relay,
+                    [relay, tab_id = tab.id, view](quint64 navigation_token,
+                                                   bool success) {
+                        relay->ArticleHtmlNavigationFinished(
+                            tab_id, view, navigation_token, success);
                     });
             connect(view, &ArticleView::pdfPrintingFinished, relay,
                     [relay, tab_id = tab.id](const QString&, bool success) {
@@ -10163,6 +10697,27 @@ MainWindow::FinishPublishedFacadeCommitInternal() noexcept {
             delete resources->old_dictionary_bar;
             delete resources->old_article_tabs;
         }
+        pending_article_scroll_restorations_.clear();
+        for (const auto& [tab_id, position] : resources->scroll_positions) {
+            if (ArticleViewForTab(tab_id) != nullptr) {
+                pending_article_scroll_restorations_.emplace(
+                    tab_id, PendingArticleScrollRestoration{position, nullptr,
+                                                            nullptr, 0U});
+            }
+        }
+        RebuildArticleTabs();
+        for (const auto& tab : resources->tabs.tabs) {
+            if (tab.navigation.kind !=
+                goldendict::core::TabNavigationKind::kEmpty) {
+                continue;
+            }
+            auto* view = ArticleViewForTab(tab.id);
+            PublishArticleHtml(
+                tab.id, view,
+                QStringLiteral("<!doctype html><html><body><h1>GoldenDict</h1>"
+                               "<p>Choose a dictionary folder to "
+                               "begin.</p></body></html>"));
+        }
         resources->published = true;
         active_facade_resources_.reset(resources);
         record->resources = nullptr;
@@ -10298,7 +10853,8 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
         auto* view = qobject_cast<ArticleView*>(article_tabs_->widget(index));
         if (tab_id != 0U && view != nullptr) {
             pending_article_scroll_restorations_[tab_id] =
-                view->page()->scrollPosition();
+                PendingArticleScrollRestoration{view->page()->scrollPosition(),
+                                                nullptr, nullptr, 0U};
         }
     }
     while (article_tabs_->count() > 0) {
@@ -11422,6 +11978,7 @@ void MainWindow::StartNavigationLookup(
     bool record_history) {
     if (facade_ == nullptr || navigation.query.empty())
         return;
+    DeferPendingArticleScrollRestoration(tab_id, ArticleViewForTab(tab_id));
     InvalidateRenderedTextMatchPlan(tab_id);
     pending_article_search_handoffs_.erase(tab_id);
     rendered_page_text_transports_.erase(tab_id);
@@ -11531,17 +12088,20 @@ void MainWindow::FinishLookup() {
                     },
                     Qt::SingleShotConnection);
                 if (article.sanitized_html.has_value()) {
-                    view->setHtml(
+                    PublishArticleHtml(
+                        id, view,
                         QString::fromUtf8(article.sanitized_html->data(),
                                           static_cast<qsizetype>(
                                               article.sanitized_html->size())));
                 } else {
-                    view->setHtml(QStringLiteral("<!doctype "
-                                                 "html><html><body><h1>%1</"
-                                                 "h1><p>%2</p></body></html>")
-                                      .arg(EscapeHtml(navigation_title),
-                                           EscapeHtml(QString::fromStdString(
-                                               article.plain_text))));
+                    PublishArticleHtml(
+                        id, view,
+                        QStringLiteral("<!doctype "
+                                       "html><html><body><h1>%1</"
+                                       "h1><p>%2</p></body></html>")
+                            .arg(EscapeHtml(navigation_title),
+                                 EscapeHtml(QString::fromStdString(
+                                     article.plain_text))));
                 }
                 if (active)
                     status_->setText(tr("%1 result(s)")
@@ -11550,7 +12110,8 @@ void MainWindow::FinishLookup() {
             } else if (!response.errors.empty()) {
                 pending_article_search_handoffs_.erase(id);
                 lookup_results_[id].rows.clear();
-                view->setHtml(
+                PublishArticleHtml(
+                    id, view,
                     QStringLiteral("<!doctype html><html><body><h1>Lookup "
                                    "failed</h1><p>%1</p></body></html>")
                         .arg(EscapeHtml(QString::fromStdString(
@@ -11560,17 +12121,20 @@ void MainWindow::FinishLookup() {
             } else {
                 pending_article_search_handoffs_.erase(id);
                 lookup_results_[id].rows.clear();
-                view->setHtml(QStringLiteral(
-                                  "<!doctype html><html><body><h1>%1</h1><p>No "
-                                  "result found.</p></body></html>")
-                                  .arg(EscapeHtml(navigation_title)));
+                PublishArticleHtml(
+                    id, view,
+                    QStringLiteral(
+                        "<!doctype html><html><body><h1>%1</h1><p>No "
+                        "result found.</p></body></html>")
+                        .arg(EscapeHtml(navigation_title)));
                 if (active)
                     status_->setText(QStringLiteral("No result"));
             }
         } catch (const std::exception& error) {
             pending_article_search_handoffs_.erase(id);
             lookup_results_[id].rows.clear();
-            view->setHtml(
+            PublishArticleHtml(
+                id, view,
                 QStringLiteral("<!doctype html><html><body><h1>Lookup "
                                "failed</h1><p>%1</p></body></html>")
                     .arg(EscapeHtml(QString::fromLocal8Bit(error.what()))));
