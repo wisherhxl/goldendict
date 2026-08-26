@@ -2,8 +2,10 @@
 
 file(REMOVE_RECURSE "${TEST_HOME}")
 file(MAKE_DIRECTORY
+  "${TEST_HOME}/preferences/home"
   "${TEST_HOME}/preferences/config"
   "${TEST_HOME}/preferences/cache"
+  "${TEST_HOME}/fallback/home"
   "${TEST_HOME}/fallback/config"
   "${TEST_HOME}/fallback/cache")
 
@@ -15,6 +17,7 @@ set(common_environment
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -E env ${common_environment}
     "LANG=en_US.UTF-8"
+    "HOME=${TEST_HOME}/preferences/home"
     "XDG_CONFIG_HOME=${TEST_HOME}/preferences/config"
     "XDG_CACHE_HOME=${TEST_HOME}/preferences/cache"
     "${GOLDENDICT_EXECUTABLE}" --help-menu-smoke "${HELP_DIRECTORY}"
@@ -27,6 +30,7 @@ endif()
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -E env ${common_environment}
     "LANG=en_US.UTF-8"
+    "HOME=${TEST_HOME}/preferences/home"
     "XDG_CONFIG_HOME=${TEST_HOME}/preferences/config"
     "XDG_CACHE_HOME=${TEST_HOME}/preferences/cache"
     "${GOLDENDICT_EXECUTABLE}" --interface-language-startup-smoke
@@ -39,6 +43,7 @@ endif()
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -E env ${common_environment}
     "LANG=fr_FR.UTF-8"
+    "HOME=${TEST_HOME}/fallback/home"
     "XDG_CONFIG_HOME=${TEST_HOME}/fallback/config"
     "XDG_CACHE_HOME=${TEST_HOME}/fallback/cache"
     "${GOLDENDICT_EXECUTABLE}" --interface-language-startup-smoke
@@ -51,6 +56,7 @@ endif()
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -E env ${common_environment}
     "LANG=ru_RU.UTF-8"
+    "HOME=${TEST_HOME}/fallback/home"
     "XDG_CONFIG_HOME=${TEST_HOME}/fallback/config"
     "XDG_CACHE_HOME=${TEST_HOME}/fallback/cache"
     "${GOLDENDICT_EXECUTABLE}" --interface-language-unsupported-smoke

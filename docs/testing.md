@@ -15,6 +15,11 @@ ctest --preset conan-release
 Tests are built by default. Disable them explicitly with `-DBUILD_TESTS=OFF`
 only when a task does not need local test targets.
 
+Application GUI smoke tests that carry configuration or cache state set
+repository-owned build-tree `HOME`, `XDG_CONFIG_HOME`, and `XDG_CACHE_HOME`
+locations. Restart runners recreate those locations before execution so tests
+never inspect or modify a developer's real GoldenDict state.
+
 The Phase 2 focused test is `goldendict_smoke`. It exercises the executable's
 non-GUI startup path and therefore does not require a display server.
 

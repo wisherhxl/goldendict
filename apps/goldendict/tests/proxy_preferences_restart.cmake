@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 file(REMOVE_RECURSE "${TEST_HOME}")
-file(MAKE_DIRECTORY "${TEST_HOME}/config" "${TEST_HOME}/cache")
+file(MAKE_DIRECTORY
+  "${TEST_HOME}/home" "${TEST_HOME}/config" "${TEST_HOME}/cache")
 set(test_environment
   "XDG_SESSION_TYPE=x11"
   "QT_QPA_PLATFORM=offscreen"
   "QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu"
+  "HOME=${TEST_HOME}/home"
   "XDG_CONFIG_HOME=${TEST_HOME}/config"
   "XDG_CACHE_HOME=${TEST_HOME}/cache")
 
