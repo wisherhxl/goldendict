@@ -183,16 +183,21 @@ and an external-player adapter remain separate approved audio choices.
 
 Qt WebEngine's source configure requires the Python `html5lib` module, but
 Conan Center does not currently provide it. Export the focused local recipe at
-`conan/recipes/python-html5lib/` before dependency resolution and use
-`profiles/qt-webengine`. The profile adds that package as a tool requirement
-only for `qt/*`, placing `html5lib` and its Python dependencies on `PYTHONPATH`
-inside Qt's isolated Conan build environment. This keeps the prerequisite
-Conan-resolved without modifying the official Qt recipe or the host Python
-installation. The profile also sets `NINJAFLAGS=-j1` because Qt WebEngine
-launches a nested Chromium Ninja build that does not inherit Conan's outer
-`tools.build:jobs` limit. Keep this limit on memory-constrained Linux builders;
-raising it can make concurrent Chromium compiler processes exhaust RAM and
-swap.
+`conan/recipes/python-html5lib/` and the ALSA build-environment adapter at
+`conan/recipes/qt-libalsa-buildenv/` before dependency resolution, then use
+`profiles/qt-webengine`. The profile adds both packages as tool requirements
+only for `qt/*`. The first places `html5lib` and its Python dependencies on
+`PYTHONPATH`. The second places Conan's `libalsa/1.2.10` headers and library on
+`CPATH` and `LIBRARY_PATH` for Chromium: OpenAL's transitive `libalsa`
+requirement is present in the overall graph, but Conan correctly does not
+expose one dependency branch inside Qt's isolated build environment. This
+adapter supplies the build-only prerequisite without enabling Qt's unsupported
+`with_libalsa` option, modifying the official Qt recipe, or installing a host
+development package.
+The profile also sets `NINJAFLAGS=-j1` because Qt WebEngine launches a nested
+Chromium Ninja build that does not inherit Conan's outer `tools.build:jobs`
+limit. Keep this limit on memory-constrained Linux builders; raising it can
+make concurrent Chromium compiler processes exhaust RAM and swap.
 
 Keep dependency linkage profile-owned. Do not hardcode Qt shared/static policy
 in `conanfile.py`; use Conan profiles or CLI options such as

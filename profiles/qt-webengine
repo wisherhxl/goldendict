@@ -2,6 +2,7 @@ include(default)
 
 [tool_requires]
 qt/*: python-html5lib/1.1
+qt/*: qt-libalsa-buildenv/1.2.10
 
 [buildenv]
 NINJAFLAGS=-j1
