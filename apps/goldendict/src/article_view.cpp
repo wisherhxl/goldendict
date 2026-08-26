@@ -2,6 +2,8 @@
 
 #include "article_view.h"
 
+#include "article_content_origin.h"
+
 #include <utility>
 
 #include <cmath>
@@ -505,7 +507,9 @@ void ArticleView::setPage(QWebEnginePage* page) {
 }
 
 void ArticleView::setHtml(const QString& html, const QUrl& base_url) {
-    web_view_->setHtml(html, base_url);
+    web_view_->setHtml(html, base_url.isEmpty()
+                                 ? goldendict::app::ArticleContentBaseUrl()
+                                 : base_url);
 }
 
 void ArticleView::reload() {

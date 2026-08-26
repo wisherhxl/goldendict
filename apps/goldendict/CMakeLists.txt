@@ -187,6 +187,23 @@ ti_target_include_modules_recurse(widgets_facade_binding_test
 ti_target_link_libraries(widgets_facade_binding_test goldendict_core)
 add_test(NAME widgets_facade_binding_test COMMAND widgets_facade_binding_test)
 
+ti_add_executable(article_scheme_handler_test
+  tests/article_scheme_handler_test.cpp
+  src/article_scheme_handler.cpp
+  src/article_scheme_handler.h
+  src/widgets_facade_binding.cpp
+  src/widgets_facade_binding.h)
+target_include_directories(article_scheme_handler_test PRIVATE src)
+ti_target_include_modules_recurse(article_scheme_handler_test
+  goldendict_core)
+ti_target_link_libraries(article_scheme_handler_test
+  goldendict_core ${QT_NAMESPACE}::Widgets ${QT_NAMESPACE}::WebEngineCore)
+add_test(NAME article_scheme_handler_test COMMAND article_scheme_handler_test)
+set_tests_properties(article_scheme_handler_test PROPERTIES
+  ENVIRONMENT
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/article-scheme-handler-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-scheme-handler-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-scheme-handler-test-home/cache"
+  TIMEOUT 20)
+
 ti_add_executable(full_text_response_model_test
   tests/full_text_response_model_test.cpp
   src/full_text_response_model.cpp)
