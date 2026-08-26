@@ -395,6 +395,11 @@ class MainWindow final : public QMainWindow {
                                 const QString& text,
                                 ArticleLinkDisposition disposition);
     void StartPrinterRender(ArticleView* view, QPrinter* printer);
+    void FinishArticleSave(goldendict::core::ArticleTabId tab_id,
+                           const QPointer<ArticleView>& view,
+                           const QPointer<QWebEnginePage>& page,
+                           std::uint64_t navigation_generation,
+                           const QString& path, const QString& html);
     void UpdateFileActions();
     void ShowTabContextMenu(const QPoint& position);
     ArticleView* CreateArticleView(goldendict::core::ArticleTabId tab_id);

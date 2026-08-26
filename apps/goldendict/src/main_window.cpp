@@ -4256,16 +4256,16 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
     passed = passed && destination.open(QIODevice::WriteOnly) &&
              destination.write("original") == 8;
     destination.close();
-    int save_triggers = 0;
+    auto save_triggers = std::make_shared<int>(0);
     auto save_writes = std::make_shared<int>(0);
     const auto save_connection = connect(
         save_article_action_, &QAction::triggered, this,
-        [&save_triggers]() { ++save_triggers; }, Qt::DirectConnection);
+        [save_triggers]() { ++*save_triggers; }, Qt::DirectConnection);
     save_article_path_provider_ = []() {
         return QString();
     };
     save_article_action_->trigger();
-    passed = passed && save_triggers == 1 && !save_in_progress_;
+    passed = passed && *save_triggers == 1 && !save_in_progress_;
     save_article_path_provider_ = [path]() {
         return path;
     };
@@ -4273,30 +4273,96 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
         ++*save_writes;
         return false;
     };
-    save_article_action_->trigger();
-    passed = passed && save_triggers == 2 && save_in_progress_ &&
-             !save_article_action_->isEnabled();
+    auto save_started = std::make_shared<bool>(false);
+    auto save_disabled_while_pending = std::make_shared<bool>(false);
+    auto start_save = std::make_shared<std::function<void(int)>>();
+    *start_save = [this, start_save, save_started,
+                   save_disabled_while_pending](int remaining) {
+        if (article_view_->page()->isLoading() && remaining > 0) {
+            QTimer::singleShot(10, this, [start_save, remaining]() {
+                (*start_save)(remaining - 1);
+            });
+            return;
+        }
+        save_article_action_->trigger();
+        *save_started = true;
+        *save_disabled_while_pending =
+            save_in_progress_ && !save_article_action_->isEnabled();
+    };
+    (*start_save)(100);
 
     auto poll = std::make_shared<std::function<void(int)>>();
     *poll = [this, path, completion = std::move(completion), poll,
-             save_connection, save_writes, passed, session,
+             save_connection, save_triggers, save_writes, save_started,
+             save_disabled_while_pending, passed, session,
              window_state](int remaining) mutable {
-        if (save_in_progress_ && remaining > 0) {
+        if ((!*save_started || save_in_progress_) && remaining > 0) {
             QTimer::singleShot(10, this,
                                [poll, remaining]() { (*poll)(remaining - 1); });
             return;
         }
         QFile preserved(path);
         const bool opened = preserved.open(QIODevice::ReadOnly);
+        const bool failure_reported =
+            status_->text() == QStringLiteral("HTML save failed");
+        bool ownership_checked = false;
+        const auto tab_id = TabIdAt(article_tabs_->currentIndex());
+        auto* const save_view = ArticleViewForTab(tab_id);
+        const auto navigation = article_navigation_generations_.find(tab_id);
+        if (save_view != nullptr && save_view->page() != nullptr &&
+            navigation != article_navigation_generations_.end()) {
+            int ownership_writes = 0;
+            article_save_writer_ = [&ownership_writes](const QString&,
+                                                       const QString&) {
+                ++ownership_writes;
+                return true;
+            };
+            const QPointer<ArticleView> guarded_view(save_view);
+            const QPointer<QWebEnginePage> guarded_page(save_view->page());
+            const std::uint64_t navigation_generation = navigation->second;
+            auto* foreign_page = new QWebEnginePage(save_view);
+            save_in_progress_ = true;
+            FinishArticleSave(tab_id, guarded_view, foreign_page,
+                              navigation_generation, path,
+                              QStringLiteral("foreign"));
+            const bool foreign_page_rejected =
+                ownership_writes == 0 && !save_in_progress_ &&
+                status_->text() == QStringLiteral("HTML save canceled");
+            delete foreign_page;
+            save_in_progress_ = true;
+            FinishArticleSave(tab_id, guarded_view, guarded_page,
+                              navigation_generation + 1U, path,
+                              QStringLiteral("stale"));
+            const bool stale_navigation_rejected =
+                ownership_writes == 0 && !save_in_progress_ &&
+                status_->text() == QStringLiteral("HTML save canceled");
+            save_in_progress_ = true;
+            FinishArticleSave(tab_id, guarded_view, guarded_page,
+                              navigation_generation, path,
+                              QStringLiteral("owned"));
+            const bool matching_owner_accepted =
+                ownership_writes == 1 && !save_in_progress_ &&
+                status_->text() == QStringLiteral("HTML saved");
+            ownership_checked = foreign_page_rejected &&
+                                stale_navigation_rejected &&
+                                matching_owner_accepted;
+        }
         bool final_passed =
-            passed && !save_in_progress_ && *save_writes == 1 && opened &&
-            preserved.readAll() == "original" &&
-            status_->text() == QStringLiteral("HTML save failed") &&
+            passed && *save_started && *save_disabled_while_pending &&
+            *save_triggers == 2 && !save_in_progress_ && *save_writes == 1 &&
+            opened && preserved.readAll() == "original" && failure_reported &&
+            ownership_checked &&
             facade_->ExportArticleTabSession() == session &&
             CaptureMainWindowState() == window_state &&
             centralWidget() != nullptr && article_tabs_->isVisible() &&
             article_tabs_->size().width() > 0 &&
             article_tabs_->size().height() > 0 && kMainWindowStateVersion == 7;
+        if (!final_passed) {
+            qWarning() << "file menu save ownership smoke failed" << passed
+                       << save_in_progress_ << *save_writes << opened
+                       << failure_reported << ownership_checked
+                       << status_->text();
+        }
         disconnect(save_connection);
         save_article_path_provider_ = {};
         article_save_writer_ = {};
@@ -12693,6 +12759,14 @@ void MainWindow::StartPrinterRender(ArticleView* view, QPrinter* printer) {
 void MainWindow::SaveArticle() {
     if (article_view_ == nullptr || save_in_progress_)
         return;
+    const auto tab_id = TabIdAt(article_tabs_->currentIndex());
+    auto* const view = article_view_;
+    const auto navigation = article_navigation_generations_.find(tab_id);
+    if (tab_id == 0U || view->page() == nullptr ||
+        ArticleViewForTab(tab_id) != view ||
+        navigation == article_navigation_generations_.end()) {
+        return;
+    }
     const QString file_name =
         save_article_path_provider_
             ? save_article_path_provider_()
@@ -12705,25 +12779,48 @@ void MainWindow::SaveArticle() {
     const QString path = QFileInfo(file_name).suffix().isEmpty()
                              ? file_name + QStringLiteral(".html")
                              : file_name;
+    const QPointer<MainWindow> guarded_window(this);
+    const QPointer<ArticleView> guarded_view(view);
+    const QPointer<QWebEnginePage> guarded_page(view->page());
+    const std::uint64_t navigation_generation = navigation->second;
     save_in_progress_ = true;
     UpdateFileActions();
-    article_view_->page()->toHtml([this, path](const QString& html) {
-        const bool saved = article_save_writer_
-                               ? article_save_writer_(path, html)
-                               : [&path, &html]() {
-                                     QSaveFile file(path);
-                                     return file.open(QIODevice::WriteOnly) &&
-                                            file.write(html.toUtf8()) != -1 &&
-                                            file.commit();
-                                 }();
-        save_in_progress_ = false;
-        UpdateFileActions();
-        if (!saved) {
-            status_->setText(QStringLiteral("HTML save failed"));
+    view->page()->toHtml([guarded_window, tab_id, guarded_view, guarded_page,
+                          navigation_generation, path](const QString& html) {
+        if (guarded_window.isNull())
             return;
-        }
-        status_->setText(QStringLiteral("HTML saved"));
+        guarded_window->FinishArticleSave(tab_id, guarded_view, guarded_page,
+                                          navigation_generation, path, html);
     });
+}
+
+void MainWindow::FinishArticleSave(goldendict::core::ArticleTabId tab_id,
+                                   const QPointer<ArticleView>& view,
+                                   const QPointer<QWebEnginePage>& page,
+                                   std::uint64_t navigation_generation,
+                                   const QString& path, const QString& html) {
+    const auto navigation = article_navigation_generations_.find(tab_id);
+    const bool owned = !view.isNull() && !page.isNull() &&
+                       navigation != article_navigation_generations_.end() &&
+                       navigation->second == navigation_generation &&
+                       ArticleViewForTab(tab_id) == view.data() &&
+                       view->page() == page.data();
+    save_in_progress_ = false;
+    UpdateFileActions();
+    if (!owned) {
+        status_->setText(QStringLiteral("HTML save canceled"));
+        return;
+    }
+    const bool saved = article_save_writer_
+                           ? article_save_writer_(path, html)
+                           : [&path, &html]() {
+                                 QSaveFile file(path);
+                                 return file.open(QIODevice::WriteOnly) &&
+                                        file.write(html.toUtf8()) != -1 &&
+                                        file.commit();
+                             }();
+    status_->setText(saved ? QStringLiteral("HTML saved")
+                           : QStringLiteral("HTML save failed"));
 }
 
 void MainWindow::UpdateFileActions() {
