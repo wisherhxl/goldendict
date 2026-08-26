@@ -5374,6 +5374,14 @@ the 44 disabled files byte-for-byte with `locale/*.ts` at legacy revision
 file lists to confirm that no disabled `.ts` or additional `.qm` is shipped.
 The normal Linux Release baseline is exactly 117 tests.
 
+The subsequent interface-stabilization work intentionally adds two registered
+tests: `goldendict_article_scheme_registration_smoke` pins the early-process Qt
+WebEngine scheme contract, and `article_scheme_handler_test` exercises a real
+article resource request through WebEngine, the Widgets binding, Core facade,
+and dictionary service. The current normal Linux Release baseline is therefore
+exactly 119 tests. Changes that add or remove registrations must update this
+current baseline while preserving the historical per-leaf counts above.
+
 ## Expected Verification Areas
 
 - configure;
