@@ -4431,6 +4431,38 @@ void MainWindow::RunArticleSearchReloadCheck(
         return;
     }
     search->second.query = QStringLiteral("needle 😀");
+    search->second.status = QStringLiteral("stable navigation status");
+    const std::uint64_t ownership_search_generation =
+        ++search->second.generation;
+    const auto navigation = article_navigation_generations_.find(tab_id);
+    if (navigation == article_navigation_generations_.end() ||
+        article_view_->page() == nullptr) {
+        completion(false);
+        return;
+    }
+    const QPointer<ArticleView> guarded_view(article_view_);
+    const QPointer<QWebEnginePage> guarded_page(article_view_->page());
+    const std::uint64_t stale_navigation_generation = navigation->second;
+    auto* foreign_page = new QWebEnginePage(article_view_);
+    FinishArticleSearch(tab_id, guarded_view, foreign_page,
+                        stale_navigation_generation, search->second.query,
+                        ownership_search_generation, 1, 2);
+    const bool foreign_page_rejected =
+        search->second.status == QStringLiteral("stable navigation status");
+    delete foreign_page;
+    ++navigation->second;
+    FinishArticleSearch(tab_id, guarded_view, guarded_page,
+                        stale_navigation_generation, search->second.query,
+                        ownership_search_generation, 1, 2);
+    const bool stale_navigation_rejected =
+        search->second.status == QStringLiteral("stable navigation status");
+    FinishArticleSearch(tab_id, guarded_view, guarded_page, navigation->second,
+                        search->second.query, ownership_search_generation, 1,
+                        2);
+    const bool matching_navigation_accepted =
+        search->second.status == QStringLiteral("1 of 2");
+    passed = passed && foreign_page_rejected && stale_navigation_rejected &&
+             matching_navigation_accepted;
     search->second.status.clear();
     ++search->second.generation;
     RefreshArticleSearch();
@@ -6742,24 +6774,25 @@ void MainWindow::HandleArticleHtmlNavigationFinished(
     }
     const QString query = search->second.query;
     const std::uint64_t generation = ++search->second.generation;
+    const auto navigation = article_navigation_generations_.find(tab_id);
+    if (view->page() == nullptr ||
+        navigation == article_navigation_generations_.end()) {
+        return;
+    }
+    const QPointer<MainWindow> guarded_window(this);
+    const QPointer<ArticleView> guarded_view(view);
+    const QPointer<QWebEnginePage> guarded_page(view->page());
+    const std::uint64_t navigation_generation = navigation->second;
     view->findText(
         query, {},
-        [this, tab_id, view, query,
-         generation](const QWebEngineFindTextResult& result) {
-            const auto current = article_search_presentations_.find(tab_id);
-            if (current == article_search_presentations_.end() ||
-                current->second.generation != generation ||
-                current->second.query != query ||
-                ArticleViewForTab(tab_id) != view) {
+        [guarded_window, tab_id, guarded_view, guarded_page, query, generation,
+         navigation_generation](const QWebEngineFindTextResult& result) {
+            if (guarded_window.isNull())
                 return;
-            }
-            current->second.status = result.numberOfMatches() == 0
-                                         ? QStringLiteral("No matches")
-                                         : tr("%1 of %2")
-                                               .arg(result.activeMatch())
-                                               .arg(result.numberOfMatches());
-            if (TabIdAt(article_tabs_->currentIndex()) == tab_id)
-                article_search_status_->setText(current->second.status);
+            guarded_window->FinishArticleSearch(
+                tab_id, guarded_view, guarded_page, navigation_generation,
+                query, generation, result.activeMatch(),
+                result.numberOfMatches());
         });
 }
 
@@ -12176,34 +12209,56 @@ void MainWindow::DispatchArticleSearch(goldendict::core::ArticleTabId tab_id,
                                        ArticleView* view, const QString& text,
                                        std::uint64_t generation,
                                        bool backwards) {
-    if (view == nullptr || text.isEmpty())
+    const auto navigation = article_navigation_generations_.find(tab_id);
+    if (view == nullptr || view->page() == nullptr || text.isEmpty() ||
+        ArticleViewForTab(tab_id) != view ||
+        navigation == article_navigation_generations_.end()) {
         return;
+    }
     QWebEnginePage::FindFlags flags;
     if (backwards)
         flags |= QWebEnginePage::FindBackward;
+    const QPointer<MainWindow> guarded_window(this);
+    const QPointer<ArticleView> guarded_view(view);
+    const QPointer<QWebEnginePage> guarded_page(view->page());
+    const std::uint64_t navigation_generation = navigation->second;
     view->findText(
         text, flags,
-        [this, tab_id, view, text,
-         generation](const QWebEngineFindTextResult& result) {
-            const auto found = article_search_presentations_.find(tab_id);
-            if (found == article_search_presentations_.end() ||
-                found->second.generation != generation ||
-                found->second.query != text ||
-                ArticleViewForTab(tab_id) != view) {
+        [guarded_window, tab_id, guarded_view, guarded_page, text, generation,
+         navigation_generation](const QWebEngineFindTextResult& result) {
+            if (guarded_window.isNull())
                 return;
-            }
-            if (result.numberOfMatches() == 0) {
-                found->second.status = QStringLiteral("No matches");
-                if (TabIdAt(article_tabs_->currentIndex()) == tab_id)
-                    article_search_status_->setText(found->second.status);
-                return;
-            }
-            found->second.status = tr("%1 of %2")
-                                       .arg(result.activeMatch())
-                                       .arg(result.numberOfMatches());
-            if (TabIdAt(article_tabs_->currentIndex()) == tab_id)
-                article_search_status_->setText(found->second.status);
+            guarded_window->FinishArticleSearch(
+                tab_id, guarded_view, guarded_page, navigation_generation, text,
+                generation, result.activeMatch(), result.numberOfMatches());
         });
+}
+
+void MainWindow::FinishArticleSearch(goldendict::core::ArticleTabId tab_id,
+                                     const QPointer<ArticleView>& view,
+                                     const QPointer<QWebEnginePage>& page,
+                                     std::uint64_t navigation_generation,
+                                     const QString& text,
+                                     std::uint64_t search_generation,
+                                     int active_match, int number_of_matches) {
+    const auto found = article_search_presentations_.find(tab_id);
+    const auto navigation = article_navigation_generations_.find(tab_id);
+    if (view.isNull() || page.isNull() ||
+        found == article_search_presentations_.end() ||
+        found->second.generation != search_generation ||
+        found->second.query != text ||
+        navigation == article_navigation_generations_.end() ||
+        navigation->second != navigation_generation ||
+        ArticleViewForTab(tab_id) != view.data() ||
+        view->page() != page.data()) {
+        return;
+    }
+    found->second.status =
+        number_of_matches == 0
+            ? QStringLiteral("No matches")
+            : tr("%1 of %2").arg(active_match).arg(number_of_matches);
+    if (TabIdAt(article_tabs_->currentIndex()) == tab_id)
+        article_search_status_->setText(found->second.status);
 }
 
 void MainWindow::ExtractRenderedPageText(

@@ -452,6 +452,13 @@ class MainWindow final : public QMainWindow {
     void DispatchArticleSearch(goldendict::core::ArticleTabId tab_id,
                                ArticleView* view, const QString& text,
                                std::uint64_t generation, bool backwards);
+    void FinishArticleSearch(goldendict::core::ArticleTabId tab_id,
+                             const QPointer<ArticleView>& view,
+                             const QPointer<QWebEnginePage>& page,
+                             std::uint64_t navigation_generation,
+                             const QString& text,
+                             std::uint64_t search_generation, int active_match,
+                             int number_of_matches);
     void RunArticleSearchReloadCheck(goldendict::core::ArticleTabId tab_id,
                                      bool passed,
                                      std::function<void(bool)> completion);
