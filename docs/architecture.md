@@ -6916,3 +6916,13 @@ selection remains independently owned by the existing Help path.
 
 See [project-design-rules.md](project-design-rules.md) for project design rules
 and design-boundary rationale.
+
+### Private Russian Transliteration Foundation
+
+The Core dictionary-support boundary owns a bounded table-driven Russian
+transliterator derived from the pinned legacy mapping. It chooses the longest
+matching source sequence, preserves case-sensitive variants and passes
+unmatched Unicode through unchanged. Malformed UTF-8, embedded NUL, oversized
+input and output-limit overflow fail deterministically. The primitive remains
+private: configuration, provider composition, presentation, locale catalogs,
+other transliterations and morphology are independent later work.

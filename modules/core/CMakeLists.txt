@@ -356,6 +356,13 @@ if(TARGET text_folding_test)
   target_link_libraries(text_folding_test PRIVATE ICU::uc)
 endif()
 
+if(TARGET transliteration_test)
+  target_sources(transliteration_test PRIVATE
+    src/dictionary/transliteration.cc
+    src/foundation/utf8.cc
+  )
+endif()
+
 if(TARGET full_text_index_test)
   target_sources(full_text_index_test PRIVATE
     src/dictionary/full_text_index.cc

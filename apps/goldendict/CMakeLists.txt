@@ -282,10 +282,11 @@ if(UNIX AND NOT APPLE AND TIGER_INSTALL_RUNTIME_DEPENDENCIES)
 endif()
 
 add_test(NAME goldendict_file_menu_smoke
-  COMMAND $<TARGET_FILE:goldendict> --file-menu-smoke)
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/file-menu-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/file_menu_smoke.cmake)
 set_tests_properties(goldendict_file_menu_smoke PROPERTIES
-  ENVIRONMENT
-    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/file-menu-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/file-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/file-menu-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_search_menu_smoke
