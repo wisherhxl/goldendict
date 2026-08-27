@@ -222,7 +222,13 @@ configuration field, installed API, locale work, or external dependency;
 German transliteration reuses that bounded engine and preserves the pinned
 12-entry case-sensitive table, including the intentionally disabled reverse
 mappings. It likewise adds no provider or public surface. Other
-transliterations and morphology remain separately gated.
+transliterations and morphology remain separately gated. Greek transliteration
+then reuses the same private bounded engine and preserves the pinned 645-entry
+modern/classical table, including Beta Code, alternate diacritic order,
+tonos/oxia conversion, and case-sensitive legacy spellings. It adds no
+provider, configuration, installed API, UI, translation, or dependency.
+Belarusian, Romaji, Chinese conversion, provider composition, and morphology
+remain separately gated.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

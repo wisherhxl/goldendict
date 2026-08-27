@@ -6937,3 +6937,14 @@ reuses the Russian leaf's strict UTF-8, NUL, input, and output bounds without
 adding a provider, configuration, installed API, UI, translation, or external
 dependency. Greek, Belarusian, Romaji, Chinese conversion, provider
 composition, and morphology remain independent later work.
+
+### Private Greek Transliteration Foundation
+
+The same private Core dictionary-support boundary owns the pinned 645-entry
+Greek table, including modern Greek, classical Beta Code, alternate diacritic
+ordering, tonos/oxia conversion, and case-sensitive legacy spellings. It
+reuses the established longest-match engine and strict UTF-8, NUL, input, and
+output bounds. The legacy uppercase `R` mapping is preserved exactly. No
+provider, configuration, installed API, UI, translation, or external
+dependency is added; Belarusian, Romaji, Chinese conversion, provider
+composition, and morphology remain independent later work.

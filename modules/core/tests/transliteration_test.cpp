@@ -14,6 +14,8 @@ class TransliterationTest : public QObject {
     void TransliterateRussianCases();
     void TransliterateGermanCases_data();
     void TransliterateGermanCases();
+    void TransliterateGreekCases_data();
+    void TransliterateGreekCases();
     void ReturnsNoAlternateForUnchangedText();
     void RejectsInvalidInputAndOutputOverflow();
 };
@@ -72,11 +74,41 @@ void TransliterationTest::TransliterateGermanCases() {
     }
 }
 
+void TransliterationTest::TransliterateGreekCases_data() {
+    QTest::addColumn<QString>("input");
+    QTest::addColumn<QString>("expected");
+
+    QTest::newRow("modern-longest-match")
+        << QStringLiteral("psuxh") << QString::fromUtf8("ψυχη");
+    QTest::newRow("modern-diacritics")
+        << QStringLiteral("'a\"'i") << QString::fromUtf8("άΐ");
+    QTest::newRow("classical-beta-code")
+        << QStringLiteral("*)/A a(/ w=|") << QString::fromUtf8("Ἄ ἅ ῷ");
+    QTest::newRow("unofficial-order")
+        << QStringLiteral("A/)| u/(") << QString::fromUtf8("ᾌ ὕ");
+    QTest::newRow("tonos-and-oxia")
+        << QString::fromUtf8("ά ά") << QString::fromUtf8("ά ά");
+    QTest::newRow("pinned-uppercase-rho")
+        << QStringLiteral("R") << QString::fromUtf8("Τ");
+    QTest::newRow("unicode-passthrough")
+        << QString::fromUtf8("猫 ks") << QString::fromUtf8("猫 ξ");
+}
+
+void TransliterationTest::TransliterateGreekCases() {
+    QFETCH(QString, input);
+    QFETCH(QString, expected);
+    const auto actual = TransliterateGreek(input.toStdString());
+    QVERIFY(actual.has_value());
+    QCOMPARE(QString::fromStdString(*actual), expected);
+}
+
 void TransliterationTest::ReturnsNoAlternateForUnchangedText() {
     QVERIFY(!TransliterateRussian("").has_value());
     QVERIFY(!TransliterateRussian("猫").has_value());
     QVERIFY(!TransliterateGerman("").has_value());
     QVERIFY(!TransliterateGerman("already umlauted: ä").has_value());
+    QVERIFY(!TransliterateGreek("").has_value());
+    QVERIFY(!TransliterateGreek("猫").has_value());
 }
 
 void TransliterationTest::RejectsInvalidInputAndOutputOverflow() {
@@ -98,6 +130,14 @@ void TransliterationTest::RejectsInvalidInputAndOutputOverflow() {
                              TransliterationError);
     QVERIFY_EXCEPTION_THROWN(TransliterateGerman("ue", 1U),
                              TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(TransliterateGreek(std::string("bad\0input", 9)),
+                             TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(TransliterateGreek(std::string("\xc3\x28", 2)),
+                             TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(TransliterateGreek(std::string(
+                                 kMaximumTransliterationInputBytes + 1U, 'a')),
+                             TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(TransliterateGreek("a", 1U), TransliterationError);
 }
 
 }  // namespace goldendict::core::dictionary

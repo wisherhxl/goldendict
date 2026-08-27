@@ -43,6 +43,10 @@ constexpr Mapping kGermanMappings[]{
     {"Ue", "Ü"}, {"Ae", "Ä"}, {"Oe", "Ö"}, {"Ss", "ß"},
 };
 
+constexpr Mapping kGreekMappings[]{
+#include "greek_transliteration_table.inc"
+};
+
 void AppendBounded(std::string_view value, std::size_t limit,
                    std::string* output) {
     if (value.size() > limit - output->size()) {
@@ -97,6 +101,11 @@ std::optional<std::string> TransliterateRussian(std::string_view text,
 std::optional<std::string> TransliterateGerman(std::string_view text,
                                                std::size_t output_limit) {
     return Transliterate(text, kGermanMappings, output_limit);
+}
+
+std::optional<std::string> TransliterateGreek(std::string_view text,
+                                              std::size_t output_limit) {
+    return Transliterate(text, kGreekMappings, output_limit);
 }
 
 }  // namespace goldendict::core::dictionary

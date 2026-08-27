@@ -27,6 +27,10 @@ std::optional<std::string> TransliterateGerman(
     std::string_view text,
     std::size_t output_limit = kMaximumTransliterationOutputBytes);
 
+std::optional<std::string> TransliterateGreek(
+    std::string_view text,
+    std::size_t output_limit = kMaximumTransliterationOutputBytes);
+
 }  // namespace goldendict::core::dictionary
 
 #endif  // GOLDENDICT_CORE_SRC_DICTIONARY_TRANSLITERATION_H_
