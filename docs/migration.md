@@ -248,6 +248,16 @@ validation, diagnostics, duplicate suppression, and a 4096-entry scan bound.
 It adds no Hunspell dependency, content parser, provider, configuration,
 installed API, UI, or transliteration behavior. Hunspell parsing and
 suggestions remain separately gated.
+The following private content-loading prerequisite preserves the original
+affix and dictionary bytes and their `.aff`-then-`.dic` ordering while
+validating the affix `SET` encoding and complete file contents through the
+existing strict ICU boundary. It adds typed path-bearing failures, rejects
+unsafe file pairs and symlinks, validates the dictionary entry header/count,
+and enforces explicit file, aggregate, line, and entry limits. Generated UTF-8
+and legacy single-byte fixtures cover valid boundaries and deterministic
+format, encoding, resource, and filesystem failures. Hunspell engine/provider
+composition, morphology suggestions, configuration, installed API, and UI
+remain separately gated.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

@@ -371,6 +371,14 @@ if(TARGET hunspell_discovery_test)
   )
 endif()
 
+if(TARGET hunspell_content_test)
+  target_sources(hunspell_content_test PRIVATE
+    src/foundation/text_encoding.cc
+    src/morphology/hunspell_content.cc
+  )
+  target_link_libraries(hunspell_content_test PRIVATE ICU::uc)
+endif()
+
 if(TARGET full_text_index_test)
   target_sources(full_text_index_test PRIVATE
     src/dictionary/full_text_index.cc
