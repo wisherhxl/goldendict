@@ -3,6 +3,8 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <functional>
+#include <future>
 #include <string>
 #include <vector>
 
@@ -24,6 +26,9 @@ class HunspellProviderTest : public QObject {
    private slots:
     void PreservesExactUtf8AndAffixLookup();
     void PreservesLegacyEncodedLookup();
+    void PreservesWholeQueryPrefixMembership();
+    void BoundsPrefixMembershipAndChecksRequests();
+    void SerializesConcurrentPrefixMembership();
     void ReturnsOrderedSingleWordStems();
     void DecodesLegacyStemsAndFiltersEquivalentCase();
     void IgnoresMalformedRecordsAndStripsComments();
@@ -72,6 +77,8 @@ void HunspellProviderTest::PreservesExactUtf8AndAffixLookup() {
              std::string("caf\xC3\xA9"));
     QVERIFY(provider->LookupExact("dog").empty());
     QVERIFY(provider->LookupPrefix("ca").empty());
+    QCOMPARE(provider->LookupPrefix("cats").front().headword,
+             std::string("cats"));
     QVERIFY(provider->SuggestPrefix("ca").empty());
 }
 
@@ -85,7 +92,102 @@ void HunspellProviderTest::PreservesLegacyEncodedLookup() {
 
     const std::string manana = std::string("ma") + "\xC3\xB1" + "ana";
     QCOMPARE(provider->LookupExact(manana).size(), 1U);
+    QCOMPARE(provider->LookupPrefix(manana).front().headword, manana);
     QVERIFY(provider->LookupExact("manana").empty());
+    QVERIFY(provider->LookupPrefix("manana").empty());
+}
+
+void HunspellProviderTest::PreservesWholeQueryPrefixMembership() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto files = test::WriteHunspellFixture(
+        std::filesystem::path(temporary.path().toStdString()), "membership",
+        "SET UTF-8\nSFX S Y 1\nSFX S 0 s .\n", "2\ncat/S\ncaf\xC3\xA9\n");
+    auto provider = OpenProvider(files);
+
+    QCOMPARE(provider->LookupPrefix("cat").front().headword,
+             std::string("cat"));
+    QCOMPARE(provider->LookupPrefix("cats").front().headword,
+             std::string("cats"));
+    QCOMPARE(provider->LookupPrefix(" \t(caf\xC3\xA9!)\n").front().headword,
+             std::string("caf\xC3\xA9"));
+    QVERIFY(provider->LookupPrefix("ca").empty());
+    QVERIFY(provider->LookupPrefix("dog").empty());
+    QVERIFY(provider->LookupPrefix("two words").empty());
+    QVERIFY(provider->LookupPrefix("two\xE2\x80\x83words").empty());
+    QVERIFY(provider->LookupPrefix(" \t(!)\n").empty());
+}
+
+void HunspellProviderTest::BoundsPrefixMembershipAndChecksRequests() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto root = std::filesystem::path(temporary.path().toStdString());
+    const auto files = test::WriteHunspellFixture(
+        root, "bounded-prefix", "SET ISO8859-1\n", "1\nword\n");
+    auto provider = OpenProvider(files);
+
+    const auto expect_error = [&](std::string_view query,
+                                  const dictionary::RequestOptions& options,
+                                  dictionary::ErrorCode expected) {
+        try {
+            provider->LookupPrefix(query, options);
+            QFAIL("prefix lookup did not throw");
+        } catch (const dictionary::Error& error) {
+            QCOMPARE(error.code(), expected);
+        }
+    };
+
+    expect_error(std::string("bad\xFF", 4U), {},
+                 dictionary::ErrorCode::kInvalidData);
+    expect_error(std::string("nu\0ll", 5U), {},
+                 dictionary::ErrorCode::kInvalidData);
+    expect_error(std::string(4097U, 'a'), {},
+                 dictionary::ErrorCode::kInvalidData);
+    expect_error("\xE2\x98\x83", {}, dictionary::ErrorCode::kInvalidData);
+
+    dictionary::RequestOptions options;
+    options.result_limit = 0U;
+    QVERIFY(provider->LookupPrefix("word", options).empty());
+
+    CancelledSignal cancelled;
+    options.result_limit = 1U;
+    options.cancellation = &cancelled;
+    expect_error("word", options, dictionary::ErrorCode::kCancelled);
+
+    CancelAfterChecksSignal cancel_after_engine(3U);
+    options.cancellation = &cancel_after_engine;
+    expect_error("word", options, dictionary::ErrorCode::kCancelled);
+
+    options.cancellation = nullptr;
+    options.deadline =
+        std::chrono::steady_clock::now() - std::chrono::milliseconds(1);
+    expect_error("word", options, dictionary::ErrorCode::kDeadlineExceeded);
+}
+
+void HunspellProviderTest::SerializesConcurrentPrefixMembership() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto root = std::filesystem::path(temporary.path().toStdString());
+    auto first = OpenProvider(test::WriteHunspellFixture(
+        root / "first", "first", "SET UTF-8\n", "1\nfirst\n"));
+    auto second = OpenProvider(test::WriteHunspellFixture(
+        root / "second", "second", "SET UTF-8\n", "1\nsecond\n"));
+
+    const auto exercise = [](dictionary::Backend& provider,
+                             std::string_view word) {
+        for (std::size_t iteration = 0U; iteration < 100U; ++iteration) {
+            const auto result = provider.LookupPrefix(word);
+            if (result.size() != 1U || result.front().headword != word)
+                return false;
+        }
+        return true;
+    };
+    auto first_result =
+        std::async(std::launch::async, exercise, std::ref(*first), "first");
+    auto second_result =
+        std::async(std::launch::async, exercise, std::ref(*second), "second");
+    QVERIFY(first_result.get());
+    QVERIFY(second_result.get());
 }
 
 void HunspellProviderTest::ReturnsOrderedSingleWordStems() {
@@ -103,7 +205,8 @@ void HunspellProviderTest::ReturnsOrderedSingleWordStems() {
     QCOMPARE(Synonyms(*provider).FindHeadwordsForSynonym("cats", {}),
              (std::vector<std::string>{"cat", "cat"}));
     QCOMPARE(provider->LookupExact("cats").size(), 1U);
-    QVERIFY(provider->LookupPrefix("cat").empty());
+    QCOMPARE(provider->LookupPrefix("cat").front().headword,
+             std::string("cat"));
     QVERIFY(provider->SuggestPrefix("cat").empty());
 }
 

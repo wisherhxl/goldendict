@@ -240,10 +240,42 @@ class Provider final : public dictionary::Backend,
     }
 
     std::vector<dictionary::Article> LookupPrefix(
-        std::string_view /*prefix*/,
+        std::string_view prefix,
         const dictionary::RequestOptions& options) const override {
         dictionary::CheckRequest(options);
-        return {};
+        if (options.result_limit == 0U)
+            return {};
+        if (prefix.empty() || prefix.size() > kMaximumExactQueryBytes ||
+            prefix.find('\0') != std::string_view::npos ||
+            !foundation::IsValidUtf8(prefix)) {
+            throw dictionary::Error(dictionary::ErrorCode::kInvalidData,
+                                    "Invalid Hunspell prefix-lookup query");
+        }
+
+        prefix = TrimOuterWhitespaceOrPunctuation(prefix);
+        if (prefix.empty() || ContainsWhitespace(prefix))
+            return {};
+
+        std::string encoded;
+        try {
+            encoded = foundation::EncodeFromUtf8(prefix, encoding_,
+                                                 kMaximumExactQueryBytes * 4U);
+        } catch (const foundation::TextEncodingError& error) {
+            throw dictionary::Error(dictionary::ErrorCode::kInvalidData,
+                                    error.what());
+        }
+
+        dictionary::CheckRequest(options);
+        bool accepted = false;
+        {
+            std::lock_guard<std::mutex> lock(EngineMutex());
+            dictionary::CheckRequest(options);
+            accepted = engine_.spell(encoded) != 0;
+        }
+        dictionary::CheckRequest(options);
+        if (!accepted)
+            return {};
+        return {{std::string(prefix), "text/plain", {}}};
     }
 
     std::vector<std::string> SuggestPrefix(

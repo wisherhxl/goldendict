@@ -267,8 +267,13 @@ morphology leaf then extends that same private provider through the existing
 trimming and the 80-character limit, rejects whitespace-containing
 expressions, uses the declared dictionary encoding, serializes `analyze()`,
 and extracts decoded `st:` records in engine order without deduplication after
-removing trailing `#` comments and simple-case-equivalent inputs. Exact lookup
-remains unchanged; prefix lookup and prefix suggestions remain empty.
+removing trailing `#` comments and simple-case-equivalent inputs. The next
+private leaf restores pinned legacy `prefixMatch` as bounded whole-query
+membership rather than enumeration: it applies the same outer trim and
+whitespace rejection, uses the declared encoding, serializes `spell()`, and
+returns the trimmed original UTF-8 headword on acceptance. Exact lookup,
+synonym stems, and prefix suggestions remain unchanged; prefix enumeration
+remains excluded.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

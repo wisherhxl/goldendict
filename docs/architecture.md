@@ -7000,5 +7000,9 @@ single-word morphology leaf additionally implements the existing private
 80-character limit, rejects expressions containing whitespace, serializes
 `analyze()` with the same process-wide engine mutex, and returns only decoded
 `st:` fields in engine order with duplicates retained, trailing `#` comments
-removed, and stems simple-case-equivalent to the input omitted. Exact lookup
-is unchanged, and prefix lookup and prefix suggestions remain empty.
+removed, and stems simple-case-equivalent to the input omitted. The dependent
+private prefix-membership leaf restores the pinned legacy meaning of
+`prefixMatch`: it tests the complete trimmed single-word query with serialized
+`spell()` and returns at most the trimmed original UTF-8 headword. This is not
+prefix enumeration. Exact lookup and synonym stems are unchanged; prefix
+enumeration and prefix suggestions remain excluded.
