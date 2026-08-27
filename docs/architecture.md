@@ -7045,3 +7045,12 @@ diagnostics. Hunspell remains a private module dependency; concrete types do
 not enter installed headers or exports. StarDict composition and the public
 lookup/suggestion DTOs remain unchanged. UI, network, prefix enumeration, and
 translations remain excluded.
+
+The dependent true-prefix leaf adds only a private Core capability for
+enumerating proper prefixes of one bounded, trimmed single-word query. It
+tests UTF-8 code-point-aligned candidates longest first with serialized
+`spell()` calls in the dictionary's declared encoding, excludes the complete
+query, and observes the request result limit, cancellation, and deadline.
+The existing whole-query `LookupPrefix()` behavior and public
+`SuggestPrefix()` result remain unchanged; no installed interface or Hunspell
+dependency is exposed.

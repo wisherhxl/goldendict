@@ -297,6 +297,13 @@ escaped inert HTML whose `bword://` links enter the existing typed-link
 sanitizer, with cancellation/deadline checkpoints throughout. Registration,
 configuration and enabled policy, prefix enumeration, UI and translations,
 installed APIs, dependency changes, and unrelated backends remain excluded.
+The next narrowly bounded Hunspell leaf exposes true-prefix enumeration only
+through a private Core capability. Proper UTF-8 prefixes are tested longest
+first as complete Hunspell words using the established trim, declared
+encoding, request bounds, and process-wide engine mutex; the complete input is
+excluded and the request result limit is honored. Whole-query
+`LookupPrefix()`, public `SuggestPrefix()`, installed contracts, UI, settings,
+and spelling articles are unchanged.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

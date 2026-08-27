@@ -27,6 +27,16 @@ class SynonymBackend {
         std::string_view headword, const RequestOptions& options) const = 0;
 };
 
+// Private capability implemented only by morphology providers that can test
+// proper prefixes as complete words. Runtime sources deliberately do not
+// inherit this interface.
+class TruePrefixBackend {
+   public:
+    virtual ~TruePrefixBackend() = default;
+    virtual std::vector<std::string> EnumerateTruePrefixes(
+        std::string_view word, const RequestOptions& options) const = 0;
+};
+
 // Private capability implemented only by formats with accepted full-text
 // ingestion. Runtime sources deliberately do not inherit this interface.
 class FullTextBackend {

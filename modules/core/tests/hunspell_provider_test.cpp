@@ -31,6 +31,8 @@ class HunspellProviderTest : public QObject {
     void PreservesWholeQueryPrefixMembership();
     void BoundsPrefixMembershipAndChecksRequests();
     void SerializesConcurrentPrefixMembership();
+    void EnumeratesBoundedTruePrefixes();
+    void ChecksTruePrefixRequestsAndSerialization();
     void ReturnsOrderedSingleWordStems();
     void ReconstructsBoundedCompoundExpressionsInLegacyOrder();
     void PreservesCompoundSeparatorsAndLegacyEncoding();
@@ -46,6 +48,13 @@ static dictionary::SynonymBackend& Synonyms(dictionary::Backend& provider) {
     auto* synonyms = dynamic_cast<dictionary::SynonymBackend*>(&provider);
     Q_ASSERT(synonyms != nullptr);
     return *synonyms;
+}
+
+static dictionary::TruePrefixBackend& TruePrefixes(
+    dictionary::Backend& provider) {
+    auto* prefixes = dynamic_cast<dictionary::TruePrefixBackend*>(&provider);
+    Q_ASSERT(prefixes != nullptr);
+    return *prefixes;
 }
 
 class CancelledSignal final : public dictionary::CancellationSignal {
@@ -263,6 +272,100 @@ void HunspellProviderTest::SerializesConcurrentPrefixMembership() {
         std::async(std::launch::async, exercise, std::ref(*first), "first");
     auto second_result =
         std::async(std::launch::async, exercise, std::ref(*second), "second");
+    QVERIFY(first_result.get());
+    QVERIFY(second_result.get());
+}
+
+void HunspellProviderTest::EnumeratesBoundedTruePrefixes() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto root = std::filesystem::path(temporary.path().toStdString());
+    const auto files = test::WriteHunspellFixture(
+        root, "true-prefixes", "SET UTF-8\nSFX S Y 1\nSFX S 0 s .\n",
+        "4\nc\ncat/S\ncaf\ncaf\xC3\xA9\n");
+    auto provider = OpenProvider(files);
+    auto& prefixes = TruePrefixes(*provider);
+
+    QCOMPARE(prefixes.EnumerateTruePrefixes("catsup", {}),
+             (std::vector<std::string>{"cats", "cat", "c"}));
+    QCOMPARE(prefixes.EnumerateTruePrefixes("  (caf\xC3\xA9ine!)  ", {}),
+             (std::vector<std::string>{"caf\xC3\xA9", "caf", "c"}));
+    QCOMPARE(prefixes.EnumerateTruePrefixes("cat", {}),
+             (std::vector<std::string>{"c"}));
+    QVERIFY(prefixes.EnumerateTruePrefixes("dog", {}).empty());
+    QVERIFY(prefixes.EnumerateTruePrefixes("two words", {}).empty());
+    QVERIFY(prefixes.EnumerateTruePrefixes(" \t(!)\n", {}).empty());
+    QVERIFY(provider->SuggestPrefix("cat").empty());
+
+    dictionary::RequestOptions options;
+    options.result_limit = 2U;
+    QCOMPARE(prefixes.EnumerateTruePrefixes("catsup", options),
+             (std::vector<std::string>{"cats", "cat"}));
+
+    const auto latin_files = test::WriteHunspellFixture(
+        root / "latin", "latin", "SET ISO8859-1\n",
+        std::string("2\nma") + "\xF1" + "ana\nma\xF1\n");
+    auto latin_provider = OpenProvider(latin_files);
+    const std::string manana = std::string("ma") + "\xC3\xB1" + "ana";
+    QCOMPARE(
+        TruePrefixes(*latin_provider).EnumerateTruePrefixes(manana + "X", {}),
+        (std::vector<std::string>{manana, std::string("ma") + "\xC3\xB1"}));
+}
+
+void HunspellProviderTest::ChecksTruePrefixRequestsAndSerialization() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto root = std::filesystem::path(temporary.path().toStdString());
+    auto first = OpenProvider(
+        test::WriteHunspellFixture(root / "first-prefixes", "first-prefixes",
+                                   "SET UTF-8\n", "2\nf\nfirst\n"));
+    auto second = OpenProvider(
+        test::WriteHunspellFixture(root / "second-prefixes", "second-prefixes",
+                                   "SET UTF-8\n", "2\ns\nsecond\n"));
+
+    auto& prefixes = TruePrefixes(*first);
+    QVERIFY_EXCEPTION_THROWN(
+        prefixes.EnumerateTruePrefixes(std::string("bad\xFF", 4U), {}),
+        dictionary::Error);
+    QVERIFY_EXCEPTION_THROWN(
+        prefixes.EnumerateTruePrefixes(std::string("nu\0ll", 5U), {}),
+        dictionary::Error);
+    QVERIFY_EXCEPTION_THROWN(
+        prefixes.EnumerateTruePrefixes(std::string(4097U, 'a'), {}),
+        dictionary::Error);
+
+    dictionary::RequestOptions options;
+    options.result_limit = 0U;
+    QVERIFY(prefixes.EnumerateTruePrefixes("firstx", options).empty());
+    CancelledSignal cancelled;
+    options.result_limit = 1U;
+    options.cancellation = &cancelled;
+    QVERIFY_EXCEPTION_THROWN(prefixes.EnumerateTruePrefixes("firstx", options),
+                             dictionary::Error);
+    CancelAfterChecksSignal cancel_during_engine(3U);
+    options.cancellation = &cancel_during_engine;
+    QVERIFY_EXCEPTION_THROWN(prefixes.EnumerateTruePrefixes("firstx", options),
+                             dictionary::Error);
+    options.cancellation = nullptr;
+    options.deadline =
+        std::chrono::steady_clock::now() - std::chrono::milliseconds(1);
+    QVERIFY_EXCEPTION_THROWN(prefixes.EnumerateTruePrefixes("firstx", options),
+                             dictionary::Error);
+
+    const auto exercise = [](dictionary::Backend& provider,
+                             std::string_view word, std::string_view expected) {
+        for (std::size_t iteration = 0U; iteration < 100U; ++iteration) {
+            const auto result =
+                TruePrefixes(provider).EnumerateTruePrefixes(word, {});
+            if (result.empty() || result.front() != expected)
+                return false;
+        }
+        return true;
+    };
+    auto first_result = std::async(std::launch::async, exercise,
+                                   std::ref(*first), "firstx", "first");
+    auto second_result = std::async(std::launch::async, exercise,
+                                    std::ref(*second), "secondx", "second");
     QVERIFY(first_result.get());
     QVERIFY(second_result.get());
 }

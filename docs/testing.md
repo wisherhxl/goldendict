@@ -120,6 +120,10 @@ participation, disabled omission, stable identity and provenance, sanitized
 spelling-suggestion articles, cancellation, missing-ID diagnostics, and
 coexistence with unchanged StarDict orchestration. Focused provider tests retain
 the engine-level deadline, cancellation, encoding, and article-size bounds.
+They also pin private proper-prefix enumeration: longest-first UTF-8
+code-point boundaries, declared-encoding and affix-derived membership,
+complete-input exclusion, request limits, and serialized concurrent access,
+while public prefix suggestions remain empty.
 
 `application_service_test` also verifies the current dictionary-group model:
 empty older configurations remain compatible, nontrivial ordered groups round

@@ -187,7 +187,8 @@ dictionary::Error TranslateContentError(const ContentError& error) {
 }
 
 class Provider final : public dictionary::Backend,
-                       public dictionary::SynonymBackend {
+                       public dictionary::SynonymBackend,
+                       public dictionary::TruePrefixBackend {
    public:
     Provider(Content content, std::string registered_id,
              std::string display_name)
@@ -320,6 +321,61 @@ class Provider final : public dictionary::Backend,
             return FindCompoundStems(headword, options);
 
         return AnalyzeWord(headword, options);
+    }
+
+    std::vector<std::string> EnumerateTruePrefixes(
+        std::string_view word,
+        const dictionary::RequestOptions& options) const override {
+        dictionary::CheckRequest(options);
+        if (options.result_limit == 0U)
+            return {};
+        if (word.empty() || word.size() > kMaximumExactQueryBytes ||
+            word.find('\0') != std::string_view::npos ||
+            !foundation::IsValidUtf8(word)) {
+            throw dictionary::Error(dictionary::ErrorCode::kInvalidData,
+                                    "Invalid Hunspell true-prefix query");
+        }
+
+        word = TrimOuterWhitespaceOrPunctuation(word);
+        if (word.empty() || ContainsWhitespace(word))
+            return {};
+
+        std::vector<std::string_view> utf8_prefixes;
+        std::vector<std::string> encoded_prefixes;
+        int32_t end = static_cast<int32_t>(word.size());
+        while (end > 0) {
+            --end;
+            while (end > 0 && (static_cast<unsigned char>(
+                                   word[static_cast<std::size_t>(end)]) &
+                               0xC0U) == 0x80U) {
+                --end;
+            }
+            if (end == 0)
+                break;
+            const auto prefix = word.substr(0U, static_cast<std::size_t>(end));
+            try {
+                encoded_prefixes.push_back(foundation::EncodeFromUtf8(
+                    prefix, encoding_, kMaximumExactQueryBytes * 4U));
+                utf8_prefixes.push_back(prefix);
+            } catch (const foundation::TextEncodingError& error) {
+                throw dictionary::Error(dictionary::ErrorCode::kInvalidData,
+                                        error.what());
+            }
+        }
+
+        dictionary::CheckRequest(options);
+        std::vector<std::string> prefixes;
+        std::lock_guard<std::mutex> lock(EngineMutex());
+        for (std::size_t index = 0U; index < encoded_prefixes.size(); ++index) {
+            dictionary::CheckRequest(options);
+            if (engine_.spell(encoded_prefixes[index]) == 0)
+                continue;
+            prefixes.emplace_back(utf8_prefixes[index]);
+            if (prefixes.size() == options.result_limit)
+                break;
+        }
+        dictionary::CheckRequest(options);
+        return prefixes;
     }
 
     std::vector<dictionary::Article> LookupPrefix(
