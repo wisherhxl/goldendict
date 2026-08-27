@@ -227,8 +227,12 @@ then reuses the same private bounded engine and preserves the pinned 645-entry
 modern/classical table, including Beta Code, alternate diacritic order,
 tonos/oxia conversion, and case-sensitive legacy spellings. It adds no
 provider, configuration, installed API, UI, translation, or dependency.
-Belarusian, Romaji, Chinese conversion, provider composition, and morphology
-remain separately gated.
+Belarusian transliteration then adds the three inseparable pinned tables for
+Latin/classic, Latin/school, and school/classic smoothing. It preserves their
+334/333, 535/534, and 446/436 declaration/effective counts, first-retained
+duplicates, longest matching, simple case folding, and table quirks behind the
+same private bounded Core boundary. Romaji, Chinese conversion, provider
+composition, and morphology remain separately gated.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

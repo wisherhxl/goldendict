@@ -31,6 +31,27 @@ std::optional<std::string> TransliterateGreek(
     std::string_view text,
     std::size_t output_limit = kMaximumTransliterationOutputBytes);
 
+std::optional<std::string> TransliterateBelarusianLatinClassic(
+    std::string_view text,
+    std::size_t output_limit = kMaximumTransliterationOutputBytes);
+
+std::optional<std::string> TransliterateBelarusianLatinSchool(
+    std::string_view text,
+    std::size_t output_limit = kMaximumTransliterationOutputBytes);
+
+std::optional<std::string> TransliterateBelarusianSchoolClassic(
+    std::string_view text,
+    std::size_t output_limit = kMaximumTransliterationOutputBytes);
+
+struct TransliterationMappingCounts {
+    std::size_t declarations;
+    std::size_t effective;
+};
+
+TransliterationMappingCounts BelarusianLatinClassicMappingCounts();
+TransliterationMappingCounts BelarusianLatinSchoolMappingCounts();
+TransliterationMappingCounts BelarusianSchoolClassicMappingCounts();
+
 }  // namespace goldendict::core::dictionary
 
 #endif  // GOLDENDICT_CORE_SRC_DICTIONARY_TRANSLITERATION_H_

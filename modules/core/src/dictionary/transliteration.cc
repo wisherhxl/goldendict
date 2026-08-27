@@ -3,7 +3,9 @@
 #include "transliteration.h"
 
 #include <string_view>
+#include <unordered_set>
 
+#include "../foundation/text_folding.h"
 #include "../foundation/utf8.h"
 
 namespace goldendict::core::dictionary {
@@ -47,6 +49,16 @@ constexpr Mapping kGreekMappings[]{
 #include "greek_transliteration_table.inc"
 };
 
+#include "belarusian_transliteration_table.inc"
+
+std::size_t CodePointCount(std::string_view text) noexcept {
+    std::size_t count = 0;
+    for (const unsigned char byte : text) {
+        count += (byte & 0xc0U) != 0x80U;
+    }
+    return count;
+}
+
 void AppendBounded(std::string_view value, std::size_t limit,
                    std::string* output) {
     if (value.size() > limit - output->size()) {
@@ -58,37 +70,65 @@ void AppendBounded(std::string_view value, std::size_t limit,
 template <std::size_t MappingCount>
 std::optional<std::string> Transliterate(
     std::string_view text, const Mapping (&mappings)[MappingCount],
-    std::size_t output_limit) {
+    std::size_t output_limit, bool case_sensitive = true) {
     if (text.size() > kMaximumTransliterationInputBytes ||
         !foundation::IsValidUtf8(text) || text.find('\0') != text.npos) {
         throw TransliterationError(
             "Transliteration input is not valid bounded UTF-8");
     }
 
+    std::string folded;
+    if (!case_sensitive) {
+        try {
+            folded = foundation::FoldSimpleCase(text);
+        } catch (const foundation::TextFoldingError& error) {
+            throw TransliterationError(error.what());
+        }
+    }
+    const std::string_view target = case_sensitive ? text : folded;
     std::string output;
-    output.reserve(text.size());
-    for (std::size_t position = 0; position < text.size();) {
+    output.reserve(target.size());
+    for (std::size_t position = 0; position < target.size();) {
         const Mapping* best = nullptr;
+        std::size_t best_length = 0;
         for (const auto& mapping : mappings) {
-            if ((best == nullptr ||
-                 mapping.source.size() > best->source.size()) &&
-                text.substr(position, mapping.source.size()) ==
+            const std::size_t mapping_length = CodePointCount(mapping.source);
+            if ((best == nullptr || mapping_length > best_length) &&
+                target.substr(position, mapping.source.size()) ==
                     mapping.source) {
                 best = &mapping;
+                best_length = mapping_length;
             }
         }
         if (best != nullptr) {
             AppendBounded(best->target, output_limit, &output);
             position += best->source.size();
         } else {
-            AppendBounded(text.substr(position, 1U), output_limit, &output);
-            ++position;
+            std::size_t byte_count = 1U;
+            while (position + byte_count < target.size() &&
+                   (static_cast<unsigned char>(target[position + byte_count]) &
+                    0xc0U) == 0x80U) {
+                ++byte_count;
+            }
+            AppendBounded(target.substr(position, byte_count), output_limit,
+                          &output);
+            position += byte_count;
         }
     }
-    if (output == text) {
+    if (output == target) {
         return std::nullopt;
     }
     return output;
+}
+
+template <std::size_t MappingCount>
+TransliterationMappingCounts MappingCounts(
+    const Mapping (&mappings)[MappingCount]) {
+    std::unordered_set<std::string_view> sources;
+    for (const auto& mapping : mappings) {
+        sources.insert(mapping.source);
+    }
+    return {MappingCount, sources.size()};
 }
 
 }  // namespace
@@ -106,6 +146,36 @@ std::optional<std::string> TransliterateGerman(std::string_view text,
 std::optional<std::string> TransliterateGreek(std::string_view text,
                                               std::size_t output_limit) {
     return Transliterate(text, kGreekMappings, output_limit);
+}
+
+std::optional<std::string> TransliterateBelarusianLatinClassic(
+    std::string_view text, std::size_t output_limit) {
+    return Transliterate(text, kBelarusianLatinToClassicMappings, output_limit,
+                         false);
+}
+
+std::optional<std::string> TransliterateBelarusianLatinSchool(
+    std::string_view text, std::size_t output_limit) {
+    return Transliterate(text, kBelarusianLatinToSchoolMappings, output_limit,
+                         false);
+}
+
+std::optional<std::string> TransliterateBelarusianSchoolClassic(
+    std::string_view text, std::size_t output_limit) {
+    return Transliterate(text, kBelarusianSchoolToClassicMappings, output_limit,
+                         false);
+}
+
+TransliterationMappingCounts BelarusianLatinClassicMappingCounts() {
+    return MappingCounts(kBelarusianLatinToClassicMappings);
+}
+
+TransliterationMappingCounts BelarusianLatinSchoolMappingCounts() {
+    return MappingCounts(kBelarusianLatinToSchoolMappings);
+}
+
+TransliterationMappingCounts BelarusianSchoolClassicMappingCounts() {
+    return MappingCounts(kBelarusianSchoolToClassicMappings);
 }
 
 }  // namespace goldendict::core::dictionary

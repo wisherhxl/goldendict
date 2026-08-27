@@ -359,8 +359,10 @@ endif()
 if(TARGET transliteration_test)
   target_sources(transliteration_test PRIVATE
     src/dictionary/transliteration.cc
+    src/foundation/text_folding.cc
     src/foundation/utf8.cc
   )
+  target_link_libraries(transliteration_test PRIVATE ICU::uc)
 endif()
 
 if(TARGET full_text_index_test)

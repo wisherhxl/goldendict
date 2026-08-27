@@ -6946,5 +6946,17 @@ ordering, tonos/oxia conversion, and case-sensitive legacy spellings. It
 reuses the established longest-match engine and strict UTF-8, NUL, input, and
 output bounds. The legacy uppercase `R` mapping is preserved exactly. No
 provider, configuration, installed API, UI, translation, or external
-dependency is added; Belarusian, Romaji, Chinese conversion, provider
-composition, and morphology remain independent later work.
+dependency is added; Romaji, Chinese conversion, provider composition, and
+morphology remain independent later work.
+
+### Private Belarusian Transliteration Foundation
+
+The private Core dictionary-support boundary owns the pinned Latin/classic,
+Latin/school, and school/classic smoothing tables as one parity family. Their
+declaration/effective mapping counts are 334/333, 535/534, and 446/436. The
+shared bounded engine preserves first-retained duplicate keys, code-point
+longest matching, table quirks, and unchanged Unicode; ICU simple case folding
+reproduces the legacy case-insensitive path without entering the public
+dependency graph. Provider composition, configuration, installed APIs, UI,
+icons, translations, Romaji, Chinese conversion, and morphology remain
+independent later work.

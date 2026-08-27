@@ -81,6 +81,25 @@ std::vector<UChar> FoldCase(const std::vector<UChar>& input) {
     return output;
 }
 
+std::vector<UChar> FoldSimpleCase(const std::vector<UChar>& input) {
+    std::vector<UChar> output;
+    output.reserve(input.size());
+    std::int32_t position = 0;
+    const auto length = static_cast<std::int32_t>(input.size());
+    while (position < length) {
+        UChar32 code_point = 0;
+        U16_NEXT(input.data(), position, length, code_point);
+        code_point = u_foldCase(code_point, U_FOLD_CASE_DEFAULT);
+        if (code_point <= 0xffff) {
+            output.push_back(static_cast<UChar>(code_point));
+        } else {
+            output.push_back(U16_LEAD(code_point));
+            output.push_back(U16_TRAIL(code_point));
+        }
+    }
+    return output;
+}
+
 bool IsDiscarded(UChar32 code_point) noexcept {
     const auto category = static_cast<UCharCategory>(u_charType(code_point));
     return category == U_NON_SPACING_MARK ||
@@ -166,6 +185,13 @@ std::string FoldForLookup(std::string_view text) {
     folded = FoldCase(folded);
     folded = Normalize(normalizer, folded);
     return ToUtf8(RemoveMarksWhitespaceAndPunctuation(folded));
+}
+
+std::string FoldSimpleCase(std::string_view text) {
+    if (text.empty()) {
+        return {};
+    }
+    return ToUtf8(FoldSimpleCase(FromUtf8(text)));
 }
 
 std::string NormalizeForExactLookup(std::string_view text,
