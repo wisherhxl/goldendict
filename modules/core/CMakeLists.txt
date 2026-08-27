@@ -5,13 +5,14 @@ set(the_description "GoldenDict headless and desktop application core")
 find_package(BZip2 REQUIRED)
 find_package(expat REQUIRED CONFIG)
 find_package(ICU REQUIRED CONFIG COMPONENTS uc)
+find_package(hunspell REQUIRED CONFIG)
 find_package(PCRE2 REQUIRED CONFIG)
 find_package(Vorbis REQUIRED CONFIG)
 find_package(ZLIB REQUIRED)
 
 ti_define_module(core
   REQUIRED PUBLIC MODULES tiger
-  REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat ICU::uc PCRE2::8BIT Vorbis::vorbisfile ZLIB::ZLIB
+  REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat hunspell::hunspell ICU::uc PCRE2::8BIT Vorbis::vorbisfile ZLIB::ZLIB
 )
 
 if(TARGET sounddir_reader_test)
@@ -377,6 +378,19 @@ if(TARGET hunspell_content_test)
     src/morphology/hunspell_content.cc
   )
   target_link_libraries(hunspell_content_test PRIVATE ICU::uc)
+endif()
+
+if(TARGET hunspell_provider_test)
+  target_sources(hunspell_provider_test PRIVATE
+    src/dictionary/dictionary_backend.cc
+    src/foundation/text_encoding.cc
+    src/foundation/utf8.cc
+    src/morphology/hunspell_content.cc
+    src/morphology/hunspell_provider.cc
+  )
+  target_link_libraries(hunspell_provider_test
+    PRIVATE hunspell::hunspell ICU::uc
+  )
 endif()
 
 if(TARGET full_text_index_test)

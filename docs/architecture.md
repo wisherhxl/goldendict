@@ -6986,3 +6986,13 @@ regular-file checks, diagnostics, duplicate suppression, and a 4096-entry
 scan bound. This leaf does not parse Hunspell files, add the Hunspell
 dependency, compose a morphology provider, migrate configuration, or change
 an installed API. Those remain separate dependent work.
+
+The dependent private provider validates each discovered pair through the
+bounded content loader before constructing Hunspell 1.7.2 from the original
+ordered `.aff` and `.dic` paths. It implements only exact membership through
+the existing private dictionary-backend contract, converts UTF-8 queries to
+the declared dictionary encoding, serializes engine calls, and preserves the
+queried UTF-8 headword on a hit. Concrete Hunspell types and the dependency
+remain private to `goldendict_core`; prefix enumeration, suggestions,
+morphology expansion, configuration, UI, and installed API changes remain
+excluded.

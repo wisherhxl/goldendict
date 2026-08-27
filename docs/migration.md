@@ -256,8 +256,12 @@ unsafe file pairs and symlinks, validates the dictionary entry header/count,
 and enforces explicit file, aggregate, line, and entry limits. Generated UTF-8
 and legacy single-byte fixtures cover valid boundaries and deterministic
 format, encoding, resource, and filesystem failures. Hunspell engine/provider
-composition, morphology suggestions, configuration, installed API, and UI
-remain separately gated.
+composition then pins Conan Hunspell 1.7.2 privately, validates original pairs
+through that loader before engine construction, and provides bounded,
+serialized exact membership through the existing private backend contract.
+Generated UTF-8, affix, and legacy single-byte fixtures preserve direct source
+compatibility. Morphology suggestions, prefix enumeration, configuration,
+installed API, and UI remain separately gated.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 
