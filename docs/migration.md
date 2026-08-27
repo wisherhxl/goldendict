@@ -214,12 +214,15 @@ language identity, canonical match metadata, filtering, cancellation,
 deadlines, partial errors, global cross-dictionary ranking, and deterministic
 result limits. The installed consumer exercises this lightweight path
 independently of prefix article lookup.
-The next foundation increment adds the first private table-driven
-transliteration primitive. Russian transliteration preserves the pinned
+The next foundation increments add private table-driven transliteration
+primitives. Russian transliteration preserves the pinned
 longest-match, case-sensitive mapping and unmatched-Unicode behavior while
 strictly bounding valid UTF-8 input and output. It adds no dictionary provider,
 configuration field, installed API, locale work, or external dependency;
-other transliterations and morphology remain separately gated.
+German transliteration reuses that bounded engine and preserves the pinned
+12-entry case-sensitive table, including the intentionally disabled reverse
+mappings. It likewise adds no provider or public surface. Other
+transliterations and morphology remain separately gated.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

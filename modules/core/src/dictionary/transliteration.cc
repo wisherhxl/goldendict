@@ -35,6 +35,14 @@ constexpr Mapping kRussianMappings[]{
     {"Ya", "Я"},
 };
 
+// Pinned legacy GermanTranslit table. The reverse mappings remain disabled,
+// matching the source baseline.
+constexpr Mapping kGermanMappings[]{
+    {"ue", "ü"}, {"ae", "ä"}, {"oe", "ö"}, {"ss", "ß"},
+    {"UE", "Ü"}, {"AE", "Ä"}, {"OE", "Ö"}, {"SS", "ß"},
+    {"Ue", "Ü"}, {"Ae", "Ä"}, {"Oe", "Ö"}, {"Ss", "ß"},
+};
+
 void AppendBounded(std::string_view value, std::size_t limit,
                    std::string* output) {
     if (value.size() > limit - output->size()) {
@@ -43,10 +51,10 @@ void AppendBounded(std::string_view value, std::size_t limit,
     output->append(value);
 }
 
-}  // namespace
-
-std::optional<std::string> TransliterateRussian(std::string_view text,
-                                                std::size_t output_limit) {
+template <std::size_t MappingCount>
+std::optional<std::string> Transliterate(
+    std::string_view text, const Mapping (&mappings)[MappingCount],
+    std::size_t output_limit) {
     if (text.size() > kMaximumTransliterationInputBytes ||
         !foundation::IsValidUtf8(text) || text.find('\0') != text.npos) {
         throw TransliterationError(
@@ -57,7 +65,7 @@ std::optional<std::string> TransliterateRussian(std::string_view text,
     output.reserve(text.size());
     for (std::size_t position = 0; position < text.size();) {
         const Mapping* best = nullptr;
-        for (const auto& mapping : kRussianMappings) {
+        for (const auto& mapping : mappings) {
             if ((best == nullptr ||
                  mapping.source.size() > best->source.size()) &&
                 text.substr(position, mapping.source.size()) ==
@@ -77,6 +85,18 @@ std::optional<std::string> TransliterateRussian(std::string_view text,
         return std::nullopt;
     }
     return output;
+}
+
+}  // namespace
+
+std::optional<std::string> TransliterateRussian(std::string_view text,
+                                                std::size_t output_limit) {
+    return Transliterate(text, kRussianMappings, output_limit);
+}
+
+std::optional<std::string> TransliterateGerman(std::string_view text,
+                                               std::size_t output_limit) {
+    return Transliterate(text, kGermanMappings, output_limit);
 }
 
 }  // namespace goldendict::core::dictionary

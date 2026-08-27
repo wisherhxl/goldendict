@@ -6926,3 +6926,14 @@ unmatched Unicode through unchanged. Malformed UTF-8, embedded NUL, oversized
 input and output-limit overflow fail deterministically. The primitive remains
 private: configuration, provider composition, presentation, locale catalogs,
 other transliterations and morphology are independent later work.
+
+### Private German Transliteration Foundation
+
+The same private Core dictionary-support boundary owns the bounded German
+table derived from the pinned legacy source. It preserves the exact lowercase,
+uppercase, and title-case digraph mappings, case-sensitive unmatched-input
+behavior, and the legacy decision not to enable reverse umlaut expansion. It
+reuses the Russian leaf's strict UTF-8, NUL, input, and output bounds without
+adding a provider, configuration, installed API, UI, translation, or external
+dependency. Greek, Belarusian, Romaji, Chinese conversion, provider
+composition, and morphology remain independent later work.
