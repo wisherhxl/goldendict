@@ -6975,3 +6975,14 @@ folded result produces no alternate. The implementation remains private and
 adds no installed API or dependency. Nihon-shiki, Kunrei-shiki, provider
 composition, dictionary identities, icons, configuration, UI, translations,
 morphology, and Chinese conversion remain excluded.
+
+### Private Hunspell Data Discovery Foundation
+
+The private Core dictionary-support boundary recognizes the pinned legacy
+Hunspell `.aff`/`.AFF` plus `.dic`/`.DIC` companion pairs in one configured
+directory. It preserves basename dictionary identities, lower-case companion
+preference, and non-recursive scanning while adding deterministic ordering,
+regular-file checks, diagnostics, duplicate suppression, and a 4096-entry
+scan bound. This leaf does not parse Hunspell files, add the Hunspell
+dependency, compose a morphology provider, migrate configuration, or change
+an installed API. Those remain separate dependent work.

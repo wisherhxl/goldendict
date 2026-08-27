@@ -240,6 +240,14 @@ four-character sources, first-retained `va`/`vo` Katakana duplicates,
 unmatched Unicode, and the established strict bounds. Nihon-shiki,
 Kunrei-shiki, Chinese conversion, provider composition, dictionary identities,
 icons, configuration, UI, translations, and morphology remain later work.
+The next independent morphology prerequisite adds private bounded discovery
+of the pinned Hunspell `.aff`/`.AFF` plus `.dic`/`.DIC` companion pairs. It
+preserves one-directory scanning, basename identities, and lower-case
+companion preference while adding deterministic ordering, regular-file
+validation, diagnostics, duplicate suppression, and a 4096-entry scan bound.
+It adds no Hunspell dependency, content parser, provider, configuration,
+installed API, UI, or transliteration behavior. Hunspell parsing and
+suggestions remain separately gated.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 
