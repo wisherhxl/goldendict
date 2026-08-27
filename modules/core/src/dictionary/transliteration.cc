@@ -2,6 +2,7 @@
 
 #include "transliteration.h"
 
+#include <algorithm>
 #include <string_view>
 #include <unordered_set>
 
@@ -50,6 +51,8 @@ constexpr Mapping kGreekMappings[]{
 };
 
 #include "belarusian_transliteration_table.inc"
+
+#include "romaji_transliteration_table.inc"
 
 std::size_t CodePointCount(std::string_view text) noexcept {
     std::size_t count = 0;
@@ -125,10 +128,13 @@ template <std::size_t MappingCount>
 TransliterationMappingCounts MappingCounts(
     const Mapping (&mappings)[MappingCount]) {
     std::unordered_set<std::string_view> sources;
+    std::size_t maximum_source_code_points = 0U;
     for (const auto& mapping : mappings) {
         sources.insert(mapping.source);
+        maximum_source_code_points = std::max(maximum_source_code_points,
+                                              CodePointCount(mapping.source));
     }
-    return {MappingCount, sources.size()};
+    return {MappingCount, sources.size(), maximum_source_code_points};
 }
 
 }  // namespace
@@ -166,6 +172,16 @@ std::optional<std::string> TransliterateBelarusianSchoolClassic(
                          false);
 }
 
+std::optional<std::string> TransliterateHepburnHiragana(
+    std::string_view text, std::size_t output_limit) {
+    return Transliterate(text, kHepburnHiraganaMappings, output_limit, false);
+}
+
+std::optional<std::string> TransliterateHepburnKatakana(
+    std::string_view text, std::size_t output_limit) {
+    return Transliterate(text, kHepburnKatakanaMappings, output_limit, false);
+}
+
 TransliterationMappingCounts BelarusianLatinClassicMappingCounts() {
     return MappingCounts(kBelarusianLatinToClassicMappings);
 }
@@ -176,6 +192,14 @@ TransliterationMappingCounts BelarusianLatinSchoolMappingCounts() {
 
 TransliterationMappingCounts BelarusianSchoolClassicMappingCounts() {
     return MappingCounts(kBelarusianSchoolToClassicMappings);
+}
+
+TransliterationMappingCounts HepburnHiraganaMappingCounts() {
+    return MappingCounts(kHepburnHiraganaMappings);
+}
+
+TransliterationMappingCounts HepburnKatakanaMappingCounts() {
+    return MappingCounts(kHepburnKatakanaMappings);
 }
 
 }  // namespace goldendict::core::dictionary

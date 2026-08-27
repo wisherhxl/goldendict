@@ -19,6 +19,9 @@ class TransliterationTest : public QObject {
     void BelarusianMappingCountsAndDuplicates();
     void TransliterateBelarusianCases_data();
     void TransliterateBelarusianCases();
+    void HepburnMappingCountsAndDuplicates();
+    void TransliterateHepburnCases_data();
+    void TransliterateHepburnCases();
     void ReturnsNoAlternateForUnchangedText();
     void RejectsInvalidInputAndOutputOverflow();
 };
@@ -168,6 +171,62 @@ void TransliterationTest::TransliterateBelarusianCases() {
     QCOMPARE(QString::fromStdString(*actual), expected);
 }
 
+void TransliterationTest::HepburnMappingCountsAndDuplicates() {
+    const auto hiragana = HepburnHiraganaMappingCounts();
+    QCOMPARE(hiragana.declarations, 139U);
+    QCOMPARE(hiragana.effective, 139U);
+    QCOMPARE(hiragana.maximum_source_code_points, 4U);
+    const auto katakana = HepburnKatakanaMappingCounts();
+    QCOMPARE(katakana.declarations, 167U);
+    QCOMPARE(katakana.effective, 165U);
+    QCOMPARE(katakana.maximum_source_code_points, 4U);
+
+    QCOMPARE(*TransliterateHepburnKatakana("va vo"), std::string("ヷ ヺ"));
+}
+
+void TransliterationTest::TransliterateHepburnCases_data() {
+    QTest::addColumn<int>("variant");
+    QTest::addColumn<QString>("input");
+    QTest::addColumn<QString>("expected");
+
+    QTest::newRow("hiragana-basics") << 0 << QStringLiteral("aiueo kan")
+                                     << QString::fromUtf8("あいうえお かん");
+    QTest::newRow("hiragana-longest-three-and-four")
+        << 0 << QStringLiteral("kyokkya") << QString::fromUtf8("きょっきゃ");
+    QTest::newRow("hiragana-doubled-consonants")
+        << 0 << QStringLiteral("sshi ttsu ppo")
+        << QString::fromUtf8("っし っつ っぽ");
+    QTest::newRow("hiragana-simple-case-folding")
+        << 0 << QStringLiteral("SHI KYO") << QString::fromUtf8("し きょ");
+    QTest::newRow("katakana-basics") << 1 << QStringLiteral("aiueo kan")
+                                     << QString::fromUtf8("アイウエオ カン");
+    QTest::newRow("katakana-longest-three-and-four")
+        << 1 << QStringLiteral("shokkyo") << QString::fromUtf8("ショッキョ");
+    QTest::newRow("katakana-extensions-and-long-vowel")
+        << 1
+        << QStringLiteral(
+               "ye wi she je che ti tu tyu di du dyu tsa tse tso fa fi fe fo "
+               "fyu-")
+        << QString::fromUtf8(
+               "イェ ウィ シェ ジェ チェ ティ トゥ テュ ディ ドゥ デュ ツァ "
+               "ツェ ツォ ファ フィ フェ フォ フュー");
+    QTest::newRow("katakana-simple-case-folding")
+        << 1 << QStringLiteral("VU KYO") << QString::fromUtf8("ヴ キョ");
+    QTest::newRow("mixed-unmatched-unicode")
+        << 1 << QString::fromUtf8("猫Q-shi") << QString::fromUtf8("猫qーシ");
+}
+
+void TransliterationTest::TransliterateHepburnCases() {
+    QFETCH(int, variant);
+    QFETCH(QString, input);
+    QFETCH(QString, expected);
+    const auto actual = variant == 0
+                            ? TransliterateHepburnHiragana(input.toStdString())
+                            : TransliterateHepburnKatakana(input.toStdString());
+    QVERIFY(actual.has_value());
+    QCOMPARE(QString::fromStdString(*actual), expected);
+}
+
 void TransliterationTest::ReturnsNoAlternateForUnchangedText() {
     QVERIFY(!TransliterateRussian("").has_value());
     QVERIFY(!TransliterateRussian("猫").has_value());
@@ -178,6 +237,8 @@ void TransliterationTest::ReturnsNoAlternateForUnchangedText() {
     QVERIFY(!TransliterateBelarusianLatinClassic("").has_value());
     QVERIFY(!TransliterateBelarusianLatinSchool("猫").has_value());
     QVERIFY(!TransliterateBelarusianSchoolClassic("猫").has_value());
+    QVERIFY(!TransliterateHepburnHiragana("Q猫").has_value());
+    QVERIFY(!TransliterateHepburnKatakana("Q猫").has_value());
 }
 
 void TransliterationTest::RejectsInvalidInputAndOutputOverflow() {
@@ -217,6 +278,17 @@ void TransliterationTest::RejectsInvalidInputAndOutputOverflow() {
                                  kMaximumTransliterationInputBytes + 1U, 'a')),
                              TransliterationError);
     QVERIFY_EXCEPTION_THROWN(TransliterateBelarusianLatinClassic("a", 1U),
+                             TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(
+        TransliterateHepburnHiragana(std::string("bad\0input", 9)),
+        TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(
+        TransliterateHepburnKatakana(std::string("\xc3\x28", 2)),
+        TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(TransliterateHepburnHiragana(std::string(
+                                 kMaximumTransliterationInputBytes + 1U, 'a')),
+                             TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(TransliterateHepburnKatakana("kkya", 1U),
                              TransliterationError);
 }
 

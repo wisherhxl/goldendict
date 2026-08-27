@@ -43,14 +43,25 @@ std::optional<std::string> TransliterateBelarusianSchoolClassic(
     std::string_view text,
     std::size_t output_limit = kMaximumTransliterationOutputBytes);
 
+std::optional<std::string> TransliterateHepburnHiragana(
+    std::string_view text,
+    std::size_t output_limit = kMaximumTransliterationOutputBytes);
+
+std::optional<std::string> TransliterateHepburnKatakana(
+    std::string_view text,
+    std::size_t output_limit = kMaximumTransliterationOutputBytes);
+
 struct TransliterationMappingCounts {
     std::size_t declarations;
     std::size_t effective;
+    std::size_t maximum_source_code_points;
 };
 
 TransliterationMappingCounts BelarusianLatinClassicMappingCounts();
 TransliterationMappingCounts BelarusianLatinSchoolMappingCounts();
 TransliterationMappingCounts BelarusianSchoolClassicMappingCounts();
+TransliterationMappingCounts HepburnHiraganaMappingCounts();
+TransliterationMappingCounts HepburnKatakanaMappingCounts();
 
 }  // namespace goldendict::core::dictionary
 

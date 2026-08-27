@@ -232,7 +232,14 @@ Latin/classic, Latin/school, and school/classic smoothing. It preserves their
 334/333, 535/534, and 446/436 declaration/effective counts, first-retained
 duplicates, longest matching, simple case folding, and table quirks behind the
 same private bounded Core boundary. Romaji, Chinese conversion, provider
-composition, and morphology remain separately gated.
+composition, and morphology remain separately gated. The next cohesive private
+family adds only the pinned Hepburn Latin-to-Hiragana and Latin-to-Katakana
+tables with exact 139/139 and 167/165 declaration/effective mapping counts. It
+preserves ICU simple case folding, code-point longest matching through
+four-character sources, first-retained `va`/`vo` Katakana duplicates,
+unmatched Unicode, and the established strict bounds. Nihon-shiki,
+Kunrei-shiki, Chinese conversion, provider composition, dictionary identities,
+icons, configuration, UI, translations, and morphology remain later work.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

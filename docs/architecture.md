@@ -6958,5 +6958,20 @@ shared bounded engine preserves first-retained duplicate keys, code-point
 longest matching, table quirks, and unchanged Unicode; ICU simple case folding
 reproduces the legacy case-insensitive path without entering the public
 dependency graph. Provider composition, configuration, installed APIs, UI,
-icons, translations, Romaji, Chinese conversion, and morphology remain
-independent later work.
+icons, translations, Chinese conversion, and morphology remain independent
+later work.
+
+### Private Hepburn Romaji Transliteration Foundation
+
+The same private Core dictionary-support boundary owns the pinned Hepburn
+Latin-to-Hiragana and Latin-to-Katakana tables as one family. Their exact
+declaration/effective mapping counts are 139/139 and 167/165, with a maximum
+source length of four Unicode code points. The shared bounded engine preserves
+ICU simple case folding, code-point longest matching, unmatched Unicode, and
+first-retained duplicate keys; in particular Katakana `va` and `vo` retain
+`ヷ` and `ヺ`. Malformed UTF-8, embedded NUL, input beyond 4096 bytes, and
+output beyond the 16384-byte default fail deterministically, and an unchanged
+folded result produces no alternate. The implementation remains private and
+adds no installed API or dependency. Nihon-shiki, Kunrei-shiki, provider
+composition, dictionary identities, icons, configuration, UI, translations,
+morphology, and Chinese conversion remain excluded.
