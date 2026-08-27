@@ -124,6 +124,11 @@ They also pin private proper-prefix enumeration: longest-first UTF-8
 code-point boundaries, declared-encoding and affix-derived membership,
 complete-input exclusion, request limits, and serialized concurrent access,
 while public prefix suggestions remain empty.
+Focused provider coverage also pins the private compound alternate-writings
+capability: single words return empty, while whitespace-containing inputs
+reuse the bounded legacy reconstruction with exact separators, branch order,
+duplicates, trimming, unchanged-expression removal, UTF-8 and legacy encoding,
+typed input failures, request controls, and serialized concurrent access.
 
 `application_service_test` also verifies the current dictionary-group model:
 empty older configurations remain compatible, nontrivial ordered groups round

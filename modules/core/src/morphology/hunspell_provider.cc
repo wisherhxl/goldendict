@@ -188,7 +188,8 @@ dictionary::Error TranslateContentError(const ContentError& error) {
 
 class Provider final : public dictionary::Backend,
                        public dictionary::SynonymBackend,
-                       public dictionary::TruePrefixBackend {
+                       public dictionary::TruePrefixBackend,
+                       public dictionary::CompoundAlternateWritingsBackend {
    public:
     Provider(Content content, std::string registered_id,
              std::string display_name)
@@ -376,6 +377,30 @@ class Provider final : public dictionary::Backend,
         }
         dictionary::CheckRequest(options);
         return prefixes;
+    }
+
+    std::vector<std::string> GetAlternateWritings(
+        std::string_view expression,
+        const dictionary::RequestOptions& options) const override {
+        dictionary::CheckRequest(options);
+        if (options.result_limit == 0U)
+            return {};
+        if (expression.size() > kMaximumExactQueryBytes ||
+            expression.find('\0') != std::string_view::npos ||
+            !foundation::IsValidUtf8(expression)) {
+            throw dictionary::Error(
+                dictionary::ErrorCode::kInvalidData,
+                "Invalid Hunspell alternate-writings query");
+        }
+        if (!ContainsWhitespace(expression))
+            return {};
+
+        expression = TrimOuterWhitespaceOrPunctuation(expression);
+        if (expression.empty() ||
+            CharacterCount(expression) > kMaximumMorphologyCharacters) {
+            return {};
+        }
+        return FindCompoundStems(expression, options);
     }
 
     std::vector<dictionary::Article> LookupPrefix(

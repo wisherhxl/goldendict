@@ -285,6 +285,15 @@ cancellation/deadlines, and returns no more than the request result limit.
 Spelling-suggestion articles, true prefix enumeration, configuration,
 registration and enabled-dictionary policy, installed APIs, UI, translations,
 and dependency changes remain excluded.
+The dependent private alternate-writings leaf adds only a
+`CompoundAlternateWritingsBackend` capability beside the existing private
+backend capabilities. It returns nothing for inputs without whitespace and
+delegates whitespace-containing inputs to the accepted bounded compound
+reconstruction, preserving its trimming, run and result limits, exact
+separators, branch order, duplicates, unchanged-expression filtering,
+encoding, mutex, cancellation, deadline, and typed-error behavior. Lookup
+orchestration, installed APIs, dependencies, configuration, UI, and
+translations remain unchanged.
 The dependent private spelling-suggestion article leaf then restores the
 pinned `getArticle` behavior through the existing backend lookup contract.
 After strict UTF-8 and query bounds, outer whitespace/punctuation trimming,

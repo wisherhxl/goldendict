@@ -7020,6 +7020,14 @@ with cancellation and deadline checkpoints throughout. Spelling-suggestion
 articles, true prefix enumeration, provider policy, configuration, UI,
 translations, installed APIs, and dependency changes remain excluded.
 
+The dependent alternate-writings leaf exposes that same reconstruction only
+through a narrowly scoped private `CompoundAlternateWritingsBackend`.
+Single-word inputs return no alternatives; an original input containing
+whitespace receives the established trim, validation, bounds, declared-
+encoding conversion, process-wide serialization, and compound reconstruction
+without duplicating the algorithm. This capability is not connected to lookup
+or suggestion orchestration, and no installed contract or dependency changes.
+
 The dependent private spelling-suggestion article leaf replaces the exact
 membership placeholder with the pinned legacy article behavior. A bounded,
 trimmed single-word misspelling is checked with `spell()` and then `suggest()`

@@ -33,6 +33,9 @@ class HunspellProviderTest : public QObject {
     void SerializesConcurrentPrefixMembership();
     void EnumeratesBoundedTruePrefixes();
     void ChecksTruePrefixRequestsAndSerialization();
+    void RestoresPrivateCompoundAlternateWritings();
+    void ChecksAlternateWritingBoundsAndRequests();
+    void SerializesConcurrentAlternateWritings();
     void ReturnsOrderedSingleWordStems();
     void ReconstructsBoundedCompoundExpressionsInLegacyOrder();
     void PreservesCompoundSeparatorsAndLegacyEncoding();
@@ -55,6 +58,14 @@ static dictionary::TruePrefixBackend& TruePrefixes(
     auto* prefixes = dynamic_cast<dictionary::TruePrefixBackend*>(&provider);
     Q_ASSERT(prefixes != nullptr);
     return *prefixes;
+}
+
+static dictionary::CompoundAlternateWritingsBackend& AlternateWritings(
+    dictionary::Backend& provider) {
+    auto* alternatives =
+        dynamic_cast<dictionary::CompoundAlternateWritingsBackend*>(&provider);
+    Q_ASSERT(alternatives != nullptr);
+    return *alternatives;
 }
 
 class CancelledSignal final : public dictionary::CancellationSignal {
@@ -366,6 +377,131 @@ void HunspellProviderTest::ChecksTruePrefixRequestsAndSerialization() {
                                    std::ref(*first), "firstx", "first");
     auto second_result = std::async(std::launch::async, exercise,
                                     std::ref(*second), "secondx", "second");
+    QVERIFY(first_result.get());
+    QVERIFY(second_result.get());
+}
+
+void HunspellProviderTest::RestoresPrivateCompoundAlternateWritings() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto root = std::filesystem::path(temporary.path().toStdString());
+    const auto files =
+        test::WriteHunspellFixture(root / "utf8", "alternate-writings",
+                                   "SET UTF-8\n"
+                                   "SFX A Y 1\nSFX A 0 s .\n"
+                                   "SFX B Y 1\nSFX B 0 s .\n"
+                                   "SFX C Y 1\nSFX C 0 s .\n",
+                                   "2\ncat/ABC\ndog/ABC\n");
+    auto provider = OpenProvider(files);
+    auto& alternatives = AlternateWritings(*provider);
+
+    QVERIFY(alternatives.GetAlternateWritings("cats", {}).empty());
+    QCOMPARE(alternatives.GetAlternateWritings("  (cats!)  ", {}),
+             (std::vector<std::string>{"cat", "cat"}));
+    QCOMPARE(alternatives.GetAlternateWritings("  (cats,\t dogs!)  ", {}),
+             (std::vector<std::string>{
+                 "cat,\t dogs", "cat,\t dogs", "cats,\t dog", "cats,\t dog",
+                 "cat,\t dog", "cat,\t dog", "cat,\t dog", "cat,\t dog"}));
+    QCOMPARE(alternatives.GetAlternateWritings("cat dogs", {}),
+             (std::vector<std::string>{"cat dog", "cat dog"}));
+
+    const auto latin_files = test::WriteHunspellFixture(
+        root / "latin", "latin-alternate-writings",
+        "SET ISO8859-1\nSFX A Y 1\nSFX A 0 s .\n",
+        std::string("2\nma") + "\xF1" + "ana/A\ngato/A\n");
+    auto latin_provider = OpenProvider(latin_files);
+    QCOMPARE(
+        AlternateWritings(*latin_provider)
+            .GetAlternateWritings(
+                std::string("ma") + "\xC3\xB1" + "anas,\xE2\x80\x83 gatos", {}),
+        (std::vector<std::string>{
+            std::string("ma") + "\xC3\xB1" + "ana,\xE2\x80\x83 gatos",
+            std::string("ma") + "\xC3\xB1" + "anas,\xE2\x80\x83 gato",
+            std::string("ma") + "\xC3\xB1" + "ana,\xE2\x80\x83 gato"}));
+}
+
+void HunspellProviderTest::ChecksAlternateWritingBoundsAndRequests() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto files = test::WriteHunspellFixture(
+        std::filesystem::path(temporary.path().toStdString()),
+        "bounded-alternate-writings", "SET ISO8859-1\nSFX A Y 1\nSFX A 0 s .\n",
+        "1\nword/A\n");
+    auto provider = OpenProvider(files);
+    auto& alternatives = AlternateWritings(*provider);
+
+    const std::string at_run_limit =
+        "words words words words words words words words words words words";
+    QCOMPARE(alternatives.GetAlternateWritings(at_run_limit, {}).size(), 20U);
+    QVERIFY(
+        alternatives.GetAlternateWritings(at_run_limit + " words", {}).empty());
+    QVERIFY(alternatives.GetAlternateWritings(" \t(!)\n", {}).empty());
+    QVERIFY(
+        alternatives.GetAlternateWritings(std::string(81U, 'a') + " word", {})
+            .empty());
+    QVERIFY_EXCEPTION_THROWN(
+        alternatives.GetAlternateWritings(std::string("bad\xFF x", 6U), {}),
+        dictionary::Error);
+    QVERIFY_EXCEPTION_THROWN(
+        alternatives.GetAlternateWritings(std::string("nu\0ll word", 10U), {}),
+        dictionary::Error);
+    QVERIFY_EXCEPTION_THROWN(alternatives.GetAlternateWritings(
+                                 std::string(4096U, 'a') + " word", {}),
+                             dictionary::Error);
+    QVERIFY_EXCEPTION_THROWN(
+        alternatives.GetAlternateWritings("words \xE2\x98\x83", {}),
+        dictionary::Error);
+
+    dictionary::RequestOptions options;
+    options.result_limit = 1U;
+    QCOMPARE(alternatives.GetAlternateWritings("words words", options),
+             (std::vector<std::string>{"word words"}));
+    options.result_limit = 0U;
+    QVERIFY(alternatives.GetAlternateWritings("words words", options).empty());
+    CancelledSignal cancelled;
+    options.result_limit = 1U;
+    options.cancellation = &cancelled;
+    QVERIFY_EXCEPTION_THROWN(
+        alternatives.GetAlternateWritings("words words", options),
+        dictionary::Error);
+    CancelAfterChecksSignal cancel_during_compound(8U);
+    options.cancellation = &cancel_during_compound;
+    QVERIFY_EXCEPTION_THROWN(
+        alternatives.GetAlternateWritings("words words", options),
+        dictionary::Error);
+    options.cancellation = nullptr;
+    options.deadline =
+        std::chrono::steady_clock::now() - std::chrono::milliseconds(1);
+    QVERIFY_EXCEPTION_THROWN(
+        alternatives.GetAlternateWritings("words words", options),
+        dictionary::Error);
+}
+
+void HunspellProviderTest::SerializesConcurrentAlternateWritings() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto root = std::filesystem::path(temporary.path().toStdString());
+    auto first = OpenProvider(test::WriteHunspellFixture(
+        root / "first", "first-alternates",
+        "SET UTF-8\nSFX A Y 1\nSFX A 0 s .\n", "1\nfirst/A\n"));
+    auto second = OpenProvider(test::WriteHunspellFixture(
+        root / "second", "second-alternates",
+        "SET UTF-8\nSFX A Y 1\nSFX A 0 s .\n", "1\nsecond/A\n"));
+    const auto exercise = [](dictionary::Backend& provider,
+                             std::string_view expression) {
+        for (std::size_t iteration = 0U; iteration < 100U; ++iteration) {
+            if (AlternateWritings(provider)
+                    .GetAlternateWritings(expression, {})
+                    .empty()) {
+                return false;
+            }
+        }
+        return true;
+    };
+    auto first_result = std::async(std::launch::async, exercise,
+                                   std::ref(*first), "firsts firsts");
+    auto second_result = std::async(std::launch::async, exercise,
+                                    std::ref(*second), "seconds seconds");
     QVERIFY(first_result.get());
     QVERIFY(second_result.get());
 }

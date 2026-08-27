@@ -37,6 +37,16 @@ class TruePrefixBackend {
         std::string_view word, const RequestOptions& options) const = 0;
 };
 
+// Private capability implemented only by morphology providers that can
+// reconstruct alternate writings for compound expressions. Runtime sources
+// deliberately do not inherit this interface.
+class CompoundAlternateWritingsBackend {
+   public:
+    virtual ~CompoundAlternateWritingsBackend() = default;
+    virtual std::vector<std::string> GetAlternateWritings(
+        std::string_view expression, const RequestOptions& options) const = 0;
+};
+
 // Private capability implemented only by formats with accepted full-text
 // ingestion. Runtime sources deliberately do not inherit this interface.
 class FullTextBackend {
