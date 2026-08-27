@@ -261,7 +261,14 @@ through that loader before engine construction, and provides bounded,
 serialized exact membership through the existing private backend contract.
 Generated UTF-8, affix, and legacy single-byte fixtures preserve direct source
 compatibility. Morphology suggestions, prefix enumeration, configuration,
-installed API, and UI remain separately gated.
+installed API, and UI remain separately gated. The bounded single-word
+morphology leaf then extends that same private provider through the existing
+`SynonymBackend` only. It preserves legacy outer whitespace/punctuation
+trimming and the 80-character limit, rejects whitespace-containing
+expressions, uses the declared dictionary encoding, serializes `analyze()`,
+and extracts decoded `st:` records in engine order without deduplication after
+removing trailing `#` comments and simple-case-equivalent inputs. Exact lookup
+remains unchanged; prefix lookup and prefix suggestions remain empty.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

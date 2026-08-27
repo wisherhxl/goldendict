@@ -4,11 +4,17 @@
 #define GOLDENDICT_CORE_SRC_MORPHOLOGY_HUNSPELL_PROVIDER_H_
 
 #include <memory>
+#include <optional>
+#include <string_view>
 
 #include "../dictionary/dictionary_backend.h"
 #include "hunspell_discovery.h"
 
 namespace goldendict::core::morphology::hunspell {
+
+namespace detail {
+std::optional<std::string_view> ExtractStem(std::string_view record);
+}  // namespace detail
 
 std::unique_ptr<dictionary::Backend> OpenProvider(const DataFiles& files);
 

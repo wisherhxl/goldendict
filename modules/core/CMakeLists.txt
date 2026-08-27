@@ -384,6 +384,7 @@ if(TARGET hunspell_provider_test)
   target_sources(hunspell_provider_test PRIVATE
     src/dictionary/dictionary_backend.cc
     src/foundation/text_encoding.cc
+    src/foundation/text_folding.cc
     src/foundation/utf8.cc
     src/morphology/hunspell_content.cc
     src/morphology/hunspell_provider.cc

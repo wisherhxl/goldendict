@@ -6994,5 +6994,11 @@ the existing private dictionary-backend contract, converts UTF-8 queries to
 the declared dictionary encoding, serializes engine calls, and preserves the
 queried UTF-8 headword on a hit. Concrete Hunspell types and the dependency
 remain private to `goldendict_core`; prefix enumeration, suggestions,
-morphology expansion, configuration, UI, and installed API changes remain
-excluded.
+configuration, UI, and installed API changes remain excluded. The dependent
+single-word morphology leaf additionally implements the existing private
+`SynonymBackend`: it applies the pinned outer whitespace/punctuation trim and
+80-character limit, rejects expressions containing whitespace, serializes
+`analyze()` with the same process-wide engine mutex, and returns only decoded
+`st:` fields in engine order with duplicates retained, trailing `#` comments
+removed, and stems simple-case-equivalent to the input omitted. Exact lookup
+is unchanged, and prefix lookup and prefix suggestions remain empty.
