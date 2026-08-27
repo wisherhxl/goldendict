@@ -508,6 +508,7 @@ void ArticleView::setPage(QWebEnginePage* page) {
     disconnect(page_loading_connection_);
     ++document_generation_;
     ++pointer_generation_;
+    ClearFullTextNavigation({}, true);
     web_view_->setPage(page);
     page_loading_connection_ = connect(
         page, &QWebEnginePage::loadingChanged, this,

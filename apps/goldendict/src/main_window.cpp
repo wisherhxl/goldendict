@@ -9459,6 +9459,35 @@ void MainWindow::RunFullTextDialogSmokeCheck(
             !previous_button->isEnabled() && !next_button->isEnabled() &&
             navigation_status->text().isEmpty();
 
+        ArticleView page_replacement_view;
+        auto* replacement_row = page_replacement_view.findChild<QWidget*>(
+            QStringLiteral("fullTextNavigationRow"));
+        auto* replacement_previous =
+            page_replacement_view.findChild<QPushButton*>(
+                QStringLiteral("fullTextPrevious"));
+        auto* replacement_next = page_replacement_view.findChild<QPushButton*>(
+            QStringLiteral("fullTextNext"));
+        auto* replacement_status = page_replacement_view.findChild<QLabel*>(
+            QStringLiteral("fullTextNavigationStatus"));
+        int replacement_requests = 0;
+        connect(&page_replacement_view,
+                &ArticleView::FullTextNavigationRequested,
+                &page_replacement_view,
+                [&replacement_requests](ArticleHighlightNavigationDirection) {
+                    ++replacement_requests;
+                });
+        page_replacement_view.PublishFullTextNavigationSnapshot(
+            {true, QStringLiteral("replaced-owner"), 1, 3, true, true});
+        page_replacement_view.setPage(
+            new QWebEnginePage(&page_replacement_view));
+        replacement_previous->click();
+        replacement_next->click();
+        highlight_passed = highlight_passed && replacement_row->isHidden() &&
+                           !replacement_previous->isEnabled() &&
+                           !replacement_next->isEnabled() &&
+                           replacement_status->text().isEmpty() &&
+                           replacement_requests == 0;
+
         int navigation_requests = 0;
         QList<ArticleHighlightNavigationDirection> requested_directions;
         connect(highlight_view, &ArticleView::FullTextNavigationRequested,
