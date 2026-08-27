@@ -16,7 +16,9 @@ namespace detail {
 std::optional<std::string_view> ExtractStem(std::string_view record);
 }  // namespace detail
 
-std::unique_ptr<dictionary::Backend> OpenProvider(const DataFiles& files);
+std::unique_ptr<dictionary::Backend> OpenProvider(
+    const DataFiles& files, std::string registered_id = {},
+    std::string display_name = {});
 
 }  // namespace goldendict::core::morphology::hunspell
 

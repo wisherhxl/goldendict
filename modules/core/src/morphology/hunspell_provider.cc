@@ -189,12 +189,15 @@ dictionary::Error TranslateContentError(const ContentError& error) {
 class Provider final : public dictionary::Backend,
                        public dictionary::SynonymBackend {
    public:
-    explicit Provider(Content content)
+    Provider(Content content, std::string registered_id,
+             std::string display_name)
         : encoding_(std::move(content.encoding)),
           engine_(content.files.affix_file.string().c_str(),
                   content.files.dictionary_file.string().c_str()) {
-        identity_.id = content.files.dictionary_id;
-        identity_.name = content.files.dictionary_id;
+        identity_.id = registered_id.empty() ? content.files.dictionary_id
+                                             : std::move(registered_id);
+        identity_.name = display_name.empty() ? content.files.dictionary_id
+                                              : std::move(display_name);
         identity_.source = content.files.affix_file.string();
         identity_.headword_count = content.dictionary_entry_count;
     }
@@ -487,9 +490,13 @@ class Provider final : public dictionary::Backend,
 
 }  // namespace
 
-std::unique_ptr<dictionary::Backend> OpenProvider(const DataFiles& files) {
+std::unique_ptr<dictionary::Backend> OpenProvider(const DataFiles& files,
+                                                  std::string registered_id,
+                                                  std::string display_name) {
     try {
-        return std::make_unique<Provider>(LoadContent(files));
+        return std::make_unique<Provider>(LoadContent(files),
+                                          std::move(registered_id),
+                                          std::move(display_name));
     } catch (const ContentError& error) {
         throw TranslateContentError(error);
     } catch (const std::exception& error) {

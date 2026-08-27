@@ -60,6 +60,8 @@
 #include "../formats/zipsounds/zipsounds_discovery.h"
 #include "../foundation/text_folding.h"
 #include "../foundation/utf8.h"
+#include "../morphology/hunspell_discovery.h"
+#include "../morphology/hunspell_provider.h"
 #include "desktop_facade_activation_owner.h"
 #include "exact_article_target_resolver.h"
 #include "full_text_index_lifecycle_inspection.h"
@@ -685,6 +687,37 @@ class ServiceState final {
         roots.reserve(configuration.dictionary_paths.size());
         for (const auto& root : configuration.dictionary_paths) {
             roots.push_back(std::filesystem::u8path(root));
+        }
+        const auto hunspell_discovery = morphology::hunspell::Discover(
+            std::filesystem::u8path(configuration.morphology_dictionary_path));
+        for (const auto& issue : hunspell_discovery.issues) {
+            startup_errors_.push_back(
+                {LookupErrorCode::kDictionaryUnavailable,
+                 {},
+                 issue.path.string() + ": " + issue.message});
+        }
+        std::unordered_map<std::string, const morphology::hunspell::DataFiles*>
+            discovered_morphology;
+        for (const auto& files : hunspell_discovery.dictionaries)
+            discovered_morphology.emplace(files.dictionary_id, &files);
+        for (const auto& enabled_id :
+             configuration.enabled_morphology_dictionary_ids) {
+            const auto found = discovered_morphology.find(enabled_id);
+            if (found == discovered_morphology.end()) {
+                startup_errors_.push_back(
+                    {LookupErrorCode::kDictionaryUnavailable, enabled_id,
+                     "Enabled morphology dictionary is unavailable"});
+                continue;
+            }
+            const auto& files = *found->second;
+            const std::string id = StableId("hunspell", files.affix_file);
+            try {
+                dictionaries_.push_back(morphology::hunspell::OpenProvider(
+                    files, id, files.dictionary_id + " Morphology"));
+            } catch (const dictionary::Error& error) {
+                startup_errors_.push_back(
+                    {TranslateErrorCode(error.code()), id, error.what()});
+            }
         }
         for (const auto& sound_directory : configuration.sound_directories) {
             const auto path = std::filesystem::u8path(sound_directory.path);

@@ -113,6 +113,14 @@ configuration always wins, rejects entity declarations and malformed input,
 persists the new format atomically, and proves that the legacy source remains
 unchanged after both success and failure.
 
+`application_service_test` also verifies private Hunspell registration with
+generated project-authored fixtures. They pin current configuration and legacy
+migration, ordered enabled-only catalog
+participation, disabled omission, stable identity and provenance, sanitized
+spelling-suggestion articles, cancellation, missing-ID diagnostics, and
+coexistence with unchanged StarDict orchestration. Focused provider tests retain
+the engine-level deadline, cancellation, encoding, and article-size bounds.
+
 `application_service_test` also verifies the current dictionary-group model:
 empty older configurations remain compatible, nontrivial ordered groups round
 trip, group and membership bounds plus duplicate IDs are rejected

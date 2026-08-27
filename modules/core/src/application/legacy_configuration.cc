@@ -76,6 +76,8 @@ struct LegacyParserState {
     std::unordered_set<std::string> online_ids;
     std::unordered_set<std::string> forvo_fields;
     std::string forvo_field;
+    bool has_morphology_container = false;
+    bool reading_morphology_id = false;
     bool failed = false;
     std::string error;
 };
@@ -658,6 +660,7 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
     auto* state = static_cast<LegacyParserState*>(user_data);
     if (IsPathElement(*state) || IsSoundDirectoryElement(*state) ||
         IsSourceRecord(*state) || !state->forvo_field.empty() ||
+        state->reading_morphology_id ||
         CurrentGroupValue(*state) != GroupValue::kNone ||
         !state->preference_key.empty() ||
         state->reading_full_text_dialog_geometry ||
@@ -683,6 +686,23 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
         state->source_containers[index] = true;
     };
     try {
+        if (IsContainer(*state, "hunspell")) {
+            if (state->has_morphology_container)
+                throw std::runtime_error("duplicate Hunspell container");
+            const auto values =
+                ReadAttributes(attributes, {"dictionariesPath"});
+            state->configuration.morphology_dictionary_path =
+                RequiredAttribute(values, "dictionariesPath");
+            state->has_morphology_container = true;
+            return;
+        }
+        if (IsDirectElement(*state, "hunspell", "enabled")) {
+            if (attributes[0] != nullptr)
+                throw std::runtime_error("invalid Hunspell enabled record");
+            state->reading_morphology_id = true;
+            state->value.clear();
+            return;
+        }
         if (IsContainer(*state, "forvo")) {
             begin_container(SourceContainer::kForvo);
             state->configuration.forvo_sources = {
@@ -983,6 +1003,7 @@ void XMLCALL CharacterData(void* user_data, const XML_Char* value, int length) {
     if (!IsPathElement(*state) && !IsSoundDirectoryElement(*state) &&
         CurrentGroupValue(*state) == GroupValue::kNone &&
         state->preference_key.empty() && state->forvo_field.empty() &&
+        !state->reading_morphology_id &&
         !state->reading_full_text_dialog_geometry &&
         !state->reading_main_window_geometry) {
         return;
@@ -1007,9 +1028,26 @@ void XMLCALL CharacterData(void* user_data, const XML_Char* value, int length) {
 
 void XMLCALL EndElement(void* user_data, const XML_Char*) {
     auto* state = static_cast<LegacyParserState*>(user_data);
-    if (!state->forvo_field.empty() && state->elements.size() == 3U &&
-        state->elements[0] == "config" && state->elements[1] == "forvo" &&
-        state->elements[2] == state->forvo_field) {
+    if (state->reading_morphology_id &&
+        IsDirectElement(*state, "hunspell", "enabled")) {
+        if (state->value.empty() ||
+            state->configuration.enabled_morphology_dictionary_ids.size() ==
+                kMaximumMorphologyDictionaries ||
+            std::find(
+                state->configuration.enabled_morphology_dictionary_ids.begin(),
+                state->configuration.enabled_morphology_dictionary_ids.end(),
+                state->value) !=
+                state->configuration.enabled_morphology_dictionary_ids.end()) {
+            Fail(state, "Legacy Hunspell enabled identity is invalid");
+            return;
+        }
+        state->configuration.enabled_morphology_dictionary_ids.push_back(
+            std::move(state->value));
+        state->reading_morphology_id = false;
+    } else if (!state->forvo_field.empty() && state->elements.size() == 3U &&
+               state->elements[0] == "config" &&
+               state->elements[1] == "forvo" &&
+               state->elements[2] == state->forvo_field) {
         try {
             auto& forvo = state->configuration.forvo_sources.front();
             if (state->forvo_field == "enable") {

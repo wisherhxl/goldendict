@@ -20,6 +20,7 @@
 namespace goldendict::core {
 
 inline constexpr std::size_t kMaximumDictionaryPaths = 256U;
+inline constexpr std::size_t kMaximumMorphologyDictionaries = 256U;
 inline constexpr std::size_t kMaximumSoundDirectories = 256U;
 inline constexpr std::size_t kMaximumOnlineSources = 256U;
 inline constexpr std::size_t kMaximumExternalProgramArguments = 256U;
@@ -378,6 +379,8 @@ struct ApplicationPreferences {
 
 struct CoreConfiguration {
     std::vector<std::string> dictionary_paths;
+    std::string morphology_dictionary_path;
+    std::vector<std::string> enabled_morphology_dictionary_ids;
     std::string index_directory;
     std::vector<SoundDirectoryConfiguration> sound_directories;
     std::vector<MediaWikiSourceConfiguration> mediawiki_sources;

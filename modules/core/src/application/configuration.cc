@@ -551,6 +551,11 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
     if (configuration.dictionary_paths.size() > kMaximumDictionaryPaths) {
         throw std::runtime_error("Configuration has too many dictionary paths");
     }
+    if (configuration.enabled_morphology_dictionary_ids.size() >
+        kMaximumMorphologyDictionaries) {
+        throw std::runtime_error(
+            "Configuration has too many enabled morphology dictionaries");
+    }
     if (configuration.sound_directories.size() > kMaximumSoundDirectories) {
         throw std::runtime_error(
             "Configuration has too many sound directories");
@@ -606,6 +611,7 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         throw std::runtime_error("Sound directory paths cannot be empty");
     }
     if (has_nul(configuration.index_directory) ||
+        has_nul(configuration.morphology_dictionary_path) ||
         std::any_of(configuration.dictionary_paths.begin(),
                     configuration.dictionary_paths.end(), has_nul) ||
         std::any_of(configuration.sound_directories.begin(),
@@ -615,6 +621,14 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
                                has_nul(directory.name);
                     })) {
         throw std::runtime_error("Configuration values cannot contain NUL");
+    }
+    std::unordered_set<std::string> morphology_ids;
+    for (const auto& id : configuration.enabled_morphology_dictionary_ids) {
+        if (id.empty() || id.size() > 256U || has_nul(id) ||
+            !foundation::IsValidUtf8(id) || !morphology_ids.insert(id).second) {
+            throw std::runtime_error(
+                "Enabled morphology dictionary identity is invalid");
+        }
     }
 
     std::unordered_set<std::string> online_ids;
@@ -839,6 +853,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
     bool has_main_window_geometry = false;
     bool has_main_window_state = false;
     bool has_index_directory = false;
+    bool has_morphology_dictionary_path = false;
     bool has_forvo_records = false;
     std::optional<std::size_t> declared_forvo_source_count;
     std::optional<std::size_t> declared_external_program_count;
@@ -853,6 +868,10 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         const std::string_view line(contents.data() + position, end - position);
         constexpr std::string_view kIndex = "index_directory=";
         constexpr std::string_view kDictionary = "dictionary_path=";
+        constexpr std::string_view kMorphologyPath =
+            "morphology_dictionary_path=";
+        constexpr std::string_view kEnabledMorphology =
+            "enabled_morphology_dictionary=";
         constexpr std::string_view kSoundDirectory = "sound_directory=";
         constexpr std::string_view kMediaWikiSource = "mediawiki_source=";
         constexpr std::string_view kWebsiteSource = "website_source=";
@@ -912,6 +931,18 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
             }
             has_index_directory = true;
             configuration.index_directory = Decode(line.substr(kIndex.size()));
+        } else if (line.substr(0, kMorphologyPath.size()) == kMorphologyPath) {
+            if (has_morphology_dictionary_path) {
+                throw std::runtime_error(
+                    "Duplicate morphology dictionary path");
+            }
+            has_morphology_dictionary_path = true;
+            configuration.morphology_dictionary_path =
+                Decode(line.substr(kMorphologyPath.size()));
+        } else if (line.substr(0, kEnabledMorphology.size()) ==
+                   kEnabledMorphology) {
+            configuration.enabled_morphology_dictionary_ids.push_back(
+                Decode(line.substr(kEnabledMorphology.size())));
         } else if (line.substr(0, kDictionary.size()) == kDictionary) {
             configuration.dictionary_paths.push_back(
                 Decode(line.substr(kDictionary.size())));
@@ -1326,6 +1357,13 @@ void SaveConfiguration(const std::string& configuration_path,
         "index_directory=" + Encode(configuration.index_directory) + "\n";
     for (const auto& path : configuration.dictionary_paths) {
         contents += "dictionary_path=" + Encode(path) + "\n";
+    }
+    if (!configuration.morphology_dictionary_path.empty()) {
+        contents += "morphology_dictionary_path=" +
+                    Encode(configuration.morphology_dictionary_path) + "\n";
+    }
+    for (const auto& id : configuration.enabled_morphology_dictionary_ids) {
+        contents += "enabled_morphology_dictionary=" + Encode(id) + "\n";
     }
     for (const auto& directory : configuration.sound_directories) {
         contents += "sound_directory=" + Encode(directory.path) + "|" +

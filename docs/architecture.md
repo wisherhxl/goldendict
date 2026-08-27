@@ -7033,3 +7033,15 @@ the existing sanitizer to rewrite to typed lookup URLs, with request
 cancellation and deadline checkpoints around engine and assembly work.
 Registration, configuration and enabled policy, prefix enumeration, UI and
 translations, installed APIs, and dependency changes remain excluded.
+
+The dependent registration leaf persists a transport-neutral morphology
+directory and ordered enabled dictionary-ID allowlist. Empty or absent policy
+disables all morphology dictionaries, preserving older current configuration
+behavior; legacy `hunspell` path and `enabled` records migrate without changing
+the source XML. Core privately registers each enabled pair through the existing
+backend/catalog boundary with a stable path-derived `hunspell-` identity and
+affix-file provenance, while configured-but-missing IDs become startup
+diagnostics. Hunspell remains a private module dependency; concrete types do
+not enter installed headers or exports. StarDict composition and the public
+lookup/suggestion DTOs remain unchanged. UI, network, prefix enumeration, and
+translations remain excluded.
