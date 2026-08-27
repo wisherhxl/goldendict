@@ -3676,13 +3676,43 @@ void MainWindow::RunArticleClickPreferencesSmokeCheck(
                     initial_session, initial_state,
                     completion = std::move(completion)]() mutable {
                 if (*index >= cases->size()) {
-                    SetPreferences(preferences_);
-                    *passed =
-                        *passed &&
-                        facade_->ExportArticleTabSession() == initial_session &&
-                        CaptureMainWindowState() == initial_state;
-                    view->deleteLater();
-                    completion(*passed);
+                    view->SetClickPreferences(true, true);
+                    view->page()->runJavaScript(
+                        QStringLiteral(
+                            "(() => {const r=document.getElementById('word')"
+                            ".getBoundingClientRect(); return "
+                            "[r.left+r.width/2,r.top+r.height/2];})()"),
+                        [this, view, passed, lookup_count, initial_session,
+                         initial_state, completion = std::move(completion)](
+                            const QVariant& value) mutable {
+                            const QVariantList point = value.toList();
+                            if (point.size() != 2) {
+                                view->deleteLater();
+                                completion(false);
+                                return;
+                            }
+                            view->TriggerWordQueryForTest(
+                                QPointF(point[0].toDouble(),
+                                        point[1].toDouble()),
+                                true);
+                            view->setPage(new QWebEnginePage(view));
+                            QTimer::singleShot(
+                                50, view,
+                                [this, view, passed, lookup_count,
+                                 initial_session, initial_state,
+                                 completion = std::move(completion)]() mutable {
+                                    *passed = *passed && *lookup_count == 2;
+                                    SetPreferences(preferences_);
+                                    *passed =
+                                        *passed &&
+                                        facade_->ExportArticleTabSession() ==
+                                            initial_session &&
+                                        CaptureMainWindowState() ==
+                                            initial_state;
+                                    view->deleteLater();
+                                    completion(*passed);
+                                });
+                        });
                     return;
                 }
                 const Case current = cases->at((*index)++);
