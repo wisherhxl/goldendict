@@ -273,7 +273,18 @@ membership rather than enumeration: it applies the same outer trim and
 whitespace rejection, uses the declared encoding, serializes `spell()`, and
 returns the trimmed original UTF-8 headword on acceptance. Exact lookup,
 synonym stems, and prefix suggestions remain unchanged; prefix enumeration
-remains excluded.
+remains excluded. The next private morphology leaf restores the pinned
+whitespace-triggered compound-expression path through the same
+`SynonymBackend`. It tokenizes the trimmed expression into at most 21
+alternating lexical and punctuation/Unicode-whitespace runs, preserves the
+separator text exactly, and analyzes each lexical run through the declared
+dictionary encoding and process-wide engine mutex. Bounded reconstruction uses
+the original plus the first two accepted stems per lexical run in legacy branch
+order, retains duplicates, removes the unchanged expression, observes request
+cancellation/deadlines, and returns no more than the request result limit.
+Spelling-suggestion articles, true prefix enumeration, configuration,
+registration and enabled-dictionary policy, installed APIs, UI, translations,
+and dependency changes remain excluded.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

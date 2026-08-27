@@ -7006,3 +7006,16 @@ private prefix-membership leaf restores the pinned legacy meaning of
 `spell()` and returns at most the trimmed original UTF-8 headword. This is not
 prefix enumeration. Exact lookup and synonym stems are unchanged; prefix
 enumeration and prefix suggestions remain excluded.
+
+The dependent private compound-expression morphology leaf preserves the
+pinned legacy whitespace-triggered path through the same `SynonymBackend`.
+After the established outer trim and 80-character bound, it separates at most
+21 alternating lexical and punctuation/Unicode-whitespace runs, analyzes each
+lexical run in the dictionary's declared encoding under the process-wide
+Hunspell mutex, and combines the original plus the first two accepted stems
+while preserving separator text, engine order, and duplicates. Reconstruction
+retains legacy branch order, omits the unchanged expression, and bounds both
+intermediate candidates and returned alternatives by the request result limit,
+with cancellation and deadline checkpoints throughout. Spelling-suggestion
+articles, true prefix enumeration, provider policy, configuration, UI,
+translations, installed APIs, and dependency changes remain excluded.

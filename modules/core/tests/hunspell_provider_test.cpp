@@ -30,6 +30,10 @@ class HunspellProviderTest : public QObject {
     void BoundsPrefixMembershipAndChecksRequests();
     void SerializesConcurrentPrefixMembership();
     void ReturnsOrderedSingleWordStems();
+    void ReconstructsBoundedCompoundExpressionsInLegacyOrder();
+    void PreservesCompoundSeparatorsAndLegacyEncoding();
+    void BoundsCompoundTokensAndChecksRequests();
+    void SerializesConcurrentCompoundAnalysis();
     void DecodesLegacyStemsAndFiltersEquivalentCase();
     void IgnoresMalformedRecordsAndStripsComments();
     void BoundsMorphologyAndChecksRequests();
@@ -210,6 +214,115 @@ void HunspellProviderTest::ReturnsOrderedSingleWordStems() {
     QVERIFY(provider->SuggestPrefix("cat").empty());
 }
 
+void HunspellProviderTest::
+    ReconstructsBoundedCompoundExpressionsInLegacyOrder() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto files = test::WriteHunspellFixture(
+        std::filesystem::path(temporary.path().toStdString()), "compound",
+        "SET UTF-8\n"
+        "SFX A Y 1\nSFX A 0 s .\n"
+        "SFX B Y 1\nSFX B 0 s .\n",
+        "2\ncat/AB\ndog/AB\n");
+    auto provider = OpenProvider(files);
+    auto& synonyms = Synonyms(*provider);
+
+    QCOMPARE(synonyms.FindHeadwordsForSynonym("cats dogs", {}),
+             (std::vector<std::string>{"cat dogs", "cat dogs", "cats dog",
+                                       "cats dog", "cat dog", "cat dog",
+                                       "cat dog", "cat dog"}));
+
+    dictionary::RequestOptions options;
+    options.result_limit = 3U;
+    QCOMPARE(synonyms.FindHeadwordsForSynonym("cats dogs", options),
+             (std::vector<std::string>{"cat dogs", "cat dogs", "cats dog"}));
+    options.result_limit = 0U;
+    QVERIFY(synonyms.FindHeadwordsForSynonym("cats dogs", options).empty());
+}
+
+void HunspellProviderTest::PreservesCompoundSeparatorsAndLegacyEncoding() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto files = test::WriteHunspellFixture(
+        std::filesystem::path(temporary.path().toStdString()), "latin-compound",
+        "SET ISO8859-1\n"
+        "SFX A Y 1\nSFX A 0 s .\n",
+        std::string("2\nma") + "\xF1" + "ana/A\ngato/A\n");
+    auto provider = OpenProvider(files);
+
+    const std::string expression =
+        std::string("  (ma") + "\xC3\xB1" + "anas,\xE2\x80\x83 gatos!)  ";
+    QCOMPARE(Synonyms(*provider).FindHeadwordsForSynonym(expression, {}),
+             (std::vector<std::string>{
+                 std::string("ma") + "\xC3\xB1" + "ana,\xE2\x80\x83 gatos",
+                 std::string("ma") + "\xC3\xB1" + "anas,\xE2\x80\x83 gato",
+                 std::string("ma") + "\xC3\xB1" + "ana,\xE2\x80\x83 gato"}));
+    QVERIFY_EXCEPTION_THROWN(
+        Synonyms(*provider).FindHeadwordsForSynonym("snowman \xE2\x98\x83", {}),
+        dictionary::Error);
+}
+
+void HunspellProviderTest::BoundsCompoundTokensAndChecksRequests() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto files = test::WriteHunspellFixture(
+        std::filesystem::path(temporary.path().toStdString()),
+        "bounded-compound", "SET UTF-8\nSFX A Y 1\nSFX A 0 s .\n",
+        "1\nword/A\n");
+    auto provider = OpenProvider(files);
+    auto& synonyms = Synonyms(*provider);
+
+    const std::string at_run_limit =
+        "words words words words words words words words words words words";
+    QCOMPARE(synonyms.FindHeadwordsForSynonym(at_run_limit, {}).size(), 20U);
+    const std::string above_run_limit = at_run_limit + " words";
+    QVERIFY(synonyms.FindHeadwordsForSynonym(above_run_limit, {}).empty());
+
+    CancelAfterChecksSignal cancel_during_compound(8U);
+    dictionary::RequestOptions options;
+    options.cancellation = &cancel_during_compound;
+    QVERIFY_EXCEPTION_THROWN(
+        synonyms.FindHeadwordsForSynonym("words words", options),
+        dictionary::Error);
+
+    options.cancellation = nullptr;
+    options.deadline =
+        std::chrono::steady_clock::now() - std::chrono::milliseconds(1);
+    QVERIFY_EXCEPTION_THROWN(
+        synonyms.FindHeadwordsForSynonym("words words", options),
+        dictionary::Error);
+}
+
+void HunspellProviderTest::SerializesConcurrentCompoundAnalysis() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto root = std::filesystem::path(temporary.path().toStdString());
+    auto first = OpenProvider(test::WriteHunspellFixture(
+        root / "first-compound", "first-compound",
+        "SET UTF-8\nSFX A Y 1\nSFX A 0 s .\n", "1\nfirst/A\n"));
+    auto second = OpenProvider(test::WriteHunspellFixture(
+        root / "second-compound", "second-compound",
+        "SET UTF-8\nSFX A Y 1\nSFX A 0 s .\n", "1\nsecond/A\n"));
+
+    const auto exercise = [](dictionary::Backend& provider,
+                             std::string_view expression) {
+        for (std::size_t iteration = 0U; iteration < 100U; ++iteration) {
+            if (Synonyms(provider)
+                    .FindHeadwordsForSynonym(expression, {})
+                    .empty()) {
+                return false;
+            }
+        }
+        return true;
+    };
+    auto first_result = std::async(std::launch::async, exercise,
+                                   std::ref(*first), "firsts firsts");
+    auto second_result = std::async(std::launch::async, exercise,
+                                    std::ref(*second), "seconds seconds");
+    QVERIFY(first_result.get());
+    QVERIFY(second_result.get());
+}
+
 void HunspellProviderTest::DecodesLegacyStemsAndFiltersEquivalentCase() {
     QTemporaryDir temporary;
     QVERIFY(temporary.isValid());
@@ -259,7 +372,7 @@ void HunspellProviderTest::BoundsMorphologyAndChecksRequests() {
 
     QCOMPARE(synonyms.FindHeadwordsForSynonym("  (words!)  ", {}),
              (std::vector<std::string>{"word"}));
-    QVERIFY(synonyms.FindHeadwordsForSynonym("two words", {}).empty());
+    QVERIFY(synonyms.FindHeadwordsForSynonym("two unknown", {}).empty());
     QVERIFY(
         synonyms.FindHeadwordsForSynonym(std::string(81U, 'a'), {}).empty());
     QVERIFY_EXCEPTION_THROWN(

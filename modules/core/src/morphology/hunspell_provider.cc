@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <filesystem>
+#include <limits>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -27,6 +28,8 @@ namespace {
 inline constexpr std::size_t kMaximumExactQueryBytes = 4096U;
 inline constexpr std::size_t kMaximumMorphologyCharacters = 80U;
 inline constexpr std::size_t kMaximumAnalysisRecordBytes = 16384U;
+inline constexpr std::size_t kMaximumCompoundRuns = 21U;
+inline constexpr std::size_t kMaximumCompoundStemsPerWord = 2U;
 
 bool IsOuterWhitespaceOrPunctuation(UChar32 code_point) noexcept {
     return u_isUWhiteSpace(code_point) || u_ispunct(code_point);
@@ -79,6 +82,35 @@ bool ContainsWhitespace(std::string_view text) noexcept {
             return true;
     }
     return false;
+}
+
+struct CompoundRun {
+    std::string_view text;
+    bool separator = false;
+};
+
+std::vector<CompoundRun> TokenizeCompound(std::string_view text) {
+    std::vector<CompoundRun> runs;
+    int32_t position = 0;
+    const auto length = static_cast<int32_t>(text.size());
+    while (position < length) {
+        const auto begin = position;
+        UChar32 code_point = 0;
+        U8_NEXT(text.data(), position, length, code_point);
+        const bool separator = IsOuterWhitespaceOrPunctuation(code_point);
+        while (position < length) {
+            const auto previous = position;
+            U8_NEXT(text.data(), position, length, code_point);
+            if (IsOuterWhitespaceOrPunctuation(code_point) != separator) {
+                position = previous;
+                break;
+            }
+        }
+        runs.push_back({text.substr(static_cast<std::size_t>(begin),
+                                    static_cast<std::size_t>(position - begin)),
+                        separator});
+    }
+    return runs;
 }
 
 bool IsFieldStart(std::string_view record, std::size_t position) noexcept {
@@ -185,6 +217,8 @@ class Provider final : public dictionary::Backend,
         std::string_view headword,
         const dictionary::RequestOptions& options) const override {
         dictionary::CheckRequest(options);
+        if (options.result_limit == 0U)
+            return {};
         if (headword.size() > kMaximumExactQueryBytes ||
             headword.find('\0') != std::string_view::npos ||
             !foundation::IsValidUtf8(headword)) {
@@ -194,49 +228,14 @@ class Provider final : public dictionary::Backend,
 
         headword = TrimOuterWhitespaceOrPunctuation(headword);
         if (headword.empty() ||
-            CharacterCount(headword) > kMaximumMorphologyCharacters ||
-            ContainsWhitespace(headword)) {
+            CharacterCount(headword) > kMaximumMorphologyCharacters) {
             return {};
         }
 
-        std::string encoded;
-        try {
-            encoded = foundation::EncodeFromUtf8(headword, encoding_,
-                                                 kMaximumExactQueryBytes * 4U);
-        } catch (const foundation::TextEncodingError& error) {
-            throw dictionary::Error(dictionary::ErrorCode::kInvalidData,
-                                    error.what());
-        }
+        if (ContainsWhitespace(headword))
+            return FindCompoundStems(headword, options);
 
-        dictionary::CheckRequest(options);
-        std::vector<std::string> records;
-        {
-            std::lock_guard<std::mutex> lock(EngineMutex());
-            dictionary::CheckRequest(options);
-            records = engine_.analyze(encoded);
-        }
-        dictionary::CheckRequest(options);
-
-        std::vector<std::string> stems;
-        const auto folded_input = foundation::FoldSimpleCase(headword);
-        for (const auto& encoded_record : records) {
-            dictionary::CheckRequest(options);
-            try {
-                const auto record = foundation::DecodeToUtf8(
-                    encoded_record, encoding_, kMaximumAnalysisRecordBytes);
-                const auto stem = detail::ExtractStem(record);
-                if (!stem.has_value() || !foundation::IsValidUtf8(*stem) ||
-                    foundation::FoldSimpleCase(*stem) == folded_input) {
-                    continue;
-                }
-                stems.emplace_back(*stem);
-            } catch (const foundation::TextEncodingError&) {
-                continue;
-            } catch (const foundation::TextFoldingError&) {
-                continue;
-            }
-        }
-        return stems;
+        return AnalyzeWord(headword, options);
     }
 
     std::vector<dictionary::Article> LookupPrefix(
@@ -293,6 +292,113 @@ class Provider final : public dictionary::Backend,
     }
 
    private:
+    std::vector<std::string> AnalyzeWord(
+        std::string_view word, const dictionary::RequestOptions& options,
+        std::size_t stem_limit =
+            std::numeric_limits<std::size_t>::max()) const {
+
+        std::string encoded;
+        try {
+            encoded = foundation::EncodeFromUtf8(word, encoding_,
+                                                 kMaximumExactQueryBytes * 4U);
+        } catch (const foundation::TextEncodingError& error) {
+            throw dictionary::Error(dictionary::ErrorCode::kInvalidData,
+                                    error.what());
+        }
+
+        dictionary::CheckRequest(options);
+        std::vector<std::string> records;
+        {
+            std::lock_guard<std::mutex> lock(EngineMutex());
+            dictionary::CheckRequest(options);
+            records = engine_.analyze(encoded);
+        }
+        dictionary::CheckRequest(options);
+
+        std::vector<std::string> stems;
+        const auto folded_input = foundation::FoldSimpleCase(word);
+        for (const auto& encoded_record : records) {
+            dictionary::CheckRequest(options);
+            try {
+                const auto record = foundation::DecodeToUtf8(
+                    encoded_record, encoding_, kMaximumAnalysisRecordBytes);
+                const auto stem = detail::ExtractStem(record);
+                if (!stem.has_value() || !foundation::IsValidUtf8(*stem) ||
+                    foundation::FoldSimpleCase(*stem) == folded_input) {
+                    continue;
+                }
+                stems.emplace_back(*stem);
+                if (stems.size() == stem_limit)
+                    break;
+            } catch (const foundation::TextEncodingError&) {
+                continue;
+            } catch (const foundation::TextFoldingError&) {
+                continue;
+            }
+        }
+        return stems;
+    }
+
+    std::vector<std::string> FindCompoundStems(
+        std::string_view expression,
+        const dictionary::RequestOptions& options) const {
+        const auto runs = TokenizeCompound(expression);
+        if (runs.size() > kMaximumCompoundRuns)
+            return {};
+
+        const auto candidate_limit =
+            options.result_limit == std::numeric_limits<std::size_t>::max()
+                ? options.result_limit
+                : options.result_limit + 1U;
+        std::vector<std::string> candidates;
+        for (const auto& run : runs) {
+            dictionary::CheckRequest(options);
+            if (run.separator) {
+                for (auto& candidate : candidates) {
+                    dictionary::CheckRequest(options);
+                    candidate.append(run.text);
+                }
+                continue;
+            }
+
+            const auto stems =
+                AnalyzeWord(run.text, options, kMaximumCompoundStemsPerWord);
+            if (candidates.empty()) {
+                candidates.emplace_back(run.text);
+                for (const auto& stem : stems) {
+                    if (candidates.size() == candidate_limit)
+                        break;
+                    candidates.push_back(stem);
+                }
+                continue;
+            }
+
+            const auto parent_count = candidates.size();
+            for (std::size_t parent = 0U; parent < parent_count; ++parent) {
+                dictionary::CheckRequest(options);
+                const auto prefix = candidates[parent];
+                candidates[parent].append(run.text);
+                for (const auto& stem : stems) {
+                    if (candidates.size() == candidate_limit)
+                        break;
+                    candidates.push_back(prefix + stem);
+                }
+            }
+        }
+
+        dictionary::CheckRequest(options);
+        std::vector<std::string> alternatives;
+        alternatives.reserve(std::min(options.result_limit, candidates.size()));
+        for (auto& candidate : candidates) {
+            dictionary::CheckRequest(options);
+            if (candidate != expression)
+                alternatives.push_back(std::move(candidate));
+            if (alternatives.size() == options.result_limit)
+                break;
+        }
+        return alternatives;
+    }
+
     dictionary::Identity identity_;
     std::string encoding_;
     mutable Hunspell engine_;
