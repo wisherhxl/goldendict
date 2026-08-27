@@ -7019,3 +7019,17 @@ intermediate candidates and returned alternatives by the request result limit,
 with cancellation and deadline checkpoints throughout. Spelling-suggestion
 articles, true prefix enumeration, provider policy, configuration, UI,
 translations, installed APIs, and dependency changes remain excluded.
+
+The dependent private spelling-suggestion article leaf replaces the exact
+membership placeholder with the pinned legacy article behavior. A bounded,
+trimmed single-word misspelling is checked with `spell()` and then `suggest()`
+under the process-wide Hunspell mutex; correctly spelled words, phrases, and
+misspellings without suggestions produce no article. Suggestions retain
+engine order and duplicates, use the declared dictionary encoding, and abort
+the complete article when any decoded suggestion is simple-case-equivalent to
+the original query. At most 64 suggestions and 64 KiB of escaped `text/html`
+are retained. The fixed label and `bword://` links form an inert fragment for
+the existing sanitizer to rewrite to typed lookup URLs, with request
+cancellation and deadline checkpoints around engine and assembly work.
+Registration, configuration and enabled policy, prefix enumeration, UI and
+translations, installed APIs, and dependency changes remain excluded.

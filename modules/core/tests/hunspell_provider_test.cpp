@@ -26,6 +26,8 @@ class HunspellProviderTest : public QObject {
    private slots:
     void PreservesExactUtf8AndAffixLookup();
     void PreservesLegacyEncodedLookup();
+    void BuildsEscapedSpellingSuggestionArticle();
+    void RejectsSpellingArticleInputsAndChecksRequests();
     void PreservesWholeQueryPrefixMembership();
     void BoundsPrefixMembershipAndChecksRequests();
     void SerializesConcurrentPrefixMembership();
@@ -70,16 +72,20 @@ void HunspellProviderTest::PreservesExactUtf8AndAffixLookup() {
     QVERIFY(temporary.isValid());
     const auto files = test::WriteHunspellFixture(
         std::filesystem::path(temporary.path().toStdString()), "fixture",
-        "SET UTF-8\nSFX S Y 1\nSFX S 0 s .\n", "2\ncat/S\ncaf\xC3\xA9\n");
+        "SET UTF-8\nTRY abcdefghijklmnopqrstuvwxyz\nREP 1\nREP cot cat\n"
+        "SFX S Y 1\nSFX S 0 s .\n",
+        "2\ncat/S\ncaf\xC3\xA9\n");
     auto provider = OpenProvider(files);
 
     QCOMPARE(provider->identity().id, std::string("fixture"));
     QCOMPARE(provider->identity().headword_count, 2U);
-    QCOMPARE(provider->LookupExact("cat").size(), 1U);
-    QCOMPARE(provider->LookupExact("cats").size(), 1U);
-    QCOMPARE(provider->LookupExact("caf\xC3\xA9").front().headword,
-             std::string("caf\xC3\xA9"));
-    QVERIFY(provider->LookupExact("dog").empty());
+    QVERIFY(provider->LookupExact("cat").empty());
+    QVERIFY(provider->LookupExact("cats").empty());
+    QVERIFY(provider->LookupExact("caf\xC3\xA9").empty());
+    const auto misspelled = provider->LookupExact("cot");
+    QCOMPARE(misspelled.size(), 1U);
+    QCOMPARE(misspelled.front().format, std::string("text/html"));
+    QVERIFY(misspelled.front().data.find(">cat</a>") != std::string::npos);
     QVERIFY(provider->LookupPrefix("ca").empty());
     QCOMPARE(provider->LookupPrefix("cats").front().headword,
              std::string("cats"));
@@ -91,14 +97,81 @@ void HunspellProviderTest::PreservesLegacyEncodedLookup() {
     QVERIFY(temporary.isValid());
     const auto files = test::WriteHunspellFixture(
         std::filesystem::path(temporary.path().toStdString()), "latin1",
-        "SET ISO8859-1\n", std::string("1\nma") + "\xF1" + "ana\n");
+        "SET ISO8859-1\nREP 1\nREP manana ma\xF1"
+        "ana\n",
+        std::string("1\nma") + "\xF1" + "ana\n");
     auto provider = OpenProvider(files);
 
     const std::string manana = std::string("ma") + "\xC3\xB1" + "ana";
-    QCOMPARE(provider->LookupExact(manana).size(), 1U);
+    QVERIFY(provider->LookupExact(manana).empty());
     QCOMPARE(provider->LookupPrefix(manana).front().headword, manana);
-    QVERIFY(provider->LookupExact("manana").empty());
+    const auto article = provider->LookupExact("manana");
+    QCOMPARE(article.size(), 1U);
+    QVERIFY(article.front().data.find(manana) != std::string::npos);
     QVERIFY(provider->LookupPrefix("manana").empty());
+}
+
+void HunspellProviderTest::BuildsEscapedSpellingSuggestionArticle() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto files = test::WriteHunspellFixture(
+        std::filesystem::path(temporary.path().toStdString()), "article",
+        "SET UTF-8\nTRY abcdefghijklmnopqrstuvwxyz&\nREP 2\n"
+        "REP rox rock&roll\nREP rox rock&roll\n",
+        "1\nrock&roll\n");
+    auto provider = OpenProvider(files);
+
+    const auto articles = provider->LookupExact("  (rox!)  ");
+    QCOMPARE(articles.size(), 1U);
+    QCOMPARE(articles.front().headword, std::string("  (rox!)  "));
+    QCOMPARE(articles.front().format, std::string("text/html"));
+    QVERIFY(articles.front().data.rfind(
+                "<div class=\"gdspellsuggestion\">Spelling suggestions: ",
+                0U) == 0U);
+    QVERIFY(articles.front().data.find(
+                "href=\"bword://rock&amp;roll\">rock&amp;roll</a>") !=
+            std::string::npos);
+    QCOMPARE(articles.front().data.substr(articles.front().data.size() - 6U),
+             std::string("</div>"));
+    QVERIFY(articles.front().data.size() <= 64U * 1024U);
+}
+
+void HunspellProviderTest::RejectsSpellingArticleInputsAndChecksRequests() {
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const auto files = test::WriteHunspellFixture(
+        std::filesystem::path(temporary.path().toStdString()), "requests",
+        "SET UTF-8\nTRY abcdefghijklmnopqrstuvwxyz\nREP 1\nREP cot cat\n",
+        "1\ncat\n");
+    auto provider = OpenProvider(files);
+
+    QVERIFY(provider->LookupExact("cat").empty());
+    QVERIFY(provider->LookupExact("two words").empty());
+    QVERIFY(provider->LookupExact("two\xE2\x80\x83words").empty());
+    QVERIFY(provider->LookupExact(" \t(!)\n").empty());
+    QVERIFY_EXCEPTION_THROWN(provider->LookupExact(std::string("nu\0ll", 5U)),
+                             dictionary::Error);
+
+    dictionary::RequestOptions options;
+    options.result_limit = 0U;
+    QVERIFY(provider->LookupExact("cot", options).empty());
+
+    CancelledSignal cancelled;
+    options.result_limit = 1U;
+    options.cancellation = &cancelled;
+    QVERIFY_EXCEPTION_THROWN(provider->LookupExact("cot", options),
+                             dictionary::Error);
+
+    CancelAfterChecksSignal cancel_after_engine(4U);
+    options.cancellation = &cancel_after_engine;
+    QVERIFY_EXCEPTION_THROWN(provider->LookupExact("cot", options),
+                             dictionary::Error);
+
+    options.cancellation = nullptr;
+    options.deadline =
+        std::chrono::steady_clock::now() - std::chrono::milliseconds(1);
+    QVERIFY_EXCEPTION_THROWN(provider->LookupExact("cot", options),
+                             dictionary::Error);
 }
 
 void HunspellProviderTest::PreservesWholeQueryPrefixMembership() {
@@ -208,7 +281,7 @@ void HunspellProviderTest::ReturnsOrderedSingleWordStems() {
 
     QCOMPARE(Synonyms(*provider).FindHeadwordsForSynonym("cats", {}),
              (std::vector<std::string>{"cat", "cat"}));
-    QCOMPARE(provider->LookupExact("cats").size(), 1U);
+    QVERIFY(provider->LookupExact("cats").empty());
     QCOMPARE(provider->LookupPrefix("cat").front().headword,
              std::string("cat"));
     QVERIFY(provider->SuggestPrefix("cat").empty());

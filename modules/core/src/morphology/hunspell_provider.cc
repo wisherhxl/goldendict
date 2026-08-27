@@ -26,6 +26,8 @@ namespace goldendict::core::morphology::hunspell {
 namespace {
 
 inline constexpr std::size_t kMaximumExactQueryBytes = 4096U;
+inline constexpr std::size_t kMaximumSpellingSuggestions = 64U;
+inline constexpr std::size_t kMaximumSpellingArticleBytes = 64U * 1024U;
 inline constexpr std::size_t kMaximumMorphologyCharacters = 80U;
 inline constexpr std::size_t kMaximumAnalysisRecordBytes = 16384U;
 inline constexpr std::size_t kMaximumCompoundRuns = 21U;
@@ -118,6 +120,33 @@ bool IsFieldStart(std::string_view record, std::size_t position) noexcept {
            record[position - 1U] == '\t';
 }
 
+std::string EscapeHtml(std::string_view text) {
+    std::string escaped;
+    escaped.reserve(text.size());
+    for (const char character : text) {
+        switch (character) {
+            case '&':
+                escaped += "&amp;";
+                break;
+            case '<':
+                escaped += "&lt;";
+                break;
+            case '>':
+                escaped += "&gt;";
+                break;
+            case '"':
+                escaped += "&quot;";
+                break;
+            case '\'':
+                escaped += "&#39;";
+                break;
+            default:
+                escaped.push_back(character);
+        }
+    }
+    return escaped;
+}
+
 }  // namespace
 
 std::optional<std::string_view> detail::ExtractStem(std::string_view record) {
@@ -186,10 +215,9 @@ class Provider final : public dictionary::Backend,
             throw dictionary::Error(dictionary::ErrorCode::kInvalidData,
                                     "Invalid Hunspell exact-lookup query");
         }
-        if (std::any_of(headword.begin(), headword.end(), [](char character) {
-                return character == ' ' || character == '\t' ||
-                       character == '\r' || character == '\n';
-            })) {
+        const auto original_headword = headword;
+        headword = TrimOuterWhitespaceOrPunctuation(headword);
+        if (headword.empty() || ContainsWhitespace(headword)) {
             return {};
         }
 
@@ -202,15 +230,68 @@ class Provider final : public dictionary::Backend,
                                     error.what());
         }
 
+        dictionary::CheckRequest(options);
         bool accepted = false;
+        std::vector<std::string> encoded_suggestions;
         {
             std::lock_guard<std::mutex> lock(EngineMutex());
+            dictionary::CheckRequest(options);
             accepted = engine_.spell(encoded) != 0;
+            if (!accepted) {
+                dictionary::CheckRequest(options);
+                encoded_suggestions = engine_.suggest(encoded);
+            }
         }
         dictionary::CheckRequest(options);
-        if (!accepted)
+        if (accepted || encoded_suggestions.empty())
             return {};
-        return {{std::string(headword), "text/plain", {}}};
+
+        const auto folded_original =
+            foundation::FoldSimpleCase(original_headword);
+        std::vector<std::string> suggestions;
+        suggestions.reserve(
+            std::min(kMaximumSpellingSuggestions, encoded_suggestions.size()));
+        for (const auto& encoded_suggestion : encoded_suggestions) {
+            dictionary::CheckRequest(options);
+            try {
+                auto suggestion = foundation::DecodeToUtf8(
+                    encoded_suggestion, encoding_, kMaximumExactQueryBytes);
+                if (!foundation::IsValidUtf8(suggestion))
+                    continue;
+                if (foundation::FoldSimpleCase(suggestion) == folded_original)
+                    return {};
+                if (suggestions.size() < kMaximumSpellingSuggestions)
+                    suggestions.push_back(std::move(suggestion));
+            } catch (const foundation::TextEncodingError&) {
+                continue;
+            } catch (const foundation::TextFoldingError&) {
+                continue;
+            }
+        }
+        if (suggestions.empty())
+            return {};
+
+        std::string article =
+            "<div class=\"gdspellsuggestion\">Spelling suggestions: ";
+        std::size_t retained = 0U;
+        for (const auto& suggestion : suggestions) {
+            dictionary::CheckRequest(options);
+            const auto escaped = EscapeHtml(suggestion);
+            std::string link = retained == 0U ? std::string() : ", ";
+            link += "<a href=\"bword://" + escaped + "\">" + escaped + "</a>";
+            if (link.size() + std::string_view("</div>").size() >
+                kMaximumSpellingArticleBytes - article.size()) {
+                break;
+            }
+            article += link;
+            ++retained;
+        }
+        if (retained == 0U)
+            return {};
+        article += "</div>";
+        dictionary::CheckRequest(options);
+        return {
+            {std::string(original_headword), "text/html", std::move(article)}};
     }
 
     std::vector<std::string> FindHeadwordsForSynonym(

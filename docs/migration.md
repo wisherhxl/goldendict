@@ -285,6 +285,18 @@ cancellation/deadlines, and returns no more than the request result limit.
 Spelling-suggestion articles, true prefix enumeration, configuration,
 registration and enabled-dictionary policy, installed APIs, UI, translations,
 and dependency changes remain excluded.
+The dependent private spelling-suggestion article leaf then restores the
+pinned `getArticle` behavior through the existing backend lookup contract.
+After strict UTF-8 and query bounds, outer whitespace/punctuation trimming,
+and phrase rejection, `spell()` and `suggest()` run under the process-wide
+Hunspell mutex in the dictionary's declared encoding. Correct words and
+suggestion-free misses return nothing; decoded suggestions preserve engine
+order and duplicates, while a simple-case-equivalent suggestion suppresses
+the whole article. The result is limited to 64 suggestions and 64 KiB of
+escaped inert HTML whose `bword://` links enter the existing typed-link
+sanitizer, with cancellation/deadline checkpoints throughout. Registration,
+configuration and enabled policy, prefix enumeration, UI and translations,
+installed APIs, dependency changes, and unrelated backends remain excluded.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 
