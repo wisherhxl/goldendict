@@ -283,6 +283,7 @@ class WidgetsFacadeActivationRelay final : public QObject {
         Deliver([&](MainWindow& owner) {
             if (owner.ArticleViewForTab(tab_id) != view)
                 return;
+            owner.InvalidateArticleOutputOwnership(tab_id, view);
             owner.InvalidateRenderedTextMatchPlan(tab_id);
             ++owner.article_navigation_generations_[tab_id];
             owner.rendered_page_text_transports_.erase(tab_id);
@@ -379,27 +380,16 @@ class WidgetsFacadeActivationRelay final : public QObject {
     void ArticlePageReplaced(goldendict::core::ArticleTabId tab_id,
                              ArticleView* view) {
         Deliver([&](MainWindow& owner) {
-            if (owner.ArticleViewForTab(tab_id) == view)
+            if (owner.ArticleViewForTab(tab_id) == view) {
                 owner.pending_article_scroll_restorations_.erase(tab_id);
-        });
-    }
-
-    void PdfFinished(goldendict::core::ArticleTabId tab_id, bool success) {
-        Deliver([&](MainWindow& owner) {
-            if (owner.TabIdAt(owner.article_tabs_->currentIndex()) == tab_id) {
-                owner.status_->setText(success
-                                           ? QStringLiteral("PDF saved")
-                                           : QStringLiteral("PDF save failed"));
+                owner.InvalidateArticleOutputOwnership(tab_id, view);
             }
         });
     }
 
-    void PrintFinished(bool success) {
+    void PrintFinished(ArticleView* view, bool success) {
         Deliver([&](MainWindow& owner) {
-            owner.print_in_progress_ = false;
-            owner.UpdateFileActions();
-            owner.status_->setText(success ? QStringLiteral("Article printed")
-                                           : QStringLiteral("Printing failed"));
+            owner.FinishPrinterRender(view, success);
         });
     }
 
@@ -4955,7 +4945,62 @@ void MainWindow::RunSystemPrintCheck(std::function<void(bool)> completion) {
     int dialog_calls = 0;
     int dispatch_calls = 0;
     int preview_calls = 0;
+    int pdf_writes = 0;
+    std::vector<std::function<void(const QByteArray&)>> pdf_completions;
     const auto session_before = facade_->ExportArticleTabSession();
+    const auto original_tab_id = TabIdAt(article_tabs_->currentIndex());
+    auto* const original_view = article_view_;
+    pdf_dispatcher_ = [&pdf_completions](
+                          ArticleView*,
+                          const std::function<void(const QByteArray&)>& done) {
+        pdf_completions.push_back(done);
+    };
+    pdf_writer_ = [&pdf_writes](const QString& path,
+                                const QByteArray& pdf_data) {
+        ++pdf_writes;
+        return path == QStringLiteral("second.pdf") && pdf_data == "second";
+    };
+    StartPdfExport(QStringLiteral("first.pdf"));
+    StartPdfExport(QStringLiteral("second.pdf"));
+    pdf_completions[0](QByteArrayLiteral("first"));
+    const bool pdf_overlap_superseded =
+        pdf_writes == 0 && status_->text() == QStringLiteral("Saving PDF...");
+    pdf_completions[1](QByteArrayLiteral("second"));
+    const bool pdf_latest_owned =
+        pdf_writes == 1 && status_->text() == QStringLiteral("PDF saved");
+
+    StartPdfExport(QStringLiteral("navigation.pdf"));
+    const auto navigation_completion = pdf_completions.back();
+    ++article_navigation_generations_[original_tab_id];
+    status_->setText(QStringLiteral("navigation replaced"));
+    navigation_completion(QByteArrayLiteral("navigation"));
+    const bool pdf_navigation_replacement_safe =
+        pdf_writes == 1 &&
+        status_->text() == QStringLiteral("navigation replaced");
+
+    StartPdfExport(QStringLiteral("page.pdf"));
+    const auto page_completion = pdf_completions.back();
+    auto* const original_page = original_view->page();
+    auto* const replacement_page = new ArticlePage(original_view);
+    replacement_page->SetFacade(facade_);
+    original_view->setPage(replacement_page);
+    status_->setText(QStringLiteral("page replaced"));
+    page_completion(QByteArrayLiteral("page"));
+    const bool pdf_page_replacement_safe =
+        pdf_writes == 1 && status_->text() == QStringLiteral("page replaced");
+    original_view->setPage(original_page);
+    replacement_page->deleteLater();
+
+    StartPdfExport(QStringLiteral("inactive.pdf"));
+    const auto inactive_completion = pdf_completions.back();
+    CreateEmptyArticleTab(true);
+    status_->setText(QStringLiteral("other tab active"));
+    inactive_completion(QByteArrayLiteral("inactive"));
+    const bool pdf_active_projection_safe =
+        pdf_writes == 2 &&
+        status_->text() == QStringLiteral("other tab active");
+    CloseArticleTab(article_tabs_->currentIndex());
+
     printer_available_ = []() {
         return false;
     };
@@ -4996,13 +5041,41 @@ void MainWindow::RunSystemPrintCheck(std::function<void(bool)> completion) {
     emit article_view_->printFinished(false);
     const bool failure_reported =
         status_->text() == QStringLiteral("Printing failed");
+
+    PrintArticle();
+    const bool replacement_print_started = print_in_progress_;
+    InvalidateArticleOutputOwnership(original_tab_id, original_view);
+    status_->setText(QStringLiteral("print owner replaced"));
+    emit original_view->printFinished(true);
+    const bool print_replacement_safe =
+        replacement_print_started && !print_in_progress_ &&
+        status_->text() == QStringLiteral("print owner replaced");
+
+    StartPdfExport(QStringLiteral("facade.pdf"));
+    const auto facade_completion = pdf_completions.back();
+    PrintArticle();
+    const bool facade_requests_started =
+        pending_pdf_request_.has_value() && print_in_progress_;
+    SetFacade(facade_);
+    status_->setText(QStringLiteral("facade replaced"));
+    facade_completion(QByteArrayLiteral("facade"));
+    const bool facade_replacement_safe =
+        facade_requests_started && !pending_pdf_request_.has_value() &&
+        !pending_print_request_.has_value() && !print_in_progress_ &&
+        pdf_writes == 2 && status_->text() == QStringLiteral("facade replaced");
+
     printer_available_ = {};
     print_dialog_executor_ = {};
     print_preview_executor_ = {};
     print_dispatcher_ = {};
-    completion(unavailable_safe && cancellation_safe && accepted &&
-               overlap_rejected && preview && failure_reported &&
-               !print_in_progress_ &&
+    pdf_dispatcher_ = {};
+    pdf_writer_ = {};
+    completion(pdf_overlap_superseded && pdf_latest_owned &&
+               pdf_navigation_replacement_safe && pdf_page_replacement_safe &&
+               pdf_active_projection_safe && unavailable_safe &&
+               cancellation_safe && accepted && overlap_rejected && preview &&
+               failure_reported && print_replacement_safe &&
+               facade_replacement_safe && !print_in_progress_ &&
                facade_->ExportArticleTabSession() == session_before);
 }
 
@@ -6629,8 +6702,10 @@ ArticleView* MainWindow::CreateArticleView(
     goldendict::core::ArticleTabId tab_id) {
     auto* view = new ArticleView(article_tabs_);
     connect(view, &ArticleView::PageReplaced, this, [this, tab_id, view]() {
-        if (ArticleViewForTab(tab_id) == view)
+        if (ArticleViewForTab(tab_id) == view) {
             pending_article_scroll_restorations_.erase(tab_id);
+            InvalidateArticleOutputOwnership(tab_id, view);
+        }
     });
     view->SetFacade(facade_);
     view->SetClickPreferences(preferences_.double_click_translates,
@@ -6646,6 +6721,7 @@ ArticleView* MainWindow::CreateArticleView(
     connect(view, &ArticleView::loadStarted, this, [this, tab_id, view]() {
         if (ArticleViewForTab(tab_id) != view)
             return;
+        InvalidateArticleOutputOwnership(tab_id, view);
         HandleArticleReloadStarted(tab_id, view);
         InvalidateRenderedTextMatchPlan(tab_id);
         ++article_navigation_generations_[tab_id];
@@ -6715,20 +6791,8 @@ ArticleView* MainWindow::CreateArticleView(
                 HandleArticleHtmlNavigationFinished(tab_id, view,
                                                     navigation_token, success);
             });
-    connect(view, &ArticleView::pdfPrintingFinished, this,
-            [this, tab_id](const QString&, bool success) {
-                if (TabIdAt(article_tabs_->currentIndex()) == tab_id) {
-                    status_->setText(success
-                                         ? QStringLiteral("PDF saved")
-                                         : QStringLiteral("PDF save failed"));
-                }
-            });
-    connect(view, &ArticleView::printFinished, this, [this](bool success) {
-        print_in_progress_ = false;
-        UpdateFileActions();
-        status_->setText(success ? QStringLiteral("Article printed")
-                                 : QStringLiteral("Printing failed"));
-    });
+    connect(view, &ArticleView::printFinished, this,
+            [this, view](bool success) { FinishPrinterRender(view, success); });
     connect(view, &ArticleView::FullTextNavigationRequested, this,
             [this, tab_id](ArticleHighlightNavigationDirection direction) {
                 NavigateFullTextHighlight(tab_id, direction);
@@ -10319,12 +10383,10 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
                         relay->ArticleHtmlNavigationFinished(
                             tab_id, view, navigation_token, success);
                     });
-            connect(view, &ArticleView::pdfPrintingFinished, relay,
-                    [relay, tab_id = tab.id](const QString&, bool success) {
-                        relay->PdfFinished(tab_id, success);
-                    });
             connect(view, &ArticleView::printFinished, relay,
-                    [relay](bool success) { relay->PrintFinished(success); });
+                    [relay, view](bool success) {
+                        relay->PrintFinished(view, success);
+                    });
             connect(view, &ArticleView::FullTextNavigationRequested, relay,
                     [relay, tab_id = tab.id](
                         ArticleHighlightNavigationDirection direction) {
@@ -10927,6 +10989,12 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
             !facade_binding_reclaimer_->isActive())
             facade_binding_reclaimer_->start();
     }
+    ++facade_binding_generation_;
+    if (facade_binding_generation_ == 0U)
+        facade_binding_generation_ = 1U;
+    pending_pdf_request_.reset();
+    pending_print_request_.reset();
+    print_in_progress_ = false;
     const QSignalBlocker tab_signal_blocker(article_tabs_);
     InvalidateRenderedTextMatchPlan();
     if (rendered_text_match_plan_controller_ != nullptr)
@@ -12687,8 +12755,91 @@ void MainWindow::SaveArticleAsPdf() {
         file_name.endsWith(QStringLiteral(".pdf"), Qt::CaseInsensitive)
             ? file_name
             : file_name + QStringLiteral(".pdf");
+    StartPdfExport(path);
+}
+
+void MainWindow::StartPdfExport(const QString& path) {
+    if (article_view_ == nullptr)
+        return;
+    const auto tab_id = TabIdAt(article_tabs_->currentIndex());
+    const auto navigation = article_navigation_generations_.find(tab_id);
+    if (tab_id == 0U || article_view_->page() == nullptr ||
+        ArticleViewForTab(tab_id) != article_view_ ||
+        navigation == article_navigation_generations_.end()) {
+        return;
+    }
+    ++pdf_request_generation_;
+    if (pdf_request_generation_ == 0U)
+        pdf_request_generation_ = 1U;
+    pending_pdf_request_ = ArticleOutputRequest{pdf_request_generation_,
+                                                facade_binding_generation_,
+                                                navigation->second,
+                                                tab_id,
+                                                article_view_,
+                                                article_view_->page(),
+                                                path};
     status_->setText(QStringLiteral("Saving PDF..."));
-    article_view_->printToPdf(path);
+    const QPointer<MainWindow> guarded_window(this);
+    const auto completion =
+        [guarded_window,
+         generation = pdf_request_generation_](const QByteArray& pdf_data) {
+            if (!guarded_window.isNull())
+                guarded_window->FinishPdfExport(generation, pdf_data);
+        };
+    if (pdf_dispatcher_)
+        pdf_dispatcher_(article_view_, completion);
+    else
+        article_view_->printToPdf(completion);
+}
+
+void MainWindow::FinishPdfExport(std::uint64_t request_generation,
+                                 const QByteArray& pdf_data) {
+    if (!pending_pdf_request_.has_value() ||
+        pending_pdf_request_->request_generation != request_generation) {
+        return;
+    }
+    const auto request = *pending_pdf_request_;
+    pending_pdf_request_.reset();
+    const auto navigation =
+        article_navigation_generations_.find(request.tab_id);
+    const bool owned =
+        request.facade_binding_generation == facade_binding_generation_ &&
+        !request.view.isNull() && !request.page.isNull() &&
+        navigation != article_navigation_generations_.end() &&
+        navigation->second == request.navigation_generation &&
+        ArticleViewForTab(request.tab_id) == request.view.data() &&
+        request.view->page() == request.page.data();
+    if (!owned)
+        return;
+    const bool saved =
+        !pdf_data.isEmpty() &&
+        (pdf_writer_ ? pdf_writer_(request.path, pdf_data)
+                     : [&request, &pdf_data]() {
+                           QSaveFile file(request.path);
+                           return file.open(QIODevice::WriteOnly) &&
+                                  file.write(pdf_data) == pdf_data.size() &&
+                                  file.commit();
+                       }());
+    if (TabIdAt(article_tabs_->currentIndex()) == request.tab_id) {
+        status_->setText(saved ? QStringLiteral("PDF saved")
+                               : QStringLiteral("PDF save failed"));
+    }
+}
+
+void MainWindow::InvalidateArticleOutputOwnership(
+    goldendict::core::ArticleTabId tab_id, ArticleView* view) {
+    if (pending_pdf_request_.has_value() &&
+        pending_pdf_request_->tab_id == tab_id &&
+        pending_pdf_request_->view.data() == view) {
+        pending_pdf_request_.reset();
+    }
+    if (pending_print_request_.has_value() &&
+        pending_print_request_->tab_id == tab_id &&
+        pending_print_request_->view.data() == view) {
+        pending_print_request_.reset();
+        print_in_progress_ = false;
+        UpdateFileActions();
+    }
 }
 
 void MainWindow::PrintArticle() {
@@ -12747,12 +12898,52 @@ void MainWindow::StartPrinterRender(ArticleView* view, QPrinter* printer) {
     if (view == nullptr || printer == nullptr || print_in_progress_)
         return;
     print_in_progress_ = true;
+    const auto tab_id = TabIdAt(article_tabs_->indexOf(view));
+    const auto navigation = article_navigation_generations_.find(tab_id);
+    if (tab_id == 0U || view->page() == nullptr ||
+        navigation == article_navigation_generations_.end()) {
+        print_in_progress_ = false;
+        return;
+    }
+    pending_print_request_ = ArticleOutputRequest{0U,
+                                                  facade_binding_generation_,
+                                                  navigation->second,
+                                                  tab_id,
+                                                  view,
+                                                  view->page(),
+                                                  {}};
     UpdateFileActions();
     status_->setText(QStringLiteral("Printing..."));
     if (print_dispatcher_) {
         print_dispatcher_(view, printer);
     } else {
         view->print(printer);
+    }
+}
+
+void MainWindow::FinishPrinterRender(ArticleView* view, bool success) {
+    if (!pending_print_request_.has_value() ||
+        pending_print_request_->view.data() != view) {
+        return;
+    }
+    const auto request = *pending_print_request_;
+    const auto navigation =
+        article_navigation_generations_.find(request.tab_id);
+    const bool owned =
+        request.facade_binding_generation == facade_binding_generation_ &&
+        !request.view.isNull() && !request.page.isNull() &&
+        navigation != article_navigation_generations_.end() &&
+        navigation->second == request.navigation_generation &&
+        ArticleViewForTab(request.tab_id) == request.view.data() &&
+        request.view->page() == request.page.data();
+    if (!owned)
+        return;
+    pending_print_request_.reset();
+    print_in_progress_ = false;
+    UpdateFileActions();
+    if (TabIdAt(article_tabs_->currentIndex()) == request.tab_id) {
+        status_->setText(success ? QStringLiteral("Article printed")
+                                 : QStringLiteral("Printing failed"));
     }
 }
 

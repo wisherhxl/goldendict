@@ -395,6 +395,12 @@ class MainWindow final : public QMainWindow {
                                 const QString& text,
                                 ArticleLinkDisposition disposition);
     void StartPrinterRender(ArticleView* view, QPrinter* printer);
+    void FinishPrinterRender(ArticleView* view, bool success);
+    void StartPdfExport(const QString& path);
+    void FinishPdfExport(std::uint64_t request_generation,
+                         const QByteArray& pdf_data);
+    void InvalidateArticleOutputOwnership(goldendict::core::ArticleTabId tab_id,
+                                          ArticleView* view);
     void FinishArticleSave(goldendict::core::ArticleTabId tab_id,
                            const QPointer<ArticleView>& view,
                            const QPointer<QWebEnginePage>& page,
@@ -767,12 +773,31 @@ class MainWindow final : public QMainWindow {
     std::unique_ptr<SuggestionWorker> retired_suggestion_worker_;
     DictionaryBrowser* dictionary_browser_ = nullptr;
     std::unique_ptr<QPrinter> printer_;
+
+    struct ArticleOutputRequest {
+        std::uint64_t request_generation = 0U;
+        std::uint64_t facade_binding_generation = 0U;
+        std::uint64_t navigation_generation = 0U;
+        goldendict::core::ArticleTabId tab_id = 0U;
+        QPointer<ArticleView> view;
+        QPointer<QWebEnginePage> page;
+        QString path;
+    };
+
+    std::uint64_t facade_binding_generation_ = 1U;
+    std::uint64_t pdf_request_generation_ = 0U;
+    std::optional<ArticleOutputRequest> pending_pdf_request_;
+    std::optional<ArticleOutputRequest> pending_print_request_;
     bool print_in_progress_ = false;
     bool restoring_main_window_state_ = false;
     std::function<bool(QPrinter*)> print_dialog_executor_;
     std::function<void(QPrinter*, const std::function<void()>&)>
         print_preview_executor_;
     std::function<void(ArticleView*, QPrinter*)> print_dispatcher_;
+    std::function<void(ArticleView*,
+                       const std::function<void(const QByteArray&)>&)>
+        pdf_dispatcher_;
+    std::function<bool(const QString&, const QByteArray&)> pdf_writer_;
     std::function<bool()> printer_available_;
     std::function<QString()> save_article_path_provider_;
     std::function<bool(const QString&, const QString&)> article_save_writer_;
