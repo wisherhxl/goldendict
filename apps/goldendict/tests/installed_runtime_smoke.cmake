@@ -23,6 +23,31 @@ set(installed_metainfo
 set(installed_help_directory
   "${INSTALL_PREFIX}/share/goldendict/help")
 set(installed_library_directory "${INSTALL_PREFIX}/${INSTALL_LIBDIR}")
+set(installed_opencc_directory
+  "${INSTALL_PREFIX}/share/goldendict/opencc")
+set(expected_opencc_data
+  CJK_Compatibility_Ideographs.ocd2
+  HKVariants.ocd2
+  HKVariantsPhrases.ocd2
+  STCharacters.ocd2
+  STPhrases.ocd2
+  STPhrases_GeneratedFromRegionalPhrases.ocd2
+  TSCharacters.ocd2
+  TSCharactersExt.ocd2
+  TSPhrases.ocd2
+  TWVariants.ocd2
+  TWVariantsPhrases.ocd2
+  s2hk.json
+  s2tw.json
+  t2s.json)
+file(GLOB installed_opencc_data
+  RELATIVE "${installed_opencc_directory}" "${installed_opencc_directory}/*")
+list(SORT expected_opencc_data)
+list(SORT installed_opencc_data)
+if(NOT "${installed_opencc_data}" STREQUAL "${expected_opencc_data}")
+  message(FATAL_ERROR
+    "Runtime install does not contain the exact accepted OpenCC data closure")
+endif()
 set(harfbuzz_subset
   "${installed_library_directory}/libharfbuzz-subset.so.0")
 set(harfbuzz_main "${installed_library_directory}/libharfbuzz.so.0")

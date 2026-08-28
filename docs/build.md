@@ -183,13 +183,15 @@ and an external-player adapter remain separate approved audio choices.
 
 OpenCC 1.4.1 is supplied by the project-owned Conan 2 recipe under
 `conan/recipes/opencc`. Export it with `conan export conan/recipes/opencc`
-before resolving a graph that requires OpenCC. GoldenDict maintains the recipe,
-the pinned source checksum, its Conan export/create workflow, and later product
+before resolving the GoldenDict graph. GoldenDict maintains the recipe,
+the pinned source checksum, its Conan export/create workflow, and product
 packaging integration. The recipe packages only the upstream `s2tw`, `s2hk`,
 and `t2s` configurations and their generated dictionary closure for the mapped
-legacy conversion behavior. It does not make OpenCC a public GoldenDict
-dependency; later feature wiring must keep it private to the implementation
-that performs Chinese conversion.
+legacy conversion behavior. GoldenDict installs those files under
+`share/goldendict/opencc` and preserves the package's component notices under
+`licenses`. OpenCC remains private to `goldendict_core`; later feature wiring
+must consume that boundary without exposing it through GoldenDict's public
+headers or package requirements.
 
 OpenCC upstream owns and maintains the configuration and dictionary content.
 Do not copy, fork, or hand-edit that private runtime data in the GoldenDict
@@ -347,6 +349,7 @@ Official Linux Release package workflow:
 
 ```sh
 conan export conan/recipes/python-html5lib
+conan export conan/recipes/opencc
 conan install . --build=missing -s build_type=Release \
   -pr:h=profiles/qt-webengine -pr:b=default
 . build/Release/generators/conanbuild.sh

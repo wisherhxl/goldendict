@@ -6,14 +6,38 @@ find_package(BZip2 REQUIRED)
 find_package(expat REQUIRED CONFIG)
 find_package(ICU REQUIRED CONFIG COMPONENTS uc)
 find_package(hunspell REQUIRED CONFIG)
+find_package(OpenCC REQUIRED CONFIG GLOBAL)
+set(opencc_package_directories "")
+foreach(opencc_configuration IN ITEMS
+    DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+  if(DEFINED opencc_PACKAGE_FOLDER_${opencc_configuration})
+    list(APPEND opencc_package_directories
+      "${opencc_PACKAGE_FOLDER_${opencc_configuration}}")
+  endif()
+endforeach()
+list(REMOVE_DUPLICATES opencc_package_directories)
+list(LENGTH opencc_package_directories opencc_package_directory_count)
+if(NOT opencc_package_directory_count EQUAL 1)
+  message(FATAL_ERROR
+    "OpenCC must publish one resolved Conan package directory")
+endif()
+set_property(GLOBAL PROPERTY GOLDENDICT_OPENCC_PACKAGE_DIRECTORY
+  "${opencc_package_directories}")
 find_package(PCRE2 REQUIRED CONFIG)
 find_package(Vorbis REQUIRED CONFIG)
 find_package(ZLIB REQUIRED)
 
 ti_define_module(core
   REQUIRED PUBLIC MODULES tiger
-  REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat hunspell::hunspell ICU::uc PCRE2::8BIT Vorbis::vorbisfile ZLIB::ZLIB
+  REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat hunspell::hunspell ICU::uc OpenCC::OpenCC PCRE2::8BIT Vorbis::vorbisfile ZLIB::ZLIB
 )
+
+get_target_property(core_interface_links goldendict_core
+  INTERFACE_LINK_LIBRARIES)
+if(core_interface_links AND core_interface_links MATCHES "OpenCC")
+  message(FATAL_ERROR
+    "OpenCC must remain private to the goldendict_core implementation")
+endif()
 
 if(TARGET sounddir_reader_test)
   target_sources(sounddir_reader_test PRIVATE

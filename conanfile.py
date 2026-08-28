@@ -62,6 +62,7 @@ class GoldenDictRecipe(ConanFile):
         self.requires("expat/2.7.5")
         self.requires("icu/74.2")
         self.requires("hunspell/1.7.2")
+        self.requires("opencc/1.4.1")
         self.requires("pcre2/10.42")
         self.requires("qt/6.11.1")
         self.requires("vorbis/1.3.7")
