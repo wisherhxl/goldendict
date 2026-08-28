@@ -181,6 +181,29 @@ implementation before their feature gates. The obsolete libao backend is not
 part of the Qt package envelope; Qt Multimedia/OpenAL, a direct FFmpeg adapter,
 and an external-player adapter remain separate approved audio choices.
 
+OpenCC 1.4.1 is supplied by the project-owned Conan 2 recipe under
+`conan/recipes/opencc`. Export it with `conan export conan/recipes/opencc`
+before resolving a graph that requires OpenCC. GoldenDict maintains the recipe,
+the pinned source checksum, its Conan export/create workflow, and later product
+packaging integration. The recipe packages only the upstream `s2tw`, `s2hk`,
+and `t2s` configurations and their generated dictionary closure for the mapped
+legacy conversion behavior. It does not make OpenCC a public GoldenDict
+dependency; later feature wiring must keep it private to the implementation
+that performs Chinese conversion.
+
+OpenCC upstream owns and maintains the configuration and dictionary content.
+Do not copy, fork, or hand-edit that private runtime data in the GoldenDict
+source tree. An OpenCC upgrade is a deliberate version, checksum, license,
+packaged-data, and conversion-behavior change and must rerun the recipe consumer
+test before it is accepted.
+
+Validate an exported recipe and its consumer in Release with:
+
+```sh
+conan create conan/recipes/opencc --build=missing -s build_type=Release \
+  -pr:h=default -pr:b=default
+```
+
 Qt WebEngine's source configure requires the Python `html5lib` module, but
 Conan Center does not currently provide it. Export the focused local recipe at
 `conan/recipes/python-html5lib/` and the ALSA build-environment adapter at

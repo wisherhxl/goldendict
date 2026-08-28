@@ -45,6 +45,17 @@ Phase 2 directly declares these external components:
   ABI requirements. They do not copy those system libraries into this source
   tree.
 
+## Project-Owned Prerequisite Recipes
+
+OpenCC 1.4.1 is prepared by a project-owned Conan 2 recipe for later private
+Chinese conversion integration under Apache-2.0. The packaged `s2tw`, `s2hk`,
+and `t2s` configurations and generated dictionaries remain unmodified OpenCC
+upstream content under that license. The package also preserves the notices for
+bundled marisa-trie, Darts, and RapidJSON code. GoldenDict owns recipe
+maintenance and packaging integration, not the upstream data content; upgrades
+require an explicit version, checksum, license, packaged-data, and behavior
+review.
+
 Update this inventory whenever product code or a direct dependency enters the
 migration tree. Release packaging must preserve both the root GPL license and
 the component notices in this directory.

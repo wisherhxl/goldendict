@@ -1,0 +1,8 @@
+sources:
+  "1.4.1":
+    url: "https://github.com/BYVoid/OpenCC/archive/refs/tags/ver.1.4.1.tar.gz"
+    sha256: "d4b94877c508a4774853f3b07330b3d25df00105c39dfba6ab9889d77946cc8a"
+notices:
+  rapidjson:
+    url: "https://raw.githubusercontent.com/Tencent/rapidjson/v1.1.0/license.txt"
+    sha256: "a140e5d46fe734a1c78f1a3c3ef207871dd75648be71fdda8e309b23ab8b1f32"
