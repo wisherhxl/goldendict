@@ -383,11 +383,14 @@ endif()
 
 if(TARGET transliteration_test)
   target_sources(transliteration_test PRIVATE
+    src/dictionary/chinese_conversion.cc
     src/dictionary/transliteration.cc
     src/foundation/text_folding.cc
     src/foundation/utf8.cc
   )
-  target_link_libraries(transliteration_test PRIVATE ICU::uc)
+  target_compile_definitions(transliteration_test PRIVATE
+    "GOLDENDICT_OPENCC_TEST_CONFIG_DIRECTORY=\"${opencc_package_directories}/share/opencc\"")
+  target_link_libraries(transliteration_test PRIVATE ICU::uc OpenCC::OpenCC)
 endif()
 
 if(TARGET hunspell_discovery_test)

@@ -2,6 +2,7 @@
 
 #include <QtTest>
 
+#include "../src/dictionary/chinese_conversion.h"
 #include "../src/dictionary/transliteration.h"
 
 namespace goldendict::core::dictionary {
@@ -22,6 +23,8 @@ class TransliterationTest : public QObject {
     void HepburnMappingCountsAndDuplicates();
     void TransliterateHepburnCases_data();
     void TransliterateHepburnCases();
+    void ConvertChineseCases_data();
+    void ConvertChineseCases();
     void ReturnsNoAlternateForUnchangedText();
     void RejectsInvalidInputAndOutputOverflow();
 };
@@ -227,6 +230,37 @@ void TransliterationTest::TransliterateHepburnCases() {
     QCOMPARE(QString::fromStdString(*actual), expected);
 }
 
+void TransliterationTest::ConvertChineseCases_data() {
+    QTest::addColumn<int>("variant");
+    QTest::addColumn<QString>("input");
+    QTest::addColumn<QString>("expected");
+
+    QTest::newRow("simplified-to-taiwan") << 0 << QString::fromUtf8("里面 软件")
+                                          << QString::fromUtf8("裡面 軟件");
+    QTest::newRow("simplified-to-hong-kong")
+        << 1 << QString::fromUtf8("里面 软件")
+        << QString::fromUtf8("裏面 軟件");
+    QTest::newRow("traditional-to-simplified")
+        << 2 << QString::fromUtf8("裏面 軟件")
+        << QString::fromUtf8("里面 软件");
+    QTest::newRow("legacy-simple-case-folding")
+        << 0 << QString::fromUtf8("ABC 软件") << QString::fromUtf8("abc 軟件");
+}
+
+void TransliterationTest::ConvertChineseCases() {
+    QFETCH(int, variant);
+    QFETCH(QString, input);
+    QFETCH(QString, expected);
+    const auto selected =
+        variant == 0   ? ChineseConversionVariant::kSimplifiedToTaiwan
+        : variant == 1 ? ChineseConversionVariant::kSimplifiedToHongKong
+                       : ChineseConversionVariant::kTraditionalToSimplified;
+    const auto actual = ConvertChinese(input.toStdString(), selected,
+                                       GOLDENDICT_OPENCC_TEST_CONFIG_DIRECTORY);
+    QVERIFY(actual.has_value());
+    QCOMPARE(QString::fromStdString(*actual), expected);
+}
+
 void TransliterationTest::ReturnsNoAlternateForUnchangedText() {
     QVERIFY(!TransliterateRussian("").has_value());
     QVERIFY(!TransliterateRussian("猫").has_value());
@@ -239,6 +273,10 @@ void TransliterationTest::ReturnsNoAlternateForUnchangedText() {
     QVERIFY(!TransliterateBelarusianSchoolClassic("猫").has_value());
     QVERIFY(!TransliterateHepburnHiragana("Q猫").has_value());
     QVERIFY(!TransliterateHepburnKatakana("Q猫").has_value());
+    QVERIFY(!ConvertChinese("猫",
+                            ChineseConversionVariant::kTraditionalToSimplified,
+                            GOLDENDICT_OPENCC_TEST_CONFIG_DIRECTORY)
+                 .has_value());
 }
 
 void TransliterationTest::RejectsInvalidInputAndOutputOverflow() {
@@ -290,6 +328,29 @@ void TransliterationTest::RejectsInvalidInputAndOutputOverflow() {
                              TransliterationError);
     QVERIFY_EXCEPTION_THROWN(TransliterateHepburnKatakana("kkya", 1U),
                              TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(
+        ConvertChinese(std::string("bad\0input", 9),
+                       ChineseConversionVariant::kTraditionalToSimplified,
+                       GOLDENDICT_OPENCC_TEST_CONFIG_DIRECTORY),
+        TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(
+        ConvertChinese(std::string("\xc3\x28", 2),
+                       ChineseConversionVariant::kTraditionalToSimplified,
+                       GOLDENDICT_OPENCC_TEST_CONFIG_DIRECTORY),
+        TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(
+        ConvertChinese(std::string(kMaximumTransliterationInputBytes + 1U, 'a'),
+                       ChineseConversionVariant::kTraditionalToSimplified,
+                       GOLDENDICT_OPENCC_TEST_CONFIG_DIRECTORY),
+        TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(
+        ConvertChinese("软件", ChineseConversionVariant::kSimplifiedToTaiwan,
+                       GOLDENDICT_OPENCC_TEST_CONFIG_DIRECTORY, 1U),
+        TransliterationError);
+    QVERIFY_EXCEPTION_THROWN(
+        ConvertChinese("软件", ChineseConversionVariant::kSimplifiedToTaiwan,
+                       "/definitely/missing/opencc"),
+        TransliterationError);
 }
 
 }  // namespace goldendict::core::dictionary
