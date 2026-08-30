@@ -48,6 +48,15 @@ preserves the pinned simple-case fold, enforces UTF-8 input/output bounds and
 typed failures, and has deterministic configuration/data tests. Dictionary
 registration and user-facing configuration remain a later Linux leaf.
 
+The morphology row's historical Nihon-shiki/Kunrei-shiki remainder is not a
+Linux parity requirement. The pinned legacy `romaji.cc` implements and
+registers only Hepburn Hiragana and Katakana dictionaries; its persisted
+`enableNihonShiki` and `enableKunreiShiki` flags and source-editor checkboxes
+have no runtime consumer. The migration therefore does not invent either
+romanization system under a parity claim. Adding them would be a separately
+approved product feature, while preserving or removing the legacy dead
+controls belongs to the later configuration/UI audit.
+
 ## Local Dictionary Formats
 
 | Format/source | Status | Batch | Required verification |
