@@ -100,6 +100,18 @@ not authorize dropping a legacy format.
 | DICT servers | slice | Phase 7/8 | bounded RFC 2229 adapter, ordered persistence, and runtime definition/suggestion composition; authentication and UI composition remain |
 | External programs | slice | Phase 7/8 | shell-free adapter plus ordered current and absolute non-audio legacy persistence for plain-text, HTML, and prefix-match programs; environment/process-tree isolation, audio execution, and UI composition remain |
 
+The five rows' historical application/UI-wiring remainders are superseded by
+the accepted production composition path. Startup and transactional source
+reload construct enabled MediaWiki, website, credential-present Forvo-language,
+DICT, and external-program runtime sources in configured family/order identity,
+publish them behind the desktop facade, and report redacted diagnostics. The
+Sources dialog edits, validates, orders, persists, and atomically applies all
+five families; its focused smoke covers both accepted edits and rejected
+invalid candidates. Remaining gaps are narrower: legacy website
+encoding/iframe/resource behavior, session credential entry and playback for
+Forvo, DICT authentication, and external-program environment/process-tree and
+audio execution policy.
+
 ## Audio And Speech
 
 | Capability | Status | Target gate | Verification |
