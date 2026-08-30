@@ -61,6 +61,12 @@ bool ArticlePage::acceptNavigationRequest(const QUrl& url, NavigationType type,
         }
         emit LookupRequested(QString::fromStdString(resolved->lookup_text),
                              QString::fromLatin1(url.toEncoded()), disposition);
+    } else if (resolved.has_value() &&
+               resolved->kind == goldendict::core::ArticleUrlKind::kResource &&
+               resolved->resource.media_type.rfind("audio/", 0) == 0) {
+        // Audio links are application commands. The native playback service,
+        // rather than WebEngine, owns retrieval and backend selection.
+        emit AudioResourceRequested(url);
     } else if (!resolved.has_value() &&
                (url.scheme() == QStringLiteral("http") ||
                 url.scheme() == QStringLiteral("https") ||

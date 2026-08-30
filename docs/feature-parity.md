@@ -125,7 +125,7 @@ remains part of the Audio And Speech gate below.
 
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |
-| Article audio-link routing | blocked | Phase 7/9 | playback/service ownership contract, then local media fixtures |
+| Article audio-link routing | slice | Phase 7/9 | ArticlePage intercepts typed audio resources as native application commands; retrieval, playback backend selection, and local media fixtures remain |
 | Qt Multimedia playback | mapped | Phase 9 | supported codec smoke |
 | FFmpeg/libao playback | mapped | Phase 9 | optional feature tests |
 | External audio player | mapped | Phase 9 | controlled process test |

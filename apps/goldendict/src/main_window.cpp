@@ -329,6 +329,14 @@ class WidgetsFacadeActivationRelay final : public QObject {
         Deliver([&](MainWindow&) { QDesktopServices::openUrl(url); });
     }
 
+    void AudioResource(const QUrl& url) {
+        static_cast<void>(url);
+        Deliver([](MainWindow& owner) {
+            owner.status_->setText(QStringLiteral(
+                "Audio playback backend is not configured"));
+        });
+    }
+
     void DictionaryResult(goldendict::core::ArticleTabId tab_id,
                           ArticleView* view, const QString& dictionary_id,
                           int first_result_index, quint64 generation) {
@@ -6763,6 +6771,11 @@ ArticleView* MainWindow::CreateArticleView(
                 static_cast<void>(text);
                 OpenArticleLink(tab_id, QUrl(internal_url), disposition);
             });
+    connect(page, &ArticlePage::AudioResourceRequested, this,
+            [this](const QUrl&) {
+                status_->setText(
+                    QStringLiteral("Audio playback backend is not configured"));
+            });
     connect(page, &ArticlePage::ExternalUrlRequested, this,
             [](const QUrl& url) { QDesktopServices::openUrl(url); });
     connect(
@@ -10398,6 +10411,10 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
                         const QString&, const QString& internal_url,
                         ArticleLinkDisposition disposition) {
                         relay->PageLookup(tab_id, internal_url, disposition);
+                    });
+            connect(page, &ArticlePage::AudioResourceRequested, relay,
+                    [relay](const QUrl& url) {
+                        relay->AudioResource(url);
                     });
             connect(page, &ArticlePage::ExternalUrlRequested, relay,
                     [relay](const QUrl& url) { relay->ExternalUrl(url); });
