@@ -77,6 +77,7 @@
 #include "article_page.h"
 #include "article_scheme_handler.h"
 #include "article_view.h"
+#include "audio_playback_service.h"
 #include "dictionary_browser.h"
 #include "favorites_tree_widget.h"
 #include "full_text_dictionary_projection.h"
@@ -330,10 +331,14 @@ class WidgetsFacadeActivationRelay final : public QObject {
     }
 
     void AudioResource(const QUrl& url) {
-        static_cast<void>(url);
-        Deliver([](MainWindow& owner) {
-            owner.status_->setText(QStringLiteral(
-                "Audio playback backend is not configured"));
+        Deliver([&](MainWindow& owner) {
+            if (owner.facade_ == nullptr)
+                return;
+            if (owner.audio_playback_service_->Play(*owner.facade_, url) !=
+                AudioPlaybackService::Result::kStarted) {
+                owner.status_->setText(
+                    QStringLiteral("Unable to play article audio"));
+            }
         });
     }
 
@@ -712,6 +717,7 @@ PublishedWidgetsCommit& PublishedWidgetsCommit::operator=(
 
 MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     : QMainWindow(parent),
+      audio_playback_service_(std::make_unique<AudioPlaybackService>(this)),
       configuration_directory_(QDir::cleanPath(configuration_directory)),
       external_url_dispatcher_(
           [](const QUrl& url) { return QDesktopServices::openUrl(url); }) {
@@ -6772,9 +6778,13 @@ ArticleView* MainWindow::CreateArticleView(
                 OpenArticleLink(tab_id, QUrl(internal_url), disposition);
             });
     connect(page, &ArticlePage::AudioResourceRequested, this,
-            [this](const QUrl&) {
-                status_->setText(
-                    QStringLiteral("Audio playback backend is not configured"));
+            [this](const QUrl& url) {
+                if (facade_ != nullptr &&
+                    audio_playback_service_->Play(*facade_, url) !=
+                        AudioPlaybackService::Result::kStarted) {
+                    status_->setText(
+                        QStringLiteral("Unable to play article audio"));
+                }
             });
     connect(page, &ArticlePage::ExternalUrlRequested, this,
             [](const QUrl& url) { QDesktopServices::openUrl(url); });
@@ -10413,9 +10423,7 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
                         relay->PageLookup(tab_id, internal_url, disposition);
                     });
             connect(page, &ArticlePage::AudioResourceRequested, relay,
-                    [relay](const QUrl& url) {
-                        relay->AudioResource(url);
-                    });
+                    [relay](const QUrl& url) { relay->AudioResource(url); });
             connect(page, &ArticlePage::ExternalUrlRequested, relay,
                     [relay](const QUrl& url) { relay->ExternalUrl(url); });
             connect(view, &ArticleView::LinkRequested, relay,

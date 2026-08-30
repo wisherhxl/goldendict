@@ -23,6 +23,7 @@
 
 class ArticlePage;
 class ArticleView;
+class AudioPlaybackService;
 enum class ArticleHighlightNavigationDirection;
 class ArticleSchemeHandler;
 enum class ArticleLinkDisposition;
@@ -520,6 +521,7 @@ class MainWindow final : public QMainWindow {
     bool WidgetsInteractionBlocked() const noexcept;
 
     goldendict::core::DesktopFacade* facade_ = nullptr;
+    std::unique_ptr<AudioPlaybackService> audio_playback_service_;
     std::uint64_t facade_preparation_generation_ = 1U;
     std::uint64_t presentation_mutation_epoch_ = 1U;
     bool facade_preparation_shutdown_ = false;

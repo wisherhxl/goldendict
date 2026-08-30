@@ -8,6 +8,7 @@ set(qt_modules
         WebChannel
         WebEngineCore
         WebEngineWidgets
+        Multimedia
 )
 
 find_package(Qt6 6.11.1 REQUIRED COMPONENTS ${qt_modules})

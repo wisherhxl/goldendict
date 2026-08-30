@@ -4,6 +4,8 @@ set(TIGER_QT_TRANSLATIONS "")
 ti_add_qt_app(goldendict MODULES core network
   EXTRAS ${qt_link} ${qt_print_support_link} ${qt_help_link})
 target_sources(goldendict PRIVATE
+  src/audio_playback_service.cpp
+  src/audio_playback_service.h
   ../../modules/core/src/application/configuration_transaction_persistence.cc
   ../../modules/core/src/application/configuration_transaction_preparation.cc
   ../../modules/core/src/application/pending_configuration_transaction.cc)
@@ -220,6 +222,17 @@ set_tests_properties(article_page_audio_routing_test PROPERTIES
   ENVIRONMENT
     "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu"
   TIMEOUT 20)
+
+ti_add_executable(audio_playback_service_test
+  tests/audio_playback_service_test.cpp
+  src/audio_playback_service.cpp
+  src/audio_playback_service.h)
+target_include_directories(audio_playback_service_test PRIVATE src)
+ti_target_include_modules_recurse(audio_playback_service_test
+  goldendict_core)
+ti_target_link_libraries(audio_playback_service_test
+  goldendict_core ${QT_NAMESPACE}::Multimedia)
+add_test(NAME audio_playback_service_test COMMAND audio_playback_service_test)
 
 ti_add_executable(full_text_response_model_test
   tests/full_text_response_model_test.cpp
