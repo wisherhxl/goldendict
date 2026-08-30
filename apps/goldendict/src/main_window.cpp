@@ -2287,7 +2287,7 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
     const auto original_apply_callback = source_apply_callback_;
     source_apply_callback_ = [](const auto&, const auto&, const auto&,
                                 const auto&, const auto&, const auto&,
-                                const auto&) {
+                                const auto&, const auto&) {
         return QStringLiteral("forced edit menu apply failure");
     };
     source_dialog_executor_ = [&dialogs,
@@ -2311,7 +2311,7 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
 
     source_apply_callback_ = [](const auto&, const auto&, const auto&,
                                 const auto&, const auto&, const auto&,
-                                const auto&) {
+                                const auto&, const auto&) {
         return QString{};
     };
     source_dialog_executor_ = [&dialogs,
@@ -7513,6 +7513,7 @@ void MainWindow::SetOnlineSources(
         website_sources,
     const std::vector<goldendict::core::ForvoSourceConfiguration>&
         forvo_sources,
+    const ForvoCredentialMap& forvo_credentials,
     const std::vector<goldendict::core::DictServerSourceConfiguration>&
         dict_server_sources,
     const std::vector<goldendict::core::ExternalProgramSourceConfiguration>&
@@ -7521,6 +7522,7 @@ void MainWindow::SetOnlineSources(
     mediawiki_sources_ = mediawiki_sources;
     website_sources_ = website_sources;
     forvo_sources_ = forvo_sources;
+    forvo_credentials_ = forvo_credentials;
     dict_server_sources_ = dict_server_sources;
     external_program_sources_ = external_program_sources;
     if (apply_callback)
@@ -11958,16 +11960,23 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
                      "/tmp"}};
     bool reject_once = true;
     bool callback_received = false;
+    const SourceDirectoriesDialog::ForvoCredentialMap forvo_credentials = {
+        {"forvo.one", "session-secret"}};
     SourceDirectoriesDialog online(
-        paths, sounds, wikis, websites, forvo, dicts, programs,
+        paths, sounds, wikis, websites, forvo, forvo_credentials, dicts,
+        programs,
         [&](const auto&, const auto&, const auto& edited_wikis,
             const auto& edited_websites, const auto& edited_forvo,
-            const auto& edited_dicts, const auto& edited_programs) {
+            const auto& edited_forvo_credentials, const auto& edited_dicts,
+            const auto& edited_programs) {
             callback_received =
                 edited_wikis.front().id == "wiki.two" &&
                 edited_wikis.front().enabled && edited_websites == websites &&
                 edited_forvo.front().language_codes ==
                     (std::vector<std::string>{"ru", "en"}) &&
+                edited_forvo_credentials ==
+                    (SourceDirectoriesDialog::ForvoCredentialMap{
+                        {"forvo.one", "replacement-secret"}}) &&
                 edited_dicts == dicts &&
                 edited_programs.front().id == "program.two" &&
                 edited_programs.front().enabled &&
@@ -11992,6 +12001,8 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
         online.findChild<QPushButton*>(QStringLiteral("mediaWikiUp"));
     auto* forvo_list =
         online.findChild<QTreeWidget*>(QStringLiteral("forvoList"));
+    auto* forvo_credential =
+        online.findChild<QLineEdit*>(QStringLiteral("forvoSessionCredential"));
     auto* buttons = online.findChild<QDialogButtonBox*>();
     auto* program_list =
         online.findChild<QTreeWidget*>(QStringLiteral("externalProgramList"));
@@ -12012,12 +12023,14 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
     auto* argument_up =
         online.findChild<QPushButton*>(QStringLiteral("externalArgumentUp"));
     passed = passed && wiki_list != nullptr && wiki_up != nullptr &&
-             forvo_list != nullptr && buttons != nullptr &&
-             program_list != nullptr && program_up != nullptr &&
-             result_kind != nullptr && executable != nullptr &&
-             working_directory != nullptr && clear_working != nullptr &&
-             arguments != nullptr && argument_add != nullptr &&
-             argument_up != nullptr;
+             forvo_list != nullptr && forvo_credential != nullptr &&
+             forvo_credential->echoMode() == QLineEdit::Password &&
+             forvo_credential->text() == QStringLiteral("session-secret") &&
+             buttons != nullptr && program_list != nullptr &&
+             program_up != nullptr && result_kind != nullptr &&
+             executable != nullptr && working_directory != nullptr &&
+             clear_working != nullptr && arguments != nullptr &&
+             argument_add != nullptr && argument_up != nullptr;
     if (passed) {
         auto* website_list =
             online.findChild<QTreeWidget*>(QStringLiteral("websiteList"));
@@ -12033,6 +12046,7 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
         wiki_up->click();
         wiki_list->topLevelItem(0)->setCheckState(0, Qt::Checked);
         forvo_list->topLevelItem(0)->setText(3, QStringLiteral("ru,en"));
+        forvo_credential->setText(QStringLiteral("replacement-secret"));
         program_list->setCurrentItem(program_list->topLevelItem(1));
         program_up->click();
         result_kind->setCurrentIndex(static_cast<int>(
@@ -12056,13 +12070,15 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
     }
     bool received_empty = false;
     SourceDirectoriesDialog empty_online(
-        paths, sounds, {}, {}, {}, {}, {},
+        paths, sounds, {}, {}, {}, {}, {}, {},
         [&](const auto&, const auto&, const auto& empty_wikis,
             const auto& empty_websites, const auto& empty_forvo,
-            const auto& empty_dicts, const auto& empty_programs) {
+            const auto& empty_forvo_credentials, const auto& empty_dicts,
+            const auto& empty_programs) {
             received_empty = empty_wikis.empty() && empty_websites.empty() &&
-                             empty_forvo.empty() && empty_dicts.empty() &&
-                             empty_programs.empty();
+                             empty_forvo.empty() &&
+                             empty_forvo_credentials.empty() &&
+                             empty_dicts.empty() && empty_programs.empty();
             return QString{};
         },
         this);
@@ -12082,8 +12098,9 @@ void MainWindow::EditSourceDirectories() {
     try {
         SourceDirectoriesDialog dialog(
             dictionary_paths_, sound_directories_, mediawiki_sources_,
-            website_sources_, forvo_sources_, dict_server_sources_,
-            external_program_sources_, source_apply_callback_, this);
+            website_sources_, forvo_sources_, forvo_credentials_,
+            dict_server_sources_, external_program_sources_,
+            source_apply_callback_, this);
 #if defined(Q_OS_LINUX)
         connect(&dialog, &SourceDirectoriesDialog::HelpRequested, this,
                 [this]() {

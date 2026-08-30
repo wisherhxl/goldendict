@@ -214,11 +214,12 @@ StartupRecoverySelection ConvergeStartupPersistence(
 
 PreparedProductionFacade PrepareProductionFacade(
     const goldendict::core::CoreConfiguration& configuration,
+    const goldendict::network::ForvoCredentialMap& forvo_credentials,
     const std::shared_ptr<goldendict::network::NetworkRuntime>& network_runtime,
     goldendict::core::application::DesktopFacadeActivationOwner& owner,
     bool require_session_restoration = true) {
     auto composition = goldendict::network::ComposeConfiguredRuntimeSources(
-        configuration, {}, network_runtime);
+        configuration, forvo_credentials, network_runtime);
     auto candidate =
         owner.PrepareCandidate(configuration, std::move(composition.sources));
     if (!candidate)
@@ -693,10 +694,12 @@ int main(int argc, char* argv[]) {
             << QString::fromStdString(network_runtime->diagnostic());
     }
     goldendict::core::application::DesktopFacadeActivationOwner facade_owner;
+    goldendict::network::ForvoCredentialMap forvo_credentials;
     std::optional<PreparedProductionFacade> prepared_initial_facade;
     try {
-        prepared_initial_facade.emplace(PrepareProductionFacade(
-            configuration, network_runtime, facade_owner, false));
+        prepared_initial_facade.emplace(
+            PrepareProductionFacade(configuration, forvo_credentials,
+                                    network_runtime, facade_owner, false));
     } catch (const std::exception& error) {
         if (!startup_recovery.request)
             throw;
@@ -1183,6 +1186,8 @@ int main(int argc, char* argv[]) {
                 website_sources,
             const std::vector<goldendict::core::ForvoSourceConfiguration>&
                 forvo_sources,
+            const goldendict::network::ForvoCredentialMap&
+                forvo_session_credentials,
             const std::vector<goldendict::core::DictServerSourceConfiguration>&
                 dict_server_sources,
             const std::vector<
@@ -1194,6 +1199,7 @@ int main(int argc, char* argv[]) {
             mediawiki_sources == configuration.mediawiki_sources &&
             website_sources == configuration.website_sources &&
             forvo_sources == configuration.forvo_sources &&
+            forvo_session_credentials == forvo_credentials &&
             dict_server_sources == configuration.dict_server_sources &&
             external_program_sources ==
                 configuration.external_program_sources) {
@@ -1228,7 +1234,8 @@ int main(int argc, char* argv[]) {
                 [&]() -> std::optional<
                           goldendict::app::PreparedConfigurationReloadCore> {
                     auto replacement = PrepareProductionFacade(
-                        updated, network_runtime, facade_owner);
+                        updated, forvo_session_credentials, network_runtime,
+                        facade_owner);
                     desired_diagnostics = std::move(replacement.diagnostics);
                     return goldendict::app::PreparedConfigurationReloadCore{
                         std::move(replacement.candidate),
@@ -1259,11 +1266,13 @@ int main(int argc, char* argv[]) {
             composition_diagnostics = std::move(desired_diagnostics);
             ReportRuntimeCompositionDiagnostics(composition_diagnostics);
             configuration = std::move(updated);
+            forvo_credentials = forvo_session_credentials;
             window.SetSourceDirectories(configuration.dictionary_paths,
                                         configuration.sound_directories);
             window.SetOnlineSources(
                 configuration.mediawiki_sources, configuration.website_sources,
-                configuration.forvo_sources, configuration.dict_server_sources,
+                configuration.forvo_sources, forvo_credentials,
+                configuration.dict_server_sources,
                 configuration.external_program_sources, {});
             if (result.outcome == goldendict::app::ConfigurationReloadOutcome::
                                       kPublishedWithForwardFailure) {
@@ -1295,7 +1304,7 @@ int main(int argc, char* argv[]) {
             return apply_sources(dictionary_paths, sound_directories,
                                  configuration.mediawiki_sources,
                                  configuration.website_sources,
-                                 configuration.forvo_sources,
+                                 configuration.forvo_sources, forvo_credentials,
                                  configuration.dict_server_sources,
                                  configuration.external_program_sources,
                                  show_error)
@@ -1303,16 +1312,18 @@ int main(int argc, char* argv[]) {
         };
     window.SetOnlineSources(
         configuration.mediawiki_sources, configuration.website_sources,
-        configuration.forvo_sources, configuration.dict_server_sources,
+        configuration.forvo_sources, forvo_credentials,
+        configuration.dict_server_sources,
         configuration.external_program_sources,
         [&](const auto& dictionary_paths, const auto& sound_directories,
             const auto& mediawiki_sources, const auto& website_sources,
-            const auto& forvo_sources, const auto& dict_server_sources,
+            const auto& forvo_sources, const auto& forvo_session_credentials,
+            const auto& dict_server_sources,
             const auto& external_program_sources) {
-            return apply_sources(dictionary_paths, sound_directories,
-                                 mediawiki_sources, website_sources,
-                                 forvo_sources, dict_server_sources,
-                                 external_program_sources, false);
+            return apply_sources(
+                dictionary_paths, sound_directories, mediawiki_sources,
+                website_sources, forvo_sources, forvo_session_credentials,
+                dict_server_sources, external_program_sources, false);
         });
     QObject::connect(
         &window, &MainWindow::SourceDirectoriesEdited, &window,
@@ -1353,8 +1364,8 @@ int main(int argc, char* argv[]) {
                         -> std::optional<
                             goldendict::app::PreparedConfigurationReloadCore> {
                         auto replacement = PrepareProductionFacade(
-                            runtime_configuration, network_runtime,
-                            facade_owner);
+                            runtime_configuration, forvo_credentials,
+                            network_runtime, facade_owner);
                         desired_diagnostics =
                             std::move(replacement.diagnostics);
                         return goldendict::app::PreparedConfigurationReloadCore{
@@ -1456,7 +1467,8 @@ int main(int argc, char* argv[]) {
                         -> std::optional<
                             goldendict::app::PreparedConfigurationReloadCore> {
                         auto replacement = PrepareProductionFacade(
-                            updated, network_runtime, facade_owner);
+                            updated, forvo_credentials, network_runtime,
+                            facade_owner);
                         desired_diagnostics =
                             std::move(replacement.diagnostics);
                         return goldendict::app::PreparedConfigurationReloadCore{
@@ -2637,6 +2649,7 @@ int main(int argc, char* argv[]) {
                                  configuration.dictionary_paths,
                                  configuration.sound_directories, edited_wikis,
                                  configuration.website_sources, empty_forvo,
+                                 goldendict::network::ForvoCredentialMap{},
                                  configuration.dict_server_sources,
                                  edited_programs, false)
                                  .isEmpty();

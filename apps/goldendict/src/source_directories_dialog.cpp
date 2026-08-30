@@ -41,7 +41,7 @@ SourceDirectoriesDialog::SourceDirectoriesDialog(
         sound_directories,
     QWidget* parent)
     : SourceDirectoriesDialog(dictionary_paths, sound_directories, {}, {}, {},
-                              {}, {}, {}, parent) {}
+                              {}, {}, {}, {}, parent) {}
 
 SourceDirectoriesDialog::SourceDirectoriesDialog(
     const std::vector<std::string>& dictionary_paths,
@@ -53,12 +53,15 @@ SourceDirectoriesDialog::SourceDirectoriesDialog(
         website_sources,
     const std::vector<goldendict::core::ForvoSourceConfiguration>&
         forvo_sources,
+    const ForvoCredentialMap& forvo_credentials,
     const std::vector<goldendict::core::DictServerSourceConfiguration>&
         dict_server_sources,
     const std::vector<goldendict::core::ExternalProgramSourceConfiguration>&
         external_program_sources,
     ApplyCallback apply_callback, QWidget* parent)
-    : QDialog(parent), apply_callback_(std::move(apply_callback)) {
+    : QDialog(parent),
+      forvo_credentials_(forvo_credentials),
+      apply_callback_(std::move(apply_callback)) {
     setWindowTitle(QStringLiteral("Dictionary Sources"));
     resize(700, 430);
     auto* layout = new QVBoxLayout(this);
@@ -77,14 +80,52 @@ SourceDirectoriesDialog::SourceDirectoriesDialog(
                       QStringLiteral("URL Template")},
                      &website_sources_, QStringLiteral("website")),
                  QStringLiteral("Websites"));
-    tabs->addTab(
-        CreateOnlineTab(
-            QStringLiteral("Language codes are comma-separated and ordered. "
-                           "Credentials are not stored here."),
-            {QStringLiteral("Enabled"), QStringLiteral("Name"),
-             QStringLiteral("API Base URL"), QStringLiteral("Languages")},
-            &forvo_sources_, QStringLiteral("forvo")),
-        QStringLiteral("Forvo"));
+    auto* forvo_tab = CreateOnlineTab(
+        QStringLiteral("Language codes are comma-separated and ordered. The "
+                       "API key is kept only for this application session."),
+        {QStringLiteral("Enabled"), QStringLiteral("Name"),
+         QStringLiteral("API Base URL"), QStringLiteral("Languages")},
+        &forvo_sources_, QStringLiteral("forvo"));
+    auto* credential_row = new QFormLayout();
+    forvo_credential_ = new QLineEdit(forvo_tab);
+    forvo_credential_->setObjectName(QStringLiteral("forvoSessionCredential"));
+    forvo_credential_->setEchoMode(QLineEdit::Password);
+    forvo_credential_->setMaxLength(256);
+    forvo_credential_->setEnabled(false);
+    credential_row->addRow(QStringLiteral("API key (session only):"),
+                           forvo_credential_);
+    qobject_cast<QVBoxLayout*>(forvo_tab->layout())->addLayout(credential_row);
+    tabs->addTab(forvo_tab, QStringLiteral("Forvo"));
+    connect(forvo_sources_, &QTreeWidget::currentItemChanged, this,
+            [this](QTreeWidgetItem* current) {
+                loading_forvo_credential_ = true;
+                const auto credential =
+                    current == nullptr
+                        ? forvo_credentials_.end()
+                        : forvo_credentials_.find(current->data(0, Qt::UserRole)
+                                                      .toString()
+                                                      .toStdString());
+                forvo_credential_->setText(
+                    credential == forvo_credentials_.end()
+                        ? QString{}
+                        : QString::fromStdString(credential->second));
+                forvo_credential_->setEnabled(current != nullptr);
+                loading_forvo_credential_ = false;
+            });
+    connect(forvo_credential_, &QLineEdit::textChanged, this,
+            [this](const QString& value) {
+                if (loading_forvo_credential_)
+                    return;
+                const auto* current = forvo_sources_->currentItem();
+                if (current == nullptr)
+                    return;
+                const std::string id =
+                    current->data(0, Qt::UserRole).toString().toStdString();
+                if (value.isEmpty())
+                    forvo_credentials_.erase(id);
+                else
+                    forvo_credentials_[id] = value.toStdString();
+            });
     tabs->addTab(CreateOnlineTab(
                      QStringLiteral("Credential-free DICT server settings:"),
                      {QStringLiteral("Enabled"), QStringLiteral("Name"),
@@ -158,6 +199,8 @@ SourceDirectoriesDialog::SourceDirectoriesDialog(
                          QString::fromStdString(source.api_base_url),
                          languages.join(QStringLiteral(","))});
     }
+    if (forvo_sources_->topLevelItemCount() > 0)
+        forvo_sources_->setCurrentItem(forvo_sources_->topLevelItem(0));
     for (const auto& source : dict_server_sources)
         add_online_item(
             dict_server_sources_, source.id, source.enabled,
@@ -865,6 +908,18 @@ SourceDirectoriesDialog::ForvoSources() const {
     return sources;
 }
 
+SourceDirectoriesDialog::ForvoCredentialMap
+SourceDirectoriesDialog::ForvoCredentials() const {
+    ForvoCredentialMap credentials;
+    for (int row = 0; row < forvo_sources_->topLevelItemCount(); ++row) {
+        const auto* item = forvo_sources_->topLevelItem(row);
+        const auto credential = forvo_credentials_.find(ItemId(item));
+        if (credential != forvo_credentials_.end())
+            credentials.insert(*credential);
+    }
+    return credentials;
+}
+
 std::vector<goldendict::core::DictServerSourceConfiguration>
 SourceDirectoriesDialog::DictServerSources() const {
     std::vector<goldendict::core::DictServerSourceConfiguration> sources;
@@ -923,7 +978,8 @@ void SourceDirectoriesDialog::Apply() {
             const QString error = apply_callback_(
                 candidate.dictionary_paths, candidate.sound_directories,
                 candidate.mediawiki_sources, candidate.website_sources,
-                candidate.forvo_sources, candidate.dict_server_sources,
+                candidate.forvo_sources, ForvoCredentials(),
+                candidate.dict_server_sources,
                 candidate.external_program_sources);
             if (!error.isEmpty()) {
                 validation_error_->setText(error);

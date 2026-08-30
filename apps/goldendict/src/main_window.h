@@ -167,12 +167,14 @@ class MainWindow final : public QMainWindow {
     friend class PublishedWidgetsCommit;
 
    public:
+    using ForvoCredentialMap = std::map<std::string, std::string>;
     using SourceApplyCallback = std::function<QString(
         const std::vector<std::string>&,
         const std::vector<goldendict::core::SoundDirectoryConfiguration>&,
         const std::vector<goldendict::core::MediaWikiSourceConfiguration>&,
         const std::vector<goldendict::core::WebsiteSourceConfiguration>&,
         const std::vector<goldendict::core::ForvoSourceConfiguration>&,
+        const ForvoCredentialMap&,
         const std::vector<goldendict::core::DictServerSourceConfiguration>&,
         const std::vector<
             goldendict::core::ExternalProgramSourceConfiguration>&)>;
@@ -228,6 +230,7 @@ class MainWindow final : public QMainWindow {
             website_sources,
         const std::vector<goldendict::core::ForvoSourceConfiguration>&
             forvo_sources,
+        const ForvoCredentialMap& forvo_credentials,
         const std::vector<goldendict::core::DictServerSourceConfiguration>&
             dict_server_sources,
         const std::vector<goldendict::core::ExternalProgramSourceConfiguration>&
@@ -546,6 +549,7 @@ class MainWindow final : public QMainWindow {
         mediawiki_sources_;
     std::vector<goldendict::core::WebsiteSourceConfiguration> website_sources_;
     std::vector<goldendict::core::ForvoSourceConfiguration> forvo_sources_;
+    ForvoCredentialMap forvo_credentials_;
     std::vector<goldendict::core::DictServerSourceConfiguration>
         dict_server_sources_;
     std::vector<goldendict::core::ExternalProgramSourceConfiguration>

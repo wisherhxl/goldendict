@@ -6,6 +6,7 @@
 #include <QDialog>
 
 #include <functional>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -23,12 +24,14 @@ class SourceDirectoriesDialog final : public QDialog {
     Q_OBJECT
 
    public:
+    using ForvoCredentialMap = std::map<std::string, std::string>;
     using ApplyCallback = std::function<QString(
         const std::vector<std::string>&,
         const std::vector<goldendict::core::SoundDirectoryConfiguration>&,
         const std::vector<goldendict::core::MediaWikiSourceConfiguration>&,
         const std::vector<goldendict::core::WebsiteSourceConfiguration>&,
         const std::vector<goldendict::core::ForvoSourceConfiguration>&,
+        const ForvoCredentialMap&,
         const std::vector<goldendict::core::DictServerSourceConfiguration>&,
         const std::vector<
             goldendict::core::ExternalProgramSourceConfiguration>&)>;
@@ -48,6 +51,7 @@ class SourceDirectoriesDialog final : public QDialog {
             website_sources,
         const std::vector<goldendict::core::ForvoSourceConfiguration>&
             forvo_sources,
+        const ForvoCredentialMap& forvo_credentials,
         const std::vector<goldendict::core::DictServerSourceConfiguration>&
             dict_server_sources,
         const std::vector<goldendict::core::ExternalProgramSourceConfiguration>&
@@ -63,6 +67,7 @@ class SourceDirectoriesDialog final : public QDialog {
         const;
     std::vector<goldendict::core::ForvoSourceConfiguration> ForvoSources()
         const;
+    ForvoCredentialMap ForvoCredentials() const;
     std::vector<goldendict::core::DictServerSourceConfiguration>
     DictServerSources() const;
     std::vector<goldendict::core::ExternalProgramSourceConfiguration>
@@ -115,6 +120,7 @@ class SourceDirectoriesDialog final : public QDialog {
     QTreeWidget* mediawiki_sources_ = nullptr;
     QTreeWidget* website_sources_ = nullptr;
     QTreeWidget* forvo_sources_ = nullptr;
+    QLineEdit* forvo_credential_ = nullptr;
     QTreeWidget* dict_server_sources_ = nullptr;
     QTreeWidget* external_program_sources_ = nullptr;
     QComboBox* external_program_result_kind_ = nullptr;
@@ -130,7 +136,9 @@ class SourceDirectoriesDialog final : public QDialog {
     QPushButton* external_argument_up_ = nullptr;
     QPushButton* external_argument_down_ = nullptr;
     bool loading_external_program_ = false;
+    bool loading_forvo_credential_ = false;
     QTreeWidgetItem* external_program_current_item_ = nullptr;
+    ForvoCredentialMap forvo_credentials_;
     QLabel* validation_error_ = nullptr;
     ApplyCallback apply_callback_;
 };

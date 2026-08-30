@@ -112,6 +112,15 @@ encoding/iframe/resource behavior, session credential entry and playback for
 Forvo, DICT authentication, and external-program environment/process-tree and
 audio execution policy.
 
+Forvo session credential entry is accepted. The Sources dialog owns a bounded
+password field for the selected Forvo source, keeps its value only in process
+memory, excludes it from current and legacy persistence, and passes the exact
+source-ID map through the existing pre-decision configuration/runtime
+transaction. Credential-only edits reconstruct and publish the runtime;
+cancelled or rejected edits do not escape the dialog; removed-source
+credentials are filtered; diagnostics remain redacted. Article audio playback
+remains part of the Audio And Speech gate below.
+
 ## Audio And Speech
 
 | Capability | Status | Target gate | Verification |
