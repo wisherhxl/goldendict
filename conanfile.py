@@ -40,8 +40,44 @@ class GoldenDictRecipe(ConanFile):
         "qt/*:qtwebengine": True,
         "qt/*:with_dbus": True,
         "qt/*:with_gstreamer": False,
+        "qt/*:with_ffmpeg": True,
+        "qt/*:with_pulseaudio": True,
         "qt/*:with_libjpeg": "libjpeg-turbo",
         "qt/*:with_openal": True,
+        "ffmpeg/*:avdevice": False,
+        "ffmpeg/*:avfilter": False,
+        "ffmpeg/*:postproc": False,
+        "ffmpeg/*:with_appkit": False,
+        "ffmpeg/*:with_audiotoolbox": False,
+        "ffmpeg/*:with_avfoundation": False,
+        "ffmpeg/*:with_bzip2": False,
+        "ffmpeg/*:with_coreimage": False,
+        "ffmpeg/*:with_freetype": False,
+        "ffmpeg/*:with_libaom": False,
+        "ffmpeg/*:with_libalsa": False,
+        "ffmpeg/*:with_libdav1d": False,
+        "ffmpeg/*:with_libfdk_aac": False,
+        "ffmpeg/*:with_libiconv": False,
+        "ffmpeg/*:with_libmp3lame": False,
+        "ffmpeg/*:with_libsvtav1": False,
+        "ffmpeg/*:with_libvpx": False,
+        "ffmpeg/*:with_libwebp": False,
+        "ffmpeg/*:with_libx264": False,
+        "ffmpeg/*:with_libx265": False,
+        "ffmpeg/*:with_lzma": False,
+        "ffmpeg/*:with_openh264": False,
+        "ffmpeg/*:with_openjpeg": False,
+        "ffmpeg/*:with_opus": False,
+        "ffmpeg/*:with_programs": False,
+        "ffmpeg/*:with_pulse": False,
+        "ffmpeg/*:with_sdl": False,
+        "ffmpeg/*:with_ssl": False,
+        "ffmpeg/*:with_vaapi": False,
+        "ffmpeg/*:with_vdpau": False,
+        "ffmpeg/*:with_videotoolbox": False,
+        "ffmpeg/*:with_vorbis": False,
+        "ffmpeg/*:with_xcb": False,
+        "ffmpeg/*:with_xlib": False,
     }
 
     def set_name(self):
@@ -58,6 +94,9 @@ class GoldenDictRecipe(ConanFile):
         self.version = ver
 
     def requirements(self):
+        # PulseAudio and Qt WebEngine accept this version, while allowing their
+        # independent ranges to float currently resolves conflicting GLib nodes.
+        self.requires("glib/2.78.3", override=True)
         self.requires("bzip2/1.0.8")
         self.requires("expat/2.7.5")
         self.requires("icu/74.2")
