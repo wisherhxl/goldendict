@@ -126,7 +126,7 @@ remains part of the Audio And Speech gate below.
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |
 | Article audio-link routing | done | Phase 7/9 | ArticlePage intercepts typed audio resources as native application commands; the application-owned playback service resolves typed resources and retrieves exact dictionary bytes with a deterministic local WAV fixture |
-| Qt Multimedia playback | slice | Phase 9 | application-owned in-memory Qt Multimedia playback is wired; supported-codec smoke and runtime error reporting remain |
+| Qt Multimedia playback | done | Phase 9 | application-owned in-memory Qt Multimedia playback is wired with deterministic WAV decoder smoke plus loading, playing, and backend-failure reporting |
 | FFmpeg/libao playback | mapped | Phase 9 | optional feature tests |
 | External audio player | mapped | Phase 9 | controlled process test |
 | Linux speech/TTS path | mapped | Phase 9 | adapter/manual checks |

@@ -717,7 +717,22 @@ PublishedWidgetsCommit& PublishedWidgetsCommit::operator=(
 
 MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     : QMainWindow(parent),
-      audio_playback_service_(std::make_unique<AudioPlaybackService>(this)),
+      audio_playback_service_(std::make_unique<AudioPlaybackService>(
+          this, AudioPlaybackService::PlaybackSink{},
+          [this](AudioPlaybackService::Status status, const QString& detail) {
+              if (status_ == nullptr)
+                  return;
+              if (status == AudioPlaybackService::Status::kLoading)
+                  status_->setText(QStringLiteral("Loading article audio"));
+              else if (status == AudioPlaybackService::Status::kPlaying)
+                  status_->setText(QStringLiteral("Playing article audio"));
+              else
+                  status_->setText(
+                      detail.isEmpty()
+                          ? QStringLiteral("Unable to play article audio")
+                          : QStringLiteral("Unable to play article audio: %1")
+                                .arg(detail));
+          })),
       configuration_directory_(QDir::cleanPath(configuration_directory)),
       external_url_dispatcher_(
           [](const QUrl& url) { return QDesktopServices::openUrl(url); }) {

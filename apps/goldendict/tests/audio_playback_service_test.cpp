@@ -8,6 +8,7 @@
 #include <QUrl>
 
 #include <memory>
+#include <vector>
 
 #include "audio_playback_service.h"
 #include "goldendict/core/application.h"
@@ -67,11 +68,18 @@ int main(int argc, char* argv[]) {
 
     QByteArray played_bytes;
     QString played_media_type;
+    std::vector<AudioPlaybackService::Status> statuses;
+    QString status_detail;
     AudioPlaybackService service(
-        nullptr, [&](const QByteArray& bytes, const QString& media_type) {
+        nullptr,
+        [&](const QByteArray& bytes, const QString& media_type) {
             played_bytes = bytes;
             played_media_type = media_type;
             return true;
+        },
+        [&](AudioPlaybackService::Status status, const QString& detail) {
+            statuses.push_back(status);
+            status_detail = detail;
         });
     const QUrl audio_url = QUrl::fromEncoded(
         QByteArrayLiteral("goldendict://resource/") +
@@ -81,7 +89,9 @@ int main(int argc, char* argv[]) {
     if (service.Play(*facade, audio_url) !=
             AudioPlaybackService::Result::kStarted ||
         played_bytes != QByteArrayLiteral("RIFFfixtureWAVE") ||
-        played_media_type != QStringLiteral("audio/wav")) {
+        played_media_type != QStringLiteral("audio/wav") || statuses.empty() ||
+        statuses.back() != AudioPlaybackService::Status::kLoading ||
+        status_detail != QStringLiteral("audio/wav")) {
         return 1;
     }
 
@@ -90,8 +100,12 @@ int main(int argc, char* argv[]) {
         QUrl::toPercentEncoding(QString::fromStdString(catalog.front().id)) +
         QByteArrayLiteral("/fixture"));
     if (service.Play(*facade, article_url) !=
-        AudioPlaybackService::Result::kInvalidResource) {
+            AudioPlaybackService::Result::kInvalidResource ||
+        statuses.back() != AudioPlaybackService::Status::kFailed ||
+        status_detail != QStringLiteral("Invalid audio resource")) {
         return 1;
     }
+    if (!AudioPlaybackService::HasWavDecoder())
+        return 1;
     return 0;
 }
