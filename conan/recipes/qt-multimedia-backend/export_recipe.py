@@ -88,6 +88,18 @@ def main() -> None:
         )
         recipe = replace_once(
             recipe,
+            '            if self.options.get_safe("with_pulseaudio", False):\n'
+            '                multimedia_reqs.append("pulseaudio::pulse")',
+            '            if self.options.get_safe("with_ffmpeg", False):\n'
+            '                # avformat carries Qt Multimedia\'s remaining FFmpeg\n'
+            '                # component dependencies transitively. Recording it\n'
+            '                # also satisfies Conan\'s direct-dependency check.\n'
+            '                multimedia_reqs.append("ffmpeg::avformat")\n'
+            '            if self.options.get_safe("with_pulseaudio", False):\n'
+            '                multimedia_reqs.append("pulseaudio::pulse")',
+        )
+        recipe = replace_once(
+            recipe,
             '    def generate(self):\n'
             '        ms = VirtualBuildEnv(self)',
             '    def generate(self):\n'
