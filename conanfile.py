@@ -44,6 +44,7 @@ class GoldenDictRecipe(ConanFile):
         "qt/*:with_pulseaudio": True,
         "qt/*:with_libjpeg": "libjpeg-turbo",
         "qt/*:with_openal": True,
+        "qt/*:with_pq": False,
         "ffmpeg/*:avdevice": False,
         "ffmpeg/*:avfilter": False,
         "ffmpeg/*:postproc": False,
@@ -109,6 +110,17 @@ class GoldenDictRecipe(ConanFile):
 
     def build_requirements(self):
         self.tool_requires("cmake/[>=3.26 <3.27]")
+        if (
+            self.settings.os == "Windows"
+            and str(
+                self.conf.get(
+                    "tools.microsoft.msbuild:vs_version", default=None
+                )
+            ) == "18"
+        ):
+            # CMake 3.26 predates the Visual Studio 18 generator. Ninja still
+            # uses the selected VS 2026 compiler environment and MSVC toolset.
+            self.tool_requires("ninja/[>=1.12 <2]")
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -119,6 +131,8 @@ class GoldenDictRecipe(ConanFile):
             self.options.rm_safe("fPIC")
         if self.settings.os == "Linux":
             self.options["qt"].qttools = True
+        else:
+            self.options["qt"].with_pulseaudio = False
 
     def layout(self):
         cmake_layout(self)

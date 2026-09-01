@@ -2,7 +2,7 @@
 
 set(TIGER_QT_TRANSLATIONS "")
 ti_add_qt_app(goldendict MODULES core network
-  EXTRAS ${qt_link} ${qt_print_support_link} ${qt_help_link})
+  EXTRAS ${qt_link} ${qt_print_support_link} ${QT_NAMESPACE}::Help)
 target_sources(goldendict PRIVATE
   src/audio_playback_service.cpp
   src/audio_playback_service.h

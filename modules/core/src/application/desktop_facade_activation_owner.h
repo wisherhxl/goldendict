@@ -14,6 +14,10 @@
 namespace goldendict::core::application {
 
 struct DictionaryServiceActivationCandidate;
+GOLDENDICT_EXPORTS DictionaryServiceActivationCandidate
+CreateDictionaryServiceActivationCandidate(
+    const CoreConfiguration& configuration,
+    std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources);
 
 class GOLDENDICT_EXPORTS ServiceStateActivationHandle final {
    public:
@@ -49,10 +53,6 @@ struct DictionaryServiceActivationCandidate {
     ServiceStateActivationHandle activation;
 };
 
-GOLDENDICT_EXPORTS DictionaryServiceActivationCandidate
-CreateDictionaryServiceActivationCandidate(
-    const CoreConfiguration& configuration,
-    std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources);
 GOLDENDICT_EXPORTS bool IsFullTextIndexExecutorStopped(
     const DictionaryService& service) noexcept;
 

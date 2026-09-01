@@ -45,6 +45,10 @@ endif()
 project(${TI_PROJECT_NAME} CXX C)
 enable_language(CXX C)
 
+if(WIN32)
+  add_compile_definitions(NOMINMAX)
+endif()
+
 # ============ Modules Information ============
 # Base module directory name for Tiger platform generated files.
 # Leave empty to default to TI_INTERNAL_NAME after

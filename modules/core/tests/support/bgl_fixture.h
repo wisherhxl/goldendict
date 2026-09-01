@@ -68,7 +68,11 @@ inline std::filesystem::path WriteBglStream(
     std::ofstream output(path, std::ios::binary);
     output.write("\x12\x34\0\1\0\6", 6);
     output.close();
+#ifdef _WIN32
+    gzFile gzip = gzopen_w(path.c_str(), "ab9");
+#else
     gzFile gzip = gzopen(path.c_str(), "ab9");
+#endif
     if (!gzip ||
         gzwrite(gzip, stream.data(), static_cast<unsigned>(stream.size())) !=
             static_cast<int>(stream.size()) ||

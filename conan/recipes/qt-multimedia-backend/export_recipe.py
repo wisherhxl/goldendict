@@ -121,6 +121,23 @@ def main() -> None:
             '            "    set(PulseAudio_FOUND ON)\\n"\n'
             '            "endif()\\n",\n'
             '        )\n'
+            '        # Qt Multimedia preserves its own FindFFmpeg module, but that\n'
+            '        # module otherwise links only the first library named by each\n'
+            '        # pkg-config component. Include Conan\'s flattened pkg-config\n'
+            '        # dependency libraries and search directories as well.\n'
+            '        replace_in_file(\n'
+            '            self,\n'
+            '            os.path.join(\n'
+            '                self.source_folder,\n'
+            '                "qtmultimedia",\n'
+            '                "cmake",\n'
+            '                "FindFFmpeg.cmake",\n'
+            '            ),\n'
+            '            "            target_link_libraries(${_target} INTERFACE \\"${${_component}_LIBRARY_NAME}\\")\\n"\n'
+            '            "            target_link_directories(${_target} INTERFACE ${${_component}_LIBRARY_DIR})\\n",\n'
+            '            "            target_link_libraries(${_target} INTERFACE \\"${${_component}_LIBRARY_NAME}\\" ${PC_${_component}_LIBRARIES})\\n"\n'
+            '            "            target_link_directories(${_target} INTERFACE ${${_component}_LIBRARY_DIR} ${PC_${_component}_LIBRARY_DIRS})\\n",\n'
+            '        )\n'
             '        ms = VirtualBuildEnv(self)',
         )
         recipe = replace_once(
