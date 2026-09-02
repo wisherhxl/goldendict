@@ -537,6 +537,20 @@ smokes cover the visual control contract and both activation-policy states.
 This correction changes no Core contract, persisted setting, or unrelated tab
 workflow, and does not declare Batch A or overall parity complete.
 
+Implementation note (2026-09-03): the following bounded Batch A correction
+restores the clean-profile Qt 5 right-pane geometry. Results, Favorites, and
+History now initialize as one 160-logical-pixel right stack and divide its
+available height equally within native layout rounding. Their title labels may
+compress without making translated text silently widen the dock area. Sizing
+is applied only after the initial Qt layout pass, remains user-resizable, and
+is cancelled by any successfully restored main-window state so persisted user
+geometry stays authoritative. Product-shell automation verifies width, equal
+allocation, and post-initialization resizing; a native 816 by 673 Windows
+capture at 125% display scale was compared with the pinned Qt 5 clean-profile
+reference. This is a Widgets-presentation correction only: Core, installed
+APIs, configuration schema, and persistence ownership are unchanged. It does
+not declare Batch A or overall parity complete.
+
 ### Batch B — Daily Lookup And User State
 
 Complete lookup/navigation, article behavior, tabs, history, favorites, and

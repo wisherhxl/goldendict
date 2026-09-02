@@ -119,6 +119,7 @@ constexpr auto kResultsPaneName = "dictsPane";
 constexpr auto kSearchPaneName = "searchPane";
 constexpr auto kPreviousHistoryDockName = "historyDock";
 constexpr auto kPreviousFavoritesDockName = "favoritesDock";
+constexpr int kDefaultRightPaneWidth = 160;
 
 std::optional<QPointF> QtPageScrollToCssScroll(const QPointF& position,
                                                qreal zoom_factor) {
@@ -977,8 +978,12 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     history_title_layout->setContentsMargins(5, 5, 5, 5);
     history_title_label_ = new QLabel(history_title);
     history_title_label_->setObjectName(QStringLiteral("historyLabel"));
+    history_title_label_->setSizePolicy(QSizePolicy::Ignored,
+                                        QSizePolicy::Preferred);
     history_count_label_ = new QLabel(history_title);
     history_count_label_->setObjectName(QStringLiteral("historyCountLabel"));
+    history_count_label_->setSizePolicy(QSizePolicy::Ignored,
+                                        QSizePolicy::Preferred);
     if (layoutDirection() == Qt::LeftToRight) {
         history_title_label_->setAlignment(Qt::AlignLeft);
         history_count_label_->setAlignment(Qt::AlignRight);
@@ -1010,6 +1015,8 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     favorites_title_layout->setContentsMargins(5, 5, 5, 5);
     favorites_title_label_ = new QLabel(favorites_title);
     favorites_title_label_->setObjectName(QStringLiteral("favoritesLabel"));
+    favorites_title_label_->setSizePolicy(QSizePolicy::Ignored,
+                                          QSizePolicy::Preferred);
     favorites_title_label_->setAlignment(layoutDirection() == Qt::LeftToRight
                                              ? Qt::AlignLeft
                                              : Qt::AlignRight);
@@ -2321,6 +2328,23 @@ void MainWindow::RunProductShellSmokeCheck(
         CreateEmptyArticleTab(true);
     }
     QApplication::processEvents();
+    ApplyPendingDefaultPaneSizing();
+    QApplication::processEvents();
+    const auto right_panes_have_width =
+        [results_dock, favorites_dock, history_dock](int expected_width) {
+            return results_dock->width() == favorites_dock->width() &&
+                   results_dock->width() == history_dock->width() &&
+                   std::abs(results_dock->width() - expected_width) <= 2;
+        };
+    const bool initial_default_width_matches =
+        right_panes_have_width(kDefaultRightPaneWidth);
+    constexpr int kResizeProbeWidth = 220;
+    resizeDocks({results_dock}, {kResizeProbeWidth}, Qt::Horizontal);
+    QApplication::processEvents();
+    const bool default_panes_remain_resizable =
+        right_panes_have_width(kResizeProbeWidth);
+    resizeDocks({results_dock}, {kDefaultRightPaneWidth}, Qt::Horizontal);
+    QApplication::processEvents();
 
     class DockTitleTestTranslator final : public QTranslator {
        public:
@@ -2440,6 +2464,16 @@ void MainWindow::RunProductShellSmokeCheck(
         layoutDirection() == Qt::LeftToRight ? Qt::AlignLeft : Qt::AlignRight;
     const Qt::Alignment expected_trailing_alignment =
         layoutDirection() == Qt::LeftToRight ? Qt::AlignRight : Qt::AlignLeft;
+    const std::array<int, 3> right_pane_heights = {
+        results_dock->height(), favorites_dock->height(),
+        history_dock->height()};
+    const auto [minimum_right_pane_height, maximum_right_pane_height] =
+        std::minmax_element(right_pane_heights.begin(),
+                            right_pane_heights.end());
+    const bool default_pane_geometry_matches =
+        initial_default_width_matches && default_panes_remain_resizable &&
+        right_panes_have_width(kDefaultRightPaneWidth) &&
+        *maximum_right_pane_height - *minimum_right_pane_height <= 2;
     const bool shell_matches =
         translation_contexts_match && windowIcon().isNull() == false &&
         width() >= 653 && height() >= 538 &&
@@ -2453,7 +2487,7 @@ void MainWindow::RunProductShellSmokeCheck(
             QStringLiteral("Welcome!") &&
         !add_tab_button->icon().isNull() && add_tab_button->menu() == nullptr &&
         !search_dock->isVisible() &&
-        results_dock->isVisible() &&
+        results_dock->isVisible() && default_pane_geometry_matches &&
         title_margins_match(search_dock, QMargins(8, 5, 8, 4)) &&
         title_margins_match(results_dock, QMargins(5, 5, 5, 5)) &&
         title_margins_match(history_dock, QMargins(5, 5, 5, 5)) &&
@@ -2517,6 +2551,19 @@ void MainWindow::RunProductShellSmokeCheck(
         status_->text() == QStringLiteral("Scan Popup disabled");
     status_->setText(baseline_status);
     if (!shell_matches) {
+        std::fprintf(stderr,
+                     "product shell panes: widths=%d/%d/%d heights=%d/%d/%d "
+                     "default-geometry=%d central=%d hint=%d min-hint=%d "
+                     "minimum=%d maximum=%d\n",
+                     results_dock->width(), favorites_dock->width(),
+                     history_dock->width(), results_dock->height(),
+                     favorites_dock->height(), history_dock->height(),
+                     default_pane_geometry_matches, centralWidget()->width(),
+                     centralWidget()->sizeHint().width(),
+                     centralWidget()->minimumSizeHint().width(),
+                     centralWidget()->minimumWidth(),
+                     centralWidget()->maximumWidth());
+        std::fflush(stderr);
         qCritical() << "Product shell structure mismatch"
                    << "size" << size() << "windowIcon" << !windowIcon().isNull()
                    << "compatibilityVisible"
@@ -2531,6 +2578,10 @@ void MainWindow::RunProductShellSmokeCheck(
                    << "addIcon" << !add_tab_button->icon().isNull()
                    << "searchVisible" << search_dock->isVisible()
                    << "resultsVisible" << results_dock->isVisible()
+                   << "paneWidths" << results_dock->width()
+                   << favorites_dock->width() << history_dock->width()
+                   << "paneHeights" << results_dock->height()
+                   << favorites_dock->height() << history_dock->height()
                    << "historyFilterVisible" << history_filter->isVisible()
                    << "articleToolbarVisible" << article_toolbar->isVisible()
                    << "navVisible" << nav_toolbar->isVisible() << "navActions"
@@ -7268,8 +7319,11 @@ void MainWindow::RunArticleTabsSmokeCheck(
     dictionary_bar->hide();
     const std::string changed_state = CaptureMainWindowState();
     const bool reset_state = RestoreMainWindowState(default_state);
+    ApplyDefaultPaneLayout();
+    const bool changed_state_restored = RestoreMainWindowState(changed_state);
+    QApplication::processEvents();
     const bool restored_state =
-        RestoreMainWindowState(changed_state) &&
+        changed_state_restored && !default_pane_resize_pending_ &&
         dockWidgetArea(history_dock) == Qt::BottomDockWidgetArea &&
         dockWidgetArea(favorites_dock) == Qt::RightDockWidgetArea &&
         dockWidgetArea(results_dock) == Qt::LeftDockWidgetArea &&
@@ -13044,6 +13098,7 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
     };
     if (restoreState(encoded, kMainWindowStateVersion) &&
         HasUsableMainWindowLayout()) {
+        default_pane_resize_pending_ = false;
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
@@ -13051,6 +13106,7 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
     place_missing_search_pane();
     if (restoreState(encoded, kPreviousMainWindowStateVersion) &&
         HasUsableMainWindowLayout()) {
+        default_pane_resize_pending_ = false;
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
@@ -13062,6 +13118,7 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         addToolBar(Qt::TopToolBarArea, nav_toolbar);
     if (restoreState(encoded, kOlderMainWindowStateVersion) &&
         HasUsableMainWindowLayout()) {
+        default_pane_resize_pending_ = false;
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
@@ -13072,6 +13129,7 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         addToolBar(Qt::TopToolBarArea, nav_toolbar);
     if (restoreState(encoded, kOldestMainWindowStateVersion) &&
         HasUsableMainWindowLayout()) {
+        default_pane_resize_pending_ = false;
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
@@ -13082,6 +13140,7 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         addToolBar(Qt::TopToolBarArea, nav_toolbar);
     if (restoreState(encoded, kEarlierMainWindowStateVersion) &&
         HasUsableMainWindowLayout()) {
+        default_pane_resize_pending_ = false;
         return true;
     }
     restoreState(previous, kMainWindowStateVersion);
@@ -13103,8 +13162,10 @@ bool MainWindow::RestoreMainWindowState(const std::string& state) {
         history->setObjectName(QString::fromLatin1(kHistoryPaneName));
         favorites->setObjectName(QString::fromLatin1(kFavoritesPaneName));
         const bool previous_usable = HasUsableMainWindowLayout();
-        if (restored_previous && previous_usable)
+        if (restored_previous && previous_usable) {
+            default_pane_resize_pending_ = false;
             return true;
+        }
     }
     restoreState(previous, kMainWindowStateVersion);
     return false;
@@ -13443,7 +13504,30 @@ void MainWindow::ApplyDefaultPaneLayout() {
     favorites->show();
     history->show();
     search->show();
-    resizeDocks({search, results}, {150, 145}, Qt::Horizontal);
+    default_pane_resize_pending_ = true;
+    QTimer::singleShot(0, this,
+                       [this]() { ApplyPendingDefaultPaneSizing(); });
+}
+
+void MainWindow::ApplyPendingDefaultPaneSizing() {
+    if (!default_pane_resize_pending_)
+        return;
+    default_pane_resize_pending_ = false;
+    auto* history =
+        findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
+    auto* favorites =
+        findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
+    auto* results =
+        findChild<QDockWidget*>(QString::fromLatin1(kResultsPaneName));
+    if (history == nullptr || favorites == nullptr || results == nullptr)
+        return;
+
+    resizeDocks({results}, {kDefaultRightPaneWidth}, Qt::Horizontal);
+    const int right_pane_height =
+        (results->height() + favorites->height() + history->height()) / 3;
+    resizeDocks({results, favorites, history},
+                {right_pane_height, right_pane_height, right_pane_height},
+                Qt::Vertical);
 }
 
 bool MainWindow::HasUsableMainWindowLayout() const {
