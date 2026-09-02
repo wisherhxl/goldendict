@@ -39,6 +39,8 @@ class LookupPopupController;
 struct FullTextResultActivationIntent;
 }  // namespace goldendict::app
 class QAction;
+class QBoxLayout;
+class QDockWidget;
 class QLabel;
 class QLineEdit;
 class QListWidget;
@@ -528,6 +530,7 @@ class MainWindow final : public QMainWindow {
     bool ConfirmFavoriteRemoval();
     QList<QList<int>> ExpandedFavoriteFolderPaths() const;
     void ApplyDefaultPaneLayout();
+    void ApplyLookupControlsPlacement(bool search_in_dock);
     bool HasUsableMainWindowLayout() const;
     bool DispatchSafeExternalUrl(const QUrl& url);
     void ShowAboutDialog();
@@ -583,6 +586,14 @@ class MainWindow final : public QMainWindow {
     std::function<int(PreferencesDialog&)> preferences_dialog_executor_;
     bool preferences_busy_ = false;
     QPushButton* dictionary_sources_button_ = nullptr;
+    QDockWidget* search_dock_ = nullptr;
+    QToolBar* navigation_toolbar_ = nullptr;
+    QWidget* lookup_controls_ = nullptr;
+    QBoxLayout* lookup_controls_layout_ = nullptr;
+    QBoxLayout* search_layout_ = nullptr;
+    QAction* lookup_controls_action_ = nullptr;
+    QAction* query_search_action_ = nullptr;
+    QAction* query_dropdown_action_ = nullptr;
     QLineEdit* query_ = nullptr;
     QComboBox* group_selector_ = nullptr;
     QComboBox* dock_group_selector_ = nullptr;

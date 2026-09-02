@@ -466,11 +466,29 @@ Down, Tab/Backtab, Enter, Escape, focus, move, and resize behavior. Suggestion
 production and lookup activation remain behind the existing Core/facade
 boundary; a presentation-only controller owns the popup. The existing optional
 `searchInDock` mode remains supported and is regression-tested, but moving the
-query field and group selector into that dock remains a separate Batch A slice.
+query field and group selector into that dock remains a separate following
+Batch A slice.
 A complete Visual Studio 2026 Release build and the thirteen cumulative focused
 shell tests pass. Visible Windows captures record the 816 by 673 toolbar state
 and the 250 by 80 two-result popup outside the repository. This note does not
 declare Batch A or overall parity complete.
+
+Implementation note (2026-09-02): the following independently reviewable
+Batch A slice restores the optional Qt 5 docked lookup composition. Enabling
+`searchInDock` moves the single authoritative query field into the Search Pane,
+uses the synchronized group selector in the dock title, hides the toolbar lookup
+composition, permits the navigation toolbar in every dock area, and presents
+the ordered pale-yellow suggestion list below the query. Disabling the mode
+restores the same query field and text to the toolbar, restores its embedded
+search and drop-down actions, constrains the navigation toolbar to the top or
+bottom, and moves a side-docked toolbar back to the top. View-menu changes use
+the existing atomic preferences callback, while failed persistence restores the
+previous placement. Focus, selection, group identity, pending-work
+cancellation, and popup suppression remain deterministic across both
+directions. The focused suggestion smoke covers direct preference application,
+View-menu persistence, both placement transitions, lookup activation, and an
+external visible Windows capture. This note does not declare Batch A or overall
+parity complete.
 
 ### Batch B — Daily Lookup And User State
 

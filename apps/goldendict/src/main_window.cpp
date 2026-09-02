@@ -870,17 +870,17 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     query_palette.setColor(QPalette::Disabled, QPalette::Base, Qt::white);
     query_->setPalette(query_palette);
     const QPixmap search_pixmap(QStringLiteral(":/icons/system-search.png"));
-    auto* query_search_action = query_->addAction(
+    query_search_action_ = query_->addAction(
         QIcon(search_pixmap.scaled(18, 18, Qt::KeepAspectRatio,
                                    Qt::SmoothTransformation)),
         QLineEdit::LeadingPosition);
-    query_search_action->setObjectName(QStringLiteral("lookupSearchIcon"));
-    auto* query_dropdown_action = query_->addAction(
+    query_search_action_->setObjectName(QStringLiteral("lookupSearchIcon"));
+    query_dropdown_action_ = query_->addAction(
         QIcon(QStringLiteral(":/icons/1downarrow.png")),
         QLineEdit::TrailingPosition);
-    query_dropdown_action->setObjectName(
+    query_dropdown_action_->setObjectName(
         QStringLiteral("lookupSuggestionsDropdown"));
-    query_dropdown_action->setToolTip(QStringLiteral("Drop-down"));
+    query_dropdown_action_->setToolTip(QStringLiteral("Drop-down"));
     lookup_button_ = new QToolButton(central);
     lookup_button_->setObjectName(QStringLiteral("lookupButton"));
     lookup_button_->setText(QStringLiteral("Lookup"));
@@ -998,17 +998,26 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     results_list_->setAlternatingRowColors(true);
     results_dock->setWidget(results_list_);
 
-    auto* search_dock = new QDockWidget(QStringLiteral("&Search Pane"), this);
-    search_dock->setObjectName(QString::fromLatin1(kSearchPaneName));
-    auto* search_widget = new QWidget(search_dock);
-    auto* search_layout = new QVBoxLayout(search_widget);
-    search_layout->setContentsMargins(2, 1, 2, 1);
+    search_dock_ = new QDockWidget(QStringLiteral("&Search Pane"), this);
+    search_dock_->setObjectName(QString::fromLatin1(kSearchPaneName));
+    auto* const search_dock = search_dock_;
+    auto* search_widget = new QWidget(search_dock_);
+    search_layout_ = new QVBoxLayout(search_widget);
+    search_layout_->setContentsMargins(2, 1, 2, 1);
     suggestions_list_ = new QListWidget(search_widget);
     suggestions_list_->setObjectName(QStringLiteral("wordList"));
     suggestions_list_->setAlternatingRowColors(true);
-    search_layout->addWidget(suggestions_list_, 1);
-    search_dock->setWidget(search_widget);
-    auto* search_title = new QWidget(search_dock);
+    QPalette suggestions_palette = suggestions_list_->palette();
+    suggestions_palette.setColor(QPalette::Active, QPalette::Base,
+                                 lookup_background);
+    suggestions_palette.setColor(QPalette::Inactive, QPalette::Base,
+                                 lookup_background);
+    suggestions_palette.setColor(QPalette::Disabled, QPalette::Base,
+                                 Qt::white);
+    suggestions_list_->setPalette(suggestions_palette);
+    search_layout_->addWidget(suggestions_list_, 1);
+    search_dock_->setWidget(search_widget);
+    auto* search_title = new QWidget(search_dock_);
     auto* search_title_layout = new QHBoxLayout(search_title);
     search_title_layout->setContentsMargins(8, 5, 8, 4);
     search_title_layout->setSpacing(4);
@@ -1023,7 +1032,7 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     dock_group_selector_->setFocusPolicy(Qt::ClickFocus);
     search_title_layout->addWidget(dock_group_selector_);
     search_title_layout->addStretch();
-    search_dock->setTitleBarWidget(search_title);
+    search_dock_->setTitleBarWidget(search_title);
     query_default_font_ = query_->font();
     group_selector_default_font_ = group_selector_->font();
     dock_group_selector_default_font_ = dock_group_selector_->font();
@@ -1042,38 +1051,43 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     results_dock->setTitleBarWidget(results_title);
     ApplyDefaultPaneLayout();
 
-    auto* nav_toolbar = addToolBar(QStringLiteral("&Navigation"));
-    nav_toolbar->setObjectName(QStringLiteral("navToolbar"));
-    nav_toolbar->setAllowedAreas(Qt::TopToolBarArea | Qt::BottomToolBarArea);
-    back_action_ = nav_toolbar->addAction(QStringLiteral("Back"));
+    navigation_toolbar_ = addToolBar(QStringLiteral("&Navigation"));
+    navigation_toolbar_->setObjectName(QStringLiteral("navToolbar"));
+    auto* const nav_toolbar = navigation_toolbar_;
+    navigation_toolbar_->setAllowedAreas(Qt::TopToolBarArea |
+                                         Qt::BottomToolBarArea);
+    back_action_ = navigation_toolbar_->addAction(QStringLiteral("Back"));
     back_action_->setIcon(QIcon(QStringLiteral(":/icons/previous.png")));
     back_action_->setShortcut(QKeySequence::Back);
-    nav_toolbar->widgetForAction(back_action_)
+    navigation_toolbar_->widgetForAction(back_action_)
         ->setObjectName(QStringLiteral("backButton"));
-    forward_action_ = nav_toolbar->addAction(QStringLiteral("Forward"));
+    forward_action_ = navigation_toolbar_->addAction(QStringLiteral("Forward"));
     forward_action_->setIcon(QIcon(QStringLiteral(":/icons/next.png")));
     forward_action_->setShortcut(QKeySequence::Forward);
-    nav_toolbar->widgetForAction(forward_action_)
+    navigation_toolbar_->widgetForAction(forward_action_)
         ->setObjectName(QStringLiteral("forwardButton"));
-    auto* lookup_controls = new QWidget(nav_toolbar);
-    auto* lookup_layout = new QHBoxLayout(lookup_controls);
-    lookup_layout->setContentsMargins(0, 0, 0, 0);
-    lookup_layout->setSpacing(0);
-    group_selector_->setParent(lookup_controls);
-    query_->setParent(lookup_controls);
-    lookup_button_->setParent(lookup_controls);
+    lookup_controls_ = new QWidget(navigation_toolbar_);
+    lookup_controls_->setObjectName(QStringLiteral("lookupControls"));
+    lookup_controls_layout_ = new QHBoxLayout(lookup_controls_);
+    lookup_controls_layout_->setContentsMargins(0, 0, 0, 0);
+    lookup_controls_layout_->setSpacing(0);
+    group_selector_->setParent(lookup_controls_);
+    query_->setParent(lookup_controls_);
+    lookup_button_->setParent(lookup_controls_);
     group_selector_->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    group_selector_host_ = new WidgetsPresentationHost(lookup_controls);
+    group_selector_host_ = new WidgetsPresentationHost(lookup_controls_);
     group_selector_host_->setObjectName(
         QStringLiteral("widgetsGroupPresentationHost"));
     group_selector_host_->InstallActive(group_selector_);
     group_selector_host_->PreserveFirstShownWidth();
-    lookup_layout->addWidget(group_selector_host_);
-    lookup_layout->addWidget(query_, 1);
-    lookup_layout->addWidget(lookup_button_);
-    lookup_controls->setSizePolicy(QSizePolicy::Expanding,
-                                   QSizePolicy::Preferred);
-    nav_toolbar->addWidget(lookup_controls);
+    lookup_controls_layout_->addWidget(group_selector_host_);
+    lookup_controls_layout_->addWidget(query_, 1);
+    lookup_controls_layout_->addWidget(lookup_button_);
+    lookup_controls_->setSizePolicy(QSizePolicy::Expanding,
+                                    QSizePolicy::Preferred);
+    lookup_controls_action_ = navigation_toolbar_->addWidget(lookup_controls_);
+    lookup_controls_action_->setObjectName(
+        QStringLiteral("lookupControlsAction"));
     setTabOrder(group_selector_, query_);
     setTabOrder(query_, lookup_button_);
     setTabOrder(lookup_button_, suggestions_list_);
@@ -1085,7 +1099,7 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
         [this](const QString& word, Qt::KeyboardModifiers modifiers) {
             ActivateSuggestionText(word, modifiers);
         });
-    connect(query_dropdown_action, &QAction::triggered,
+    connect(query_dropdown_action_, &QAction::triggered,
             lookup_popup_controller_,
             &goldendict::app::LookupPopupController::TogglePopup);
 
@@ -1297,6 +1311,13 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     view_menu->addSeparator();
     search_dock->toggleViewAction()->setShortcut(
         QKeySequence(Qt::CTRL | Qt::Key_S));
+    connect(search_dock->toggleViewAction(), &QAction::triggered, this,
+            [this](bool search_in_dock) {
+                auto preferences = preferences_;
+                preferences.search_in_dock = search_in_dock;
+                if (!ApplyDisplayPreferences(preferences))
+                    ApplyLookupControlsPlacement(preferences_.search_in_dock);
+            });
     results_dock->toggleViewAction()->setShortcut(
         QKeySequence(Qt::CTRL | Qt::Key_R));
     favorites_dock->toggleViewAction()->setShortcut(
@@ -2700,8 +2721,10 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
     passed = passed && !windowFlags().testFlag(Qt::WindowStaysOnTopHint);
     const bool always_on_top_passed = passed;
 
-    for (auto* widget : {static_cast<QWidget*>(search_dock),
-                         static_cast<QWidget*>(results_dock),
+    auto toolbar_preferences = preferences_;
+    toolbar_preferences.search_in_dock = false;
+    SetPreferences(toolbar_preferences);
+    for (auto* widget : {static_cast<QWidget*>(results_dock),
                          static_cast<QWidget*>(favorites_dock),
                          static_cast<QWidget*>(history_dock),
                          static_cast<QWidget*>(dictionary_bar),
@@ -2710,9 +2733,36 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
     }
     QApplication::processEvents();
 
+    const auto placement_callback = preferences_apply_callback_;
+    int placement_updates = 0;
+    preferences_apply_callback_ = [&placement_updates](const auto&) {
+        ++placement_updates;
+        return QString{};
+    };
+    int search_toggles = 0;
+    const auto search_connection = connect(
+        search_dock->toggleViewAction(), &QAction::toggled, this,
+        [&search_toggles](bool) { ++search_toggles; }, Qt::DirectConnection);
+    passed = passed && !search_dock->isVisible() &&
+             !search_dock->toggleViewAction()->isChecked() &&
+             query_->parentWidget() == lookup_controls_;
+    search_dock->toggleViewAction()->trigger();
+    passed = passed && search_dock->isVisible() &&
+             search_dock->toggleViewAction()->isChecked() &&
+             preferences_.search_in_dock &&
+             query_->parentWidget() == search_dock->widget() &&
+             search_toggles == 1 && placement_updates == 1;
+    search_dock->toggleViewAction()->trigger();
+    passed = passed && !search_dock->isVisible() &&
+             !search_dock->toggleViewAction()->isChecked() &&
+             !preferences_.search_in_dock &&
+             query_->parentWidget() == lookup_controls_ &&
+             search_toggles == 2 && placement_updates == 2;
+    disconnect(search_connection);
+    preferences_apply_callback_ = placement_callback;
+    QApplication::processEvents();
     const std::string initial_state = CaptureMainWindowState();
     const QList<QPair<QWidget*, QAction*>> exposed_widgets = {
-        {search_dock, search_dock->toggleViewAction()},
         {results_dock, results_dock->toggleViewAction()},
         {favorites_dock, favorites_dock->toggleViewAction()},
         {history_dock, history_dock->toggleViewAction()},
@@ -2737,6 +2787,7 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
         passed = passed && action->isChecked() && toggles == 4;
         disconnect(connection);
     }
+    QApplication::processEvents();
     passed = passed && CaptureMainWindowState() == initial_state &&
              centralWidget() != nullptr && article_tabs_ != nullptr &&
              article_tabs_->isVisible() && article_tabs_->size().width() > 0 &&
@@ -6133,7 +6184,11 @@ void MainWindow::RunSuggestionPaneSmokeCheck(
                 QColor(254, 253, 235) &&
             !search_icon->icon().isNull() && !dropdown->icon().isNull() &&
             dropdown->toolTip() == QStringLiteral("Drop-down") &&
-            query_->hasFocus();
+            query_->hasFocus() && query_->parentWidget() == lookup_controls_ &&
+            lookup_controls_action_->isVisible() && search_icon->isVisible() &&
+            dropdown->isVisible() &&
+            navigation_toolbar_->allowedAreas() ==
+                (Qt::TopToolBarArea | Qt::BottomToolBarArea);
         const QString window_screenshot =
             qEnvironmentVariable("GOLDENDICT_TEST_LOOKUP_SCREENSHOT");
         if (passed && !window_screenshot.isEmpty())
@@ -6378,10 +6433,25 @@ void MainWindow::RunSuggestionPaneSmokeCheck(
                 bool dock_passed =
                     popup_passed && search_dock->isVisible() &&
                     !popup->isVisible() && suggestions_list_->count() == 2 &&
+                    query_->parentWidget() == search_dock->widget() &&
+                    search_layout_->indexOf(query_) == 0 &&
+                    !lookup_controls_action_->isVisible() &&
+                    !query_search_action_->isVisible() &&
+                    !query_dropdown_action_->isVisible() &&
+                    navigation_toolbar_->allowedAreas() == Qt::AllToolBarAreas &&
+                    dock_group_selector_->currentData() ==
+                        group_selector_->currentData() &&
+                    suggestions_list_->palette().color(QPalette::Active,
+                                                       QPalette::Base) ==
+                        QColor(254, 253, 235) &&
                     suggestions_list_->item(0)->text() ==
                         QStringLiteral("apple") &&
                     suggestions_list_->item(1)->text() ==
                         QStringLiteral("application");
+                const QString dock_screenshot = qEnvironmentVariable(
+                    "GOLDENDICT_TEST_DOCKED_LOOKUP_SCREENSHOT");
+                if (dock_passed && !dock_screenshot.isEmpty())
+                    dock_passed = grab().save(dock_screenshot, "PNG");
                 QKeyEvent down(QEvent::KeyPress, Qt::Key_Down,
                                Qt::NoModifier);
                 QApplication::sendEvent(query_, &down);
@@ -6415,17 +6485,60 @@ void MainWindow::RunSuggestionPaneSmokeCheck(
                         }
                         const bool reverse_passed =
                             dock_passed && !search_dock->isVisible() &&
-                            popup->count() == 2 && !popup->isVisible();
+                            popup->count() == 2 && !popup->isVisible() &&
+                            query_->parentWidget() == lookup_controls_ &&
+                            lookup_controls_layout_->indexOf(query_) == 1 &&
+                            lookup_controls_action_->isVisible() &&
+                            query_search_action_->isVisible() &&
+                            query_dropdown_action_->isVisible() &&
+                            navigation_toolbar_->allowedAreas() ==
+                                (Qt::TopToolBarArea |
+                                 Qt::BottomToolBarArea) &&
+                            query_->text() == QStringLiteral("app");
                         query_->clear();
                         query_->setText(QString(5000, QLatin1Char('x')));
                         QTimer::singleShot(
                             100, this,
-                            [this, reverse_passed,
+                            [this, search_dock, reverse_passed,
                              completion = std::move(completion)]() mutable {
                                 FinishLookup();
-                                completion(
-                                    reverse_passed &&
-                                    suggestions_list_->count() == 0);
+                                const auto original_callback =
+                                    preferences_apply_callback_;
+                                int failed_placement_updates = 0;
+                                preferences_apply_callback_ =
+                                    [&failed_placement_updates](const auto&) {
+                                        ++failed_placement_updates;
+                                        return QStringLiteral("save failed");
+                                    };
+                                search_dock->toggleViewAction()->trigger();
+                                const bool failed_action_restored =
+                                    failed_placement_updates == 1 &&
+                                    !preferences_.search_in_dock &&
+                                    !search_dock->isVisible() &&
+                                    !search_dock->toggleViewAction()
+                                         ->isChecked() &&
+                                    query_->parentWidget() == lookup_controls_;
+                                int placement_updates = 0;
+                                preferences_apply_callback_ =
+                                    [&placement_updates](const auto&) {
+                                        ++placement_updates;
+                                        return QString{};
+                                    };
+                                search_dock->toggleViewAction()->trigger();
+                                const bool action_docked =
+                                    preferences_.search_in_dock &&
+                                    query_->parentWidget() ==
+                                        search_dock->widget();
+                                search_dock->toggleViewAction()->trigger();
+                                const bool action_restored =
+                                    !preferences_.search_in_dock &&
+                                    query_->parentWidget() == lookup_controls_;
+                                preferences_apply_callback_ = original_callback;
+                                completion(reverse_passed &&
+                                           suggestions_list_->count() == 0 &&
+                                           failed_action_restored &&
+                                           placement_updates == 2 &&
+                                           action_docked && action_restored);
                             });
                     };
                 QTimer::singleShot(10, this, *reverse_poll);
@@ -6846,11 +6959,8 @@ void MainWindow::RunArticleTabsSmokeCheck(
     results_dock->toggleViewAction()->trigger();
     const bool results_hidden = !results_dock->isVisible();
     results_dock->toggleViewAction()->trigger();
-    search_dock->toggleViewAction()->trigger();
-    const bool search_hidden = !search_dock->isVisible();
-    search_dock->toggleViewAction()->trigger();
     const bool toggle_actions =
-        history_hidden && favorites_hidden && results_hidden && search_hidden &&
+        history_hidden && favorites_hidden && results_hidden &&
         history_dock->isVisible() && favorites_dock->isVisible() &&
         results_dock->isVisible() && search_dock->isVisible();
     const std::string default_state = CaptureMainWindowState();
@@ -12534,13 +12644,7 @@ void MainWindow::SetPreferences(
     }
     ApplyWordsZoom();
     ApplyArticleZoom();
-    if (lookup_popup_controller_ != nullptr)
-        lookup_popup_controller_->SetEnabled(!preferences_.search_in_dock);
-    if (auto* search =
-            findChild<QDockWidget*>(QString::fromLatin1(kSearchPaneName));
-        search != nullptr) {
-        search->setVisible(preferences_.search_in_dock);
-    }
+    ApplyLookupControlsPlacement(preferences_.search_in_dock);
     if (!preferences_.mru_tab_order)
         FinishMruTraversal();
     article_tabs_->setTabBarAutoHide(preferences_.hide_single_tab);
@@ -12943,6 +13047,60 @@ void MainWindow::ShowDictionaryResultsPane(
     if (results_dock != nullptr) {
         results_dock->show();
         results_dock->raise();
+    }
+}
+
+void MainWindow::ApplyLookupControlsPlacement(bool search_in_dock) {
+    if (search_dock_ == nullptr || navigation_toolbar_ == nullptr ||
+        lookup_controls_ == nullptr || lookup_controls_layout_ == nullptr ||
+        search_layout_ == nullptr || lookup_controls_action_ == nullptr ||
+        query_ == nullptr || query_search_action_ == nullptr ||
+        query_dropdown_action_ == nullptr) {
+        return;
+    }
+
+    const bool was_in_dock = query_->parentWidget() == search_dock_->widget();
+    if (lookup_popup_controller_ != nullptr)
+        lookup_popup_controller_->SetEnabled(false);
+
+    if (search_in_dock) {
+        lookup_controls_action_->setVisible(false);
+        query_search_action_->setVisible(false);
+        query_dropdown_action_->setVisible(false);
+        if (!was_in_dock)
+            search_layout_->insertWidget(0, query_);
+        navigation_toolbar_->setAllowedAreas(Qt::AllToolBarAreas);
+        search_dock_->setVisible(true);
+        setTabOrder(dock_group_selector_, query_);
+        setTabOrder(query_, suggestions_list_);
+    } else {
+        search_dock_->setVisible(false);
+        if (was_in_dock)
+            lookup_controls_layout_->insertWidget(1, query_, 1);
+        query_search_action_->setVisible(true);
+        query_dropdown_action_->setVisible(true);
+        lookup_controls_action_->setVisible(true);
+        navigation_toolbar_->setAllowedAreas(Qt::TopToolBarArea |
+                                             Qt::BottomToolBarArea);
+        const Qt::ToolBarArea area = toolBarArea(navigation_toolbar_);
+        if (area == Qt::LeftToolBarArea || area == Qt::RightToolBarArea) {
+            if (dictionary_bar_ != nullptr &&
+                toolBarArea(dictionary_bar_) == Qt::TopToolBarArea) {
+                insertToolBar(dictionary_bar_, navigation_toolbar_);
+            } else {
+                addToolBar(Qt::TopToolBarArea, navigation_toolbar_);
+            }
+        }
+        setTabOrder(group_selector_, query_);
+        setTabOrder(query_, lookup_button_);
+        setTabOrder(lookup_button_, suggestions_list_);
+        if (lookup_popup_controller_ != nullptr)
+            lookup_popup_controller_->SetEnabled(true);
+    }
+
+    if (was_in_dock != search_in_dock) {
+        query_->setFocus(Qt::ShortcutFocusReason);
+        query_->selectAll();
     }
 }
 

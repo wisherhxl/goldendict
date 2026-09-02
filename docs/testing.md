@@ -43,7 +43,13 @@ The next Batch A lookup-control slice adds
 `goldendict_suggestion_pane_smoke` and the affected existing
 `goldendict_escape_hides_main_window_preferences_smoke` to that focused
 regression set. It verifies the default toolbar mode before switching to and
-rechecking the existing `searchInDock` mode.
+rechecking `searchInDock`. The following docked-composition slice extends the
+same smoke to require that the authoritative query field actually moves into
+the Search Pane, toolbar lookup controls and embedded actions change visibility,
+the dock-title group selector stays synchronized, the navigation toolbar's
+allowed areas match Qt 5 in both modes, View-menu switching persists through
+the display-preferences callback, and the query text and focus survive both
+directions.
 
 It must be followed by a visible Qt 5/Qt 6 screenshot comparison; an offscreen
 smoke alone is not visual-parity evidence. Real-dictionary acceptance uses the
@@ -70,6 +76,8 @@ platform plugin with `GOLDENDICT_TEST_LOOKUP_SCREENSHOT` and
 capture records the complete window and the second records the top-level
 suggestion popup; both are written only after the structural lookup-control
 checks pass. Keep these private acceptance images outside the repository.
+Set `GOLDENDICT_TEST_DOCKED_LOOKUP_SCREENSHOT` to another external PNG path to
+record the same smoke after the structural docked-composition checks pass.
 
 The 2026-09-02 Visual Studio 2026 Release audit built the complete application
 successfully and passed the eleven focused product-shell tests above. The
@@ -94,8 +102,9 @@ accepted the bounded first shell slice and retained the following Batch A gaps
 at that revision: the lookup-control composition, dock title and count
 presentation, status wording, and native Qt 5/Qt 6 rendering differences. The
 subsequent toolbar-lookup slice closes the default-mode portion of lookup-
-control composition; the optional docked query-control arrangement remains
-open. Native scan, tray, and
+control composition, and the following docked-composition slice closes the
+optional `searchInDock` query, group, toolbar-placement, and persistence
+portion. Native scan, tray, and
 audio workflow completion remains in Batch E even though its Qt 5 shell actions
 and default states are now present. The private captures remain outside the
 repository.
@@ -1188,7 +1197,11 @@ to the optional
 and verifies the unique visible left-side `searchPane` and `wordList`, bounded
 service ordering, keyboard focus transfer and activation, history dispatch,
 toolbar-to-dock and pending dock-to-toolbar transitions, and clearing after
-activation and invalid input. The article-tabs and two-start
+activation and invalid input. It also pins the query field's actual parent and
+layout position, synchronized dock-title group identity, hidden toolbar lookup
+action and embedded icons, yellow suggestion palette, toolbar-area constraints,
+text/focus preservation, and two-way View-menu preference persistence. The
+article-tabs and two-start
 restart smokes additionally pin
 version-6 state round trips, deterministic seeding while accepting Qt 6
 versions 5 through 2, placement and visibility persistence, usable central
