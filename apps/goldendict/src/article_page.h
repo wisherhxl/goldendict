@@ -19,6 +19,7 @@ class DesktopFacade;
 
 class ArticlePage final : public QWebEnginePage {
     friend class ArticlePageAudioRoutingTestAccess;
+    friend class ArticlePageInternalHelpRoutingTestAccess;
 
     Q_OBJECT
 
@@ -31,6 +32,8 @@ class ArticlePage final : public QWebEnginePage {
    signals:
     void LookupRequested(const QString& text, const QString& internal_url,
                          ArticleLinkDisposition disposition);
+    void InternalHelpRequested(const QUrl& url,
+                               ArticleLinkDisposition disposition);
     void AudioResourceRequested(const QUrl& url);
     void ExternalUrlRequested(const QUrl& url);
 

@@ -241,6 +241,7 @@ class ApplicationServiceTest : public QObject {
     void ConfigurationRoundTripsBoundedFullTextDialogGeometry();
     void ConfigurationRoundTripsBoundedMainWindowGeometry();
     void ConfigurationRoundTripsBoundedMainWindowState();
+    void ConfigurationAcceptsLegacyMinimumZoom();
     void ConfigurationRejectsMalformedPreferencesAtomically();
     void ConfigurationRejectsGroupBoundsAndDuplicatesAtomically();
     void ConfigurationRejectsMalformedGroups();
@@ -1467,6 +1468,19 @@ void ApplicationServiceTest::ConfigurationRoundTripsBoundedMainWindowState() {
                           "main_window_state=second\n");
     QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
                              std::runtime_error);
+}
+
+void ApplicationServiceTest::ConfigurationAcceptsLegacyMinimumZoom() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {"/preserved"};
+    configuration.preferences.zoom_factor = 0.1;
+
+    SaveConfiguration(path.string(), configuration);
+
+    QCOMPARE(LoadConfiguration(path.string()).preferences.zoom_factor, 0.1);
 }
 
 void ApplicationServiceTest::

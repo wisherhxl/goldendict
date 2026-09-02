@@ -1,5 +1,9 @@
 # GoldenDict Linux Feature-Parity Matrix
 
+This engineering matrix is governed by the approved
+[Qt 6 Product Baseline CRD](qt6-product-baseline-crd.md). Incremental statuses
+do not authorize a reduced product baseline or a visual redesign.
+
 ## Status Vocabulary
 
 - `done`: implemented and verified in the Qt 6 migration.
@@ -137,6 +141,7 @@ remains part of the Audio And Speech gate below.
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |
 | Minimal application window | done | Phase 2 | smoke test |
+| Qt 5-compatible product shell | slice | CRD Batch A | first slice restores the product icon/resources, 653 by 538 default logical size, the Qt 5 menu and navigation-toolbar action inventory/order/default state, Welcome tab/page, article style, status bar, hidden demonstration controls, default left-search/right-stacked-pane arrangement, and functional routing of the legacy popup-help link through application navigation state; the eleven focused shell, routing, menu, Core favorites-export, and article-tab tests pass on Windows, while lookup-control composition, dock title/count presentation, status wording, detailed dialogs, native scan/tray/audio workflows, and state-by-state visual parity remain open |
 | Minimal lookup and article view | slice | Phase 4 | vertical-slice workflow |
 | Initial command-line lookup | slice | Phase 8/9 | one bounded plain word or case-sensitive legacy `goldendict://[/]...`/`dict://[/]...` operand is normalized privately and handed exactly once to published-facade current-tab navigation; on Linux a per-user private single-instance transport forwards that same normalized value, while an exactly bare invocation forwards a distinct activation-only message; both queue until publication and admit no duplicate application writer; options, ambiguity, malformed or unsupported input are no-ops |
 | Main tabs and navigation | slice | Phase 8 | bounded lifecycle and current-format persisted session, visible retained WebEngine tabs, configurable append/after-current placement and default activation with explicit overrides, positional or symmetric runtime-only MRU keyboard traversal without persisted reordering, deterministic close behavior, synchronized state, facade-backed navigation, a legacy-compatible active-tab results-navigation pane and accepted bounded per-dictionary article-context navigation backed by ordered lookup identities, and a cancellable per-tab prefix-suggestion pane backed only by the existing bounded suggestion service; the pinned legacy application has no persisted article-session format to migrate |

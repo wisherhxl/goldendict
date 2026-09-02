@@ -1,0 +1,26 @@
+<RCC>
+  <qresource prefix="/">
+    <file>article-style.css</file>
+    <file>qt-style.css</file>
+    <file>icons/addtab.png</file>
+    <file>icons/book.png</file>
+    <file>icons/closetab.png</file>
+    <file>icons/configure.png</file>
+    <file>icons/filesave.png</file>
+    <file>icons/folder.png</file>
+    <file>icons/home.png</file>
+    <file>icons/icon32_zoombase.png</file>
+    <file>icons/icon32_zoomin.png</file>
+    <file>icons/icon32_zoomout.png</file>
+    <file>icons/menu_button.png</file>
+    <file>icons/next.png</file>
+    <file>icons/playsound_full.png</file>
+    <file>icons/previous.png</file>
+    <file>icons/print.png</file>
+    <file>icons/programicon.png</file>
+    <file>icons/reload.png</file>
+    <file>icons/star.png</file>
+    <file>icons/star_blue.png</file>
+    <file>icons/wizard.png</file>
+  </qresource>
+</RCC>

@@ -15,6 +15,7 @@
 #include <QWebEngineUrlScheme>
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <memory>
 #include <stdexcept>
@@ -37,6 +38,69 @@
 #endif
 
 namespace {
+
+bool IsSmokeInvocation(const QStringList& arguments) {
+    static const QStringList kSmokeArguments = {
+        QStringLiteral("--smoke"),
+        QStringLiteral("--article-click-preferences-smoke"),
+        QStringLiteral("--article-click-restart-smoke"),
+        QStringLiteral("--article-context-menu-smoke"),
+        QStringLiteral("--article-scheme-registration-smoke"),
+        QStringLiteral("--article-tabs-smoke"),
+        QStringLiteral("--articles-preferences-smoke"),
+        QStringLiteral("--configuration-reload-coordinator-smoke"),
+        QStringLiteral("--dictionary-bar-smoke"),
+        QStringLiteral("--dictionary-browser-export-smoke"),
+        QStringLiteral("--dictionary-browser-smoke"),
+        QStringLiteral("--dictionary-context-navigation-smoke"),
+        QStringLiteral("--dictionary-context-preferences-smoke"),
+        QStringLiteral("--dictionary-groups-smoke"),
+        QStringLiteral("--edit-menu-smoke"),
+        QStringLiteral("--escape-hides-main-window-preferences-smoke"),
+        QStringLiteral("--escape-hides-main-window-restart-smoke"),
+        QStringLiteral("--favorites-cross-folder-move-smoke"),
+        QStringLiteral("--favorites-menu-smoke"),
+        QStringLiteral("--favorites-preferences-smoke"),
+        QStringLiteral("--favorites-smoke"),
+        QStringLiteral("--favorites-transfer-smoke"),
+        QStringLiteral("--file-menu-smoke"),
+        QStringLiteral("--full-text-dialog-smoke"),
+        QStringLiteral("--full-text-dictionary-projection-smoke"),
+        QStringLiteral("--help-menu-smoke"),
+        QStringLiteral("--help-presentation-smoke"),
+        QStringLiteral("--hide-single-tab-preferences-smoke"),
+        QStringLiteral("--history-export-smoke"),
+        QStringLiteral("--history-import-smoke"),
+        QStringLiteral("--history-management-smoke"),
+        QStringLiteral("--history-menu-smoke"),
+        QStringLiteral("--history-preferences-smoke"),
+        QStringLiteral("--history-smoke"),
+        QStringLiteral("--interface-language-russian-smoke"),
+        QStringLiteral("--interface-language-startup-smoke"),
+        QStringLiteral("--interface-language-unsupported-smoke"),
+        QStringLiteral("--mru-tab-order-preferences-smoke"),
+        QStringLiteral("--network-cache-preferences-smoke"),
+        QStringLiteral("--network-cache-preferences-restart-smoke"),
+        QStringLiteral("--optional-parts-preferences-smoke"),
+        QStringLiteral("--preferences-coordinator-predecision-smoke"),
+        QStringLiteral("--product-shell-smoke"),
+        QStringLiteral("--proxy-preferences-restart-smoke"),
+        QStringLiteral("--proxy-preferences-smoke"),
+        QStringLiteral("--search-menu-smoke"),
+        QStringLiteral("--source-directories-smoke"),
+        QStringLiteral("--suggestion-pane-smoke"),
+        QStringLiteral("--synonym-preferences-smoke"),
+        QStringLiteral("--system-print-smoke"),
+        QStringLiteral("--view-menu-smoke"),
+        QStringLiteral("--webengine-interaction-smoke"),
+        QStringLiteral("--webengine-smoke"),
+        QStringLiteral("--widgets-facade-preparation-smoke"),
+    };
+    return std::any_of(arguments.cbegin(), arguments.cend(),
+                       [](const QString& argument) {
+                           return kSmokeArguments.contains(argument);
+                       });
+}
 
 void ReportRuntimeCompositionDiagnostics(
     const std::vector<goldendict::network::RuntimeCompositionDiagnostic>&
@@ -477,18 +541,72 @@ int main(int argc, char* argv[]) {
                    : 1;
     }
 #endif
-    const QString standard_configuration_directory =
+    QString standard_configuration_directory =
         QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
-    const QString current_configuration_directory =
+    QString current_configuration_directory =
         QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-    const QString generic_data_directory =
+    QString generic_data_directory =
         QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    QString cache_directory =
+        QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+    QString home_directory = QDir::homePath();
+    QString app_data_directory = qEnvironmentVariable("APPDATA");
+    QString smoke_configuration_root;
+#if defined(Q_OS_WIN)
+    const bool smoke_invocation = IsSmokeInvocation(raw_arguments);
+    if (smoke_invocation) {
+        smoke_configuration_root =
+            qEnvironmentVariable("GOLDENDICT_TEST_CONFIG_ROOT");
+        if (smoke_configuration_root.isEmpty()) {
+            const QString test_home = qEnvironmentVariable("HOME");
+            if (!test_home.isEmpty()) {
+                const QString identity = QString::number(
+                    qHash(QDir::cleanPath(test_home), std::size_t{0}), 16);
+                smoke_configuration_root = QDir(QDir::tempPath())
+                                               .filePath(QStringLiteral(
+                                                   "goldendict-smoke-%1")
+                                                             .arg(identity));
+            }
+        }
+        if (smoke_configuration_root.isEmpty()) {
+            qCritical() << "Unable to resolve isolated smoke-test root";
+            return 1;
+        }
+        smoke_configuration_root = QDir::cleanPath(smoke_configuration_root);
+        home_directory =
+            QDir(smoke_configuration_root).filePath(QStringLiteral("home"));
+        standard_configuration_directory =
+            QDir(smoke_configuration_root)
+                .filePath(QStringLiteral("standard-config"));
+        current_configuration_directory =
+            QDir(smoke_configuration_root)
+                .filePath(QStringLiteral("current-config"));
+        generic_data_directory = QDir(smoke_configuration_root)
+                                     .filePath(QStringLiteral("generic-data"));
+        cache_directory =
+            QDir(smoke_configuration_root).filePath(QStringLiteral("cache"));
+        app_data_directory = QDir(smoke_configuration_root)
+                                 .filePath(QStringLiteral("appdata"));
+        const std::array smoke_directories{
+            home_directory, standard_configuration_directory,
+            current_configuration_directory, generic_data_directory,
+            cache_directory, app_data_directory};
+        for (const QString& directory : smoke_directories) {
+            if (!QDir().mkpath(directory)) {
+                qCritical().noquote()
+                    << "Unable to prepare isolated smoke-test directory:"
+                    << directory;
+                return 1;
+            }
+        }
+    }
+#endif
     const goldendict::app::LegacyConfigurationEnvironment location_environment{
         CurrentDesktopPlatform(),
-        QDir::homePath().toStdString(),
+        home_directory.toStdString(),
         standard_configuration_directory.toStdString(),
         QCoreApplication::applicationDirPath().toStdString(),
-        qEnvironmentVariable("APPDATA").toStdString(),
+        app_data_directory.toStdString(),
         generic_data_directory.toStdString(),
         current_configuration_directory.toStdString()};
     goldendict::app::ConfigurationLocations configuration_locations;
@@ -535,7 +653,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     const std::string default_index_directory =
-        QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
+        QDir(cache_directory)
             .filePath(QStringLiteral("indexes"))
             .toStdString();
     goldendict::core::CoreConfiguration configuration;
@@ -641,7 +759,10 @@ int main(int argc, char* argv[]) {
     }
 
     const std::string network_cache_root =
-        QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+        (smoke_configuration_root.isEmpty()
+             ? QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+             : QDir(smoke_configuration_root)
+                   .filePath(QStringLiteral("cache")))
             .toStdString();
     const auto block_runtime_recovery =
         [&](goldendict::core::PendingFailureDestination destination,
@@ -1176,6 +1297,18 @@ int main(int argc, char* argv[]) {
                                  QString::fromLocal8Bit(error.what()));
                          }
                      });
+    QObject::connect(
+        &window, &MainWindow::ExportFavoritesListRequested, &window,
+        [&](const QString& path) {
+            try {
+                goldendict::core::ExportFavoritesText(path.toStdString(),
+                                                      favorites);
+            } catch (const std::exception& error) {
+                QMessageBox::warning(&window,
+                                     QStringLiteral("GoldenDict favorites"),
+                                     QString::fromLocal8Bit(error.what()));
+            }
+        });
     const auto apply_sources =
         [&](const std::vector<std::string>& dictionary_paths,
             const std::vector<goldendict::core::SoundDirectoryConfiguration>&
@@ -1997,6 +2130,13 @@ int main(int argc, char* argv[]) {
                                  32LL * 1024LL * 1024LL;
                     app.exit(passed ? 0 : 1);
                 });
+        });
+    } else if (HasArgument(argc, argv,
+                           QStringLiteral("--product-shell-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&app, &window]() {
+            window.RunProductShellSmokeCheck(
+                [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
     } else if (HasArgument(argc, argv, QStringLiteral("--view-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });

@@ -206,6 +206,21 @@ void SerializeXmlItems(const Favorites& items, std::string* output) {
     }
 }
 
+void SerializeTextItems(const Favorites& items, std::string* output,
+                        bool* first_headword) {
+    for (const auto& item : items) {
+        if (item.kind == FavoriteItemKind::kFolder) {
+            SerializeTextItems(item.children, output, first_headword);
+            continue;
+        }
+        if (!*first_headword) {
+            output->push_back('\n');
+        }
+        output->append(item.text);
+        *first_headword = false;
+    }
+}
+
 void WriteAtomically(const std::string& path, std::string_view contents) {
     const std::filesystem::path destination(path);
     if (!destination.parent_path().empty()) {
@@ -629,6 +644,19 @@ void ExportFavoritesXml(const std::string& export_path,
     contents += "</root>\n";
     if (contents.size() > kMaximumFavoritesBytes) {
         throw std::runtime_error("Favorites XML exceeds the size limit");
+    }
+    WriteAtomically(export_path, contents);
+}
+
+void ExportFavoritesText(const std::string& export_path,
+                         const Favorites& favorites) {
+    std::size_t total = 0U;
+    ValidateItems(favorites, 0U, &total);
+    std::string contents("\xEF\xBB\xBF", 3U);
+    bool first_headword = true;
+    SerializeTextItems(favorites, &contents, &first_headword);
+    if (contents.size() > kMaximumFavoritesBytes) {
+        throw std::runtime_error("Favorites text exceeds the size limit");
     }
     WriteAtomically(export_path, contents);
 }

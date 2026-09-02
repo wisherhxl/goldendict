@@ -4,6 +4,7 @@ set(TIGER_QT_TRANSLATIONS "")
 ti_add_qt_app(goldendict MODULES core network
   EXTRAS ${qt_link} ${qt_print_support_link} ${QT_NAMESPACE}::Help)
 target_sources(goldendict PRIVATE
+  resources/product_resources.qrc
   src/audio_playback_service.cpp
   src/audio_playback_service.h
   ../../modules/core/src/application/configuration_transaction_persistence.cc
@@ -223,6 +224,23 @@ set_tests_properties(article_page_audio_routing_test PROPERTIES
     "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu"
   TIMEOUT 20)
 
+ti_add_executable(article_page_internal_help_routing_test
+  tests/article_page_internal_help_routing_test.cpp
+  src/article_page.cpp
+  src/article_page.h)
+target_include_directories(article_page_internal_help_routing_test PRIVATE src)
+ti_target_include_modules_recurse(article_page_internal_help_routing_test
+  goldendict_core)
+ti_target_link_libraries(article_page_internal_help_routing_test
+  goldendict_core ${QT_NAMESPACE}::Test ${QT_NAMESPACE}::Widgets
+  ${QT_NAMESPACE}::WebEngineCore)
+add_test(NAME article_page_internal_help_routing_test
+  COMMAND article_page_internal_help_routing_test)
+set_tests_properties(article_page_internal_help_routing_test PROPERTIES
+  ENVIRONMENT
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu"
+  TIMEOUT 20)
+
 ti_add_executable(audio_playback_service_test
   tests/audio_playback_service_test.cpp
   src/audio_playback_service.cpp
@@ -295,6 +313,14 @@ set_tests_properties(goldendict_full_text_dialog_smoke PROPERTIES
   TIMEOUT 20)
 
 add_test(NAME goldendict_smoke COMMAND $<TARGET_FILE:goldendict> --smoke)
+
+add_test(NAME goldendict_product_shell_smoke
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/product-shell-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/product_shell_smoke.cmake)
+set_tests_properties(goldendict_product_shell_smoke PROPERTIES
+  TIMEOUT 20)
 
 add_test(NAME goldendict_article_scheme_registration_smoke
   COMMAND $<TARGET_FILE:goldendict> --article-scheme-registration-smoke)
@@ -494,11 +520,12 @@ set_tests_properties(goldendict_system_print_smoke PROPERTIES
   TIMEOUT 20)
 
 add_test(NAME goldendict_article_tabs_smoke
-  COMMAND $<TARGET_FILE:goldendict> --article-tabs-smoke
-    --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DDICTIONARY_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-tabs-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/article_tabs_smoke.cmake)
 set_tests_properties(goldendict_article_tabs_smoke PROPERTIES
-  ENVIRONMENT
-    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/article-tabs-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-tabs-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/article-tabs-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_suggestion_pane_smoke

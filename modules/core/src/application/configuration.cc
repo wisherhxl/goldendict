@@ -742,7 +742,7 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         throw std::runtime_error("Manual proxy requires a host and port");
     }
     if (!std::isfinite(preferences.zoom_factor) ||
-        preferences.zoom_factor < 0.25 || preferences.zoom_factor > 5.0 ||
+        preferences.zoom_factor < 0.1 || preferences.zoom_factor > 5.0 ||
         !std::isfinite(preferences.help_zoom_factor) ||
         preferences.help_zoom_factor < 0.25 ||
         preferences.help_zoom_factor > 5.0 ||

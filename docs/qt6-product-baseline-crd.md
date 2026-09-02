@@ -422,9 +422,10 @@ Result: **Ready** (2026-09-02).
   toolbar presentation, Welcome tab/page, yellow article style, status bar,
   removal of demonstration controls from the default surface, and the default
   left-search/right-stacked-pane layout.
-- The initial slice is verified by a Release build, the product-shell,
-  article-tab, File, Edit, Search, View, History, and Favorites smoke tests,
-  and matched Qt 5/Qt 6 captures under the visual standard in Section 10.2.
+- The initial slice is verified by a Release build; the product-shell,
+  article-tab, File, Edit, Search, View, History, Favorites, and Help smoke
+  tests; and matched Qt 5/Qt 6 captures under the visual standard in Section
+  10.2.
   Later dictionary and workflow slices additionally use the external real-
   dictionary corpus defined in Section 10.4.
 - The Visual Studio 2026, Conan, CMake, Qt 6, frozen Qt 5 reference, and local
@@ -439,6 +440,23 @@ Restore the main-window structure, menus, toolbars, docks, tabs, status bar,
 welcome state, default geometry, icons, styles, and product resources. This
 batch removes the demonstration-shell appearance and establishes the visual
 container for all remaining work.
+
+Implementation note (2026-09-02): the first approved Batch A slice restores
+the product resources, default shell geometry and layout, Qt 5 menu and
+navigation-toolbar action inventory/order/default state, styled Welcome page,
+status bar, and exact popup-help link routing through application-owned
+navigation state. A complete Visual Studio 2026 Release build and the eleven
+focused shell, routing, menu, Core favorites-export, and article-tab tests
+pass. Matched English,
+empty-state, 125% Windows captures use
+the same 816 by 673 client dimensions; their raw image comparison measured
+mean absolute RGB error 20.001 with 17.42% of pixels differing by more than 16
+in at least one channel. Semantic review retains lookup-control composition,
+dock title/count presentation, status wording, and native rendering differences
+as open Batch A work. Native scan, tray, and audio workflows remain assigned to
+Batch E; their visible shell actions and first-run states are present in this
+slice. This note records completion of the bounded slice, not completion of
+Batch A.
 
 ### Batch B — Daily Lookup And User State
 

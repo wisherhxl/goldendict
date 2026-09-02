@@ -69,6 +69,8 @@ GOLDENDICT_EXPORTS FavoriteMoveResult MoveFavorite(
 GOLDENDICT_EXPORTS Favorites ImportFavoritesXml(const std::string& import_path);
 GOLDENDICT_EXPORTS void ExportFavoritesXml(const std::string& export_path,
                                            const Favorites& favorites);
+GOLDENDICT_EXPORTS void ExportFavoritesText(const std::string& export_path,
+                                            const Favorites& favorites);
 
 // Loads current favorites when present. Otherwise imports the bounded legacy
 // XML tree, atomically saves the current format, and leaves legacy data

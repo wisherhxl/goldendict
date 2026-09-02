@@ -11,6 +11,7 @@
 #include <optional>
 #include <vector>
 
+#include <QFont>
 #include <QList>
 #include <QMainWindow>
 #include <QPointF>
@@ -305,6 +306,7 @@ class MainWindow final : public QMainWindow {
     void RunFullTextDictionaryProjectionSmokeCheck(
         std::function<void(bool)> completion);
     void RunFullTextDialogSmokeCheck(std::function<void(bool)> completion);
+    void RunProductShellSmokeCheck(std::function<void(bool)> completion);
     void RunViewMenuSmokeCheck(std::function<void(bool)> completion);
     void RunHistoryMenuSmokeCheck(const QString& path,
                                   std::function<void(bool)> completion);
@@ -337,6 +339,7 @@ class MainWindow final : public QMainWindow {
         int destination_index, const QList<QList<int>>& expanded_paths);
     void ImportFavoritesRequested(const QString& path);
     void ExportFavoritesRequested(const QString& path);
+    void ExportFavoritesListRequested(const QString& path);
     void RemoveFavoriteRequested(const QList<int>& path);
     void ClearHistoryRequested();
     void ImportHistoryRequested(const QString& path, std::uint32_t group_id);
@@ -353,7 +356,16 @@ class MainWindow final : public QMainWindow {
     void PreviewArticle();
     void SaveArticleAsPdf();
     void SaveArticle();
+    void PageSetup();
+    void RescanFiles();
+    void ExportFavoritesToList();
+    bool ApplyDisplayPreferences(
+        const goldendict::core::ApplicationPreferences& preferences);
+    void ApplyArticleZoom();
+    void ApplyWordsZoom();
+    void SetAlwaysOnTop(bool enabled);
     void UpdateNavigationActions();
+    void RefreshPronounceAvailability();
     void ZoomArticle(double delta);
     void ShowDictionaryBrowser();
     void ExportHistory();
@@ -395,6 +407,9 @@ class MainWindow final : public QMainWindow {
     void NavigateArticleTab(bool forward);
     void OpenArticleLink(goldendict::core::ArticleTabId tab_id, const QUrl& url,
                          ArticleLinkDisposition disposition);
+    void OpenInternalHelpLink(goldendict::core::ArticleTabId tab_id,
+                              const QUrl& url,
+                              ArticleLinkDisposition disposition);
     void LookupArticleSelection(goldendict::core::ArticleTabId tab_id,
                                 const QString& text,
                                 ArticleLinkDisposition disposition);
@@ -567,6 +582,10 @@ class MainWindow final : public QMainWindow {
     QPushButton* dictionary_sources_button_ = nullptr;
     QLineEdit* query_ = nullptr;
     QComboBox* group_selector_ = nullptr;
+    QComboBox* dock_group_selector_ = nullptr;
+    QFont query_default_font_;
+    QFont group_selector_default_font_;
+    QFont dock_group_selector_default_font_;
     QPushButton* edit_groups_button_ = nullptr;
     std::vector<goldendict::core::DictionaryGroupConfiguration> groups_;
     std::vector<QShortcut*> group_shortcuts_;
@@ -587,6 +606,7 @@ class MainWindow final : public QMainWindow {
     FavoritesTreeWidget* favorites_tree_ = nullptr;
     QListWidget* results_list_ = nullptr;
     QListWidget* suggestions_list_ = nullptr;
+    QFont suggestions_default_font_;
     QAction* add_favorite_action_ = nullptr;
     QAction* add_favorite_folder_action_ = nullptr;
     QAction* rename_favorite_action_ = nullptr;
@@ -595,6 +615,7 @@ class MainWindow final : public QMainWindow {
     QAction* move_favorite_to_root_action_ = nullptr;
     QAction* import_favorites_action_ = nullptr;
     QAction* export_favorites_action_ = nullptr;
+    QAction* export_favorites_list_action_ = nullptr;
     QAction* remove_favorite_action_ = nullptr;
     std::function<QString()> favorites_export_path_provider_;
     std::function<QString()> favorites_import_path_provider_;
@@ -618,12 +639,27 @@ class MainWindow final : public QMainWindow {
     QLabel* article_search_status_ = nullptr;
     QAction* back_action_ = nullptr;
     QAction* forward_action_ = nullptr;
+    QAction* scan_popup_action_ = nullptr;
+    QAction* pronounce_action_ = nullptr;
     QAction* reload_action_ = nullptr;
+    QAction* zoom_in_action_ = nullptr;
+    QAction* zoom_out_action_ = nullptr;
+    QAction* zoom_reset_action_ = nullptr;
+    QAction* words_zoom_in_action_ = nullptr;
+    QAction* words_zoom_out_action_ = nullptr;
+    QAction* words_zoom_reset_action_ = nullptr;
     QAction* new_tab_action_ = nullptr;
+    QAction* page_setup_action_ = nullptr;
     QAction* print_preview_action_ = nullptr;
     QAction* print_action_ = nullptr;
     QAction* save_article_action_ = nullptr;
+    QAction* rescan_files_action_ = nullptr;
+    QAction* close_to_tray_action_ = nullptr;
     QAction* quit_action_ = nullptr;
+    QAction* toggle_menubar_action_ = nullptr;
+    QAction* show_dictionary_bar_names_action_ = nullptr;
+    QAction* use_small_toolbar_icons_action_ = nullptr;
+    QAction* always_on_top_action_ = nullptr;
     QAction* dictionaries_action_ = nullptr;
     QAction* preferences_action_ = nullptr;
     QAction* search_in_page_action_ = nullptr;
@@ -633,13 +669,14 @@ class MainWindow final : public QMainWindow {
         nullptr;
     std::string full_text_dialog_geometry_;
     QAction* visit_homepage_action_ = nullptr;
-#if defined(Q_OS_LINUX)
     QAction* show_reference_action_ = nullptr;
+#if defined(Q_OS_LINUX)
     QPointer<goldendict::app::HelpWindow> help_window_;
     QPointer<goldendict::app::FullTextSearchDialog>
         help_connected_full_text_dialog_;
     QString help_directory_override_;
 #endif
+    QAction* visit_forum_action_ = nullptr;
     QAction* open_config_folder_action_ = nullptr;
     QAction* about_action_ = nullptr;
     QString configuration_directory_;
@@ -797,6 +834,7 @@ class MainWindow final : public QMainWindow {
     bool print_in_progress_ = false;
     bool restoring_main_window_state_ = false;
     std::function<bool(QPrinter*)> print_dialog_executor_;
+    std::function<int(QPrinter*)> page_setup_executor_;
     std::function<void(QPrinter*, const std::function<void()>&)>
         print_preview_executor_;
     std::function<void(ArticleView*, QPrinter*)> print_dispatcher_;

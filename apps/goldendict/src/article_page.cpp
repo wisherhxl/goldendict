@@ -37,13 +37,7 @@ bool ArticlePage::acceptNavigationRequest(const QUrl& url, NavigationType type,
         return QWebEnginePage::acceptNavigationRequest(url, type,
                                                        is_main_frame);
     }
-    if (facade_ == nullptr) {
-        return false;
-    }
-    const auto resolved =
-        facade_->ResolveArticleUrl(url.toEncoded().toStdString());
-    if (resolved.has_value() &&
-        resolved->kind == goldendict::core::ArticleUrlKind::kLookup) {
+    const auto requested_disposition = [this, requested_new_window]() {
         const Qt::KeyboardModifiers modifiers =
             QApplication::keyboardModifiers();
         const bool middle_clicked =
@@ -56,11 +50,31 @@ bool ArticlePage::acceptNavigationRequest(const QUrl& url, NavigationType type,
                 : ArticleLinkDisposition::kCurrentTab;
         if (modifiers.testFlag(Qt::ShiftModifier)) {
             disposition = ArticleLinkDisposition::kNewForegroundTab;
-        } else if (middle_clicked || modifiers.testFlag(Qt::ControlModifier)) {
+        } else if (middle_clicked ||
+                   modifiers.testFlag(Qt::ControlModifier)) {
             disposition = ArticleLinkDisposition::kNewBackgroundTab;
         }
+        return disposition;
+    };
+    const bool internal_popup_help =
+        url.scheme() == QStringLiteral("goldendict") &&
+        url.host() == QStringLiteral("help") &&
+        url.path() == QStringLiteral("/working-with-popup") &&
+        !url.hasQuery() && url.fragment().isEmpty();
+    if (internal_popup_help) {
+        emit InternalHelpRequested(url, requested_disposition());
+        return false;
+    }
+    if (facade_ == nullptr) {
+        return false;
+    }
+    const auto resolved =
+        facade_->ResolveArticleUrl(url.toEncoded().toStdString());
+    if (resolved.has_value() &&
+        resolved->kind == goldendict::core::ArticleUrlKind::kLookup) {
         emit LookupRequested(QString::fromStdString(resolved->lookup_text),
-                             QString::fromLatin1(url.toEncoded()), disposition);
+                             QString::fromLatin1(url.toEncoded()),
+                             requested_disposition());
     } else if (resolved.has_value() &&
                resolved->kind == goldendict::core::ArticleUrlKind::kResource &&
                resolved->resource.media_type.rfind("audio/", 0) == 0) {

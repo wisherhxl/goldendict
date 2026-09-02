@@ -6,6 +6,7 @@
 #include <array>
 #include <atomic>
 #include <cmath>
+#include <cstdio>
 #include <exception>
 #include <limits>
 #include <thread>
@@ -31,6 +32,7 @@
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QIcon>
+#include <QFont>
 #include <QInputDialog>
 #include <QKeyEvent>
 #include <QKeySequence>
@@ -43,6 +45,7 @@
 #include <QMessageBox>
 #include <QMetaObject>
 #include <QMouseEvent>
+#include <QPageSetupDialog>
 #include <QPixmap>
 #include <QPointer>
 #include <QPrintDialog>
@@ -57,6 +60,8 @@
 #include <QSignalBlocker>
 #include <QSizePolicy>
 #include <QSpinBox>
+#include <QStatusBar>
+#include <QStyle>
 #include <QTabBar>
 #include <QTabWidget>
 #include <QTextBrowser>
@@ -139,6 +144,82 @@ QString EscapeHtml(QString text) {
     return text.replace('&', QStringLiteral("&amp;"))
         .replace('<', QStringLiteral("&lt;"))
         .replace('>', QStringLiteral("&gt;"));
+}
+
+constexpr char kLegacyPopupHelpUrl[] =
+    "goldendict://help/working-with-popup";
+
+const QString& LegacyArticleStylesheet() {
+    static const QString css = [] {
+        QFile stylesheet(QStringLiteral(":/article-style.css"));
+        return stylesheet.open(QFile::ReadOnly)
+                   ? QString::fromUtf8(stylesheet.readAll())
+                   : QString{};
+    }();
+    return css;
+}
+
+const QString& LegacyWelcomeHtml() {
+    static const QString html = [] {
+        return QStringLiteral(
+                   "<!doctype html><html><head><meta charset=\"utf-8\">"
+                   "<style>%1</style></head><body>"
+                   "<h3 align=\"center\">Welcome to <b>GoldenDict</b>!</h3>"
+                   "<p>To start working with the program, first visit "
+                   "<b>Edit|Dictionaries</b> to add some directory paths "
+                   "where to search for the dictionary files, set up "
+                   "various Wikipedia sites or other sources, adjust "
+                   "dictionary order or create dictionary groups."
+                   "<p>And then you're ready to look up your words! You can "
+                   "do that in this window by using a pane to the left, or "
+                   "you can <a href=\"goldendict://help/working-with-popup\">"
+                   "look up words from other active applications</a>."
+                   "<p>To customize program, check out the available "
+                   "preferences at <b>Edit|Preferences</b>. All settings "
+                   "there have tooltips, be sure to read them if you are in "
+                   "doubt about anything."
+                   "<p>Should you need further help, have any questions, "
+                   "suggestions or just wonder what the others think, you "
+                   "are welcome at the program's "
+                   "<a href=\"http://goldendict.org/forum/\">forum</a>."
+                   "<p>Check program's "
+                   "<a href=\"http://goldendict.org/\">website</a> for the "
+                   "updates."
+                   "<p>(c) 2008-2013 Konstantin Isakov. Licensed under GPLv3 "
+                   "or later.</body></html>")
+            .arg(LegacyArticleStylesheet());
+    }();
+    return html;
+}
+
+const QString& LegacyPopupHelpHtml() {
+    static const QString html = [] {
+#if defined(Q_OS_WIN)
+        const QString platform_instructions = QStringLiteral(
+            "Then just stop the cursor over the word you want to look up in "
+            "another application, and a window would pop up which would "
+            "describe it to you.");
+#else
+        const QString platform_instructions = QStringLiteral(
+            "Then just select any word you want to look up in another "
+            "application by your mouse (double-click it or swipe it with "
+            "mouse with the button pressed), and a window would pop up "
+            "which would describe the word to you.");
+#endif
+        return QStringLiteral(
+                   "<!doctype html><html><head><meta charset=\"utf-8\">"
+                   "<style>%1</style></head><body>"
+                   "<h3 align=\"center\">Working with the popup</h3>"
+                   "<p>To look up words from other active applications, you "
+                   "would need to first activate the <i>\"Scan popup "
+                   "functionality\"</i> in <b>Preferences</b>, and then "
+                   "enable it at any time either by triggering the 'Popup' "
+                   "icon above, or by clicking the tray icon down below "
+                   "with your right mouse button and choosing so in the "
+                   "menu you've popped. %2</p></body></html>")
+            .arg(LegacyArticleStylesheet(), platform_instructions);
+    }();
+    return html;
 }
 
 }  // namespace
@@ -296,6 +377,13 @@ class WidgetsFacadeActivationRelay final : public QObject {
                     ArticleLinkDisposition disposition) {
         Deliver([&](MainWindow& owner) {
             owner.OpenArticleLink(tab_id, QUrl(internal_url), disposition);
+        });
+    }
+
+    void InternalHelp(goldendict::core::ArticleTabId tab_id, const QUrl& url,
+                      ArticleLinkDisposition disposition) {
+        Deliver([&](MainWindow& owner) {
+            owner.OpenInternalHelpLink(tab_id, url, disposition);
         });
     }
 
@@ -737,11 +825,18 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
       external_url_dispatcher_(
           [](const QUrl& url) { return QDesktopServices::openUrl(url); }) {
     setWindowTitle(QStringLiteral("GoldenDict"));
-    resize(960, 640);
+    setWindowIcon(QIcon(QStringLiteral(":/icons/programicon.png")));
+    resize(653, 538);
 
     auto* central = new QWidget(this);
     auto* layout = new QVBoxLayout(central);
-    auto* controls = new QHBoxLayout();
+    layout->setContentsMargins(1, 2, 1, 0);
+    layout->setSpacing(0);
+    auto* compatibility_controls = new QWidget(central);
+    compatibility_controls->setObjectName(
+        QStringLiteral("compatibilitySourceControls"));
+    auto* controls = new QHBoxLayout(compatibility_controls);
+    controls->setContentsMargins(0, 0, 0, 0);
     dictionary_sources_button_ =
         new QPushButton(QStringLiteral("Dictionary Sources..."), central);
     dictionary_sources_button_->setObjectName(
@@ -771,24 +866,35 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     controls->addWidget(dictionary_sources_button_);
     controls->addWidget(edit_groups_button_);
     controls->addStretch();
-    layout->addLayout(controls);
+    compatibility_controls->hide();
 
-    status_ = new QLabel(QStringLiteral("No dictionary configured"), central);
-    layout->addWidget(status_);
+    status_ = new QLabel(this);
+    status_->setObjectName(QStringLiteral("statusText"));
+    statusBar()->setObjectName(QStringLiteral("mainStatusBar"));
+    statusBar()->addWidget(status_, 1);
     article_tabs_ = new QTabWidget(central);
     article_tabs_->setObjectName(QStringLiteral("articleTabs"));
     article_tabs_->setTabsClosable(true);
+#if defined(Q_OS_WIN)
+    article_tabs_->setDocumentMode(false);
+#else
     article_tabs_->setDocumentMode(true);
-    article_tabs_->setMovable(false);
+#endif
+    article_tabs_->setMovable(true);
+    article_tabs_->setIconSize(QSize(16, 16));
+    article_tabs_->tabBar()->setElideMode(Qt::ElideRight);
     article_tabs_->setTabBarAutoHide(preferences_.hide_single_tab);
     article_tabs_->tabBar()->installEventFilter(this);
     article_tabs_->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
     auto* add_tab_button = new QToolButton(article_tabs_);
     add_tab_button->setObjectName(QStringLiteral("addArticleTabButton"));
-    add_tab_button->setText(QStringLiteral("+"));
+    add_tab_button->setIcon(QIcon(QStringLiteral(":/icons/addtab.png")));
+    add_tab_button->setAutoRaise(true);
+    add_tab_button->setFocusPolicy(Qt::NoFocus);
     add_tab_button->setToolTip(QStringLiteral("New Tab"));
     auto* add_tab_menu = new QMenu(add_tab_button);
     new_tab_action_ = new QAction(QStringLiteral("&New Tab"), this);
+    new_tab_action_->setIcon(QIcon(QStringLiteral(":/icons/addtab.png")));
     new_tab_action_->setObjectName(QStringLiteral("newTab"));
     new_tab_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
     new_tab_action_->setShortcutContext(Qt::WidgetShortcut);
@@ -835,6 +941,10 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     history_layout->addWidget(history_filter_);
     history_layout->addWidget(history_list_, 1);
     history_layout->addLayout(history_buttons);
+    history_filter_->hide();
+    import_history_button_->hide();
+    export_history_button_->hide();
+    clear_history_button_->hide();
     history_dock->setWidget(history_widget);
 
     auto* favorites_dock =
@@ -870,16 +980,50 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     suggestions_list_->setAlternatingRowColors(true);
     search_layout->addWidget(suggestions_list_, 1);
     search_dock->setWidget(search_widget);
+    auto* search_title = new QWidget(search_dock);
+    auto* search_title_layout = new QHBoxLayout(search_title);
+    search_title_layout->setContentsMargins(8, 5, 8, 4);
+    search_title_layout->setSpacing(4);
+    search_title_layout->addWidget(new QLabel(QStringLiteral("Look up in:"),
+                                               search_title));
+    dock_group_selector_ = new QComboBox(search_title);
+    dock_group_selector_->setObjectName(QStringLiteral("dockGroupSelector"));
+    dock_group_selector_->setToolTip(
+        QStringLiteral("Choose a dictionary group (Alt+G)"));
+    dock_group_selector_->setMaxVisibleItems(30);
+    dock_group_selector_->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    dock_group_selector_->setFocusPolicy(Qt::ClickFocus);
+    search_title_layout->addWidget(dock_group_selector_);
+    search_title_layout->addStretch();
+    search_dock->setTitleBarWidget(search_title);
+    query_default_font_ = query_->font();
+    group_selector_default_font_ = group_selector_->font();
+    dock_group_selector_default_font_ = dock_group_selector_->font();
+    suggestions_default_font_ = suggestions_list_->font();
+
+    auto* results_title = new QWidget(results_dock);
+    auto* results_title_layout = new QHBoxLayout(results_title);
+    results_title_layout->setContentsMargins(5, 5, 5, 5);
+    auto* results_title_label =
+        new QLabel(QStringLiteral("Found in Dictionaries:"), results_title);
+    results_title_label->setObjectName(QStringLiteral("resultsTitleLabel"));
+    results_title_label->setMinimumWidth(0);
+    results_title_label->setSizePolicy(QSizePolicy::Ignored,
+                                       QSizePolicy::Preferred);
+    results_title_layout->addWidget(results_title_label, 1);
+    results_dock->setTitleBarWidget(results_title);
     ApplyDefaultPaneLayout();
 
     auto* nav_toolbar = addToolBar(QStringLiteral("&Navigation"));
     nav_toolbar->setObjectName(QStringLiteral("navToolbar"));
     nav_toolbar->setAllowedAreas(Qt::TopToolBarArea | Qt::BottomToolBarArea);
     back_action_ = nav_toolbar->addAction(QStringLiteral("Back"));
+    back_action_->setIcon(QIcon(QStringLiteral(":/icons/previous.png")));
     back_action_->setShortcut(QKeySequence::Back);
     nav_toolbar->widgetForAction(back_action_)
         ->setObjectName(QStringLiteral("backButton"));
     forward_action_ = nav_toolbar->addAction(QStringLiteral("Forward"));
+    forward_action_->setIcon(QIcon(QStringLiteral(":/icons/next.png")));
     forward_action_->setShortcut(QKeySequence::Forward);
     nav_toolbar->widgetForAction(forward_action_)
         ->setObjectName(QStringLiteral("forwardButton"));
@@ -923,9 +1067,11 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     article_toolbar->setObjectName(QStringLiteral("articleToolbar"));
     insertToolBar(article_toolbar, nav_toolbar);
     reload_action_ = article_toolbar->addAction(QStringLiteral("Reload"));
+    reload_action_->setIcon(QIcon(QStringLiteral(":/icons/reload.png")));
     article_toolbar->addSeparator();
     add_favorite_action_ =
         article_toolbar->addAction(QStringLiteral("Add to Favorites"));
+    add_favorite_action_->setIcon(QIcon(QStringLiteral(":/icons/star.png")));
     add_favorite_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_E));
     add_favorite_folder_action_ =
         article_toolbar->addAction(QStringLiteral("New Favorite Folder"));
@@ -964,24 +1110,36 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     article_search_status_->setMinimumWidth(72);
     article_toolbar->addWidget(article_search_status_);
     article_toolbar->addSeparator();
-    auto* zoom_out_action =
-        article_toolbar->addAction(QStringLiteral("Zoom Out"));
-    zoom_out_action->setShortcut(QKeySequence::ZoomOut);
-    auto* zoom_reset_action =
-        article_toolbar->addAction(QStringLiteral("Reset Zoom"));
-    zoom_reset_action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_0));
-    auto* zoom_in_action =
+    zoom_out_action_ = article_toolbar->addAction(QStringLiteral("Zoom Out"));
+    zoom_out_action_->setObjectName(QStringLiteral("zoomOut"));
+    zoom_out_action_->setIcon(
+        QIcon(QStringLiteral(":/icons/icon32_zoomout.png")));
+    zoom_out_action_->setShortcut(QKeySequence::ZoomOut);
+    zoom_reset_action_ =
+        article_toolbar->addAction(QStringLiteral("Normal Size"));
+    zoom_reset_action_->setObjectName(QStringLiteral("zoomBase"));
+    zoom_reset_action_->setIcon(
+        QIcon(QStringLiteral(":/icons/icon32_zoombase.png")));
+    zoom_reset_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_0));
+    zoom_in_action_ =
         article_toolbar->addAction(QStringLiteral("Zoom In"));
-    zoom_in_action->setShortcut(QKeySequence::ZoomIn);
+    zoom_in_action_->setObjectName(QStringLiteral("zoomIn"));
+    zoom_in_action_->setIcon(
+        QIcon(QStringLiteral(":/icons/icon32_zoomin.png")));
+    zoom_in_action_->setShortcuts(
+        {QKeySequence::ZoomIn, QKeySequence(QStringLiteral("Ctrl+="))});
     article_toolbar->addSeparator();
     auto* copy_action = article_toolbar->addAction(QStringLiteral("Copy"));
     copy_action->setShortcut(QKeySequence::Copy);
     save_article_action_ =
         article_toolbar->addAction(QStringLiteral("&Save Article"));
+    save_article_action_->setIcon(
+        QIcon(QStringLiteral(":/icons/filesave.png")));
     save_article_action_->setObjectName(QStringLiteral("saveArticle"));
     save_article_action_->setShortcut(QKeySequence(Qt::Key_F2));
     save_article_action_->setMenuRole(QAction::NoRole);
     print_action_ = article_toolbar->addAction(QStringLiteral("&Print"));
+    print_action_->setIcon(QIcon(QStringLiteral(":/icons/print.png")));
     print_action_->setObjectName(QStringLiteral("print"));
     print_action_->setShortcut(QKeySequence::Print);
     print_action_->setMenuRole(QAction::NoRole);
@@ -991,6 +1149,39 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     print_preview_action_->setMenuRole(QAction::NoRole);
     auto* print_pdf_action =
         article_toolbar->addAction(QStringLiteral("Print PDF"));
+    lookup_button_->hide();
+    nav_toolbar->addSeparator();
+    scan_popup_action_ =
+        nav_toolbar->addAction(QIcon(QStringLiteral(":/icons/wizard.png")),
+                               QStringLiteral("Scan Popup"));
+    scan_popup_action_->setObjectName(QStringLiteral("enableScanPopup"));
+    scan_popup_action_->setCheckable(true);
+    if (auto* button = nav_toolbar->widgetForAction(scan_popup_action_))
+        button->setObjectName(QStringLiteral("scanPopupButton"));
+    nav_toolbar->addSeparator();
+    pronounce_action_ = nav_toolbar->addAction(
+        QIcon(QStringLiteral(":/icons/playsound_full.png")),
+        QStringLiteral("Pronounce Word (Alt+S)"));
+    pronounce_action_->setObjectName(QStringLiteral("navPronounce"));
+    pronounce_action_->setShortcut(QKeySequence(QStringLiteral("Alt+S")));
+    pronounce_action_->setEnabled(false);
+    if (auto* button = nav_toolbar->widgetForAction(pronounce_action_))
+        button->setObjectName(QStringLiteral("soundButton"));
+    nav_toolbar->addSeparator();
+    nav_toolbar->addAction(zoom_in_action_);
+    nav_toolbar->addAction(zoom_out_action_);
+    nav_toolbar->addAction(zoom_reset_action_);
+    nav_toolbar->addSeparator();
+    nav_toolbar->addAction(save_article_action_);
+    nav_toolbar->addAction(print_action_);
+    nav_toolbar->addSeparator();
+    nav_toolbar->addAction(add_favorite_action_);
+    auto* before_options_separator = nav_toolbar->addSeparator();
+    before_options_separator->setObjectName(
+        QStringLiteral("beforeOptionsSeparator"));
+    before_options_separator->setVisible(false);
+    nav_toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    article_toolbar->hide();
     dictionary_bar_ = addToolBar(QStringLiteral("&Dictionary Bar"));
     dictionary_bar_->setObjectName(QStringLiteral("dictionaryBar"));
     dictionary_bar_->setAllowedAreas(Qt::AllToolBarAreas);
@@ -1008,11 +1199,28 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     file_menu->setObjectName(QStringLiteral("menuFile"));
     file_menu->addAction(new_tab_action_);
     file_menu->addSeparator();
+    page_setup_action_ = new QAction(QStringLiteral("Page Set&up"), this);
+    page_setup_action_->setObjectName(QStringLiteral("pageSetup"));
+    page_setup_action_->setMenuRole(QAction::NoRole);
+    file_menu->addAction(page_setup_action_);
     file_menu->addAction(print_preview_action_);
     file_menu->addAction(print_action_);
     file_menu->addSeparator();
     file_menu->addAction(save_article_action_);
     file_menu->addSeparator();
+    rescan_files_action_ = new QAction(QStringLiteral("&Rescan Files"), this);
+    rescan_files_action_->setObjectName(QStringLiteral("rescanFiles"));
+    rescan_files_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_F5));
+    rescan_files_action_->setMenuRole(QAction::NoRole);
+    file_menu->addAction(rescan_files_action_);
+    file_menu->addSeparator();
+    close_to_tray_action_ =
+        new QAction(QStringLiteral("&Close To Tray"), this);
+    close_to_tray_action_->setObjectName(QStringLiteral("actionCloseToTray"));
+    close_to_tray_action_->setShortcut(
+        QKeySequence(Qt::CTRL | Qt::Key_F4));
+    close_to_tray_action_->setMenuRole(QAction::NoRole);
+    file_menu->addAction(close_to_tray_action_);
     quit_action_ = new QAction(QStringLiteral("&Quit"), this);
     quit_action_->setObjectName(QStringLiteral("quit"));
     quit_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q));
@@ -1020,6 +1228,37 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     file_menu->addAction(quit_action_);
     auto* view_menu = app_menu_bar->addMenu(QStringLiteral("&View"));
     view_menu->setObjectName(QStringLiteral("menuView"));
+    auto* zoom_menu = view_menu->addMenu(QStringLiteral("&Zoom"));
+    zoom_menu->setObjectName(QStringLiteral("menuZoom"));
+    zoom_menu->addAction(zoom_in_action_);
+    zoom_menu->addAction(zoom_out_action_);
+    zoom_menu->addAction(zoom_reset_action_);
+    zoom_menu->addSeparator();
+    words_zoom_in_action_ = zoom_menu->addAction(
+        QIcon(QStringLiteral(":/icons/icon32_zoomin.png")),
+        QStringLiteral("Words Zoom In"));
+    words_zoom_in_action_->setObjectName(QStringLiteral("wordsZoomIn"));
+    words_zoom_in_action_->setShortcuts(
+        {QKeySequence(QStringLiteral("Alt++")),
+         QKeySequence(QStringLiteral("Alt+="))});
+    words_zoom_out_action_ = zoom_menu->addAction(
+        QIcon(QStringLiteral(":/icons/icon32_zoomout.png")),
+        QStringLiteral("Words Zoom Out"));
+    words_zoom_out_action_->setObjectName(QStringLiteral("wordsZoomOut"));
+    words_zoom_out_action_->setShortcut(QKeySequence(QStringLiteral("Alt+-")));
+    words_zoom_reset_action_ = zoom_menu->addAction(
+        QIcon(QStringLiteral(":/icons/icon32_zoombase.png")),
+        QStringLiteral("Words Normal Size"));
+    words_zoom_reset_action_->setObjectName(QStringLiteral("wordsZoomBase"));
+    words_zoom_reset_action_->setShortcut(
+        QKeySequence(QStringLiteral("Alt+0")));
+    toggle_menubar_action_ = new QAction(QStringLiteral("&Menubar"), this);
+    toggle_menubar_action_->setObjectName(QStringLiteral("toggleMenuBar"));
+    toggle_menubar_action_->setCheckable(true);
+    toggle_menubar_action_->setChecked(true);
+    toggle_menubar_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_M));
+    view_menu->addAction(toggle_menubar_action_);
+    view_menu->addSeparator();
     search_dock->toggleViewAction()->setShortcut(
         QKeySequence(Qt::CTRL | Qt::Key_S));
     results_dock->toggleViewAction()->setShortcut(
@@ -1038,16 +1277,39 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     view_menu->addSeparator();
     view_menu->addAction(dictionary_bar_->toggleViewAction());
     view_menu->addAction(nav_toolbar->toggleViewAction());
+    view_menu->addSeparator();
+    show_dictionary_bar_names_action_ =
+        new QAction(QStringLiteral("Show Names in Dictionary &Bar"), this);
+    show_dictionary_bar_names_action_->setObjectName(
+        QStringLiteral("showDictBarNames"));
+    show_dictionary_bar_names_action_->setCheckable(true);
+    view_menu->addAction(show_dictionary_bar_names_action_);
+    use_small_toolbar_icons_action_ =
+        new QAction(QStringLiteral("Show Small Icons in &Toolbars"), this);
+    use_small_toolbar_icons_action_->setObjectName(
+        QStringLiteral("useSmallIconsInToolbars"));
+    use_small_toolbar_icons_action_->setCheckable(true);
+    view_menu->addAction(use_small_toolbar_icons_action_);
+    view_menu->addSeparator();
+    always_on_top_action_ =
+        new QAction(QStringLiteral("&Always on Top"), this);
+    always_on_top_action_->setObjectName(QStringLiteral("alwaysOnTop"));
+    always_on_top_action_->setCheckable(true);
+    always_on_top_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_O));
+    view_menu->addAction(always_on_top_action_);
     auto* edit_menu = app_menu_bar->addMenu(QStringLiteral("&Edit"));
     edit_menu->setObjectName(QStringLiteral("menu_Edit"));
     dictionaries_action_ =
         new QAction(QStringLiteral("&Dictionaries..."), this);
+    dictionaries_action_->setIcon(QIcon(QStringLiteral(":/icons/book.png")));
     dictionaries_action_->setObjectName(QStringLiteral("dictionaries"));
     dictionaries_action_->setShortcut(QKeySequence(Qt::Key_F3));
     dictionaries_action_->setMenuRole(QAction::NoRole);
     edit_menu->addAction(dictionaries_action_);
     dictionary_sources_button_->addAction(dictionaries_action_);
     preferences_action_ = new QAction(QStringLiteral("&Preferences..."), this);
+    preferences_action_->setIcon(
+        QIcon(QStringLiteral(":/icons/configure.png")));
     preferences_action_->setObjectName(QStringLiteral("preferences"));
     preferences_action_->setShortcut(QKeySequence(Qt::Key_F4));
     preferences_action_->setMenuRole(QAction::PreferencesRole);
@@ -1099,6 +1361,12 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     export_favorites_action_->setObjectName(QStringLiteral("exportFavorites"));
     export_favorites_action_->setMenuRole(QAction::TextHeuristicRole);
     favorites_menu->addAction(export_favorites_action_);
+    export_favorites_list_action_ =
+        new QAction(QStringLiteral("Export to list"), this);
+    export_favorites_list_action_->setObjectName(
+        QStringLiteral("ExportFavoritesToList"));
+    export_favorites_list_action_->setMenuRole(QAction::TextHeuristicRole);
+    favorites_menu->addAction(export_favorites_list_action_);
     import_favorites_action_->setText(QStringLiteral("&Import"));
     import_favorites_action_->setObjectName(QStringLiteral("importFavorites"));
     import_favorites_action_->setMenuRole(QAction::TextHeuristicRole);
@@ -1111,7 +1379,6 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     UpdateFavoritesActions();
     auto* help_menu = app_menu_bar->addMenu(QStringLiteral("&Help"));
     help_menu->setObjectName(QStringLiteral("menu_Help"));
-#if defined(Q_OS_LINUX)
     show_reference_action_ =
         new QAction(QStringLiteral("GoldenDict reference"), this);
     show_reference_action_->setObjectName(QStringLiteral("showReference"));
@@ -1120,11 +1387,14 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     show_reference_action_->setMenuRole(QAction::NoRole);
     help_menu->addAction(show_reference_action_);
     help_menu->addSeparator();
-#endif
     visit_homepage_action_ = new QAction(QStringLiteral("&Homepage"), this);
     visit_homepage_action_->setObjectName(QStringLiteral("visitHomepage"));
     visit_homepage_action_->setMenuRole(QAction::NoRole);
     help_menu->addAction(visit_homepage_action_);
+    visit_forum_action_ = new QAction(QStringLiteral("&Forum"), this);
+    visit_forum_action_->setObjectName(QStringLiteral("visitForum"));
+    visit_forum_action_->setMenuRole(QAction::NoRole);
+    help_menu->addAction(visit_forum_action_);
     help_menu->addSeparator();
     open_config_folder_action_ =
         new QAction(QStringLiteral("&Configuration Folder"), this);
@@ -1138,7 +1408,34 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     about_action_->setToolTip(QStringLiteral("About GoldenDict"));
     about_action_->setMenuRole(QAction::AboutRole);
     help_menu->addAction(about_action_);
+
+    auto* button_menu = new QMenu(this);
+    button_menu->setObjectName(QStringLiteral("buttonMenu"));
+    button_menu->addAction(dictionaries_action_);
+    button_menu->addAction(preferences_action_);
+    button_menu->addSeparator();
+    button_menu->addMenu(favorites_menu);
+    button_menu->addMenu(history_menu);
+    button_menu->addSeparator();
+    button_menu->addMenu(file_menu);
+    button_menu->addMenu(view_menu);
+    button_menu->addMenu(search_menu);
+    button_menu->addMenu(help_menu);
+    auto* menu_button = new QToolButton(nav_toolbar);
+    menu_button->setObjectName(QStringLiteral("menuButton"));
+    menu_button->setPopupMode(QToolButton::InstantPopup);
+    menu_button->setMenu(button_menu);
+    menu_button->setIcon(QIcon(QStringLiteral(":/icons/menu_button.png")));
+    menu_button->setToolTip(QStringLiteral("Menu Button"));
+    menu_button->setFocusPolicy(Qt::NoFocus);
+    auto* menu_button_action = nav_toolbar->addWidget(menu_button);
+    menu_button_action->setObjectName(QStringLiteral("menuButtonAction"));
+    menu_button_action->setVisible(false);
     setCentralWidget(central);
+
+    QFile built_in_qt_style(QStringLiteral(":/qt-style.css"));
+    if (built_in_qt_style.open(QFile::ReadOnly))
+        setStyleSheet(QString::fromUtf8(built_in_qt_style.readAll()));
 
     scheme_handler_ = new ArticleSchemeHandler(this);
     QWebEngineProfile::defaultProfile()->installUrlSchemeHandler(
@@ -1174,8 +1471,12 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
                 if (index >= 0) {
                     selected_group_id_ =
                         group_selector_->itemData(index).toUInt();
+                    const QSignalBlocker blocker(dock_group_selector_);
+                    dock_group_selector_->setCurrentIndex(index);
                 }
             });
+    connect(dock_group_selector_, &QComboBox::currentIndexChanged,
+            group_selector_, &QComboBox::setCurrentIndex);
     connect(edit_groups_button_, &QPushButton::clicked, this,
             &MainWindow::EditDictionaryGroups);
     connect(lookup_button_, &QToolButton::clicked, this,
@@ -1350,22 +1651,73 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
             [this]() { FindInArticle(true); });
     connect(next_action, &QAction::triggered, this,
             [this]() { FindInArticle(false); });
-    connect(zoom_out_action, &QAction::triggered, this,
+    connect(zoom_out_action_, &QAction::triggered, this,
             [this]() { ZoomArticle(-0.1); });
-    connect(zoom_reset_action, &QAction::triggered, this,
-            [this]() { article_view_->setZoomFactor(1.0); });
-    connect(zoom_in_action, &QAction::triggered, this,
+    connect(zoom_reset_action_, &QAction::triggered, this, [this]() {
+        auto preferences = preferences_;
+        preferences.zoom_factor = 1.0;
+        ApplyDisplayPreferences(preferences);
+    });
+    connect(zoom_in_action_, &QAction::triggered, this,
             [this]() { ZoomArticle(0.1); });
+    connect(words_zoom_in_action_, &QAction::triggered, this, [this]() {
+        auto preferences = preferences_;
+        preferences.words_zoom_level =
+            std::min(preferences.words_zoom_level + 1, 10);
+        ApplyDisplayPreferences(preferences);
+    });
+    connect(words_zoom_out_action_, &QAction::triggered, this, [this]() {
+        auto preferences = preferences_;
+        preferences.words_zoom_level =
+            std::max(preferences.words_zoom_level - 1, -10);
+        ApplyDisplayPreferences(preferences);
+    });
+    connect(words_zoom_reset_action_, &QAction::triggered, this, [this]() {
+        auto preferences = preferences_;
+        preferences.words_zoom_level = 0;
+        ApplyDisplayPreferences(preferences);
+    });
+    connect(scan_popup_action_, &QAction::toggled, this, [this](bool enabled) {
+        status_->setText(enabled ? QStringLiteral("Scan Popup enabled")
+                                 : QStringLiteral("Scan Popup disabled"));
+    });
+    connect(pronounce_action_, &QAction::triggered, this, [this]() {
+        if (article_view_ == nullptr || facade_ == nullptr)
+            return;
+        const QPointer<MainWindow> guarded(this);
+        article_view_->page()->runJavaScript(
+            QStringLiteral(
+                "(() => { const node = document.querySelector('audio[src], "
+                "audio source[src]'); return node ? node.src : ''; })()"),
+            [guarded](const QVariant& value) {
+                if (guarded.isNull() || value.toString().isEmpty())
+                    return;
+                const QUrl url(value.toString());
+                if (guarded->audio_playback_service_->Play(
+                        *guarded->facade_, url) !=
+                    AudioPlaybackService::Result::kStarted) {
+                    guarded->status_->setText(
+                        QStringLiteral("Unable to play article audio"));
+                }
+            });
+    });
     connect(copy_action, &QAction::triggered, this, [this]() {
         if (article_page_ != nullptr)
             article_page_->triggerAction(QWebEnginePage::Copy);
     });
     connect(save_article_action_, &QAction::triggered, this,
             &MainWindow::SaveArticle);
+    connect(page_setup_action_, &QAction::triggered, this,
+            &MainWindow::PageSetup);
     connect(print_action_, &QAction::triggered, this,
             &MainWindow::PrintArticle);
     connect(print_preview_action_, &QAction::triggered, this,
             &MainWindow::PreviewArticle);
+    connect(rescan_files_action_, &QAction::triggered, this,
+            &MainWindow::RescanFiles);
+    connect(close_to_tray_action_, &QAction::triggered, this, [this]() {
+        hide();
+    });
     connect(quit_action_, &QAction::triggered, this, [this]() {
         if (quit_dispatcher_)
             quit_dispatcher_();
@@ -1374,19 +1726,61 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     });
     connect(print_pdf_action, &QAction::triggered, this,
             &MainWindow::SaveArticleAsPdf);
+    connect(toggle_menubar_action_, &QAction::toggled, this,
+            [this](bool visible) {
+                menuBar()->setVisible(visible);
+                if (auto* action = findChild<QAction*>(
+                        QStringLiteral("menuButtonAction"))) {
+                    action->setVisible(!visible);
+                }
+                if (auto* action = findChild<QAction*>(
+                        QStringLiteral("beforeOptionsSeparator"))) {
+                    action->setVisible(!visible);
+                }
+            });
+    connect(show_dictionary_bar_names_action_, &QAction::toggled, this,
+            [this](bool visible) {
+                dictionary_bar_->setToolButtonStyle(
+                    visible ? Qt::ToolButtonTextBesideIcon
+                            : Qt::ToolButtonIconOnly);
+            });
+    connect(use_small_toolbar_icons_action_, &QAction::toggled, this,
+            [this, nav_toolbar](bool small) {
+                const QStyle::PixelMetric metric =
+                    small ? QStyle::PM_SmallIconSize
+                          : QStyle::PM_ToolBarIconSize;
+                const int extent = style()->pixelMetric(metric);
+                nav_toolbar->setIconSize(QSize(extent, extent));
+                dictionary_bar_->setIconSize(QSize(extent, extent));
+            });
+    connect(always_on_top_action_, &QAction::toggled, this,
+            &MainWindow::SetAlwaysOnTop);
+    connect(export_favorites_list_action_, &QAction::triggered, this,
+            &MainWindow::ExportFavoritesToList);
     connect(search_in_page_action_, &QAction::triggered, this, [this]() {
         article_search_->setFocus();
         article_search_->selectAll();
     });
     connect(full_text_search_action_, &QAction::triggered, this,
             &MainWindow::ShowFullTextSearch);
-#if defined(Q_OS_LINUX)
     connect(show_reference_action_, &QAction::triggered, this,
+#if defined(Q_OS_LINUX)
             [this]() { ShowHelp(goldendict::app::HelpIntent::kReference); });
+#else
+            [this]() {
+                ShowMessage(QStringLiteral("GoldenDict reference"),
+                            QStringLiteral(
+                                "Use Edit|Dictionaries to configure sources, "
+                                "then enter a word in the lookup field."));
+            });
 #endif
     connect(visit_homepage_action_, &QAction::triggered, this, [this]() {
         DispatchSafeExternalUrl(
             QUrl(QStringLiteral("https://goldendict.org/")));
+    });
+    connect(visit_forum_action_, &QAction::triggered, this, [this]() {
+        DispatchSafeExternalUrl(
+            QUrl(QStringLiteral("https://goldendict.org/forum/")));
     });
     connect(open_config_folder_action_, &QAction::triggered, this, [this]() {
         DispatchSafeExternalUrl(QUrl::fromLocalFile(configuration_directory_));
@@ -1440,8 +1834,14 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
 
 bool MainWindow::DispatchSafeExternalUrl(const QUrl& url) {
     const QUrl homepage(QStringLiteral("https://goldendict.org/"));
+    const QUrl forum(QStringLiteral("https://goldendict.org/forum/"));
     const bool is_homepage =
         url == homepage && url.scheme() == QStringLiteral("https") &&
+        url.host() == QStringLiteral("goldendict.org") &&
+        url.userName().isEmpty() && url.password().isEmpty() &&
+        url.port() == -1 && url.query().isEmpty() && url.fragment().isEmpty();
+    const bool is_forum =
+        url == forum && url.scheme() == QStringLiteral("https") &&
         url.host() == QStringLiteral("goldendict.org") &&
         url.userName().isEmpty() && url.password().isEmpty() &&
         url.port() == -1 && url.query().isEmpty() && url.fragment().isEmpty();
@@ -1449,7 +1849,7 @@ bool MainWindow::DispatchSafeExternalUrl(const QUrl& url) {
         !configuration_directory_.isEmpty() &&
         QDir::isAbsolutePath(configuration_directory_) &&
         url == QUrl::fromLocalFile(configuration_directory_);
-    if ((!is_homepage && !is_configuration_directory) ||
+    if ((!is_homepage && !is_forum && !is_configuration_directory) ||
         !external_url_dispatcher_) {
         return false;
     }
@@ -1499,24 +1899,23 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
         menuBar()->actions().back()->menu() == help_menu &&
         findChildren<QMenu*>(QStringLiteral("menu_Help")).size() == 1 &&
         help_menu->title() == QStringLiteral("&Help") &&
-#if defined(Q_OS_LINUX)
-        actions.size() == 7 && actions[0] == show_reference_action_ &&
+        actions.size() == 8 && actions[0] == show_reference_action_ &&
         actions[1]->isSeparator() && actions[2] == visit_homepage_action_ &&
-        actions[3]->isSeparator() && actions[4] == open_config_folder_action_ &&
-        actions[5]->isSeparator() && actions[6] == about_action_ &&
+        actions[3] == visit_forum_action_ && actions[4]->isSeparator() &&
+        actions[5] == open_config_folder_action_ &&
+        actions[6]->isSeparator() && actions[7] == about_action_ &&
         show_reference_action_->text() ==
             QStringLiteral("GoldenDict reference") &&
         show_reference_action_->shortcut() == QKeySequence(Qt::Key_F1) &&
         show_reference_action_->shortcutContext() == Qt::WindowShortcut &&
-#else
-        actions.size() == 5 && actions[0] == visit_homepage_action_ &&
-        actions[1]->isSeparator() && actions[2] == open_config_folder_action_ &&
-        actions[3]->isSeparator() && actions[4] == about_action_ &&
-#endif
         visit_homepage_action_->text() == QStringLiteral("&Homepage") &&
         visit_homepage_action_->menuRole() == QAction::NoRole &&
         visit_homepage_action_->shortcut().isEmpty() &&
         visit_homepage_action_->isEnabled() &&
+        visit_forum_action_->text() == QStringLiteral("&Forum") &&
+        visit_forum_action_->menuRole() == QAction::NoRole &&
+        visit_forum_action_->shortcut().isEmpty() &&
+        visit_forum_action_->isEnabled() &&
         open_config_folder_action_->text() ==
             QStringLiteral("&Configuration Folder") &&
         open_config_folder_action_->menuRole() == QAction::NoRole &&
@@ -1529,12 +1928,8 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
         findChildren<QAction*>(QStringLiteral("openConfigFolder")).size() ==
             1 &&
         findChildren<QAction*>(QStringLiteral("about")).size() == 1 &&
-#if defined(Q_OS_LINUX)
         findChildren<QAction*>(QStringLiteral("showReference")).size() == 1 &&
-#else
-        findChildren<QAction*>(QStringLiteral("showReference")).isEmpty() &&
-#endif
-        findChildren<QAction*>(QStringLiteral("visitForum")).isEmpty();
+        findChildren<QAction*>(QStringLiteral("visitForum")).size() == 1;
 
     const auto all_actions = findChildren<QAction*>();
     passed = passed &&
@@ -1546,12 +1941,7 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
                            [](const QAction* action) {
                                return action->shortcuts().contains(
                                    QKeySequence(Qt::Key_F1));
-                           }) ==
-#if defined(Q_OS_LINUX)
-                 1;
-#else
-                 0;
-#endif
+                           }) == 1;
 
 #if defined(Q_OS_LINUX)
     help_directory_override_ = help_directory;
@@ -1716,6 +2106,7 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
         return true;
     };
     int homepage_triggers = 0;
+    int forum_triggers = 0;
     int folder_triggers = 0;
     const auto homepage_connection = connect(
         visit_homepage_action_, &QAction::triggered, this,
@@ -1723,19 +2114,27 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
     const auto folder_connection = connect(
         open_config_folder_action_, &QAction::triggered, this,
         [&folder_triggers]() { ++folder_triggers; }, Qt::DirectConnection);
+    const auto forum_connection = connect(
+        visit_forum_action_, &QAction::triggered, this,
+        [&forum_triggers]() { ++forum_triggers; }, Qt::DirectConnection);
     visit_homepage_action_->trigger();
+    visit_forum_action_->trigger();
     open_config_folder_action_->trigger();
     disconnect(homepage_connection);
     disconnect(folder_connection);
-    passed = passed && homepage_triggers == 1 && folder_triggers == 1 &&
+    disconnect(forum_connection);
+    passed = passed && homepage_triggers == 1 && forum_triggers == 1 &&
+             folder_triggers == 1 &&
              dispatched_urls ==
                  QList<QUrl>{QUrl(QStringLiteral("https://goldendict.org/")),
+                             QUrl(QStringLiteral(
+                                 "https://goldendict.org/forum/")),
                              QUrl::fromLocalFile(configuration_directory_)};
     const qsizetype safe_dispatch_count = dispatched_urls.size();
     for (const QUrl& unsafe :
          {QUrl(QStringLiteral("http://goldendict.org/")),
           QUrl(QStringLiteral("https://user@goldendict.org/")),
-          QUrl(QStringLiteral("https://goldendict.org/forum/")),
+          QUrl(QStringLiteral("https://goldendict.org/forum/?unexpected=1")),
           QUrl(QStringLiteral("javascript:alert(1)")),
           QUrl::fromLocalFile(QDir(configuration_directory_)
                                   .filePath(QStringLiteral("other")))}) {
@@ -1789,6 +2188,270 @@ void MainWindow::RunHelpMenuSmokeCheck(const QString& help_directory,
     completion(passed);
 }
 
+void MainWindow::RunProductShellSmokeCheck(
+    std::function<void(bool)> completion) {
+    auto* search_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kSearchPaneName));
+    auto* results_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kResultsPaneName));
+    auto* history_filter =
+        findChild<QLineEdit*>(QStringLiteral("historyFilter"));
+    auto* add_tab_button =
+        findChild<QToolButton*>(QStringLiteral("addArticleTabButton"));
+    auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
+    auto* article_toolbar =
+        findChild<QToolBar*>(QStringLiteral("articleToolbar"));
+    auto* compatibility_controls =
+        findChild<QWidget*>(QStringLiteral("compatibilitySourceControls"));
+    auto* results_title_label =
+        findChild<QLabel*>(QStringLiteral("resultsTitleLabel"));
+    if (search_dock == nullptr || results_dock == nullptr ||
+        history_filter == nullptr || add_tab_button == nullptr ||
+        nav_toolbar == nullptr || article_toolbar == nullptr ||
+        compatibility_controls == nullptr || results_title_label == nullptr ||
+        article_tabs_ == nullptr || article_view_ == nullptr ||
+        article_page_ == nullptr) {
+        completion(false);
+        return;
+    }
+
+    ApplyDefaultPaneLayout();
+    auto baseline_preferences = preferences_;
+    baseline_preferences.search_in_dock = false;
+    SetPreferences(baseline_preferences);
+    if (article_tabs_->tabText(article_tabs_->currentIndex()) !=
+        QStringLiteral("Welcome!")) {
+        CreateEmptyArticleTab(true);
+    }
+    QApplication::processEvents();
+
+#if defined(Q_OS_WIN)
+    constexpr bool expected_document_mode = false;
+#else
+    constexpr bool expected_document_mode = true;
+#endif
+    const auto nav_actions = nav_toolbar->actions();
+    const bool shell_matches =
+        windowIcon().isNull() == false && width() >= 653 && height() >= 538 &&
+        !compatibility_controls->isVisible() &&
+        !dictionary_sources_button_->isVisible() &&
+        statusBar() != nullptr && status_->parentWidget() == statusBar() &&
+        article_tabs_->isMovable() &&
+        article_tabs_->documentMode() == expected_document_mode &&
+        article_tabs_->iconSize() == QSize(16, 16) &&
+        article_tabs_->tabText(article_tabs_->currentIndex()) ==
+            QStringLiteral("Welcome!") &&
+        !add_tab_button->icon().isNull() && !search_dock->isVisible() &&
+        results_dock->isVisible() &&
+        results_title_label->text() ==
+            QStringLiteral("Found in Dictionaries:") &&
+        !history_filter->isVisible() && !article_toolbar->isVisible() &&
+        nav_toolbar->isVisible() && nav_actions.size() == 18 &&
+        back_action_ != nullptr && !back_action_->icon().isNull() &&
+        forward_action_ != nullptr && !forward_action_->icon().isNull() &&
+        nav_actions[0] == back_action_ && nav_actions[1] == forward_action_ &&
+        !nav_actions[2]->isSeparator() && nav_actions[3]->isSeparator() &&
+        nav_actions[4] == scan_popup_action_ &&
+        scan_popup_action_->isVisible() && scan_popup_action_->isCheckable() &&
+        !scan_popup_action_->isChecked() &&
+        !scan_popup_action_->icon().isNull() &&
+        nav_actions[5]->isSeparator() &&
+        nav_actions[6] == pronounce_action_ &&
+        !pronounce_action_->isEnabled() &&
+        !pronounce_action_->icon().isNull() &&
+        nav_actions[7]->isSeparator() && nav_actions[8] == zoom_in_action_ &&
+        nav_actions[9] == zoom_out_action_ &&
+        nav_actions[10] == zoom_reset_action_ &&
+        nav_actions[11]->isSeparator() &&
+        nav_actions[12] == save_article_action_ &&
+        nav_actions[13] == print_action_ && nav_actions[14]->isSeparator() &&
+        nav_actions[15] == add_favorite_action_ &&
+        nav_actions[16]->isSeparator() && !nav_actions[16]->isVisible() &&
+        nav_actions[17]->objectName() == QStringLiteral("menuButtonAction") &&
+        !nav_actions[17]->isVisible() &&
+        save_article_action_ != nullptr &&
+        !save_article_action_->icon().isNull() && print_action_ != nullptr &&
+        !print_action_->icon().isNull() && add_favorite_action_ != nullptr &&
+        !add_favorite_action_->icon().isNull();
+    const QString baseline_status = status_->text();
+    scan_popup_action_->trigger();
+    const bool scan_enabled = scan_popup_action_->isChecked() &&
+                              status_->text() ==
+                                  QStringLiteral("Scan Popup enabled");
+    scan_popup_action_->trigger();
+    const bool scan_state_matches =
+        scan_enabled && !scan_popup_action_->isChecked() &&
+        status_->text() == QStringLiteral("Scan Popup disabled");
+    status_->setText(baseline_status);
+    if (!shell_matches) {
+        qCritical() << "Product shell structure mismatch"
+                   << "size" << size() << "windowIcon" << !windowIcon().isNull()
+                   << "compatibilityVisible"
+                   << compatibility_controls->isVisible()
+                   << "sourcesVisible"
+                   << dictionary_sources_button_->isVisible() << "statusParent"
+                   << (status_->parentWidget() == statusBar()) << "movable"
+                   << article_tabs_->isMovable() << "documentMode"
+                   << article_tabs_->documentMode() << "tabIconSize"
+                   << article_tabs_->iconSize() << "tabTitle"
+                   << article_tabs_->tabText(article_tabs_->currentIndex())
+                   << "addIcon" << !add_tab_button->icon().isNull()
+                   << "searchVisible" << search_dock->isVisible()
+                   << "resultsVisible" << results_dock->isVisible()
+                   << "historyFilterVisible" << history_filter->isVisible()
+                   << "articleToolbarVisible" << article_toolbar->isVisible()
+                   << "navVisible" << nav_toolbar->isVisible() << "navActions"
+                   << nav_actions.size();
+    }
+
+    auto completion_callback =
+        std::make_shared<std::function<void(bool)>>(std::move(completion));
+    auto screenshot_saved = std::make_shared<bool>(true);
+    auto help_attempts = std::make_shared<int>(0);
+    auto help_poll = std::make_shared<std::function<void()>>();
+    *help_poll = [this, shell_matches, scan_state_matches, screenshot_saved,
+                  help_attempts, help_poll, completion_callback]() {
+        article_view_->page()->toPlainText(
+            [this, shell_matches, scan_state_matches, screenshot_saved,
+             help_attempts, help_poll,
+             completion_callback](const QString& text) {
+                const auto state = facade_->GetArticleTabsState();
+                const auto active = std::find_if(
+                    state.tabs.begin(), state.tabs.end(),
+                    [&state](const auto& tab) {
+                        return tab.id == state.active_tab_id;
+                    });
+                const bool navigation_matches =
+                    active != state.tabs.end() && active->can_go_back &&
+                    active->navigation.kind ==
+                        goldendict::core::TabNavigationKind::kInternalLink &&
+                    active->navigation.title == "Working with popup" &&
+                    active->navigation.internal_url == kLegacyPopupHelpUrl;
+                const bool help_matches =
+                    text.contains(QStringLiteral("Working with the popup")) &&
+                    text.contains(QStringLiteral("Scan popup functionality"));
+                if ((!navigation_matches || !help_matches) &&
+                    ++*help_attempts < 100) {
+                    QTimer::singleShot(20, this, *help_poll);
+                    return;
+                }
+                if (!navigation_matches || !help_matches) {
+                    qCritical() << "Product shell internal help mismatch"
+                               << "navigation" << navigation_matches
+                               << text.left(160);
+                    const QByteArray diagnostic = text.left(240).toUtf8();
+                    std::fprintf(stderr, "product shell help text: %s\n",
+                                 diagnostic.constData());
+                    std::fflush(stderr);
+                }
+                const bool passed = shell_matches && scan_state_matches &&
+                                    *screenshot_saved &&
+                                    navigation_matches && help_matches;
+                if (!passed) {
+                    std::fprintf(
+                        stderr,
+                        "product shell result: shell=%d scan=%d screenshot=%d "
+                        "navigation=%d help=%d attempts=%d\n",
+                        shell_matches, scan_state_matches, *screenshot_saved,
+                        navigation_matches, help_matches, *help_attempts);
+                    std::fflush(stderr);
+                }
+                (*completion_callback)(passed);
+            });
+    };
+    auto start_help =
+        [this, screenshot_saved, help_poll](bool screenshot_result) {
+            *screenshot_saved = screenshot_result;
+            emit article_page_->InternalHelpRequested(
+                QUrl(QString::fromLatin1(kLegacyPopupHelpUrl)),
+                ArticleLinkDisposition::kCurrentTab);
+            QTimer::singleShot(0, this, *help_poll);
+        };
+
+    auto welcome_attempts = std::make_shared<int>(0);
+    auto welcome_poll = std::make_shared<std::function<void()>>();
+    *welcome_poll = [this, shell_matches, welcome_attempts, welcome_poll,
+                     start_help]() {
+        article_view_->page()->toPlainText(
+            [this, shell_matches, welcome_attempts, welcome_poll,
+             start_help](const QString& text) {
+                const bool welcome_matches =
+                    text.contains(QStringLiteral("Welcome to GoldenDict!")) &&
+                    text.contains(QStringLiteral("Edit|Dictionaries")) &&
+                    text.contains(QStringLiteral("GPLv3 or later"));
+                if (!welcome_matches && ++*welcome_attempts < 100) {
+                    QTimer::singleShot(20, this, *welcome_poll);
+                    return;
+                }
+                if (!welcome_matches) {
+                    qCritical() << "Product shell welcome mismatch"
+                               << text.left(160);
+                    start_help(false);
+                    return;
+                }
+                const QString screenshot_path =
+                    qEnvironmentVariable("GOLDENDICT_TEST_SCREENSHOT");
+                if (screenshot_path.isEmpty()) {
+                    start_help(true);
+                    return;
+                }
+                QTimer::singleShot(
+                    250, this,
+                    [this, screenshot_path, start_help]() {
+                        const QFileInfo screenshot_file(screenshot_path);
+                        bool saved =
+                            QDir().mkpath(screenshot_file.absolutePath()) &&
+                            grab().save(screenshot_path, "PNG");
+                        const QString menu_directory = qEnvironmentVariable(
+                            "GOLDENDICT_TEST_MENU_SCREENSHOT_DIRECTORY");
+                        if (saved && !menu_directory.isEmpty()) {
+                            saved = QDir().mkpath(menu_directory);
+                            const QList<QPair<QString, QMenu*>> menus = {
+                                {QStringLiteral("file-menu.png"),
+                                 findChild<QMenu*>(
+                                     QStringLiteral("menuFile"))},
+                                {QStringLiteral("view-menu.png"),
+                                 findChild<QMenu*>(
+                                     QStringLiteral("menuView"))},
+                                {QStringLiteral("zoom-menu.png"),
+                                 findChild<QMenu*>(
+                                     QStringLiteral("menuZoom"))},
+                                {QStringLiteral("favorites-menu.png"),
+                                 findChild<QMenu*>(
+                                     QStringLiteral("menuFavorites"))},
+                                {QStringLiteral("help-menu.png"),
+                                 findChild<QMenu*>(
+                                     QStringLiteral("menu_Help"))},
+                            };
+                            for (const auto& [name, menu] : menus) {
+                                if (menu == nullptr) {
+                                    saved = false;
+                                    break;
+                                }
+                                menu->ensurePolished();
+                                menu->adjustSize();
+                                menu->popup(mapToGlobal(QPoint(0, 0)));
+                                QApplication::processEvents();
+                                saved =
+                                    menu->grab().save(
+                                        QDir(menu_directory).filePath(name),
+                                        "PNG") &&
+                                    saved;
+                                menu->hide();
+                            }
+                        }
+                        if (!saved) {
+                            qWarning()
+                                << "Unable to save product shell screenshot"
+                                << screenshot_path;
+                        }
+                        start_help(saved);
+                    });
+            });
+    };
+    QTimer::singleShot(0, this, *welcome_poll);
+}
+
 void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
     auto* app_menu_bar = findChild<QMenuBar*>(QStringLiteral("menubar"));
     auto* view_menu = findChild<QMenu*>(QStringLiteral("menuView"));
@@ -1803,15 +2466,30 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
     auto* nav_toolbar = findChild<QToolBar*>(QStringLiteral("navToolbar"));
     auto* dictionary_bar =
         findChild<QToolBar*>(QStringLiteral("dictionaryBar"));
+    auto* zoom_menu = findChild<QMenu*>(QStringLiteral("menuZoom"));
+    auto* menu_button = findChild<QToolButton*>(QStringLiteral("menuButton"));
     if (app_menu_bar == nullptr || view_menu == nullptr ||
         search_dock == nullptr || results_dock == nullptr ||
         favorites_dock == nullptr || history_dock == nullptr ||
-        nav_toolbar == nullptr || dictionary_bar == nullptr) {
+        nav_toolbar == nullptr || dictionary_bar == nullptr ||
+        zoom_menu == nullptr || menu_button == nullptr) {
+        std::fprintf(stderr,
+                     "view menu missing: bar=%d menu=%d search=%d results=%d "
+                     "favorites=%d history=%d nav=%d dictionary=%d zoom=%d "
+                     "button=%d\n",
+                     app_menu_bar != nullptr, view_menu != nullptr,
+                     search_dock != nullptr, results_dock != nullptr,
+                     favorites_dock != nullptr, history_dock != nullptr,
+                     nav_toolbar != nullptr, dictionary_bar != nullptr,
+                     zoom_menu != nullptr, menu_button != nullptr);
         completion(false);
         return;
     }
 
     const QList<QAction*> expected_actions = {
+        zoom_menu->menuAction(),
+        toggle_menubar_action_,
+        nullptr,
         search_dock->toggleViewAction(),
         results_dock->toggleViewAction(),
         favorites_dock->toggleViewAction(),
@@ -1819,6 +2497,11 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
         nullptr,
         dictionary_bar->toggleViewAction(),
         nav_toolbar->toggleViewAction(),
+        nullptr,
+        show_dictionary_bar_names_action_,
+        use_small_toolbar_icons_action_,
+        nullptr,
+        always_on_top_action_,
     };
     const auto actions = view_menu->actions();
     bool passed =
@@ -1832,6 +2515,10 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
     for (qsizetype index = 0; passed && index < actions.size(); ++index) {
         if (expected_actions[index] == nullptr) {
             passed = actions[index]->isSeparator();
+        } else if (index == 0) {
+            passed = actions[index] == expected_actions[index] &&
+                     actions[index]->menu() == zoom_menu &&
+                     zoom_menu->title() == QStringLiteral("&Zoom");
         } else {
             QString accessible_text = actions[index]->text();
             accessible_text.remove('&');
@@ -1846,6 +2533,17 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
         }
     }
     passed = passed &&
+             toggle_menubar_action_->text() == QStringLiteral("&Menubar") &&
+             toggle_menubar_action_->shortcut() ==
+                 QKeySequence(Qt::CTRL | Qt::Key_M) &&
+             show_dictionary_bar_names_action_->text() ==
+                 QStringLiteral("Show Names in Dictionary &Bar") &&
+             use_small_toolbar_icons_action_->text() ==
+                 QStringLiteral("Show Small Icons in &Toolbars") &&
+             always_on_top_action_->text() ==
+                 QStringLiteral("&Always on Top") &&
+             always_on_top_action_->shortcut() ==
+                 QKeySequence(Qt::CTRL | Qt::Key_O) &&
              search_dock->toggleViewAction()->shortcut() ==
                  QKeySequence(Qt::CTRL | Qt::Key_S) &&
              results_dock->toggleViewAction()->shortcut() ==
@@ -1857,7 +2555,9 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
              dictionary_bar->toggleViewAction()->shortcut().isEmpty() &&
              nav_toolbar->toggleViewAction()->shortcut().isEmpty();
     const auto all_actions = findChildren<QAction*>();
-    for (const auto& shortcut : {QKeySequence(Qt::CTRL | Qt::Key_S),
+    for (const auto& shortcut : {QKeySequence(Qt::CTRL | Qt::Key_M),
+                                 QKeySequence(Qt::CTRL | Qt::Key_O),
+                                 QKeySequence(Qt::CTRL | Qt::Key_S),
                                  QKeySequence(Qt::CTRL | Qt::Key_R),
                                  QKeySequence(Qt::CTRL | Qt::Key_I),
                                  QKeySequence(Qt::CTRL | Qt::Key_H)}) {
@@ -1868,6 +2568,111 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
                               return action->shortcuts().contains(shortcut);
                           }) == 1;
     }
+    const bool structure_passed = passed;
+
+    const auto zoom_actions = zoom_menu->actions();
+    passed = passed && zoom_actions.size() == 7 &&
+             zoom_actions[0] == zoom_in_action_ &&
+             zoom_actions[1] == zoom_out_action_ &&
+             zoom_actions[2] == zoom_reset_action_ &&
+             zoom_actions[3]->isSeparator() &&
+             zoom_actions[4] == words_zoom_in_action_ &&
+             zoom_actions[5] == words_zoom_out_action_ &&
+             zoom_actions[6] == words_zoom_reset_action_;
+    const auto original_preferences_callback = preferences_apply_callback_;
+    int display_preference_updates = 0;
+    preferences_apply_callback_ = [&display_preference_updates](const auto&) {
+        ++display_preference_updates;
+        return QString{};
+    };
+    auto* secondary_view = new ArticleView(article_tabs_);
+    const int secondary_index =
+        article_tabs_->addTab(secondary_view, QStringLiteral("Zoom fixture"));
+    article_view_->setZoomFactor(1.0);
+    secondary_view->setZoomFactor(1.0);
+    zoom_in_action_->trigger();
+    passed = passed && preferences_.zoom_factor == 1.1 &&
+             article_view_->zoomFactor() == 1.1 &&
+             secondary_view->zoomFactor() == 1.1 &&
+             display_preference_updates == 1 &&
+             zoom_reset_action_->isEnabled();
+    zoom_reset_action_->trigger();
+    passed = passed && preferences_.zoom_factor == 1.0 &&
+             article_view_->zoomFactor() == 1.0 &&
+             secondary_view->zoomFactor() == 1.0 &&
+             display_preference_updates == 2;
+    article_tabs_->removeTab(secondary_index);
+    delete secondary_view;
+    const qreal initial_word_size = suggestions_list_->font().pointSizeF();
+    const qreal initial_query_size = query_->font().pointSizeF();
+    const qreal initial_group_size = group_selector_->font().pointSizeF();
+    const qreal initial_dock_group_size =
+        dock_group_selector_->font().pointSizeF();
+    const QFont initial_results_font = results_list_->font();
+    const QFont initial_history_font = history_list_->font();
+    const QFont initial_favorites_font = favorites_tree_->font();
+    words_zoom_in_action_->trigger();
+    passed = passed && suggestions_list_->font().pointSizeF() >
+                           initial_word_size &&
+             query_->font().pointSizeF() > initial_query_size &&
+             group_selector_->font().pointSizeF() > initial_group_size &&
+             dock_group_selector_->font().pointSizeF() >
+                 initial_dock_group_size &&
+             results_list_->font() == initial_results_font &&
+             history_list_->font() == initial_history_font &&
+             favorites_tree_->font() == initial_favorites_font &&
+             display_preference_updates == 3 &&
+             words_zoom_reset_action_->isEnabled();
+    words_zoom_reset_action_->trigger();
+    passed = passed && preferences_.words_zoom_level == 0 &&
+             suggestions_list_->font().pointSizeF() == initial_word_size &&
+             query_->font().pointSizeF() == initial_query_size &&
+             group_selector_->font().pointSizeF() == initial_group_size &&
+             dock_group_selector_->font().pointSizeF() ==
+                 initial_dock_group_size &&
+             display_preference_updates == 4;
+    preferences_apply_callback_ = original_preferences_callback;
+    const bool zoom_passed = passed;
+
+    toggle_menubar_action_->setChecked(false);
+    QApplication::processEvents();
+    passed = passed && !app_menu_bar->isVisible() && menu_button->isVisible();
+    toggle_menubar_action_->setChecked(true);
+    QApplication::processEvents();
+    passed = passed && app_menu_bar->isVisible() && !menu_button->isVisible();
+    const bool menubar_passed = passed;
+
+    show_dictionary_bar_names_action_->setChecked(true);
+    passed = passed && dictionary_bar->toolButtonStyle() ==
+                           Qt::ToolButtonTextBesideIcon;
+    show_dictionary_bar_names_action_->setChecked(false);
+    passed = passed &&
+             dictionary_bar->toolButtonStyle() == Qt::ToolButtonIconOnly;
+    const bool dictionary_style_passed = passed;
+
+    use_small_toolbar_icons_action_->setChecked(true);
+    passed = passed && nav_toolbar->iconSize().width() ==
+                           style()->pixelMetric(QStyle::PM_SmallIconSize);
+    use_small_toolbar_icons_action_->setChecked(false);
+    passed = passed && nav_toolbar->iconSize().width() ==
+                           style()->pixelMetric(QStyle::PM_ToolBarIconSize);
+    const bool icon_size_passed = passed;
+
+    always_on_top_action_->setChecked(true);
+    passed = passed && windowFlags().testFlag(Qt::WindowStaysOnTopHint);
+    always_on_top_action_->setChecked(false);
+    passed = passed && !windowFlags().testFlag(Qt::WindowStaysOnTopHint);
+    const bool always_on_top_passed = passed;
+
+    for (auto* widget : {static_cast<QWidget*>(search_dock),
+                         static_cast<QWidget*>(results_dock),
+                         static_cast<QWidget*>(favorites_dock),
+                         static_cast<QWidget*>(history_dock),
+                         static_cast<QWidget*>(dictionary_bar),
+                         static_cast<QWidget*>(nav_toolbar)}) {
+        widget->show();
+    }
+    QApplication::processEvents();
 
     const std::string initial_state = CaptureMainWindowState();
     const QList<QPair<QWidget*, QAction*>> exposed_widgets = {
@@ -1903,6 +2708,16 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
     if (!passed) {
         qWarning() << "view menu smoke check failed" << actions.size()
                    << app_menu_bar->actions().size();
+        std::fprintf(stderr,
+                     "view menu result: actions=%lld menubar=%d button=%d "
+                     "wordZoom=%d alwaysOnTop=%d stages=%d%d%d%d%d%d\n",
+                     static_cast<long long>(actions.size()),
+                     app_menu_bar->isVisible(), menu_button->isVisible(),
+                     preferences_.words_zoom_level,
+                     windowFlags().testFlag(Qt::WindowStaysOnTopHint),
+                     structure_passed, zoom_passed, menubar_passed,
+                     dictionary_style_passed, icon_size_passed,
+                     always_on_top_passed);
     }
     completion(passed);
 }
@@ -2023,28 +2838,32 @@ void MainWindow::RunFavoritesMenuSmokeCheck(
         menuBar()->actions().size() == 7 &&
         menuBar()->actions()[5]->menu() == favorites_menu &&
         favorites_menu->title() == QStringLiteral("Favo&rites") &&
-        actions.size() == 5 &&
+        actions.size() == 6 &&
         actions[0] == favorites_dock->toggleViewAction() &&
         actions[1] == export_favorites_action_ &&
-        actions[2] == import_favorites_action_ && actions[3]->isSeparator() &&
-        actions[4] == add_favorite_action_ &&
+        actions[2] == export_favorites_list_action_ &&
+        actions[3] == import_favorites_action_ && actions[4]->isSeparator() &&
+        actions[5] == add_favorite_action_ &&
         actions[0]->objectName() == QStringLiteral("showHideFavorites") &&
         actions[1]->objectName() == QStringLiteral("exportFavorites") &&
-        actions[2]->objectName() == QStringLiteral("importFavorites") &&
-        actions[4]->objectName() == QStringLiteral("actionAddToFavorites") &&
+        actions[2]->objectName() == QStringLiteral("ExportFavoritesToList") &&
+        actions[3]->objectName() == QStringLiteral("importFavorites") &&
+        actions[5]->objectName() == QStringLiteral("actionAddToFavorites") &&
         actions[1]->text() == QStringLiteral("&Export") &&
-        actions[2]->text() == QStringLiteral("&Import") &&
-        actions[4]->text() == QStringLiteral("&Add") &&
+        actions[2]->text() == QStringLiteral("Export to list") &&
+        actions[3]->text() == QStringLiteral("&Import") &&
+        actions[5]->text() == QStringLiteral("&Add") &&
         findChildren<QAction*>(QStringLiteral("ExportFavoritesToList"))
-            .isEmpty() &&
+                .size() == 1 &&
         actions[0]->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_I) &&
         actions[1]->shortcut().isEmpty() && actions[2]->shortcut().isEmpty() &&
-        actions[4]->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_E) &&
+        actions[3]->shortcut().isEmpty() &&
+        actions[5]->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_E) &&
         article_toolbar->actions().contains(export_favorites_action_) &&
         article_toolbar->actions().contains(import_favorites_action_) &&
         article_toolbar->actions().contains(add_favorite_action_);
     for (const auto* action :
-         {actions[0], actions[1], actions[2], actions[4]}) {
+         {actions[0], actions[1], actions[2], actions[3], actions[5]}) {
         passed = passed && action->menuRole() == QAction::TextHeuristicRole;
     }
     int favorites_shortcuts = 0;
@@ -2126,6 +2945,26 @@ void MainWindow::RunFavoritesMenuSmokeCheck(
     passed = passed && export_requests == 1 && export_opened &&
              exported_data.contains("Menu Folder") &&
              exported_data.contains("Menu Favorite");
+    const QString list_path = path + QStringLiteral(".txt");
+    int list_export_requests = 0;
+    const auto list_export_connection = connect(
+        this, &MainWindow::ExportFavoritesListRequested, this,
+        [&list_export_requests, &list_path](const QString& requested) {
+            if (requested == list_path) {
+                ++list_export_requests;
+            }
+        },
+        Qt::DirectConnection);
+    favorites_export_path_provider_ = [list_path]() {
+        return list_path;
+    };
+    export_favorites_list_action_->trigger();
+    disconnect(list_export_connection);
+    QFile exported_list(list_path);
+    const bool list_opened = exported_list.open(QIODevice::ReadOnly);
+    passed = passed && list_export_requests == 1 && list_opened &&
+             exported_list.readAll() ==
+                 QByteArray::fromHex("efbbbf") + "Menu Favorite";
     favorites_export_path_provider_ = []() {
         return QString();
     };
@@ -2220,12 +3059,14 @@ void MainWindow::RunFavoritesMenuSmokeCheck(
     passed = passed && !add_favorite_action_->isEnabled() &&
              !remove_favorite_action_->isEnabled() &&
              !import_favorites_action_->isEnabled() &&
-             !export_favorites_action_->isEnabled();
+             !export_favorites_action_->isEnabled() &&
+             !export_favorites_list_action_->isEnabled();
     favorites_command_busy_ = false;
     UpdateFavoritesActions();
     passed = passed && add_favorite_action_->isEnabled() &&
              import_favorites_action_->isEnabled() &&
              export_favorites_action_->isEnabled() &&
+             export_favorites_list_action_->isEnabled() &&
              centralWidget() != nullptr && article_tabs_->isVisible() &&
              query_->text() == QStringLiteral("Menu Favorite") &&
              kMainWindowStateVersion == 7;
@@ -4182,31 +5023,49 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
         menuBar()->actions()[4]->menu()->objectName() ==
             QStringLiteral("menuHistory") &&
         findChildren<QMenu*>(QStringLiteral("menuFile")).size() == 1 &&
-        file_menu->title() == QStringLiteral("&File") && actions.size() == 8 &&
+        file_menu->title() == QStringLiteral("&File") && actions.size() == 12 &&
         actions[0] == new_tab_action_ && actions[1]->isSeparator() &&
-        actions[2] == print_preview_action_ && actions[3] == print_action_ &&
-        actions[4]->isSeparator() && actions[5] == save_article_action_ &&
-        actions[6]->isSeparator() && actions[7] == quit_action_ &&
+        actions[2] == page_setup_action_ &&
+        actions[3] == print_preview_action_ && actions[4] == print_action_ &&
+        actions[5]->isSeparator() && actions[6] == save_article_action_ &&
+        actions[7]->isSeparator() && actions[8] == rescan_files_action_ &&
+        actions[9]->isSeparator() && actions[10] == close_to_tray_action_ &&
+        actions[11] == quit_action_ &&
         new_tab_action_->objectName() == QStringLiteral("newTab") &&
+        page_setup_action_->objectName() == QStringLiteral("pageSetup") &&
         print_preview_action_->objectName() == QStringLiteral("printPreview") &&
         print_action_->objectName() == QStringLiteral("print") &&
         save_article_action_->objectName() == QStringLiteral("saveArticle") &&
+        rescan_files_action_->objectName() == QStringLiteral("rescanFiles") &&
+        close_to_tray_action_->objectName() ==
+            QStringLiteral("actionCloseToTray") &&
         quit_action_->objectName() == QStringLiteral("quit") &&
         new_tab_action_->text() == QStringLiteral("&New Tab") &&
+        page_setup_action_->text() == QStringLiteral("Page Set&up") &&
         print_preview_action_->text() == QStringLiteral("Print Pre&view") &&
         print_action_->text() == QStringLiteral("&Print") &&
         save_article_action_->text() == QStringLiteral("&Save Article") &&
+        rescan_files_action_->text() == QStringLiteral("&Rescan Files") &&
+        close_to_tray_action_->text() == QStringLiteral("&Close To Tray") &&
         quit_action_->text() == QStringLiteral("&Quit") &&
         new_tab_action_->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_T) &&
         new_tab_action_->shortcutContext() == Qt::WidgetShortcut &&
+        page_setup_action_->shortcut().isEmpty() &&
         print_preview_action_->shortcut().isEmpty() &&
         print_action_->shortcut() == QKeySequence::Print &&
         save_article_action_->shortcut() == QKeySequence(Qt::Key_F2) &&
+        rescan_files_action_->shortcut() ==
+            QKeySequence(Qt::CTRL | Qt::Key_F5) &&
+        close_to_tray_action_->shortcut() ==
+            QKeySequence(Qt::CTRL | Qt::Key_F4) &&
         quit_action_->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_Q) &&
         new_tab_action_->menuRole() == QAction::NoRole &&
+        page_setup_action_->menuRole() == QAction::NoRole &&
         print_preview_action_->menuRole() == QAction::NoRole &&
         print_action_->menuRole() == QAction::NoRole &&
         save_article_action_->menuRole() == QAction::NoRole &&
+        rescan_files_action_->menuRole() == QAction::NoRole &&
+        close_to_tray_action_->menuRole() == QAction::NoRole &&
         quit_action_->menuRole() == QAction::QuitRole &&
         article_toolbar->actions().contains(print_preview_action_) &&
         article_toolbar->actions().contains(print_action_) &&
@@ -4216,7 +5075,9 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
     const auto all_actions = findChildren<QAction*>();
     for (const auto& shortcut :
          {QKeySequence(Qt::CTRL | Qt::Key_T), QKeySequence(QKeySequence::Print),
-          QKeySequence(Qt::Key_F2), QKeySequence(Qt::CTRL | Qt::Key_Q)}) {
+          QKeySequence(Qt::Key_F2), QKeySequence(Qt::CTRL | Qt::Key_F5),
+          QKeySequence(Qt::CTRL | Qt::Key_F4),
+          QKeySequence(Qt::CTRL | Qt::Key_Q)}) {
         passed =
             passed &&
             std::count_if(all_actions.cbegin(), all_actions.cend(),
@@ -4237,6 +5098,40 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
     const auto session = facade_->ExportArticleTabSession();
     const std::string window_state = CaptureMainWindowState();
 
+    int page_setup_dispatches = 0;
+    printer_available_ = []() { return true; };
+    page_setup_executor_ = [&page_setup_dispatches](QPrinter*) {
+        ++page_setup_dispatches;
+        return QDialog::Accepted;
+    };
+    page_setup_action_->trigger();
+    passed = passed && page_setup_dispatches == 1;
+    page_setup_executor_ = {};
+
+    int rescan_dispatches = 0;
+    const auto saved_source_callback = source_apply_callback_;
+    source_apply_callback_ = [&rescan_dispatches](const auto&, const auto&,
+                                                   const auto&, const auto&,
+                                                   const auto&, const auto&,
+                                                   const auto&, const auto&) {
+        ++rescan_dispatches;
+        return QString{};
+    };
+    UpdateFileActions();
+    rescan_files_action_->trigger();
+    source_apply_callback_ = saved_source_callback;
+    UpdateFileActions();
+    passed = passed && rescan_dispatches == 1 &&
+             status_->text() == QStringLiteral("Dictionary rescan complete");
+
+    const bool initially_visible = isVisible();
+    close_to_tray_action_->trigger();
+    const bool closed_to_tray = !isVisible();
+    if (initially_visible)
+        show();
+    QApplication::processEvents();
+    passed = passed && closed_to_tray && isVisible();
+
     int print_triggers = 0;
     int preview_triggers = 0;
     int print_dialogs = 0;
@@ -4247,9 +5142,6 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
     const auto preview_connection = connect(
         print_preview_action_, &QAction::triggered, this,
         [&preview_triggers]() { ++preview_triggers; }, Qt::DirectConnection);
-    printer_available_ = []() {
-        return true;
-    };
     print_dialog_executor_ = [&print_dialogs](QPrinter*) {
         ++print_dialogs;
         return false;
@@ -5522,8 +6414,16 @@ void MainWindow::RunArticleTabsSmokeCheck(
         nav_toolbar->isFloatable() &&
         nav_toolbar->allowedAreas() ==
             (Qt::TopToolBarArea | Qt::BottomToolBarArea) &&
-        nav_actions.size() == 3 && nav_actions[0] == back_action_ &&
+        nav_actions.size() == 18 && nav_actions[0] == back_action_ &&
         nav_actions[1] == forward_action_ &&
+        nav_actions[4] == scan_popup_action_ &&
+        nav_actions[6] == pronounce_action_ &&
+        nav_actions[8] == zoom_in_action_ &&
+        nav_actions[9] == zoom_out_action_ &&
+        nav_actions[10] == zoom_reset_action_ &&
+        nav_actions[12] == save_article_action_ &&
+        nav_actions[13] == print_action_ &&
+        nav_actions[15] == add_favorite_action_ &&
         nav_toolbar->widgetForAction(nav_actions[0]) == back_button &&
         nav_toolbar->widgetForAction(nav_actions[1]) == forward_button &&
         group_selector_->parentWidget() == group_selector_host_ &&
@@ -6769,6 +7669,7 @@ ArticleView* MainWindow::CreateArticleView(
     view->SetFacade(facade_);
     view->SetClickPreferences(preferences_.double_click_translates,
                               preferences_.select_word_by_single_click);
+    view->setZoomFactor(preferences_.zoom_factor);
     view->setProperty("articleTabId", QVariant::fromValue<qulonglong>(tab_id));
     auto* page = new ArticlePage(view);
     page->SetFacade(facade_);
@@ -6791,6 +7692,11 @@ ArticleView* MainWindow::CreateArticleView(
                            ArticleLinkDisposition disposition) {
                 static_cast<void>(text);
                 OpenArticleLink(tab_id, QUrl(internal_url), disposition);
+            });
+    connect(page, &ArticlePage::InternalHelpRequested, this,
+            [this, tab_id](const QUrl& url,
+                           ArticleLinkDisposition disposition) {
+                OpenInternalHelpLink(tab_id, url, disposition);
             });
     connect(page, &ArticlePage::AudioResourceRequested, this,
             [this](const QUrl& url) {
@@ -6853,6 +7759,8 @@ ArticleView* MainWindow::CreateArticleView(
     connect(view, &ArticleView::loadFinished, this,
             [this, tab_id, view](bool success) {
                 HandleArticleLoadFinished(tab_id, view, success);
+                if (view == article_view_)
+                    RefreshPronounceAvailability();
             });
     connect(view, &ArticleView::HtmlNavigationFinished, this,
             [this, tab_id, view](quint64 navigation_token, bool success) {
@@ -7099,6 +8007,45 @@ void MainWindow::OpenArticleLink(goldendict::core::ArticleTabId tab_id,
     StartNavigationLookup(result.tab_id, navigation, true);
 }
 
+void MainWindow::OpenInternalHelpLink(
+    goldendict::core::ArticleTabId tab_id, const QUrl& url,
+    ArticleLinkDisposition disposition) {
+    if (facade_ == nullptr ||
+        url != QUrl(QString::fromLatin1(kLegacyPopupHelpUrl))) {
+        return;
+    }
+
+    const auto state = facade_->GetArticleTabsState();
+    const auto found =
+        std::find_if(state.tabs.begin(), state.tabs.end(),
+                     [tab_id](const auto& tab) { return tab.id == tab_id; });
+    if (found == state.tabs.end())
+        return;
+    goldendict::core::TabNavigationState navigation;
+    navigation.kind = goldendict::core::TabNavigationKind::kInternalLink;
+    navigation.query = "Working with popup";
+    navigation.group_id = found->navigation.group_id;
+    navigation.title = navigation.query;
+    navigation.internal_url = kLegacyPopupHelpUrl;
+    const bool new_tab = disposition != ArticleLinkDisposition::kCurrentTab;
+    const bool background =
+        disposition == ArticleLinkDisposition::kNewBackgroundTab;
+    const auto result = facade_->OpenArticleTab(
+        navigation,
+        new_tab ? goldendict::core::TabOpenPolicy::kNewTab
+                : goldendict::core::TabOpenPolicy::kCurrentTab,
+        background ? goldendict::core::TabActivationPolicy::kKeepActive
+                   : goldendict::core::TabActivationPolicy::kActivate,
+        NewTabPlacementPolicy());
+    if (!result) {
+        status_->setText(QStringLiteral("Unable to open internal help"));
+        return;
+    }
+    SyncArticleTabs();
+    emit ArticleTabSessionMutated();
+    StartNavigationLookup(result.tab_id, navigation, false);
+}
+
 void MainWindow::LookupArticleSelection(goldendict::core::ArticleTabId tab_id,
                                         const QString& text,
                                         ArticleLinkDisposition disposition) {
@@ -7188,15 +8135,15 @@ void MainWindow::SyncArticleTabs() {
                 static_cast<int>(desired), view,
                 QString::fromStdString(tab.navigation.title));
         }
-        article_tabs_->setTabText(
-            static_cast<int>(desired),
-            QString::fromStdString(tab.navigation.title).replace('&', "&&"));
+        const QString visible_title =
+            tab.navigation.kind ==
+                    goldendict::core::TabNavigationKind::kEmpty
+                ? QStringLiteral("Welcome!")
+                : QString::fromStdString(tab.navigation.title);
+        article_tabs_->setTabText(static_cast<int>(desired),
+                                  QString(visible_title).replace('&', "&&"));
         if (created) {
-            PublishArticleHtml(
-                tab.id, view,
-                QStringLiteral("<!doctype html><html><body><h1>GoldenDict</h1>"
-                               "<p>Choose a dictionary folder to "
-                               "begin.</p></body></html>"));
+            PublishArticleHtml(tab.id, view, LegacyWelcomeHtml());
         }
     }
     const auto active = std::find_if(
@@ -7217,6 +8164,7 @@ void MainWindow::SyncArticleTabs() {
             : QStringLiteral("%1 — GoldenDict")
                   .arg(QString::fromStdString(active->navigation.title)));
     UpdateNavigationActions();
+    RefreshPronounceAvailability();
     RefreshResultsNavigation();
     RefreshSuggestions();
     ReconcileMruTabIds();
@@ -7402,9 +8350,7 @@ void MainWindow::NavigateArticleTab(bool forward) {
             requests_.erase(request);
         }
         if (auto* view = ArticleViewForTab(id); view != nullptr) {
-            view->setHtml(QStringLiteral(
-                "<!doctype html><html><body><h1>GoldenDict</h1>"
-                "<p>Choose a dictionary folder to begin.</p></body></html>"));
+            view->setHtml(LegacyWelcomeHtml());
         }
     }
 }
@@ -7565,6 +8511,7 @@ void MainWindow::SetOnlineSources(
     external_program_sources_ = external_program_sources;
     if (apply_callback)
         source_apply_callback_ = std::move(apply_callback);
+    UpdateFileActions();
 }
 
 void MainWindow::SetHistoryExportCallback(HistoryExportCallback callback) {
@@ -7580,11 +8527,13 @@ void MainWindow::SelectGroup(std::uint32_t group_id) {
     for (int index = 0; index < group_selector_->count(); ++index) {
         if (group_selector_->itemData(index).toUInt() == group_id) {
             group_selector_->setCurrentIndex(index);
+            dock_group_selector_->setCurrentIndex(index);
             selected_group_id_ = group_id;
             return;
         }
     }
     group_selector_->setCurrentIndex(0);
+    dock_group_selector_->setCurrentIndex(0);
     selected_group_id_ = 0U;
 }
 
@@ -7594,8 +8543,11 @@ void MainWindow::RefreshGroupSelector() {
         delete shortcut;
     group_shortcuts_.clear();
     group_selector_->clear();
+    dock_group_selector_->clear();
     group_selector_->addItem(QStringLiteral("All Dictionaries"),
                              QVariant::fromValue<quint32>(0U));
+    dock_group_selector_->addItem(QStringLiteral("All Dictionaries"),
+                                  QVariant::fromValue<quint32>(0U));
     for (const auto& group : groups_) {
         QIcon icon;
         if (!group.encoded_icon_data.empty()) {
@@ -7607,6 +8559,8 @@ void MainWindow::RefreshGroupSelector() {
         }
         group_selector_->addItem(icon, QString::fromStdString(group.name),
                                  QVariant::fromValue<quint32>(group.id));
+        dock_group_selector_->addItem(icon, QString::fromStdString(group.name),
+                                      QVariant::fromValue<quint32>(group.id));
         const QKeySequence sequence(QString::fromStdString(group.shortcut));
         if (!sequence.isEmpty()) {
             auto* shortcut = new QShortcut(sequence, this);
@@ -10437,6 +11391,12 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
                         ArticleLinkDisposition disposition) {
                         relay->PageLookup(tab_id, internal_url, disposition);
                     });
+            connect(page, &ArticlePage::InternalHelpRequested, relay,
+                    [relay, tab_id = tab.id](
+                        const QUrl& url,
+                        ArticleLinkDisposition disposition) {
+                        relay->InternalHelp(tab_id, url, disposition);
+                    });
             connect(page, &ArticlePage::AudioResourceRequested, relay,
                     [relay](const QUrl& url) { relay->AudioResource(url); });
             connect(page, &ArticlePage::ExternalUrlRequested, relay,
@@ -11180,6 +12140,41 @@ void MainWindow::SetPreferences(
     }
 #endif
     preferences_ = preferences;
+    {
+        const QSignalBlocker blocker(scan_popup_action_);
+        scan_popup_action_->setVisible(preferences_.enable_scan_popup);
+        scan_popup_action_->setChecked(preferences_.enable_scan_popup &&
+                                       preferences_.start_with_scan_popup_on);
+    }
+    close_to_tray_action_->setVisible(preferences_.enable_tray_icon);
+    {
+        const QSignalBlocker blocker(toggle_menubar_action_);
+        toggle_menubar_action_->setChecked(!preferences_.hide_menubar);
+    }
+    menuBar()->setVisible(!preferences_.hide_menubar);
+    if (auto* action =
+            findChild<QAction*>(QStringLiteral("menuButtonAction"))) {
+        action->setVisible(preferences_.hide_menubar);
+    }
+    if (auto* action = findChild<QAction*>(
+            QStringLiteral("beforeOptionsSeparator"))) {
+        action->setVisible(preferences_.hide_menubar);
+    }
+    {
+        const QSignalBlocker blocker(always_on_top_action_);
+        always_on_top_action_->setChecked(preferences_.always_on_top);
+    }
+    if (windowFlags().testFlag(Qt::WindowStaysOnTopHint) !=
+        preferences_.always_on_top) {
+        SetAlwaysOnTop(preferences_.always_on_top);
+    }
+    ApplyWordsZoom();
+    ApplyArticleZoom();
+    if (auto* search =
+            findChild<QDockWidget*>(QString::fromLatin1(kSearchPaneName));
+        search != nullptr) {
+        search->setVisible(preferences_.search_in_dock);
+    }
     if (!preferences_.mru_tab_order)
         FinishMruTraversal();
     article_tabs_->setTabBarAutoHide(preferences_.hide_single_tab);
@@ -11590,6 +12585,7 @@ void MainWindow::ApplyDefaultPaneLayout() {
     favorites->show();
     history->show();
     search->show();
+    resizeDocks({search, results}, {150, 145}, Qt::Horizontal);
 }
 
 bool MainWindow::HasUsableMainWindowLayout() const {
@@ -11827,6 +12823,8 @@ void MainWindow::UpdateFavoritesActions() {
     move_favorite_to_root_action_->setEnabled(idle && nested);
     import_favorites_action_->setEnabled(idle);
     export_favorites_action_->setEnabled(
+        idle && favorites_tree_->topLevelItemCount() > 0);
+    export_favorites_list_action_->setEnabled(
         idle && favorites_tree_->topLevelItemCount() > 0);
     remove_favorite_action_->setEnabled(idle && selected);
 }
@@ -12261,6 +13259,21 @@ void MainWindow::StartNavigationLookup(
     bool record_history) {
     if (facade_ == nullptr || navigation.query.empty())
         return;
+    if (navigation.kind == goldendict::core::TabNavigationKind::kInternalLink &&
+        navigation.internal_url == kLegacyPopupHelpUrl) {
+        if (auto request = requests_.find(tab_id); request != requests_.end()) {
+            request->second->Cancel();
+            requests_.erase(request);
+        }
+        if (auto* view = ArticleViewForTab(tab_id); view != nullptr) {
+            PublishArticleHtml(tab_id, view, LegacyPopupHelpHtml());
+        }
+        if (TabIdAt(article_tabs_->currentIndex()) == tab_id) {
+            status_->setText(QStringLiteral("Internal help"));
+            UpdateNavigationActions();
+        }
+        return;
+    }
     DeferPendingArticleScrollRestoration(tab_id, ArticleViewForTab(tab_id));
     InvalidateRenderedTextMatchPlan(tab_id);
     pending_article_search_handoffs_.erase(tab_id);
@@ -12874,6 +13887,112 @@ void MainWindow::SaveArticleAsPdf() {
     StartPdfExport(path);
 }
 
+void MainWindow::PageSetup() {
+    if (printer_ == nullptr)
+        printer_ = std::make_unique<QPrinter>(QPrinter::HighResolution);
+    const bool available =
+        printer_available_ ? printer_available_() : printer_->isValid();
+    if (!available) {
+        status_->setText(QStringLiteral("No printer is available"));
+        return;
+    }
+    if (page_setup_executor_) {
+        page_setup_executor_(printer_.get());
+        return;
+    }
+    QPageSetupDialog dialog(printer_.get(), this);
+    dialog.exec();
+}
+
+void MainWindow::RescanFiles() {
+    if (source_configuration_busy_ || !source_apply_callback_)
+        return;
+    source_configuration_busy_ = true;
+    dictionaries_action_->setEnabled(false);
+    rescan_files_action_->setEnabled(false);
+    const QString error = source_apply_callback_(
+        dictionary_paths_, sound_directories_, mediawiki_sources_,
+        website_sources_, forvo_sources_, forvo_credentials_,
+        dict_server_sources_, external_program_sources_);
+    source_configuration_busy_ = false;
+    dictionaries_action_->setEnabled(true);
+    rescan_files_action_->setEnabled(true);
+    status_->setText(error.isEmpty() ? QStringLiteral("Dictionary rescan complete")
+                                     : QStringLiteral("Dictionary rescan failed"));
+}
+
+void MainWindow::ExportFavoritesToList() {
+    if (favorites_command_busy_ || favorites_tree_->topLevelItemCount() == 0)
+        return;
+    const QString path =
+        favorites_export_path_provider_
+            ? favorites_export_path_provider_()
+            : QFileDialog::getSaveFileName(
+                  this, QStringLiteral("Export Favorites to file as plain list"),
+                  QString(),
+                  QStringLiteral("Text files (*.txt);;All files (*.*)"));
+    if (path.isEmpty())
+        return;
+    favorites_command_busy_ = true;
+    UpdateFavoritesActions();
+    emit ExportFavoritesListRequested(path);
+    favorites_command_busy_ = false;
+    UpdateFavoritesActions();
+}
+
+bool MainWindow::ApplyDisplayPreferences(
+    const goldendict::core::ApplicationPreferences& preferences) {
+    if (preferences == preferences_)
+        return true;
+    const QString error = preferences_apply_callback_
+                              ? preferences_apply_callback_(preferences)
+                              : QString{};
+    if (!error.isEmpty()) {
+        status_->setText(QStringLiteral("Unable to save display preferences"));
+        return false;
+    }
+    if (preferences_ != preferences)
+        SetPreferences(preferences);
+    return true;
+}
+
+void MainWindow::ApplyArticleZoom() {
+    const double zoom = std::clamp(preferences_.zoom_factor, 0.1, 5.0);
+    for (int index = 0; index < article_tabs_->count(); ++index) {
+        if (auto* view =
+                qobject_cast<ArticleView*>(article_tabs_->widget(index))) {
+            view->setZoomFactor(zoom);
+        }
+    }
+    zoom_in_action_->setEnabled(zoom < 5.0);
+    zoom_out_action_->setEnabled(zoom > 0.1);
+    zoom_reset_action_->setEnabled(zoom != 1.0);
+}
+
+void MainWindow::ApplyWordsZoom() {
+    const auto apply = [this](QWidget* widget, const QFont& default_font) {
+        QFont font(default_font);
+        const int default_size = font.pointSize() > 0 ? font.pointSize() : 9;
+        font.setPointSize(
+            std::max(1, default_size + preferences_.words_zoom_level));
+        widget->setFont(font);
+    };
+    apply(suggestions_list_, suggestions_default_font_);
+    apply(query_, query_default_font_);
+    apply(group_selector_, group_selector_default_font_);
+    apply(dock_group_selector_, dock_group_selector_default_font_);
+    words_zoom_reset_action_->setEnabled(preferences_.words_zoom_level != 0);
+    words_zoom_in_action_->setEnabled(preferences_.words_zoom_level < 10);
+    words_zoom_out_action_->setEnabled(preferences_.words_zoom_level > -10);
+}
+
+void MainWindow::SetAlwaysOnTop(bool enabled) {
+    const bool was_visible = isVisible();
+    setWindowFlag(Qt::WindowStaysOnTopHint, enabled);
+    if (was_visible)
+        show();
+}
+
 void MainWindow::StartPdfExport(const QString& path) {
     if (article_view_ == nullptr)
         return;
@@ -13134,8 +14253,12 @@ void MainWindow::UpdateFileActions() {
     const bool has_article = facade_ != nullptr && article_view_ != nullptr;
     new_tab_action_->setEnabled(facade_ != nullptr);
     save_article_action_->setEnabled(has_article && !save_in_progress_);
+    page_setup_action_->setEnabled(!print_in_progress_);
     print_action_->setEnabled(has_article && !print_in_progress_);
     print_preview_action_->setEnabled(has_article && !print_in_progress_);
+    rescan_files_action_->setEnabled(!source_configuration_busy_ &&
+                                     static_cast<bool>(source_apply_callback_));
+    close_to_tray_action_->setEnabled(preferences_.enable_tray_icon);
     quit_action_->setEnabled(true);
 }
 
@@ -13156,11 +14279,31 @@ void MainWindow::UpdateNavigationActions() {
     forward_action_->setEnabled(can_forward);
 }
 
+void MainWindow::RefreshPronounceAvailability() {
+    pronounce_action_->setEnabled(false);
+    if (article_view_ == nullptr || article_view_->page() == nullptr)
+        return;
+    const QPointer<MainWindow> guarded(this);
+    const QPointer<ArticleView> captured_view(article_view_);
+    article_view_->page()->runJavaScript(
+        QStringLiteral(
+            "Boolean(document.querySelector('audio[src], audio source[src]'))"),
+        [guarded, captured_view](const QVariant& value) {
+            if (guarded.isNull() || captured_view.isNull() ||
+                guarded->article_view_ != captured_view.data()) {
+                return;
+            }
+            guarded->pronounce_action_->setEnabled(value.toBool());
+        });
+}
+
 void MainWindow::ZoomArticle(double delta) {
-    constexpr double kMinimumZoom = 0.25;
+    constexpr double kMinimumZoom = 0.1;
     constexpr double kMaximumZoom = 5.0;
-    article_view_->setZoomFactor(std::clamp(article_view_->zoomFactor() + delta,
-                                            kMinimumZoom, kMaximumZoom));
+    auto preferences = preferences_;
+    preferences.zoom_factor = std::clamp(preferences.zoom_factor + delta,
+                                         kMinimumZoom, kMaximumZoom);
+    ApplyDisplayPreferences(preferences);
 }
 
 void MainWindow::ShowMessage(const QString& title, const QString& message) {

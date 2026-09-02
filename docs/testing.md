@@ -20,6 +20,78 @@ repository-owned build-tree `HOME`, `XDG_CONFIG_HOME`, and `XDG_CACHE_HOME`
 locations. Restart runners recreate those locations before execution so tests
 never inspect or modify a developer's real GoldenDict state.
 
+On Windows, Qt does not use those XDG variables for its standard application
+paths. Every `--...smoke` invocation therefore maps its configuration, data,
+and cache locations to an isolated test root. Unless a runner supplies
+`GOLDENDICT_TEST_CONFIG_ROOT`, the root is a deterministic short directory
+under the system temporary directory derived from the test `HOME`. The short
+path is required because durable configuration transactions add private
+identity-bearing filenames and otherwise exceed legacy Windows path limits.
+Cross-process Windows runners that assert paths outside the application must
+pass and inspect the same explicit short root; converting the remaining XDG-
+only restart runners is a tracked test-harness task.
+
+The first CRD Batch A product-shell verification is:
+
+```sh
+ctest --preset conan-release -j1 \
+  -R '^(favorites_store_test|article_page_internal_help_routing_test|goldendict_(product_shell|article_tabs|view_menu|file_menu|edit_menu|search_menu|history_menu|favorites_menu|help_menu)_smoke)$' \
+  --output-on-failure
+```
+
+It must be followed by a visible Qt 5/Qt 6 screenshot comparison; an offscreen
+smoke alone is not visual-parity evidence. Real-dictionary acceptance uses the
+read-only external corpus at `D:\workspace\goldendict\content` as specified by
+the CRD. The corpus is never copied into the repository, packaged, modified,
+or uploaded.
+
+For a revision-bound Qt 6 product-shell capture, run
+`--product-shell-smoke` through the normal platform plugin with
+`GOLDENDICT_TEST_SCREENSHOT` set to an external PNG path. The smoke saves the
+fully loaded window content only when the structural and Welcome-page checks
+also pass. Do not set this variable for normal automated runs, and do not add
+private acceptance screenshots to the repository.
+
+Set `GOLDENDICT_TEST_MENU_SCREENSHOT_DIRECTORY` to an external directory in
+the same invocation to capture the open File, View, Zoom, Favorites, and Help
+menus. These captures are generated only after the exact hierarchy and action
+checks pass. Keep them with the private acceptance evidence rather than in the
+repository.
+
+The 2026-09-02 Visual Studio 2026 Release audit built the complete application
+successfully and passed the eleven focused product-shell tests above. The
+internal-help routing test proves the exact Welcome-page link dispatch, while
+the product-shell smoke proves that dispatch reaches the application-owned
+navigation state and renders the legacy help content. The File, View,
+Favorites, and Help checks verify the Qt 5 menu hierarchy, exact action order,
+labels, shortcuts, default state, and bounded dispatch behavior; the shell and
+article-tab checks verify exact navigation-toolbar membership and order. The
+favorites-store test verifies that plain-list export remains a Core-owned,
+atomic UTF-8 operation. On Windows, every recognized smoke switch uses an
+explicitly isolated cache and index directory under its test root.
+
+The paired visual capture used English, an empty dictionary configuration, a
+125% (120 DPI) Windows display, an 816 by 673 client area, and the same Welcome
+state for Qt 5 and Qt 6. Both images have identical pixel dimensions. A raw
+per-pixel comparison measured mean absolute RGB error 20.028 and 17.43% of
+pixels with at least one channel differing by more than 16. The final
+Qt 5-compatible default zoom-action state improved those figures to 20.001
+and 17.42%, respectively. Semantic review
+accepted the bounded first shell slice and retained the following Batch A gaps:
+the lookup-control composition, dock title and count presentation, status
+wording, and native Qt 5/Qt 6 rendering differences. Native scan, tray, and
+audio workflow completion remains in Batch E even though its Qt 5 shell actions
+and default states are now present. The private captures remain outside the
+repository.
+
+The earlier full 125-test Windows run passed 99 tests. Twenty-six failures
+remain recorded as test-infrastructure/toolchain work rather than product-shell
+acceptance: many format/backend QtTest executables terminate at the same MSVC
+exception entry, and several cross-process GUI runners still assume that
+Windows Qt honors their XDG paths or can share the same offscreen WebEngine
+resources in a parallel run. Each failure must be reproduced serially and
+classified before it can be attributed to product behavior.
+
 The Phase 2 focused test is `goldendict_smoke`. It exercises the executable's
 non-GUI startup path and therefore does not require a display server.
 

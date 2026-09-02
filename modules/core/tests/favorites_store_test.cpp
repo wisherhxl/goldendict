@@ -24,6 +24,7 @@ class FavoritesStoreTest : public QObject {
     void RejectsLegacyEntityDeclarations();
     void RejectsOversizedAndInvalidUtf8LegacyFavorites();
     void ImportsAndExportsCompatibilityXml();
+    void ExportsPlainHeadwordListAtomically();
     void MovesItemsAcrossArbitraryFolders();
     void ReordersUsingPreMoveInsertionBoundaries();
     void RejectsInvalidMovesWithoutWriting();
@@ -175,6 +176,23 @@ void FavoritesStoreTest::ImportsAndExportsCompatibilityXml() {
     Write(path, "sentinel");
     const Favorites invalid = {{FavoriteItemKind::kHeadword, {}, false, {}}};
     QVERIFY_EXCEPTION_THROWN(ExportFavoritesXml(path.string(), invalid),
+                             std::runtime_error);
+    QCOMPARE(Read(path), "sentinel");
+}
+
+void FavoritesStoreTest::ExportsPlainHeadwordListAtomically() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = Path(directory, "favorites.txt");
+
+    ExportFavoritesText(path.string(), Fixture());
+
+    QCOMPARE(Read(path), std::string("\xEF\xBB\xBF", 3U) +
+                             "café\n辞書\nroot word");
+
+    Write(path, "sentinel");
+    const Favorites invalid = {{FavoriteItemKind::kHeadword, {}, false, {}}};
+    QVERIFY_EXCEPTION_THROWN(ExportFavoritesText(path.string(), invalid),
                              std::runtime_error);
     QCOMPARE(Read(path), "sentinel");
 }
