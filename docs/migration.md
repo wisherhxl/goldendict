@@ -1,5 +1,13 @@
 # GoldenDict Qt 6 Migration
 
+## Governing Product Requirements
+
+The approved [Qt 6 Product Baseline CRD](qt6-product-baseline-crd.md) defines
+the product scope, default-to-Qt-5 decision rule, visual acceptance standard,
+real-dictionary test corpus, release-platform gate, and formal Qt 6 baseline
+cutover conditions. This migration plan controls engineering sequence and
+architecture; it does not reduce or redesign the CRD's product requirements.
+
 ## Provenance
 
 This migration combines two read-only source baselines:
