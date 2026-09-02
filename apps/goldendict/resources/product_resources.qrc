@@ -2,6 +2,7 @@
   <qresource prefix="/">
     <file>article-style.css</file>
     <file>qt-style.css</file>
+    <file>icons/1downarrow.png</file>
     <file>icons/addtab.png</file>
     <file>icons/book.png</file>
     <file>icons/closetab.png</file>
@@ -21,6 +22,7 @@
     <file>icons/reload.png</file>
     <file>icons/star.png</file>
     <file>icons/star_blue.png</file>
+    <file>icons/system-search.png</file>
     <file>icons/wizard.png</file>
   </qresource>
 </RCC>

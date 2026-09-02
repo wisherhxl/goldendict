@@ -39,6 +39,12 @@ ctest --preset conan-release -j1 \
   --output-on-failure
 ```
 
+The next Batch A lookup-control slice adds
+`goldendict_suggestion_pane_smoke` and the affected existing
+`goldendict_escape_hides_main_window_preferences_smoke` to that focused
+regression set. It verifies the default toolbar mode before switching to and
+rechecking the existing `searchInDock` mode.
+
 It must be followed by a visible Qt 5/Qt 6 screenshot comparison; an offscreen
 smoke alone is not visual-parity evidence. Real-dictionary acceptance uses the
 read-only external corpus at `D:\workspace\goldendict\content` as specified by
@@ -57,6 +63,13 @@ the same invocation to capture the open File, View, Zoom, Favorites, and Help
 menus. These captures are generated only after the exact hierarchy and action
 checks pass. Keep them with the private acceptance evidence rather than in the
 repository.
+
+For the toolbar lookup slice, run `--suggestion-pane-smoke` through the normal
+platform plugin with `GOLDENDICT_TEST_LOOKUP_SCREENSHOT` and
+`GOLDENDICT_TEST_LOOKUP_POPUP_SCREENSHOT` set to external PNG paths. The first
+capture records the complete window and the second records the top-level
+suggestion popup; both are written only after the structural lookup-control
+checks pass. Keep these private acceptance images outside the repository.
 
 The 2026-09-02 Visual Studio 2026 Release audit built the complete application
 successfully and passed the eleven focused product-shell tests above. The
@@ -77,9 +90,12 @@ per-pixel comparison measured mean absolute RGB error 20.028 and 17.43% of
 pixels with at least one channel differing by more than 16. The final
 Qt 5-compatible default zoom-action state improved those figures to 20.001
 and 17.42%, respectively. Semantic review
-accepted the bounded first shell slice and retained the following Batch A gaps:
-the lookup-control composition, dock title and count presentation, status
-wording, and native Qt 5/Qt 6 rendering differences. Native scan, tray, and
+accepted the bounded first shell slice and retained the following Batch A gaps
+at that revision: the lookup-control composition, dock title and count
+presentation, status wording, and native Qt 5/Qt 6 rendering differences. The
+subsequent toolbar-lookup slice closes the default-mode portion of lookup-
+control composition; the optional docked query-control arrangement remains
+open. Native scan, tray, and
 audio workflow completion remains in Batch E even though its Qt 5 shell actions
 and default states are now present. The private captures remain outside the
 repository.
@@ -435,7 +451,8 @@ legacy version-1 state.
 `goldendict_escape_hides_main_window_preferences_smoke` pins the existing
 default-off preference's canonical current round trip and strict legacy name,
 the exact General checkbox, unchanged disabled handling, focused query and
-article fallback, child and modal precedence, and cancel/failure preservation.
+article fallback, including lookup-field Escape consumption, child and modal
+precedence, and cancel/failure preservation.
 Its isolated second process reloads the successful configuration and proves
 that enabled unconsumed ESC continues to hide only the main window after
 restart.
@@ -1158,10 +1175,21 @@ preserves results-pane placement and visibility while legacy version 1 remains
 rejected.
 
 `goldendict_suggestion_pane_smoke` uses the same Dictd fixture to pin the
-unique visible left-side `searchPane` and `wordList`, bounded service ordering,
-rapid request replacement, keyboard focus transfer, mouse and keyboard lookup
-activation, history dispatch, and clearing after activation, empty input, and
-invalid input. The article-tabs and two-start restart smokes additionally pin
+default toolbar field's original search/drop-down resources, placeholder,
+wildcard help, pale-yellow palette, 17-row popup viewport, ordering, focus
+retention, drop-down toggle, popup-item click, arrow/Tab/Backtab/Enter/Escape
+navigation, focus-loss/main-window move/resize/deactivate dismissal, platform-
+appropriate popup topology, normal current-tab activation, and Ctrl/Shift-
+modified new-tab activation without regressing Ctrl+Tab traversal. It also
+pins empty/pending-list navigation consumption and Escape suppression of both
+late popup display and the enabled main-window-hide preference, then switches
+to the optional
+`searchInDock` mode
+and verifies the unique visible left-side `searchPane` and `wordList`, bounded
+service ordering, keyboard focus transfer and activation, history dispatch,
+toolbar-to-dock and pending dock-to-toolbar transitions, and clearing after
+activation and invalid input. The article-tabs and two-start
+restart smokes additionally pin
 version-6 state round trips, deterministic seeding while accepting Qt 6
 versions 5 through 2, placement and visibility persistence, usable central
 content, rollback safety, and continued version-1 rejection. Existing

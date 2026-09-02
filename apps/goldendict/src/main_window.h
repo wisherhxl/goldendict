@@ -35,6 +35,7 @@ class FullTextQueryComposer;
 class FullTextSearchDialog;
 class HelpWindow;
 enum class HelpIntent;
+class LookupPopupController;
 struct FullTextResultActivationIntent;
 }  // namespace goldendict::app
 class QAction;
@@ -513,6 +514,8 @@ class MainWindow final : public QMainWindow {
                                 std::uint64_t generation,
                                 goldendict::core::SuggestionResponse response);
     void ActivateSuggestion();
+    void ActivateSuggestionText(const QString& word,
+                                Qt::KeyboardModifiers modifiers);
     void StopSuggestionWorker();
     void NavigateToSelectedResult();
     void NavigateToArticleResult(ArticleView* view, int result_index);
@@ -606,6 +609,7 @@ class MainWindow final : public QMainWindow {
     FavoritesTreeWidget* favorites_tree_ = nullptr;
     QListWidget* results_list_ = nullptr;
     QListWidget* suggestions_list_ = nullptr;
+    goldendict::app::LookupPopupController* lookup_popup_controller_ = nullptr;
     QFont suggestions_default_font_;
     QAction* add_favorite_action_ = nullptr;
     QAction* add_favorite_folder_action_ = nullptr;

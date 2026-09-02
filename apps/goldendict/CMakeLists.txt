@@ -7,6 +7,8 @@ target_sources(goldendict PRIVATE
   resources/product_resources.qrc
   src/audio_playback_service.cpp
   src/audio_playback_service.h
+  src/lookup_popup_controller.cpp
+  src/lookup_popup_controller.h
   ../../modules/core/src/application/configuration_transaction_persistence.cc
   ../../modules/core/src/application/configuration_transaction_preparation.cc
   ../../modules/core/src/application/pending_configuration_transaction.cc)

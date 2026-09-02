@@ -458,6 +458,20 @@ Batch E; their visible shell actions and first-run states are present in this
 slice. This note records completion of the bounded slice, not completion of
 Batch A.
 
+Implementation note (2026-09-02): the next independently reviewable Batch A
+slice restores the default Qt 5 toolbar lookup field. It uses the pinned search
+and drop-down resources, legacy placeholder/help text and palette, a bounded
+17-row suggestion-popup viewport, and the legacy click, arrow, Page Up/Page
+Down, Tab/Backtab, Enter, Escape, focus, move, and resize behavior. Suggestion
+production and lookup activation remain behind the existing Core/facade
+boundary; a presentation-only controller owns the popup. The existing optional
+`searchInDock` mode remains supported and is regression-tested, but moving the
+query field and group selector into that dock remains a separate Batch A slice.
+A complete Visual Studio 2026 Release build and the thirteen cumulative focused
+shell tests pass. Visible Windows captures record the 816 by 673 toolbar state
+and the 250 by 80 two-result popup outside the repository. This note does not
+declare Batch A or overall parity complete.
+
 ### Batch B — Daily Lookup And User State
 
 Complete lookup/navigation, article behavior, tabs, history, favorites, and
