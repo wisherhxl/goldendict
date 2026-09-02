@@ -65,8 +65,12 @@ design rationale.
   design-rule changes, discuss the approach and get an approved plan before
   editing.
 - Do not push directly to `main` or `master` unless explicitly requested.
-- In interactive collaboration, do not commit, push, or create pull requests
+- Follow the applicable workspace or user-approved commit and push policy. If
+  neither grants authority, do not commit, push, or create pull requests
   automatically.
+- Autonomous integration is limited to the exact target and procedure in the
+  Integration Contract in `docs/agent-workflow.md`. Do not infer authority for
+  another shared or protected branch.
 - If the user explicitly asks to commit, push, or create a pull request, do it
   without asking for another confirmation.
 
