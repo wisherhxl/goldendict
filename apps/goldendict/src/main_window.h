@@ -532,6 +532,7 @@ class MainWindow final : public QMainWindow {
     bool ConfirmFavoriteRemoval();
     QList<QList<int>> ExpandedFavoriteFolderPaths() const;
     void ApplyDefaultPaneLayout();
+    void ApplyPendingDefaultPaneSizing();
     void ApplyLookupControlsPlacement(bool search_in_dock);
     void ApplyDockTitleTranslations();
     void UpdateHistoryCountPresentation();
@@ -857,6 +858,7 @@ class MainWindow final : public QMainWindow {
     std::optional<ArticleOutputRequest> pending_print_request_;
     bool print_in_progress_ = false;
     bool restoring_main_window_state_ = false;
+    bool default_pane_resize_pending_ = false;
     std::function<bool(QPrinter*)> print_dialog_executor_;
     std::function<int(QPrinter*)> page_setup_executor_;
     std::function<void(QPrinter*, const std::function<void()>&)>

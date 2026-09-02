@@ -81,6 +81,16 @@ foreground/background activation. Ctrl+T and File > New Tab remain covered by
 the canonical File-menu action checks. A matched clean-profile Windows capture
 must show no split-button drop-down arrow next to the add-tab icon.
 
+The default-pane geometry correction extends the product-shell smoke. On a
+clean profile it requires the Results, Favorites, and History docks to form the
+right stack at 160 logical pixels, distribute their available height equally
+within native layout rounding, and remain programmatically resizable after
+initialization. Long translated title text must not enlarge that stack. A
+successful saved main-window state cancels the deferred clean-profile sizing,
+so user-owned geometry remains authoritative. Visual acceptance uses matched
+816 by 673 Windows captures at 125% display scale and inspects the right-stack
+width and equal dock allocation against the pinned Qt 5 image.
+
 Run the dedicated GUI smoke once more with the approved read-only external
 corpus as `--dictionary-root`; its isolated configuration and cache roots must
 remain outside both the repository and corpus.
