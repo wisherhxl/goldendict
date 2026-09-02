@@ -51,6 +51,19 @@ allowed areas match Qt 5 in both modes, View-menu switching persists through
 the display-preferences callback, and the query text and focus survive both
 directions.
 
+The following dock-title slice keeps the same cumulative set and extends the
+existing product-shell, History-menu, Favorites-menu, and History-preferences
+smokes. They require the four Qt 5 custom title bars and exact title text,
+legacy translation contexts and margins, layout-direction-aware alignment, and
+the grouped `Look up in:` versus ungrouped `Look up:` Search wording and group-
+selector visibility, and the History `%1/%2` label and tooltip. History
+acceptance covers authoritative
+snapshot replacement and clearing, import/record paths, maximum-size preference
+changes, and invariance under display filtering. The default product-shell
+screenshot records Results, Favorites, and History because the default toolbar
+lookup mode hides Search. The docked-lookup screenshot records Search together
+with the other three panes.
+
 It must be followed by a visible Qt 5/Qt 6 screenshot comparison; an offscreen
 smoke alone is not visual-parity evidence. Real-dictionary acceptance uses the
 read-only external corpus at `D:\workspace\goldendict\content` as specified by
@@ -77,7 +90,17 @@ capture records the complete window and the second records the top-level
 suggestion popup; both are written only after the structural lookup-control
 checks pass. Keep these private acceptance images outside the repository.
 Set `GOLDENDICT_TEST_DOCKED_LOOKUP_SCREENSHOT` to another external PNG path to
-record the same smoke after the structural docked-composition checks pass.
+record the same smoke after the structural docked-composition checks pass. For
+a controlled paired capture, set `GOLDENDICT_TEST_DOCKED_LOOKUP_WIDTH` to the
+desired positive logical window width; it changes only the external screenshot
+viewport after the docked structural checks have passed.
+
+For an empty-state dock-title comparison, set
+`GOLDENDICT_TEST_DOCK_TITLES_SCREENSHOT` while running
+`--product-shell-smoke`. The hook first verifies the empty Welcome state, then
+temporarily selects docked lookup, applies the optional
+`GOLDENDICT_TEST_DOCKED_LOOKUP_WIDTH`, captures all four panes, and restores the
+default toolbar state before continuing the smoke.
 
 The 2026-09-02 Visual Studio 2026 Release audit built the complete application
 successfully and passed the eleven focused product-shell tests above. The
@@ -104,7 +127,12 @@ presentation, status wording, and native Qt 5/Qt 6 rendering differences. The
 subsequent toolbar-lookup slice closes the default-mode portion of lookup-
 control composition, and the following docked-composition slice closes the
 optional `searchInDock` query, group, toolbar-placement, and persistence
-portion. Native scan, tray, and
+portion. The dock-title slice closes the four-pane title presentation and
+History current/maximum count portion. Its matched normal-platform Windows
+evidence uses 125% display scale and 1123 by 673 pixels for both Qt 5 and Qt 6,
+with the same empty dictionary configuration, Welcome page, hidden group
+selector, empty query/results/history, and `0/500` count. The private files are
+named `qt5-docked-titles-120dpi.png` and `qt6-docked-titles-120dpi.png`. Native scan, tray, and
 audio workflow completion remains in Batch E even though its Qt 5 shell actions
 and default states are now present. The private captures remain outside the
 repository.

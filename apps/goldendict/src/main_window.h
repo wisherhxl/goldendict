@@ -531,6 +531,8 @@ class MainWindow final : public QMainWindow {
     QList<QList<int>> ExpandedFavoriteFolderPaths() const;
     void ApplyDefaultPaneLayout();
     void ApplyLookupControlsPlacement(bool search_in_dock);
+    void ApplyDockTitleTranslations();
+    void UpdateHistoryCountPresentation();
     bool HasUsableMainWindowLayout() const;
     bool DispatchSafeExternalUrl(const QUrl& url);
     void ShowAboutDialog();
@@ -605,6 +607,11 @@ class MainWindow final : public QMainWindow {
     std::vector<QShortcut*> group_shortcuts_;
     QLineEdit* history_filter_ = nullptr;
     QListWidget* history_list_ = nullptr;
+    QLabel* search_title_label_ = nullptr;
+    QLabel* results_title_label_ = nullptr;
+    QLabel* history_title_label_ = nullptr;
+    QLabel* favorites_title_label_ = nullptr;
+    QLabel* history_count_label_ = nullptr;
     std::vector<HistoryViewItem> history_items_;
     std::uint32_t selected_group_id_ = 0U;
     QPushButton* clear_history_button_ = nullptr;

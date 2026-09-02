@@ -70,6 +70,7 @@
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
+#include <QTranslator>
 #include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QWebEngineFindTextResult>
@@ -974,6 +975,24 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     export_history_button_->hide();
     clear_history_button_->hide();
     history_dock->setWidget(history_widget);
+    auto* history_title = new QWidget(history_dock);
+    history_title->setObjectName(QStringLiteral("historyPaneTitleBar"));
+    auto* history_title_layout = new QHBoxLayout(history_title);
+    history_title_layout->setContentsMargins(5, 5, 5, 5);
+    history_title_label_ = new QLabel(history_title);
+    history_title_label_->setObjectName(QStringLiteral("historyLabel"));
+    history_count_label_ = new QLabel(history_title);
+    history_count_label_->setObjectName(QStringLiteral("historyCountLabel"));
+    if (layoutDirection() == Qt::LeftToRight) {
+        history_title_label_->setAlignment(Qt::AlignLeft);
+        history_count_label_->setAlignment(Qt::AlignRight);
+    } else {
+        history_title_label_->setAlignment(Qt::AlignRight);
+        history_count_label_->setAlignment(Qt::AlignLeft);
+    }
+    history_title_layout->addWidget(history_title_label_);
+    history_title_layout->addWidget(history_count_label_);
+    history_dock->setTitleBarWidget(history_title);
 
     auto* favorites_dock =
         new QDockWidget(QStringLiteral("Favor&ites Pane"), this);
@@ -989,6 +1008,17 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
                                                 ExpandedFavoriteFolderPaths());
     });
     favorites_dock->setWidget(favorites_tree_);
+    auto* favorites_title = new QWidget(favorites_dock);
+    favorites_title->setObjectName(QStringLiteral("favoritesPaneTitleBar"));
+    auto* favorites_title_layout = new QHBoxLayout(favorites_title);
+    favorites_title_layout->setContentsMargins(5, 5, 5, 5);
+    favorites_title_label_ = new QLabel(favorites_title);
+    favorites_title_label_->setObjectName(QStringLiteral("favoritesLabel"));
+    favorites_title_label_->setAlignment(layoutDirection() == Qt::LeftToRight
+                                             ? Qt::AlignLeft
+                                             : Qt::AlignRight);
+    favorites_title_layout->addWidget(favorites_title_label_);
+    favorites_dock->setTitleBarWidget(favorites_title);
 
     auto* results_dock =
         new QDockWidget(QStringLiteral("&Results Navigation Pane"), this);
@@ -1021,8 +1051,9 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     auto* search_title_layout = new QHBoxLayout(search_title);
     search_title_layout->setContentsMargins(8, 5, 8, 4);
     search_title_layout->setSpacing(4);
-    search_title_layout->addWidget(new QLabel(QStringLiteral("Look up in:"),
-                                               search_title));
+    search_title_label_ = new QLabel(search_title);
+    search_title_label_->setObjectName(QStringLiteral("searchTitleLabel"));
+    search_title_layout->addWidget(search_title_label_);
     dock_group_selector_ = new QComboBox(search_title);
     dock_group_selector_->setObjectName(QStringLiteral("dockGroupSelector"));
     dock_group_selector_->setToolTip(
@@ -1039,16 +1070,17 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     suggestions_default_font_ = suggestions_list_->font();
 
     auto* results_title = new QWidget(results_dock);
+    results_title->setObjectName(QStringLiteral("dictsPaneTitleBar"));
     auto* results_title_layout = new QHBoxLayout(results_title);
     results_title_layout->setContentsMargins(5, 5, 5, 5);
-    auto* results_title_label =
-        new QLabel(QStringLiteral("Found in Dictionaries:"), results_title);
-    results_title_label->setObjectName(QStringLiteral("resultsTitleLabel"));
-    results_title_label->setMinimumWidth(0);
-    results_title_label->setSizePolicy(QSizePolicy::Ignored,
-                                       QSizePolicy::Preferred);
-    results_title_layout->addWidget(results_title_label, 1);
+    results_title_label_ = new QLabel(results_title);
+    results_title_label_->setObjectName(QStringLiteral("resultsTitleLabel"));
+    results_title_label_->setMinimumWidth(0);
+    results_title_label_->setSizePolicy(QSizePolicy::Ignored,
+                                        QSizePolicy::Preferred);
+    results_title_layout->addWidget(results_title_label_, 1);
     results_dock->setTitleBarWidget(results_title);
+    ApplyDockTitleTranslations();
     ApplyDefaultPaneLayout();
 
     navigation_toolbar_ = addToolBar(QStringLiteral("&Navigation"));
@@ -1083,6 +1115,7 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     lookup_controls_layout_->addWidget(group_selector_host_);
     lookup_controls_layout_->addWidget(query_, 1);
     lookup_controls_layout_->addWidget(lookup_button_);
+    ApplyDockTitleTranslations();
     lookup_controls_->setSizePolicy(QSizePolicy::Expanding,
                                     QSizePolicy::Preferred);
     lookup_controls_action_ = navigation_toolbar_->addWidget(lookup_controls_);
@@ -2251,6 +2284,10 @@ void MainWindow::RunProductShellSmokeCheck(
         findChild<QDockWidget*>(QString::fromLatin1(kSearchPaneName));
     auto* results_dock =
         findChild<QDockWidget*>(QString::fromLatin1(kResultsPaneName));
+    auto* history_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
+    auto* favorites_dock =
+        findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     auto* history_filter =
         findChild<QLineEdit*>(QStringLiteral("historyFilter"));
     auto* add_tab_button =
@@ -2262,10 +2299,19 @@ void MainWindow::RunProductShellSmokeCheck(
         findChild<QWidget*>(QStringLiteral("compatibilitySourceControls"));
     auto* results_title_label =
         findChild<QLabel*>(QStringLiteral("resultsTitleLabel"));
+    auto* search_title_label =
+        findChild<QLabel*>(QStringLiteral("searchTitleLabel"));
+    auto* history_title_label =
+        findChild<QLabel*>(QStringLiteral("historyLabel"));
+    auto* favorites_title_label =
+        findChild<QLabel*>(QStringLiteral("favoritesLabel"));
     if (search_dock == nullptr || results_dock == nullptr ||
+        history_dock == nullptr || favorites_dock == nullptr ||
         history_filter == nullptr || add_tab_button == nullptr ||
         nav_toolbar == nullptr || article_toolbar == nullptr ||
         compatibility_controls == nullptr || results_title_label == nullptr ||
+        search_title_label == nullptr || history_title_label == nullptr ||
+        favorites_title_label == nullptr || history_count_label_ == nullptr ||
         article_tabs_ == nullptr || article_view_ == nullptr ||
         article_page_ == nullptr) {
         completion(false);
@@ -2282,14 +2328,101 @@ void MainWindow::RunProductShellSmokeCheck(
     }
     QApplication::processEvents();
 
+    class DockTitleTestTranslator final : public QTranslator {
+       public:
+        QString translate(const char* context, const char* source_text,
+                          const char*, int) const override {
+            const QString translation_key =
+                QString::fromLatin1(context) + QLatin1Char('|') +
+                QString::fromLatin1(source_text);
+            if (translation_key == QStringLiteral("MainWindow|Look up in:"))
+                return QStringLiteral("translated grouped lookup title");
+            if (translation_key == QStringLiteral("MainWindow|Look up:"))
+                return QStringLiteral("translated ungrouped lookup title");
+            if (translation_key ==
+                QStringLiteral("MainWindow|Found in Dictionaries:")) {
+                return QStringLiteral("translated results title");
+            }
+            if (translation_key ==
+                QStringLiteral("FavoritesPaneWidget|Favorites:")) {
+                return QStringLiteral("translated favorites title");
+            }
+            if (translation_key ==
+                QStringLiteral("HistoryPaneWidget|History:")) {
+                return QStringLiteral("translated history title");
+            }
+            if (translation_key ==
+                QStringLiteral("HistoryPaneWidget|%1/%2")) {
+                return QStringLiteral("translated count %1 of %2");
+            }
+            if (translation_key ==
+                QStringLiteral(
+                    "HistoryPaneWidget|History size: %1 entries out of "
+                    "maximum %2")) {
+                return QStringLiteral("translated tooltip %1 of %2");
+            }
+            return {};
+        }
+    } title_translator;
+    const bool translator_installed =
+        QCoreApplication::installTranslator(&title_translator);
+    ApplyDockTitleTranslations();
+    bool translation_contexts_match =
+        translator_installed && groups_.empty() &&
+        search_title_label->text() ==
+            QStringLiteral("translated ungrouped lookup title") &&
+        group_selector_host_->isHidden() &&
+        dock_group_selector_->isHidden() &&
+        results_title_label->text() ==
+            QStringLiteral("translated results title") &&
+        favorites_title_label->text() ==
+            QStringLiteral("translated favorites title") &&
+        history_title_label->text() ==
+            QStringLiteral("translated history title") &&
+        history_count_label_->text() ==
+            QStringLiteral("translated count %1 of %2")
+                .arg(history_items_.size())
+                .arg(preferences_.maximum_history_entries) &&
+        history_count_label_->toolTip() ==
+            QStringLiteral("translated tooltip %1 of %2")
+                .arg(history_items_.size())
+                .arg(preferences_.maximum_history_entries);
+    const auto original_groups = groups_;
+    SetDictionaryGroups({{7U, "Dock title translation group", "", {}}});
+    translation_contexts_match =
+        translation_contexts_match &&
+        search_title_label->text() ==
+            QStringLiteral("translated grouped lookup title") &&
+        !group_selector_host_->isHidden() &&
+        !dock_group_selector_->isHidden();
+    SetDictionaryGroups(original_groups);
+    translation_contexts_match =
+        translation_contexts_match &&
+        search_title_label->text() ==
+            QStringLiteral("translated ungrouped lookup title") &&
+        group_selector_host_->isHidden() && dock_group_selector_->isHidden();
+    QCoreApplication::removeTranslator(&title_translator);
+    ApplyDockTitleTranslations();
+
 #if defined(Q_OS_WIN)
     constexpr bool expected_document_mode = false;
 #else
     constexpr bool expected_document_mode = true;
 #endif
     const auto nav_actions = nav_toolbar->actions();
+    const auto title_margins_match = [](const QDockWidget* dock,
+                                        const QMargins& margins) {
+        return dock->titleBarWidget() != nullptr &&
+               dock->titleBarWidget()->layout() != nullptr &&
+               dock->titleBarWidget()->layout()->contentsMargins() == margins;
+    };
+    const Qt::Alignment expected_leading_alignment =
+        layoutDirection() == Qt::LeftToRight ? Qt::AlignLeft : Qt::AlignRight;
+    const Qt::Alignment expected_trailing_alignment =
+        layoutDirection() == Qt::LeftToRight ? Qt::AlignRight : Qt::AlignLeft;
     const bool shell_matches =
-        windowIcon().isNull() == false && width() >= 653 && height() >= 538 &&
+        translation_contexts_match && windowIcon().isNull() == false &&
+        width() >= 653 && height() >= 538 &&
         !compatibility_controls->isVisible() &&
         !dictionary_sources_button_->isVisible() &&
         statusBar() != nullptr && status_->parentWidget() == statusBar() &&
@@ -2300,8 +2433,30 @@ void MainWindow::RunProductShellSmokeCheck(
             QStringLiteral("Welcome!") &&
         !add_tab_button->icon().isNull() && !search_dock->isVisible() &&
         results_dock->isVisible() &&
+        title_margins_match(search_dock, QMargins(8, 5, 8, 4)) &&
+        title_margins_match(results_dock, QMargins(5, 5, 5, 5)) &&
+        title_margins_match(history_dock, QMargins(5, 5, 5, 5)) &&
+        title_margins_match(favorites_dock, QMargins(5, 5, 5, 5)) &&
+        search_title_label->text() == QStringLiteral("Look up:") &&
+        group_selector_host_->isHidden() && dock_group_selector_->isHidden() &&
         results_title_label->text() ==
             QStringLiteral("Found in Dictionaries:") &&
+        history_title_label->text() == QStringLiteral("History:") &&
+        favorites_title_label->text() == QStringLiteral("Favorites:") &&
+        (history_title_label->alignment() & Qt::AlignHorizontal_Mask) ==
+            expected_leading_alignment &&
+        (favorites_title_label->alignment() & Qt::AlignHorizontal_Mask) ==
+            expected_leading_alignment &&
+        (history_count_label_->alignment() & Qt::AlignHorizontal_Mask) ==
+            expected_trailing_alignment &&
+        history_count_label_->text() ==
+            QStringLiteral("%1/%2")
+                .arg(history_items_.size())
+                .arg(preferences_.maximum_history_entries) &&
+        history_count_label_->toolTip() ==
+            QStringLiteral("History size: %1 entries out of maximum %2")
+                .arg(history_items_.size())
+                .arg(preferences_.maximum_history_entries) &&
         !history_filter->isVisible() && !article_toolbar->isVisible() &&
         nav_toolbar->isVisible() && nav_actions.size() == 18 &&
         back_action_ != nullptr && !back_action_->icon().isNull() &&
@@ -2448,20 +2603,30 @@ void MainWindow::RunProductShellSmokeCheck(
                 }
                 const QString screenshot_path =
                     qEnvironmentVariable("GOLDENDICT_TEST_SCREENSHOT");
-                if (screenshot_path.isEmpty()) {
+                const QString dock_title_screenshot_path =
+                    qEnvironmentVariable(
+                        "GOLDENDICT_TEST_DOCK_TITLES_SCREENSHOT");
+                if (screenshot_path.isEmpty() &&
+                    dock_title_screenshot_path.isEmpty()) {
                     start_help(true);
                     return;
                 }
                 QTimer::singleShot(
                     250, this,
-                    [this, screenshot_path, start_help]() {
-                        const QFileInfo screenshot_file(screenshot_path);
-                        bool saved =
-                            QDir().mkpath(screenshot_file.absolutePath()) &&
-                            grab().save(screenshot_path, "PNG");
+                    [this, screenshot_path, dock_title_screenshot_path,
+                     start_help]() {
+                        bool saved = true;
+                        if (!screenshot_path.isEmpty()) {
+                            const QFileInfo screenshot_file(screenshot_path);
+                            saved =
+                                QDir().mkpath(
+                                    screenshot_file.absolutePath()) &&
+                                grab().save(screenshot_path, "PNG");
+                        }
                         const QString menu_directory = qEnvironmentVariable(
                             "GOLDENDICT_TEST_MENU_SCREENSHOT_DIRECTORY");
-                        if (saved && !menu_directory.isEmpty()) {
+                        if (saved && !screenshot_path.isEmpty() &&
+                            !menu_directory.isEmpty()) {
                             saved = QDir().mkpath(menu_directory);
                             const QList<QPair<QString, QMenu*>> menus = {
                                 {QStringLiteral("file-menu.png"),
@@ -2497,10 +2662,38 @@ void MainWindow::RunProductShellSmokeCheck(
                                 menu->hide();
                             }
                         }
+                        if (saved && !dock_title_screenshot_path.isEmpty()) {
+                            const QSize original_size = size();
+                            auto dock_preferences = preferences_;
+                            dock_preferences.search_in_dock = true;
+                            SetPreferences(dock_preferences);
+                            bool dock_screenshot_width_ok = false;
+                            const int dock_screenshot_width =
+                                qEnvironmentVariableIntValue(
+                                    "GOLDENDICT_TEST_DOCKED_LOOKUP_WIDTH",
+                                    &dock_screenshot_width_ok);
+                            if (dock_screenshot_width_ok &&
+                                dock_screenshot_width > 0) {
+                                resize(dock_screenshot_width, height());
+                            }
+                            QApplication::processEvents();
+                            const QFileInfo dock_screenshot_file(
+                                dock_title_screenshot_path);
+                            saved = QDir().mkpath(
+                                        dock_screenshot_file.absolutePath()) &&
+                                    grab().save(dock_title_screenshot_path,
+                                                "PNG");
+                            dock_preferences.search_in_dock = false;
+                            SetPreferences(dock_preferences);
+                            resize(original_size);
+                            QApplication::processEvents();
+                        }
                         if (!saved) {
                             qWarning()
                                 << "Unable to save product shell screenshot"
-                                << screenshot_path;
+                                << (screenshot_path.isEmpty()
+                                        ? dock_title_screenshot_path
+                                        : screenshot_path);
                         }
                         start_help(saved);
                     });
@@ -2814,7 +3007,13 @@ void MainWindow::RunHistoryMenuSmokeCheck(
     auto* history_menu = findChild<QMenu*>(QStringLiteral("menuHistory"));
     auto* history_dock =
         findChild<QDockWidget*>(QString::fromLatin1(kHistoryPaneName));
-    if (history_menu == nullptr || history_dock == nullptr) {
+    auto* history_title_label =
+        findChild<QLabel*>(QStringLiteral("historyLabel"));
+    auto* history_title =
+        findChild<QWidget*>(QStringLiteral("historyPaneTitleBar"));
+    if (history_menu == nullptr || history_dock == nullptr ||
+        history_title == nullptr || history_title_label == nullptr ||
+        history_count_label_ == nullptr) {
         completion(false);
         return;
     }
@@ -2833,11 +3032,26 @@ void MainWindow::RunHistoryMenuSmokeCheck(
         actions[4]->objectName() == QStringLiteral("clearHistory") &&
         actions[0]->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_H) &&
         actions[1]->shortcut().isEmpty() && actions[2]->shortcut().isEmpty() &&
-        actions[4]->shortcut().isEmpty();
+        actions[4]->shortcut().isEmpty() &&
+        history_dock->titleBarWidget() == history_title &&
+        history_title_label->text() == QStringLiteral("History:") &&
+        history_count_label_->text() ==
+            QStringLiteral("%1/%2")
+                .arg(history_items_.size())
+                .arg(preferences_.maximum_history_entries) &&
+        history_count_label_->toolTip() ==
+            QStringLiteral("History size: %1 entries out of maximum %2")
+                .arg(history_items_.size())
+                .arg(preferences_.maximum_history_entries);
     for (const auto* action :
          {actions[0], actions[1], actions[2], actions[4]}) {
         passed = passed && action->menuRole() == QAction::NoRole;
     }
+    const QString unfiltered_count = history_count_label_->text();
+    history_filter_->setText(QStringLiteral("Alpha"));
+    passed = passed && history_list_->count() == 1 &&
+             history_count_label_->text() == unfiltered_count;
+    history_filter_->clear();
 
     SetDictionaryGroups({{7U, "History Menu Group", "", {}}});
     SelectGroup(7U);
@@ -2897,6 +3111,9 @@ void MainWindow::RunHistoryMenuSmokeCheck(
     UpdateHistoryActions();
     clear_history_action_->trigger();
     passed = passed && history_items_.empty() &&
+             history_count_label_->text() ==
+                 QStringLiteral("0/%1").arg(
+                     preferences_.maximum_history_entries) &&
              !export_history_action_->isEnabled() &&
              import_history_action_->isEnabled() &&
              !clear_history_action_->isEnabled() &&
@@ -2914,8 +3131,13 @@ void MainWindow::RunFavoritesMenuSmokeCheck(
         findChild<QDockWidget*>(QString::fromLatin1(kFavoritesPaneName));
     auto* article_toolbar =
         findChild<QToolBar*>(QStringLiteral("articleToolbar"));
+    auto* favorites_title =
+        findChild<QWidget*>(QStringLiteral("favoritesPaneTitleBar"));
+    auto* favorites_title_label =
+        findChild<QLabel*>(QStringLiteral("favoritesLabel"));
     if (favorites_menu == nullptr || favorites_dock == nullptr ||
-        article_toolbar == nullptr) {
+        article_toolbar == nullptr || favorites_title == nullptr ||
+        favorites_title_label == nullptr) {
         completion(false);
         return;
     }
@@ -2946,6 +3168,8 @@ void MainWindow::RunFavoritesMenuSmokeCheck(
         actions[1]->shortcut().isEmpty() && actions[2]->shortcut().isEmpty() &&
         actions[3]->shortcut().isEmpty() &&
         actions[5]->shortcut() == QKeySequence(Qt::CTRL | Qt::Key_E) &&
+        favorites_dock->titleBarWidget() == favorites_title &&
+        favorites_title_label->text() == QStringLiteral("Favorites:") &&
         article_toolbar->actions().contains(export_favorites_action_) &&
         article_toolbar->actions().contains(import_favorites_action_) &&
         article_toolbar->actions().contains(add_favorite_action_);
@@ -3460,12 +3684,16 @@ void MainWindow::RunEditMenuSmokeCheck(std::function<void(bool)> completion) {
 void MainWindow::RunHistoryPreferencesSmokeCheck(
     const QString& import_path, std::function<void(bool)> completion) {
     if (preferences_action_ == nullptr || history_list_ == nullptr ||
-        facade_ == nullptr) {
+        history_count_label_ == nullptr || facade_ == nullptr) {
         completion(false);
         return;
     }
     const auto initial_session = facade_->ExportArticleTabSession();
-    bool passed = history_list_->count() == 3;
+    bool passed = history_list_->count() == 3 &&
+                  history_count_label_->text() ==
+                      QStringLiteral("%1/%2")
+                          .arg(history_items_.size())
+                          .arg(preferences_.maximum_history_entries);
     const auto apply_history_preferences = [this, &passed](bool store,
                                                            int maximum) {
         preferences_dialog_executor_ = [&passed, store,
@@ -3495,6 +3723,9 @@ void MainWindow::RunHistoryPreferencesSmokeCheck(
     passed = passed && !preferences_.store_history &&
              preferences_.maximum_history_entries == 2U &&
              history_list_->count() == 2 &&
+             history_count_label_->text() == QStringLiteral("2/2") &&
+             history_count_label_->toolTip() == QStringLiteral(
+                 "History size: 2 entries out of maximum 2") &&
              history_list_->item(0)->text() == QStringLiteral("Newest") &&
              history_list_->item(1)->text() == QStringLiteral("Middle");
     emit LookupSubmitted(QStringLiteral("Not recorded"), 9U);
@@ -3503,6 +3734,7 @@ void MainWindow::RunHistoryPreferencesSmokeCheck(
 
     emit ImportHistoryRequested(import_path, 7U);
     passed = passed && history_list_->count() == 2 &&
+             history_count_label_->text() == QStringLiteral("2/2") &&
              history_list_->item(0)->text() == QStringLiteral("Imported one") &&
              history_list_->item(1)->text() == QStringLiteral("Imported two");
 
@@ -3511,6 +3743,9 @@ void MainWindow::RunHistoryPreferencesSmokeCheck(
     passed = passed && preferences_.store_history &&
              preferences_.maximum_history_entries == 1U &&
              history_list_->count() == 1 &&
+             history_count_label_->text() == QStringLiteral("1/1") &&
+             history_count_label_->toolTip() == QStringLiteral(
+                 "History size: 1 entries out of maximum 1") &&
              history_list_->item(0)->text() == QStringLiteral("Recorded") &&
              facade_->ExportArticleTabSession() == initial_session;
     completion(passed);
@@ -6450,6 +6685,16 @@ void MainWindow::RunSuggestionPaneSmokeCheck(
                         QStringLiteral("application");
                 const QString dock_screenshot = qEnvironmentVariable(
                     "GOLDENDICT_TEST_DOCKED_LOOKUP_SCREENSHOT");
+                bool dock_screenshot_width_ok = false;
+                const int dock_screenshot_width =
+                    qEnvironmentVariableIntValue(
+                        "GOLDENDICT_TEST_DOCKED_LOOKUP_WIDTH",
+                        &dock_screenshot_width_ok);
+                if (dock_passed && !dock_screenshot.isEmpty() &&
+                    dock_screenshot_width_ok && dock_screenshot_width > 0) {
+                    resize(dock_screenshot_width, height());
+                    QApplication::processEvents();
+                }
                 if (dock_passed && !dock_screenshot.isEmpty())
                     dock_passed = grab().save(dock_screenshot, "PNG");
                 QKeyEvent down(QEvent::KeyPress, Qt::Key_Down,
@@ -9046,6 +9291,7 @@ void MainWindow::RefreshGroupSelector() {
     }
     SelectGroup(previous);
     group_selector_host_->RefreshPreservedWidth();
+    ApplyDockTitleTranslations();
 }
 
 std::vector<std::string> MainWindow::ParticipatingDictionaryIds(
@@ -12645,6 +12891,7 @@ void MainWindow::SetPreferences(
     ApplyWordsZoom();
     ApplyArticleZoom();
     ApplyLookupControlsPlacement(preferences_.search_in_dock);
+    UpdateHistoryCountPresentation();
     if (!preferences_.mru_tab_order)
         FinishMruTraversal();
     article_tabs_->setTabBarAutoHide(preferences_.hide_single_tab);
@@ -13221,6 +13468,7 @@ void MainWindow::RefreshHistoryList() {
 }
 
 void MainWindow::UpdateHistoryActions() {
+    UpdateHistoryCountPresentation();
     const bool idle = !history_command_busy_;
     const bool has_history = !history_items_.empty();
     import_history_action_->setEnabled(idle);
@@ -13229,6 +13477,51 @@ void MainWindow::UpdateHistoryActions() {
     import_history_button_->setEnabled(import_history_action_->isEnabled());
     export_history_button_->setEnabled(export_history_action_->isEnabled());
     clear_history_button_->setEnabled(clear_history_action_->isEnabled());
+}
+
+void MainWindow::ApplyDockTitleTranslations() {
+    const bool have_groups = !groups_.empty();
+    if (search_title_label_ != nullptr) {
+        search_title_label_->setText(
+            have_groups
+                ? QCoreApplication::translate("MainWindow", "Look up in:")
+                : QCoreApplication::translate("MainWindow", "Look up:"));
+    }
+    if (group_selector_host_ != nullptr)
+        group_selector_host_->setVisible(have_groups);
+    if (dock_group_selector_ != nullptr)
+        dock_group_selector_->setVisible(have_groups);
+    if (results_title_label_ != nullptr) {
+        results_title_label_->setText(QCoreApplication::translate(
+            "MainWindow", "Found in Dictionaries:"));
+    }
+    if (favorites_title_label_ != nullptr) {
+        favorites_title_label_->setText(QCoreApplication::translate(
+            "FavoritesPaneWidget", "Favorites:"));
+    }
+    if (history_title_label_ != nullptr) {
+        history_title_label_->setText(QCoreApplication::translate(
+            "HistoryPaneWidget", "History:"));
+    }
+    UpdateHistoryCountPresentation();
+}
+
+void MainWindow::UpdateHistoryCountPresentation() {
+    if (history_count_label_ == nullptr)
+        return;
+    const auto count = static_cast<qulonglong>(history_items_.size());
+    const auto maximum =
+        static_cast<qulonglong>(preferences_.maximum_history_entries);
+    history_count_label_->setText(
+        QCoreApplication::translate("HistoryPaneWidget", "%1/%2")
+            .arg(count)
+            .arg(maximum));
+    history_count_label_->setToolTip(
+        QCoreApplication::translate(
+            "HistoryPaneWidget",
+            "History size: %1 entries out of maximum %2")
+            .arg(count)
+            .arg(maximum));
 }
 
 void MainWindow::ExportHistory() {

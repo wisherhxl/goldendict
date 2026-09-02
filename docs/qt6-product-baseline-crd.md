@@ -490,6 +490,28 @@ View-menu persistence, both placement transitions, lookup activation, and an
 external visible Windows capture. This note does not declare Batch A or overall
 parity complete.
 
+Implementation note (2026-09-02): the next independent Batch A slice restores
+the complete Qt 5 custom dock-title presentation. Search uses translated
+`Look up in:` with configured groups and `Look up:` with no groups, hides the
+group selector in the latter state, and Results retains its translated
+`Found in Dictionaries:` title bar;
+Favorites gains its translated `Favorites:` title; and History gains its
+translated `History:` title plus the legacy unfiltered `%1/%2` current/maximum
+count and explanatory tooltip. The History count follows authoritative history
+snapshot replacement, clearing, importing, recording, and maximum-size
+preference changes, while filtering does not change it. Legacy translation
+contexts, title margins, and left-to-right or right-to-left alignment remain
+compatible. The work is confined to Widgets presentation and changes no Core,
+installed API, configuration schema, or persistence ownership. Existing shell,
+History, Favorites, and preference smokes provide focused acceptance, and the
+default product-shell capture records Results, Favorites, and History. The
+docked product-shell capture records Search together with those three panes. A
+matched Windows pair at 125% display scale and 1123 by 673 pixels uses the same
+empty dictionary configuration, Welcome page, hidden group selector, empty
+query/results/history, and `0/500` count. It confirms that all four titles are
+readable in the corresponding Qt 5 and Qt 6 docked layouts. This note does not
+declare Batch A or overall parity complete.
+
 ### Batch B — Daily Lookup And User State
 
 Complete lookup/navigation, article behavior, tabs, history, favorites, and
