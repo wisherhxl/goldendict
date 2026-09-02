@@ -551,6 +551,19 @@ reference. This is a Widgets-presentation correction only: Core, installed
 APIs, configuration schema, and persistence ownership are unchanged. It does
 not declare Batch A or overall parity complete.
 
+Implementation note (2026-09-03): the next bounded Batch A correction restores
+the Qt 5 article-tab close-button presentation. Both the published tab bar and
+an inactive facade-replacement candidate use the original 16 by 16
+`closetab.png` product resource instead of the Qt 6 platform-style black close
+glyph. The existing `tabCloseRequested` command path, deterministic close
+behavior, tab movement, session state, and tab-opening preferences remain
+unchanged. Product-shell automation pins the resource-backed presentation and
+the dictionary-status presentation smoke checks the same styling on a prepared
+facade candidate before publication. A matched clean-profile Windows capture
+provides visual acceptance. This is a Widgets-presentation correction only:
+Core, installed APIs, configuration schema, and persistence ownership are
+unchanged. It does not declare Batch A or overall parity complete.
+
 ### Batch B — Daily Lookup And User State
 
 Complete lookup/navigation, article behavior, tabs, history, favorites, and

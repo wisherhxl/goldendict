@@ -91,6 +91,15 @@ so user-owned geometry remains authoritative. Visual acceptance uses matched
 816 by 673 Windows captures at 125% display scale and inspects the right-stack
 width and equal dock allocation against the pinned Qt 5 image.
 
+The article-tab close-button correction keeps the same cumulative focused set
+and extends the product-shell and dictionary-status presentation smokes. The
+published and inactive candidate tab bars must remain closable and use the
+original `:/icons/closetab.png` resource through the same presentation helper.
+Existing article-tab automation continues to own close-command behavior.
+Visual acceptance uses a matched clean-profile Windows capture and checks that
+the Welcome tab shows the Qt 5 orange close control rather than the native Qt 6
+black glyph.
+
 Run the dedicated GUI smoke once more with the approved read-only external
 corpus as `--dictionary-root`; its isolated configuration and cache roots must
 remain outside both the repository and corpus.

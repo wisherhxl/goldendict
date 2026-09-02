@@ -121,6 +121,17 @@ constexpr auto kPreviousHistoryDockName = "historyDock";
 constexpr auto kPreviousFavoritesDockName = "favoritesDock";
 constexpr int kDefaultRightPaneWidth = 160;
 
+const QString& LegacyArticleTabBarStylesheet() {
+    static const QString stylesheet = QStringLiteral(
+        "QTabBar::close-button { image: url(:/icons/closetab.png); }");
+    return stylesheet;
+}
+
+void ApplyLegacyArticleTabPresentation(QTabWidget* tabs) {
+    tabs->setTabsClosable(true);
+    tabs->tabBar()->setStyleSheet(LegacyArticleTabBarStylesheet());
+}
+
 std::optional<QPointF> QtPageScrollToCssScroll(const QPointF& position,
                                                qreal zoom_factor) {
     if (!std::isfinite(zoom_factor) || zoom_factor <= 0.0)
@@ -906,7 +917,7 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     statusBar()->addWidget(status_, 1);
     article_tabs_ = new QTabWidget(central);
     article_tabs_->setObjectName(QStringLiteral("articleTabs"));
-    article_tabs_->setTabsClosable(true);
+    ApplyLegacyArticleTabPresentation(article_tabs_);
 #if defined(Q_OS_WIN)
     article_tabs_->setDocumentMode(false);
 #else
@@ -2480,9 +2491,12 @@ void MainWindow::RunProductShellSmokeCheck(
         !compatibility_controls->isVisible() &&
         !dictionary_sources_button_->isVisible() &&
         statusBar() != nullptr && status_->parentWidget() == statusBar() &&
-        article_tabs_->isMovable() &&
+        article_tabs_->isMovable() && article_tabs_->tabsClosable() &&
         article_tabs_->documentMode() == expected_document_mode &&
         article_tabs_->iconSize() == QSize(16, 16) &&
+        article_tabs_->tabBar()->styleSheet() ==
+            LegacyArticleTabBarStylesheet() &&
+        !QPixmap(QStringLiteral(":/icons/closetab.png")).isNull() &&
         article_tabs_->tabText(article_tabs_->currentIndex()) ==
             QStringLiteral("Welcome!") &&
         !add_tab_button->icon().isNull() && add_tab_button->menu() == nullptr &&
@@ -10444,6 +10458,10 @@ void MainWindow::RunDictionaryStatusPresentationSmokeCheck(
                   QStringLiteral("widgetsFacadeCandidateStatus"));
     const bool staged_matches =
         staged != nullptr && staged_status != nullptr &&
+        staged->article_tabs != nullptr &&
+        staged->article_tabs->tabsClosable() &&
+        staged->article_tabs->tabBar()->styleSheet() ==
+            LegacyArticleTabBarStylesheet() &&
         staged_status->text() ==
             goldendict::app::FormatDictionaryCatalogStatus(staged->catalog);
     status_->setText(QStringLiteral("stale dictionary status"));
@@ -12182,7 +12200,7 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
         staged_tabs->setObjectName(
             QStringLiteral("widgetsFacadeCandidateArticleTabs"));
         staged_tabs->setTabBarAutoHide(preferences.hide_single_tab);
-        staged_tabs->setTabsClosable(true);
+        ApplyLegacyArticleTabPresentation(staged_tabs);
         staged_tabs->setDocumentMode(true);
         staged_tabs->setMovable(false);
         staged_tabs->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
