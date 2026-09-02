@@ -512,6 +512,21 @@ query/results/history, and `0/500` count. It confirms that all four titles are
 readable in the corresponding Qt 5 and Qt 6 docked layouts. This note does not
 declare Batch A or overall parity complete.
 
+Implementation note (2026-09-02): the following independent Batch A slice
+restores the stable Qt 5 status-bar catalog summary after initial facade
+publication and every atomic facade replacement. The exact translated source
+text is `%1 dictionaries, %2 articles, %3 words` in the legacy `MainWindow`
+context; its values are the authoritative catalog size and the sums of each
+catalog entry's article and headword counts. One presentation formatter is
+shared by the staged candidate and published main window so the two paths
+cannot drift. Focused tests cover empty and multiple-entry totals, the exact
+translation context, product-shell publication, and prepared-candidate
+presentation. The dedicated smoke also passes with the approved read-only
+external real-dictionary corpus. Existing transient scan, lookup, save, print,
+and error statuses are unchanged. Matched empty-state Windows evidence retains
+the pinned Qt 5 `0 dictionaries, 0 articles, 0 words` reference. This note does
+not declare Batch A or overall parity complete.
+
 ### Batch B — Daily Lookup And User State
 
 Complete lookup/navigation, article behavior, tabs, history, favorites, and

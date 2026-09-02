@@ -86,6 +86,7 @@
 #include "article_view.h"
 #include "audio_playback_service.h"
 #include "dictionary_browser.h"
+#include "dictionary_status_presentation.h"
 #include "favorites_tree_widget.h"
 #include "full_text_dictionary_projection.h"
 #include "full_text_query_composer.h"
@@ -616,6 +617,7 @@ struct WidgetsFacadePreparationResources final {
     goldendict::core::ApplicationPreferences preferences;
     std::vector<goldendict::core::DictionaryGroupConfiguration> groups;
     std::vector<goldendict::core::DictionaryIdentity> catalog;
+    QString dictionary_status_text;
     goldendict::core::ArticleTabsState tabs;
     QString query_text;
     int query_cursor = 0;
@@ -2361,12 +2363,31 @@ void MainWindow::RunProductShellSmokeCheck(
                     "maximum %2")) {
                 return QStringLiteral("translated tooltip %1 of %2");
             }
+            if (translation_key ==
+                QStringLiteral(
+                    "MainWindow|%1 dictionaries, %2 articles, %3 words")) {
+                return QStringLiteral("translated catalog %1/%2/%3");
+            }
             return {};
         }
     } title_translator;
     const bool translator_installed =
         QCoreApplication::installTranslator(&title_translator);
     ApplyDockTitleTranslations();
+    const auto status_catalog =
+        facade_ == nullptr
+            ? std::vector<goldendict::core::DictionaryIdentity>{}
+            : facade_->GetDictionaryService().GetCatalog();
+    status_->setText(
+        goldendict::app::FormatDictionaryCatalogStatus(status_catalog));
+    qulonglong expected_article_count = 0U;
+    qulonglong expected_headword_count = 0U;
+    for (const auto& dictionary : status_catalog) {
+        expected_article_count +=
+            static_cast<qulonglong>(dictionary.article_count);
+        expected_headword_count +=
+            static_cast<qulonglong>(dictionary.headword_count);
+    }
     bool translation_contexts_match =
         translator_installed && groups_.empty() &&
         search_title_label->text() ==
@@ -2386,7 +2407,12 @@ void MainWindow::RunProductShellSmokeCheck(
         history_count_label_->toolTip() ==
             QStringLiteral("translated tooltip %1 of %2")
                 .arg(history_items_.size())
-                .arg(preferences_.maximum_history_entries);
+                .arg(preferences_.maximum_history_entries) &&
+        status_->text() == QStringLiteral("translated catalog %1/%2/%3")
+                               .arg(static_cast<qulonglong>(
+                                   status_catalog.size()))
+                               .arg(expected_article_count)
+                               .arg(expected_headword_count);
     const auto original_groups = groups_;
     SetDictionaryGroups({{7U, "Dock title translation group", "", {}}});
     translation_contexts_match =
@@ -2403,6 +2429,8 @@ void MainWindow::RunProductShellSmokeCheck(
         group_selector_host_->isHidden() && dock_group_selector_->isHidden();
     QCoreApplication::removeTranslator(&title_translator);
     ApplyDockTitleTranslations();
+    status_->setText(
+        goldendict::app::FormatDictionaryCatalogStatus(status_catalog));
 
 #if defined(Q_OS_WIN)
     constexpr bool expected_document_mode = false;
@@ -10345,6 +10373,50 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
     deadline->start();
 }
 
+void MainWindow::RunDictionaryStatusPresentationSmokeCheck(
+    std::function<void(bool)> completion) {
+    if (facade_ == nullptr || status_ == nullptr ||
+        facade_candidate_reclaimer_ == nullptr) {
+        completion(false);
+        return;
+    }
+
+    const auto catalog = facade_->GetDictionaryService().GetCatalog();
+    const QString expected =
+        goldendict::app::FormatDictionaryCatalogStatus(catalog);
+    const bool published_matches = status_->text() == expected;
+    auto facade = std::shared_ptr<goldendict::core::DesktopFacade>(
+        facade_, [](goldendict::core::DesktopFacade*) {});
+    auto candidate = PrepareFacadeCandidate(facade, preferences_, groups_);
+    const auto* staged =
+        candidate.record_ == nullptr ? nullptr : candidate.record_->resources;
+    const auto* staged_status =
+        staged == nullptr || staged->root == nullptr
+            ? nullptr
+            : staged->root->findChild<QLabel*>(
+                  QStringLiteral("widgetsFacadeCandidateStatus"));
+    const bool staged_matches =
+        staged != nullptr && staged_status != nullptr &&
+        staged_status->text() ==
+            goldendict::app::FormatDictionaryCatalogStatus(staged->catalog);
+    status_->setText(QStringLiteral("stale dictionary status"));
+    auto maintenance = BeginFacadeCandidateMaintenance(candidate);
+    const bool maintained = static_cast<bool>(maintenance.maintained);
+    if (!maintained) {
+        candidate.Abandon();
+        completion(false);
+        return;
+    }
+    auto published =
+        PublishMaintainedFacadeCommit(std::move(maintenance.maintained));
+    const auto outcome = FinishPublishedFacadeCommit(std::move(published));
+    completion(published_matches && staged_matches &&
+               outcome == WidgetsCommitOutcome::kPublished &&
+               status_->text() == expected &&
+               facade_preparation_record_ == nullptr &&
+               !facade_candidate_reclaimer_->isActive());
+}
+
 void MainWindow::RunFullTextDictionaryProjectionSmokeCheck(
     std::function<void(bool)> completion) {
     if (facade_ == nullptr || dictionary_bar_ == nullptr) {
@@ -11856,6 +11928,8 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
         resources->groups = groups;
         resources->catalog =
             resources->facade->GetDictionaryService().GetCatalog();
+        resources->dictionary_status_text =
+            goldendict::app::FormatDictionaryCatalogStatus(resources->catalog);
         resources->binding_descriptor = std::make_unique<
             goldendict::widgets::WidgetsFacadeBindingDescriptor>();
         auto& binding = *resources->binding_descriptor;
@@ -12285,10 +12359,7 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
         isolate_surface(staged_bar);
         isolate_surface(staged_tabs);
 
-        auto* status = new QLabel(
-            tr("%1 dictionary loaded")
-                .arg(static_cast<qulonglong>(resources->catalog.size())),
-            root);
+        auto* status = new QLabel(resources->dictionary_status_text, root);
         status->setObjectName(QStringLiteral("widgetsFacadeCandidateStatus"));
         layout->addWidget(status);
 
@@ -12660,6 +12731,7 @@ MainWindow::FinishPublishedFacadeCommitInternal() noexcept {
                                "<p>Choose a dictionary folder to "
                                "begin.</p></body></html>"));
         }
+        status_->setText(resources->dictionary_status_text);
         resources->published = true;
         active_facade_resources_.reset(resources);
         record->resources = nullptr;
@@ -12828,11 +12900,12 @@ void MainWindow::SetFacade(goldendict::core::DesktopFacade* facade) {
         dictionary_browser_->SetBindingRegistry(facade_binding_registry_.get());
         dictionary_browser_->SetFacade(facade);
     }
-    const auto count = facade == nullptr
-                           ? std::size_t{0}
-                           : facade->GetDictionaryService().GetCatalog().size();
+    const auto catalog =
+        facade == nullptr
+            ? std::vector<goldendict::core::DictionaryIdentity>{}
+            : facade->GetDictionaryService().GetCatalog();
     status_->setText(
-        tr("%1 dictionary loaded").arg(static_cast<qulonglong>(count)));
+        goldendict::app::FormatDictionaryCatalogStatus(catalog));
     suggestion_worker_owner_ = std::make_unique<SuggestionWorker>(
         [this](goldendict::core::ArticleTabId tab_id, std::uint64_t generation,
                goldendict::core::SuggestionResponse response) {

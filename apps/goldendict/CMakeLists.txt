@@ -7,6 +7,8 @@ target_sources(goldendict PRIVATE
   resources/product_resources.qrc
   src/audio_playback_service.cpp
   src/audio_playback_service.h
+  src/dictionary_status_presentation.cpp
+  src/dictionary_status_presentation.h
   src/lookup_popup_controller.cpp
   src/lookup_popup_controller.h
   ../../modules/core/src/application/configuration_transaction_persistence.cc
@@ -169,6 +171,18 @@ if(UNIX AND NOT APPLE)
   ti_target_link_libraries(command_line_lookup_test ${QT_NAMESPACE}::Network)
 endif()
 add_test(NAME command_line_lookup_test COMMAND command_line_lookup_test)
+
+ti_add_executable(dictionary_status_presentation_test
+  tests/dictionary_status_presentation_test.cpp
+  src/dictionary_status_presentation.cpp
+  src/dictionary_status_presentation.h)
+target_include_directories(dictionary_status_presentation_test PRIVATE src)
+ti_target_include_modules_recurse(dictionary_status_presentation_test
+  goldendict_core)
+ti_target_link_libraries(dictionary_status_presentation_test
+  goldendict_core ${QT_NAMESPACE}::Test)
+add_test(NAME dictionary_status_presentation_test
+  COMMAND dictionary_status_presentation_test)
 
 ti_add_executable(full_text_request_controller_test
   tests/full_text_request_controller_test.cpp
@@ -552,6 +566,15 @@ add_test(NAME goldendict_widgets_facade_preparation_smoke
 set_tests_properties(goldendict_widgets_facade_preparation_smoke PROPERTIES
   ENVIRONMENT
     "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/cache"
+  TIMEOUT 20)
+
+add_test(NAME goldendict_dictionary_status_presentation_smoke
+  COMMAND $<TARGET_FILE:goldendict>
+    --dictionary-status-presentation-smoke
+    --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
+set_tests_properties(goldendict_dictionary_status_presentation_smoke PROPERTIES
+  ENVIRONMENT
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-status-presentation-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-status-presentation-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-status-presentation-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_configuration_reload_coordinator_smoke

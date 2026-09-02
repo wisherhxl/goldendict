@@ -304,6 +304,8 @@ class MainWindow final : public QMainWindow {
     void RunArticleTabsSmokeCheck(std::function<void(bool)> completion);
     void RunSuggestionPaneSmokeCheck(std::function<void(bool)> completion);
     void RunDictionaryBarSmokeCheck(std::function<void(bool)> completion);
+    void RunDictionaryStatusPresentationSmokeCheck(
+        std::function<void(bool)> completion);
     void RunWidgetsFacadePreparationSmokeCheck(
         std::function<void(bool)> completion);
     void RunFullTextDictionaryProjectionSmokeCheck(

@@ -64,6 +64,19 @@ screenshot records Results, Favorites, and History because the default toolbar
 lookup mode hides Search. The docked-lookup screenshot records Search together
 with the other three panes.
 
+The following status-presentation slice adds
+`dictionary_status_presentation_test` and
+`goldendict_dictionary_status_presentation_smoke`, and extends the existing
+product-shell smoke. The unit test pins zero and
+multiple-dictionary aggregation plus the exact legacy `MainWindow` translation
+context. The two GUI smokes require the same formatter and exact catalog
+snapshot in the published main status bar and in the inactive prepared facade
+candidate. Existing transient scan, lookup, save, print, and error status
+writers remain outside this slice and must retain their existing checks.
+Run the dedicated GUI smoke once more with the approved read-only external
+corpus as `--dictionary-root`; its isolated configuration and cache roots must
+remain outside both the repository and corpus.
+
 It must be followed by a visible Qt 5/Qt 6 screenshot comparison; an offscreen
 smoke alone is not visual-parity evidence. Real-dictionary acceptance uses the
 read-only external corpus at `D:\workspace\goldendict\content` as specified by
@@ -136,6 +149,13 @@ named `qt5-docked-titles-120dpi.png` and `qt6-docked-titles-120dpi.png`. Native 
 audio workflow completion remains in Batch E even though its Qt 5 shell actions
 and default states are now present. The private captures remain outside the
 repository.
+
+The subsequent status-presentation slice closes the stable facade-publication
+summary wording and totals. Its matched empty-state Windows evidence compares
+the Qt 6 product-shell capture with the pinned Qt 5 capture and requires
+`0 dictionaries, 0 articles, 0 words` at the bottom of both windows. Other
+transient status wording and state-by-state status timing remain open Batch A
+work.
 
 The earlier full 125-test Windows run passed 99 tests. Twenty-six failures
 remain recorded as test-infrastructure/toolchain work rather than product-shell
