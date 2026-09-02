@@ -923,18 +923,12 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     add_tab_button->setAutoRaise(true);
     add_tab_button->setFocusPolicy(Qt::NoFocus);
     add_tab_button->setToolTip(QStringLiteral("New Tab"));
-    auto* add_tab_menu = new QMenu(add_tab_button);
     new_tab_action_ = new QAction(QStringLiteral("&New Tab"), this);
     new_tab_action_->setIcon(QIcon(QStringLiteral(":/icons/addtab.png")));
     new_tab_action_->setObjectName(QStringLiteral("newTab"));
     new_tab_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
     new_tab_action_->setShortcutContext(Qt::WidgetShortcut);
     new_tab_action_->setMenuRole(QAction::NoRole);
-    add_tab_menu->addAction(new_tab_action_);
-    auto* add_background_tab =
-        add_tab_menu->addAction(QStringLiteral("New Background Tab"));
-    add_tab_button->setMenu(add_tab_menu);
-    add_tab_button->setPopupMode(QToolButton::MenuButtonPopup);
     article_tabs_->setCornerWidget(add_tab_button, Qt::TopLeftCorner);
     article_tabs_host_ = new WidgetsPresentationHost(central);
     article_tabs_host_->setObjectName(
@@ -1586,8 +1580,6 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     connect(new_tab_action_, &QAction::triggered, this, [this]() {
         CreateEmptyArticleTab(!preferences_.open_new_tabs_in_background);
     });
-    connect(add_background_tab, &QAction::triggered, this,
-            [this]() { CreateEmptyArticleTab(false); });
     connect(article_tabs_, &QTabWidget::currentChanged, this,
             &MainWindow::ActivateArticleTab);
     connect(article_tabs_, &QTabWidget::tabCloseRequested, this,
@@ -2459,7 +2451,8 @@ void MainWindow::RunProductShellSmokeCheck(
         article_tabs_->iconSize() == QSize(16, 16) &&
         article_tabs_->tabText(article_tabs_->currentIndex()) ==
             QStringLiteral("Welcome!") &&
-        !add_tab_button->icon().isNull() && !search_dock->isVisible() &&
+        !add_tab_button->icon().isNull() && add_tab_button->menu() == nullptr &&
+        !search_dock->isVisible() &&
         results_dock->isVisible() &&
         title_margins_match(search_dock, QMargins(8, 5, 8, 4)) &&
         title_margins_match(results_dock, QMargins(5, 5, 5, 5)) &&
@@ -5352,8 +5345,8 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
     auto* add_tab_button =
         findChild<QToolButton*>(QStringLiteral("addArticleTabButton"));
     if (file_menu == nullptr || article_toolbar == nullptr ||
-        add_tab_button == nullptr || add_tab_button->menu() == nullptr ||
-        facade_ == nullptr || article_view_ == nullptr) {
+        add_tab_button == nullptr || facade_ == nullptr ||
+        article_view_ == nullptr) {
         completion(false);
         return;
     }
@@ -5418,7 +5411,7 @@ void MainWindow::RunFileMenuSmokeCheck(const QString& path,
         article_toolbar->actions().contains(print_preview_action_) &&
         article_toolbar->actions().contains(print_action_) &&
         article_toolbar->actions().contains(save_article_action_) &&
-        add_tab_button->menu()->actions().contains(new_tab_action_);
+        add_tab_button->menu() == nullptr;
 
     const auto all_actions = findChildren<QAction*>();
     for (const auto& shortcut :

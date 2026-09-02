@@ -527,6 +527,16 @@ and error statuses are unchanged. Matched empty-state Windows evidence retains
 the pinned Qt 5 `0 dictionaries, 0 articles, 0 words` reference. This note does
 not declare Batch A or overall parity complete.
 
+Implementation note (2026-09-03): the next bounded Batch A correction restores
+the Qt 5 single-purpose new-tab corner control. The corner button now exposes
+only the legacy add-tab icon and click behavior, with no attached menu or split
+drop-down arrow. The existing File > New Tab action, Ctrl+T shortcut, configured
+tab placement, and configured foreground/background activation policy remain
+the authoritative command path. Product-shell, File-menu, and article-tab
+smokes cover the visual control contract and both activation-policy states.
+This correction changes no Core contract, persisted setting, or unrelated tab
+workflow, and does not declare Batch A or overall parity complete.
+
 ### Batch B — Daily Lookup And User State
 
 Complete lookup/navigation, article behavior, tabs, history, favorites, and

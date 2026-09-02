@@ -73,6 +73,14 @@ context. The two GUI smokes require the same formatter and exact catalog
 snapshot in the published main status bar and in the inactive prepared facade
 candidate. Existing transient scan, lookup, save, print, and error status
 writers remain outside this slice and must retain their existing checks.
+The new-tab corner-control correction extends the existing product-shell and
+File-menu smokes to require the legacy icon-only button with no attached menu.
+The existing article-tab smoke remains the behavioral acceptance: clicking the
+button creates exactly one tab and continues to honor configured placement and
+foreground/background activation. Ctrl+T and File > New Tab remain covered by
+the canonical File-menu action checks. A matched clean-profile Windows capture
+must show no split-button drop-down arrow next to the add-tab icon.
+
 Run the dedicated GUI smoke once more with the approved read-only external
 corpus as `--dictionary-root`; its isolated configuration and cache roots must
 remain outside both the repository and corpus.
