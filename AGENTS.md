@@ -56,6 +56,11 @@ design rationale.
 - Avoid guessing project policy. If a decision is not documented here or in the
   repository, ask before encoding it as a rule.
 - Do not commit generated build output.
+- Launch build-tree executables and CTest through `run_with_conan.ps1` from
+  Windows PowerShell, `run_with_conan.bat` from `cmd.exe`, or
+  `run_with_conan.sh` on POSIX so the command inherits this checkout's
+  generated Conan environment. Direct execution is reserved for a verified
+  self-contained runtime install or package.
 - Before starting a new task, fetch the remote and make sure the local base
   branch is up to date.
 - If the local branch has unpushed commits, uncommitted changes, or diverges

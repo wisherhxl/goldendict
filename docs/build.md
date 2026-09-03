@@ -34,6 +34,41 @@ After `conan install`, activate the generated Conan build and runtime
 environment scripts before configuring so CMake and Conan-provided tools use
 the expected paths and runtime libraries.
 
+## Hermetic Conan Command Launcher
+
+Use the repository launcher for build-tree commands after `conan install`. It
+loads the generated environment from the current checkout and executes the
+requested command as its child, so the environment cannot be lost between
+separate terminal or agent invocations:
+
+```powershell
+.\run_with_conan.ps1 --build-type Release -- build\Release\bin\goldendict.exe
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release --output-on-failure
+.\run_with_conan.ps1 --build-type Release --with-build-environment -- cmake --build --preset conan-release
+```
+
+Use `run_with_conan.bat` with the same arguments from `cmd.exe`. On Linux or
+macOS:
+
+```sh
+./run_with_conan.sh --build-type Release -- \
+  build/Release/bin/goldendict
+```
+
+The launcher prefers `build/<build-type>/generators` and falls back to
+`build/generators`. An explicit `--generators-dir` must remain inside the
+current checkout. It fails before launching when the matching `conanrun`
+script is absent; `--with-build-environment` additionally requires and loads
+`conanbuild` before `conanrun`. The command starts in the repository root and
+its exit code is returned unchanged.
+
+Conan activation is process-scoped. Running an environment script in one
+terminal and starting the executable from another terminal, an IDE action, or
+Explorer does not transfer `PATH`, `QT_PLUGIN_PATH`, or other runtime settings.
+Do not launch build-tree executables directly. For an environment-independent
+manual or packaged application, use a separate `install_mode=runtime` build
+with runtime dependency deployment enabled, as described under Install.
+
 ## Windows Debug Build
 
 ```sh

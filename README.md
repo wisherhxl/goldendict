@@ -31,11 +31,17 @@ cmake --build --preset conan-release
 ctest --preset conan-release --output-on-failure
 ```
 
-Run the application from the activated Conan runtime environment:
+Run the build-tree application through the repository launcher so it inherits
+the matching Conan runtime environment:
 
 ```sh
-build/Release/bin/goldendict
+./run_with_conan.sh --build-type Release -- \
+  build/Release/bin/goldendict
 ```
+
+On Windows, use `run_with_conan.ps1` from PowerShell or `run_with_conan.bat`
+from `cmd.exe` with the same arguments. A runtime-mode install or package is
+the supported environment-independent launch path.
 
 ## Install And Package
 

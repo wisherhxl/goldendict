@@ -7,9 +7,21 @@ pre-PR verification guidance.
 
 Official local test workflow:
 
+```powershell
+.\run_with_conan.ps1 --build-type Debug -- ctest --preset conan-debug
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release
+```
+
+Use `run_with_conan.bat` with the same arguments from `cmd.exe`, or
+`./run_with_conan.sh` on Linux and macOS. The launcher loads the matching
+checkout's generated `conanrun` environment in the same process tree as CTest
+and every executable it starts. This prevents missing shared-library/DLL and
+Qt-plugin failures caused by direct build-tree execution or by activation
+performed in a different terminal. Tests for the launcher itself run without
+Conan dependencies:
+
 ```sh
-ctest --preset conan-debug
-ctest --preset conan-release
+python scripts/tests/run_with_conan_test.py
 ```
 
 Tests are built by default. Disable them explicitly with `-DBUILD_TESTS=OFF`
