@@ -14,6 +14,10 @@
 #include <thread>
 #include <type_traits>
 
+#ifdef _WIN32
+#include <winerror.h>
+#endif
+
 #include "../src/application/configuration_transaction_persistence.h"
 #include "../src/application/configuration_transaction_preparation.h"
 #include "../src/application/core_facade_activation_test_access.h"
@@ -58,6 +62,19 @@ static_assert(std::is_nothrow_move_constructible_v<
               application::ReservedCoreFacadeCandidate>);
 static_assert(
     !std::is_copy_constructible_v<application::ReservedCoreFacadeCandidate>);
+
+bool IsSymlinkCapabilityUnavailable(const std::error_code& error) {
+#ifdef _WIN32
+    return error == std::make_error_condition(std::errc::permission_denied) ||
+           error ==
+               std::make_error_condition(std::errc::operation_not_permitted) ||
+           (error.category() == std::system_category() &&
+            error.value() == ERROR_PRIVILEGE_NOT_HELD);
+#else
+    static_cast<void>(error);
+    return false;
+#endif
+}
 
 PendingConfigurationTransactionRecord CompletePendingRecord() {
     PendingConfigurationTransactionRecord record;
@@ -2664,7 +2681,9 @@ void ApplicationServiceTest::
     std::error_code symlink_error;
     std::filesystem::create_symlink(unrelated_target, pending_path,
                                     symlink_error);
-    QVERIFY(!symlink_error);
+    if (IsSymlinkCapabilityUnavailable(symlink_error))
+        QSKIP("Windows symlink capability is unavailable");
+    QVERIFY2(!symlink_error, symlink_error.message().c_str());
     preparation.generate_transaction_id = [] {
         std::array<std::uint8_t, 16U> identity{};
         identity.fill(0x79U);
@@ -2780,17 +2799,21 @@ void ApplicationServiceTest::
 
 void ApplicationServiceTest::
     PostDecisionPersistenceFailuresConvergeOnlyForward() {
-    for (const auto failed_operation :
-         {ConfigurationPersistenceOperation::kInspectPath,
-          ConfigurationPersistenceOperation::kCreateTemporary,
-          ConfigurationPersistenceOperation::kWriteTemporary,
-          ConfigurationPersistenceOperation::kFlushTemporary,
-          ConfigurationPersistenceOperation::kSyncTemporary,
-          ConfigurationPersistenceOperation::kReplaceDestination,
-          ConfigurationPersistenceOperation::kSyncDirectory,
-          ConfigurationPersistenceOperation::kReadVerification,
-          ConfigurationPersistenceOperation::kVerifyPayload,
-          ConfigurationPersistenceOperation::kRemoveTemporary}) {
+    std::vector<ConfigurationPersistenceOperation> failed_operations = {
+        ConfigurationPersistenceOperation::kInspectPath,
+        ConfigurationPersistenceOperation::kCreateTemporary,
+        ConfigurationPersistenceOperation::kWriteTemporary,
+        ConfigurationPersistenceOperation::kFlushTemporary,
+        ConfigurationPersistenceOperation::kSyncTemporary,
+        ConfigurationPersistenceOperation::kReplaceDestination,
+        ConfigurationPersistenceOperation::kSyncDirectory,
+        ConfigurationPersistenceOperation::kReadVerification,
+        ConfigurationPersistenceOperation::kVerifyPayload};
+#ifndef _WIN32
+    failed_operations.push_back(
+        ConfigurationPersistenceOperation::kRemoveTemporary);
+#endif
+    for (const auto failed_operation : failed_operations) {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
         const auto root = TemporaryPath(directory);
@@ -3116,8 +3139,9 @@ void ApplicationServiceTest::RejectsUnsafePreviousHistoryAbsenceTargets() {
             test::WriteBinaryFile(unrelated, "preserved");
             std::error_code error;
             std::filesystem::create_symlink(unrelated, history_path, error);
-            if (error)
-                QSKIP("Symlink creation is unavailable");
+            if (IsSymlinkCapabilityUnavailable(error))
+                QSKIP("Windows symlink capability is unavailable");
+            QVERIFY2(!error, error.message().c_str());
         } else {
             QVERIFY(std::filesystem::create_directory(history_path));
             test::WriteBinaryFile(history_path / "marker", "preserved");
@@ -3222,7 +3246,9 @@ void ApplicationServiceTest::
     std::filesystem::remove(pending_path, remove_error);
     QVERIFY(!remove_error);
     std::filesystem::create_symlink(unrelated, pending_path, remove_error);
-    QVERIFY(!remove_error);
+    if (IsSymlinkCapabilityUnavailable(remove_error))
+        QSKIP("Windows symlink capability is unavailable");
+    QVERIFY2(!remove_error, remove_error.message().c_str());
     const auto rejected = PersistPreviousConfiguration(
         {configuration_path, history_path, record.transaction_id});
     QCOMPARE(rejected.outcome,
@@ -4371,7 +4397,8 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
     const auto catalog = service.GetCatalog();
     QCOMPARE(catalog.size(), std::size_t{1});
     QCOMPARE(catalog.front().name, "Generated Test Dictionary");
-    QCOMPARE(catalog.front().source, (root / "fixture.ifo").string());
+    QCOMPARE(catalog.front().source,
+             (root / "fixture.ifo").make_preferred().string());
     QCOMPARE(catalog.front().article_count, std::size_t{1});
     QCOMPARE(catalog.front().headword_count, std::size_t{1});
 
@@ -4436,7 +4463,7 @@ void ApplicationServiceTest::RegistersOnlyEnabledMorphologyDictionaries() {
     QCOMPARE(catalog.size(), std::size_t{2});
     QCOMPARE(catalog[0].name, std::string("en_US Morphology"));
     QVERIFY(catalog[0].id.rfind("hunspell-", 0U) == 0U);
-    QCOMPARE(catalog[0].source, (root / "en_US.aff").string());
+    QCOMPARE(catalog[0].source, (root / "en_US.aff").make_preferred().string());
     QCOMPARE(catalog[0].headword_count, std::size_t{1});
     QVERIFY(catalog[1].id.rfind("stardict-", 0U) == 0U);
 
@@ -5387,11 +5414,15 @@ void ApplicationServiceTest::AppliesResolvedDictionaryGroupsConsistently() {
     QCOMPARE(discovered.size(), std::size_t{2});
     const auto first = std::find_if(
         discovered.begin(), discovered.end(), [](const auto& dictionary) {
-            return dictionary.source.find("/first/") != std::string::npos;
+            return std::filesystem::path(dictionary.source)
+                       .parent_path()
+                       .filename() == "first";
         });
     const auto second = std::find_if(
         discovered.begin(), discovered.end(), [](const auto& dictionary) {
-            return dictionary.source.find("/second/") != std::string::npos;
+            return std::filesystem::path(dictionary.source)
+                       .parent_path()
+                       .filename() == "second";
         });
     QVERIFY(first != discovered.end());
     QVERIFY(second != discovered.end());

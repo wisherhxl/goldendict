@@ -131,9 +131,10 @@ class WorkPort final : public dictionary::FullTextIndexFormatWorkPort {
             auto prepared = dictionary::FullTextIndex::PrepareUpdate(
                 *destination_, reader_->source_snapshot(), std::move(documents),
                 request.cancellation, request.deadline);
+            auto replacement_snapshot = prepared->snapshot();
             return {FullTextIndexWorkStatus::kCompleted,
                     {},
-                    prepared->snapshot(),
+                    std::move(replacement_snapshot),
                     std::move(prepared)};
         } catch (const dictionary::FullTextIndexError& error) {
             return {error.code() == FullTextErrorCode::kCancelled

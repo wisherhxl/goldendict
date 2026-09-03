@@ -215,6 +215,7 @@ void AardDictionaryTest::BuildsCandidatesAndPublishesOnlyThroughCoordinator() {
     QCOMPARE(std::string(std::istreambuf_iterator<char>(unchanged),
                          std::istreambuf_iterator<char>()),
              std::string("corrupt"));
+    unchanged.close();
 
     const auto verify_failed =
         [&](dictionary::FullTextIndexWorkRequest failed) {

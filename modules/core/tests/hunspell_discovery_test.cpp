@@ -8,6 +8,17 @@
 #include "../src/morphology/hunspell_discovery.h"
 
 namespace goldendict::core::morphology::hunspell {
+namespace {
+
+bool RefersToSameFile(const std::filesystem::path& actual,
+                      const std::filesystem::path& expected) {
+    if (actual == expected)
+        return true;
+    std::error_code error;
+    return std::filesystem::equivalent(actual, expected, error) && !error;
+}
+
+}  // namespace
 
 class HunspellDiscoveryTest : public QObject {
     Q_OBJECT
@@ -38,17 +49,27 @@ void HunspellDiscoveryTest::PreservesPinnedCompanionAndIdentityRules() {
 
     QCOMPARE(result.dictionaries.size(), std::size_t{3});
     QCOMPARE(result.dictionaries[0].dictionary_id, std::string("alias"));
-    QCOMPARE(result.dictionaries[0].affix_file, root / "alias.AFF");
-    QCOMPARE(result.dictionaries[0].dictionary_file, root / "alias.dic");
+    QVERIFY(RefersToSameFile(result.dictionaries[0].affix_file,
+                             root / "alias.AFF"));
+    QVERIFY(RefersToSameFile(result.dictionaries[0].dictionary_file,
+                             root / "alias.dic"));
     QCOMPARE(result.dictionaries[1].dictionary_id, std::string("de_DE"));
-    QCOMPARE(result.dictionaries[1].affix_file, root / "de_DE.AFF");
-    QCOMPARE(result.dictionaries[1].dictionary_file, root / "de_DE.DIC");
+    QVERIFY(RefersToSameFile(result.dictionaries[1].affix_file,
+                             root / "de_DE.AFF"));
+    QVERIFY(RefersToSameFile(result.dictionaries[1].dictionary_file,
+                             root / "de_DE.DIC"));
     QCOMPARE(result.dictionaries[2].dictionary_id, std::string("en_US"));
-    QCOMPARE(result.dictionaries[2].affix_file, root / "en_US.aff");
-    QCOMPARE(result.dictionaries[2].dictionary_file, root / "en_US.dic");
-    QCOMPARE(result.issues.size(), std::size_t{2});
-    QCOMPARE(result.issues[0].path, root / "alias.aff");
-    QCOMPARE(result.issues[1].path, root / "missing.aff");
+    QVERIFY(RefersToSameFile(result.dictionaries[2].affix_file,
+                             root / "en_US.aff"));
+    QVERIFY(RefersToSameFile(result.dictionaries[2].dictionary_file,
+                             root / "en_US.dic"));
+    const bool aliases_share_file =
+        RefersToSameFile(root / "alias.AFF", root / "alias.aff");
+    QCOMPARE(result.issues.size(),
+             aliases_share_file ? std::size_t{1} : std::size_t{2});
+    if (!aliases_share_file)
+        QVERIFY(RefersToSameFile(result.issues[0].path, root / "alias.aff"));
+    QVERIFY(RefersToSameFile(result.issues.back().path, root / "missing.aff"));
 }
 
 void HunspellDiscoveryTest::RejectsInvalidRootsAndBoundsDirectoryScan() {

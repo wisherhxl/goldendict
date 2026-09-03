@@ -84,7 +84,7 @@ void XdxfReaderTest::TraversesFullTextArticlesInSourceOrder() {
     QCOMPARE(articles[1].headword, std::string("second"));
     QCOMPARE(checkpoints, 3);
     QCOMPARE(reader.source_snapshot().size(), std::size_t{1});
-    QCOMPARE(reader.source_snapshot().front().path, path.string());
+    QCOMPARE(reader.source_snapshot().front().path, path.generic_string());
 }
 
 void XdxfReaderTest::RejectsCorruptCompressedXml() {

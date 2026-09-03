@@ -46,7 +46,7 @@ void DslReaderTest::ReadsMetadataExpansionsMarkupAndRankedMatches() {
     QCOMPARE(full_text[1].article_ordinal, std::size_t{1});
     QCOMPARE(reader.source_snapshot().size(), std::size_t{1});
     QCOMPARE(reader.source_snapshot().front().path,
-             reader.dictionary_path().string());
+             reader.dictionary_path().generic_string());
 }
 
 void DslReaderTest::ReadsCompressedAndUtf16AndInvokesCheckpoints() {

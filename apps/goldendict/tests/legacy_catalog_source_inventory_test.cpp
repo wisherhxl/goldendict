@@ -38,7 +38,8 @@ void LegacyCatalogSourceInventoryTest::CompletePinnedInventoryIsPresent() {
     QFile build_inventory(source_directory.filePath("catalog_sources.cmake"));
     QVERIFY2(build_inventory.open(QIODevice::ReadOnly),
              qPrintable(build_inventory.errorString()));
-    const QByteArray build_inventory_contents = build_inventory.readAll();
+    QByteArray build_inventory_contents = build_inventory.readAll();
+    build_inventory_contents.replace("\r\n", "\n");
     QVERIFY(build_inventory_contents.contains(
         "set(GOLDENDICT_ENABLED_CATALOG_SOURCES\n  ru_RU.ts)"));
     for (const QString& file_name : actual_files) {
@@ -53,7 +54,8 @@ void LegacyCatalogSourceInventoryTest::CompletePinnedInventoryIsPresent() {
         QFile source(source_directory.filePath(file_name));
         QVERIFY2(source.open(QIODevice::ReadOnly),
                  qPrintable(source.errorString()));
-        const QByteArray contents = source.readAll();
+        QByteArray contents = source.readAll();
+        contents.replace("\r\n", "\n");
         QVERIFY(
             contents.startsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>"));
         QVERIFY2(contents.contains("<TS version=\"2.0\"") ||

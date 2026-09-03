@@ -82,7 +82,7 @@ void SdictReaderTest::EnumeratesDistinctFullTextArticlesWithStableProvenance() {
     QVERIFY(articles[0].article_offset != articles[1].article_offset);
     QCOMPARE(reader.source_snapshot().size(), std::size_t{1});
     QCOMPARE(reader.source_snapshot().front().path,
-             std::filesystem::weakly_canonical(path).string());
+             std::filesystem::weakly_canonical(path).generic_string());
 }
 
 void SdictReaderTest::InvokesScanCheckpoints() {

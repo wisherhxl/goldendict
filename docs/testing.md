@@ -5780,6 +5780,40 @@ current baseline while preserving the historical per-leaf counts above.
 - package verification through `test_package/`, if applicable;
 - formatting, if formatting is changed.
 
+## Windows R2.2 portability gate
+
+The R2.2 Windows correction keeps product contracts platform-neutral while
+removing POSIX-only assumptions from the native Release gate. Generated-index
+source snapshots continue to use generic separators; catalog identities use
+native filesystem spelling. Hunspell companion checks compare file identity on
+case-insensitive filesystems. Symlink-specific safety assertions skip only when
+Windows denies the required test-fixture capability. Failure injection excludes
+the temporary-file removal step that the Windows atomic replacement path does
+not perform.
+
+The AARD work port captures its replacement snapshot before moving the prepared
+update, avoiding a compiler-dependent argument-evaluation hazard, and its test
+closes a read handle before the coordinator replaces the index. HTTP proxy
+redaction uses a deterministic loopback fixture rather than external DNS. Its
+split publication test verifies the transaction objects and final cleanup
+instead of assuming that Qt's disk-cache internals preserve an unrelated file
+between publication and post-work. Catalog-source checks normalize checkout
+line endings, and the source-directories smoke uses platform-valid absolute
+paths and the running executable.
+
+Verification on Windows 11 with VS 2026, MSVC 14.44, Conan, and Qt 6.11.1:
+
+- clean Release configure and 786-step build: passed;
+- ten affected executables, serial `until-fail:3`: 30 of 30 passed;
+- `http_client_test`, direct repeat: 30 of 30 passed;
+- `external_program_source_test`: 40 direct and 20 CTest repeats passed;
+- complete serial suite: 125 of 128 passed, with only the R2.3 WebEngine
+  restart/GPU/serialization cluster remaining; and
+- the suite excluding those exact three R2.3 tests: 125 of 125 passed.
+
+All executable and CTest invocations use `run_with_conan.ps1`, so the Conan
+runtime environment is part of the test contract on Windows.
+
 ## Pre-PR Verification Checklist
 
 - Run the relevant Debug or Release build workflow, with Release preferred

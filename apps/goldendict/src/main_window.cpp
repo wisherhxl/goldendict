@@ -14049,9 +14049,16 @@ void MainWindow::RunWebEngineSmokeCheck(std::function<void(bool)> completion) {
 
 void MainWindow::RunSourceDirectoriesSmokeCheck(
     std::function<void(bool)> completion) {
-    const std::vector<std::string> paths = {"/one", "/two", "/three"};
+    const auto smoke_path = [](const QString& name) {
+        return QDir(QDir::tempPath()).absoluteFilePath(name).toStdString();
+    };
+    const std::vector<std::string> paths = {
+        smoke_path(QStringLiteral("goldendict-dictionary-one")),
+        smoke_path(QStringLiteral("goldendict-dictionary-two")),
+        smoke_path(QStringLiteral("goldendict-dictionary-three"))};
     const std::vector<goldendict::core::SoundDirectoryConfiguration> sounds = {
-        {"/sound-one", "One"}, {"/sound-two", "Two"}};
+        {smoke_path(QStringLiteral("goldendict-sound-one")), "One"},
+        {smoke_path(QStringLiteral("goldendict-sound-two")), "Two"}};
     SourceDirectoriesDialog dialog(paths, sounds, this);
     auto* path_list =
         dialog.findChild<QListWidget*>(QStringLiteral("dictionaryPathList"));
@@ -14076,10 +14083,10 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
         sound_list->topLevelItem(0)->setText(1, QStringLiteral("Edited"));
         passed =
             dialog.DictionaryPaths() ==
-                (std::vector<std::string>{"/three", "/two"}) &&
+                (std::vector<std::string>{paths[2], paths[1]}) &&
             dialog.SoundDirectories() ==
                 (std::vector<goldendict::core::SoundDirectoryConfiguration>{
-                    {"/sound-two", "Edited"}, {"/sound-one", "One"}});
+                    {sounds[1].path, "Edited"}, {sounds[0].path, "One"}});
     }
     SourceDirectoriesDialog cancelled(paths, sounds, this);
     cancelled.reject();
@@ -14101,19 +14108,19 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
         {"dict.one", "DICT", true, "dict.example", 2628U, "*", "prefix"}};
     const std::vector<goldendict::core::ExternalProgramSourceConfiguration>
         programs = {{"program.one",
-                     "Plain",
-                     false,
-                     goldendict::core::ExternalProgramOutputKind::kPlainText,
-                     "/bin/echo",
-                     {},
-                     ""},
+                      "Plain",
+                      false,
+                      goldendict::core::ExternalProgramOutputKind::kPlainText,
+                      QCoreApplication::applicationFilePath().toStdString(),
+                      {},
+                      ""},
                     {"program.two",
-                     "Prefix",
-                     true,
-                     goldendict::core::ExternalProgramOutputKind::kPrefixMatch,
-                     "/usr/bin/printf",
-                     {"%GDWORD%"},
-                     "/tmp"}};
+                      "Prefix",
+                      true,
+                      goldendict::core::ExternalProgramOutputKind::kPrefixMatch,
+                      QCoreApplication::applicationFilePath().toStdString(),
+                      {"%GDWORD%"},
+                      QDir::tempPath().toStdString()}};
     bool reject_once = true;
     bool callback_received = false;
     const SourceDirectoriesDialog::ForvoCredentialMap forvo_credentials = {
@@ -14138,7 +14145,7 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
                 edited_programs.front().enabled &&
                 edited_programs.front().output_kind ==
                     goldendict::core::ExternalProgramOutputKind::kHtml &&
-                edited_programs.front().executable == "/usr/bin/printf" &&
+                edited_programs.front().executable == programs[1].executable &&
                 edited_programs.front().working_directory.empty() &&
                 edited_programs.front().argument_templates ==
                     (std::vector<std::string>{"", "%GDWORD%"}) &&
@@ -14216,7 +14223,8 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
         passed = passed && !callback_received &&
                  online.result() != QDialog::Accepted && error != nullptr &&
                  !error->isHidden();
-        executable->setText(QStringLiteral("/usr/bin/printf"));
+        executable->setText(
+            QString::fromStdString(programs[1].executable));
         buttons->button(QDialogButtonBox::Apply)->click();
         passed = passed && callback_received &&
                  online.result() != QDialog::Accepted && error != nullptr &&

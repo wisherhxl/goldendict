@@ -223,7 +223,7 @@ launcher and Python tooling checks run directly.
 | R1.1 | **Complete:** safe corpus manifest: `CRD-TEST-REAL-001`, read-only half of `002` | none | synthetic corpus unit tests; repeat generation and byte comparison; real-corpus manifest log |
 | R1.2 | **Complete:** paired isolated run workspace and metadata: remainder of `002`, `003` | R1.1 | synthetic confinement/mismatch tests; paired Qt 5/Qt 6 metadata validation |
 | R2.1 | **Complete:** MSVC exception-family test diagnosis and harness correction | R1.2 | each affected test serially reproduced; focused corrected tests; no assertion weakening |
-| R2.2 | Windows path/profile/process isolation corrections | R2.1 | focused restart/process tests from Unicode and long paths |
+| R2.2 | **Complete:** Windows path/profile/process isolation corrections | R2.1 | focused restart/process tests from Unicode and long paths |
 | R2.3 | Windows WebEngine serialization and GPU-independent harness | R2.2 | all affected WebEngine tests serially pass; full Windows CTest log retained |
 | R3.1 | Configuration and user-state upgrade/rollback matrix: `CRD-STATE-004`, `CRD-COMPAT-002` through `005` | R1.2, R2.3 | generated malformed/failure-injection tests plus disposable Qt 5 profile upgrade |
 | R3.2 | Real-corpus discovery, identity, counts, ordering, restart, and rescan: `CRD-TEST-REAL-004`, `CRD-COMPAT-001` | R1.2, R2.3 | paired machine-readable Qt 5/Qt 6 result files and diff |
@@ -341,6 +341,59 @@ executables pass. A full serial 128-test rerun passes 116 tests and leaves 12
 ordinary R2.2/R2.3 failures, with no remaining exception-family crash. No
 product assertion was removed or weakened; symlink safety assertions still run
 whenever the host permits creation of the required symlink.
+
+#### R2.2 issue record and readiness
+
+R2.2 is a minor correction governed by CRD Sections 10.3 and 12. After R2.1,
+the clean Windows Release suite passes 116 of 128 tests. Ten executables retain
+15 ordinary failures caused by Windows path representation, case-insensitive
+filesystem behavior, file-replacement or symlink capabilities, nondeterministic
+external network resolution, checkout line endings, or POSIX-only smoke data.
+The remaining WebEngine restart/GPU/serialization failures belong exclusively
+to R2.3. The original pair is joined intermittently by the proxy restart smoke
+when it follows a failed WebEngine restart in the complete serial suite.
+
+Impact check: **Ready**. Portable observable contracts remain unchanged:
+transport-neutral paths use their existing generic representation, source
+identity checks compare filesystem identity instead of spelling, failure
+injection covers operations that exist on the host, and security assertions run
+whenever the required symlink capability is available. Tests may use local
+deterministic endpoints and platform-valid temporary paths, but may not weaken
+redaction, atomicity, confinement, ordering, or migration assertions. A product
+change is permitted only if diagnosis proves that an existing cross-platform
+contract, rather than a fixture assumption, is broken. Core, Network, and
+Widgets ownership boundaries remain unchanged; no new module or abstraction is
+justified.
+
+The functional unit covers these executables:
+
+- `aard_dictionary_test`, `application_service_test`, `dsl_reader_test`,
+  `hunspell_discovery_test`, `sdict_reader_test`,
+  `stardict_dictionary_test`, and `xdxf_reader_test`;
+- `http_client_test` and `legacy_catalog_source_inventory_test`; and
+- `goldendict_source_directories_smoke`.
+
+Verification requires an independent Release build in this worktree, each
+affected function run directly with named output, the ten-executable anchored
+gate in serial mode, and the complete 128-test suite through
+`run_with_conan.ps1`. R2.2 is complete only when all ten executables pass and
+the complete suite leaves no failure outside the documented R2.3 WebEngine
+restart/GPU/serialization cluster.
+
+Completion result: **Complete**. A VS 2026 Release build using the pinned MSVC
+14.44 toolset and Conan Qt 6.11.1 completed successfully. All ten affected
+executables passed three consecutive serial iterations. The HTTP executable
+also passed 30 consecutive direct iterations after its deterministic proxy and
+transaction-boundary corrections. The previously integrated external-program
+gate passed 40 direct and 20 CTest iterations after one non-repeating full-suite
+exception observation, and passed in the subsequent complete run. A complete
+serial run passed 125 of 128 tests; only
+`goldendict_article_click_preferences_smoke`,
+`goldendict_proxy_preferences_smoke`, and
+`goldendict_interface_language_smoke` remained in the R2.3 cluster. A second
+serial run excluding exactly those three passed 125 of 125 tests. Every
+executable was launched through `run_with_conan.ps1`; no missing-DLL dialog or
+loader failure occurred.
 
 ### CRD closure cross-check
 

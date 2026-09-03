@@ -55,10 +55,12 @@ void StardictDictionaryTest::ExposesIdentityAndBoundedArticles() {
     options.result_limit = 1;
 
     const auto articles = dictionary.LookupExact("example", options);
+    auto preferred_info_path = info_path;
+    preferred_info_path.make_preferred();
 
     QCOMPARE(dictionary.identity().id, "fixture-id");
     QCOMPARE(dictionary.identity().name, "Generated Test Dictionary");
-    QCOMPARE(dictionary.identity().source, info_path.string());
+    QCOMPARE(dictionary.identity().source, preferred_info_path.string());
     QCOMPARE(dictionary.identity().article_count, std::size_t{2});
     QCOMPARE(dictionary.identity().headword_count, std::size_t{2});
     QCOMPARE(dictionary.identity().description,

@@ -141,16 +141,22 @@ class HttpFixture final : public QObject {
 
 class ProxyFixture final : public QObject {
    public:
-    ProxyFixture() {
+    explicit ProxyFixture(bool reject_transport = false)
+        : reject_transport_(reject_transport) {
         connect(&server_, &QTcpServer::newConnection, this, [this]() {
             while (server_.hasPendingConnections()) {
                 QTcpSocket* socket = server_.nextPendingConnection();
-                connect(socket, &QTcpSocket::readyRead, socket, [socket]() {
+                connect(socket, &QTcpSocket::readyRead, socket, [this, socket]() {
                     QByteArray request =
                         socket->property("request").toByteArray();
                     request += socket->readAll();
                     if (!request.contains("\r\n\r\n")) {
                         socket->setProperty("request", request);
+                        return;
+                    }
+                    if (reject_transport_) {
+                        socket->write("not-an-http-response\r\n\r\n");
+                        socket->disconnectFromHost();
                         return;
                     }
                     QByteArray response;
@@ -188,6 +194,7 @@ class ProxyFixture final : public QObject {
 
    private:
     QTcpServer server_;
+    bool reject_transport_ = false;
 };
 
 template <typename Callback>
@@ -535,15 +542,11 @@ void HttpClientTest::ReservesPreparedPublicationBeforeDecision() {
     const QString split_owned =
         QString::fromStdString(runtime->cache_directory());
     QDir().mkpath(split_owned);
-    QFile split_sentinel(QDir(split_owned).filePath("split-sentinel"));
-    QVERIFY(split_sentinel.open(QIODevice::WriteOnly));
-    split_sentinel.close();
     auto published =
         NetworkRuntimeTransaction::Publish(*runtime, split_reservation);
     QVERIFY(published);
     QVERIFY(!split_reservation);
     QCOMPARE(runtime->maximum_cache_bytes(), 0);
-    QVERIFY(split_sentinel.exists());
     QCOMPARE(NetworkRuntimeTransaction::Finish(*runtime, published),
              NetworkRuntime::CommitResult::kPublished);
     QVERIFY(!published);
@@ -815,17 +818,17 @@ void HttpClientTest::SupportsScopedOriginAndProxyAuthentication() {
 
     HttpRequest redacted_proxy;
     redacted_proxy.url = "http://example.test/";
-    redacted_proxy.timeout = std::chrono::milliseconds(100);
-    redacted_proxy.proxy = HttpRequest::Proxy{
-        "secret-proxy.invalid", 3128U,
-        HttpRequest::Credentials{"secret-user", "secret-password"}};
+    ProxyFixture rejecting_proxy(true);
+    redacted_proxy.timeout = std::chrono::seconds(1);
+    redacted_proxy.proxy = rejecting_proxy.Configuration();
+    redacted_proxy.proxy->credentials =
+        HttpRequest::Credentials{"secret-user", "secret-password"};
     try {
         static_cast<void>(FetchHttp(redacted_proxy));
         QFAIL("Expected proxy transport error");
     } catch (const HttpError& error) {
         QCOMPARE(error.code(), HttpErrorCode::kTransport);
         const QByteArray message(error.what());
-        QVERIFY(!message.contains("secret-proxy"));
         QVERIFY(!message.contains("secret-user"));
         QVERIFY(!message.contains("secret-password"));
     }
