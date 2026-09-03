@@ -29,7 +29,7 @@ def _normalized_path(path: Path) -> str:
     return os.path.normcase(os.path.abspath(os.fspath(path)))
 
 
-def _is_within(candidate: Path, parent: Path) -> bool:
+def is_within(candidate: Path, parent: Path) -> bool:
     try:
         return os.path.commonpath(
             (_normalized_path(candidate), _normalized_path(parent))
@@ -38,7 +38,7 @@ def _is_within(candidate: Path, parent: Path) -> bool:
         return False
 
 
-def _resolve_corpus(corpus: Path) -> Path:
+def resolve_corpus(corpus: Path) -> Path:
     try:
         requested_stat = corpus.lstat()
         if corpus.is_symlink() or _is_reparse_point(requested_stat):
@@ -236,7 +236,7 @@ def _revalidate_corpus(
 
 
 def build_manifest(corpus: Path) -> dict[str, object]:
-    corpus_root = _resolve_corpus(corpus)
+    corpus_root = resolve_corpus(corpus)
 
     records: list[dict[str, object]] = []
     classifications: Counter[str] = Counter()
@@ -281,9 +281,9 @@ def _serialized_manifest(manifest: dict[str, object]) -> bytes:
 def write_manifest(
     corpus: Path, output: Path, manifest: dict[str, object]
 ) -> Path:
-    corpus_root = _resolve_corpus(corpus)
+    corpus_root = resolve_corpus(corpus)
     output_path = output.resolve(strict=False)
-    if _is_within(output_path, corpus_root):
+    if is_within(output_path, corpus_root):
         raise ManifestError("Manifest output must be outside the corpus directory")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -310,9 +310,9 @@ def write_manifest(
 
 
 def create_manifest(corpus: Path, output: Path) -> Path:
-    corpus_root = _resolve_corpus(corpus)
+    corpus_root = resolve_corpus(corpus)
     output_path = output.resolve(strict=False)
-    if _is_within(output_path, corpus_root):
+    if is_within(output_path, corpus_root):
         raise ManifestError("Manifest output must be outside the corpus directory")
     return write_manifest(corpus_root, output_path, build_manifest(corpus_root))
 

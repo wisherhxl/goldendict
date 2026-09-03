@@ -59,6 +59,81 @@ produced 88 records and 9,303,289,246 bytes; two runs produced identical
 manifests with SHA-256
 `b7e91878649b61388ecb1a3713709685e243f57e60d2b8eb23838a91bba816d2`.
 
+### Paired Qt 5/Qt 6 acceptance workspace
+
+Create one new external workspace for a matched acceptance pair. The supplied
+conditions JSON uses schema `goldendict-real-dictionary-conditions-v1` and
+must contain a non-empty `locale`, an object-valued `group`, `preferences`,
+and `platform`, and an array-valued `queries`. These values are embedded in
+the pair metadata and bound by a canonical SHA-256 so neither run can silently
+use different conditions.
+
+```powershell
+python scripts/real_dictionary_acceptance_workspace.py create `
+  --workspace "D:\workspace\goldendict\evidence\qt5-qt6-acceptance" `
+  --corpus "D:\workspace\goldendict\content" `
+  --manifest "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json" `
+  --conditions "D:\workspace\goldendict\evidence\acceptance-conditions.json" `
+  --qt5-revision "<40-digit-qt5-commit>" `
+  --qt6-revision "<40-digit-qt6-commit>"
+```
+
+The command refuses an existing workspace and atomically creates separate
+`qt5` and `qt6` trees. Each has private home, configuration, data, cache,
+index, log, evidence, temporary, and native Windows configuration directories.
+`pair.json`, the two `run.json` files, and the two `environment.json` files
+bind the exact corpus-manifest bytes, conditions, revisions, and directory
+layout. They contain no corpus path or dictionary payload.
+
+Validate the complete pair before every run:
+
+```powershell
+python scripts/real_dictionary_acceptance_workspace.py validate `
+  --workspace "D:\workspace\goldendict\evidence\qt5-qt6-acceptance" `
+  --corpus "D:\workspace\goldendict\content" `
+  --manifest "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json" `
+  --conditions "D:\workspace\goldendict\evidence\acceptance-conditions.json" `
+  --qt5-revision "<40-digit-qt5-commit>" `
+  --qt6-revision "<40-digit-qt6-commit>"
+```
+
+Validation re-hashes the supplied corpus and requires it to equal the exact
+manifest, then checks the externally supplied expected revisions against every
+pair and run record. This is intentionally slower than metadata-only checking:
+it prevents a different corpus or self-consistently altered revision records
+from being accepted.
+
+Use the `run` subcommand with an acceptance driver that applies the projected
+conditions to the isolated profile, invokes the product, and writes the exact
+condition acknowledgement requested by
+`GOLDENDICT_ACCEPTANCE_ACK_PATH`. The subcommand validates the pair, requires
+exactly one `--dictionary-root` equal to `--corpus`, projects only the selected
+version's environment, sets its run root as the working directory, and verifies
+the corpus again after the child exits. It rejects a successful child that does
+not acknowledge the pair ID, condition and manifest hashes, version, and
+revision. The launcher inherits its parent environment, so a Qt 6 build-tree
+run must wrap it in the checkout's Conan launcher to retain all runtime DLL and
+Qt-plugin paths:
+
+```powershell
+.\run_with_conan.ps1 --build-type Release -- `
+  python scripts/real_dictionary_acceptance_workspace.py run `
+    --workspace "D:\workspace\goldendict\evidence\qt5-qt6-acceptance" `
+    --corpus "D:\workspace\goldendict\content" `
+    --manifest "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json" `
+    --conditions "D:\workspace\goldendict\evidence\acceptance-conditions.json" `
+    --qt5-revision "<40-digit-qt5-commit>" `
+    --qt6-revision "<40-digit-qt6-commit>" `
+    --version qt6 -- "<acceptance-driver>" `
+    --dictionary-root "D:\workspace\goldendict\content"
+```
+
+Run the workspace tool's dependency-free synthetic tests with:
+
+```sh
+python scripts/tests/real_dictionary_acceptance_workspace_test.py
+```
+
 Tests are built by default. Disable them explicitly with `-DBUILD_TESTS=OFF`
 only when a task does not need local test targets.
 

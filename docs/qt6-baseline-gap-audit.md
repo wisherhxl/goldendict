@@ -221,7 +221,7 @@ launcher and Python tooling checks run directly.
 | Leaf | Scope and requirement closure | Depends on | Minimum acceptance evidence |
 | --- | --- | --- | --- |
 | R1.1 | **Complete:** safe corpus manifest: `CRD-TEST-REAL-001`, read-only half of `002` | none | synthetic corpus unit tests; repeat generation and byte comparison; real-corpus manifest log |
-| R1.2 | Paired isolated run workspace and metadata: remainder of `002`, `003` | R1.1 | synthetic confinement/mismatch tests; paired Qt 5/Qt 6 metadata validation |
+| R1.2 | **Complete:** paired isolated run workspace and metadata: remainder of `002`, `003` | R1.1 | synthetic confinement/mismatch tests; paired Qt 5/Qt 6 metadata validation |
 | R2.1 | MSVC exception-family test diagnosis and harness correction | R1.2 | each affected test serially reproduced; focused corrected tests; no assertion weakening |
 | R2.2 | Windows path/profile/process isolation corrections | R2.1 | focused restart/process tests from Unicode and long paths |
 | R2.3 | Windows WebEngine serialization and GPU-independent harness | R2.2 | all affected WebEngine tests serially pass; full Windows CTest log retained |
@@ -339,7 +339,28 @@ commands in `docs/build.md` and retain their logs with the candidate identity.
 
 ## Readiness And Architecture Audit
 
-Result: **R1.1 is complete in this delivery. R1.2 becomes ready after R1.1 is integrated.**
+Result: **R1.1 is integrated and R1.2 is complete in this delivery. No later leaf is declared ready by this result.**
+
+R1.2 readiness record (2026-09-03): R1.1 is integrated at
+`18f3cfc5c308d730e9b52f5b69c579d585b73c14`; the paired-workspace leaf is
+platform-independent, requires no product or architecture decision, and uses
+the focused verification command
+`python scripts/tests/real_dictionary_acceptance_workspace_test.py`.
+
+R1.2 implementation evidence (2026-09-03): the synthetic suite validates
+creation, path confinement, per-version environment isolation, pair identity,
+live corpus-to-manifest equality, external expected-revision anchors, metadata
+mismatch rejection, atomic publication, child-process projection, exact
+dictionary-root binding, post-run corpus verification, and condition
+acknowledgement.
+The external real-corpus workspace validates as pair
+`4a5dabba704a08472a1bbd838c16db05024927c2f828052287431aa2532d9ce0`
+for Qt 5 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, Qt 6
+`18f3cfc5c308d730e9b52f5b69c579d585b73c14`, and the accepted R1.1
+manifest. Its configuration, cache, indexes, logs, temporary files, and
+evidence roots are disjoint and outside the corpus. Both projected version
+runs acknowledged the same condition and corpus hashes with their distinct
+expected revisions, and the corpus still matched the R1.1 manifest afterward.
 
 - The gap list conforms to the approved CRD and removes no Qt 5 capability.
 - Core product behavior remains behind `goldendict_core`; Widgets and WebEngine
@@ -359,10 +380,8 @@ Result: **R1.1 is complete in this delivery. R1.2 becomes ready after R1.1 is in
   `b7e91878649b61388ecb1a3713709685e243f57e60d2b8eb23838a91bba816d2`.
   The evidence remains outside the repository and contains no dictionary
   payload or absolute corpus path.
-- No current product, architecture, environment, fixture, or tool question
-  blocks R1.2 after this delivery is integrated. Before each later leaf starts,
-  perform and record a focused readiness check against its dependencies,
-  platform, fixtures, tools, and
+- Before each later leaf starts, perform and record a focused readiness check
+  against its dependencies, platform, fixtures, tools, and
   acceptance evidence. A leaf that requires unavailable Linux/X11 execution
   remains not ready until that environment or an approved equivalent runner is
   available. Later discoveries are added to the issue queue and raised one at
