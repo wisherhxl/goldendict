@@ -329,16 +329,18 @@ that no assertion or product contract was weakened.
 
 Completion result: **Complete**. The serial baseline contained 20 affected
 QtTest functions in 15 executables, all terminating with Windows status
-`0xe06d7363` at `RaiseException`. The functions and their classifications are
-retained in `docs/testing.md`. After correction, every affected function
-passes when run alone. The complete 15-executable set has no exception-family
-termination: 11 executables pass and four report only ordinary, named R2.2
-path or failure-injection assertions. The shared BGL, Dictd, and StarDict
-fixture consumers also build and their eight focused executables pass. A full
-serial 128-test rerun passes 116 tests and leaves 12 ordinary R2.2/R2.3
-failures, with no remaining exception-family crash. No product assertion was
-removed or weakened; symlink safety assertions still run whenever the host
-permits creation of the required symlink.
+`0xe06d7363` at `RaiseException`. A clean integration build exposed one more
+latent POSIX-only missing-executable fixture in the same external-program
+executable, so the corrected gate covers 21 functions. The functions and their
+classifications are retained in `docs/testing.md`. After correction, every
+affected function passes when run alone. The complete 15-executable set has no
+exception-family termination: 11 executables pass and four report only
+ordinary, named R2.2 path or failure-injection assertions. The shared BGL,
+Dictd, and StarDict fixture consumers also build and their eight focused
+executables pass. A full serial 128-test rerun passes 116 tests and leaves 12
+ordinary R2.2/R2.3 failures, with no remaining exception-family crash. No
+product assertion was removed or weakened; symlink safety assertions still run
+whenever the host permits creation of the required symlink.
 
 ### CRD closure cross-check
 

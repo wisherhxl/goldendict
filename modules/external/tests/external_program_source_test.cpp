@@ -93,8 +93,13 @@ void ExternalProgramSourceTest::RejectsInvalidConfigurationAndRequests() {
     VerifyError(ExternalProgramErrorCode::kInvalidConfiguration,
                 [&]() { static_cast<void>(ExternalProgramSource(relative)); });
 
+    QTemporaryDir missing_program_directory;
+    QVERIFY(missing_program_directory.isValid());
     ExternalProgramOptions missing;
-    missing.executable = "/definitely/missing/goldendict-external-helper";
+    missing.executable =
+        QDir(missing_program_directory.path())
+            .absoluteFilePath("goldendict-definitely-missing-external-helper")
+            .toStdString();
     const ExternalProgramSource missing_source(std::move(missing));
     VerifyError(ExternalProgramErrorCode::kFailedToStart,
                 [&]() { static_cast<void>(missing_source.Run("word")); });

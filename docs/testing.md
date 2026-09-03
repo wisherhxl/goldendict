@@ -327,7 +327,11 @@ executables contained 20 functions that terminated with Windows status
   TranslatesExternalProgramRequestFailures}`. A compiled test helper now
   provides the same argument, standard-input, encoding, error, timeout, HTML,
   prefix, and working-directory behavior on every platform. Windows fixture
-  paths use valid absolute forms and comparisons use preferred separators.
+  paths use valid absolute forms and comparisons use preferred separators. A
+  clean integration build additionally exposed the latent POSIX-only missing
+  executable in
+  `external_program_source_test::RejectsInvalidConfigurationAndRequests`; it
+  now uses a guaranteed-missing child of a valid temporary directory.
 - Open input streams prevented Windows from deleting source files while
   creating compressed or split fixtures. The affected functions were
   `dsl_dictionary_test::{ReusesAndRebuildsForOnlySelectedSource,
@@ -355,7 +359,7 @@ executables contained 20 functions that terminated with Windows status
 
 The focused post-correction gate runs through the Conan launcher and executes
 each function above separately, followed by the complete affected executable
-set with an anchored expression and `-j1`. All 20 isolated functions pass. The
+set with an anchored expression and `-j1`. All 21 isolated functions pass. The
 complete set has no MSVC exception-family termination: 11 executables pass and
 `application_service_test`, `dsl_reader_test`, `stardict_dictionary_test`, and
 `xdxf_reader_test` report only ordinary path-normalization or Windows
