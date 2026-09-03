@@ -188,6 +188,81 @@ Build-tree binaries and any command that may launch one must stay inside
 `run_with_conan.ps1`; a bare invocation is unsupported because Windows does not
 otherwise receive the Conan runtime DLL and Qt-plugin paths.
 
+### Frozen Qt 5 real-dictionary observer
+
+The Qt 5 acceptance executable is a non-shipping build from a disposable source
+copy. Never patch or build in the frozen checkout. Preparation refuses any
+revision other than `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, a changed
+source tree, or any tracked or untracked checkout change:
+
+```powershell
+$qt5Source = "$checkout\build\qt5-acceptance-source"
+$qt5Build = "$checkout\build\qt5-acceptance-build"
+python scripts/prepare_qt5_acceptance_source.py `
+  --checkout "D:\workspace\goldendict\master" `
+  --output $qt5Source
+```
+
+On the current Windows host, configure and build with the MSYS2 UCRT64 Qt 5
+toolchain. Set `GIT_CEILING_DIRECTORIES` to the build directory so qmake does not
+mistake the surrounding Qt 6 worktree for the archived source's Git repository:
+
+```powershell
+$qt5Bin = "C:\msys64\ucrt64\bin"
+New-Item -ItemType Directory -Path $qt5Build | Out-Null
+$env:PATH = "$qt5Bin;$env:PATH"
+$env:GIT_CEILING_DIRECTORIES = $qt5Build
+& "$qt5Bin\qmake-qt5.exe" -o "$qt5Build\Makefile" `
+  "$qt5Source\goldendict.pro" `
+  "CONFIG+=release x64 no_ffmpeg_player no_chinese_conversion_support no_epwing_support" `
+  "HUNSPELL_LIB=hunspell-1.7" `
+  "QMAKE_LIBDIR+=C:/msys64/ucrt64/lib" `
+  "QMAKE_INCDIR+=C:/msys64/ucrt64/include" `
+  "QMAKE_LRELEASE=C:/msys64/ucrt64/bin/lrelease-qt5.exe"
+& "$qt5Bin\mingw32-make.exe" -C $qt5Build -j4 release
+```
+
+The observer wrapper creates an isolated Qt 5 profile and explicitly prepends
+the supplied runtime and plugin locations. It also prevents Windows error
+dialogs from blocking unattended runs. Windows must use the native platform
+plugin: the frozen Qt 5 WebKit runtime is not stable with
+`QT_QPA_PLATFORM=offscreen`. Other hosts use the offscreen plugin. Invoke the
+shared adapter inside the paired runner as follows; unlike a Qt 6 build-tree
+binary, this MinGW executable does not use the Conan launcher:
+
+```powershell
+$python = python -c "import sys; print(sys.executable)"
+python scripts/real_dictionary_acceptance_workspace.py run `
+  --workspace "D:\workspace\goldendict\evidence\qt5-qt6-acceptance" `
+  --corpus "D:\workspace\goldendict\content" `
+  --manifest "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json" `
+  --conditions "D:\workspace\goldendict\evidence\acceptance-conditions.json" `
+  --qt5-revision "3d93dd66197aea10edf6c29998ddc9c213d0aaa8" `
+  --qt6-revision "<40-digit-qt6-commit>" `
+  --version qt5 --require-result -- `
+  $python "$checkout\scripts\real_dictionary_acceptance_observer.py" `
+    --version qt5 --executable $python `
+    --observer-argument "$checkout\scripts\qt5_real_dictionary_observer.py" `
+    --observer-argument=--legacy-executable `
+    --observer-argument "$qt5Build\release\GoldenDict.exe" `
+    --observer-argument=--provenance `
+    --observer-argument "$qt5Source\.goldendict-qt5-acceptance-source.json" `
+    --observer-argument=--runtime-bin --observer-argument $qt5Bin `
+    --observer-argument=--plugin-path `
+    --observer-argument "C:\msys64\ucrt64\share\qt5\plugins" `
+    --manifest "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json" `
+    --scenario clean-discovery `
+    --dictionary-root "D:\workspace\goldendict\content"
+```
+
+Run the focused preparation and wrapper tests with:
+
+```powershell
+python -m unittest `
+  scripts.tests.prepare_qt5_acceptance_source_test `
+  scripts.tests.qt5_real_dictionary_observer_test
+```
+
 Validate one observation or compare a matched scenario with:
 
 ```powershell

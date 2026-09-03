@@ -1,0 +1,256 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+import xml.etree.ElementTree as ET
+from contextlib import nullcontext
+from pathlib import Path
+from unittest import mock
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import prepare_qt5_acceptance_source as preparation
+import qt5_real_dictionary_observer as observer
+
+CONDITIONS_HASH = "a" * 64
+
+
+class Qt5RealDictionaryObserverTest(unittest.TestCase):
+    def _fixture(self, root: Path) -> tuple[dict[str, str], dict[str, Path]]:
+        corpus = root / "corpus & dictionaries"
+        index = root / "index"
+        config = root / "config"
+        evidence = root / "evidence"
+        raw_directory = evidence / ".raw-observation-fixture"
+        runtime = root / "runtime"
+        plugins = root / "plugins"
+        for directory in (
+            corpus,
+            index,
+            config,
+            evidence,
+            raw_directory,
+            runtime,
+            plugins / "platforms",
+        ):
+            directory.mkdir(parents=True, exist_ok=True)
+        executable = root / "legacy" / "GoldenDict.exe"
+        executable.parent.mkdir()
+        executable.write_bytes(b"fixture executable")
+        include = Path(observer.__file__).with_name(preparation.OBSERVER_INCLUDE)
+        prepared_source = root / "prepared-source"
+        prepared_source.mkdir()
+        for name in preparation.INSTRUMENTED_FILES:
+            target = prepared_source / name
+            if name == preparation.OBSERVER_INCLUDE:
+                target.write_bytes(include.read_bytes())
+            else:
+                target.write_text(f"instrumented {name}\n", encoding="utf-8")
+        provenance = prepared_source / preparation.PROVENANCE_FILE
+        provenance.write_text(
+            json.dumps(
+                {
+                    "instrumented_files": {
+                        name: hashlib.sha256(
+                            (prepared_source / name).read_bytes()
+                        ).hexdigest()
+                        for name in preparation.INSTRUMENTED_FILES
+                    },
+                    "observer_include_sha256": hashlib.sha256(
+                        include.read_bytes()
+                    ).hexdigest(),
+                    "revision": preparation.FROZEN_REVISION,
+                    "schema": preparation.PROVENANCE_SCHEMA,
+                    "source_tree": preparation.FROZEN_TREE,
+                }
+            ),
+            encoding="utf-8",
+        )
+        environment = {
+            "APPDATA": str(config),
+            "GOLDENDICT_ACCEPTANCE_CONDITIONS_SHA256": CONDITIONS_HASH,
+            "GOLDENDICT_ACCEPTANCE_CORPUS_ROOT": str(corpus),
+            "GOLDENDICT_ACCEPTANCE_EVIDENCE_ROOT": str(evidence),
+            "GOLDENDICT_ACCEPTANCE_INDEX_ROOT": str(index),
+            "GOLDENDICT_ACCEPTANCE_REVISION": preparation.FROZEN_REVISION,
+            "GOLDENDICT_ACCEPTANCE_VERSION": "qt5",
+        }
+        paths = {
+            "config": config,
+            "corpus": corpus,
+            "evidence": evidence,
+            "executable": executable,
+            "index": index,
+            "output": raw_directory / "raw.json",
+            "plugins": plugins,
+            "provenance": provenance,
+            "runtime": runtime,
+        }
+        return environment, paths
+
+    @staticmethod
+    def _call(paths: dict[str, Path]) -> Path:
+        return observer.observe(
+            paths["executable"],
+            paths["provenance"],
+            [paths["runtime"]],
+            paths["plugins"],
+            paths["corpus"],
+            paths["index"],
+            "en_US",
+            CONDITIONS_HASH,
+            "clean-discovery",
+            paths["output"],
+            60,
+        )
+
+    def test_runs_with_isolated_profile_runtime_and_plugins(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            captured: dict[str, object] = {}
+
+            def run(
+                command: list[str], **kwargs: object
+            ) -> subprocess.CompletedProcess:
+                child_environment = kwargs["env"]
+                assert isinstance(child_environment, dict)
+                captured["command"] = command
+                captured["environment"] = child_environment
+                config = Path(child_environment["APPDATA"]) / "GoldenDict" / "config"
+                captured["config"] = config.read_bytes()
+                Path(
+                    child_environment["GOLDENDICT_ACCEPTANCE_RAW_RESULT_PATH"]
+                ).write_text("{}", encoding="utf-8")
+                return subprocess.CompletedProcess(command, 0)
+
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                mock.patch.object(
+                    observer,
+                    "_suppressed_windows_error_dialogs",
+                    return_value=nullcontext(),
+                ),
+                mock.patch.object(observer.subprocess, "run", side_effect=run),
+            ):
+                self.assertEqual(self._call(paths), paths["output"])
+
+            child_environment = captured["environment"]
+            assert isinstance(child_environment, dict)
+            expected_platform = (
+                "windows" if observer.platform.system() == "Windows" else "offscreen"
+            )
+            self.assertEqual(child_environment["QT_QPA_PLATFORM"], expected_platform)
+            self.assertEqual(child_environment["QT_OPENGL"], "software")
+            self.assertEqual(child_environment["QT_PLUGIN_PATH"], str(paths["plugins"]))
+            self.assertTrue(
+                child_environment["PATH"].startswith(str(paths["executable"].parent))
+            )
+            config = ET.fromstring(captured["config"])
+            self.assertEqual(config.findtext("paths/path"), str(paths["corpus"]))
+            self.assertEqual(config.findtext("preferences/interfaceLanguage"), "en_US")
+            self.assertEqual(captured["command"], [str(paths["executable"])])
+
+    def test_rejects_portable_state_next_to_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            (paths["executable"].parent / "portable").mkdir()
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(observer.Qt5ObserverError, "portable state"),
+            ):
+                self._call(paths)
+
+    def test_rejects_provenance_from_other_instrumentation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            value = json.loads(paths["provenance"].read_text(encoding="utf-8"))
+            value["observer_include_sha256"] = "0" * 64
+            paths["provenance"].write_text(json.dumps(value), encoding="utf-8")
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(observer.Qt5ObserverError, "does not match"),
+            ):
+                self._call(paths)
+
+    def test_rejects_prepared_source_changed_after_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            (paths["provenance"].parent / "main.cc").write_text(
+                "changed\n", encoding="utf-8"
+            )
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(observer.Qt5ObserverError, "does not match"),
+            ):
+                self._call(paths)
+
+    def test_failed_process_removes_partial_raw_result(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+
+            def run(
+                command: list[str], **kwargs: object
+            ) -> subprocess.CompletedProcess:
+                child_environment = kwargs["env"]
+                assert isinstance(child_environment, dict)
+                Path(
+                    child_environment["GOLDENDICT_ACCEPTANCE_RAW_RESULT_PATH"]
+                ).write_text("partial", encoding="utf-8")
+                return subprocess.CompletedProcess(command, 9)
+
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                mock.patch.object(
+                    observer,
+                    "_suppressed_windows_error_dialogs",
+                    return_value=nullcontext(),
+                ),
+                mock.patch.object(observer.subprocess, "run", side_effect=run),
+                self.assertRaisesRegex(observer.Qt5ObserverError, "exit code 9"),
+            ):
+                self._call(paths)
+            self.assertFalse(paths["output"].exists())
+
+    def test_rejects_raw_output_outside_evidence_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            paths["output"] = Path(temporary) / "outside" / "raw.json"
+            paths["output"].parent.mkdir()
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(observer.Qt5ObserverError, "evidence root"),
+            ):
+                self._call(paths)
+
+    def test_rejects_raw_output_in_unrecognized_evidence_subdirectory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            paths["output"] = paths["evidence"] / "unrecognized" / "raw.json"
+            paths["output"].parent.mkdir()
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(observer.Qt5ObserverError, "evidence root"),
+            ):
+                self._call(paths)
+
+    def test_rejects_mismatched_paired_revision(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            environment["GOLDENDICT_ACCEPTANCE_REVISION"] = "b" * 40
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(observer.Qt5ObserverError, "frozen"),
+            ):
+                self._call(paths)
+
+
+if __name__ == "__main__":
+    unittest.main()

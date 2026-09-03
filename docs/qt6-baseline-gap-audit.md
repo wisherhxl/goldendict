@@ -629,8 +629,8 @@ shipping binary, or frozen Qt 5 file changes in this functional unit.
 R3.2b is split at the version-adapter boundary so each observer is independently
 reviewable and the frozen Qt 5 instrumentation cannot obscure changes to the
 Qt 6 acceptance path. R3.2b1 provides the shared raw-to-canonical adapter and a
-test-only Qt 6 observer. R3.2b2 will add the disposable-source Qt 5 observer and
-reuse the same adapter contract. Neither target is a shipping product feature,
+test-only Qt 6 observer. R3.2b2 adds the disposable-source Qt 5 observer and
+reuses the same adapter contract. Neither target is a shipping product feature,
 and neither changes dictionary discovery ownership.
 
 The R3.2b1 adapter validates every paired-workspace identity binding before it
@@ -679,6 +679,53 @@ the expected name, English-to-German languages, one article, one headword, and
 one newly created isolated index, and retains no absolute corpus path. The full
 approved corpus remains the R3.2c paired-run gate after both version adapters
 exist.
+
+#### R3.2b2 Qt 5 observer delivery verification
+
+R3.2b2 supplies the frozen-version adapter without modifying the pinned Qt 5
+checkout. `prepare_qt5_acceptance_source.py` first requires the exact frozen
+commit and tree and a completely clean checkout, exports that commit with
+`git archive`, rejects unsafe archive members, and applies exact-anchor
+instrumentation only to the disposable copy. The resulting provenance binds
+the frozen commit and tree, the checked-in observer include, and SHA-256 hashes
+of every instrumented source file. The runtime wrapper validates those bindings
+again before launch.
+
+The injected observer reads the dictionary objects produced by the existing
+Qt 5 discovery and group-construction path. It emits only bounded identity,
+relative component, language, count, phase, outcome, and index metadata for the
+shared adapter; it neither parses dictionary formats independently nor retains
+article text. The acceptance-only patch also redirects indexes to the paired
+workspace, bypasses single-instance forwarding only for an acceptance run, and
+terminates after atomic raw-result publication. Two narrowly scoped Windows
+compatibility shims exist only in the disposable source: the legacy
+`CHANGEFILTERSTRUCT` fallback is disabled when current MinGW headers provide it,
+and accessibility `WM_GETOBJECT` requests are ignored to keep old Qt 5 UI
+automation from destabilizing the observer process.
+
+The Python wrapper creates a disposable profile under the paired configuration
+root, supplies the exact corpus and index bindings, rejects portable state,
+confines raw output to the adapter's evidence directory, and prepends explicit
+Qt 5 runtime and plugin paths. It suppresses Windows loader/fault dialogs while
+preserving the process error mode. Windows uses the native platform plugin
+because this Qt 5 WebKit build crashes in the offscreen plugin; other platforms
+remain offscreen. This is a harness constraint and does not change observed
+dictionary behavior.
+
+The focused 14-test suite covers checkout identity and cleanliness, safe export,
+changed anchors, complete instrumented-file provenance, provenance tampering,
+profile/runtime/plugin projection, output confinement, portable-state refusal,
+revision mismatch, and failed-process cleanup. A fresh MSYS2 UCRT64 Qt 5 build
+from the prepared source completes with the frozen checkout still clean. An
+end-to-end run using the real corpus file `中文/古汉语常用字字典.dsl.dz` observes
+the expected dictionary name, Chinese-to-Chinese languages, 3,889 articles and
+headwords, and one newly created isolated index. The shared validator accepts
+the canonical result, and no absolute corpus path or dictionary payload is
+retained. Full-corpus paired scenarios remain R3.2c work.
+
+The repository-wide dependency-free Python gate passes 82 tests with one
+host-capability symlink skip. Black and Ruff pass for all R3.2b2 Python files,
+and `py_compile` plus `git diff --check` pass.
 
 ### CRD closure cross-check
 
