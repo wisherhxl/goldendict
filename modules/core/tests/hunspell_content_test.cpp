@@ -142,7 +142,10 @@ void HunspellContentTest::RejectsUnsafeFilesystemInputs() {
     const auto target = root / "target.aff";
     test::WriteHunspellBytes(target, "SET UTF-8\n");
     std::filesystem::remove(files.affix_file);
-    std::filesystem::create_symlink(target, files.affix_file);
+    std::error_code symlink_error;
+    std::filesystem::create_symlink(target, files.affix_file, symlink_error);
+    if (symlink_error)
+        QSKIP("File symlink creation is unavailable");
     error = Capture([&] { LoadContent(files); });
     QCOMPARE(error.code(), ContentErrorCode::kUnsafePath);
     QCOMPARE(error.path(), files.affix_file);

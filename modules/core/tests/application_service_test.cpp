@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iterator>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
 
@@ -3874,6 +3875,17 @@ void ApplicationServiceTest::MigratesAllLegacyOnlineSourcesAtomically() {
     const auto root = TemporaryPath(directory);
     const auto legacy_path = root / "config";
     const auto current_path = root / "core.conf";
+#ifdef _WIN32
+    constexpr std::string_view tool_path = "C:/goldendict-fixture/tool.exe";
+    constexpr std::string_view render_path = "C:/goldendict-fixture/render.exe";
+    constexpr std::string_view prefix_path = "C:/goldendict-fixture/prefix.exe";
+    constexpr std::string_view quote_path = "C:/goldendict-fixture/quote.exe";
+#else
+    constexpr std::string_view tool_path = "/usr/bin/tool";
+    constexpr std::string_view render_path = "/opt/render";
+    constexpr std::string_view prefix_path = "/opt/prefix";
+    constexpr std::string_view quote_path = "/opt/quote";
+#endif
     const std::string legacy =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?><config>"
         "<mediawikis>"
@@ -3896,16 +3908,21 @@ void ApplicationServiceTest::MigratesAllLegacyOnlineSourcesAtomically() {
         "url=\"default.example\" enabled=\"0\" databases=\"\" "
         "strategies=\"\" icon=\"\"/>"
         "</dictservers><programs>"
-        "<program id=\"plain\" name=\"Plain\" "
-        "commandLine=\"/usr/bin/tool &quot;two words&quot; "
+        "<program id=\"plain\" name=\"Plain\" commandLine=\"" +
+        std::string(tool_path) +
+        " &quot;two words&quot; "
         "&quot;&quot; %GDWORD%\" enabled=\"1\" type=\"1\" icon=\"x\"/>"
-        "<program id=\"html\" name=\"HTML\" commandLine=\"/opt/render --html\" "
+        "<program id=\"html\" name=\"HTML\" commandLine=\"" +
+        std::string(render_path) +
+        " --html\" "
         "enabled=\"0\" type=\"2\" icon=\"\"/>"
-        "<program id=\"prefix\" name=\"Prefix\" "
-        "commandLine=\"/opt/prefix %GDWORD%\" enabled=\"1\" type=\"3\" "
+        "<program id=\"prefix\" name=\"Prefix\" commandLine=\"" +
+        std::string(prefix_path) +
+        " %GDWORD%\" enabled=\"1\" type=\"3\" "
         "icon=\"\"/>"
-        "<program id=\"quotes\" name=\"Quotes\" "
-        "commandLine=\"/opt/quote &quot;a&quot;&quot;b&quot; &quot;open a|b\" "
+        "<program id=\"quotes\" name=\"Quotes\" commandLine=\"" +
+        std::string(quote_path) +
+        " &quot;a&quot;&quot;b&quot; &quot;open a|b\" "
         "enabled=\"0\" type=\"1\" icon=\"\"/>"
         "</programs></config>";
     test::WriteBinaryFile(legacy_path, legacy);
@@ -3934,7 +3951,8 @@ void ApplicationServiceTest::MigratesAllLegacyOnlineSourcesAtomically() {
             {"dict-defaults", "DICT Defaults", false, "default.example", 2628U,
              "*", "prefix"}}));
     QCOMPARE(migrated.external_program_sources.size(), std::size_t{4});
-    QCOMPARE(migrated.external_program_sources[0].executable, "/usr/bin/tool");
+    QCOMPARE(migrated.external_program_sources[0].executable,
+             std::string(tool_path));
     QCOMPARE(migrated.external_program_sources[0].argument_templates,
              (std::vector<std::string>{"two words", "", "%GDWORD%"}));
     QCOMPARE(migrated.external_program_sources[0].output_kind,

@@ -2,9 +2,6 @@
 
 #include <QtTest>
 
-#include <QFile>
-#include <QTemporaryDir>
-
 #include <string>
 #include <utility>
 
@@ -15,38 +12,7 @@ namespace {
 
 class Helper final {
    public:
-    Helper() {
-        if (!directory_.isValid()) {
-            qFatal("Could not create external program fixture directory");
-        }
-        path_ = directory_.filePath("helper.sh");
-        QFile file(path_);
-        if (!file.open(QIODevice::WriteOnly) ||
-            file.write("#!/bin/sh\n"
-                       "case \"$1\" in\n"
-                       "  arg) printf '%s' \"$2\" ;;\n"
-                       "  stdin) cat ;;\n"
-                       "  utf16) printf '\\377\\376H\\000i\\000' ;;\n"
-                       "  stderr) printf 'failure' >&2; exit 7 ;;\n"
-                       "  slow) sleep 2 ;;\n"
-                       "  large) printf '0123456789' ;;\n"
-                       "esac\n") < 0) {
-            qFatal("Could not write external program fixture");
-        }
-        file.close();
-        QFile::Permissions permissions = file.permissions();
-        permissions |= QFileDevice::ExeOwner | QFileDevice::ExeGroup |
-                       QFileDevice::ExeOther;
-        if (!file.setPermissions(permissions)) {
-            qFatal("Could not make external program fixture executable");
-        }
-    }
-
-    std::string Path() const { return path_.toStdString(); }
-
-   private:
-    QTemporaryDir directory_;
-    QString path_;
+    std::string Path() const { return GOLDENDICT_EXTERNAL_PROGRAM_TEST_HELPER; }
 };
 
 template <typename Callback>

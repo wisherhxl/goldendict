@@ -358,7 +358,11 @@ void StardictDictionaryTest::RejectsResourceSymlinkEscapes() {
     test::WriteBinaryFile(outside, "outside");
     const auto resource_root = root / "res";
     QVERIFY(std::filesystem::create_directory(resource_root));
-    std::filesystem::create_symlink(outside, resource_root / "escape.txt");
+    std::error_code symlink_error;
+    std::filesystem::create_symlink(outside, resource_root / "escape.txt",
+                                    symlink_error);
+    if (symlink_error)
+        QSKIP("File symlink creation is unavailable");
     const Dictionary dictionary = Dictionary::Open("fixture-id", info_path);
 
     try {

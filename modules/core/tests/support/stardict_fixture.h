@@ -14,6 +14,8 @@
 
 #include <zlib.h>
 
+#include "gzip_fixture.h"
+
 namespace goldendict::core::test {
 
 struct FixtureEntry {
@@ -105,8 +107,9 @@ inline std::filesystem::path CompressStardictDictionary(
     std::ifstream input(dictionary_path, std::ios::binary);
     const std::string contents((std::istreambuf_iterator<char>(input)),
                                std::istreambuf_iterator<char>());
-    const auto compressed_path = dictionary_path.string() + ".dz";
-    gzFile output = gzopen(compressed_path.c_str(), "wb9");
+    auto compressed_path = dictionary_path;
+    compressed_path += ".dz";
+    gzFile output = OpenGzipFixture(compressed_path, "wb9");
     if (output == nullptr) {
         throw std::runtime_error("Cannot open compressed StarDict fixture");
     }

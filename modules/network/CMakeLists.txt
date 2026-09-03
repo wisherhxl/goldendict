@@ -25,6 +25,12 @@ if(TARGET runtime_composition_test)
     goldendict_external
     Qt6::Network
   )
+  target_compile_definitions(runtime_composition_test PRIVATE
+    GOLDENDICT_EXTERNAL_PROGRAM_TEST_HELPER="$<TARGET_FILE:goldendict_external_program_test_helper>"
+  )
+  add_dependencies(runtime_composition_test
+    goldendict_external_program_test_helper
+  )
 endif()
 
 if(TARGET http_client_test)

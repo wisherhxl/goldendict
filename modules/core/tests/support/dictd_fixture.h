@@ -15,6 +15,8 @@
 
 #include <zlib.h>
 
+#include "gzip_fixture.h"
+
 namespace goldendict::core::test {
 
 struct DictdFixtureEntry {
@@ -91,8 +93,9 @@ inline std::filesystem::path CompressDictdFixture(
     std::ifstream input(data_path, std::ios::binary);
     const std::string data((std::istreambuf_iterator<char>(input)),
                            std::istreambuf_iterator<char>());
-    const auto compressed_path = data_path.string() + ".dz";
-    gzFile output = gzopen(compressed_path.c_str(), "wb9");
+    auto compressed_path = data_path;
+    compressed_path += ".dz";
+    gzFile output = OpenGzipFixture(compressed_path, "wb9");
     if (output == nullptr) {
         throw std::runtime_error("Cannot create compressed Dictd fixture");
     }

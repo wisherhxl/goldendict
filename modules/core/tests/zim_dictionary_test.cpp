@@ -122,9 +122,13 @@ void ZimDictionaryTest::TracksCompleteSplitRevision() {
     QVERIFY(directory.isValid());
     const auto root = std::filesystem::path(directory.path().toStdString());
     const auto source = test::WriteZimFixture(root);
-    std::ifstream input(source, std::ios::binary);
-    const std::string data((std::istreambuf_iterator<char>(input)),
-                           std::istreambuf_iterator<char>());
+    std::string data;
+    {
+        std::ifstream input(source, std::ios::binary);
+        QVERIFY(input.is_open());
+        data.assign(std::istreambuf_iterator<char>(input),
+                    std::istreambuf_iterator<char>());
+    }
     QVERIFY(std::filesystem::remove(source));
     const auto first = root / "fixture.zimaa";
     const auto second = root / "fixture.zimab";

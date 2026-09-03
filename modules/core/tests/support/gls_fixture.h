@@ -14,6 +14,8 @@
 
 #include <zlib.h>
 
+#include "gzip_fixture.h"
+
 namespace goldendict::core::test {
 
 struct GlsFixtureEntry {
@@ -96,8 +98,10 @@ inline std::filesystem::path CompressGlsFixture(
     std::ifstream input(path, std::ios::binary);
     const std::string data((std::istreambuf_iterator<char>(input)),
                            std::istreambuf_iterator<char>());
-    const auto compressed = path.string() + ".dz";
-    gzFile output = gzopen(compressed.c_str(), "wb9");
+    input.close();
+    auto compressed = path;
+    compressed += ".dz";
+    gzFile output = OpenGzipFixture(compressed, "wb9");
     if (output == nullptr ||
         gzwrite(output, data.data(), static_cast<unsigned int>(data.size())) !=
             static_cast<int>(data.size()) ||

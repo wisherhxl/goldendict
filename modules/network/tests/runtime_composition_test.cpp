@@ -2,7 +2,6 @@
 
 #include <QtTest>
 
-#include <QFile>
 #include <QSemaphore>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -16,6 +15,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "../../core/tests/support/stardict_fixture.h"
@@ -24,6 +24,16 @@
 
 namespace goldendict::network {
 namespace {
+
+std::string MissingExecutable(std::string_view name) {
+#ifdef _WIN32
+    auto path = std::filesystem::path("C:/definitely/missing");
+#else
+    auto path = std::filesystem::path("/definitely/missing");
+#endif
+    path /= name;
+    return path.string();
+}
 
 class RuntimeFixture final : public QObject {
    public:
@@ -88,43 +98,13 @@ class RuntimeFixture final : public QObject {
 
 class ExternalProgramFixture final {
    public:
-    ExternalProgramFixture() {
-        if (!directory_.isValid()) {
-            qFatal("Could not create external program fixture directory");
-        }
-        path_ = directory_.filePath("runtime-helper.sh");
-        QFile file(path_);
-        if (!file.open(QIODevice::WriteOnly) ||
-            file.write(
-                "#!/bin/sh\n"
-                "case \"$1\" in\n"
-                "  argv) printf '%s' \"$2\" ;;\n"
-                "  stdin) cat ;;\n"
-                "  html) printf '<p>safe<script>bad()</script></p>' ;;\n"
-                "  pwd) pwd ;;\n"
-                "  prefix) printf 'Alpha\\r\\n\\r\\nAlpine\\nAlbatross\\r' ;;\n"
-                "  invalid) printf '\\377' ;;\n"
-                "  fail) exit 7 ;;\n"
-                "  slow) sleep 2 ;;\n"
-                "esac\n") < 0) {
-            qFatal("Could not write external program fixture");
-        }
-        file.close();
-        auto permissions = file.permissions();
-        permissions |= QFileDevice::ExeOwner | QFileDevice::ExeGroup |
-                       QFileDevice::ExeOther;
-        if (!file.setPermissions(permissions)) {
-            qFatal("Could not make external program fixture executable");
-        }
+    std::string Path() const { return GOLDENDICT_EXTERNAL_PROGRAM_TEST_HELPER; }
+
+    std::string Directory() const {
+        auto directory = std::filesystem::path(Path()).parent_path();
+        directory.make_preferred();
+        return directory.string();
     }
-
-    std::string Path() const { return path_.toStdString(); }
-
-    std::string Directory() const { return directory_.path().toStdString(); }
-
-   private:
-    QTemporaryDir directory_;
-    QString path_;
 };
 
 class Cancelled final : public goldendict::core::RuntimeCancellationSignal {
@@ -602,6 +582,7 @@ void RuntimeCompositionTest::
 }
 
 void RuntimeCompositionTest::ComposesExternalProgramsAfterNetworkFamilies() {
+    const auto first_program = MissingExecutable("first");
     goldendict::core::CoreConfiguration configuration;
     configuration.mediawiki_sources = {
         {"wiki", "Wiki", true, "https://example.test/wiki"}};
@@ -616,21 +597,21 @@ void RuntimeCompositionTest::ComposesExternalProgramsAfterNetworkFamilies() {
          "Program First",
          true,
          goldendict::core::ExternalProgramOutputKind::kPlainText,
-         "/definitely/missing/first",
+         first_program,
          {"%GDWORD%"},
          ""},
         {"program.disabled",
          "Program Disabled",
          false,
          goldendict::core::ExternalProgramOutputKind::kHtml,
-         "/definitely/missing/disabled",
+         MissingExecutable("disabled"),
          {},
          ""},
         {"program.second",
          "Program Second",
          true,
          goldendict::core::ExternalProgramOutputKind::kPrefixMatch,
-         "/definitely/missing/second",
+         MissingExecutable("second"),
          {},
          ""}};
     const auto original = configuration;
@@ -647,8 +628,7 @@ void RuntimeCompositionTest::ComposesExternalProgramsAfterNetworkFamilies() {
              std::string("program.first"));
     QCOMPARE(composition.sources[4]->identity().name,
              std::string("Program First"));
-    QCOMPARE(composition.sources[4]->identity().source,
-             std::string("/definitely/missing/first"));
+    QCOMPARE(composition.sources[4]->identity().source, first_program);
     QCOMPARE(composition.sources[5]->identity().id,
              std::string("program.second"));
     QCOMPARE(configuration.external_program_sources,
@@ -743,7 +723,7 @@ void RuntimeCompositionTest::TranslatesExternalProgramRequestFailures() {
          "Missing",
          true,
          goldendict::core::ExternalProgramOutputKind::kPlainText,
-         "/definitely/missing/goldendict-runtime-helper",
+         MissingExecutable("goldendict-runtime-helper"),
          {},
          ""},
         {"invalid",

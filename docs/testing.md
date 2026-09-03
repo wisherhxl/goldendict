@@ -312,13 +312,58 @@ grip. This matches the pinned Qt 5 main window, which removes its `QStatusBar`
 and uses a custom status overlay, while preserving the existing resize
 capability and all status text.
 
-The earlier full 125-test Windows run passed 99 tests. Twenty-six failures
-remain recorded as test-infrastructure/toolchain work rather than product-shell
-acceptance: many format/backend QtTest executables terminate at the same MSVC
-exception entry, and several cross-process GUI runners still assume that
-Windows Qt honors their XDG paths or can share the same offscreen WebEngine
-resources in a parallel run. Each failure must be reproduced serially and
-classified before it can be attributed to product behavior.
+### Windows exception-family gate
+
+The R2.1 baseline was a serial 128-test Windows Release run under Visual Studio
+2026, MSVC 19.44, and Qt 6.11.1. It passed 104 tests and failed 24. Fifteen
+executables contained 20 functions that terminated with Windows status
+`0xe06d7363` at `RaiseException`. Serial isolation produced this classification:
+
+- POSIX-only external-program helpers affected
+  `external_program_source_test::{ReplacesArgumentsAndWritesStandardInput,
+  DecodesUnicodeAndReportsFailures}` and
+  `runtime_composition_test::{ComposesExternalProgramsAfterNetworkFamilies,
+  MapsExternalProgramOutputWithoutAShell,
+  TranslatesExternalProgramRequestFailures}`. A compiled test helper now
+  provides the same argument, standard-input, encoding, error, timeout, HTML,
+  prefix, and working-directory behavior on every platform. Windows fixture
+  paths use valid absolute forms and comparisons use preferred separators.
+- Open input streams prevented Windows from deleting source files while
+  creating compressed or split fixtures. The affected functions were
+  `dsl_dictionary_test::{ReusesAndRebuildsForOnlySelectedSource,
+  SearchesCompressedAndContainsFailures}`,
+  `dsl_discovery_test::DiscoversDictionariesAndSkipsAbbreviations`,
+  `dsl_reader_test::ReadsCompressedAndUtf16AndInvokesCheckpoints`,
+  `gls_dictionary_test::{ReusesAndRebuildsFullTextIndexForOnlyTheSource,
+  SearchesCompressedTextAndContainsFullTextFailures}`,
+  `gls_discovery_test::DiscoversPlainAndCompressedFilesWithoutDuplicates`,
+  `gls_reader_test::ReadsCompressedAndUtf16TextAndInvokesCheckpoints`,
+  `xdxf_dictionary_test::SearchesCompressedTextAndContainsBoundedFailures`,
+  `xdxf_discovery_test::DiscoversPlainAndCompressedFilesWithoutDuplicates`,
+  `xdxf_reader_test::ReadsCompressedXmlAndInvokesCheckpoints`, and
+  `zim_dictionary_test::TracksCompleteSplitRevision`. Fixture streams now
+  close before removal, and gzip fixture creation uses native Windows paths.
+- `hunspell_content_test::RejectsUnsafeFilesystemInputs` and
+  `stardict_dictionary_test::RejectsResourceSymlinkEscapes` assumed an
+  unprivileged Windows host could create file symlinks. They now skip only
+  when creation is unavailable; their unsafe-path assertions remain unchanged
+  and run on capable hosts.
+- `application_service_test::MigratesAllLegacyOnlineSourcesAtomically` used
+  POSIX executable paths that are not absolute on Windows. Its migration data
+  now uses platform-valid absolute paths without changing the migration
+  assertions.
+
+The focused post-correction gate runs through the Conan launcher and executes
+each function above separately, followed by the complete affected executable
+set with an anchored expression and `-j1`. All 20 isolated functions pass. The
+complete set has no MSVC exception-family termination: 11 executables pass and
+`application_service_test`, `dsl_reader_test`, `stardict_dictionary_test`, and
+`xdxf_reader_test` report only ordinary path-normalization or Windows
+failure-injection assertions assigned to R2.2. Eight additional BGL, Dictd,
+and StarDict fixture-consumer executables pass. The full serial 128-test rerun
+passes 116 tests and leaves 12 ordinary R2.2/R2.3 failures, with no
+`0xe06d7363` termination. Assertions were not disabled, and product failures
+are not classified as infrastructure.
 
 The Phase 2 focused test is `goldendict_smoke`. It exercises the executable's
 non-GUI startup path and therefore does not require a display server.

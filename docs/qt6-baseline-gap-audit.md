@@ -222,7 +222,7 @@ launcher and Python tooling checks run directly.
 | --- | --- | --- | --- |
 | R1.1 | **Complete:** safe corpus manifest: `CRD-TEST-REAL-001`, read-only half of `002` | none | synthetic corpus unit tests; repeat generation and byte comparison; real-corpus manifest log |
 | R1.2 | **Complete:** paired isolated run workspace and metadata: remainder of `002`, `003` | R1.1 | synthetic confinement/mismatch tests; paired Qt 5/Qt 6 metadata validation |
-| R2.1 | MSVC exception-family test diagnosis and harness correction | R1.2 | each affected test serially reproduced; focused corrected tests; no assertion weakening |
+| R2.1 | **Complete:** MSVC exception-family test diagnosis and harness correction | R1.2 | each affected test serially reproduced; focused corrected tests; no assertion weakening |
 | R2.2 | Windows path/profile/process isolation corrections | R2.1 | focused restart/process tests from Unicode and long paths |
 | R2.3 | Windows WebEngine serialization and GPU-independent harness | R2.2 | all affected WebEngine tests serially pass; full Windows CTest log retained |
 | R3.1 | Configuration and user-state upgrade/rollback matrix: `CRD-STATE-004`, `CRD-COMPAT-002` through `005` | R1.2, R2.3 | generated malformed/failure-injection tests plus disposable Qt 5 profile upgrade |
@@ -294,6 +294,51 @@ launcher and Python tooling checks run directly.
 | R10.6 | Windows installer, application manifest, shortcuts, registration, upgrade, and uninstall | R10.5 | clean installer build and metadata inspection plus install, native integration, repair/upgrade, and uninstall evidence |
 | R10.7 | Paired startup/index/lookup/render/full-text/memory/storage measurements: `CRD-TEST-REAL-010` | R5.4, R9.9, R10.3-R10.6 | machine-readable same-host results, thresholds, and disposition of every material regression |
 | R10.8 | Same-candidate Linux/Windows cutover audit and documentation reconciliation | all prior leaves | complete build/test/install/package/visual/corpus records and independent final audit |
+
+#### R2.1 issue record and readiness
+
+R2.1 is a minor correction governed by the approved Windows test-gate
+requirements in CRD Sections 10.3 and 12. The recorded issue is that the
+earlier Windows Release run grouped multiple QtTest process terminations at a
+common MSVC exception entry without first reproducing and classifying each
+test serially. The conforming outcome is a trustworthy harness diagnosis and,
+where the failure is caused by test infrastructure, a correction that keeps
+all product assertions intact. Any reproducible product defect remains a
+separate functional gap and is not skipped or relabelled as infrastructure.
+
+Impact check: **Ready**. This delivery changes only Windows test execution or
+test-fixture mechanics proven to cause the shared exception family. It does
+not change product behavior, public interfaces, dictionary data, or the Core/
+Widgets ownership boundary. The existing test registration and fixture
+patterns remain the design authority; no new abstraction or design pattern is
+justified unless the diagnosis demonstrates a repeated lifecycle boundary.
+
+The exact initial reproduction command, run from this leaf's Release build in
+a Visual Studio 2026 x64 environment with MSVC 14.44 and the checkout's Conan
+environment, is:
+
+```powershell
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -j1 --output-on-failure
+```
+
+Every member of the exception family is then rerun serially with
+`--repeat until-pass:2` disabled and a focused anchored `-R` expression. The
+delivery evidence must retain the affected test names, exit/error signatures,
+classification, focused post-correction results, and a diff review proving
+that no assertion or product contract was weakened.
+
+Completion result: **Complete**. The serial baseline contained 20 affected
+QtTest functions in 15 executables, all terminating with Windows status
+`0xe06d7363` at `RaiseException`. The functions and their classifications are
+retained in `docs/testing.md`. After correction, every affected function
+passes when run alone. The complete 15-executable set has no exception-family
+termination: 11 executables pass and four report only ordinary, named R2.2
+path or failure-injection assertions. The shared BGL, Dictd, and StarDict
+fixture consumers also build and their eight focused executables pass. A full
+serial 128-test rerun passes 116 tests and leaves 12 ordinary R2.2/R2.3
+failures, with no remaining exception-family crash. No product assertion was
+removed or weakened; symlink safety assertions still run whenever the host
+permits creation of the required symlink.
 
 ### CRD closure cross-check
 
