@@ -5349,6 +5349,14 @@ complete hidden facade/service/catalog/group/tab/controller bindings, blank
 disabled staged widgets, and unchanged active facade session, tabs, dictionary
 actions, query, and selection while the candidate is ready.
 
+The smoke runs with isolated XDG, `APPDATA`, `LOCALAPPDATA`, and
+`GOLDENDICT_TEST_CONFIG_ROOT` directories on every platform. Its scroll
+continuity fixture keeps the active and prepared article views on the same
+preference-owned zoom factor and injects deterministic scrollable content into
+the replacement document before restoration. On failure, the executable writes
+the first failed lifecycle stage, plus detailed scroll coordinates when
+applicable, to standard error so CTest reports actionable evidence.
+
 It also proves that every prepared group-selector, action, article-tab,
 page/view, full-text-output, suggestion, and rendered-match producer is
 connected to one complete disabled activation relay. Synthetic disabled

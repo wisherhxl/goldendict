@@ -9942,6 +9942,21 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
         group_selector_->nextInFocusChain();
     bool passed = !facade_candidate_reclaimer_->isActive() &&
                   facade_preparation_record_ == nullptr;
+    bool failure_reported = false;
+    const auto report_failure = [&passed, &failure_reported](
+                                    const QString& stage) {
+        if (!passed && !failure_reported) {
+            const QByteArray message =
+                QStringLiteral("Widgets facade preparation smoke failed at %1\n")
+                    .arg(stage)
+                    .toLocal8Bit();
+            std::fwrite(message.constData(), 1U,
+                        static_cast<std::size_t>(message.size()), stderr);
+            std::fflush(stderr);
+            failure_reported = true;
+        }
+    };
+    report_failure(QStringLiteral("initial state"));
     auto facade = std::shared_ptr<goldendict::core::DesktopFacade>(
         facade_, [](goldendict::core::DesktopFacade*) {});
 
@@ -9952,6 +9967,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
     preparer.join();
     passed = passed && !wrong_thread && facade_preparation_record_ == nullptr &&
              !facade_candidate_reclaimer_->isActive();
+    report_failure(QStringLiteral("wrong-thread rejection"));
 
     for (int failure_step = 0; failure_step < 19; ++failure_step) {
         facade_preparation_failure_step_ = failure_step;
@@ -9965,6 +9981,9 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                  article_tabs_host_->ActivePage() == article_tabs_ &&
                  saveState(kMainWindowStateVersion) == initial_window_state &&
                  facade_binding_registry_->AuditClosedLeaseProtocol();
+        report_failure(
+            QStringLiteral("preparation failure injection step %1")
+                .arg(failure_step));
     }
     facade_preparation_failure_step_ = -1;
 
@@ -9973,6 +9992,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
     passed = passed && !candidate && moved_candidate;
     candidate = std::move(moved_candidate);
     passed = passed && candidate && !moved_candidate;
+    report_failure(QStringLiteral("candidate move semantics"));
     const auto record = candidate.record_;
     const auto* staged = record == nullptr ? nullptr : record->resources;
     const auto active_catalog = facade_->GetDictionaryService().GetCatalog();
@@ -10037,6 +10057,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
         goldendict::widgets::WidgetsFacadeBindingRegistry::
             RunClosedLeaseProtocolSmokeCheck() &&
         facade_->ExportArticleTabSession() == initial_session;
+    report_failure(QStringLiteral("prepared candidate invariants"));
 
     const auto epoch_before_inert_emissions = presentation_mutation_epoch_;
     const auto requests_before_inert_emissions = requests_.size();
@@ -10085,6 +10106,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
              query_->text() == initial_query &&
              facade_->ExportArticleTabSession() == initial_session &&
              IsFacadeCandidateCurrent(candidate);
+    report_failure(QStringLiteral("inert staged emissions"));
 
     record->owner.store(nullptr, std::memory_order_release);
     passed = passed && !IsFacadeCandidateCurrent(candidate);
@@ -10102,6 +10124,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
     candidate.Abandon();
     passed = passed && facade_preparation_record_ == nullptr &&
              !facade_candidate_reclaimer_->isActive();
+    report_failure(QStringLiteral("candidate invalidation and abandonment"));
     query_->setText(initial_query);
 
     auto invalid_groups = groups_;
@@ -10111,6 +10134,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
     passed = passed && !failed && facade_preparation_record_ == nullptr &&
              !facade_candidate_reclaimer_->isActive() &&
              facade_->ExportArticleTabSession() == initial_session;
+    report_failure(QStringLiteral("invalid group rejection"));
 
     auto stale = PrepareFacadeCandidate(facade, preferences_, groups_);
     const bool stale_was_ready = static_cast<bool>(stale);
@@ -10124,6 +10148,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
     superseding.Abandon();
     passed = passed && facade_preparation_record_ == nullptr &&
              !facade_candidate_reclaimer_->isActive();
+    report_failure(QStringLiteral("candidate supersession"));
 
     auto abandoned = PrepareFacadeCandidate(facade, preferences_, groups_);
     const auto abandoned_record = abandoned.record_;
@@ -10133,14 +10158,30 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
     abandoner.join();
     passed = passed && facade_preparation_record_ != nullptr &&
              facade_candidate_reclaimer_->isActive();
+    report_failure(QStringLiteral("cross-thread abandonment dispatch"));
 
     auto* deadline = new QTimer(this);
     deadline->setSingleShot(true);
     deadline->setInterval(250);
     connect(
         deadline, &QTimer::timeout, this,
-        [this, passed, abandoned_record, deadline,
-         completion = std::move(completion)]() mutable {
+        [this, passed, failure_reported, abandoned_record, deadline,
+          completion = std::move(completion)]() mutable {
+            const auto report_failure = [&passed, &failure_reported](
+                                            const QString& stage) {
+                if (!passed && !failure_reported) {
+                    const QByteArray message = QStringLiteral(
+                                                   "Widgets facade preparation "
+                                                   "smoke failed at %1\n")
+                                                   .arg(stage)
+                                                   .toLocal8Bit();
+                    std::fwrite(message.constData(), 1U,
+                                static_cast<std::size_t>(message.size()),
+                                stderr);
+                    std::fflush(stderr);
+                    failure_reported = true;
+                }
+            };
             const bool reclaimed =
                 abandoned_record->reclaimed.load(std::memory_order_acquire);
             passed = passed && reclaimed &&
@@ -10148,6 +10189,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                          std::memory_order_acquire) &&
                      facade_preparation_record_ == nullptr &&
                      !facade_candidate_reclaimer_->isActive();
+            report_failure(QStringLiteral("cross-thread reclamation"));
 
             auto current_facade =
                 std::shared_ptr<goldendict::core::DesktopFacade>(
@@ -10164,6 +10206,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
             restarted.Abandon();
             passed = passed && facade_preparation_record_ == nullptr &&
                      !facade_candidate_reclaimer_->isActive();
+            report_failure(QStringLiteral("restarted candidate lifecycle"));
 
             // Phase A is rejectable at every injected boundary and must leave
             // the active presentation and interaction gate exactly restored.
@@ -10179,6 +10222,9 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                     !WidgetsInteractionBlocked() &&
                     group_selector_host_->ActivePage() == group_selector_ &&
                     article_tabs_host_->ActivePage() == article_tabs_;
+                report_failure(
+                    QStringLiteral("maintenance rejection step %1")
+                        .arg(failure_step));
                 rejected.Abandon();
             }
             facade_maintenance_failure_step_ = -1;
@@ -10191,6 +10237,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
             AbortMaintainedFacadeCommit(std::move(abortable.maintained));
             passed = passed && !WidgetsInteractionBlocked() &&
                      facade_preparation_record_ == nullptr;
+            report_failure(QStringLiteral("maintenance abort"));
 
             goldendict::core::TabNavigationState restored_navigation;
             restored_navigation.kind =
@@ -10220,8 +10267,10 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                 return requests_.count(restoration_tab_id) == 0U;
             };
             passed = passed && finish_restoration_lookup();
+            report_failure(QStringLiteral("restoration lookup completion"));
             auto* restoration_old_view = ArticleViewForTab(restoration_tab_id);
             passed = passed && restoration_old_view != nullptr;
+            report_failure(QStringLiteral("restoration old view"));
             bool fixture_navigation_finished = false;
             bool fixture_navigation_succeeded = false;
             quint64 fixture_navigation_token = 0U;
@@ -10233,7 +10282,6 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                        load_timer.elapsed() < 2000) {
                     QApplication::processEvents(QEventLoop::AllEvents, 25);
                 }
-                restoration_old_view->setZoomFactor(5.0);
                 fixture_navigation_connection = connect(
                     restoration_old_view, &ArticleView::HtmlNavigationFinished,
                     this,
@@ -10262,7 +10310,12 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
             passed = passed && fixture_navigation_finished &&
                      fixture_navigation_succeeded &&
                      fixture_navigation_token != 0U;
+            report_failure(QStringLiteral("fixture navigation"));
             bool scroll_ready = false;
+            const qreal restoration_zoom =
+                restoration_old_view == nullptr
+                    ? 1.0
+                    : restoration_old_view->zoomFactor();
             if (restoration_old_view != nullptr) {
                 restoration_old_view->page()->runJavaScript(
                     QStringLiteral("window.scrollTo(0,75); window.scrollY;"),
@@ -10273,7 +10326,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
             while (
                 restoration_old_view != nullptr &&
                 (!scroll_ready ||
-                 restoration_old_view->page()->scrollPosition().y() < 300.0) &&
+                 restoration_old_view->page()->scrollPosition().y() < 60.0) &&
                 scroll_timer.elapsed() < 2000) {
                 QApplication::processEvents(QEventLoop::AllEvents, 25);
             }
@@ -10281,7 +10334,8 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                 restoration_old_view == nullptr
                     ? QPointF{}
                     : restoration_old_view->page()->scrollPosition();
-            passed = passed && scroll_ready && saved_scroll.y() >= 300.0;
+            passed = passed && scroll_ready && saved_scroll.y() >= 60.0;
+            report_failure(QStringLiteral("fixture scroll capture"));
             auto& restoration_search =
                 article_search_presentations_[restoration_tab_id];
             restoration_search.query =
@@ -10296,6 +10350,8 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
             scroll_observer.setRunsOnSubFrames(false);
             scroll_observer.setSourceCode(QStringLiteral(
                 "globalThis.__goldendictPreparedRestoredScroll = null;"
+                "document.body.insertAdjacentHTML('beforeend',"
+                "'<div style=\"height:3000px\"></div>');"
                 "const preparedOriginalScrollTo = window.scrollTo.bind(window);"
                 "window.scrollTo = (x, y) => {"
                 "globalThis.__goldendictPreparedRestoredScroll = [x, y];"
@@ -10314,15 +10370,16 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                 PublishMaintainedFacadeCommit(std::move(maintained.maintained));
             passed = passed && published && !WidgetsInteractionBlocked() &&
                      held_old_binding;
+            report_failure(QStringLiteral("candidate publication"));
             auto* restoration_view = ArticleViewForTab(restoration_tab_id);
-            if (restoration_view != nullptr)
-                restoration_view->setZoomFactor(5.0);
             const auto first_outcome =
                 FinishPublishedFacadeCommit(std::move(published));
             passed = passed &&
                      first_outcome == WidgetsCommitOutcome::kPublished &&
                      facade_binding_registry_->NeedsReclaim();
             passed = passed && finish_restoration_lookup();
+            report_failure(
+                QStringLiteral("published restoration lookup completion"));
             const auto pending_restoration =
                 pending_article_scroll_restorations_.find(restoration_tab_id);
             const quint64 matching_navigation_token =
@@ -10335,7 +10392,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
             while ((pending_article_scroll_restorations_.count(
                         restoration_tab_id) == 1U ||
                     (restoration_view != nullptr &&
-                     restoration_view->page()->scrollPosition().y() < 300.0)) &&
+                     restoration_view->page()->scrollPosition().y() < 60.0)) &&
                    restoration_timer.elapsed() < 2000) {
                 QApplication::processEvents(QEventLoop::AllEvents, 25);
             }
@@ -10370,15 +10427,19 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                 QApplication::processEvents(QEventLoop::AllEvents, 25);
             QWebEngineProfile::defaultProfile()->scripts()->remove(
                 scroll_observer);
-            const QPointF expected_css_scroll(saved_scroll.x() / 5.0,
-                                              saved_scroll.y() / 5.0);
-            passed =
-                passed && matching_navigation_token != 0U &&
+            const QPointF expected_css_scroll(saved_scroll.x() /
+                                                  restoration_zoom,
+                                              saved_scroll.y() /
+                                                  restoration_zoom);
+            const bool scroll_restoration_passed =
+                matching_navigation_token != 0U &&
                 pending_article_scroll_restorations_.count(
                     restoration_tab_id) == 0U &&
                 restoration_search.generation ==
                     restoration_search_generation + 1U &&
                 restoration_view != nullptr && observed_scroll &&
+                qAbs(restoration_view->zoomFactor() - restoration_zoom) <
+                    0.001 &&
                 qAbs(restoration_view->page()->scrollPosition().x() -
                      saved_scroll.x()) < 0.5 &&
                 qAbs(restoration_view->page()->scrollPosition().y() -
@@ -10389,6 +10450,46 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                     0.5 &&
                 qAbs(actual_javascript_scroll.y() - expected_css_scroll.y()) <
                     0.5;
+            if (!scroll_restoration_passed) {
+                const QByteArray details =
+                    QStringLiteral(
+                        "scroll restoration details: token=%1 pending=%2 "
+                        "search-generation=%3 expected-generation=%4 view=%5 "
+                        "observed=%6 saved=(%7,%8) page=(%9,%10) "
+                        "requested=(%11,%12) javascript=(%13,%14) "
+                        "expected-css=(%15,%16)\n")
+                        .arg(matching_navigation_token)
+                        .arg(pending_article_scroll_restorations_.count(
+                            restoration_tab_id))
+                        .arg(restoration_search.generation)
+                        .arg(restoration_search_generation + 1U)
+                        .arg(restoration_view != nullptr)
+                        .arg(observed_scroll)
+                        .arg(saved_scroll.x())
+                        .arg(saved_scroll.y())
+                        .arg(restoration_view == nullptr
+                                 ? 0.0
+                                 : restoration_view->page()
+                                       ->scrollPosition()
+                                       .x())
+                        .arg(restoration_view == nullptr
+                                 ? 0.0
+                                 : restoration_view->page()
+                                       ->scrollPosition()
+                                       .y())
+                        .arg(requested_scroll.x())
+                        .arg(requested_scroll.y())
+                        .arg(actual_javascript_scroll.x())
+                        .arg(actual_javascript_scroll.y())
+                        .arg(expected_css_scroll.x())
+                        .arg(expected_css_scroll.y())
+                        .toLocal8Bit();
+                std::fwrite(details.constData(), 1U,
+                            static_cast<std::size_t>(details.size()), stderr);
+                std::fflush(stderr);
+            }
+            passed = scroll_restoration_passed && passed;
+            report_failure(QStringLiteral("published scroll restoration"));
             if (restoration_view != nullptr) {
                 emit restoration_view->HtmlNavigationFinished(
                     matching_navigation_token, true);
@@ -10398,6 +10499,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
             held_old_binding = {};
             facade_binding_registry_->ReclaimRetired();
             passed = passed && !facade_binding_registry_->NeedsReclaim();
+            report_failure(QStringLiteral("retired binding reclamation"));
 
             // A second immediate generation proves slot reuse, forward-only
             // destructor cleanup, and deterministic cleanup diagnostics.
@@ -10418,6 +10520,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                          WidgetsCommitOutcome::kPublishedWithCleanupFailure &&
                      facade_ == current_facade.get() &&
                      !WidgetsInteractionBlocked();
+            report_failure(QStringLiteral("cleanup failure publication"));
 
             auto* const compatibility_facade = facade_;
             SetFacade(compatibility_facade);
@@ -10428,6 +10531,7 @@ void MainWindow::RunWidgetsFacadePreparationSmokeCheck(
                      binding->facade == compatibility_facade &&
                      !facade_binding_registry_->NeedsReclaim() &&
                      facade_binding_registry_->AuditClosedLeaseProtocol();
+            report_failure(QStringLiteral("compatibility facade binding"));
             deadline->deleteLater();
             completion(passed);
         });

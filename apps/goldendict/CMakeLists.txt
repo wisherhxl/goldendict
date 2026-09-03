@@ -561,11 +561,12 @@ set_tests_properties(goldendict_dictionary_bar_smoke PROPERTIES
   TIMEOUT 20)
 
 add_test(NAME goldendict_widgets_facade_preparation_smoke
-  COMMAND $<TARGET_FILE:goldendict> --widgets-facade-preparation-smoke
-    --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DDICTIONARY_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/widgets_facade_preparation_smoke.cmake)
 set_tests_properties(goldendict_widgets_facade_preparation_smoke PROPERTIES
-  ENVIRONMENT
-    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/widgets-facade-preparation-test-home/cache"
   TIMEOUT 20)
 
 add_test(NAME goldendict_dictionary_status_presentation_smoke
