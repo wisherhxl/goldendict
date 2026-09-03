@@ -225,7 +225,7 @@ launcher and Python tooling checks run directly.
 | R2.1 | **Complete:** MSVC exception-family test diagnosis and harness correction | R1.2 | each affected test serially reproduced; focused corrected tests; no assertion weakening |
 | R2.2 | **Complete:** Windows path/profile/process isolation corrections | R2.1 | focused restart/process tests from Unicode and long paths |
 | R2.3 | **Complete:** Windows WebEngine serialization and GPU-independent harness | R2.2 | all affected WebEngine tests serially pass; full Windows CTest log retained |
-| R3.1 | Configuration and user-state upgrade/rollback matrix: `CRD-STATE-004`, `CRD-COMPAT-002` through `005` | R1.2, R2.3 | generated malformed/failure-injection tests plus disposable Qt 5 profile upgrade |
+| R3.1 | **Complete:** configuration and user-state upgrade/rollback matrix: `CRD-STATE-004`, `CRD-COMPAT-002` through `005` | R1.2, R2.3 | generated malformed/failure-injection tests plus disposable Qt 5 profile upgrade |
 | R3.2 | Real-corpus discovery, identity, counts, ordering, restart, and rescan: `CRD-TEST-REAL-004`, `CRD-COMPAT-001` | R1.2, R2.3 | paired machine-readable Qt 5/Qt 6 result files and diff |
 | R3.3 | Real MDict split-resource acceptance and evidence-confirmed corrections | R3.2 | MDX/three-MDD lookup, resource, restart, and immutable-source checks |
 | R3.4 | Real DSL and greater-than-4-GiB resource-ZIP acceptance and corrections | R3.2 | DSL/dictzip/article/resource/restart checks with bounded storage evidence |
@@ -433,6 +433,92 @@ software-rendering diagnostics did not affect results, and no missing-DLL
 dialog, timeout, or orphaned GoldenDict/WebEngine process remained. The
 Linux-only interface-language registration remains part of the Linux gate and
 was not represented as Windows coverage.
+
+#### R3.1 issue record and readiness
+
+R3.1 is a conformance delivery under approved requirements `CRD-STATE-004`
+and `CRD-COMPAT-002` through `CRD-COMPAT-005`. The current startup path
+migrates configuration, History, and Favorites independently. A later parse
+or publication failure can therefore leave only part of the Qt 6 profile
+published, and a current-configuration load failure can continue with default
+state that a later save may publish over the unread file. The current
+line-oriented Qt 6 format also rejects every unknown field instead of
+round-tripping syntactically valid future fields. These behaviors do not meet
+the approved atomicity, forward-compatibility, diagnostic, or rollback-safety
+requirements.
+
+Readiness result: **Ready**. Core application persistence owns one aggregate
+startup-upgrade use case. It will parse and stage every missing current state
+file before publishing any of them, expose a recoverable pending marker while the
+multi-file publication is incomplete, and complete or diagnose that exact
+transaction before any state becomes visible to the application. Existing
+current files retain per-file precedence and legacy inputs remain byte-for-byte
+unchanged. The application composition root consumes the aggregate result and
+stops startup on an unresolved load or upgrade error; it does not substitute
+defaults. The current configuration representation will carry bounded,
+well-formed unknown records through load and save while continuing to reject
+malformed records and invalid known fields.
+
+This design applies a transaction/coordinator pattern at the demonstrated
+three-file consistency boundary. It keeps parsing and persistence in Core,
+leaves Widgets responsible only for presenting a clear startup error, and
+adds no module, format-specific dependency, or speculative service layer.
+Disabled legacy website definitions whose iframe or query-encoding behavior
+belongs to R6.3 may be retained as configuration state, but they may not be
+activated until their runtime behavior is supported. An enabled unsupported
+definition remains a detectable migration failure instead of being silently
+discarded.
+
+The functional unit includes the aggregate upgrade API and startup wiring,
+forward-compatible current-configuration preservation, generated valid,
+malformed, interrupted-publication, retry, and failure-injection tests, and a
+disposable copy of a genuine Qt 5 profile. Verification uses the focused Core
+and application migration executables, a direct disposable-profile run,
+`git diff --check`, a clean Visual Studio 2026 Release build, and the complete
+Windows-applicable CTest suite through `run_with_conan.ps1`. No source edit or
+test may modify the frozen Qt 5 checkout or an operator profile.
+
+#### R3.1 delivery verification
+
+The implementation candidate now coordinates configuration, History, and
+Favorites preparation and publication in Core. A bounded pending record makes
+every publication checkpoint recoverable by exact forward completion before
+startup can observe state. Preparation failures remove all staging artifacts;
+published destinations are never replaced by defaults; current files retain
+precedence; and the legacy sources remain untouched. Startup reports the
+underlying failure to the diagnostic log, presents a clear data-loss-prevention
+message, and stops. Current-format saves retain bounded, syntactically valid
+future records. Qt 5 compatibility also preserves disabled iframe and legacy
+query-encoding website records, plus a disabled Forvo definition with an empty
+language list, without activating behavior that still belongs to R6.3.
+
+Windows verification used Visual Studio 2026 with the Conan Release environment:
+
+- the clean configured build completed all 791 compile and link steps;
+- the focused configuration, legacy-location, user-state-upgrade, runtime
+  composition, and source-management selection passed 5/5;
+- the generated upgrade test covered malformed configuration, History, and
+  Favorites plus failures at pending-marker publication, each of the three
+  destination publications, and pending-marker removal, with successful exact
+  restart recovery; it also pins Qt 5's default-true behavior when a disabled
+  website omits `inside_iframe`;
+- the source-management smoke preserves and reapplies a disabled Forvo record
+  whose Qt 5 language list is empty;
+- a disposable copy of the genuine Qt 5 portable profile at SHA-256
+  `B613C5DAA34E26F1BA63ED8F481566C229F35C4561504FD3BEB02F0FB78CECF0`
+  upgraded successfully, and the source hash and frozen Qt 5 checkout remained
+  unchanged;
+- the complete Windows-applicable suite passed 128/128 serially through
+  `run_with_conan.ps1`; and
+- `goldendict_article_tabs_smoke` passed 20/20 consecutive isolated repeats.
+
+Two parallel full-suite attempts exposed the existing shared WebEngine GPU
+resource contention: one or both WebEngine article-tab processes could not
+create a shared graphics context while multiple GUI smokes ran concurrently.
+The failing processes passed when isolated and in the complete serial suite,
+and no R3.1 code owns WebEngine rendering or CTest resource scheduling. The
+result is retained as non-blocking test-infrastructure evidence rather than
+being hidden or bundled into this functional delivery.
 
 ### CRD closure cross-check
 

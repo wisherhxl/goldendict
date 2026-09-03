@@ -14261,6 +14261,27 @@ void MainWindow::RunSourceDirectoriesSmokeCheck(
         ->click();
     passed =
         passed && received_empty && empty_online.result() == QDialog::Accepted;
+    const std::vector<goldendict::core::ForvoSourceConfiguration>
+        disabled_empty_forvo = {{"forvo.empty",
+                                 "Disabled Forvo",
+                                 false,
+                                 "https://apifree.forvo.com",
+                                 {}}};
+    bool received_disabled_empty_forvo = false;
+    SourceDirectoriesDialog preserved_empty_forvo(
+        paths, sounds, {}, {}, disabled_empty_forvo, {}, {}, {},
+        [&](const auto&, const auto&, const auto&, const auto&,
+            const auto& edited_forvo, const auto&, const auto&, const auto&) {
+            received_disabled_empty_forvo =
+                edited_forvo == disabled_empty_forvo;
+            return QString{};
+        },
+        this);
+    preserved_empty_forvo.findChild<QDialogButtonBox*>()
+        ->button(QDialogButtonBox::Apply)
+        ->click();
+    passed = passed && received_disabled_empty_forvo &&
+             preserved_empty_forvo.result() == QDialog::Accepted;
     completion(passed);
 }
 

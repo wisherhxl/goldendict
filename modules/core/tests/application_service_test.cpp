@@ -550,7 +550,7 @@ void ApplicationServiceTest::
         "mediawiki_source=wiki.fr|Fran%C3%A7ais|0|http://fr.example.test/"
         "api.php\n"
         "website_source=web.search|Search%20%26%20Read|1|"
-        "https://example.test/find%3Fq%3D%25GDWORD%25%26lang%3Den\n"
+        "https://example.test/find%3Fq%3D%25GDWORD%25%26lang%3Den|0\n"
         "forvo_sources=1\n"
         "forvo_source=forvo|Forvo|1|https://apifree.forvo.com|2|en|ru\n"
         "dict_server_source=dict.main|DICT%20%7C%20Main|1|dict.example.test|"
@@ -1597,7 +1597,6 @@ void ApplicationServiceTest::
         std::string("preference=interface_language|bad\xc3\x28\n"),
         "preference=zoom_factor|nan\n",
         "preference=scan_popup_modifiers|65535\n",
-        "preference=unknown_future_key|1\n",
         "preference=store_history|1\npreference=store_history|0\n",
     };
     for (const auto& field : malformed) {

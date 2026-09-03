@@ -26,6 +26,7 @@
 #include "goldendict/core/application.h"
 #include "goldendict/core/favorites_store.h"
 #include "goldendict/core/history_store.h"
+#include "goldendict/core/user_state_upgrade.h"
 #include "goldendict/network/network_runtime.h"
 #include "goldendict/network/runtime_composition.h"
 #include "legacy_configuration_location.h"
@@ -563,10 +564,10 @@ int main(int argc, char* argv[]) {
             if (!test_home.isEmpty()) {
                 const QString identity = QString::number(
                     qHash(QDir::cleanPath(test_home), std::size_t{0}), 16);
-                smoke_configuration_root = QDir(QDir::tempPath())
-                                               .filePath(QStringLiteral(
-                                                   "goldendict-smoke-%1")
-                                                             .arg(identity));
+                smoke_configuration_root =
+                    QDir(QDir::tempPath())
+                        .filePath(QStringLiteral("goldendict-smoke-%1")
+                                      .arg(identity));
             }
         }
         if (smoke_configuration_root.isEmpty()) {
@@ -586,12 +587,14 @@ int main(int argc, char* argv[]) {
                                      .filePath(QStringLiteral("generic-data"));
         cache_directory =
             QDir(smoke_configuration_root).filePath(QStringLiteral("cache"));
-        app_data_directory = QDir(smoke_configuration_root)
-                                 .filePath(QStringLiteral("appdata"));
-        const std::array smoke_directories{
-            home_directory, standard_configuration_directory,
-            current_configuration_directory, generic_data_directory,
-            cache_directory, app_data_directory};
+        app_data_directory =
+            QDir(smoke_configuration_root).filePath(QStringLiteral("appdata"));
+        const std::array smoke_directories{home_directory,
+                                           standard_configuration_directory,
+                                           current_configuration_directory,
+                                           generic_data_directory,
+                                           cache_directory,
+                                           app_data_directory};
         for (const QString& directory : smoke_directories) {
             if (!QDir().mkpath(directory)) {
                 qCritical().noquote()
@@ -654,20 +657,34 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     const std::string default_index_directory =
-        QDir(cache_directory)
-            .filePath(QStringLiteral("indexes"))
-            .toStdString();
-    goldendict::core::CoreConfiguration configuration;
+        QDir(cache_directory).filePath(QStringLiteral("indexes")).toStdString();
+    goldendict::core::UserStateSnapshot user_state;
     try {
-        configuration = goldendict::core::LoadOrMigrateConfiguration(
-            configuration_path.toStdString(),
-            legacy_configuration_path.toStdString(), default_index_directory);
+        goldendict::app::ValidateAutoDiscoveredLegacyHistory(
+            configuration_locations, goldendict::app::ProbePath);
+        goldendict::app::ValidateAutoDiscoveredLegacyFavorites(
+            configuration_locations, goldendict::app::ProbePath);
+        user_state = goldendict::core::LoadOrMigrateUserState(
+            {configuration_path.toStdString(),
+             legacy_configuration_path.toStdString(),
+             history_path.toStdString(), legacy_history_path.toStdString(),
+             favorites_path.toStdString(), legacy_favorites_path.toStdString(),
+             default_index_directory});
     } catch (const std::exception& error) {
-        QMessageBox::warning(nullptr, QStringLiteral("GoldenDict"),
-                             QString::fromLocal8Bit(error.what()));
-        if (startup_recovery.request)
-            return 1;
+        qCritical().noquote() << "User-state load or upgrade blocked:"
+                              << QString::fromLocal8Bit(error.what());
+        QMessageBox::warning(
+            nullptr, QStringLiteral("GoldenDict"),
+            QCoreApplication::translate(
+                "GoldenDictStartup",
+                "GoldenDict could not safely load or upgrade your settings, "
+                "History, and Favorites. The original files were left "
+                "intact. Startup has been stopped to prevent data loss."));
+        return 1;
     }
+    auto configuration = std::move(user_state.configuration);
+    auto history = std::move(user_state.history);
+    auto favorites = std::move(user_state.favorites);
     if (configuration.index_directory.empty()) {
         configuration.index_directory = default_index_directory;
     }
@@ -765,8 +782,7 @@ int main(int argc, char* argv[]) {
     const std::string network_cache_root =
         (smoke_configuration_root.isEmpty()
              ? QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
-             : QDir(smoke_configuration_root)
-                   .filePath(QStringLiteral("cache")))
+             : QDir(smoke_configuration_root).filePath(QStringLiteral("cache")))
             .toStdString();
     const auto block_runtime_recovery =
         [&](goldendict::core::PendingFailureDestination destination,
@@ -851,29 +867,6 @@ int main(int argc, char* argv[]) {
             "core_activation_failed",
             QStringLiteral("Unable to activate the application runtime"));
         return 1;
-    }
-    std::vector<goldendict::core::HistoryEntry> history;
-    try {
-        goldendict::app::ValidateAutoDiscoveredLegacyHistory(
-            configuration_locations, goldendict::app::ProbePath);
-        history = goldendict::core::LoadOrMigrateHistory(
-            history_path.toStdString(), legacy_history_path.toStdString(),
-            configuration.preferences.maximum_history_entries);
-    } catch (const std::exception& error) {
-        QMessageBox::warning(nullptr, QStringLiteral("GoldenDict history"),
-                             QString::fromLocal8Bit(error.what()));
-        if (startup_recovery.request && startup_recovery.history_replaced)
-            return 1;
-    }
-    goldendict::core::Favorites favorites;
-    try {
-        goldendict::app::ValidateAutoDiscoveredLegacyFavorites(
-            configuration_locations, goldendict::app::ProbePath);
-        favorites = goldendict::core::LoadOrMigrateFavorites(
-            favorites_path.toStdString(), legacy_favorites_path.toStdString());
-    } catch (const std::exception& error) {
-        QMessageBox::warning(nullptr, QStringLiteral("GoldenDict favorites"),
-                             QString::fromLocal8Bit(error.what()));
     }
     std::unique_ptr<MainWindow> owned_window;
     try {
@@ -1301,18 +1294,18 @@ int main(int argc, char* argv[]) {
                                  QString::fromLocal8Bit(error.what()));
                          }
                      });
-    QObject::connect(
-        &window, &MainWindow::ExportFavoritesListRequested, &window,
-        [&](const QString& path) {
-            try {
-                goldendict::core::ExportFavoritesText(path.toStdString(),
-                                                      favorites);
-            } catch (const std::exception& error) {
-                QMessageBox::warning(&window,
-                                     QStringLiteral("GoldenDict favorites"),
-                                     QString::fromLocal8Bit(error.what()));
-            }
-        });
+    QObject::connect(&window, &MainWindow::ExportFavoritesListRequested,
+                     &window, [&](const QString& path) {
+                         try {
+                             goldendict::core::ExportFavoritesText(
+                                 path.toStdString(), favorites);
+                         } catch (const std::exception& error) {
+                             QMessageBox::warning(
+                                 &window,
+                                 QStringLiteral("GoldenDict favorites"),
+                                 QString::fromLocal8Bit(error.what()));
+                         }
+                     });
     const auto apply_sources =
         [&](const std::vector<std::string>& dictionary_paths,
             const std::vector<goldendict::core::SoundDirectoryConfiguration>&

@@ -765,17 +765,24 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
             const auto values = ReadAttributes(
                 attributes,
                 {"id", "name", "url", "enabled", "icon", "inside_iframe"});
-            if (ParseBoolean(RequiredAttribute(values, "inside_iframe")))
-                throw std::runtime_error("iframe website is unrepresentable");
-            if (HasUnsupportedWebsiteMarker(RequiredAttribute(values, "url")))
+            const bool enabled =
+                ParseBoolean(RequiredAttribute(values, "enabled"));
+            const auto iframe_attribute = values.find("inside_iframe");
+            const bool inside_iframe =
+                iframe_attribute == values.end()
+                    ? true
+                    : ParseBoolean(iframe_attribute->second);
+            if (enabled &&
+                (inside_iframe || HasUnsupportedWebsiteMarker(
+                                      RequiredAttribute(values, "url")))) {
                 throw std::runtime_error(
-                    "website encoding marker is unrepresentable");
+                    "enabled website requires unsupported legacy behavior");
+            }
             const auto& id = RequiredAttribute(values, "id");
             AddOnlineId(*state, id);
             state->configuration.website_sources.push_back(
-                {id, RequiredAttribute(values, "name"),
-                 ParseBoolean(RequiredAttribute(values, "enabled")),
-                 RequiredAttribute(values, "url")});
+                {id, RequiredAttribute(values, "name"), enabled,
+                 RequiredAttribute(values, "url"), inside_iframe});
             return;
         }
         if (IsDirectElement(*state, "dictservers", "server")) {
@@ -1054,7 +1061,7 @@ void XMLCALL EndElement(void* user_data, const XML_Char*) {
                 forvo.enabled = ParseBoolean(state->value);
             } else if (state->forvo_field == "languageCodes") {
                 std::size_t start = 0U;
-                while (start <= state->value.size()) {
+                while (!state->value.empty() && start <= state->value.size()) {
                     const auto comma = state->value.find(',', start);
                     std::string language = state->value.substr(
                         start, comma == std::string::npos

@@ -901,10 +901,21 @@ split by using profile-local `history` when it exists and otherwise selecting
 `goldendict/history` below the generic data root. Current `history-v1` and
 `favorites-v1` files live beside the resolved `core.conf` and take precedence
 independently. Missing, malformed, unreadable, oversized, symlink, directory,
-or special companion inputs never trigger another profile search. Each valid
-companion migrates through its existing bounded core parser and its own atomic
-destination transaction, so either companion may succeed without changing the
-other or either legacy source.
+or special companion inputs never trigger another profile search.
+
+The Qt 6 baseline R3.1 increment replaces independent startup migration with
+one Core-owned profile upgrade coordinator. Every selected missing current
+file is parsed and staged before any destination is published. Once a pending
+marker exists, startup completes that exact configuration, History, and
+Favorites publication forward before exposing state; malformed preparation
+publishes nothing, and an unresolved recovery error stops startup instead of
+substituting defaults. Existing current files retain precedence and every
+legacy input remains byte-for-byte unchanged. The current configuration reader
+also retains bounded, syntactically valid future records through later saves.
+Compatibility coverage includes disabled Qt 5 website definitions that need
+the later iframe or legacy query-encoding runtime, plus the valid disabled
+Forvo state with no language codes. Such deferred website definitions remain
+disabled until their runtime behavior is restored.
 
 The following user-state increment adds a transport-neutral core history store
 with bounded group-aware UTF-8 entries and a recoverable legacy line-format

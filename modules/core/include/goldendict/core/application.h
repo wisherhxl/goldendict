@@ -59,11 +59,14 @@ struct WebsiteSourceConfiguration {
     std::string name;
     bool enabled = false;
     std::string url_template;
+    // Retained for Qt 5 profile compatibility. Runtime iframe support is
+    // separately gated; an iframe source cannot be enabled until then.
+    bool inside_iframe = false;
 
     bool operator==(const WebsiteSourceConfiguration& other) const noexcept {
-        return std::tie(id, name, enabled, url_template) ==
-               std::tie(other.id, other.name, other.enabled,
-                        other.url_template);
+        return std::tie(id, name, enabled, url_template, inside_iframe) ==
+               std::tie(other.id, other.name, other.enabled, other.url_template,
+                        other.inside_iframe);
     }
 
     bool operator!=(const WebsiteSourceConfiguration& other) const noexcept {
@@ -395,6 +398,10 @@ struct CoreConfiguration {
     std::string full_text_dialog_geometry;
     std::string main_window_geometry;
     std::string main_window_state;
+    // Syntactically valid records from a newer configuration version. They
+    // are retained verbatim so loading and saving with this version is not
+    // destructive to future fields.
+    std::vector<std::string> opaque_fields;
 };
 
 // Missing files load as an empty clean-profile configuration. Malformed files

@@ -43,6 +43,7 @@ constexpr std::size_t kMaximumExternalProgramArgumentBytes = 16U * 1024U;
 constexpr std::uint32_t kKnownScanPopupModifierMask = 0x03ffU;
 
 std::string Encode(std::string_view value);
+std::string Decode(std::string_view value);
 
 template <typename Integer>
 Integer ParseInteger(std::string_view value) {
@@ -113,22 +114,22 @@ Enum ParseEnum(std::string_view value, std::uint8_t maximum) {
     return static_cast<Enum>(parsed);
 }
 
-void SetPreference(ApplicationPreferences& preferences, std::string_view name,
+bool SetPreference(ApplicationPreferences& preferences, std::string_view name,
                    std::string value) {
 #define STRING_PREFERENCE(key, member)         \
     if (name == key) {                         \
         preferences.member = std::move(value); \
-        return;                                \
+        return true;                           \
     }
 #define BOOL_PREFERENCE(key, member)              \
     if (name == key) {                            \
         preferences.member = ParseBoolean(value); \
-        return;                                   \
+        return true;                              \
     }
 #define UINT_PREFERENCE(key, member, type)              \
     if (name == key) {                                  \
         preferences.member = ParseInteger<type>(value); \
-        return;                                         \
+        return true;                                    \
     }
     STRING_PREFERENCE("interface_language", interface_language)
     STRING_PREFERENCE("help_language", help_language)
@@ -238,8 +239,85 @@ void SetPreference(ApplicationPreferences& preferences, std::string_view name,
     } else if (name == "help_zoom_factor") {
         preferences.help_zoom_factor = ParseDouble(value);
     } else {
-        throw std::runtime_error("Unknown preference field");
+        return false;
     }
+    return true;
+}
+
+bool IsOpaqueField(std::string_view line) {
+    const auto separator = line.find('=');
+    return separator != std::string_view::npos && separator != 0U &&
+           std::all_of(line.begin(), line.begin() + separator,
+                       [](unsigned char character) {
+                           return (character >= 'a' && character <= 'z') ||
+                                  (character >= '0' && character <= '9') ||
+                                  character == '_';
+                       });
+}
+
+bool IsKnownRecordKey(std::string_view key) {
+    constexpr std::string_view keys[] = {
+        "index_directory",
+        "dictionary_path",
+        "morphology_dictionary_path",
+        "enabled_morphology_dictionary",
+        "sound_directory",
+        "mediawiki_source",
+        "website_source",
+        "forvo_sources",
+        "forvo_source",
+        "dict_server_source",
+        "external_programs",
+        "external_program",
+        "external_program_argument",
+        "dictionary_group",
+        "dictionary_group_metadata",
+        "preference",
+        "full_text_dialog_geometry",
+        "main_window_geometry",
+        "main_window_state",
+        "article_tab_session",
+        "article_tab",
+        "article_tab_navigation",
+    };
+    return std::find(std::begin(keys), std::end(keys), key) != std::end(keys);
+}
+
+bool IsUnknownPreferenceRecord(std::string_view line) {
+    constexpr std::string_view prefix = "preference=";
+    if (line.substr(0U, prefix.size()) != prefix) {
+        return false;
+    }
+    const auto value = line.substr(prefix.size());
+    const auto separator = value.find('|');
+    if (separator == std::string_view::npos ||
+        value.find('|', separator + 1U) != std::string_view::npos) {
+        throw std::runtime_error("Malformed opaque preference field");
+    }
+    ApplicationPreferences scratch;
+    return !SetPreference(scratch, Decode(value.substr(0U, separator)),
+                          Decode(value.substr(separator + 1U)));
+}
+
+bool HasLegacyWebsiteMarker(std::string_view value) {
+    return value.find("%GD1251%") != std::string_view::npos ||
+           value.find("%GDISO1%") != std::string_view::npos;
+}
+
+std::string SubstituteWebsiteMarkers(std::string value) {
+    constexpr std::string_view markers[] = {"%GDWORD%", "%GD1251%", "%GDISO1%"};
+    bool replaced = false;
+    for (const auto marker : markers) {
+        for (std::size_t position = value.find(marker);
+             position != std::string::npos; position = value.find(marker)) {
+            value.replace(position, marker.size(), "validation");
+            replaced = true;
+        }
+    }
+    if (!replaced) {
+        throw std::runtime_error("Website source template is invalid");
+    }
+    return value;
 }
 
 bool IsCanonicalBase64(std::string_view value) {
@@ -647,15 +725,14 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
     }
     for (const auto& source : configuration.website_sources) {
         validate_identity(source);
-        if (source.url_template.find("%GDWORD%") == std::string::npos) {
-            throw std::runtime_error("Website source template is invalid");
+        const bool deferred_legacy_behavior =
+            source.inside_iframe || HasLegacyWebsiteMarker(source.url_template);
+        if (source.enabled && deferred_legacy_behavior) {
+            throw std::runtime_error(
+                "Enabled website requires unsupported legacy behavior");
         }
-        std::string substituted = source.url_template;
-        for (std::size_t marker = substituted.find("%GDWORD%");
-             marker != std::string::npos;
-             marker = substituted.find("%GDWORD%", marker + 10U)) {
-            substituted.replace(marker, 8U, "validation");
-        }
+        const std::string substituted =
+            SubstituteWebsiteMarkers(source.url_template);
         if (!IsValidHttpUrl(substituted, true, true)) {
             throw std::runtime_error("Website source template is invalid");
         }
@@ -663,7 +740,7 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
     for (const auto& source : configuration.forvo_sources) {
         validate_identity(source);
         if (!IsValidHttpUrl(source.api_base_url, true, true) ||
-            source.language_codes.empty() ||
+            (source.enabled && source.language_codes.empty()) ||
             source.language_codes.size() > kMaximumForvoLanguages) {
             throw std::runtime_error("Forvo source configuration is invalid");
         }
@@ -812,6 +889,20 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         };
         validate_muted(group.muted_dictionary_ids);
         validate_muted(group.popup_muted_dictionary_ids);
+    }
+    std::size_t opaque_bytes = 0U;
+    for (const auto& field : configuration.opaque_fields) {
+        opaque_bytes += field.size() + 1U;
+        const auto separator = field.find('=');
+        const bool unknown_preference = IsUnknownPreferenceRecord(field);
+        if (field.empty() ||
+            field.find_first_of("\r\n\0", 0U, 3U) != std::string::npos ||
+            !foundation::IsValidUtf8(field) || !IsOpaqueField(field) ||
+            (!unknown_preference &&
+             IsKnownRecordKey(field.substr(0U, separator))) ||
+            opaque_bytes > kMaximumConfigurationBytes) {
+            throw std::runtime_error("Opaque configuration field is invalid");
+        }
     }
 }
 
@@ -967,12 +1058,13 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
                  Decode(fields[3])});
         } else if (line.substr(0, kWebsiteSource.size()) == kWebsiteSource) {
             const auto fields = SplitFields(line.substr(kWebsiteSource.size()));
-            if (fields.size() != 4U) {
+            if (fields.size() != 4U && fields.size() != 5U) {
                 throw std::runtime_error("Malformed website source field");
             }
             configuration.website_sources.push_back(
                 {Decode(fields[0]), Decode(fields[1]), ParseBoolean(fields[2]),
-                 Decode(fields[3])});
+                 Decode(fields[3]),
+                 fields.size() == 5U ? ParseBoolean(fields[4]) : false});
         } else if (line.substr(0, kForvoSources.size()) == kForvoSources) {
             if (declared_forvo_source_count.has_value() || has_forvo_records) {
                 throw std::runtime_error(
@@ -987,7 +1079,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
             configuration.forvo_sources.clear();
         } else if (line.substr(0, kForvoSource.size()) == kForvoSource) {
             const auto fields = SplitFields(line.substr(kForvoSource.size()));
-            if (fields.size() < 6U) {
+            if (fields.size() < 5U) {
                 throw std::runtime_error("Malformed Forvo source field");
             }
             const auto count = ParseInteger<std::size_t>(fields[4]);
@@ -1327,10 +1419,16 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
             if (name.empty() || !preference_names.insert(name).second) {
                 throw std::runtime_error("Duplicate or empty preference field");
             }
-            SetPreference(configuration.preferences, name,
-                          Decode(value.substr(separator + 1U)));
+            if (!SetPreference(configuration.preferences, name,
+                               Decode(value.substr(separator + 1U)))) {
+                configuration.opaque_fields.emplace_back(line);
+            }
         } else if (!line.empty()) {
-            throw std::runtime_error("Unknown configuration field");
+            if (!IsOpaqueField(line)) {
+                throw std::runtime_error(
+                    "Malformed unknown configuration field");
+            }
+            configuration.opaque_fields.emplace_back(line);
         }
         position = end + 1U;
     }
@@ -1377,7 +1475,8 @@ void SaveConfiguration(const std::string& configuration_path,
     for (const auto& source : configuration.website_sources) {
         contents += "website_source=" + Encode(source.id) + "|" +
                     Encode(source.name) + "|" + (source.enabled ? "1|" : "0|") +
-                    Encode(source.url_template) + "\n";
+                    Encode(source.url_template) + "|" +
+                    (source.inside_iframe ? "1\n" : "0\n");
     }
     contents +=
         "forvo_sources=" + std::to_string(configuration.forvo_sources.size()) +
@@ -1598,6 +1697,9 @@ void SaveConfiguration(const std::string& configuration_path,
 #undef APPEND_STRING
 #undef APPEND_BOOL
 #undef APPEND_NUMBER
+    for (const auto& field : configuration.opaque_fields) {
+        contents += field + "\n";
+    }
     if (contents.size() > kMaximumConfigurationBytes) {
         throw std::runtime_error("Configuration exceeds the size limit");
     }

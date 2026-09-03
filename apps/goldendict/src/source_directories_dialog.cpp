@@ -186,10 +186,14 @@ SourceDirectoriesDialog::SourceDirectoriesDialog(
         add_online_item(mediawiki_sources_, source.id, source.enabled,
                         {QString::fromStdString(source.name),
                          QString::fromStdString(source.base_url)});
-    for (const auto& source : website_sources)
+    for (const auto& source : website_sources) {
         add_online_item(website_sources_, source.id, source.enabled,
                         {QString::fromStdString(source.name),
                          QString::fromStdString(source.url_template)});
+        website_sources_
+            ->topLevelItem(website_sources_->topLevelItemCount() - 1)
+            ->setData(0, Qt::UserRole + 1, source.inside_iframe);
+    }
     for (const auto& source : forvo_sources) {
         QStringList languages;
         for (const auto& language : source.language_codes)
@@ -887,7 +891,8 @@ SourceDirectoriesDialog::WebsiteSources() const {
     for (int row = 0; row < website_sources_->topLevelItemCount(); ++row) {
         const auto* item = website_sources_->topLevelItem(row);
         sources.push_back({ItemId(item), item->text(1).toStdString(),
-                           ItemEnabled(item), item->text(2).toStdString()});
+                           ItemEnabled(item), item->text(2).toStdString(),
+                           item->data(0, Qt::UserRole + 1).toBool()});
     }
     return sources;
 }
@@ -898,9 +903,13 @@ SourceDirectoriesDialog::ForvoSources() const {
     for (int row = 0; row < forvo_sources_->topLevelItemCount(); ++row) {
         const auto* item = forvo_sources_->topLevelItem(row);
         std::vector<std::string> languages;
-        for (const auto& language :
-             item->text(3).split(',', Qt::KeepEmptyParts))
-            languages.push_back(language.trimmed().toStdString());
+        const QString language_text = item->text(3);
+        if (!language_text.trimmed().isEmpty()) {
+            for (const auto& language :
+                 language_text.split(',', Qt::KeepEmptyParts)) {
+                languages.push_back(language.trimmed().toStdString());
+            }
+        }
         sources.push_back({ItemId(item), item->text(1).toStdString(),
                            ItemEnabled(item), item->text(2).toStdString(),
                            std::move(languages)});
