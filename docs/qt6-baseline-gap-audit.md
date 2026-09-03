@@ -220,7 +220,7 @@ launcher and Python tooling checks run directly.
 
 | Leaf | Scope and requirement closure | Depends on | Minimum acceptance evidence |
 | --- | --- | --- | --- |
-| R1.1 | Safe corpus manifest: `CRD-TEST-REAL-001`, read-only half of `002` | none | synthetic corpus unit tests; repeat generation and byte comparison; real-corpus manifest log |
+| R1.1 | **Complete:** safe corpus manifest: `CRD-TEST-REAL-001`, read-only half of `002` | none | synthetic corpus unit tests; repeat generation and byte comparison; real-corpus manifest log |
 | R1.2 | Paired isolated run workspace and metadata: remainder of `002`, `003` | R1.1 | synthetic confinement/mismatch tests; paired Qt 5/Qt 6 metadata validation |
 | R2.1 | MSVC exception-family test diagnosis and harness correction | R1.2 | each affected test serially reproduced; focused corrected tests; no assertion weakening |
 | R2.2 | Windows path/profile/process isolation corrections | R2.1 | focused restart/process tests from Unicode and long paths |
@@ -339,7 +339,7 @@ commands in `docs/build.md` and retain their logs with the candidate identity.
 
 ## Readiness And Architecture Audit
 
-Result: **Ready for R1.1. R1.2 becomes ready after R1.1 is integrated.**
+Result: **R1.1 is complete in this delivery. R1.2 becomes ready after R1.1 is integrated.**
 
 - The gap list conforms to the approved CRD and removes no Qt 5 capability.
 - Core product behavior remains behind `goldendict_core`; Widgets and WebEngine
@@ -353,9 +353,16 @@ Result: **Ready for R1.1. R1.2 becomes ready after R1.1 is integrated.**
 - R1 can be verified entirely with synthetic temporary corpora before reading
   the operator corpus. No payload is copied, published, modified, or required
   by CI.
+- The dependency-free R1.1 tests pass. Two read-only passes over the approved
+  external corpus produced byte-identical 88-file, 9,303,289,246-byte
+  manifests with SHA-256
+  `b7e91878649b61388ecb1a3713709685e243f57e60d2b8eb23838a91bba816d2`.
+  The evidence remains outside the repository and contains no dictionary
+  payload or absolute corpus path.
 - No current product, architecture, environment, fixture, or tool question
-  blocks R1.1. Before each later leaf starts, perform and record a focused
-  readiness check against its dependencies, platform, fixtures, tools, and
+  blocks R1.2 after this delivery is integrated. Before each later leaf starts,
+  perform and record a focused readiness check against its dependencies,
+  platform, fixtures, tools, and
   acceptance evidence. A leaf that requires unavailable Linux/X11 execution
   remains not ready until that environment or an approved equivalent runner is
   available. Later discoveries are added to the issue queue and raised one at

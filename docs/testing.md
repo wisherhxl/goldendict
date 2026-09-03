@@ -24,6 +24,41 @@ Conan dependencies:
 python scripts/tests/run_with_conan_test.py
 ```
 
+### Real-dictionary corpus manifest
+
+Before a real-corpus acceptance run, generate the deterministic payload-free
+inventory outside both the corpus and repository:
+
+```powershell
+python scripts/real_dictionary_manifest.py `
+  "D:\workspace\goldendict\content" `
+  "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json"
+```
+
+The corpus path is an operator input, not a source-code default. The JSON
+contains only relative paths, sizes, classifications, SHA-256 hashes, and
+aggregate counts. It intentionally contains no timestamp or absolute corpus
+path, so a second unchanged run is byte-identical. The tool rejects output
+inside the corpus, links and Windows reparse points anywhere in the corpus,
+non-regular entries, and files whose identity, size, or modification time
+changes while they are hashed. After hashing, it re-enumerates the corpus and
+revalidates every recorded file state, so additions, removals, and later
+changes to earlier files also fail the run. It streams file contents and never
+copies a dictionary payload.
+
+Run its dependency-free synthetic tests with:
+
+```sh
+python scripts/tests/real_dictionary_manifest_test.py
+```
+
+For R1.1 acceptance, run the generator twice to two external paths, compare
+the two complete-file SHA-256 values, and retain the manifest and command log
+with the candidate identity. On 2026-09-03, the approved Windows corpus
+produced 88 records and 9,303,289,246 bytes; two runs produced identical
+manifests with SHA-256
+`b7e91878649b61388ecb1a3713709685e243f57e60d2b8eb23838a91bba816d2`.
+
 Tests are built by default. Disable them explicitly with `-DBUILD_TESTS=OFF`
 only when a task does not need local test targets.
 
