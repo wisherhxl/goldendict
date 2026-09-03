@@ -144,6 +144,50 @@ child wrote it. Diagnostic category and message codes are canonical tokens,
 and comparison differences accept only the contract's field-specific typed
 values, valid UTF-8 text, and records whose Qt 5 and Qt 6 values actually differ.
 
+The repository-owned Qt 6 adapter invokes the test-only, non-installed
+`qt6_real_dictionary_observer` target through the existing Core discovery
+boundary. The C++ process writes a short-lived raw observation inside the
+version-specific evidence directory. The Python adapter validates and removes
+that temporary file, converts absolute discovery inputs to manifest-bound
+corpus-relative components, records index-file dispositions, redacts free-form
+diagnostic messages to typed tokens, and atomically publishes the canonical
+observation followed by its atomic condition-acknowledgement commit marker. If
+either final write fails, the adapter removes both paths so incomplete evidence
+cannot be accepted. R3.2b1 implements only `clean-discovery`: it verifies the
+host platform and the bound all-enabled/clean-default/no-query condition
+profile, applies the locale to Core, requires an empty isolated index directory,
+and rejects every other scenario before launch. Warm restart, rescan,
+changed-source, cancellation, and unavailable-
+companion sequencing remain R3.2c state-machine work and cannot be reported by
+this observer yet. Run it from a configured Release build through the Conan
+launcher so the child inherits the complete DLL and Qt plugin environment:
+
+```powershell
+$checkout = (Resolve-Path ".").Path
+.\run_with_conan.ps1 --build-type Release -- `
+  python scripts/real_dictionary_acceptance_workspace.py run `
+    --workspace "D:\workspace\goldendict\evidence\qt5-qt6-acceptance" `
+    --corpus "D:\workspace\goldendict\content" `
+    --manifest "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json" `
+    --conditions "D:\workspace\goldendict\evidence\acceptance-conditions.json" `
+    --qt5-revision "<40-digit-qt5-commit>" `
+    --qt6-revision "<40-digit-qt6-commit>" `
+    --version qt6 --require-result -- `
+    python "$checkout\scripts\real_dictionary_acceptance_observer.py" `
+      --version qt6 `
+      --executable "$checkout\build\Release\bin\qt6_real_dictionary_observer.exe" `
+      --manifest "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json" `
+      --scenario clean-discovery `
+      --dictionary-root "D:\workspace\goldendict\content"
+```
+
+The workspace runner deliberately changes the child working directory to its
+isolated version root. Resolve checkout-owned driver and executable paths before
+launching it; relative child paths would point inside the acceptance workspace.
+Build-tree binaries and any command that may launch one must stay inside
+`run_with_conan.ps1`; a bare invocation is unsupported because Windows does not
+otherwise receive the Conan runtime DLL and Qt-plugin paths.
+
 Validate one observation or compare a matched scenario with:
 
 ```powershell
@@ -168,11 +212,12 @@ Run the repository-wide dependency-free script gate with:
 python -m unittest discover -s scripts/tests -p "*_test.py"
 ```
 
-For focused acceptance-contract iteration, run the two changed suites with:
+For focused acceptance-contract iteration, run the changed suites with:
 
 ```sh
 python scripts/tests/real_dictionary_acceptance_workspace_test.py
 python scripts/tests/real_dictionary_acceptance_result_test.py
+python scripts/tests/real_dictionary_acceptance_observer_test.py
 ```
 
 Tests are built by default. Disable them explicitly with `-DBUILD_TESTS=OFF`

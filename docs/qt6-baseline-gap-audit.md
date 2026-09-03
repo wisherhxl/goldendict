@@ -624,6 +624,62 @@ false-difference rejection and index-evidence cross-checking.
 `py_compile` and `git diff --check` also pass. No C++ target, dependency,
 shipping binary, or frozen Qt 5 file changes in this functional unit.
 
+#### R3.2b observer delivery split and Qt 6 verification
+
+R3.2b is split at the version-adapter boundary so each observer is independently
+reviewable and the frozen Qt 5 instrumentation cannot obscure changes to the
+Qt 6 acceptance path. R3.2b1 provides the shared raw-to-canonical adapter and a
+test-only Qt 6 observer. R3.2b2 will add the disposable-source Qt 5 observer and
+reuse the same adapter contract. Neither target is a shipping product feature,
+and neither changes dictionary discovery ownership.
+
+The R3.2b1 adapter validates every paired-workspace identity binding before it
+launches a probe, snapshots the isolated index directory before and after the
+run, confines observed components to the immutable corpus and approved
+manifest, expands known DSL and MDict companion sets, converts transient
+free-form failures to retained typed diagnostics, and publishes an atomic final
+observation followed by an atomic acknowledgement commit marker. Either final-
+write failure removes both outputs. Failed probes, malformed raw data, path
+escape, or binding mismatch publish no final evidence. The raw result is
+bounded and deleted when the adapter exits. Probe-supplied arguments cannot
+override the adapter-owned corpus, index, locale, condition, scenario, or
+output options, and the Qt 6 process independently rejects duplicate or unknown
+options.
+
+This unit deliberately implements only `clean-discovery`. It accepts the bound
+all-enabled group with no preset dictionary order, the clean-default preference
+profile, no queries, and a host-matching operating system and architecture; it
+applies the bound locale to Core and requires an empty isolated index directory.
+It rejects all other scenarios before launch.
+The raw observer, rather than the adapter, records authoritative enablement,
+catalog order, condition hash, scenario, outcome, and actual discovery phase
+completion. Warm restart, explicit rescan, changed-source, cancellation, and
+unavailable-companion state sequencing remain R3.2c work and cannot be
+misreported as completed by R3.2b1.
+
+`qt6_real_dictionary_observer` is built only with `BUILD_TESTS`, is not
+installed, and calls `CreateDictionaryService` plus the public catalog and
+lookup boundaries. It therefore observes the product's headless Core behavior
+without adding acceptance concerns to production APIs or duplicating format
+discovery. The repository-wide Python gate passes 68 tests with one
+host-capability symlink skip, including ten adapter tests for successful
+projection, manifest-bound DSL/MDict companions, pre-launch condition binding,
+reserved-option rejection, unsupported-scenario rejection, both final-write
+failures, nonempty clean-discovery index rejection, path escape, and child
+failure. Black, Ruff, `py_compile`, and
+`git diff --check` pass. A Visual Studio 2026/MSVC 19.44 Release build completes,
+and a clean Conan-launched serial CTest run passes all 130 tests, including the
+two strict C++ option-parser rejection tests. An initial
+`external_program_source_test` process crash passed immediately in isolation
+and in the complete clean rerun; no adapter or Core observer path participates
+in that test.
+
+The Conan-launched end-to-end run against a generated real DSL fixture reports
+the expected name, English-to-German languages, one article, one headword, and
+one newly created isolated index, and retains no absolute corpus path. The full
+approved corpus remains the R3.2c paired-run gate after both version adapters
+exist.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

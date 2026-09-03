@@ -32,6 +32,36 @@ ti_define_module(core
   REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat hunspell::hunspell ICU::uc OpenCC::OpenCC PCRE2::8BIT Vorbis::vorbisfile ZLIB::ZLIB
 )
 
+if(BUILD_TESTS)
+  ti_add_executable(qt6_real_dictionary_observer
+    tools/qt6_real_dictionary_observer.cpp)
+  ti_target_include_modules_recurse(qt6_real_dictionary_observer
+    goldendict_core)
+  ti_target_link_libraries(qt6_real_dictionary_observer
+    goldendict_core ${QT_NAMESPACE}::Core)
+  add_test(NAME qt6_real_dictionary_observer_duplicate_option_rejection
+    COMMAND qt6_real_dictionary_observer
+      --dictionary-root unused-corpus
+      --index-root unused-index
+      --interface-language en_US
+      --conditions-sha256 unused-hash
+      --scenario clean-discovery
+      --output unused-output
+      --output escaped-output)
+  set_tests_properties(qt6_real_dictionary_observer_duplicate_option_rejection
+    PROPERTIES WILL_FAIL TRUE)
+  add_test(NAME qt6_real_dictionary_observer_unknown_option_rejection
+    COMMAND qt6_real_dictionary_observer
+      --dictionary-root unused-corpus
+      --index-root unused-index
+      --interface-language en_US
+      --conditions-sha256 unused-hash
+      --scenario clean-discovery
+      --unknown unused-output)
+  set_tests_properties(qt6_real_dictionary_observer_unknown_option_rejection
+    PROPERTIES WILL_FAIL TRUE)
+endif()
+
 get_target_property(core_interface_links goldendict_core
   INTERFACE_LINK_LIBRARIES)
 if(core_interface_links AND core_interface_links MATCHES "OpenCC")
