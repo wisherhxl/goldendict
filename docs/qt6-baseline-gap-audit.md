@@ -68,11 +68,13 @@ Qt 5 source layout. Qt 6 may continue to construct Widgets programmatically.
 
 ## Remaining Conformance Units
 
-The R1-R10 headings are dependency-ordered workstreams, not commit-sized
-deliveries. The leaf delivery table below defines the independently auditable
-functional units. Each leaf must be developed in its own task worktree,
-independently audited, committed, pushed, and integrated before a dependent
-leaf starts.
+The R1-R10 headings are coverage workstreams, not a strict execution order or
+commit-sized deliveries. The leaf delivery table below defines the
+independently auditable functional units and their dependency graph. Start a
+leaf only after its listed dependencies are integrated and its own readiness
+check confirms that the required environment and evidence are available. Each
+leaf must be developed in its own task worktree, independently audited,
+committed, pushed, and integrated before a dependent leaf starts.
 
 ### R1 — Acceptance Corpus Inventory And Harness
 
@@ -268,7 +270,7 @@ commands in `docs/build.md` and retain their logs with the candidate identity.
 
 ## Readiness And Architecture Audit
 
-Result: **Ready for R1 and for subsequent units in the recorded order.**
+Result: **Ready for R1.1. R1.2 becomes ready after R1.1 is integrated.**
 
 - The gap list conforms to the approved CRD and removes no Qt 5 capability.
 - Core product behavior remains behind `goldendict_core`; Widgets and WebEngine
@@ -277,13 +279,18 @@ Result: **Ready for R1 and for subsequent units in the recorded order.**
 - The plan applies SRP by separating evidence collection, test infrastructure,
   product capabilities, presentation, platform integration, resources, and
   release gates. It applies dependency inversion at existing Core and platform
-  boundaries and does not add speculative interfaces.
+  boundaries and does not add speculative interfaces. This structural review
+  does not constitute readiness approval for leaves after R1.1/R1.2.
 - R1 can be verified entirely with synthetic temporary corpora before reading
   the operator corpus. No payload is copied, published, modified, or required
   by CI.
-- No current product or architecture question blocks R1. Later discoveries are
-  added to the issue queue and raised one at a time only when user direction is
-  genuinely required.
+- No current product, architecture, environment, fixture, or tool question
+  blocks R1.1. Before each later leaf starts, perform and record a focused
+  readiness check against its dependencies, platform, fixtures, tools, and
+  acceptance evidence. A leaf that requires unavailable Linux/X11 execution
+  remains not ready until that environment or an approved equivalent runner is
+  available. Later discoveries are added to the issue queue and raised one at
+  a time only when user direction is genuinely required.
 
 ## Non-Blocking Issue Queue
 

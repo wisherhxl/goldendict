@@ -7,8 +7,8 @@ the product scope, default-to-Qt-5 decision rule, visual acceptance standard,
 real-dictionary test corpus, release-platform gate, and formal Qt 6 baseline
 cutover conditions. This migration plan controls engineering sequence and
 architecture; it does not reduce or redesign the CRD's product requirements.
-The current cross-cutting gap inventory and dependency-ordered execution queue
-are recorded in the
+The current cross-cutting gap inventory and dependency-constrained execution
+queue are recorded in the
 [Qt 6 Baseline Replacement Gap Audit](qt6-baseline-gap-audit.md).
 
 ## Provenance
