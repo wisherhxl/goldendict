@@ -128,10 +128,51 @@ Qt-plugin paths:
     --dictionary-root "D:\workspace\goldendict\content"
 ```
 
-Run the workspace tool's dependency-free synthetic tests with:
+R3.2 observation runs add `--require-result` before `--`. The workspace runner
+then clears stale observation evidence, supplies
+`GOLDENDICT_ACCEPTANCE_RESULT_PATH`, and accepts a successful child only when
+that path contains canonical JSON bound to the exact pair, version, revision,
+manifest, and conditions. The
+`goldendict-real-dictionary-observation-v1` contract records bounded dictionary
+identity/count/order data, typed diagnostics, phase transitions, and generated
+index metadata. Corpus components are relative forward-slash paths; absolute
+paths, payload text, unknown fields, oversized files, and partial or
+non-canonical final JSON are rejected. Repository-owned observers publish with
+the contract module's atomic same-directory writer; the runner validates the
+completed file after child exit and does not claim to identify how an arbitrary
+child wrote it. Diagnostic category and message codes are canonical tokens,
+and comparison differences accept only the contract's field-specific typed
+values, valid UTF-8 text, and records whose Qt 5 and Qt 6 values actually differ.
+
+Validate one observation or compare a matched scenario with:
+
+```powershell
+python scripts/real_dictionary_acceptance_result.py validate `
+  --result "D:\workspace\goldendict\evidence\qt5-qt6-acceptance\qt6\evidence\observation.json"
+
+python scripts/real_dictionary_acceptance_result.py compare `
+  --qt5 "D:\workspace\goldendict\evidence\qt5-qt6-acceptance\qt5\evidence\observation.json" `
+  --qt6 "D:\workspace\goldendict\evidence\qt5-qt6-acceptance\qt6\evidence\observation.json" `
+  --output "D:\workspace\goldendict\evidence\qt5-qt6-acceptance\comparison.json"
+```
+
+Generated dictionary IDs and generated index bytes remain in the comparison
+evidence but are not equality keys because the implementations intentionally
+use version-specific index formats. Logical corpus-relative source identity,
+enablement, order, counts, outcomes, diagnostic classes, phase results, and
+index creation/reuse dispositions are material differences.
+
+Run the repository-wide dependency-free script gate with:
+
+```sh
+python -m unittest discover -s scripts/tests -p "*_test.py"
+```
+
+For focused acceptance-contract iteration, run the two changed suites with:
 
 ```sh
 python scripts/tests/real_dictionary_acceptance_workspace_test.py
+python scripts/tests/real_dictionary_acceptance_result_test.py
 ```
 
 Tests are built by default. Disable them explicitly with `-DBUILD_TESTS=OFF`

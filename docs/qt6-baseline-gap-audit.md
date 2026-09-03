@@ -520,6 +520,110 @@ and no R3.1 code owns WebEngine rendering or CTest resource scheduling. The
 result is retained as non-blocking test-infrastructure evidence rather than
 being hidden or bundled into this functional delivery.
 
+#### R3.2 issue record and readiness
+
+R3.2 is a conformance delivery under approved requirements
+`CRD-TEST-REAL-003`, `CRD-TEST-REAL-004`, and `CRD-COMPAT-001`. R1.1 and
+R1.2 already bind an immutable payload-free manifest, matched run conditions,
+exact Qt 5 and Qt 6 revisions, and disjoint writable profiles around the same
+read-only corpus. They deliberately stop before observing product discovery.
+The remaining gap is a version-neutral, machine-readable record of successful
+and failed discovery, stable identity, configured enablement and order, article
+and headword counts, index publication, warm reuse, explicit rescan, and the
+recovery cases required by the CRD.
+
+Readiness result: **Ready, split into independently auditable functional
+units**. The frozen Qt 5 product exposes the required state inside its existing
+dictionary collection and initialization callback but has no machine-readable
+acceptance entry point. The Qt 6 Core exposes successful identities through
+`DictionaryService::GetCatalog`; discovery/open failures are currently visible
+only as diagnostics attached to lookup and suggestion responses, and initial
+index work has no purpose-built progress/cancellation observation contract.
+Those limitations are evidence to record, not permission to infer successful
+parity or to rewrite format implementations before a paired run identifies an
+actual difference.
+
+The delivery uses an adapter-and-orchestrator design:
+
+1. R3.2a defines one bounded canonical JSON observation schema, a strict
+   structural/semantic validator, deterministic normalization and comparison,
+   and synthetic tests. It extends the existing paired workspace rather than
+   creating another authority for corpus, revision, condition, or directory
+   identity. Result files contain metadata and diagnostics only, never article
+   text, dictionary payload, credentials, or absolute retained corpus paths.
+2. R3.2b supplies version-specific read-only observers behind that contract.
+   The Qt 6 observer uses the installed headless Core boundary. The Qt 5
+   observer is built from the exact frozen revision in a disposable source
+   copy with a narrow acceptance-only instrumentation patch; it never edits or
+   relinks the frozen checkout and is not a shipping product binary. Both
+   observers acknowledge the R1.2 pair and conditions before a result can be
+   accepted.
+3. R3.2c runs clean discovery, warm restart, and explicit rescan against the
+   immutable real corpus, then runs changed-source, cancellation, and missing-
+   companion cases only against generated fixtures or bounded disposable
+   copies. It retains paired canonical result files and a complete difference
+   report. A confirmed Qt 6 product defect returns to implementation as its own
+   coherent correction and test; an intentional divergence or unsupported Qt
+   5 behavior still requires explicit approval.
+
+The common result contract records the pair ID, exact revision and version,
+condition and manifest hashes, scenario, monotonic phase sequence, completion
+outcome, normalized dictionary identity and source-relative component list,
+enabled/order disposition, article and headword counts, typed diagnostics, and
+bounded index-file metadata. The comparator treats version-specific generated
+index names and timings as evidence rather than equality keys. It compares
+logical source identity, order, enablement, counts, outcome, and diagnostic
+class, while preserving both raw version-specific values for audit.
+
+The design keeps discovery and indexing in Core, orchestration in repository
+test tooling, and presentation out of the headless observer. Production API
+changes are permitted only where a real required state cannot otherwise be
+observed or controlled, and must remain transport-neutral, bounded, explicitly
+cancellable, and independent of Qt Widgets. Repeated scenario sequencing uses
+a state-machine coordinator; format-specific parsing remains private and no
+new shared-library module is justified.
+
+The initial verification set is `python` unit tests for schema validation,
+canonicalization, comparison, path redaction, output bounds, acknowledgement,
+failure atomicity, and corpus immutability; focused Core tests for any added
+observation/cancellation contract; a clean Visual Studio 2026 Release build;
+and the complete serial CTest suite through `run_with_conan.ps1`. Real runs use
+`D:\workspace\goldendict\content` and the approved manifest whose SHA-256 is
+`b7e91878649b61388ecb1a3713709685e243f57e60d2b8eb23838a91bba816d2`.
+Before and after every scenario, the runner revalidates the corpus and rejects
+an incomplete acknowledgement or any missing, partial, or non-canonical final
+result. Repository-owned observers must publish through the contract's atomic
+same-directory writer; post-exit validation does not claim to infer the write
+method used by an arbitrary child process.
+
+#### R3.2a delivery verification
+
+R3.2a implements the shared observation and comparison contract without
+changing product discovery. The existing paired runner can now require a fresh
+`observation.json`, projects its exact destination to the child, and validates
+the result against the selected version and all four R1.2 identity bindings
+after the child exits and after the corpus is revalidated. The reusable result
+module validates canonical structure, bounds, normalized relative paths,
+unique identities and order, canonical diagnostic classification tokens,
+contiguous phase sequences, index dispositions, and field-specific comparison
+values, valid UTF-8 text, and unique ordered records that describe actual
+Qt 5/Qt 6 differences. Result reads stop at the size bound plus one byte; both
+observation and comparison publication use same-directory atomic replacement.
+
+The comparator reports material logical differences while retaining generated
+dictionary IDs and complete index metadata as version-specific evidence. It
+does not compare generated IDs, index filenames, index bytes, or elapsed time
+as product-equivalence keys. The repository-wide dependency-free script gate,
+`python -m unittest discover -s scripts/tests -p "*_test.py"`, passes 58 tests
+with one host-capability symlink skip: 18 result, 23 workspace, 11 manifest,
+and 6 Conan-launcher tests. Coverage includes stale-result rejection,
+identity mismatch, path confinement, bounded reads, size and schema bounds,
+failed atomic replacement for both output types, generated-index tolerance,
+and typed material-difference reporting, including hostile Unicode input and
+false-difference rejection and index-evidence cross-checking.
+`py_compile` and `git diff --check` also pass. No C++ target, dependency,
+shipping binary, or frozen Qt 5 file changes in this functional unit.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

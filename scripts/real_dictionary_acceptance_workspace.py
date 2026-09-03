@@ -9,15 +9,15 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import tempfile
-from typing import Iterable
+from collections.abc import Iterable
+from pathlib import Path
 
+import real_dictionary_acceptance_result
 import real_dictionary_manifest
-
 
 PAIR_SCHEMA = "goldendict-real-dictionary-acceptance-pair-v1"
 RUN_SCHEMA = "goldendict-real-dictionary-acceptance-run-v1"
@@ -473,6 +473,7 @@ def run_in_workspace(
     expected_qt6_revision: str,
     version: str,
     command: list[str],
+    require_result: bool = False,
 ) -> int:
     pair_id = validate_workspace(
         workspace,
@@ -522,10 +523,13 @@ def run_in_workspace(
         expected_qt5_revision if version == "qt5" else expected_qt6_revision
     )
     acknowledgement_path = version_root / "evidence" / "condition-ack.json"
+    observation_path = version_root / "evidence" / "observation.json"
     try:
         acknowledgement_path.unlink(missing_ok=True)
+        if require_result:
+            observation_path.unlink(missing_ok=True)
     except OSError as error:
-        raise WorkspaceError("Cannot clear the prior condition acknowledgement") from error
+        raise WorkspaceError("Cannot clear prior acceptance evidence") from error
     environment.update(
         {
             "GOLDENDICT_ACCEPTANCE_ACK_PATH": str(acknowledgement_path),
@@ -540,6 +544,10 @@ def run_in_workspace(
             "GOLDENDICT_ACCEPTANCE_VERSION": version,
         }
     )
+    if require_result:
+        environment["GOLDENDICT_ACCEPTANCE_RESULT_PATH"] = str(observation_path)
+    else:
+        environment.pop("GOLDENDICT_ACCEPTANCE_RESULT_PATH", None)
     try:
         completed = subprocess.run(
             command,
@@ -577,6 +585,20 @@ def run_in_workspace(
             raise WorkspaceError(
                 "Acceptance command did not acknowledge the exact paired conditions"
             )
+        if require_result:
+            try:
+                real_dictionary_acceptance_result.read_observation(
+                    observation_path,
+                    expected_pair_id=pair_id,
+                    expected_version=version,
+                    expected_revision=revision,
+                    expected_manifest_hash=manifest_hash,
+                    expected_conditions_hash=conditions_hash,
+                )
+            except real_dictionary_acceptance_result.ResultError as error:
+                raise WorkspaceError(
+                    f"Acceptance command did not publish a valid observation: {error}"
+                ) from error
     return completed.returncode
 
 
@@ -593,6 +615,7 @@ def _parser() -> argparse.ArgumentParser:
         subparser.add_argument("--qt6-revision", required=True)
         if command == "run":
             subparser.add_argument("--version", choices=VERSIONS, required=True)
+            subparser.add_argument("--require-result", action="store_true")
             subparser.add_argument("child_command", nargs=argparse.REMAINDER)
     return parser
 
@@ -631,6 +654,7 @@ def main(arguments: Iterable[str] | None = None) -> int:
                 options.qt6_revision,
                 options.version,
                 child_command,
+                options.require_result,
             )
     except WorkspaceError as error:
         print(f"error: {error}", file=os.sys.stderr)

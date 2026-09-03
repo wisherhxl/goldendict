@@ -5,18 +5,18 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import shutil
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import real_dictionary_acceptance_result
 import real_dictionary_acceptance_workspace
 import real_dictionary_manifest
-
 
 QT5_REVISION = "3d93dd66197aea10edf6c29998ddc9c213d0aaa8"
 QT6_REVISION = "18f3cfc5c308d730e9b52f5b69c579d585b73c14"
@@ -67,11 +67,36 @@ class RealDictionaryAcceptanceWorkspaceTest(unittest.TestCase):
             f"'schema': '{real_dictionary_acceptance_workspace.ACKNOWLEDGEMENT_SCHEMA}', "
             "'version': os.environ['GOLDENDICT_ACCEPTANCE_VERSION']}; "
             "pathlib.Path(os.environ['GOLDENDICT_ACCEPTANCE_ACK_PATH']).write_text("
-            "json.dumps(ack, sort_keys=True), encoding='utf-8'); "
-            + extra_statement
+            "json.dumps(ack, sort_keys=True), encoding='utf-8'); " + extra_statement
         )
 
-    def _create(self, root: Path, workspace_name: str = "workspace") -> tuple[Path, str]:
+    def _observing_child_program(self) -> str:
+        result_module_directory = str(
+            Path(real_dictionary_acceptance_result.__file__).resolve().parent
+        )
+        observation_statement = (
+            f"import sys; sys.path.insert(0, {result_module_directory!r}); "
+            "import real_dictionary_acceptance_result as acceptance_result; "
+            "observation = {'conditions_sha256': "
+            "os.environ['GOLDENDICT_ACCEPTANCE_CONDITIONS_SHA256'], "
+            "'corpus_manifest_sha256': "
+            "os.environ['GOLDENDICT_ACCEPTANCE_CORPUS_MANIFEST_SHA256'], "
+            "'diagnostics': [], 'dictionaries': [], 'indexes': [], "
+            "'outcome': 'completed', "
+            "'pair_id': os.environ['GOLDENDICT_ACCEPTANCE_PAIR_ID'], "
+            "'phases': [], "
+            "'revision': os.environ['GOLDENDICT_ACCEPTANCE_REVISION'], "
+            "'scenario': 'clean-discovery', "
+            f"'schema': '{real_dictionary_acceptance_result.OBSERVATION_SCHEMA}', "
+            "'version': os.environ['GOLDENDICT_ACCEPTANCE_VERSION']}; "
+            "acceptance_result.write_observation(pathlib.Path("
+            "os.environ['GOLDENDICT_ACCEPTANCE_RESULT_PATH']), observation)"
+        )
+        return self._acknowledging_child_program(observation_statement)
+
+    def _create(
+        self, root: Path, workspace_name: str = "workspace"
+    ) -> tuple[Path, str]:
         corpus, manifest, conditions, _ = self._fixture(root)
         workspace = root / workspace_name
         pair_id = real_dictionary_acceptance_workspace.create_workspace(
@@ -109,7 +134,9 @@ class RealDictionaryAcceptanceWorkspaceTest(unittest.TestCase):
             )
 
             self.assertEqual(pair_id, validated)
-            self.assertEqual(corpus_before, real_dictionary_manifest.build_manifest(corpus))
+            self.assertEqual(
+                corpus_before, real_dictionary_manifest.build_manifest(corpus)
+            )
             self.assertTrue((workspace / "pair.json").is_file())
             for version in real_dictionary_acceptance_workspace.VERSIONS:
                 self.assertTrue((workspace / version / "run.json").is_file())
@@ -124,7 +151,9 @@ class RealDictionaryAcceptanceWorkspaceTest(unittest.TestCase):
             environments: dict[str, set[Path]] = {}
             for version in real_dictionary_acceptance_workspace.VERSIONS:
                 environment = json.loads(
-                    (workspace / version / "environment.json").read_text(encoding="utf-8")
+                    (workspace / version / "environment.json").read_text(
+                        encoding="utf-8"
+                    )
                 )
                 paths = {Path(value).resolve() for value in environment.values()}
                 version_root = (workspace / version).resolve()
@@ -478,9 +507,7 @@ class RealDictionaryAcceptanceWorkspaceTest(unittest.TestCase):
                     )
 
             self.assertFalse(workspace.exists())
-            self.assertEqual(
-                [root / "corpus", root / "input"], sorted(root.iterdir())
-            )
+            self.assertEqual([root / "corpus", root / "input"], sorted(root.iterdir()))
 
     def test_run_projects_isolated_environment_and_working_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -502,7 +529,9 @@ class RealDictionaryAcceptanceWorkspaceTest(unittest.TestCase):
                 "'home': os.environ['HOME'], "
                 "'parent_runtime': os.environ['GD_TEST_PARENT_RUNTIME'], "
                 "'conditions_file': "
-                "os.environ['GOLDENDICT_ACCEPTANCE_CONDITIONS_FILE']}), "
+                "os.environ['GOLDENDICT_ACCEPTANCE_CONDITIONS_FILE'], "
+                "'has_result_path': "
+                "'GOLDENDICT_ACCEPTANCE_RESULT_PATH' in os.environ}), "
                 "encoding='utf-8')"
             )
 
@@ -541,6 +570,7 @@ class RealDictionaryAcceptanceWorkspaceTest(unittest.TestCase):
                 str((workspace / "qt6" / "conditions.json").resolve()),
                 child_result["conditions_file"],
             )
+            self.assertFalse(child_result["has_result_path"])
 
     def test_run_preserves_child_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -739,6 +769,70 @@ class RealDictionaryAcceptanceWorkspaceTest(unittest.TestCase):
                         str(corpus),
                     ],
                 )
+
+    def test_result_required_run_validates_binding_and_clears_stale_evidence(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            corpus, manifest, conditions, _ = self._fixture(root)
+            workspace = root / "workspace"
+            real_dictionary_acceptance_workspace.create_workspace(
+                workspace,
+                corpus,
+                manifest,
+                conditions,
+                QT5_REVISION,
+                QT6_REVISION,
+            )
+            observation_path = workspace / "qt6" / "evidence" / "observation.json"
+            observation_path.write_bytes(b"stale")
+            command = [
+                sys.executable,
+                "-c",
+                self._acknowledging_child_program(),
+                "--dictionary-root",
+                str(corpus),
+            ]
+
+            with self.assertRaisesRegex(
+                real_dictionary_acceptance_workspace.WorkspaceError,
+                "valid observation",
+            ):
+                real_dictionary_acceptance_workspace.run_in_workspace(
+                    workspace,
+                    corpus,
+                    manifest,
+                    conditions,
+                    QT5_REVISION,
+                    QT6_REVISION,
+                    "qt6",
+                    command,
+                    require_result=True,
+                )
+            self.assertFalse(observation_path.exists())
+
+            command[2] = self._observing_child_program()
+            self.assertEqual(
+                0,
+                real_dictionary_acceptance_workspace.run_in_workspace(
+                    workspace,
+                    corpus,
+                    manifest,
+                    conditions,
+                    QT5_REVISION,
+                    QT6_REVISION,
+                    "qt6",
+                    command,
+                    require_result=True,
+                ),
+            )
+            self.assertEqual(
+                "qt6",
+                real_dictionary_acceptance_result.read_observation(observation_path)[
+                    "version"
+                ],
+            )
 
 
 if __name__ == "__main__":
