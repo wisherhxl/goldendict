@@ -685,8 +685,9 @@ exist.
 R3.2b2 supplies the frozen-version adapter without modifying the pinned Qt 5
 checkout. `prepare_qt5_acceptance_source.py` first requires the exact frozen
 commit and tree and a completely clean checkout, exports that commit with
-`git archive`, rejects unsafe archive members, and applies exact-anchor
-instrumentation only to the disposable copy. The resulting provenance binds
+`git archive`, rejects output paths inside the checkout and unsafe archive
+members, and applies exact-anchor instrumentation only to the disposable copy.
+The resulting provenance binds
 the frozen commit and tree, the checked-in observer include, and SHA-256 hashes
 of every instrumented source file. Its qmake version resource is fixed to the
 frozen revision instead of probing a surrounding worktree. The runtime wrapper
@@ -714,10 +715,11 @@ because this Qt 5 WebKit build crashes in the offscreen plugin; other platforms
 remain offscreen. This is a harness constraint and does not change observed
 dictionary behavior.
 
-The focused 15-test suite covers checkout identity and cleanliness, safe export,
-changed anchors, complete instrumented-file provenance, provenance tampering,
-cross-platform profile placement, runtime/plugin projection, output confinement,
-portable-state refusal, revision mismatch, and failed-process cleanup. A fresh
+The focused 16-test suite covers checkout identity and cleanliness, safe export,
+source/output separation, changed anchors, complete instrumented-file
+provenance, provenance tampering, cross-platform profile placement,
+runtime/plugin projection, output confinement, portable-state refusal,
+revision mismatch, and failed-process cleanup. A fresh
 MSYS2 UCRT64 Qt 5 build
 from the prepared source completes with the frozen checkout still clean. An
 end-to-end run using the real corpus file `中文/古汉语常用字字典.dsl.dz` observes
@@ -726,7 +728,7 @@ headwords, and one newly created isolated index. The shared validator accepts
 the canonical result, and no absolute corpus path or dictionary payload is
 retained. Full-corpus paired scenarios remain R3.2c work.
 
-The repository-wide dependency-free Python gate passes 83 tests with one
+The repository-wide dependency-free Python gate passes 84 tests with one
 host-capability symlink skip. Black and Ruff pass for all R3.2b2 Python files,
 and `py_compile` plus `git diff --check` pass.
 

@@ -198,6 +198,8 @@ def prepare(checkout: Path, output: Path, observer_include: Path) -> Path:
         output = output.resolve(strict=False)
     except OSError as error:
         raise PreparationError("A preparation input does not exist") from error
+    if output == checkout or checkout in output.parents:
+        raise PreparationError("Output directory must be outside the frozen checkout")
     if output.exists():
         raise PreparationError("Output directory already exists")
     _verify_frozen_checkout(checkout)

@@ -128,6 +128,24 @@ class PrepareQt5AcceptanceSourceTest(unittest.TestCase):
             ):
                 preparation.prepare(checkout, output, observer)
 
+    def test_rejects_output_inside_frozen_checkout_without_writing(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            checkout = root / "checkout"
+            checkout.mkdir()
+            observer = root / preparation.OBSERVER_INCLUDE
+            observer.write_text("observer\n", encoding="utf-8")
+            output = checkout / "prepared"
+            with (
+                mock.patch.object(preparation, "_verify_frozen_checkout") as verify,
+                mock.patch.object(preparation, "_export_frozen_tree") as export,
+                self.assertRaisesRegex(preparation.PreparationError, "outside"),
+            ):
+                preparation.prepare(checkout, output, observer)
+            verify.assert_not_called()
+            export.assert_not_called()
+            self.assertFalse(output.exists())
+
     def test_rejects_changed_instrumentation_anchor(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

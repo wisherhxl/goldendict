@@ -193,7 +193,8 @@ otherwise receive the Conan runtime DLL and Qt-plugin paths.
 The Qt 5 acceptance executable is a non-shipping build from a disposable source
 copy. Never patch or build in the frozen checkout. Preparation refuses any
 revision other than `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, a changed
-source tree, or any tracked or untracked checkout change:
+source tree, any tracked or untracked checkout change, or an output path inside
+the frozen checkout:
 
 ```powershell
 $qt5Source = "$checkout\build\qt5-acceptance-source"
