@@ -115,6 +115,10 @@ Requirements: `CRD-TEST-REAL-004` through `CRD-TEST-REAL-007` and
   against Qt 5 using the same corpus.
 - Prioritize confirmed corpus gaps, especially DSL resource ZIP files larger
   than 4 GiB and split MDict resources.
+- Close every remaining `CRD-DICT-003` format variant with generated or
+  redistributable fixtures when the operator corpus does not contain that
+  variant; real-corpus coverage is not a substitute for the complete format
+  contract.
 - Implement only evidence-confirmed backend corrections; keep original corpus
   files immutable and use disposable copies for mutation tests.
 
@@ -153,7 +157,8 @@ portable/default-source decisions in `CRD-DICT-004` and `CRD-DICT-005`.
 
 ### R7 — Linux Desktop Interaction And Audio
 
-Requirements: `CRD-PLATFORM-001` and `CRD-PLATFORM-002`.
+Requirements: `CRD-PLATFORM-001`, `CRD-PLATFORM-002`,
+`CRD-PLATFORM-005`, and `CRD-LOOKUP-005`.
 
 - Restore continuous clipboard/selection monitoring, scan flag and popup,
   modifier policy, global hotkeys, tray, close-to-tray, startup, and
@@ -161,6 +166,9 @@ Requirements: `CRD-PLATFORM-001` and `CRD-PLATFORM-002`.
 - Complete external-player and Linux speech/TTS behavior. Retain Qt Multimedia
   as the maintained built-in playback path; add another backend only when its
   deployment boundary is justified.
+- Complete the supported command-line and single-instance message matrix,
+  including option, malformed-input, activation-only, forwarding, queueing,
+  and duplicate-writer behavior required by `CRD-LOOKUP-005`.
 - Document X11, XWayland, and native Wayland capability differences explicitly.
 
 ### R8 — Browser, Network, And Product Integration Details
@@ -222,6 +230,21 @@ launcher and Python tooling checks run directly.
 | R3.3 | Real MDict split-resource acceptance and evidence-confirmed corrections | R3.2 | MDX/three-MDD lookup, resource, restart, and immutable-source checks |
 | R3.4 | Real DSL and greater-than-4-GiB resource-ZIP acceptance and corrections | R3.2 | DSL/dictzip/article/resource/restart checks with bounded storage evidence |
 | R3.5 | Remaining real-corpus lookup, suggestion, article, media, and management matrix: `CRD-TEST-REAL-005` through `007` | R3.3, R3.4 | paired query catalog and machine-readable result diff |
+| R3.6 | StarDict non-corpus variants and companions: StarDict part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining compression, metadata, resource, identity, indexing, lookup, restart, corruption, and failure variants |
+| R3.7 | Dictd non-corpus variants and companions: Dictd part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining index/data, dictzip, metadata, identity, indexing, lookup, restart, corruption, and failure variants |
+| R3.8 | SDict non-corpus variants and companions: SDict part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining field encodings/compression, identity, indexing, lookup, article, restart, corruption, and failure variants |
+| R3.9 | XDXF non-corpus variants and companions: XDXF part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining compression, markup/link/resource, identity, indexing, lookup, restart, corruption, and failure variants |
+| R3.10 | GLS non-corpus variants and resource ZIP: GLS part of `CRD-DICT-003` | R3.5 | generated fixtures for encoding/compression/resource ZIP, identity, indexing, lookup, article, restart, corruption, and failure variants |
+| R3.11 | DSL non-corpus advanced variants: DSL part of `CRD-DICT-003` | R3.4, R3.5 | generated fixtures for abbreviations, nested cards, markup/resource, identity, indexing, lookup, restart, corruption, and failure variants not present in the real corpus |
+| R3.12 | BGL non-corpus advanced control records: BGL part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining control/code-page/resource, identity, indexing, lookup, restart, corruption, and failure variants |
+| R3.13 | MDict non-corpus legacy, compression, and encryption variants: MDict part of `CRD-DICT-003` | R3.3, R3.5 | generated fixtures for supported 1.x/LZO/encryption and companion cases, identity, indexing, lookup, article/resource, restart, corruption, and failure behavior |
+| R3.14 | Aard non-corpus multi-volume/icon variants: Aard part of `CRD-DICT-003` | R3.5 | generated fixtures for volume aggregation, icons, identity, indexing, lookup, article/resource, restart, corruption, and failure behavior |
+| R3.15 | ZIM non-corpus compression/link/icon variants: ZIM part of `CRD-DICT-003` | R3.5 | generated fixtures for supported LZMA2/Zstd, link rewriting, icons, split identity, indexing, lookup, restart, corruption, and failure behavior |
+| R3.16 | SLOB non-corpus compression/conversion/icon variants: SLOB part of `CRD-DICT-003` | R3.5 | generated fixtures for supported LZMA2, conversion, icons, identity, indexing, lookup, restart, corruption, and failure behavior |
+| R3.17 | EPWING non-corpus compression/encoding/media/index variants: EPWING part of `CRD-DICT-003` | R3.5 | generated fixtures for supported HONMON compression, mixed encodings, gaiji/media, grouped indexes, identity, indexing, lookup, restart, corruption, and failure behavior |
+| R3.18 | LSA non-corpus icon and large-stream variants: LSA part of `CRD-DICT-003` | R3.5 | generated fixtures for icons, bounded large-file streaming, identity, indexing, lookup/playback, restart, corruption, and failure behavior |
+| R3.19 | ZIP sound-pack non-corpus ZIP64/split/encryption/icon/stream variants: ZIP-sound part of `CRD-DICT-003` | R3.5 | generated fixtures for every supported remaining archive/icon/stream case, identity, indexing, lookup/playback, restart, corruption, and failure behavior |
+| R3.20 | Sound-directory non-corpus icon and large-stream variants: sound-directory part of `CRD-DICT-003` | R3.5 | generated fixtures for icons, bounded large-file streaming, confinement, identity, indexing, lookup/playback, restart, corruption, and failure behavior |
 | R4.1 | Qt 5 Interface Preferences page and backed behavior | R2.3 | focused preference persistence/effect test plus paired page capture |
 | R4.2 | Qt 5 Advanced Preferences page and backed behavior | R4.1 | focused persistence/effect test plus paired page capture |
 | R4.3 | Qt 5 Audio Preferences page and backed behavior | R4.1 | focused persistence/routing test plus paired page capture |
@@ -229,32 +252,77 @@ launcher and Python tooling checks run directly.
 | R4.5 | Qt 5 Scan Popup Preferences page and backed controls | R7.2 | focused adapter/persistence test plus paired page capture |
 | R4.6 | Qt 5 Hotkeys Preferences page and backed controls | R7.3 | focused adapter/persistence test plus paired page capture |
 | R5.1 | Remaining full-text query/result targeting, excerpt, and highlight parity: `CRD-FTS-001` | R2.3 | focused Core/Widgets/WebEngine tests against pinned Qt 5 evidence |
-| R5.2 | Full-text policy, eligibility, scheduling, atomic publication, rebuild, and recovery: `CRD-FTS-002`, `003` | R3.5 | lifecycle, cancellation, corruption, replacement, and failure-injection tests |
+| R5.2 | Full-text policy, eligibility, scheduling, atomic publication, rebuild, and recovery: `CRD-FTS-002`, `003` | R3.6-R3.20 | lifecycle, cancellation, corruption, replacement, and failure-injection tests |
 | R5.3 | Full-text readiness, progress, waiting/indexed counts, and failure UI | R5.2, R4.4 | focused UI state-machine test and paired state captures |
 | R5.4 | Full-text real-format acceptance: `CRD-TEST-REAL-008` | R5.3 | every eligible real format indexed, queried, reused, rebuilt, cancelled, and recovered |
-| R6.1 | Remaining dictionary/group management, popup muting, auto-group, ordering, and batch actions | R3.5 | focused model/UI/persistence tests and paired workflow capture |
+| R6.1 | Remaining dictionary/group management, popup muting, auto-group, ordering, and batch actions | R3.6-R3.20 | focused model/UI/persistence tests and paired workflow capture |
 | R6.2 | Hunspell and Chinese-conversion registration/configuration | R6.1 | real and generated morphology/conversion lookup plus persistence tests |
 | R6.3 | Website encoding, iframe, and resource parity | R2.3 | deterministic local HTTP fixtures and WebEngine presentation tests |
 | R6.4 | DICT authentication parity | R2.3 | deterministic authenticated local DICT fixture and redaction tests |
 | R6.5 | Forvo playback and external-program environment/audio policy | R4.3, R7.5 | deterministic local audio/process fixtures and containment tests |
+| R6.6 | Portable-mode application-local content, source-control restrictions, and self-contained state: `CRD-DICT-004` | R3.2, R6.1 | disposable portable installation covering discovery, disabled Add/Remove, path confinement, restart, upgrade, and package relocation |
+| R6.7 | New-profile default English Wikipedia source without eager network access: `CRD-DICT-005` | R6.1, R6.3 | isolated first-run persistence/runtime test and local transport proof of zero requests before user lookup |
 | R7.1 | Continuous X11 clipboard/selection monitoring and modifier policy | R2.3 | private adapter tests and X11 integration check |
 | R7.2 | Scan flag and scan-popup presentation/lifecycle | R7.1 | adapter/UI lifecycle tests and paired captures |
 | R7.3 | Global hotkey registration, dispatch, conflict, and teardown | R7.1 | private adapter tests plus X11 session check |
 | R7.4 | Tray, close-to-tray, startup, activation, and always-on-top | R7.3 | desktop integration test and paired state capture |
 | R7.5 | External player and Linux speech/TTS | R4.3 | controlled process/TTS adapter tests and manual audio check |
-| R8.1 | Article resource saving and remaining safe context actions | R3.5 | local resource fixture, cancellation/error tests, and paired menu capture |
+| R7.6 | Complete command-line and single-instance behavior: `CRD-LOOKUP-005` | R6.1, R7.2, R7.4 | generated argument/message matrix covering supported main/popup group and scan options, URLs, malformed input, activation-only invocation, forwarding before/after facade publication, process contention, and exactly one writer |
+| R7.7 | X11, XWayland, and native-Wayland capability contract: `CRD-PLATFORM-005` | R7.1-R7.6 | platform matrix documenting and testing each supported/fallback/unsupported selection, scan, hotkey, tray, activation, and audio path without representing a platform limit as product removal |
+| R7.8 | Windows scan/clipboard, hotkey, tray, startup, activation, always-on-top, and single-instance adapters: `CRD-PLATFORM-001`, `005` | R6.1, R7.2-R7.4, R7.6 | private adapter tests and native Windows integration matrix covering registration, conflicts, lifecycle, groups/options, forwarding, and teardown |
+| R7.9 | Windows playback, external player, pronunciation, and SAPI speech: `CRD-PLATFORM-002`, `005` | R4.3, R6.5 | controlled process/media/SAPI adapter tests and manual native audio check |
+| R8.1 | Article resource saving and remaining safe context actions | R3.6-R3.20 | local resource fixture, cancellation/error tests, and paired menu capture |
 | R8.2 | Qt WebEngine DevTools/inspector parity | R2.3 | private page/profile lifecycle tests and manual DevTools check |
 | R8.3 | About, homepage, forum, configuration-folder, credits, and attribution workflows | R9.1 | focused action/URL/path tests and paired dialogs |
 | R8.4 | Remaining proxy/authentication, request identity, remote-content, and update behavior | R6.3, R6.4 | deterministic local proxy/origin/update fixtures and redaction tests |
-| R9.1 | Complete asset provenance/owner/install/consumer inventory and feature-owned imports | R3.5 | inventory validator, installed-runtime checks, and hash provenance |
-| R9.2 | Qt 6 context review and enablement in independently reviewable locale batches | R9.1 | `lrelease`, locale smoke, fallback test, and paired localized surface checks |
-| R9.3 | Matched empty/synthetic-data visual matrix for all required surfaces | R4.1-R8.4, R9.2 | fixed-environment captures, semantic checklist, and documented narrow masks |
-| R9.4 | Matched real-corpus visual matrix: `CRD-TEST-REAL-009` | R5.4, R6.2, R9.3 | private paired captures and retained non-content metadata/results |
+| R8.5 | Help window geometry and zoom persistence | R4.6, R8.3 | focused current/legacy persistence, invalid-state fallback, DPI/topology normalization, and paired Help capture |
+| R9.1 | Complete asset provenance/owner/install/consumer inventory and feature-owned imports | R3.6-R3.20 | inventory validator, installed-runtime checks, and hash provenance |
+| R9.2 | Translation inventory, Qt 6 context validation rules, fallback contract, and batch assignment | R9.1 | deterministic catalog validator, source/context diagnostics, and exact 45-catalog batch manifest |
+| R9.3 | Locale batch A enablement: `ar_SA` through `fi_FI` in the R9.2 manifest | R9.2 | `lrelease`, fifteen locale smokes, fallback tests, and paired representative surfaces |
+| R9.4 | Locale batch B enablement: `fr_FR` through `qt_es` in the R9.2 manifest | R9.3 | `lrelease`, fifteen locale smokes, fallback tests, and paired representative surfaces |
+| R9.5 | Locale batch C enablement: `qt_it` through `zh_TW` in the R9.2 manifest | R9.4 | `lrelease`, fifteen locale smokes, fallback tests, and paired representative surfaces |
+| R9.6 | Matched empty/synthetic main-shell visual matrix: main window, menus, toolbars, tabs, lookup, results, Favorites, History, scan popup, and tray | R4.1, R4.5, R7.2, R7.4, R9.5 | fixed-environment captures, per-surface semantic checklist, and documented narrow masks |
+| R9.7 | Matched empty/synthetic settings-and-management visual matrix: seven Preferences pages, Sources, Dictionaries, Groups, dictionary info, headword browser, full-text search, Help, About, and message dialogs | R4.1-R6.4, R8.2, R8.3, R8.5, R9.5 | fixed-environment captures, per-dialog semantic checklist, state coverage, and documented narrow masks |
+| R9.8 | Matched synthetic article/browser visual matrix: Welcome/article states, navigation, search, zoom, context menus, media, print, save, authentication, error, and DevTools states | R5.1, R6.3-R6.5, R8.1, R8.2, R8.4, R9.5 | deterministic local fixtures, fixed-environment captures, semantic checklist, and documented narrow masks |
+| R9.9 | Matched real-corpus visual matrix: `CRD-TEST-REAL-009` | R5.4, R6.2, R9.6-R9.8 | private paired captures and retained non-content metadata/results |
 | R10.1 | Linux/Windows clean-build and test CI with pinned profiles/locks | R2.3 | clean runner logs for the same commit |
-| R10.2 | Linux runtime bundle, DEB/RPM, install/uninstall, launcher, MIME, and registration | R7.5, R8.4, R10.1 | clean package install/launch/uninstall tests |
-| R10.3 | Windows runtime bundle/installer, WebEngine deployment, manifest, and native hooks | R7.4, R8.4, R10.1 | clean package install/launch/uninstall and native integration tests |
-| R10.4 | Paired startup/index/lookup/render/full-text/memory/storage measurements: `CRD-TEST-REAL-010` | R5.4, R9.4, R10.2, R10.3 | machine-readable same-host results, thresholds, and disposition of every material regression |
-| R10.5 | Same-candidate Linux/Windows cutover audit and documentation reconciliation | all prior leaves | complete build/test/install/package/visual/corpus records and independent final audit |
+| R10.2 | Linux runtime bundle, launcher, WebEngine, help, translations, and product assets | R7.5, R7.7, R8.4, R9.5, R10.1 | clean staged-runtime dependency scan and launch/lookup/help/media smoke |
+| R10.3 | Linux DEB desktop/MIME integration and install/uninstall | R10.2 | clean package build, metadata inspection, install, desktop/MIME launch, upgrade, and uninstall evidence |
+| R10.4 | Linux RPM desktop/MIME integration and install/uninstall | R10.2 | clean package build, metadata inspection, install, desktop/MIME launch, upgrade, and uninstall evidence |
+| R10.5 | Windows runtime bundle and WebEngine/help/translation/product-asset deployment | R7.8, R7.9, R8.4, R9.5, R10.1 | clean staged-runtime dependency scan and launch/lookup/help/media/native-adapter smoke without a developer environment |
+| R10.6 | Windows installer, application manifest, shortcuts, registration, upgrade, and uninstall | R10.5 | clean installer build and metadata inspection plus install, native integration, repair/upgrade, and uninstall evidence |
+| R10.7 | Paired startup/index/lookup/render/full-text/memory/storage measurements: `CRD-TEST-REAL-010` | R5.4, R9.9, R10.3-R10.6 | machine-readable same-host results, thresholds, and disposition of every material regression |
+| R10.8 | Same-candidate Linux/Windows cutover audit and documentation reconciliation | all prior leaves | complete build/test/install/package/visual/corpus records and independent final audit |
+
+### CRD closure cross-check
+
+This cross-check prevents a completed leaf graph from silently leaving an
+approved requirement open. A requirement marked as already implemented still
+participates in the listed acceptance/cutover leaves; that label is not a
+waiver of regression evidence.
+
+| Approved requirement set | Existing status and remaining closure owner |
+| --- | --- |
+| `CRD-SHELL-001` through `CRD-SHELL-005` | The structural shell is substantially implemented; remaining state-by-state behavior and appearance close through R9.6 and R9.9. |
+| `CRD-LOOKUP-001` through `CRD-LOOKUP-004` | Existing lookup/tab/history/Favorites slices are retained; remaining real-format, full-text, management, browser, and visual behavior closes through R3.2-R3.20, R5.1-R6.2, R8.1-R8.2, and R9.6-R9.9. |
+| `CRD-LOOKUP-005` | R7.6, R7.8, R10.5, and R10.6. |
+| `CRD-STATE-001` and `CRD-STATE-002` | Existing history and Favorites behavior is retained; upgrade and complete visual/workflow acceptance closes through R3.1, R9.6, R9.7, and R9.9. |
+| `CRD-STATE-003` | R6.1 and R6.6. |
+| `CRD-STATE-004` | R3.1 and R6.6. |
+| `CRD-PREF-001` through `CRD-PREF-004` | R4.1-R4.6 and R9.7. |
+| `CRD-DICT-001` and `CRD-DICT-002` | R6.1-R6.5 and R7.5, R7.9. |
+| `CRD-DICT-003` | R3.2-R3.20 and R5.4. |
+| `CRD-DICT-004` | R6.6 and the relevant Linux/Windows package leaves R10.2-R10.6. |
+| `CRD-DICT-005` | R6.7. |
+| `CRD-FTS-001` through `CRD-FTS-003` | R4.4 and R5.1-R5.4. |
+| `CRD-PLATFORM-001` | R4.5, R4.6, R7.1-R7.4, R7.7, and R7.8. |
+| `CRD-PLATFORM-002` | R4.3, R6.5, R7.5, R7.7, and R7.9. |
+| `CRD-PLATFORM-003` | R6.3-R6.5 and R8.4. |
+| `CRD-PLATFORM-004` | R8.3, R8.5, and R10.2-R10.6. |
+| `CRD-PLATFORM-005` | R7.7-R7.9 and the platform-specific R10.2-R10.6 acceptance leaves. |
+| `CRD-RES-001` through `CRD-RES-005` | R8.3, R9.1-R9.9, R10.2, and R10.5. |
+| `CRD-COMPAT-001` through `CRD-COMPAT-005` | R3.1-R3.20, R6.6, R10.3, R10.4, and R10.6. |
+| `CRD-TEST-REAL-001` through `CRD-TEST-REAL-010` | R1.1-R1.2, R3.2-R3.5, R5.4, R9.9, and R10.7. |
 
 Standard verification command forms are:
 
