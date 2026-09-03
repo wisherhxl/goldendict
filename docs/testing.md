@@ -204,14 +204,16 @@ python scripts/prepare_qt5_acceptance_source.py `
 ```
 
 On the current Windows host, configure and build with the MSYS2 UCRT64 Qt 5
-toolchain. Set `GIT_CEILING_DIRECTORIES` to the build directory so qmake does not
-mistake the surrounding Qt 6 worktree for the archived source's Git repository:
+toolchain. Preparation replaces the legacy Git version probe with the exact
+frozen revision. Set `GIT_CEILING_DIRECTORIES` to the Qt 6 checkout root as an
+additional guard against any helper mistaking the surrounding worktree for the
+archived source's Git repository:
 
 ```powershell
 $qt5Bin = "C:\msys64\ucrt64\bin"
 New-Item -ItemType Directory -Path $qt5Build | Out-Null
 $env:PATH = "$qt5Bin;$env:PATH"
-$env:GIT_CEILING_DIRECTORIES = $qt5Build
+$env:GIT_CEILING_DIRECTORIES = $checkout
 & "$qt5Bin\qmake-qt5.exe" -o "$qt5Build\Makefile" `
   "$qt5Source\goldendict.pro" `
   "CONFIG+=release x64 no_ffmpeg_player no_chinese_conversion_support no_epwing_support" `

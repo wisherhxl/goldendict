@@ -106,6 +106,12 @@ def _write_config(path: Path, dictionary_root: Path, language: str) -> None:
     ET.ElementTree(root).write(path, encoding="utf-8", xml_declaration=True)
 
 
+def _config_path(appdata: Path, home: Path) -> Path:
+    if platform.system() == "Windows":
+        return appdata / "GoldenDict" / "config"
+    return home / ".goldendict" / "config"
+
+
 @contextmanager
 def _suppressed_windows_error_dialogs():
     if platform.system() != "Windows":
@@ -211,9 +217,7 @@ def observe(
         local_appdata = profile / "local-appdata"
         for directory in (appdata, home, local_appdata):
             directory.mkdir()
-        _write_config(
-            appdata / "GoldenDict" / "config", dictionary_root, interface_language
-        )
+        _write_config(_config_path(appdata, home), dictionary_root, interface_language)
         environment = os.environ.copy()
         environment.update(
             {

@@ -133,6 +133,7 @@ class Qt5RealDictionaryObserverTest(unittest.TestCase):
 
             with (
                 mock.patch.dict(os.environ, environment, clear=False),
+                mock.patch.object(observer.platform, "system", return_value="Windows"),
                 mock.patch.object(
                     observer,
                     "_suppressed_windows_error_dialogs",
@@ -144,10 +145,7 @@ class Qt5RealDictionaryObserverTest(unittest.TestCase):
 
             child_environment = captured["environment"]
             assert isinstance(child_environment, dict)
-            expected_platform = (
-                "windows" if observer.platform.system() == "Windows" else "offscreen"
-            )
-            self.assertEqual(child_environment["QT_QPA_PLATFORM"], expected_platform)
+            self.assertEqual(child_environment["QT_QPA_PLATFORM"], "windows")
             self.assertEqual(child_environment["QT_OPENGL"], "software")
             self.assertEqual(child_environment["QT_PLUGIN_PATH"], str(paths["plugins"]))
             self.assertTrue(
@@ -157,6 +155,33 @@ class Qt5RealDictionaryObserverTest(unittest.TestCase):
             self.assertEqual(config.findtext("paths/path"), str(paths["corpus"]))
             self.assertEqual(config.findtext("preferences/interfaceLanguage"), "en_US")
             self.assertEqual(captured["command"], [str(paths["executable"])])
+
+    def test_writes_legacy_non_windows_profile_location(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            captured_config: list[Path] = []
+
+            def run(
+                command: list[str], **kwargs: object
+            ) -> subprocess.CompletedProcess:
+                child_environment = kwargs["env"]
+                assert isinstance(child_environment, dict)
+                config = Path(child_environment["HOME"]) / ".goldendict" / "config"
+                captured_config.append(config)
+                self.assertTrue(config.is_file())
+                Path(
+                    child_environment["GOLDENDICT_ACCEPTANCE_RAW_RESULT_PATH"]
+                ).write_text("{}", encoding="utf-8")
+                return subprocess.CompletedProcess(command, 0)
+
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                mock.patch.object(observer.platform, "system", return_value="Linux"),
+                mock.patch.object(observer.subprocess, "run", side_effect=run),
+            ):
+                self.assertEqual(self._call(paths), paths["output"])
+
+            self.assertEqual(len(captured_config), 1)
 
     def test_rejects_portable_state_next_to_executable(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

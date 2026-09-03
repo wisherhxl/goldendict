@@ -23,6 +23,7 @@ OBSERVER_INCLUDE = "qt5_acceptance_observer.inc"
 PROVENANCE_FILE = ".goldendict-qt5-acceptance-source.json"
 INSTRUMENTED_FILES = (
     "config.cc",
+    "goldendict.pro",
     "main.cc",
     "mainwindow.cc",
     "mouseover.cc",
@@ -101,6 +102,17 @@ def _replace_once(path: Path, before: str, after: str) -> None:
 
 def _instrument(source: Path, observer_include: Path) -> None:
     shutil.copy2(observer_include, source / OBSERVER_INCLUDE)
+    _replace_once(
+        source / "goldendict.pro",
+        "system(git describe --tags --always --dirty > version.txt): hasGit=1\n"
+        "\n"
+        "isEmpty( hasGit ) {\n"
+        "  message(Failed to precisely describe the version via Git -- using the default version string)\n"
+        "  system(echo $$VERSION > version.txt)\n"
+        "}\n",
+        "message(Using frozen Qt 5 acceptance revision)\n"
+        f"system(echo {FROZEN_REVISION} > version.txt)\n",
+    )
     _replace_once(
         source / "mainwindow.cc",
         '#include "mainwindow.hh"\n',

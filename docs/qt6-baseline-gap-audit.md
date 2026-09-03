@@ -688,8 +688,9 @@ commit and tree and a completely clean checkout, exports that commit with
 `git archive`, rejects unsafe archive members, and applies exact-anchor
 instrumentation only to the disposable copy. The resulting provenance binds
 the frozen commit and tree, the checked-in observer include, and SHA-256 hashes
-of every instrumented source file. The runtime wrapper validates those bindings
-again before launch.
+of every instrumented source file. Its qmake version resource is fixed to the
+frozen revision instead of probing a surrounding worktree. The runtime wrapper
+validates those bindings again before launch.
 
 The injected observer reads the dictionary objects produced by the existing
 Qt 5 discovery and group-construction path. It emits only bounded identity,
@@ -704,7 +705,8 @@ and accessibility `WM_GETOBJECT` requests are ignored to keep old Qt 5 UI
 automation from destabilizing the observer process.
 
 The Python wrapper creates a disposable profile under the paired configuration
-root, supplies the exact corpus and index bindings, rejects portable state,
+root, writes the legacy platform-specific configuration location, supplies the
+exact corpus and index bindings, rejects portable state,
 confines raw output to the adapter's evidence directory, and prepends explicit
 Qt 5 runtime and plugin paths. It suppresses Windows loader/fault dialogs while
 preserving the process error mode. Windows uses the native platform plugin
@@ -712,10 +714,11 @@ because this Qt 5 WebKit build crashes in the offscreen plugin; other platforms
 remain offscreen. This is a harness constraint and does not change observed
 dictionary behavior.
 
-The focused 14-test suite covers checkout identity and cleanliness, safe export,
+The focused 15-test suite covers checkout identity and cleanliness, safe export,
 changed anchors, complete instrumented-file provenance, provenance tampering,
-profile/runtime/plugin projection, output confinement, portable-state refusal,
-revision mismatch, and failed-process cleanup. A fresh MSYS2 UCRT64 Qt 5 build
+cross-platform profile placement, runtime/plugin projection, output confinement,
+portable-state refusal, revision mismatch, and failed-process cleanup. A fresh
+MSYS2 UCRT64 Qt 5 build
 from the prepared source completes with the frozen checkout still clean. An
 end-to-end run using the real corpus file `中文/古汉语常用字字典.dsl.dz` observes
 the expected dictionary name, Chinese-to-Chinese languages, 3,889 articles and
@@ -723,7 +726,7 @@ headwords, and one newly created isolated index. The shared validator accepts
 the canonical result, and no absolute corpus path or dictionary payload is
 retained. Full-corpus paired scenarios remain R3.2c work.
 
-The repository-wide dependency-free Python gate passes 82 tests with one
+The repository-wide dependency-free Python gate passes 83 tests with one
 host-capability symlink skip. Black and Ruff pass for all R3.2b2 Python files,
 and `py_compile` plus `git diff --check` pass.
 

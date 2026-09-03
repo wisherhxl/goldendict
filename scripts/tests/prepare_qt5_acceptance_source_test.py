@@ -20,6 +20,14 @@ class PrepareQt5AcceptanceSourceTest(unittest.TestCase):
     @staticmethod
     def _archive(archive: Path) -> None:
         files = {
+            "goldendict.pro": (
+                "system(git describe --tags --always --dirty > version.txt): hasGit=1\n"
+                "\n"
+                "isEmpty( hasGit ) {\n"
+                "  message(Failed to precisely describe the version via Git -- using the default version string)\n"
+                "  system(echo $$VERSION > version.txt)\n"
+                "}\n"
+            ),
             "mainwindow.cc": (
                 '#include "mainwindow.hh"\n'
                 "void MainWindow::makeDictionaries()\n"
@@ -92,6 +100,9 @@ class PrepareQt5AcceptanceSourceTest(unittest.TestCase):
                 "!defined( MSGFLT_RESET )",
                 (output / "mouseover.cc").read_text(encoding="utf-8"),
             )
+            project = (output / "goldendict.pro").read_text(encoding="utf-8")
+            self.assertIn(preparation.FROZEN_REVISION, project)
+            self.assertNotIn("git describe", project)
             value = json.loads(provenance.read_text(encoding="utf-8"))
             self.assertEqual(value["revision"], preparation.FROZEN_REVISION)
             self.assertEqual(value["source_tree"], preparation.FROZEN_TREE)
