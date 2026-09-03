@@ -4,6 +4,10 @@ This engineering matrix is governed by the approved
 [Qt 6 Product Baseline CRD](qt6-product-baseline-crd.md). Incremental statuses
 do not authorize a reduced product baseline or a visual redesign.
 
+The current cross-cutting replacement status, ordered remaining conformance
+units, readiness record, and non-blocking issue queue are maintained in the
+[Qt 6 Baseline Replacement Gap Audit](qt6-baseline-gap-audit.md).
+
 ## Status Vocabulary
 
 - `done`: implemented and verified in the Qt 6 migration.
