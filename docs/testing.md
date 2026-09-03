@@ -184,6 +184,12 @@ the Qt 6 product-shell capture with the pinned Qt 5 capture and requires
 transient status wording and state-by-state status timing remain open Batch A
 work.
 
+The status-bar grip correction extends `goldendict_product_shell_smoke` to
+require that the Qt 6 status bar exposes no visible or interactive native size
+grip. This matches the pinned Qt 5 main window, which removes its `QStatusBar`
+and uses a custom status overlay, while preserving the existing resize
+capability and all status text.
+
 The earlier full 125-test Windows run passed 99 tests. Twenty-six failures
 remain recorded as test-infrastructure/toolchain work rather than product-shell
 acceptance: many format/backend QtTest executables terminate at the same MSVC

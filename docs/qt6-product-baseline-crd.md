@@ -564,6 +564,16 @@ provides visual acceptance. This is a Widgets-presentation correction only:
 Core, installed APIs, configuration schema, and persistence ownership are
 unchanged. It does not declare Batch A or overall parity complete.
 
+Implementation note (2026-09-03): the following bounded Batch A correction
+suppresses the visible and interactive Qt 6 native status-bar size grip because
+the pinned Qt 5 main window deliberately removes its `QStatusBar` and presents
+status through a custom overlay without that control. The current status-message
+and stable dictionary/article/word summary behavior remain unchanged.
+Product-shell automation pins the absence of a visible or interactive grip.
+This is a Widgets-presentation correction only: Core, installed APIs,
+configuration schema, persistence, and window-resize behavior are unchanged.
+It does not declare Batch A or overall parity complete.
+
 ### Batch B — Daily Lookup And User State
 
 Complete lookup/navigation, article behavior, tabs, history, favorites, and

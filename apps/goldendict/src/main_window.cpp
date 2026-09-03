@@ -59,6 +59,7 @@
 #include <QScreen>
 #include <QShortcut>
 #include <QSignalBlocker>
+#include <QSizeGrip>
 #include <QSizePolicy>
 #include <QSpinBox>
 #include <QStatusBar>
@@ -915,6 +916,10 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     status_->setObjectName(QStringLiteral("statusText"));
     statusBar()->setObjectName(QStringLiteral("mainStatusBar"));
     statusBar()->addWidget(status_, 1);
+    if (auto* size_grip = statusBar()->findChild<QSizeGrip*>()) {
+        size_grip->setFixedSize(0, 0);
+        size_grip->setAttribute(Qt::WA_TransparentForMouseEvents);
+    }
     article_tabs_ = new QTabWidget(central);
     article_tabs_->setObjectName(QStringLiteral("articleTabs"));
     ApplyLegacyArticleTabPresentation(article_tabs_);
@@ -2485,12 +2490,15 @@ void MainWindow::RunProductShellSmokeCheck(
         initial_default_width_matches && default_panes_remain_resizable &&
         right_panes_have_width(kDefaultRightPaneWidth) &&
         *maximum_right_pane_height - *minimum_right_pane_height <= 2;
+    const auto* status_size_grip = statusBar()->findChild<QSizeGrip*>();
     const bool shell_matches =
         translation_contexts_match && windowIcon().isNull() == false &&
         width() >= 653 && height() >= 538 &&
         !compatibility_controls->isVisible() &&
         !dictionary_sources_button_->isVisible() &&
         statusBar() != nullptr && status_->parentWidget() == statusBar() &&
+        status_size_grip != nullptr && status_size_grip->size().isEmpty() &&
+        status_size_grip->testAttribute(Qt::WA_TransparentForMouseEvents) &&
         article_tabs_->isMovable() && article_tabs_->tabsClosable() &&
         article_tabs_->documentMode() == expected_document_mode &&
         article_tabs_->iconSize() == QSize(16, 16) &&
