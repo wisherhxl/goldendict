@@ -262,6 +262,7 @@ launcher and Python tooling checks run directly.
 | R6.5 | Forvo playback and external-program environment/audio policy | R4.3, R7.5 | deterministic local audio/process fixtures and containment tests |
 | R6.6 | Portable-mode application-local content, source-control restrictions, and self-contained state: `CRD-DICT-004` | R3.2, R6.1 | disposable portable installation covering discovery, disabled Add/Remove, path confinement, restart, upgrade, and package relocation |
 | R6.7 | New-profile default English Wikipedia source without eager network access: `CRD-DICT-005` | R6.1, R6.3 | isolated first-run persistence/runtime test and local transport proof of zero requests before user lookup |
+| R6.8 | Remaining transliteration provider registration and configuration: `CRD-DICT-002`, `CRD-LOOKUP-001` | R6.1 | Hepburn Hiragana/Katakana provider registration, persistence, and lookup tests plus exact disposition of legacy Nihon-shiki/Kunrei-shiki persisted fields without inventing nonexistent Qt 5 runtime mappings or exposing inert controls |
 | R7.1 | Continuous X11 clipboard/selection monitoring and modifier policy | R2.3 | private adapter tests and X11 integration check |
 | R7.2 | Scan flag and scan-popup presentation/lifecycle | R7.1 | adapter/UI lifecycle tests and paired captures |
 | R7.3 | Global hotkey registration, dispatch, conflict, and teardown | R7.1 | private adapter tests plus X11 session check |
@@ -282,7 +283,7 @@ launcher and Python tooling checks run directly.
 | R9.4 | Locale batch B enablement: `fr_FR` through `qt_es` in the R9.2 manifest | R9.3 | `lrelease`, fifteen locale smokes, fallback tests, and paired representative surfaces |
 | R9.5 | Locale batch C enablement: `qt_it` through `zh_TW` in the R9.2 manifest | R9.4 | `lrelease`, fifteen locale smokes, fallback tests, and paired representative surfaces |
 | R9.6 | Matched empty/synthetic main-shell visual matrix: main window, menus, toolbars, tabs, lookup, results, Favorites, History, scan popup, and tray | R4.1, R4.5, R7.2, R7.4, R9.5 | fixed-environment captures, per-surface semantic checklist, and documented narrow masks |
-| R9.7 | Matched empty/synthetic settings-and-management visual matrix: seven Preferences pages, Sources, Dictionaries, Groups, dictionary info, headword browser, full-text search, Help, About, and message dialogs | R4.1-R6.4, R8.2, R8.3, R8.5, R9.5 | fixed-environment captures, per-dialog semantic checklist, state coverage, and documented narrow masks |
+| R9.7 | Matched empty/synthetic settings-and-management visual matrix: seven Preferences pages, Sources, Dictionaries, Groups, dictionary info, headword browser, full-text search, Help, About, and message dialogs | R4.1-R6.4, R6.8, R8.2, R8.3, R8.5, R9.5 | fixed-environment captures, per-dialog semantic checklist, state coverage, and documented narrow masks |
 | R9.8 | Matched synthetic article/browser visual matrix: Welcome/article states, navigation, search, zoom, context menus, media, print, save, authentication, error, and DevTools states | R5.1, R6.3-R6.5, R8.1, R8.2, R8.4, R9.5 | deterministic local fixtures, fixed-environment captures, semantic checklist, and documented narrow masks |
 | R9.9 | Matched real-corpus visual matrix: `CRD-TEST-REAL-009` | R5.4, R6.2, R9.6-R9.8 | private paired captures and retained non-content metadata/results |
 | R10.1 | Linux/Windows clean-build and test CI with pinned profiles/locks | R2.3 | clean runner logs for the same commit |
@@ -304,13 +305,13 @@ waiver of regression evidence.
 | Approved requirement set | Existing status and remaining closure owner |
 | --- | --- |
 | `CRD-SHELL-001` through `CRD-SHELL-005` | The structural shell is substantially implemented; remaining state-by-state behavior and appearance close through R9.6 and R9.9. |
-| `CRD-LOOKUP-001` through `CRD-LOOKUP-004` | Existing lookup/tab/history/Favorites slices are retained; remaining real-format, full-text, management, browser, and visual behavior closes through R3.2-R3.20, R5.1-R6.2, R8.1-R8.2, and R9.6-R9.9. |
+| `CRD-LOOKUP-001` through `CRD-LOOKUP-004` | Existing lookup/tab/history/Favorites slices are retained; remaining real-format, full-text, management, transliteration, browser, and visual behavior closes through R3.2-R3.20, R5.1-R6.2, R6.8, R8.1-R8.2, and R9.6-R9.9. |
 | `CRD-LOOKUP-005` | R7.6, R7.8, R10.5, and R10.6. |
 | `CRD-STATE-001` and `CRD-STATE-002` | Existing history and Favorites behavior is retained; upgrade and complete visual/workflow acceptance closes through R3.1, R9.6, R9.7, and R9.9. |
 | `CRD-STATE-003` | R6.1 and R6.6. |
 | `CRD-STATE-004` | R3.1 and R6.6. |
 | `CRD-PREF-001` through `CRD-PREF-004` | R4.1-R4.6 and R9.7. |
-| `CRD-DICT-001` and `CRD-DICT-002` | R6.1-R6.5 and R7.5, R7.9. |
+| `CRD-DICT-001` and `CRD-DICT-002` | R6.1-R6.5, R6.8, R7.5, and R7.9. |
 | `CRD-DICT-003` | R3.2-R3.20 and R5.4. |
 | `CRD-DICT-004` | R6.6 and the relevant Linux/Windows package leaves R10.2-R10.6. |
 | `CRD-DICT-005` | R6.7. |
