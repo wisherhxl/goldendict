@@ -5017,29 +5017,39 @@ void MainWindow::RunArticleClickPreferencesSmokeCheck(
                             (*run)();
                             return;
                         }
-                        view->TriggerWordQueryForTest(
-                            QPointF(point[0].toDouble(), point[1].toDouble()),
-                            current.translate);
+                        const QPointF position(point[0].toDouble(),
+                                               point[1].toDouble());
+                        auto verify = [view, passed, lookup_count, current,
+                                       run]() {
+                            view->page()->runJavaScript(
+                                QStringLiteral(
+                                    "window.getSelection().toString()"),
+                                [passed, lookup_count, current,
+                                 run](const QVariant& value) {
+                                    const bool selected =
+                                        value.toString() ==
+                                        QStringLiteral("alpha");
+                                    *passed =
+                                        *passed &&
+                                        selected ==
+                                            current.expect_selection &&
+                                        *lookup_count ==
+                                            current.expected_lookups;
+                                    (*run)();
+                                });
+                        };
                         if (current.translate && current.translate_enabled &&
                             current.select_enabled &&
                             current.target == QStringLiteral("word")) {
                             view->TriggerWordQueryForTest(
-                                QPointF(point[0].toDouble(),
-                                        point[1].toDouble()),
-                                true);
+                                position, current.translate);
+                            view->TriggerWordQueryForTest(
+                                position, true, std::move(verify));
+                        } else {
+                            view->TriggerWordQueryForTest(
+                                position, current.translate,
+                                std::move(verify));
                         }
-                        QTimer::singleShot(
-                            50, view,
-                            [view, passed, lookup_count, current, run]() {
-                                const bool selected =
-                                    view->page()->selectedText() ==
-                                    QStringLiteral("alpha");
-                                *passed =
-                                    *passed &&
-                                    selected == current.expect_selection &&
-                                    *lookup_count == current.expected_lookups;
-                                (*run)();
-                            });
                     });
             };
             (*run)();

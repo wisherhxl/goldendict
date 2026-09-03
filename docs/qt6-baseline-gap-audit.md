@@ -224,7 +224,7 @@ launcher and Python tooling checks run directly.
 | R1.2 | **Complete:** paired isolated run workspace and metadata: remainder of `002`, `003` | R1.1 | synthetic confinement/mismatch tests; paired Qt 5/Qt 6 metadata validation |
 | R2.1 | **Complete:** MSVC exception-family test diagnosis and harness correction | R1.2 | each affected test serially reproduced; focused corrected tests; no assertion weakening |
 | R2.2 | **Complete:** Windows path/profile/process isolation corrections | R2.1 | focused restart/process tests from Unicode and long paths |
-| R2.3 | Windows WebEngine serialization and GPU-independent harness | R2.2 | all affected WebEngine tests serially pass; full Windows CTest log retained |
+| R2.3 | **Complete:** Windows WebEngine serialization and GPU-independent harness | R2.2 | all affected WebEngine tests serially pass; full Windows CTest log retained |
 | R3.1 | Configuration and user-state upgrade/rollback matrix: `CRD-STATE-004`, `CRD-COMPAT-002` through `005` | R1.2, R2.3 | generated malformed/failure-injection tests plus disposable Qt 5 profile upgrade |
 | R3.2 | Real-corpus discovery, identity, counts, ordering, restart, and rescan: `CRD-TEST-REAL-004`, `CRD-COMPAT-001` | R1.2, R2.3 | paired machine-readable Qt 5/Qt 6 result files and diff |
 | R3.3 | Real MDict split-resource acceptance and evidence-confirmed corrections | R3.2 | MDX/three-MDD lookup, resource, restart, and immutable-source checks |
@@ -395,6 +395,45 @@ serial run excluding exactly those three passed 125 of 125 tests. Every
 executable was launched through `run_with_conan.ps1`; no missing-DLL dialog or
 loader failure occurred.
 
+#### R2.3 issue record and readiness
+
+R2.3 is a minor correction governed by CRD Sections 10.3 and 12. The Windows
+Release suite isolated three reported failures around WebEngine restart
+smokes: article-click Preferences failed while Chromium reported an unusable
+GPU context, interface-language startup remained alive until the CTest
+timeout, and proxy Preferences failed intermittently in the same serial suite.
+Investigation showed that the article-click and proxy scripts did not provide
+the Windows smoke contract's shared short configuration root. The
+interface-language entry point and translation presenter are Linux-only, and
+`docs/testing.md` already defines that smoke as a real Linux application test;
+registering it on Windows exercised the normal interactive event loop rather
+than any interface-language assertion. The article-click smoke also exposed a
+real cross-platform edge: Chromium word selection can include trailing
+whitespace, and its fixed delay could advance before the asynchronous query
+completed.
+
+Impact check: **Ready**. The required product behavior is already explicit:
+Preferences must persist across a clean application restart, while the test
+harness must be deterministic on supported headless Windows hosts. The
+correction shares a short, disposable configuration root across both processes
+in each Windows restart test, keeps the existing software-rendered offscreen
+path, registers the interface-language smoke only on its implemented Linux
+platform, trims whitespace from the selected word and visual selection, and
+sequences smoke assertions from query completion. It does not bypass persisted
+configuration, weaken restart assertions, change module ownership, or move
+presentation responsibilities into Core. No public product interface, module
+boundary, dependency, or new design abstraction is justified.
+
+Completion result: **Complete**. A VS 2026 Release build using MSVC 14.44,
+Conan, and Qt 6.11.1 completed all 648 remaining build steps. The article-click
+and proxy restart smokes each passed ten consecutive serial iterations. The
+final Windows-applicable suite passed 127 of 127 tests in 43.17 seconds.
+Every executable and CTest run used `run_with_conan.ps1`; Chromium's expected
+software-rendering diagnostics did not affect results, and no missing-DLL
+dialog, timeout, or orphaned GoldenDict/WebEngine process remained. The
+Linux-only interface-language registration remains part of the Linux gate and
+was not represented as Windows coverage.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an
@@ -492,7 +531,7 @@ expected revisions, and the corpus still matched the R1.1 manifest afterward.
 | ID | Observation | Disposition |
 | --- | --- | --- |
 | IQ-01 | The current host has no WSL/Linux environment and the repository has no CI workflow. | Continue platform-independent and Windows work; resolve Linux execution in R10 unless an earlier Linux-only unit requires it. |
-| IQ-02 | The broad Windows suite retains documented infrastructure/toolchain failures. | R2 owns classification and correction; focused passing tests remain valid for independent units. |
+| IQ-02 | The broad Windows suite retained documented infrastructure/toolchain failures. | Resolved by R2.1-R2.3; the complete Windows-applicable Release suite passes 127 of 127 tests. |
 | IQ-03 | The real corpus contains private multi-gigabyte resources unsuitable for repository or CI storage. | R1 records only safe hashes/metadata and uses operator-provided paths. |
 | IQ-04 | Several format, WebEngine, and platform gaps may require maintained replacements for obsolete Qt 5 APIs. | Investigate within the existing adapter boundaries; raise only an infeasible parity or intentional divergence decision. |
 

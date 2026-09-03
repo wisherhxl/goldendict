@@ -484,13 +484,15 @@ add_test(NAME goldendict_help_menu_smoke
     -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/help_menu_smoke.cmake)
 set_tests_properties(goldendict_help_menu_smoke PROPERTIES TIMEOUT 20)
 
-add_test(NAME goldendict_interface_language_smoke
-  COMMAND ${CMAKE_COMMAND}
-    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
-    -DHELP_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}/help
-    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/interface-language-test-home
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/interface_language_restart.cmake)
-set_tests_properties(goldendict_interface_language_smoke PROPERTIES TIMEOUT 60)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_test(NAME goldendict_interface_language_smoke
+    COMMAND ${CMAKE_COMMAND}
+      -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+      -DHELP_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}/help
+      -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/interface-language-test-home
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/interface_language_restart.cmake)
+  set_tests_properties(goldendict_interface_language_smoke PROPERTIES TIMEOUT 60)
+endif()
 
 add_test(NAME goldendict_webengine_smoke
   COMMAND $<TARGET_FILE:goldendict> --webengine-smoke)

@@ -112,7 +112,8 @@ class ArticleView final : public QWidget {
         const ArticleContext& context) const;
     void TriggerContextActionForTest(ArticleContextAction action,
                                      const ArticleContext& context);
-    void TriggerWordQueryForTest(const QPointF& position, bool translate);
+    void TriggerWordQueryForTest(const QPointF& position, bool translate,
+                                 std::function<void()> completion = {});
     void SetDictionaryContextEntries(
         QList<ArticleDictionaryContextEntry> entries, bool overflow,
         quint64 presentation_generation);
@@ -162,7 +163,8 @@ class ArticleView final : public QWidget {
     LinkKind ClassifyLink(const QUrl& url) const;
     void TriggerContextAction(ArticleContextAction action,
                               const ArticleContext& context);
-    void QueryWordAt(const QPointF& position, bool translate);
+    void QueryWordAt(const QPointF& position, bool translate,
+                     std::function<void()> completion = {});
     bool IsCurrentDictionarySnapshot(
         const ArticleDictionaryContextSnapshot& snapshot) const noexcept;
     void TriggerDictionaryContextAction(

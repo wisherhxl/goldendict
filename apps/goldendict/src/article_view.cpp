@@ -642,8 +642,11 @@ void ArticleView::SetClickPreferences(
     ++pointer_generation_;
 }
 
-void ArticleView::QueryWordAt(const QPointF& position, bool translate) {
+void ArticleView::QueryWordAt(const QPointF& position, bool translate,
+                              std::function<void()> completion) {
     if (translate ? !double_click_translates_ : !select_word_by_single_click_) {
+        if (completion)
+            completion();
         return;
     }
     const quint64 pointer_generation = ++pointer_generation_;
@@ -674,7 +677,11 @@ void ArticleView::QueryWordAt(const QPointF& position, bool translate) {
   selection.collapse(position.offsetNode, position.offset);
   selection.modify('move', 'backward', 'word');
   selection.modify('extend', 'forward', 'word');
-  const word = selection.toString();
+  let word = selection.toString();
+  while (word.length > 0 && /\s/u.test(word[word.length - 1])) {
+    selection.modify('extend', 'backward', 'character');
+    word = selection.toString();
+  }
   if (!word || word.trim().length === 0 || word.length >= 60) {
     selection.removeAllRanges();
     return null;
@@ -687,23 +694,34 @@ void ArticleView::QueryWordAt(const QPointF& position, bool translate) {
     page()->runJavaScript(
         script, QWebEngineScript::ApplicationWorld,
         [guard = QPointer<ArticleView>(this), pointer_generation,
-         document_generation, translate](const QVariant& result) {
-            if (guard.isNull() ||
-                pointer_generation != guard->pointer_generation_ ||
+         document_generation, translate,
+         completion = std::move(completion)](const QVariant& result) mutable {
+            const auto finish = [&completion]() {
+                if (completion)
+                    completion();
+            };
+            if (guard.isNull())
+                return;
+            if (pointer_generation != guard->pointer_generation_ ||
                 document_generation != guard->document_generation_) {
+                finish();
                 return;
             }
             if (translate ? !guard->double_click_translates_
                           : !guard->select_word_by_single_click_) {
+                finish();
                 return;
             }
             const QString word = result.toString();
-            if (word.trimmed().isEmpty() || word.size() >= 60)
+            if (word.trimmed().isEmpty() || word.size() >= 60) {
+                finish();
                 return;
+            }
             if (translate) {
                 emit guard->SelectionLookupRequested(
                     word, ArticleLinkDisposition::kCurrentTab);
             }
+            finish();
         });
 }
 
@@ -822,9 +840,10 @@ void ArticleView::TriggerContextActionForTest(ArticleContextAction action,
         TriggerContextAction(action, context);
 }
 
-void ArticleView::TriggerWordQueryForTest(const QPointF& position,
-                                          bool translate) {
-    QueryWordAt(position, translate);
+void ArticleView::TriggerWordQueryForTest(
+    const QPointF& position, bool translate,
+    std::function<void()> completion) {
+    QueryWordAt(position, translate, std::move(completion));
 }
 
 void ArticleView::SetDictionaryContextEntries(

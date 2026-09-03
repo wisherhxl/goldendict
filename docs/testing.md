@@ -5814,6 +5814,44 @@ Verification on Windows 11 with VS 2026, MSVC 14.44, Conan, and Qt 6.11.1:
 All executable and CTest invocations use `run_with_conan.ps1`, so the Conan
 runtime environment is part of the test contract on Windows.
 
+## Windows R2.3 WebEngine restart gate
+
+The R2.3 correction makes the remaining Windows restart smokes deterministic
+without weakening their persisted-preference assertions. Article-click and
+proxy restart scripts provide one short, disposable
+`GOLDENDICT_TEST_CONFIG_ROOT` to both application processes while retaining
+their separate `APPDATA`, `LOCALAPPDATA`, `HOME`, and XDG test roots. This keeps
+the production Windows smoke-path contract and prevents process-specific or
+checkout-length-dependent WebEngine state.
+
+Chromium word selection may include whitespace after the word on Windows. The
+article view now contracts that visual selection before emitting a lookup, and
+the smoke advances from the asynchronous query completion instead of a fixed
+delay. The assertions still cover enabled and disabled single-click selection,
+double-click lookup, links, controls, overlong words, latest-request wins,
+document replacement, persistence, restart, and unchanged application state.
+
+`goldendict_interface_language_smoke` remains a real Linux application test:
+its startup entry points and translation presenter are Linux-only. CMake now
+registers it only when `CMAKE_SYSTEM_NAME` is `Linux`, so the Windows gate does
+not time out in the ordinary interactive application loop or claim nonexistent
+Windows translation coverage.
+
+Verification on Windows 11 with VS 2026, MSVC 14.44, Conan, and Qt 6.11.1:
+
+- complete Release build: passed, including all 648 remaining steps;
+- article-click and proxy restart smokes, serial `until-fail:10`: 20 of 20
+  passed;
+- final Windows-applicable serial suite: 127 of 127 passed in 43.17
+  seconds; and
+- post-suite process check: no `goldendict` or `QtWebEngineProcess` instance
+  remained.
+
+All application and CTest invocations use `run_with_conan.ps1`. Qt WebEngine
+may report failed hardware GLES context creation while using the requested
+offscreen software path; that diagnostic is not a failed assertion and the
+complete gate is independent of hardware GPU availability.
+
 ## Pre-PR Verification Checklist
 
 - Run the relevant Debug or Release build workflow, with Release preferred
