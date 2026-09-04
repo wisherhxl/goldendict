@@ -838,6 +838,55 @@ previously differed. This correction does not claim abbreviation expansion,
 resource ZIP support, nested cards, index-role equivalence, or R3.3 query
 acceptance.
 
+The next Unit 2 correction resolves the remaining cross-version index-role
+interpretation at the acceptance-contract boundary. This is a minor
+correction under the already approved R3.2 requirements: Qt 5 and Qt 6 use
+different private index implementations, and the CRD requires observable
+creation and reuse rather than identical private roles, filenames, bytes, or
+counts. The current comparator nevertheless keys material index differences by
+`(logical dictionary, private role)`, so a Qt 5 headword index and a Qt 6
+full-text index with the same successful lifecycle are reported as two product
+differences.
+
+Readiness result: **Ready**. The observation contract already retains each
+version's complete role-specific metadata, while the lifecycle coordinator
+independently requires stable artifact identity, clean-run creation, and reuse
+on restart and rescan. The correction therefore changes only the
+cross-version projection: it compares lifecycle dispositions only when both
+versions publish the same semantic role for the same logical dictionary, and
+retains all version-only roles, filenames, hashes, sizes, and timings under
+`version_specific`. Each version's coordinator remains authoritative for
+whether its own private artifacts were created and reused. Focused tests must
+cover differing or version-only private roles, mismatched dispositions for a
+shared role, multiple private roles, canonical ordering, and validator
+cross-check rejection. The repository-wide Python gate and a fresh paired
+real-corpus lifecycle comparison are the acceptance evidence; no product API,
+format reader, index serialization, or shipping binary changes are in scope.
+
+Completion result: **Complete**. The focused comparison suite passes 21 tests
+and the repository-wide dependency-free gate passes 105 tests with one
+documented host-capability skip. A clean VS 2026/MSVC 14.44 Release configure
+and 802-step build succeeds, and the complete Conan-launched serial CTest suite
+passes 130/130 in 165.29 seconds from a fresh short Windows temporary root. The
+fresh paired workspace
+`evidence/qt5-qt6-lifecycle-index-equivalence-96a04/` validates the immutable
+88-file corpus before and after every state. Both versions discover the same
+17 dictionaries with matching identity, order, enablement, article and
+headword counts, phases, outcomes, and diagnostics in clean discovery, warm
+restart, and explicit rescan. Each version's complete observed index set is
+created on the clean run and reused byte-for-byte thereafter. All three
+canonical comparisons report zero material differences while retaining the
+17 Qt 5 headword artifacts and 15 Qt 6 full-text artifacts separately.
+
+A bounded diagnostic probe confirms that the Qt 6 Britannica and Oxford
+full-text artifacts are absent because each corpus exceeds the current private
+256-MiB full-text byte bound. This does not invalidate discovery/index
+lifecycle equivalence: Qt 5's artifacts are compact headword indexes, not
+equivalent full-text artifacts. The limitation remains visible in the retained
+version-specific evidence and must be exercised as user-visible query behavior
+under R3.3 and R3.4; this correction neither hides it nor expands the private
+index format or memory contract prematurely.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

@@ -367,11 +367,15 @@ python scripts/real_dictionary_acceptance_result.py compare `
   --output "D:\workspace\goldendict\evidence\qt5-qt6-acceptance\comparison.json"
 ```
 
-Generated dictionary IDs and generated index bytes remain in the comparison
-evidence but are not equality keys because the implementations intentionally
-use version-specific index formats. Logical corpus-relative source identity,
-enablement, order, counts, outcomes, diagnostic classes, phase results, and
-index creation/reuse dispositions are material differences.
+Generated dictionary IDs and complete generated-index metadata remain in the
+comparison evidence but are not equality keys because the implementations
+intentionally use version-specific index formats and roles. Logical corpus-
+relative source identity, enablement, order, counts, outcomes, diagnostic
+classes, and phase results are material differences. Index creation/reuse
+dispositions are compared only for a semantic role published by both versions
+for the same logical dictionary; each version's lifecycle coordinator
+independently requires its complete observed artifact set to be created first
+and then reused unchanged.
 
 ### Real-dictionary lifecycle coordinator
 
@@ -434,6 +438,18 @@ The comparison command refuses partial or out-of-order evidence. It writes
 canonical per-scenario comparisons and `comparisons/lifecycle-summary.json`.
 The summary is an index; the validated comparison files remain the authority
 for individual differences.
+
+The R3.2 Unit 2 index-role correction was validated in the fresh paired
+workspace `evidence/qt5-qt6-lifecycle-index-equivalence-96a04/`. All three
+scenario comparisons are equivalent with zero material differences across the
+same 17 dictionaries. The retained version-specific evidence records 17 Qt 5
+headword indexes and 15 Qt 6 full-text indexes; both complete observed sets are
+created on clean discovery and reused unchanged on warm restart and explicit
+rescan. A separate bounded diagnostic identified the two absent Qt 6
+full-text artifacts as the Britannica and Oxford corpora exceeding the current
+256-MiB private full-text bound. Their user-visible query behavior remains an
+explicit R3.3/R3.4 gate and is not represented as R3.2 headword-index
+equivalence.
 
 Run the repository-wide dependency-free script gate with:
 

@@ -669,9 +669,10 @@ def compare_observations(qt5: object, qt6: object) -> dict[str, object]:
         (item["dictionary_key"], item["role"]): item["disposition"]
         for item in right["indexes"]
     }
-    for key in sorted(set(left_index_dispositions) | set(right_index_dispositions)):
-        left_disposition = left_index_dispositions.get(key)
-        right_disposition = right_index_dispositions.get(key)
+    comparable_indexes = set(left_index_dispositions) & set(right_index_dispositions)
+    for key in sorted(comparable_indexes):
+        left_disposition = left_index_dispositions[key]
+        right_disposition = right_index_dispositions[key]
         if left_disposition != right_disposition:
             differences.append(
                 {
@@ -807,9 +808,10 @@ def validate_comparison(value: object) -> dict[str, object]:
         for version in ("qt5", "qt6")
     }
     expected_index_differences: list[dict[str, object]] = []
-    for identity in sorted(set(disposition_maps["qt5"]) | set(disposition_maps["qt6"])):
-        qt5_disposition = disposition_maps["qt5"].get(identity)
-        qt6_disposition = disposition_maps["qt6"].get(identity)
+    comparable_indexes = set(disposition_maps["qt5"]) & set(disposition_maps["qt6"])
+    for identity in sorted(comparable_indexes):
+        qt5_disposition = disposition_maps["qt5"][identity]
+        qt6_disposition = disposition_maps["qt6"][identity]
         if qt5_disposition != qt6_disposition:
             expected_index_differences.append(
                 {

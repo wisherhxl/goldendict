@@ -275,7 +275,7 @@ class AcceptanceResultTest(unittest.TestCase):
             sorted(item["field"] for item in comparison["differences"]),  # type: ignore[union-attr]
         )
 
-    def test_comparator_reports_index_disposition_but_not_index_format(self) -> None:
+    def test_comparator_reports_disposition_for_a_shared_private_role(self) -> None:
         qt5 = observation("qt5")
         qt6 = observation("qt6")
         qt6["indexes"][0]["sha256"] = HASH_B  # type: ignore[index]
@@ -290,6 +290,40 @@ class AcceptanceResultTest(unittest.TestCase):
         self.assertEqual(
             "indexes/dsl:sample/test.dsl/headword",
             comparison["differences"][0]["field"],  # type: ignore[index]
+        )
+
+    def test_comparator_treats_private_index_roles_as_version_specific(self) -> None:
+        qt5 = observation("qt5")
+        qt6 = observation("qt6")
+        qt6["indexes"][0]["role"] = "full-text"  # type: ignore[index]
+
+        comparison = result.compare_observations(qt5, qt6)
+
+        self.assertTrue(comparison["equivalent"])
+        self.assertEqual(0, comparison["difference_count"])
+        self.assertEqual(
+            "headword",
+            comparison["version_specific"]["qt5_indexes"][0]["role"],  # type: ignore[index]
+        )
+        self.assertEqual(
+            "full-text",
+            comparison["version_specific"]["qt6_indexes"][0]["role"],  # type: ignore[index]
+        )
+
+    def test_comparator_treats_version_only_index_as_version_specific(self) -> None:
+        qt6 = observation("qt6")
+        qt6["indexes"] = []
+
+        comparison = result.compare_observations(observation("qt5"), qt6)
+
+        self.assertTrue(comparison["equivalent"])
+        self.assertEqual(0, comparison["difference_count"])
+        self.assertEqual(
+            "headword",
+            comparison["version_specific"]["qt5_indexes"][0]["role"],  # type: ignore[index]
+        )
+        self.assertEqual(
+            [], comparison["version_specific"]["qt6_indexes"]  # type: ignore[index]
         )
 
     def test_comparison_cross_checks_material_index_disposition_evidence(self) -> None:
@@ -338,6 +372,25 @@ class AcceptanceResultTest(unittest.TestCase):
         second = result.compare_observations(qt5, qt6)
 
         self.assertEqual(result.canonical_json(first), result.canonical_json(second))
+
+    def test_comparator_compares_only_roles_present_in_both_versions(self) -> None:
+        qt5 = observation("qt5")
+        qt6 = observation("qt6")
+        second = copy.deepcopy(qt6["indexes"][0])  # type: ignore[index]
+        second["role"] = "full-text"
+        second["file_name"] = "full-text.idx"
+        second["disposition"] = "rebuilt"
+        qt6["indexes"].append(second)  # type: ignore[union-attr]
+
+        equivalent = result.compare_observations(qt5, qt6)
+        self.assertTrue(equivalent["equivalent"])
+
+        qt6["indexes"][0]["disposition"] = "reused"  # type: ignore[index]
+        different = result.compare_observations(qt5, qt6)
+        self.assertEqual(
+            "reused",
+            different["differences"][0]["qt6"],  # type: ignore[index]
+        )
 
     def test_comparator_rejects_mismatched_pair_inputs(self) -> None:
         qt6 = observation("qt6")
