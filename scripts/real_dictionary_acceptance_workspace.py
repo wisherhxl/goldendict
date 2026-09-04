@@ -441,6 +441,30 @@ def validate_workspace(
     return expected_pair_id
 
 
+def read_pair_hashes(workspace: Path, expected_pair_id: str) -> tuple[str, str]:
+    """Read hashes from pair metadata after the workspace has been validated."""
+
+    try:
+        workspace_root = workspace.resolve(strict=True)
+    except OSError as error:
+        raise WorkspaceError(f"Cannot resolve workspace: {workspace}") from error
+    pair, _ = _read_json(workspace_root / "pair.json")
+    if pair.get("pair_id") != expected_pair_id:
+        raise WorkspaceError("Pair identity changed after workspace validation")
+    conditions_hash = _require_string(pair, "conditions_sha256", "Pair")
+    corpus_metadata = pair.get("corpus")
+    if not isinstance(corpus_metadata, dict):
+        raise WorkspaceError("Pair corpus metadata must be an object")
+    manifest_hash = _require_string(
+        corpus_metadata, "manifest_sha256", "Pair corpus"
+    )
+    if not HASH_PATTERN.fullmatch(conditions_hash):
+        raise WorkspaceError("Pair conditions hash is invalid")
+    if not HASH_PATTERN.fullmatch(manifest_hash):
+        raise WorkspaceError("Pair corpus manifest hash is invalid")
+    return manifest_hash, conditions_hash
+
+
 def _validated_dictionary_root_argument(command: list[str], corpus_root: Path) -> None:
     supplied_values: list[str] = []
     for index, value in enumerate(command):

@@ -18,10 +18,27 @@
 
 #include "goldendict/core/application.h"
 #include "goldendict/core/dictionary_service.h"
+#include "../src/application/desktop_facade_activation_owner.h"
 
 namespace {
 
 constexpr char kRawSchema[] = "goldendict-real-dictionary-raw-observation-v1";
+
+bool IsSupportedScenario(const QString& scenario) {
+    return scenario == QStringLiteral("clean-discovery") ||
+           scenario == QStringLiteral("warm-restart") ||
+           scenario == QStringLiteral("explicit-rescan");
+}
+
+QString PhaseName(const QString& scenario) {
+    if (scenario == QStringLiteral("warm-restart")) {
+        return QStringLiteral("restart");
+    }
+    if (scenario == QStringLiteral("explicit-rescan")) {
+        return QStringLiteral("rescan");
+    }
+    return QStringLiteral("discovery");
+}
 
 struct Options {
     QString dictionary_root;
@@ -61,8 +78,7 @@ std::optional<Options> ParseOptions(const QStringList& arguments) {
             return std::nullopt;
         }
     }
-    if (seen.size() != 6 ||
-        options.scenario != QStringLiteral("clean-discovery")) {
+    if (seen.size() != 6 || !IsSupportedScenario(options.scenario)) {
         return std::nullopt;
     }
     return options;
@@ -149,7 +165,7 @@ int main(int argc, char* argv[]) {
     if (!options.has_value()) {
         std::cerr << "usage: qt6_real_dictionary_observer --dictionary-root "
                      "PATH --index-root PATH --interface-language LOCALE "
-                     "--conditions-sha256 HASH --scenario clean-discovery "
+                     "--conditions-sha256 HASH --scenario SCENARIO "
                      "--output PATH\n";
         return 2;
     }
@@ -163,10 +179,32 @@ int main(int argc, char* argv[]) {
 
         QElapsedTimer timer;
         timer.start();
-        auto service = goldendict::core::CreateDictionaryService(configuration);
+        goldendict::core::application::DesktopFacadeActivationOwner owner;
+        auto initial_candidate = owner.PrepareCandidate(configuration);
+        if (!initial_candidate || !owner.Activate(initial_candidate)) {
+            throw std::runtime_error("could not activate initial dictionary runtime");
+        }
+        auto facade = owner.CurrentSnapshot();
+        if (!facade) {
+            throw std::runtime_error("initial dictionary runtime is unavailable");
+        }
+        if (options->scenario == QStringLiteral("explicit-rescan")) {
+            const auto previous = facade;
+            auto rescan_candidate = owner.PrepareCandidate(configuration);
+            const auto prepared = owner.PreparedFacadeSnapshot(rescan_candidate);
+            if (!rescan_candidate || !prepared || prepared == previous ||
+                !owner.Activate(rescan_candidate)) {
+                throw std::runtime_error("could not activate rescanned dictionary runtime");
+            }
+            facade = owner.CurrentSnapshot();
+            if (!facade || facade != prepared || facade == previous) {
+                throw std::runtime_error("rescanned dictionary runtime was not published");
+            }
+        }
+        auto& service = facade->GetDictionaryService();
         QJsonArray catalog;
         qint64 order = 0;
-        for (const auto& identity : service->GetCatalog()) {
+        for (const auto& identity : service.GetCatalog()) {
             catalog.append(CatalogEntry(identity, order));
             ++order;
         }
@@ -176,17 +214,18 @@ int main(int argc, char* argv[]) {
         query.result_limit = 1U;
         query.timeout = std::chrono::seconds(5);
         QJsonArray errors;
-        for (const auto& error : service->Lookup(query).errors) {
+        for (const auto& error : service.Lookup(query).errors) {
             errors.append(ErrorEntry(error));
         }
+        const QString phase_name = PhaseName(options->scenario);
         const QJsonArray phases{
             QJsonObject{{QStringLiteral("dictionary_id"), QString{}},
-                        {QStringLiteral("name"), QStringLiteral("discovery")},
+                        {QStringLiteral("name"), phase_name},
                         {QStringLiteral("sequence"), 0},
                         {QStringLiteral("status"), QStringLiteral("started")}},
             QJsonObject{
                 {QStringLiteral("dictionary_id"), QString{}},
-                {QStringLiteral("name"), QStringLiteral("discovery")},
+                {QStringLiteral("name"), phase_name},
                 {QStringLiteral("sequence"), 1},
                 {QStringLiteral("status"), QStringLiteral("completed")}},
         };

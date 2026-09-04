@@ -26,7 +26,7 @@ from prepare_qt5_acceptance_source import (
     PROVENANCE_SCHEMA,
 )
 
-SUPPORTED_SCENARIO = "clean-discovery"
+SUPPORTED_SCENARIOS = ("clean-discovery", "warm-restart", "explicit-rescan")
 HASH_LENGTH = 64
 MAX_PROVENANCE_BYTES = 16 * 1024
 
@@ -156,8 +156,8 @@ def observe(
         raise Qt5ObserverError("Qt 5 observer requires a Qt 5 paired run")
     if _required_environment("GOLDENDICT_ACCEPTANCE_REVISION") != FROZEN_REVISION:
         raise Qt5ObserverError("Paired run does not use the frozen Qt 5 revision")
-    if scenario != SUPPORTED_SCENARIO:
-        raise Qt5ObserverError("Qt 5 observer implements clean discovery only")
+    if scenario not in SUPPORTED_SCENARIOS:
+        raise Qt5ObserverError("Qt 5 observer received an unsupported scenario")
     if (
         len(conditions_sha256) != HASH_LENGTH
         or any(character not in "0123456789abcdef" for character in conditions_sha256)
@@ -286,7 +286,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--index-root", type=Path, required=True)
     parser.add_argument("--interface-language", required=True)
     parser.add_argument("--conditions-sha256", required=True)
-    parser.add_argument("--scenario", choices=(SUPPORTED_SCENARIO,), required=True)
+    parser.add_argument("--scenario", choices=SUPPORTED_SCENARIOS, required=True)
     parser.add_argument("--output", type=Path, required=True)
     return parser
 

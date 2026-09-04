@@ -35,6 +35,11 @@ class PrepareQt5AcceptanceSourceTest(unittest.TestCase):
                 "  updateStatusLine();\n"
                 "  updateGroupList();\n"
                 "}\n"
+                "void MainWindow::on_rescanFiles_triggered()\n"
+                "{\n"
+                "  updateGroupList();\n\n"
+                "  makeScanPopup();\n"
+                "}\n"
             ),
             "main.cc": (
                 "#ifdef Q_OS_WIN32\n"
@@ -83,7 +88,8 @@ class PrepareQt5AcceptanceSourceTest(unittest.TestCase):
             self.assertEqual(provenance, output / preparation.PROVENANCE_FILE)
             main_window = (output / "mainwindow.cc").read_text(encoding="utf-8")
             self.assertIn('#include "qt5_acceptance_observer.inc"', main_window)
-            self.assertIn("Qt5AcceptanceObserver::Publish", main_window)
+            self.assertEqual(2, main_window.count("Qt5AcceptanceObserver::Publish"))
+            self.assertIn("on_rescanFiles_triggered", main_window)
             self.assertIn(
                 "GOLDENDICT_ACCEPTANCE_RAW_RESULT_PATH",
                 (output / "main.cc").read_text(encoding="utf-8"),

@@ -153,14 +153,21 @@ corpus-relative components, records index-file dispositions, redacts free-form
 diagnostic messages to typed tokens, and atomically publishes the canonical
 observation followed by its atomic condition-acknowledgement commit marker. If
 either final write fails, the adapter removes both paths so incomplete evidence
-cannot be accepted. R3.2b1 implements only `clean-discovery`: it verifies the
-host platform and the bound all-enabled/clean-default/no-query condition
-profile, applies the locale to Core, requires an empty isolated index directory,
-and rejects every other scenario before launch. Warm restart, rescan,
-changed-source, cancellation, and unavailable-
-companion sequencing remain R3.2c state-machine work and cannot be reported by
-this observer yet. Run it from a configured Release build through the Conan
-launcher so the child inherits the complete DLL and Qt plugin environment:
+cannot be accepted. The lifecycle adapter supports `clean-discovery`,
+`warm-restart`, and `explicit-rescan`. It verifies the host platform and the
+bound all-enabled/clean-default/no-query condition profile, applies the locale,
+requires an empty isolated index directory for the clean run, and requires
+previously created indexes for the following two states. Changed-source,
+cancellation, and unavailable-companion sequencing remain separate R3.2c work.
+The Qt 6 explicit-rescan probe activates an unchanged replacement through the
+same private Core facade-activation owner used by the production source reload
+transaction. It requires a distinct prepared facade to become the active
+snapshot before publishing a completed rescan phase; creating a second
+standalone service is not accepted as rescan evidence. This covers the Core
+reload behavior required by R3.2 and does not claim that the separate legacy
+File-menu rescan action in R7.2 is already restored.
+Run Qt 6 from a configured Release build through the Conan launcher so the
+child inherits the complete DLL and Qt plugin environment:
 
 ```powershell
 $checkout = (Resolve-Path ".").Path
@@ -283,6 +290,68 @@ evidence but are not equality keys because the implementations intentionally
 use version-specific index formats. Logical corpus-relative source identity,
 enablement, order, counts, outcomes, diagnostic classes, phase results, and
 index creation/reuse dispositions are material differences.
+
+### Real-dictionary lifecycle coordinator
+
+Use a fresh paired workspace for the full immutable-corpus lifecycle. The
+coordinator replaces the exact token
+`__GOLDENDICT_ACCEPTANCE_SCENARIO__` in the child command and runs clean
+discovery, warm restart, and explicit rescan in that order. It resumes only
+from a contiguous set of already validated archives; an unarchived current
+observation is treated as incomplete and its scenario is rerun. Before
+repeating an unarchived clean discovery, it clears the validated version
+workspace's mutable run directories while preserving evidence and rejecting
+links, reparse points, and non-regular entries. Every resumed archive is
+rebound to the validated pair's separate corpus-manifest and acceptance-
+condition hashes. The coordinator requires dictionary and index identities to
+remain stable, clean discovery to create indexes, and the unchanged restart
+and rescan to reuse them. Every scenario is archived under the selected
+version's `evidence/lifecycle` directory before the next state starts.
+
+Run the Qt 5 sequence with the same observer arguments documented above,
+replacing `real_dictionary_acceptance_workspace.py run` with:
+
+```powershell
+python scripts/real_dictionary_acceptance_lifecycle.py run-version `
+  --workspace "D:\workspace\goldendict\evidence\qt5-qt6-lifecycle" `
+  --corpus "D:\workspace\goldendict\content" `
+  --manifest "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json" `
+  --conditions "D:\workspace\goldendict\evidence\acceptance-conditions.json" `
+  --qt5-revision "3d93dd66197aea10edf6c29998ddc9c213d0aaa8" `
+  --qt6-revision "<40-digit-qt6-commit>" --version qt5 -- `
+  $python "$checkout\scripts\real_dictionary_acceptance_observer.py" `
+  --version qt5 --executable $python `
+  --observer-argument "$checkout\scripts\qt5_real_dictionary_observer.py" `
+  --observer-argument=--legacy-executable `
+  --observer-argument "$qt5Build\release\GoldenDict.exe" `
+  --observer-argument=--provenance `
+  --observer-argument "$qt5Source\.goldendict-qt5-acceptance-source.json" `
+  --observer-argument=--runtime-bin --observer-argument $qt5Bin `
+  --observer-argument=--plugin-path `
+  --observer-argument "C:\msys64\ucrt64\share\qt5\plugins" `
+  --manifest "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json" `
+  --scenario __GOLDENDICT_ACCEPTANCE_SCENARIO__ `
+  --dictionary-root "D:\workspace\goldendict\content"
+```
+
+Run the corresponding Qt 6 sequence through `run_with_conan.ps1`, using the
+Qt 6 adapter command above with the same scenario token. After both versions
+complete, publish the three comparisons and aggregate summary with:
+
+```powershell
+python scripts/real_dictionary_acceptance_lifecycle.py compare `
+  --workspace "D:\workspace\goldendict\evidence\qt5-qt6-lifecycle" `
+  --corpus "D:\workspace\goldendict\content" `
+  --manifest "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json" `
+  --conditions "D:\workspace\goldendict\evidence\acceptance-conditions.json" `
+  --qt5-revision "3d93dd66197aea10edf6c29998ddc9c213d0aaa8" `
+  --qt6-revision "<40-digit-qt6-commit>"
+```
+
+The comparison command refuses partial or out-of-order evidence. It writes
+canonical per-scenario comparisons and `comparisons/lifecycle-summary.json`.
+The summary is an index; the validated comparison files remain the authority
+for individual differences.
 
 Run the repository-wide dependency-free script gate with:
 

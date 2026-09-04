@@ -732,6 +732,60 @@ The repository-wide dependency-free Python gate passes 84 tests with one
 host-capability symlink skip. Black and Ruff pass for all R3.2b2 Python files,
 and `py_compile` plus `git diff --check` pass.
 
+#### R3.2c implementation plan
+
+R3.2c is executed as four independently reviewable functional units so a
+confirmed product gap does not invalidate unrelated acceptance evidence:
+
+1. Extend both version observers and the shared adapter with the immutable
+   corpus lifecycle states `clean-discovery`, `warm-restart`, and
+   `explicit-rescan`. A resumable coordinator owns their order, requires
+   stable dictionary and index identity, requires created indexes on the clean
+   run and reused indexes thereafter, archives every canonical observation,
+   and produces one comparison per state plus an aggregate summary.
+2. Run that lifecycle for Qt 5 and Qt 6 against all 88 files in the approved
+   read-only corpus and retain the complete local comparison. Each confirmed
+   Qt 6 defect becomes its own correction delivery with focused fixture
+   coverage before the full lifecycle is repeated.
+3. Add changed-source and unavailable-companion lifecycle states using bounded
+   disposable copies or generated fixtures. The immutable operator corpus is
+   never edited, copied wholesale, or used for destructive cases.
+4. Add bounded cancellation/progress observation at the existing Core
+   orchestration boundary, pair it with the Qt 5 behavior, and retain recovery
+   evidence. Any required production API remains transport-neutral,
+   cancellable, and independent of Qt Widgets.
+
+Unit 1 is the current delivery. Units 2 through 4 remain open until their
+audited evidence or corrections are integrated. R3.2 remains incomplete until
+all four units are accepted.
+
+The Unit 1 delivery was exercised end to end with the real corpus file
+`中文/古汉语常用字字典.dsl.dz`. Both versions completed clean discovery, warm
+restart, and explicit rescan. Qt 5 created one headword index and reused it in
+the two later states; Qt 6 created one full-text index and likewise reused it.
+The Qt 6 rescan state publishes a distinct unchanged replacement through the
+Core facade-activation owner used by production source reloads, while the
+separate File-menu rescan action remains owned by R7.2.
+The aggregate comparison therefore reports two semantic index-role differences
+per state rather than incorrectly declaring equivalence. This is actionable
+Unit 2 parity evidence, not a lifecycle-runner failure. The disposable Qt 5
+source with the actual `on_rescanFiles_triggered` path builds successfully,
+the complete Qt 6 Release build succeeds, all 130 registered Qt 6 tests pass
+through the Conan runtime launcher, and the repository-wide Python gate passes
+102 tests with one documented host-capability skip. A focused Core test proves
+that an unchanged source configuration publishes a distinct facade through the
+same activation owner and leaves the replaced service stopped.
+
+Interrupted clean discovery is resumable without trusting an unarchived
+observation: the coordinator safely clears the validated version workspace's
+mutable state back to clean-run preconditions and reruns the scenario. It
+refuses links, Windows reparse points, and non-regular entries while doing so.
+Every resumed archive is rebound to the validated pair's separate corpus-
+manifest and acceptance-condition hashes before it can contribute evidence.
+The real DSL Qt 6 smoke was then repeated after removing its archive prefix
+while retaining the generated index and other run state; the coordinator reset
+the isolated state, recreated the index, and completed all three scenarios.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

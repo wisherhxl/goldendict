@@ -20,7 +20,12 @@ import real_dictionary_acceptance_result as acceptance_result
 import real_dictionary_acceptance_workspace as acceptance_workspace
 
 RAW_SCHEMA = "goldendict-real-dictionary-raw-observation-v1"
-SUPPORTED_SCENARIO = "clean-discovery"
+SUPPORTED_SCENARIOS = ("clean-discovery", "warm-restart", "explicit-rescan")
+SCENARIO_PHASES = {
+    "clean-discovery": "discovery",
+    "warm-restart": "restart",
+    "explicit-rescan": "rescan",
+}
 MAX_RAW_BYTES = acceptance_result.MAX_RESULT_BYTES
 MAX_RAW_DICTIONARIES = acceptance_result.MAX_DICTIONARIES
 MAX_RAW_ERRORS = acceptance_result.MAX_DIAGNOSTICS
@@ -141,10 +146,11 @@ def _validate_raw(value: object) -> dict[str, object]:
     )
     if value["schema"] != RAW_SCHEMA:
         raise ObserverError(f"Raw observation schema must be {RAW_SCHEMA}")
-    if value["scenario"] != SUPPORTED_SCENARIO:
-        raise ObserverError("Raw observer did not perform clean discovery")
+    scenario = value["scenario"]
+    if scenario not in SUPPORTED_SCENARIOS:
+        raise ObserverError("Raw observer performed an unsupported scenario")
     if value["outcome"] != "completed":
-        raise ObserverError("Clean discovery did not complete")
+        raise ObserverError("Dictionary lifecycle observation did not complete")
     if not acceptance_result.HASH_PATTERN.fullmatch(
         _bounded_text(value["conditions_sha256"], "Raw conditions hash")
     ):
@@ -158,7 +164,7 @@ def _validate_raw(value: object) -> dict[str, object]:
     if not isinstance(errors, list) or len(errors) > MAX_RAW_ERRORS:
         raise ObserverError("Raw errors must be a bounded array")
     if not isinstance(phases, list) or len(phases) != 2:
-        raise ObserverError("Raw clean discovery must contain two phases")
+        raise ObserverError("Raw lifecycle observation must contain two phases")
     ids: set[str] = set()
     for index, item in enumerate(catalog):
         label = f"Raw catalog[{index}]"
@@ -213,7 +219,8 @@ def _validate_raw(value: object) -> dict[str, object]:
             raise ObserverError(f"{label}.code is unsupported")
         _bounded_text(item["dictionary_id"], f"{label}.dictionary_id", allow_empty=True)
         _bounded_text(item["message"], f"{label}.message")
-    expected_phases = (("discovery", "started"), ("discovery", "completed"))
+    phase_name = SCENARIO_PHASES[str(scenario)]
+    expected_phases = ((phase_name, "started"), (phase_name, "completed"))
     for index, item in enumerate(phases):
         label = f"Raw phases[{index}]"
         if not isinstance(item, dict):
@@ -224,7 +231,7 @@ def _validate_raw(value: object) -> dict[str, object]:
         if item["sequence"] != index:
             raise ObserverError("Raw phases must use contiguous zero-based sequence")
         if (item["name"], item["status"]) != expected_phases[index]:
-            raise ObserverError("Raw clean-discovery phases are incomplete")
+            raise ObserverError("Raw lifecycle phases are incomplete")
     return value
 
 
@@ -243,7 +250,7 @@ def _normalized_machine(value: str) -> str:
     return aliases.get(lowered, lowered)
 
 
-def _validate_clean_conditions(conditions: object) -> dict[str, object]:
+def _validate_conditions(conditions: object) -> dict[str, object]:
     if not isinstance(conditions, dict):
         raise ObserverError("Conditions must be an object")
     required = {"group", "locale", "platform", "preferences", "queries", "schema"}
@@ -262,14 +269,16 @@ def _validate_clean_conditions(conditions: object) -> dict[str, object]:
         or group["ordered_dictionary_ids"] != []
     ):
         raise ObserverError(
-            "Clean discovery requires the all-enabled empty-order group"
+            "Dictionary lifecycle observation requires the all-enabled "
+            "empty-order group"
         )
     if conditions["preferences"] != {"profile": "clean-default"}:
         raise ObserverError(
-            "Clean discovery requires the clean-default preference profile"
+            "Dictionary lifecycle observation requires the clean-default "
+            "preference profile"
         )
     if conditions["queries"] != []:
-        raise ObserverError("Clean discovery does not accept query conditions")
+        raise ObserverError("Dictionary lifecycle observation does not accept queries")
     platform_conditions = conditions["platform"]
     if not isinstance(platform_conditions, dict):
         raise ObserverError("Conditions platform must be an object")
@@ -542,10 +551,10 @@ def observe(
     expected_version = _required_environment("GOLDENDICT_ACCEPTANCE_VERSION")
     if version != expected_version:
         raise ObserverError("Observer version does not match the paired run")
-    if scenario != SUPPORTED_SCENARIO:
+    if scenario not in SUPPORTED_SCENARIOS:
         raise ObserverError(
-            "The current observer implements clean-discovery only; "
-            "later scenarios require the R3.2c state-machine runner"
+            "The observer supports clean-discovery, warm-restart, and "
+            "explicit-rescan only"
         )
     _validate_observer_arguments(observer_arguments)
     try:
@@ -586,7 +595,7 @@ def observe(
         raise ObserverError("Manifest hash does not match the paired run")
     manifest = _read_json(manifest_file, MAX_RAW_BYTES, "Manifest")
     manifest_files = _manifest_files(manifest)
-    conditions = _validate_clean_conditions(
+    conditions = _validate_conditions(
         _read_json(conditions_path, MAX_RAW_BYTES, "Conditions")
     )
     conditions_hash = hashlib.sha256(
@@ -599,8 +608,10 @@ def observe(
     _clear_final_evidence(result_path, acknowledgement_path)
 
     before = _snapshot_indexes(index_root)
-    if before:
+    if scenario == "clean-discovery" and before:
         raise ObserverError("Clean discovery requires an empty index directory")
+    if scenario != "clean-discovery" and not before:
+        raise ObserverError(f"{scenario} requires previously created indexes")
     with tempfile.TemporaryDirectory(
         dir=evidence_root, prefix=".raw-observation-"
     ) as temporary:
@@ -703,7 +714,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--observer-argument", action="append", default=[])
     parser.add_argument("--manifest", type=Path, required=True)
-    parser.add_argument("--scenario", choices=(SUPPORTED_SCENARIO,), required=True)
+    parser.add_argument("--scenario", choices=SUPPORTED_SCENARIOS, required=True)
     parser.add_argument("--dictionary-root", type=Path, required=True)
     return parser
 

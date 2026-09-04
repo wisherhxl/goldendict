@@ -330,6 +330,7 @@ class ApplicationServiceTest : public QObject {
     void AppliesPersistedFullTextPolicyAfterAardDiscovery();
     void ComposesIdleExecutorAfterAardReconciliation();
     void ActivatesAndReplacesPrivateDesktopFacadeCompositions();
+    void ReloadsUnchangedDictionarySourcesThroughActivationOwner();
     void PreservesInstalledCandidateWhenAnotherBuildFails();
     void SerializesConcurrentCandidateInstallationAndActivation();
     void ActivationHandleIsOneShotAndStopsOnDestruction();
@@ -5930,6 +5931,48 @@ void ApplicationServiceTest::
     QVERIFY(!owner.Activate(shutdown_candidate));
     QVERIFY(initial->GetDictionaryService().GetCatalog().empty());
     QVERIFY(replacement->GetDictionaryService().GetCatalog().empty());
+}
+
+void ApplicationServiceTest::
+    ReloadsUnchangedDictionarySourcesThroughActivationOwner() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteAardFixture(root);
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    configuration.index_directory = (root / "indexes").string();
+
+    application::DesktopFacadeActivationOwner owner;
+    auto initial_candidate = owner.PrepareCandidate(configuration);
+    QVERIFY(initial_candidate);
+    QVERIFY(owner.Activate(initial_candidate));
+    const auto initial = owner.CurrentSnapshot();
+    QVERIFY(initial);
+    const auto initial_catalog = initial->GetDictionaryService().GetCatalog();
+    QCOMPARE(initial_catalog.size(), std::size_t{1});
+
+    auto reload_candidate = owner.PrepareCandidate(configuration);
+    QVERIFY(reload_candidate);
+    const auto prepared = owner.PreparedFacadeSnapshot(reload_candidate);
+    QVERIFY(prepared);
+    QVERIFY(prepared != initial);
+    QVERIFY(owner.Activate(reload_candidate));
+    const auto reloaded = owner.CurrentSnapshot();
+    QCOMPARE(reloaded, prepared);
+    QVERIFY(reloaded != initial);
+    QVERIFY(application::IsFullTextIndexExecutorStopped(
+        initial->GetDictionaryService()));
+    const auto reloaded_catalog = reloaded->GetDictionaryService().GetCatalog();
+    QCOMPARE(reloaded_catalog.size(), initial_catalog.size());
+    QCOMPARE(reloaded_catalog.front().id, initial_catalog.front().id);
+    QCOMPARE(reloaded_catalog.front().source, initial_catalog.front().source);
+
+    LookupQuery query;
+    query.text = "EXAMPLE";
+    const auto response = reloaded->GetDictionaryService().Lookup(query);
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{1});
 }
 
 void ApplicationServiceTest::

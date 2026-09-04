@@ -123,8 +123,15 @@ def _instrument(source: Path, observer_include: Path) -> None:
         "  updateStatusLine();\n  updateGroupList();\n}\n",
         "  updateStatusLine();\n"
         "  updateGroupList();\n"
-        "  Qt5AcceptanceObserver::Publish( groupInstances.front().dictionaries );\n"
+        "  Qt5AcceptanceObserver::Publish( this, groupInstances.front().dictionaries );\n"
         "}\n",
+    )
+    _replace_once(
+        source / "mainwindow.cc",
+        "  updateGroupList();\n\n  makeScanPopup();\n",
+        "  updateGroupList();\n"
+        "  Qt5AcceptanceObserver::Publish( this, groupInstances.front().dictionaries );\n\n"
+        "  makeScanPopup();\n",
     )
     _replace_once(
         source / "main.cc",

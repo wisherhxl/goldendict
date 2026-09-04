@@ -97,7 +97,7 @@ class Qt5RealDictionaryObserverTest(unittest.TestCase):
         return environment, paths
 
     @staticmethod
-    def _call(paths: dict[str, Path]) -> Path:
+    def _call(paths: dict[str, Path], scenario: str = "clean-discovery") -> Path:
         return observer.observe(
             paths["executable"],
             paths["provenance"],
@@ -107,7 +107,7 @@ class Qt5RealDictionaryObserverTest(unittest.TestCase):
             paths["index"],
             "en_US",
             CONDITIONS_HASH,
-            "clean-discovery",
+            scenario,
             paths["output"],
             60,
         )
@@ -155,6 +155,42 @@ class Qt5RealDictionaryObserverTest(unittest.TestCase):
             self.assertEqual(config.findtext("paths/path"), str(paths["corpus"]))
             self.assertEqual(config.findtext("preferences/interfaceLanguage"), "en_US")
             self.assertEqual(captured["command"], [str(paths["executable"])])
+
+    def test_projects_each_supported_lifecycle_scenario(self) -> None:
+        def make_run(captured: list[str]):
+            def run(
+                command: list[str], **kwargs: object
+            ) -> subprocess.CompletedProcess:
+                child_environment = kwargs["env"]
+                assert isinstance(child_environment, dict)
+                captured.append(child_environment["GOLDENDICT_ACCEPTANCE_SCENARIO"])
+                Path(
+                    child_environment["GOLDENDICT_ACCEPTANCE_RAW_RESULT_PATH"]
+                ).write_text("{}", encoding="utf-8")
+                return subprocess.CompletedProcess(command, 0)
+
+            return run
+
+        for scenario in observer.SUPPORTED_SCENARIOS:
+            with self.subTest(
+                scenario=scenario
+            ), tempfile.TemporaryDirectory() as temporary:
+                environment, paths = self._fixture(Path(temporary))
+                captured: list[str] = []
+
+                with (
+                    mock.patch.dict(os.environ, environment, clear=False),
+                    mock.patch.object(
+                        observer,
+                        "_suppressed_windows_error_dialogs",
+                        return_value=nullcontext(),
+                    ),
+                    mock.patch.object(
+                        observer.subprocess, "run", side_effect=make_run(captured)
+                    ),
+                ):
+                    self._call(paths, scenario)
+                self.assertEqual([scenario], captured)
 
     def test_writes_legacy_non_windows_profile_location(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

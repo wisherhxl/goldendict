@@ -37,6 +37,12 @@ dictionary_id = "dsl-0123456789abcdef"
 if os.environ.get("FAKE_CREATE_INDEX"):
     (Path(option("--index-root")) / f"{dictionary_id}.gdidx").write_bytes(b"index")
 source = os.environ["FAKE_COMPONENT"]
+scenario = option("--scenario")
+phase = {
+    "clean-discovery": "discovery",
+    "warm-restart": "restart",
+    "explicit-rescan": "rescan",
+}[scenario]
 raw = {
     "catalog": [{
         "article_count": 2,
@@ -60,10 +66,10 @@ raw = {
     }],
     "outcome": "completed",
     "phases": [
-        {"dictionary_id": "", "name": "discovery", "sequence": 0, "status": "started"},
-        {"dictionary_id": "", "name": "discovery", "sequence": 1, "status": "completed"},
+        {"dictionary_id": "", "name": phase, "sequence": 0, "status": "started"},
+        {"dictionary_id": "", "name": phase, "sequence": 1, "status": "completed"},
     ],
-    "scenario": option("--scenario"),
+    "scenario": scenario,
     "schema": "goldendict-real-dictionary-raw-observation-v1",
 }
 Path(option("--output")).write_text(json.dumps(raw), encoding="utf-8")
@@ -268,13 +274,13 @@ class AcceptanceObserverTest(unittest.TestCase):
                         )
                     run.assert_not_called()
 
-    def test_rejects_unimplemented_scenario_before_launch(self) -> None:
+    def test_rejects_unsupported_scenario_before_launch(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             environment, paths = self._fixture(Path(temporary_directory))
             with mock.patch.dict(os.environ, environment, clear=True), mock.patch(
                 "real_dictionary_acceptance_observer.subprocess.run"
             ) as run, self.assertRaisesRegex(
-                observer.ObserverError, "implements clean-discovery only"
+                observer.ObserverError, "supports clean-discovery"
             ):
                 observer.observe(
                     "qt6",
@@ -283,6 +289,48 @@ class AcceptanceObserverTest(unittest.TestCase):
                     paths["corpus"],
                     paths["manifest"],
                     "cancellation",
+                )
+            run.assert_not_called()
+
+    def test_records_reused_indexes_for_restart_and_rescan(self) -> None:
+        for scenario, phase in (
+            ("warm-restart", "restart"),
+            ("explicit-rescan", "rescan"),
+        ):
+            with self.subTest(
+                scenario=scenario
+            ), tempfile.TemporaryDirectory() as temporary:
+                environment, paths = self._fixture(Path(temporary))
+                (paths["index"] / "dsl-0123456789abcdef.gdidx").write_bytes(b"index")
+                with mock.patch.dict(os.environ, environment, clear=True):
+                    output = observer.observe(
+                        "qt6",
+                        Path(sys.executable),
+                        [str(paths["fake"])],
+                        paths["corpus"],
+                        paths["manifest"],
+                        scenario,
+                    )
+                observation = result.read_observation(output)
+                self.assertEqual(scenario, observation["scenario"])
+                self.assertEqual(phase, observation["phases"][0]["name"])
+                self.assertEqual("reused", observation["indexes"][0]["disposition"])
+
+    def test_rejects_restart_without_existing_indexes_before_launch(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            environment, paths = self._fixture(Path(temporary_directory))
+            with mock.patch.dict(os.environ, environment, clear=True), mock.patch(
+                "real_dictionary_acceptance_observer.subprocess.run"
+            ) as run, self.assertRaisesRegex(
+                observer.ObserverError, "requires previously created indexes"
+            ):
+                observer.observe(
+                    "qt6",
+                    Path(sys.executable),
+                    [str(paths["fake"])],
+                    paths["corpus"],
+                    paths["manifest"],
+                    "warm-restart",
                 )
             run.assert_not_called()
 

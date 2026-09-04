@@ -80,7 +80,8 @@ void ScheduleExit()
 
 } // unnamed namespace
 
-void Publish( std::vector< sptr< Dictionary::Class > > const & dictionaries )
+void Publish( QObject * owner,
+              std::vector< sptr< Dictionary::Class > > const & dictionaries )
 {
   QByteArray const outputPath = qgetenv( "GOLDENDICT_ACCEPTANCE_RAW_RESULT_PATH" );
   if( outputPath.isEmpty() )
@@ -88,9 +89,21 @@ void Publish( std::vector< sptr< Dictionary::Class > > const & dictionaries )
 
   QByteArray const conditionsHash = qgetenv( "GOLDENDICT_ACCEPTANCE_CONDITIONS_SHA256" );
   QByteArray const scenario = qgetenv( "GOLDENDICT_ACCEPTANCE_SCENARIO" );
-  if( conditionsHash.isEmpty() || scenario != "clean-discovery" )
+  if( conditionsHash.isEmpty()
+      || ( scenario != "clean-discovery" && scenario != "warm-restart"
+           && scenario != "explicit-rescan" ) )
   {
     ScheduleExit();
+    return;
+  }
+
+  static bool rescanRequested = false;
+  if( scenario == "explicit-rescan" && !rescanRequested )
+  {
+    rescanRequested = true;
+    if( !QMetaObject::invokeMethod( owner, "on_rescanFiles_triggered",
+                                   Qt::QueuedConnection ) )
+      ScheduleExit();
     return;
   }
 
@@ -107,13 +120,16 @@ void Publish( std::vector< sptr< Dictionary::Class > > const & dictionaries )
   QJsonArray phases;
   QJsonObject started;
   started.insert( "dictionary_id", QString() );
-  started.insert( "name", "discovery" );
+  QByteArray const phaseName = scenario == "warm-restart" ? "restart" :
+                               scenario == "explicit-rescan" ? "rescan" :
+                               "discovery";
+  started.insert( "name", QString::fromLatin1( phaseName ) );
   started.insert( "sequence", 0 );
   started.insert( "status", "started" );
   phases.append( started );
   QJsonObject completed;
   completed.insert( "dictionary_id", QString() );
-  completed.insert( "name", "discovery" );
+  completed.insert( "name", QString::fromLatin1( phaseName ) );
   completed.insert( "sequence", 1 );
   completed.insert( "status", "completed" );
   phases.append( completed );
