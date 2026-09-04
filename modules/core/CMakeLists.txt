@@ -60,6 +60,17 @@ if(BUILD_TESTS)
       --unknown unused-output)
   set_tests_properties(qt6_real_dictionary_observer_unknown_option_rejection
     PROPERTIES WILL_FAIL TRUE)
+
+  ti_add_executable(qt6_real_mdict_observer
+    tools/qt6_real_mdict_observer.cpp)
+  ti_target_include_modules_recurse(qt6_real_mdict_observer
+    goldendict_core)
+  ti_target_link_libraries(qt6_real_mdict_observer
+    goldendict_core ${QT_NAMESPACE}::Core)
+  add_test(NAME qt6_real_mdict_observer_invalid_options
+    COMMAND qt6_real_mdict_observer --unknown value)
+  set_tests_properties(qt6_real_mdict_observer_invalid_options
+    PROPERTIES WILL_FAIL TRUE)
 endif()
 
 get_target_property(core_interface_links goldendict_core

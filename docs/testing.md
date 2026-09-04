@@ -240,6 +240,82 @@ whose decoded totals exceed one GiB. This correction therefore proves bounded
 split-volume discovery and generated exact resource reads; it does not by
 itself complete the R3.3 real-resource query catalog or paired Qt 5 comparison.
 
+### R3.3 paired real-MDict query and resource acceptance
+
+`real_mdict_acceptance.py` is the bounded coordinator for the R3.3 pair. Its
+Qt 5 adapter calls the frozen dictionary object's asynchronous `getArticle`
+and `getResource` contracts. The Qt 6 observer calls the installed headless
+`DictionaryService`. Both adapters must use the pre-frozen catalog whose
+SHA-256 is
+`7ececd4a6d2fae85c9ddbf6b0bf5042354e8023870916cfb86916a76147f2d29`.
+The coordinator rejects a changed catalog, manifest, conditions file, corpus
+component, unexpected component order, inexact headword, article without its
+cataloged resource reference, or resource byte mismatch. Final JSON retains
+only sizes and hashes, not private article or resource payloads.
+
+Create the paired workspace as described above, build
+`qt6_real_mdict_observer`, and prepare the frozen Qt 5 executable as described
+below. Then run both `clean-discovery` and `warm-restart` through the paired
+workspace runner. Resolve the Python executable first; a Microsoft Store alias
+is not a reliable child executable inside an isolated run.
+
+```powershell
+$python = python -c "import sys; print(sys.executable)"
+$checkout = (Resolve-Path ".").Path
+$workspace = "D:\workspace\goldendict\evidence\qt5-qt6-mdict-r33"
+$manifest = "D:\workspace\goldendict\evidence\qt6-baseline-real-corpus-manifest.json"
+$conditions = "D:\workspace\goldendict\evidence\qt5-qt6-acceptance-conditions-r3.3-v1.json"
+$catalog = "D:\workspace\goldendict\evidence\r3.3-mdict-query-resource-catalog-v1.json"
+$qt5Source = "D:\workspace\goldendict\evidence\qt5-acceptance-source-r33"
+$qt5Build = "D:\workspace\goldendict\evidence\qt5-acceptance-build-r33"
+$qt5Revision = "3d93dd66197aea10edf6c29998ddc9c213d0aaa8"
+$qt6Revision = git rev-parse HEAD
+
+foreach ($scenario in "clean-discovery", "warm-restart") {
+  $leaf = if ($scenario -eq "clean-discovery") { "clean" } else { "warm" }
+  .\run_with_conan.ps1 --build-type Release -- $python `
+    "$checkout\scripts\real_dictionary_acceptance_workspace.py" run `
+      --workspace $workspace --corpus "D:\workspace\goldendict\content" `
+      --manifest $manifest --conditions $conditions `
+      --qt5-revision $qt5Revision --qt6-revision $qt6Revision `
+      --version qt6 -- $python "$checkout\scripts\real_mdict_acceptance.py" `
+        observe --adapter qt6 `
+        --dictionary-root "D:\workspace\goldendict\content" `
+        --catalog $catalog --scenario $scenario `
+        --output "$workspace\qt6\evidence\mdict-$leaf.json" `
+        --qt6-observer "$checkout\build\bin\Release\qt6_real_mdict_observer.exe"
+
+  & $python "$checkout\scripts\real_dictionary_acceptance_workspace.py" run `
+    --workspace $workspace --corpus "D:\workspace\goldendict\content" `
+    --manifest $manifest --conditions $conditions `
+    --qt5-revision $qt5Revision --qt6-revision $qt6Revision `
+    --version qt5 -- $python "$checkout\scripts\real_mdict_acceptance.py" `
+      observe --adapter qt5 `
+      --dictionary-root "D:\workspace\goldendict\content" `
+      --catalog $catalog --scenario $scenario `
+      --output "$workspace\qt5\evidence\mdict-$leaf.json" `
+      --qt5-executable "$qt5Build\release\GoldenDict.exe" `
+      --qt5-provenance "$qt5Source\.goldendict-qt5-acceptance-source.json" `
+      --qt5-runtime-bin "C:\msys64\ucrt64\bin" `
+      --qt5-plugin-path "C:\msys64\ucrt64\share\qt5\plugins"
+}
+
+& $python scripts\real_mdict_acceptance.py compare `
+  --qt5-clean "$workspace\qt5\evidence\mdict-clean.json" `
+  --qt5-warm "$workspace\qt5\evidence\mdict-warm.json" `
+  --qt6-clean "$workspace\qt6\evidence\mdict-clean.json" `
+  --qt6-warm "$workspace\qt6\evidence\mdict-warm.json" `
+  --output "$workspace\mdict-comparison.json"
+```
+
+The comparison exits nonzero when it publishes a material difference. Treat
+that outcome as product-gap evidence; do not weaken the visible-text or exact
+resource comparison to make it pass. The first development pair proved exact,
+stable bytes from the base MDD, `.1.mdd`, and `.2.mdd` in both products, but
+also found that Qt 6 escaped this dictionary's custom article markup into a
+visible preformatted block. That confirmed rendering correction remains an
+R3.3 product unit, so R3.3 is not yet complete.
+
 `mdict_reader_test::UsesLegacyFallbackName` pins the frozen Qt 5 title fallback
 for empty, placeholder, and header titles shorter than five UTF-16 code units,
 including non-BMP boundary cases. The fallback uses the filename before its

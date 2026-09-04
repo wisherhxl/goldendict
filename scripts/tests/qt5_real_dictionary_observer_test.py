@@ -156,6 +156,83 @@ class Qt5RealDictionaryObserverTest(unittest.TestCase):
             self.assertEqual(config.findtext("preferences/interfaceLanguage"), "en_US")
             self.assertEqual(captured["command"], [str(paths["executable"])])
 
+    def test_projects_hash_bound_mdict_catalog(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            catalog = paths["evidence"] / "catalog.json"
+            catalog.write_text('{"schema":"fixture"}\n', encoding="utf-8")
+            catalog_hash = hashlib.sha256(catalog.read_bytes()).hexdigest()
+            captured: dict[str, str] = {}
+
+            def run(
+                command: list[str], **kwargs: object
+            ) -> subprocess.CompletedProcess:
+                child_environment = kwargs["env"]
+                assert isinstance(child_environment, dict)
+                captured.update(child_environment)
+                Path(
+                    child_environment["GOLDENDICT_ACCEPTANCE_RAW_RESULT_PATH"]
+                ).write_text("{}", encoding="utf-8")
+                return subprocess.CompletedProcess(command, 0)
+
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                mock.patch.object(
+                    observer,
+                    "_suppressed_windows_error_dialogs",
+                    return_value=nullcontext(),
+                ),
+                mock.patch.object(observer.subprocess, "run", side_effect=run),
+            ):
+                observer.observe(
+                    paths["executable"],
+                    paths["provenance"],
+                    [paths["runtime"]],
+                    paths["plugins"],
+                    paths["corpus"],
+                    paths["index"],
+                    "en_US",
+                    CONDITIONS_HASH,
+                    "clean-discovery",
+                    paths["output"],
+                    60,
+                    mdict_catalog=catalog,
+                    mdict_catalog_sha256=catalog_hash,
+                )
+
+            self.assertEqual(
+                captured["GOLDENDICT_ACCEPTANCE_MDICT_CATALOG"], str(catalog)
+            )
+            self.assertEqual(
+                captured["GOLDENDICT_ACCEPTANCE_MDICT_CATALOG_SHA256"],
+                catalog_hash,
+            )
+
+    def test_rejects_mdict_catalog_hash_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            catalog = paths["evidence"] / "catalog.json"
+            catalog.write_text("{}\n", encoding="utf-8")
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(observer.Qt5ObserverError, "hash is invalid"),
+            ):
+                observer.observe(
+                    paths["executable"],
+                    paths["provenance"],
+                    [paths["runtime"]],
+                    paths["plugins"],
+                    paths["corpus"],
+                    paths["index"],
+                    "en_US",
+                    CONDITIONS_HASH,
+                    "clean-discovery",
+                    paths["output"],
+                    60,
+                    mdict_catalog=catalog,
+                    mdict_catalog_sha256="0" * 64,
+                )
+
     def test_projects_each_supported_lifecycle_scenario(self) -> None:
         def make_run(captured: list[str]):
             def run(

@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QCoreApplication>
+#include <QCryptographicHash>
+#include <QDir>
 #include <QElapsedTimer>
+#include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -9,8 +13,11 @@
 #include <QTimer>
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "langcoder.hh"
+#include "wstring_qt.hh"
 
 namespace Qt5AcceptanceObserver {
 namespace {
@@ -140,6 +147,242 @@ Dictionary::Class * FindIndexingDictionary(
   return 0;
 }
 
+QString MediaTypeForResource( QString const & resourceId )
+{
+  QString const lower = resourceId.toLower();
+  if( lower.endsWith( ".png" ) )
+    return "image/png";
+  if( lower.endsWith( ".mp3" ) )
+    return "audio/mpeg";
+  return "application/octet-stream";
+}
+
+class MdictPublication: public QObject
+{
+  QJsonObject catalog;
+  QByteArray catalogHash;
+  QByteArray conditionsHash;
+  QByteArray outputPath;
+  QByteArray scenario;
+  Dictionary::Class * dictionary;
+  QJsonArray probes;
+  QJsonArray results;
+  int probeIndex;
+  bool readingResource;
+  QElapsedTimer elapsed;
+  sptr< Dictionary::DataRequest > request;
+  QByteArray articleMarkup;
+
+public:
+  MdictPublication( QObject * owner,
+                    std::vector< sptr< Dictionary::Class > > const & dictionaries,
+                    QByteArray const & catalogPath,
+                    QByteArray const & catalogHash_,
+                    QByteArray const & conditionsHash_,
+                    QByteArray const & outputPath_,
+                    QByteArray const & scenario_ ):
+    QObject( owner ), catalogHash( catalogHash_ ), conditionsHash( conditionsHash_ ),
+    outputPath( outputPath_ ), scenario( scenario_ ), dictionary( 0 ),
+    probeIndex( 0 ), readingResource( false )
+  {
+    QFile input( QString::fromUtf8( catalogPath ) );
+    if( !input.open( QIODevice::ReadOnly ) || input.size() < 1
+        || input.size() > 1024 * 1024 )
+      return;
+    QByteArray const content = input.readAll();
+    if( content.size() != input.size()
+        || QCryptographicHash::hash( content, QCryptographicHash::Sha256 ).toHex()
+             != catalogHash )
+      return;
+    QJsonParseError error;
+    QJsonDocument const document = QJsonDocument::fromJson( content, &error );
+    if( error.error != QJsonParseError::NoError || !document.isObject() )
+      return;
+    catalog = document.object();
+    if( catalog.value( "schema" ).toString()
+          != "goldendict-mdict-query-resource-catalog-v1" )
+      return;
+    probes = catalog.value( "probes" ).toArray();
+    if( probes.size() != 3 )
+      return;
+    QString const primaryRelative = catalog.value( "dictionary" ).toObject()
+                                      .value( "primary_component" ).toString();
+    QByteArray const corpusRoot = qgetenv( "GOLDENDICT_ACCEPTANCE_CORPUS_ROOT" );
+    QString const primary = QFileInfo( QDir( QString::fromUtf8( corpusRoot ) )
+                                      .filePath( primaryRelative ) ).canonicalFilePath();
+    for( std::vector< sptr< Dictionary::Class > >::const_iterator item = dictionaries.begin();
+         item != dictionaries.end(); ++item )
+    {
+      std::vector< std::string > const & files = ( *item )->getDictionaryFilenames();
+      if( !files.empty()
+          && QFileInfo( QString::fromUtf8( files.front().c_str() ) ).canonicalFilePath()
+               .compare( primary, Qt::CaseInsensitive ) == 0 )
+      {
+        dictionary = item->get();
+        break;
+      }
+    }
+  }
+
+  void Start()
+  {
+    if( !dictionary )
+    {
+      qApp->exit( 4 );
+      return;
+    }
+    elapsed.start();
+    StartArticle();
+  }
+
+private:
+  void StartArticle()
+  {
+    if( probeIndex == probes.size() )
+    {
+      Publish();
+      return;
+    }
+    QJsonObject const probe = probes.at( probeIndex ).toObject();
+    QString const query = probe.value( "query" ).toObject().value( "text" ).toString();
+    if( query.isEmpty() )
+    {
+      Fail();
+      return;
+    }
+    try
+    {
+      request = dictionary->getArticle( gd::toWString( query ),
+                                        std::vector< gd::wstring >() );
+    }
+    catch( std::exception const & )
+    {
+      Fail();
+      return;
+    }
+    readingResource = false;
+    Poll();
+  }
+
+  void StartResource()
+  {
+    QJsonObject const probe = probes.at( probeIndex ).toObject();
+    QString const resourceId = probe.value( "resource" ).toObject().value( "id" ).toString();
+    try
+    {
+      request = dictionary->getResource( std::string( resourceId.toUtf8().constData() ) );
+    }
+    catch( std::exception const & )
+    {
+      Fail();
+      return;
+    }
+    readingResource = true;
+    Poll();
+  }
+
+  void Poll()
+  {
+    if( !request || elapsed.elapsed() > 5 * 60 * 1000 )
+    {
+      Fail();
+      return;
+    }
+    if( !request->isFinished() )
+    {
+      QTimer::singleShot( 1, this, [this]() { Poll(); } );
+      return;
+    }
+    if( !request->getErrorString().isEmpty() || request->dataSize() < 1 )
+    {
+      Fail();
+      return;
+    }
+    std::vector< char > & data = request->getFullData();
+    QByteArray const bytes( &data.front(), static_cast< int >( data.size() ) );
+    request = sptr< Dictionary::DataRequest >();
+    if( !readingResource )
+    {
+      articleMarkup = bytes;
+      StartResource();
+      return;
+    }
+
+    QJsonObject const probe = probes.at( probeIndex ).toObject();
+    QString const id = probe.value( "id" ).toString();
+    QString const query = probe.value( "query" ).toObject().value( "text" ).toString();
+    QString const resourceId = probe.value( "resource" ).toObject().value( "id" ).toString();
+    QJsonObject result;
+    result.insert( "article_markup", QString::fromUtf8( articleMarkup ) );
+    result.insert( "headword", query );
+    result.insert( "id", id );
+    result.insert( "query", query );
+    result.insert( "resource_data_base64", QString::fromLatin1( bytes.toBase64() ) );
+    result.insert( "resource_id", resourceId );
+    result.insert( "resource_media_type", MediaTypeForResource( resourceId ) );
+    results.append( result );
+    ++probeIndex;
+    StartArticle();
+  }
+
+  void Publish()
+  {
+    QJsonArray components;
+    std::vector< std::string > const & files = dictionary->getDictionaryFilenames();
+    for( std::vector< std::string >::const_iterator file = files.begin();
+         file != files.end(); ++file )
+      components.append( QFileInfo( QString::fromUtf8( file->c_str() ) ).canonicalFilePath() );
+    QJsonObject dictionaryValue;
+    dictionaryValue.insert( "components", components );
+    dictionaryValue.insert( "id", QString::fromUtf8( dictionary->getId().c_str() ) );
+    dictionaryValue.insert( "name", QString::fromUtf8( dictionary->getName().c_str() ) );
+    QJsonObject raw;
+    raw.insert( "catalog_sha256", QString::fromLatin1( catalogHash ) );
+    raw.insert( "conditions_sha256", QString::fromLatin1( conditionsHash ) );
+    raw.insert( "dictionary", dictionaryValue );
+    raw.insert( "errors", QJsonArray() );
+    raw.insert( "probes", results );
+    raw.insert( "scenario", QString::fromLatin1( scenario ) );
+    raw.insert( "schema", "goldendict-real-mdict-raw-observation-v1" );
+    if( !WriteRawMdict( raw ) )
+    {
+      Fail();
+      return;
+    }
+    ScheduleExit();
+    deleteLater();
+  }
+
+  bool WriteRawMdict( QJsonObject const & raw )
+  {
+    QSaveFile output( QString::fromUtf8( outputPath ) );
+    if( !output.open( QIODevice::WriteOnly ) )
+      return false;
+    QByteArray const content = QJsonDocument( raw ).toJson( QJsonDocument::Compact ) + '\n';
+    return output.write( content ) == content.size() && output.commit();
+  }
+
+  void Fail()
+  {
+    request = sptr< Dictionary::DataRequest >();
+    qApp->exit( 4 );
+    deleteLater();
+  }
+};
+
+void PublishMdict( QObject * owner,
+                   std::vector< sptr< Dictionary::Class > > const & dictionaries,
+                   QByteArray const & catalogPath,
+                   QByteArray const & catalogHash,
+                   QByteArray const & conditionsHash,
+                   QByteArray const & outputPath,
+                   QByteArray const & scenario )
+{
+  MdictPublication * publication = new MdictPublication(
+    owner, dictionaries, catalogPath, catalogHash, conditionsHash, outputPath, scenario );
+  QTimer::singleShot( 0, publication, [publication]() { publication->Start(); } );
+}
+
 } // unnamed namespace
 
 void Publish( QObject * owner,
@@ -160,6 +403,23 @@ void Publish( QObject * owner,
            && scenario != "companion-recovery" ) )
   {
     ScheduleExit();
+    return;
+  }
+
+  QByteArray const mdictCatalog = qgetenv( "GOLDENDICT_ACCEPTANCE_MDICT_CATALOG" );
+  if( !mdictCatalog.isEmpty() )
+  {
+    static bool mdictStarted = false;
+    QByteArray const mdictCatalogHash =
+      qgetenv( "GOLDENDICT_ACCEPTANCE_MDICT_CATALOG_SHA256" );
+    if( mdictStarted || mdictCatalogHash.size() != 64 )
+    {
+      ScheduleExit();
+      return;
+    }
+    mdictStarted = true;
+    PublishMdict( owner, dictionaries, mdictCatalog, mdictCatalogHash,
+                  conditionsHash, outputPath, scenario );
     return;
   }
 

@@ -1023,6 +1023,22 @@ Delivery is split at evidence-driven functional boundaries:
    CTest and Python suites pass, and the completion and integration audits
    accept every delivery.
 
+Unit 1 implementation result: **Acceptance implemented; product difference
+confirmed** (2026-09-05). The bounded coordinator and version adapters now
+collect all three exact articles and their cataloged base-MDD, `.1.mdd`, and
+`.2.mdd` resources through each product's normal APIs in clean and warm states.
+The first pair retained exact resource sizes and SHA-256 values in all four
+observations, complete ordered four-component provenance, stable same-version
+clean/warm observations, and unchanged manifest/conditions/catalog bindings.
+The published comparison (external SHA-256
+`948f14e7f539e1733d240cd0b693b065f5667e70386347fb43594c77af51b45f`)
+correctly reports a material difference: Qt 6's current sanitizer escapes the
+Oxford dictionary's custom article tags into visible preformatted text, while
+Qt 5 renders the custom markup. This is an explained product gap, not an
+acceptance-harness failure. It remains assigned to the next separate R3.3
+backend correction; the comparator and frozen expectations remain unchanged,
+and R3.3 remains open until a repeated pair is equivalent.
+
 The design uses the existing Adapter boundary for version-specific evidence
 collection and a coordinator for paired-run state and publication. These
 patterns have concrete value because Qt 5 and Qt 6 expose different APIs while

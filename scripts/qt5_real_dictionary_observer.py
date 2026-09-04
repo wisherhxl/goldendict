@@ -160,6 +160,9 @@ def observe(
     scenario: str,
     output: Path,
     timeout_seconds: int,
+    *,
+    mdict_catalog: Path | None = None,
+    mdict_catalog_sha256: str | None = None,
 ) -> Path:
     if _required_environment("GOLDENDICT_ACCEPTANCE_VERSION") != "qt5":
         raise Qt5ObserverError("Qt 5 observer requires a Qt 5 paired run")
@@ -214,6 +217,21 @@ def observe(
         if plugin_path is not None
         else None
     )
+    resolved_mdict_catalog = (
+        _resolve(mdict_catalog, "MDict acceptance catalog")
+        if mdict_catalog is not None
+        else None
+    )
+    if (resolved_mdict_catalog is None) != (mdict_catalog_sha256 is None):
+        raise Qt5ObserverError("MDict catalog path and hash must be supplied together")
+    if mdict_catalog_sha256 is not None and (
+        len(mdict_catalog_sha256) != HASH_LENGTH
+        or any(
+            character not in "0123456789abcdef" for character in mdict_catalog_sha256
+        )
+        or _sha256(resolved_mdict_catalog) != mdict_catalog_sha256
+    ):
+        raise Qt5ObserverError("MDict catalog hash is invalid")
     if timeout_seconds < 1 or timeout_seconds > 24 * 60 * 60:
         raise Qt5ObserverError("Observer timeout is outside the supported bound")
 
@@ -247,6 +265,13 @@ def observe(
                 "XDG_DATA_HOME": str(profile / "xdg-data"),
             }
         )
+        if resolved_mdict_catalog is not None:
+            environment["GOLDENDICT_ACCEPTANCE_MDICT_CATALOG"] = str(
+                resolved_mdict_catalog
+            )
+            environment["GOLDENDICT_ACCEPTANCE_MDICT_CATALOG_SHA256"] = str(
+                mdict_catalog_sha256
+            )
         path_entries = [legacy_executable.parent, *resolved_runtime_bins]
         environment["PATH"] = os.pathsep.join(
             [*(str(path) for path in path_entries), os.environ.get("PATH", "")]
@@ -297,6 +322,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--conditions-sha256", required=True)
     parser.add_argument("--scenario", choices=SUPPORTED_SCENARIOS, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--mdict-catalog", type=Path)
+    parser.add_argument("--mdict-catalog-sha256")
     return parser
 
 
@@ -315,6 +342,8 @@ def main(arguments: Iterable[str] | None = None) -> int:
             options.scenario,
             options.output,
             options.timeout_seconds,
+            mdict_catalog=options.mdict_catalog,
+            mdict_catalog_sha256=options.mdict_catalog_sha256,
         )
     except Qt5ObserverError as error:
         print(f"error: {error}", file=os.sys.stderr)
