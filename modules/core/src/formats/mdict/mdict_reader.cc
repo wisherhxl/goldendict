@@ -238,9 +238,9 @@ Header ReadHeader(Cursor* cursor, const std::filesystem::path& path) {
                            : static_cast<unsigned>(
                                  std::strtoul(encrypted.c_str(), nullptr, 10));
     header.right_to_left = Attribute(attributes, "Left2Right") != "Yes";
-    if (header.version < 2.0 || header.version >= 3.0)
+    if (header.version < 1.0 || header.version >= 3.0)
         Throw(ErrorCode::kUnsupported, path,
-              "Only MDict 2.x files are supported by this slice");
+              "Only MDict 1.x and 2.x files are supported by this slice");
     if (header.encrypted != 0U)
         Throw(ErrorCode::kUnsupported, path,
               "Encrypted MDict files are not supported by this slice");
@@ -289,18 +289,20 @@ std::string DecompressBlock(std::string_view block, std::size_t expected,
 std::string DecodeSizedWord(Cursor* cursor, std::size_t characters,
                             std::string_view encoding,
                             const std::filesystem::path& path,
-                            std::string_view field) {
+                            std::string_view field, bool terminated) {
     const bool utf16 = encoding == "UTF-16LE" || encoding == "UTF-16BE";
     const std::size_t unit = utf16 ? 2U : 1U;
     if (characters > kMaxRecord / unit)
         Throw(ErrorCode::kInvalidDictionary, path,
               "MDict key text exceeds size limit");
     const auto raw = cursor->Read(characters * unit, field);
-    const auto terminator = cursor->Read(unit, "key terminator");
-    if (std::any_of(terminator.begin(), terminator.end(),
-                    [](char byte) { return byte != '\0'; }))
-        Throw(ErrorCode::kInvalidDictionary, path,
-              "Invalid MDict key terminator");
+    if (terminated) {
+        const auto terminator = cursor->Read(unit, "key terminator");
+        if (std::any_of(terminator.begin(), terminator.end(),
+                        [](char byte) { return byte != '\0'; }))
+            Throw(ErrorCode::kInvalidDictionary, path,
+                  "Invalid MDict key terminator");
+    }
     return Decode(raw, encoding, path, field);
 }
 
@@ -309,7 +311,8 @@ std::vector<BlockInfo> ParseKeyInfo(std::string_view data,
                                     std::size_t block_count,
                                     std::size_t entry_count,
                                     std::string_view encoding,
-                                    const std::filesystem::path& path) {
+                                    const std::filesystem::path& path,
+                                    bool version_two) {
     Cursor cursor(data, path);
     std::vector<BlockInfo> blocks;
     std::size_t entries = 0;
@@ -319,10 +322,13 @@ std::vector<BlockInfo> ParseKeyInfo(std::string_view data,
             Throw(ErrorCode::kInvalidDictionary, path,
                   "MDict key count exceeds size limit");
         entries += static_cast<std::size_t>(count);
-        DecodeSizedWord(&cursor, cursor.Big(2U, "first key length"), encoding,
-                        path, "first key");
-        DecodeSizedWord(&cursor, cursor.Big(2U, "last key length"), encoding,
-                        path, "last key");
+        const std::size_t length_width = version_two ? 2U : 1U;
+        DecodeSizedWord(&cursor,
+                        cursor.Big(length_width, "first key length"), encoding,
+                        path, "first key", version_two);
+        DecodeSizedWord(&cursor,
+                        cursor.Big(length_width, "last key length"), encoding,
+                        path, "last key", version_two);
         const auto compressed = cursor.Big(number_width, "key block size");
         const auto decompressed =
             cursor.Big(number_width, "decoded key block size");
@@ -441,28 +447,41 @@ ParsedContainer ParseContainer(const std::filesystem::path& path,
     Cursor cursor(file, path);
     ParsedContainer parsed;
     parsed.header = ReadHeader(&cursor, path);
-    constexpr std::size_t number_width = 8U;
-    const auto key_header = cursor.Read(number_width * 5U, "key header");
+    const bool version_two = parsed.header.version >= 2.0;
+    const std::size_t number_width = version_two ? 8U : 4U;
+    const auto key_header =
+        cursor.Read(number_width * (version_two ? 5U : 4U), "key header");
     Cursor key_cursor(key_header, path);
     const auto block_count = key_cursor.Big(number_width, "key block count");
     const auto entry_count = key_cursor.Big(number_width, "entry count");
     const auto decoded_info_size =
-        key_cursor.Big(number_width, "decoded key info size");
+        version_two ? key_cursor.Big(number_width, "decoded key info size")
+                    : 0U;
     const auto info_size = key_cursor.Big(number_width, "key info size");
     const auto key_blocks_size =
         key_cursor.Big(number_width, "key blocks size");
-    const auto key_header_checksum = cursor.Read(4U, "key header checksum");
-    if (!ValidAdler(key_header, Big32(key_header_checksum)) ||
-        block_count == 0U || block_count > kMaxBlocks || entry_count == 0U ||
-        entry_count > kMaxEntries || decoded_info_size > kMaxDecoded ||
+    if (version_two &&
+        !ValidAdler(key_header,
+                    Big32(cursor.Read(4U, "key header checksum"))))
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "MDict key header checksum does not match");
+    if (block_count == 0U || block_count > kMaxBlocks || entry_count == 0U ||
+        entry_count > kMaxEntries ||
+        (version_two && decoded_info_size > kMaxDecoded) ||
         info_size > kMaxFile || key_blocks_size > kMaxFile)
         Throw(ErrorCode::kInvalidDictionary, path, "Invalid MDict key header");
-    const std::string info = DecompressBlock(
-        cursor.Read(static_cast<std::size_t>(info_size), "key block info"),
-        static_cast<std::size_t>(decoded_info_size), path, "key info");
+    const auto raw_info =
+        cursor.Read(static_cast<std::size_t>(info_size), "key block info");
+    const std::string info =
+        version_two
+            ? DecompressBlock(raw_info,
+                              static_cast<std::size_t>(decoded_info_size), path,
+                              "key info")
+            : std::string(raw_info);
     const auto blocks = ParseKeyInfo(
         info, number_width, static_cast<std::size_t>(block_count),
-        static_cast<std::size_t>(entry_count), parsed.header.encoding, path);
+        static_cast<std::size_t>(entry_count), parsed.header.encoding, path,
+        version_two);
     std::vector<KeyEntry> keys;
     std::size_t compressed_total = 0;
     for (const auto& block : blocks) {

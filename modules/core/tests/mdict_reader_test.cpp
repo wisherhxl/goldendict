@@ -16,6 +16,7 @@ class MdictReaderTest : public QObject {
     Q_OBJECT
    private slots:
     void ReadsStylesRedirectsAndMddResources();
+    void ReadsVersionOneContainers();
     void DecodesUtf16KeysAndRecords();
     void ExposesImmutableTerminalOwnershipView();
     void CheckpointsAndCancelsOwnershipTraversal();
@@ -41,6 +42,22 @@ void MdictReaderTest::ReadsStylesRedirectsAndMddResources() {
     QVERIFY(reader.Resource("pixel.png") != nullptr);
     QCOMPARE(*reader.Resource("/pixel.png"), "mdict-png");
     QVERIFY(reader.Resource("../pixel.png") == nullptr);
+}
+
+void MdictReaderTest::ReadsVersionOneContainers() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto path = test::WriteMdictContainer(
+        root / "version-one.mdx", "Version One Fixture",
+        {{"alias", "@@@LINK=example"}, {"example", "legacy article"}}, false,
+        false, test::MdictContainerVersion::kVersion1_2);
+
+    const Reader reader = Reader::Open({path, {}});
+
+    QCOMPARE(reader.metadata().name, "Version One Fixture");
+    QCOMPARE(reader.headword_count(), std::size_t{2});
+    QCOMPARE(reader.LookupExact("alias").front().data, "legacy article");
 }
 
 void MdictReaderTest::ExposesImmutableTerminalOwnershipView() {

@@ -175,6 +175,15 @@ gate is the real-corpus observer: it must discover `Britannica Encyclopaedia
 2010` with 73,152 articles and must not emit the former
 `Decompressed DSL exceeds the supported size limit` diagnostic.
 
+The MDict reader accepts both 1.x and 2.x container layouts.
+`mdict_reader_test::ReadsVersionOneContainers` generates a 1.2 MDX with
+four-byte numeric fields, uncompressed key-block metadata, one-byte key
+lengths, and unterminated key-info boundary words, then verifies metadata,
+headword count, and redirect resolution. The real-corpus smoke gate must no
+longer report `Only MDict 2.x files are supported by this slice` for the Oxford
+MDX. It currently advances to the separately tracked encrypted-MDD gap; this
+test does not claim encrypted resource or large split-resource support.
+
 Run Qt 6 from a configured Release build through the Conan launcher so the
 child inherits the complete DLL and Qt plugin environment:
 

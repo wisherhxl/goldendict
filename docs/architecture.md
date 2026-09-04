@@ -409,14 +409,15 @@ behind the typed resource API. Definitions enter the common sanitizer as
 untrusted HTML. Advanced transcription/control records, historical Hebrew
 repairs, and full-text indexes remain later parity work.
 
-MDict consumes 2.x `.mdx` dictionaries and their `.mdd`, `.1.mdd`, and later
-resource volumes. The private adapter validates UTF-16 header XML and checksums,
-bounds key/record tables and all decompression, strictly decodes declared text,
-applies embedded stylesheet markers, resolves bounded article redirects, and
-serves normalized MDD resource names through the typed resource API. Plain and
-zlib blocks are supported in this slice; encrypted dictionaries, LZO blocks,
-older 1.x containers, local-file resource fallback, and full-text indexes
-remain explicit parity work.
+MDict consumes 1.x and 2.x `.mdx` dictionaries and their `.mdd`, `.1.mdd`, and
+later resource volumes. The private adapter validates UTF-16 header XML and the
+version-specific checksums, integer widths, key-info representation, and key
+terminators. It bounds key/record tables and all decompression, strictly decodes
+declared text, applies embedded stylesheet markers, resolves bounded article
+redirects, and serves normalized MDD resource names through the typed resource
+API. Plain and zlib blocks are supported in this slice; encrypted dictionaries,
+LZO blocks, large split-resource streaming, local-file resource fallback, and
+later parity work remain explicit.
 
 Aard consumes `.aar` archive volumes through a private bounded adapter. It
 validates the fixed header and 32/64-bit index layouts, decompresses metadata

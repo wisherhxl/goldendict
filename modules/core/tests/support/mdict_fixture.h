@@ -18,6 +18,8 @@
 
 namespace goldendict::core::test {
 
+enum class MdictContainerVersion { kVersion1_2, kVersion2_0 };
+
 inline void AppendMdictBig16(std::uint16_t value, std::string* output) {
     output->push_back(static_cast<char>((value >> 8U) & 0xffU));
     output->push_back(static_cast<char>(value & 0xffU));
@@ -42,6 +44,15 @@ inline void AppendMdictBig64(std::uint64_t value, std::string* output) {
         output->push_back(static_cast<char>((value >> shift) & 0xffU));
         if (shift == 0U)
             break;
+    }
+}
+
+inline void AppendMdictNumber(std::uint64_t value, std::size_t width,
+                              std::string* output) {
+    if (width == 4U) {
+        AppendMdictBig32(static_cast<std::uint32_t>(value), output);
+    } else {
+        AppendMdictBig64(value, output);
     }
 }
 
@@ -90,12 +101,16 @@ inline std::string MdictZlibBlock(std::string_view data) {
 inline std::filesystem::path WriteMdictContainer(
     const std::filesystem::path& path, std::string_view title,
     const std::vector<std::pair<std::string, std::string>>& entries,
-    bool encrypted = false, bool utf16 = false) {
+    bool encrypted = false, bool utf16 = false,
+    MdictContainerVersion version = MdictContainerVersion::kVersion2_0) {
     if (entries.empty())
         throw std::runtime_error("MDict fixture needs entries");
     std::filesystem::create_directories(path.parent_path());
+    const bool version_two = version == MdictContainerVersion::kVersion2_0;
+    const std::size_t number_width = version_two ? 8U : 4U;
     const std::string header_text =
-        "<Dictionary GeneratedByEngineVersion=\"2.0\" Encoding=\"" +
+        "<Dictionary GeneratedByEngineVersion=\"" +
+        std::string(version_two ? "2.0" : "1.2") + "\" Encoding=\"" +
         std::string(utf16 ? "UTF-16" : "UTF-8") +
         "\" "
         "Encrypted=\"" +
@@ -108,50 +123,64 @@ inline std::filesystem::path WriteMdictContainer(
     std::string records;
     std::string keys;
     for (const auto& entry : entries) {
-        AppendMdictBig64(records.size(), &keys);
+        AppendMdictNumber(records.size(), number_width, &keys);
         keys += utf16 ? MdictUtf16LeText(entry.first) : entry.first;
         keys.append(utf16 ? 2U : 1U, '\0');
         records += utf16 ? MdictUtf16LeText(entry.second) : entry.second;
     }
     const std::string key_block = MdictZlibBlock(keys);
     std::string key_info;
-    AppendMdictBig64(entries.size(), &key_info);
-    AppendMdictBig16(static_cast<std::uint16_t>(entries.front().first.size()),
-                     &key_info);
+    AppendMdictNumber(entries.size(), number_width, &key_info);
+    if (version_two) {
+        AppendMdictBig16(
+            static_cast<std::uint16_t>(entries.front().first.size()),
+            &key_info);
+    } else {
+        key_info.push_back(static_cast<char>(entries.front().first.size()));
+    }
     key_info +=
         utf16 ? MdictUtf16LeText(entries.front().first) : entries.front().first;
-    key_info.append(utf16 ? 2U : 1U, '\0');
-    AppendMdictBig16(static_cast<std::uint16_t>(entries.back().first.size()),
-                     &key_info);
+    if (version_two)
+        key_info.append(utf16 ? 2U : 1U, '\0');
+    if (version_two) {
+        AppendMdictBig16(
+            static_cast<std::uint16_t>(entries.back().first.size()), &key_info);
+    } else {
+        key_info.push_back(static_cast<char>(entries.back().first.size()));
+    }
     key_info +=
         utf16 ? MdictUtf16LeText(entries.back().first) : entries.back().first;
-    key_info.append(utf16 ? 2U : 1U, '\0');
-    AppendMdictBig64(key_block.size(), &key_info);
-    AppendMdictBig64(keys.size(), &key_info);
-    const std::string compressed_key_info = MdictZlibBlock(key_info);
+    if (version_two)
+        key_info.append(utf16 ? 2U : 1U, '\0');
+    AppendMdictNumber(key_block.size(), number_width, &key_info);
+    AppendMdictNumber(keys.size(), number_width, &key_info);
+    const std::string stored_key_info =
+        version_two ? MdictZlibBlock(key_info) : key_info;
 
     std::string file;
     AppendMdictBig32(static_cast<std::uint32_t>(header.size()), &file);
     file += header;
     AppendMdictLittle32(MdictAdler(header), &file);
     std::string key_header;
-    AppendMdictBig64(1U, &key_header);
-    AppendMdictBig64(entries.size(), &key_header);
-    AppendMdictBig64(key_info.size(), &key_header);
-    AppendMdictBig64(compressed_key_info.size(), &key_header);
-    AppendMdictBig64(key_block.size(), &key_header);
+    AppendMdictNumber(1U, number_width, &key_header);
+    AppendMdictNumber(entries.size(), number_width, &key_header);
+    if (version_two)
+        AppendMdictNumber(key_info.size(), number_width, &key_header);
+    AppendMdictNumber(stored_key_info.size(), number_width, &key_header);
+    AppendMdictNumber(key_block.size(), number_width, &key_header);
     file += key_header;
-    AppendMdictBig32(MdictAdler(key_header), &file);
-    file += compressed_key_info;
+    if (version_two)
+        AppendMdictBig32(MdictAdler(key_header), &file);
+    file += stored_key_info;
     file += key_block;
 
     const std::string record_block = MdictZlibBlock(records);
-    AppendMdictBig64(1U, &file);
-    AppendMdictBig64(entries.size(), &file);
-    AppendMdictBig64(16U, &file);
-    AppendMdictBig64(record_block.size(), &file);
-    AppendMdictBig64(record_block.size(), &file);
-    AppendMdictBig64(records.size(), &file);
+    AppendMdictNumber(1U, number_width, &file);
+    AppendMdictNumber(entries.size(), number_width, &file);
+    AppendMdictNumber(number_width * 2U, number_width, &file);
+    AppendMdictNumber(record_block.size(), number_width, &file);
+    AppendMdictNumber(record_block.size(), number_width, &file);
+    AppendMdictNumber(records.size(), number_width, &file);
     file += record_block;
 
     std::ofstream output(path, std::ios::binary);
