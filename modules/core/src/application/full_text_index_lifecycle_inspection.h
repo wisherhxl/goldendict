@@ -20,6 +20,10 @@ std::optional<dictionary::FullTextIndexLifecycleSnapshot>
 FullTextIndexLifecycleSnapshot(const DictionaryService& service,
                                const std::string& dictionary_id);
 
+GOLDENDICT_EXPORTS
+bool CancelFullTextIndexLifecycleWork(DictionaryService& service,
+                                      const std::string& dictionary_id);
+
 }  // namespace application
 }  // namespace goldendict::core
 

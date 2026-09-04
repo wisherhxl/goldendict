@@ -35,8 +35,9 @@ if os.environ.get("FAKE_OBSERVER_FAIL"):
     raise SystemExit(7)
 dictionary_id = "dsl-0123456789abcdef"
 scenario = option("--scenario")
-if os.environ.get("FAKE_CREATE_INDEX"):
-    index_path = Path(option("--index-root")) / f"{dictionary_id}.gdidx"
+if os.environ.get("FAKE_CREATE_INDEX") and scenario != "cancellation":
+    suffix = ".gdfts" if scenario == "cancellation-recovery" else ".gdidx"
+    index_path = Path(option("--index-root")) / f"{dictionary_id}{suffix}"
     if os.environ.get("FAKE_REWRITE_SAME"):
         index_path.write_bytes(index_path.read_bytes())
         metadata = index_path.stat()
@@ -51,6 +52,8 @@ phase = {
     "warm-restart": "restart",
     "explicit-rescan": "rescan",
     "changed-source": "source-change",
+    "cancellation": "full-text-indexing",
+    "cancellation-recovery": "full-text-indexing",
     "unavailable-companion": "companion-unavailable",
     "companion-recovery": "companion-recovery",
 }[scenario]
@@ -75,10 +78,20 @@ raw = {
         "dictionary_id": "",
         "message": source + ": companion unavailable",
     }],
-    "outcome": "completed",
+    "outcome": "cancelled" if scenario == "cancellation" else "completed",
     "phases": [
-        {"dictionary_id": "", "name": phase, "sequence": 0, "status": "started"},
-        {"dictionary_id": "", "name": phase, "sequence": 1, "status": "completed"},
+        {
+            "dictionary_id": dictionary_id if scenario.startswith("cancellation") else "",
+            "name": phase,
+            "sequence": 0,
+            "status": "started",
+        },
+        {
+            "dictionary_id": dictionary_id if scenario.startswith("cancellation") else "",
+            "name": phase,
+            "sequence": 1,
+            "status": "cancelled" if scenario == "cancellation" else "completed",
+        },
     ],
     "scenario": scenario,
     "schema": "goldendict-real-dictionary-raw-observation-v1",
@@ -299,7 +312,7 @@ class AcceptanceObserverTest(unittest.TestCase):
                     [str(paths["fake"])],
                     paths["corpus"],
                     paths["manifest"],
-                    "cancellation",
+                    "unknown-scenario",
                 )
             run.assert_not_called()
 
@@ -395,6 +408,43 @@ class AcceptanceObserverTest(unittest.TestCase):
                 )
             observation = result.read_observation(output)
             self.assertEqual("created", observation["indexes"][0]["disposition"])
+
+    def test_records_bounded_cancellation_and_recovery_progress(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            environment, paths = self._fixture(Path(temporary_directory))
+            with mock.patch.dict(os.environ, environment, clear=True):
+                cancelled_path = observer.observe(
+                    "qt6",
+                    Path(sys.executable),
+                    [str(paths["fake"])],
+                    paths["corpus"],
+                    paths["manifest"],
+                    "cancellation",
+                )
+            cancelled = result.read_observation(cancelled_path)
+            self.assertEqual("cancelled", cancelled["outcome"])
+            self.assertEqual([], cancelled["indexes"])
+            self.assertEqual(
+                ["started", "cancelled"],
+                [item["status"] for item in cancelled["phases"]],
+            )
+            self.assertEqual("dsl:sample.dsl", cancelled["phases"][0]["dictionary_key"])
+
+            paths["result"].unlink()
+            paths["ack"].unlink()
+            with mock.patch.dict(os.environ, environment, clear=True):
+                recovered_path = observer.observe(
+                    "qt6",
+                    Path(sys.executable),
+                    [str(paths["fake"])],
+                    paths["corpus"],
+                    paths["manifest"],
+                    "cancellation-recovery",
+                )
+            recovered = result.read_observation(recovered_path)
+            self.assertEqual("completed", recovered["outcome"])
+            self.assertEqual("created", recovered["indexes"][0]["disposition"])
+            self.assertEqual("full-text", recovered["indexes"][0]["role"])
 
     def test_rejects_nonempty_index_for_clean_discovery_before_launch(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

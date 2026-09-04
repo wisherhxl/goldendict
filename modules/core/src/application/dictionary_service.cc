@@ -2081,6 +2081,13 @@ class ServiceState final {
         return full_text_index_coordinator_.Snapshot(dictionary_id);
     }
 
+    bool CancelFullTextIndexWork(const std::string& dictionary_id) {
+        const auto snapshot =
+            full_text_index_coordinator_.Snapshot(dictionary_id);
+        return snapshot.has_value() &&
+               full_text_index_coordinator_.Cancel({snapshot->identity()});
+    }
+
     bool SubmitFullTextIndexWork() {
         return full_text_index_executor_.has_value() &&
                full_text_index_executor_->Submit(
@@ -2190,14 +2197,13 @@ class LookupRequestImpl final : public LookupRequest {
 
 class DictionaryServiceImpl final : public DictionaryService {
    public:
-    DictionaryServiceImpl(
-        const CoreConfiguration& configuration,
-        std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources)
-        : state_(std::make_shared<ServiceState>(configuration,
-                                                std::move(runtime_sources))) {}
-
     explicit DictionaryServiceImpl(std::shared_ptr<ServiceState> state)
         : state_(std::move(state)) {}
+
+    void OwnActivation(
+        application::ServiceStateActivationHandle activation) noexcept {
+        owned_activation_ = std::move(activation);
+    }
 
     std::vector<DictionaryIdentity> GetCatalog() const override {
         return state_->GetCatalog();
@@ -2248,12 +2254,17 @@ class DictionaryServiceImpl final : public DictionaryService {
         return state_->FullTextIndexLifecycleSnapshot(dictionary_id);
     }
 
+    bool CancelFullTextIndexWork(const std::string& dictionary_id) {
+        return state_->CancelFullTextIndexWork(dictionary_id);
+    }
+
     bool IsFullTextIndexExecutorStopped() const noexcept {
         return state_->IsFullTextIndexExecutorStopped();
     }
 
    private:
-    std::shared_ptr<const ServiceState> state_;
+    std::shared_ptr<ServiceState> state_;
+    application::ServiceStateActivationHandle owned_activation_;
 };
 
 }  // namespace
@@ -2353,6 +2364,13 @@ FullTextIndexLifecycleSnapshot(const DictionaryService& service,
     return implementation->FullTextIndexLifecycleSnapshot(dictionary_id);
 }
 
+bool CancelFullTextIndexLifecycleWork(DictionaryService& service,
+                                      const std::string& dictionary_id) {
+    auto* implementation = dynamic_cast<DictionaryServiceImpl*>(&service);
+    return implementation != nullptr &&
+           implementation->CancelFullTextIndexWork(dictionary_id);
+}
+
 ResolvedExactArticleTarget ResolveExactArticleTarget(
     const DictionaryService& service, const ExactArticleTarget& target) {
     const auto* implementation =
@@ -2392,8 +2410,19 @@ std::unique_ptr<DictionaryService> CreateDictionaryService(
 std::unique_ptr<DictionaryService> CreateDictionaryService(
     const CoreConfiguration& configuration,
     std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources) {
-    return std::make_unique<DictionaryServiceImpl>(configuration,
-                                                   std::move(runtime_sources));
+    auto candidate = application::CreateDictionaryServiceActivationCandidate(
+        configuration, std::move(runtime_sources));
+    if (!candidate.service || !candidate.activation.SubmitOnceWithDefaults()) {
+        throw std::runtime_error(
+            "Cannot activate dictionary full-text index lifecycle");
+    }
+    auto* implementation =
+        dynamic_cast<DictionaryServiceImpl*>(candidate.service.get());
+    if (implementation == nullptr) {
+        throw std::runtime_error("Cannot own dictionary service activation");
+    }
+    implementation->OwnActivation(std::move(candidate.activation));
+    return std::move(candidate.service);
 }
 
 }  // namespace goldendict::core

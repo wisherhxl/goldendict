@@ -198,47 +198,18 @@ Dictionary Dictionary::Open(
             (error ? dictionary_path.lexically_normal() : canonical).string();
         if (full_text_index_path.has_value()) {
             try {
-                std::vector<dictionary::FullTextDocument> documents;
-                documents.reserve(dictionary.reader_->article_count());
-                dictionary.reader_->VisitFullTextArticles(
-                    [&](const FullTextArticle& source) {
-                        dictionary::Article article{
-                            std::string(source.headword), "text/html",
-                            std::string(source.data)};
-                        auto assembled = article::Assemble(
-                            dictionary.identity_, {std::move(article)});
-                        dictionary::FullTextDocument document;
-                        document.dictionary.id = dictionary.identity_.id;
-                        document.dictionary.name = dictionary.identity_.name;
-                        document.dictionary.source =
-                            dictionary.identity_.source;
-                        document.dictionary.description =
-                            dictionary.identity_.description;
-                        document.dictionary.article_count =
-                            dictionary.identity_.article_count;
-                        document.dictionary.headword_count =
-                            dictionary.identity_.headword_count;
-                        document.dictionary.source_language =
-                            dictionary.identity_.source_language;
-                        document.dictionary.target_language =
-                            dictionary.identity_.target_language;
-                        document.dictionary.supports_headword_enumeration =
-                            dictionary.identity_.supports_headword_enumeration;
-                        document.headword = source.headword;
-                        document.document_id =
-                            "aard-index:" +
-                            std::to_string(source.record_ordinal) + ":" +
-                            std::to_string(source.article_ordinal);
-                        document.plain_text = std::move(assembled.plain_text);
-                        documents.push_back(std::move(document));
-                    });
-                auto snapshot =
-                    std::make_shared<const dictionary::FullTextIndex>(
-                        dictionary::FullTextIndex::OpenOrBuild(
-                            *full_text_index_path,
-                            dictionary.reader_->source_snapshot(),
-                            std::move(documents)));
-                if (dictionary.full_text_snapshot_holder_->Publish(snapshot)) {
+                const auto current = dictionary::FullTextIndex::OpenCurrent(
+                    *full_text_index_path,
+                    dictionary.reader_->source_snapshot());
+                if (current.has_value()) {
+                    auto snapshot =
+                        std::make_shared<const dictionary::FullTextIndex>(
+                            std::move(*current));
+                    if (!dictionary.full_text_snapshot_holder_->Publish(
+                            snapshot)) {
+                        throw dictionary::GeneratedIndexError(
+                            "Cannot publish current AARD full-text index");
+                    }
                     dictionary.startup_full_text_snapshot_ =
                         std::move(snapshot);
                     dictionary.startup_full_text_source_revision_ =

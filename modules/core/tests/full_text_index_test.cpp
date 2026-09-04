@@ -360,6 +360,7 @@ class FullTextIndexTest : public QObject {
     Q_OBJECT
    private slots:
     void Lifecycle();
+    void OpensOnlyCurrentArtifacts();
     void PreparesWithoutPersisting();
     void LifecycleContract();
     void RegistrationMetadataAndEligibility();
@@ -1553,7 +1554,7 @@ void FullTextIndexTest::ShutsDownSerialWorkExecutor() {
     QCOMPARE(coordinator.Snapshot("active")->state(),
              FullTextIndexLifecycleState::kCancelled);
     QCOMPARE(coordinator.Snapshot("pending")->state(),
-             FullTextIndexLifecycleState::kWorkRequested);
+             FullTextIndexLifecycleState::kCancelled);
     QCOMPARE(pending->requests().size(), 0U);
     QVERIFY(!executor.Submit(bounds));
     executor.Shutdown();
@@ -2217,6 +2218,28 @@ void FullTextIndexTest::Lifecycle() {
     }
     QCOMPARE(FullTextIndex::OpenOrBuild(path, sources, documents).state(),
              FullTextIndexState::kRebuiltCorrupt);
+}
+
+void FullTextIndexTest::OpensOnlyCurrentArtifacts() {
+    TemporaryDirectory directory;
+    const auto path = directory.path() / "reference.gdfts";
+    const auto source = directory.path() / "source.txt";
+    std::ofstream(source) << "one";
+    auto sources = CaptureSourceSnapshot({source});
+    QVERIFY(!FullTextIndex::OpenCurrent(path, sources).has_value());
+
+    const std::vector documents{Document("a", "Alpha", "quick brown fox")};
+    QCOMPARE(FullTextIndex::OpenOrBuild(path, sources, documents).state(),
+             FullTextIndexState::kCreated);
+    const auto current = FullTextIndex::OpenCurrent(path, sources);
+    QVERIFY(current.has_value());
+    QCOMPARE(current->state(), FullTextIndexState::kReused);
+
+    std::ofstream(source, std::ios::app) << "two";
+    sources = CaptureSourceSnapshot({source});
+    QVERIFY(!FullTextIndex::OpenCurrent(path, sources).has_value());
+    std::ofstream(path, std::ios::binary | std::ios::trunc) << "corrupt";
+    QVERIFY(!FullTextIndex::OpenCurrent(path, sources).has_value());
 }
 
 void FullTextIndexTest::PreparesWithoutPersisting() {

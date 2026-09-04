@@ -5,6 +5,7 @@
 #include <QCryptographicHash>
 
 #include <array>
+#include <chrono>
 #include <condition_variable>
 #include <filesystem>
 #include <fstream>
@@ -155,6 +156,21 @@ class SlowToken final : public CancellationToken {
         return false;
     }
 };
+
+bool WaitForFullTextLifecycleState(
+    const DictionaryService& service, const std::string& dictionary_id,
+    dictionary::FullTextIndexLifecycleState expected) {
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (std::chrono::steady_clock::now() < deadline) {
+        const auto snapshot =
+            application::FullTextIndexLifecycleSnapshot(service, dictionary_id);
+        if (snapshot.has_value() && snapshot->state() == expected)
+            return true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    return false;
+}
 
 class InspectionRuntimeSource final : public RuntimeDictionarySource {
    public:
@@ -331,6 +347,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesAard();
     void AppliesPersistedFullTextPolicyAfterAardDiscovery();
     void ComposesIdleExecutorAfterAardReconciliation();
+    void CancelsPreparedAardFullTextLifecycle();
     void ActivatesAndReplacesPrivateDesktopFacadeCompositions();
     void ReloadsUnchangedDictionarySourcesThroughActivationOwner();
     void PreservesInstalledCandidateWhenAnotherBuildFails();
@@ -4787,9 +4804,10 @@ void ApplicationServiceTest::
     configuration.index_directory = (root / "indexes").string();
     std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources;
     runtime_sources.push_back(std::make_unique<InspectionRuntimeSource>());
-    auto facade = CreateDesktopFacade(configuration);
-    auto service =
-        CreateDictionaryService(configuration, std::move(runtime_sources));
+    auto service_candidate =
+        application::CreateDictionaryServiceActivationCandidate(
+            configuration, std::move(runtime_sources));
+    auto service = std::move(service_candidate.service);
     const auto catalog = service->GetCatalog();
     QCOMPARE(catalog.size(), 13U);
     QCOMPARE(std::count_if(catalog.begin(), catalog.end(),
@@ -4802,6 +4820,14 @@ void ApplicationServiceTest::
                      [](const auto& item) { return item.id == "inspection"; });
     QVERIFY(unsupported_catalog != catalog.end());
     QVERIFY(!unsupported_catalog->supports_full_text_search);
+    const auto aard = std::find_if(
+        catalog.begin(), catalog.end(),
+        [](const auto& item) { return item.id.rfind("aard-", 0U) == 0U; });
+    QVERIFY(aard != catalog.end());
+    QVERIFY(service_candidate.activation.SubmitOnceWithDefaults());
+    QVERIFY(WaitForFullTextLifecycleState(
+        *service, aard->id, dictionary::FullTextIndexLifecycleState::kCurrent));
+    auto facade = CreateDesktopFacade(configuration);
 
     FullTextQuery query;
     query.text = "shared";
@@ -5826,7 +5852,9 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesAard() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     const auto root = TemporaryPath(directory);
-    test::WriteAardFixture(root);
+    test::WriteAardFixture(root, "fixture.aar", false, false, false,
+                           "[\"<b>visible searchable definition</b>"
+                           "<a href=\\\"w:alias\\\">alias</a>\"]");
     CoreConfiguration configuration;
     configuration.dictionary_paths = {root.string()};
     configuration.index_directory = (root / "indexes").string();
@@ -5836,6 +5864,12 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesAard() {
 
     const auto catalog = service->GetCatalog();
     const auto response = service->Lookup(query);
+    QVERIFY(WaitForFullTextLifecycleState(
+        *service, catalog.front().id,
+        dictionary::FullTextIndexLifecycleState::kCurrent));
+    FullTextQuery full_text_query;
+    full_text_query.text = "searchable";
+    const auto full_text_response = service->SearchFullText(full_text_query);
 
     QCOMPARE(catalog.size(), std::size_t{1});
     QVERIFY(catalog.front().id.rfind("aard-", 0) == 0U);
@@ -5843,11 +5877,13 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesAard() {
     QCOMPARE(catalog.front().description, "fixture");
     QVERIFY(response.errors.empty());
     QCOMPARE(response.entries.size(), std::size_t{1});
+    QVERIFY(full_text_response.errors.empty());
+    QCOMPARE(full_text_response.results.size(), std::size_t{1});
     const auto& entry = response.entries.front();
     QCOMPARE(entry.language.source_language, "en");
     QCOMPARE(entry.language.target_language, "de");
-    QVERIFY(entry.article.sanitized_html->find("<b>definition</b>") !=
-            std::string::npos);
+    QVERIFY(entry.article.sanitized_html->find(
+                "visible searchable definition") != std::string::npos);
     QVERIFY(entry.article.sanitized_html->find("goldendict://lookup/alias") !=
             std::string::npos);
     const auto index_path =
@@ -5855,9 +5891,28 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesAard() {
         (catalog.front().id + ".gdfts");
     const auto canonical = ReadFile(index_path);
     QVERIFY(!canonical.empty());
+    service.reset();
+
+    test::WriteAardFixture(root, "fixture.aar", true, true);
     service = CreateDictionaryService(configuration);
-    QCOMPARE(ReadFile(index_path), canonical);
+    QVERIFY(WaitForFullTextLifecycleState(
+        *service, catalog.front().id,
+        dictionary::FullTextIndexLifecycleState::kCurrent));
+    const auto rebuilt_stale = ReadFile(index_path);
+    QVERIFY(!rebuilt_stale.empty());
+    QVERIFY(rebuilt_stale != canonical);
     QCOMPARE(service->GetCatalog().front().article_count, std::size_t{2});
+    service.reset();
+
+    std::ofstream(index_path, std::ios::binary | std::ios::trunc) << "corrupt";
+    auto facade = CreateDesktopFacade(configuration);
+    auto& facade_service = facade->GetDictionaryService();
+    QVERIFY(WaitForFullTextLifecycleState(
+        facade_service, catalog.front().id,
+        dictionary::FullTextIndexLifecycleState::kCurrent));
+    const auto rebuilt_corrupt = ReadFile(index_path);
+    QVERIFY(!rebuilt_corrupt.empty());
+    QVERIFY(rebuilt_corrupt != "corrupt");
 }
 
 void ApplicationServiceTest::
@@ -5875,6 +5930,9 @@ void ApplicationServiceTest::
     configuration.index_directory = (root / "indexes").string();
     auto service = CreateDictionaryService(configuration);
     const auto dictionary_id = service->GetCatalog().front().id;
+    QVERIFY(WaitForFullTextLifecycleState(
+        *service, dictionary_id,
+        dictionary::FullTextIndexLifecycleState::kCurrent));
     const auto current =
         application::FullTextIndexLifecycleSnapshot(*service, dictionary_id);
     QVERIFY(current.has_value());
@@ -5885,6 +5943,7 @@ void ApplicationServiceTest::
                           (dictionary_id + ".gdfts");
     const auto canonical = ReadFile(artifact);
 
+    service.reset();
     service = CreateDictionaryService(configuration);
     const auto reused =
         application::FullTextIndexLifecycleSnapshot(*service, dictionary_id);
@@ -5928,7 +5987,21 @@ void ApplicationServiceTest::ComposesIdleExecutorAfterAardReconciliation() {
     configuration.dictionary_paths = {root.string()};
     configuration.index_directory = (root / "indexes").string();
 
-    auto service = CreateDictionaryService(configuration);
+    auto initial_candidate =
+        application::CreateDictionaryServiceActivationCandidate(configuration,
+                                                                {});
+    auto service = std::move(initial_candidate.service);
+    const auto initial_catalog = service->GetCatalog();
+    QCOMPARE(initial_catalog.size(), 2U);
+    QVERIFY(initial_candidate.activation.SubmitOnceWithDefaults());
+    for (const auto& dictionary : initial_catalog) {
+        QVERIFY(WaitForFullTextLifecycleState(
+            *service, dictionary.id,
+            dictionary::FullTextIndexLifecycleState::kCurrent));
+    }
+    initial_candidate.activation.ShutdownAndJoin();
+
+    service = CreateDictionaryService(configuration);
     const auto catalog = service->GetCatalog();
     QCOMPARE(catalog.size(), 2U);
     std::vector<std::pair<std::filesystem::path, std::string>> artifacts;
@@ -5949,6 +6022,38 @@ void ApplicationServiceTest::ComposesIdleExecutorAfterAardReconciliation() {
     service.reset();
     for (const auto& [path, contents] : artifacts)
         QCOMPARE(ReadFile(path), contents);
+}
+
+void ApplicationServiceTest::CancelsPreparedAardFullTextLifecycle() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteAardFixture(root);
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    configuration.index_directory = (root / "indexes").string();
+
+    application::DesktopFacadeActivationOwner owner;
+    auto candidate = owner.PrepareCandidate(configuration);
+    const auto facade = owner.PreparedFacadeSnapshot(candidate);
+    QVERIFY(facade);
+    auto& service = facade->GetDictionaryService();
+    const auto dictionary_id = service.GetCatalog().front().id;
+    QVERIFY(
+        application::CancelFullTextIndexLifecycleWork(service, dictionary_id));
+    QCOMPARE(application::FullTextIndexLifecycleSnapshot(service, dictionary_id)
+                 ->state(),
+             dictionary::FullTextIndexLifecycleState::kCancelled);
+
+    QVERIFY(owner.Activate(candidate));
+    QVERIFY(owner.Shutdown());
+    QVERIFY(application::IsFullTextIndexExecutorStopped(service));
+    QCOMPARE(application::FullTextIndexLifecycleSnapshot(service, dictionary_id)
+                 ->state(),
+             dictionary::FullTextIndexLifecycleState::kCancelled);
+    QVERIFY(!std::filesystem::exists(
+        std::filesystem::path(configuration.index_directory) /
+        (dictionary_id + ".gdfts")));
 }
 
 void ApplicationServiceTest::
@@ -6217,7 +6322,7 @@ void ApplicationServiceTest::
     QVERIFY(application::IsFullTextIndexExecutorStopped(
         retained->GetDictionaryService()));
     QCOMPARE(lifecycle->state(),
-             dictionary::FullTextIndexLifecycleState::kCurrent);
+             dictionary::FullTextIndexLifecycleState::kCancelled);
     LookupQuery query;
     query.text = "headword";
     const auto response = retained->GetDictionaryService().Lookup(query);

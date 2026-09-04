@@ -428,20 +428,24 @@ LoadOrMigrateConfiguration(const std::string& configuration_path,
                            const std::string& legacy_configuration_path,
                            const std::string& index_directory);
 
+// Directly composed services activate eligible background index work and own
+// its joined shutdown for the complete service lifetime.
 GOLDENDICT_EXPORTS std::unique_ptr<DictionaryService> CreateDictionaryService(
     const CoreConfiguration& configuration);
 // Generic extension seam: runtime identities need not appear in configuration.
 // Takes ownership only while constructing a complete replacement service.
 // Null, empty-ID, or local/runtime duplicate IDs reject the whole operation.
 // Configuration-derived composers separately validate DTO consistency.
+// Background index activation and shutdown ownership match the overload above.
 GOLDENDICT_EXPORTS std::unique_ptr<DictionaryService> CreateDictionaryService(
     const CoreConfiguration& configuration,
     std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources);
+// Directly composed facades retain the service's owned background lifecycle.
 GOLDENDICT_EXPORTS std::unique_ptr<DesktopFacade> CreateDesktopFacade(
     const CoreConfiguration& configuration);
 // Takes ownership only while constructing a complete replacement facade.
 // Runtime-source validation has the same atomic semantics as the headless
-// service overload above.
+// service overload above, including owned background index activation.
 GOLDENDICT_EXPORTS std::unique_ptr<DesktopFacade> CreateDesktopFacade(
     const CoreConfiguration& configuration,
     std::vector<std::unique_ptr<RuntimeDictionarySource>> runtime_sources);

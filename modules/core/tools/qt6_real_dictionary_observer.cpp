@@ -14,11 +14,13 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
+#include "../src/application/desktop_facade_activation_owner.h"
+#include "../src/application/full_text_index_lifecycle_inspection.h"
 #include "goldendict/core/application.h"
 #include "goldendict/core/dictionary_service.h"
-#include "../src/application/desktop_facade_activation_owner.h"
 
 namespace {
 
@@ -29,6 +31,8 @@ bool IsSupportedScenario(const QString& scenario) {
            scenario == QStringLiteral("warm-restart") ||
            scenario == QStringLiteral("explicit-rescan") ||
            scenario == QStringLiteral("changed-source") ||
+           scenario == QStringLiteral("cancellation") ||
+           scenario == QStringLiteral("cancellation-recovery") ||
            scenario == QStringLiteral("unavailable-companion") ||
            scenario == QStringLiteral("companion-recovery");
 }
@@ -42,6 +46,10 @@ QString PhaseName(const QString& scenario) {
     }
     if (scenario == QStringLiteral("changed-source")) {
         return QStringLiteral("source-change");
+    }
+    if (scenario == QStringLiteral("cancellation") ||
+        scenario == QStringLiteral("cancellation-recovery")) {
+        return QStringLiteral("full-text-indexing");
     }
     if (scenario == QStringLiteral("unavailable-companion")) {
         return QStringLiteral("companion-unavailable");
@@ -169,6 +177,60 @@ bool WriteAtomically(const QString& path, const QJsonObject& value) {
     return output.write(content) == content.size() && output.commit();
 }
 
+std::optional<std::string> LifecycleDictionaryId(
+    const goldendict::core::DictionaryService& service,
+    const std::vector<goldendict::core::DictionaryIdentity>& identities) {
+    for (const auto& identity : identities) {
+        const auto snapshot =
+            goldendict::core::application::FullTextIndexLifecycleSnapshot(
+                service, identity.id);
+        if (snapshot.has_value() && snapshot->format_capable()) {
+            return identity.id;
+        }
+    }
+    return std::nullopt;
+}
+
+goldendict::core::dictionary::FullTextIndexLifecycleSnapshot WaitForState(
+    const goldendict::core::DictionaryService& service,
+    const std::string& dictionary_id,
+    goldendict::core::dictionary::FullTextIndexLifecycleState expected) {
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    while (std::chrono::steady_clock::now() < deadline) {
+        const auto snapshot =
+            goldendict::core::application::FullTextIndexLifecycleSnapshot(
+                service, dictionary_id);
+        if (!snapshot.has_value()) {
+            throw std::runtime_error("full-text lifecycle disappeared");
+        }
+        if (snapshot->state() == expected) {
+            return *snapshot;
+        }
+        if (snapshot->state() == goldendict::core::dictionary::
+                                     FullTextIndexLifecycleState::kFailed ||
+            snapshot->state() == goldendict::core::dictionary::
+                                     FullTextIndexLifecycleState::kCancelled ||
+            snapshot->state() == goldendict::core::dictionary::
+                                     FullTextIndexLifecycleState::kCurrent) {
+            throw std::runtime_error(
+                "full-text lifecycle reached unexpected terminal state " +
+                std::to_string(static_cast<int>(snapshot->state())));
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    throw std::runtime_error(
+        "timed out observing full-text lifecycle progress");
+}
+
+QJsonObject Phase(const QString& name, const QString& status, int sequence,
+                  const std::string& dictionary_id = {}) {
+    return {{QStringLiteral("dictionary_id"), Text(dictionary_id)},
+            {QStringLiteral("name"), name},
+            {QStringLiteral("sequence"), sequence},
+            {QStringLiteral("status"), status}};
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -193,7 +255,11 @@ int main(int argc, char* argv[]) {
         timer.start();
         goldendict::core::application::DesktopFacadeActivationOwner owner;
         auto initial_candidate = owner.PrepareCandidate(configuration);
-        if (!initial_candidate || !owner.Activate(initial_candidate)) {
+        const bool cancellation =
+            options->scenario == QStringLiteral("cancellation");
+        const bool activated =
+            initial_candidate && owner.Activate(initial_candidate);
+        if (!activated) {
             throw std::runtime_error("could not activate initial dictionary runtime");
         }
         auto facade = owner.CurrentSnapshot();
@@ -214,11 +280,76 @@ int main(int argc, char* argv[]) {
             }
         }
         auto& service = facade->GetDictionaryService();
+        const auto identities = service.GetCatalog();
         QJsonArray catalog;
         qint64 order = 0;
-        for (const auto& identity : service.GetCatalog()) {
+        for (const auto& identity : identities) {
             catalog.append(CatalogEntry(identity, order));
             ++order;
+        }
+
+        const QString phase_name = PhaseName(options->scenario);
+        QJsonArray phases;
+        QString outcome = QStringLiteral("completed");
+        if (options->scenario == QStringLiteral("cancellation") ||
+            options->scenario == QStringLiteral("cancellation-recovery")) {
+            const auto dictionary_id =
+                LifecycleDictionaryId(service, identities);
+            if (!dictionary_id.has_value()) {
+                throw std::runtime_error(
+                    "no full-text lifecycle dictionary was discovered");
+            }
+            if (cancellation) {
+                static_cast<void>(
+                    WaitForState(service, *dictionary_id,
+                                 goldendict::core::dictionary::
+                                     FullTextIndexLifecycleState::kWorking));
+            }
+            phases.append(Phase(phase_name, QStringLiteral("started"), 0,
+                                *dictionary_id));
+            if (cancellation) {
+                if (!goldendict::core::application::
+                        CancelFullTextIndexLifecycleWork(service,
+                                                         *dictionary_id)) {
+                    throw std::runtime_error(
+                        "could not cancel active full-text indexing");
+                }
+                if (!owner.Shutdown()) {
+                    throw std::runtime_error(
+                        "could not stop full-text indexing safely");
+                }
+                if (!goldendict::core::application::
+                        IsFullTextIndexExecutorStopped(service)) {
+                    throw std::runtime_error(
+                        "could not stop full-text indexing safely");
+                }
+                const auto cancelled = goldendict::core::application::
+                    FullTextIndexLifecycleSnapshot(service, *dictionary_id);
+                if (!cancelled.has_value() ||
+                    cancelled->state() !=
+                        goldendict::core::dictionary::
+                            FullTextIndexLifecycleState::kCancelled) {
+                    throw std::runtime_error(
+                        "full-text indexing did not reach cancelled state: " +
+                        (cancelled.has_value()
+                             ? std::to_string(
+                                   static_cast<int>(cancelled->state()))
+                             : std::string("missing")));
+                }
+                phases.append(Phase(phase_name, QStringLiteral("cancelled"), 1,
+                                    *dictionary_id));
+                outcome = QStringLiteral("cancelled");
+            } else {
+                static_cast<void>(
+                    WaitForState(service, *dictionary_id,
+                                 goldendict::core::dictionary::
+                                     FullTextIndexLifecycleState::kCurrent));
+                phases.append(Phase(phase_name, QStringLiteral("completed"), 1,
+                                    *dictionary_id));
+            }
+        } else {
+            phases.append(Phase(phase_name, QStringLiteral("started"), 0));
+            phases.append(Phase(phase_name, QStringLiteral("completed"), 1));
         }
 
         goldendict::core::LookupQuery query;
@@ -229,24 +360,12 @@ int main(int argc, char* argv[]) {
         for (const auto& error : service.Lookup(query).errors) {
             errors.append(ErrorEntry(error));
         }
-        const QString phase_name = PhaseName(options->scenario);
-        const QJsonArray phases{
-            QJsonObject{{QStringLiteral("dictionary_id"), QString{}},
-                        {QStringLiteral("name"), phase_name},
-                        {QStringLiteral("sequence"), 0},
-                        {QStringLiteral("status"), QStringLiteral("started")}},
-            QJsonObject{
-                {QStringLiteral("dictionary_id"), QString{}},
-                {QStringLiteral("name"), phase_name},
-                {QStringLiteral("sequence"), 1},
-                {QStringLiteral("status"), QStringLiteral("completed")}},
-        };
         const QJsonObject raw{
             {QStringLiteral("catalog"), catalog},
             {QStringLiteral("conditions_sha256"), options->conditions_sha256},
             {QStringLiteral("elapsed_milliseconds"), timer.elapsed()},
             {QStringLiteral("errors"), errors},
-            {QStringLiteral("outcome"), QStringLiteral("completed")},
+            {QStringLiteral("outcome"), outcome},
             {QStringLiteral("phases"), phases},
             {QStringLiteral("scenario"), options->scenario},
             {QStringLiteral("schema"), QString::fromLatin1(kRawSchema)},

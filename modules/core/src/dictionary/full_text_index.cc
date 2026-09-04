@@ -274,6 +274,25 @@ FullTextIndex FullTextIndex::OpenOrBuild(
     return *prepared->snapshot();
 }
 
+std::optional<FullTextIndex> FullTextIndex::OpenCurrent(
+    const std::filesystem::path& path, const SourceSnapshot& sources,
+    const CancellationToken* cancellation,
+    std::chrono::steady_clock::time_point deadline) {
+    Check(cancellation, deadline);
+    const auto loaded = LoadGeneratedIndex(path, kFormat, sources);
+    if (loaded.state != GeneratedIndexState::kCurrent)
+        return std::nullopt;
+    try {
+        FullTextIndex result;
+        result.documents_ = Parse(loaded.payload);
+        Check(cancellation, deadline);
+        result.state_ = FullTextIndexState::kReused;
+        return result;
+    } catch (const FullTextIndexError&) {
+        return std::nullopt;
+    }
+}
+
 FullTextResponse FullTextIndex::Search(
     const FullTextQuery& query, const CancellationToken* cancellation) const {
     FullTextResponse response;

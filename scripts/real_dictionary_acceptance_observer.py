@@ -25,6 +25,8 @@ SUPPORTED_SCENARIOS = (
     "warm-restart",
     "explicit-rescan",
     "changed-source",
+    "cancellation",
+    "cancellation-recovery",
     "unavailable-companion",
     "companion-recovery",
 )
@@ -33,6 +35,8 @@ SCENARIO_PHASES = {
     "warm-restart": "restart",
     "explicit-rescan": "rescan",
     "changed-source": "source-change",
+    "cancellation": "full-text-indexing",
+    "cancellation-recovery": "full-text-indexing",
     "unavailable-companion": "companion-unavailable",
     "companion-recovery": "companion-recovery",
 }
@@ -159,8 +163,9 @@ def _validate_raw(value: object) -> dict[str, object]:
     scenario = value["scenario"]
     if scenario not in SUPPORTED_SCENARIOS:
         raise ObserverError("Raw observer performed an unsupported scenario")
-    if value["outcome"] != "completed":
-        raise ObserverError("Dictionary lifecycle observation did not complete")
+    expected_outcome = "cancelled" if scenario == "cancellation" else "completed"
+    if value["outcome"] != expected_outcome:
+        raise ObserverError("Dictionary lifecycle observation has the wrong outcome")
     if not acceptance_result.HASH_PATTERN.fullmatch(
         _bounded_text(value["conditions_sha256"], "Raw conditions hash")
     ):
@@ -230,13 +235,25 @@ def _validate_raw(value: object) -> dict[str, object]:
         _bounded_text(item["dictionary_id"], f"{label}.dictionary_id", allow_empty=True)
         _bounded_text(item["message"], f"{label}.message")
     phase_name = SCENARIO_PHASES[str(scenario)]
-    expected_phases = ((phase_name, "started"), (phase_name, "completed"))
+    terminal_status = "cancelled" if scenario == "cancellation" else "completed"
+    expected_phases = ((phase_name, "started"), (phase_name, terminal_status))
+    progress_dictionary_id: str | None = None
     for index, item in enumerate(phases):
         label = f"Raw phases[{index}]"
         if not isinstance(item, dict):
             raise ObserverError(f"{label} must be an object")
         _exact_keys(item, {"dictionary_id", "name", "sequence", "status"}, label)
-        if item["dictionary_id"] != "":
+        dictionary_id = item["dictionary_id"]
+        if scenario in ("cancellation", "cancellation-recovery"):
+            if dictionary_id not in ids:
+                raise ObserverError(
+                    f"{label}.dictionary_id must identify an observed dictionary"
+                )
+            if progress_dictionary_id is None:
+                progress_dictionary_id = dictionary_id
+            elif dictionary_id != progress_dictionary_id:
+                raise ObserverError("Raw progress phases must identify one dictionary")
+        elif dictionary_id != "":
             raise ObserverError(f"{label}.dictionary_id must be empty")
         if item["sequence"] != index:
             raise ObserverError("Raw phases must use contiguous zero-based sequence")
@@ -632,9 +649,18 @@ def observe(
     _clear_final_evidence(result_path, acknowledgement_path)
 
     before = _snapshot_indexes(index_root)
-    if scenario == "clean-discovery" and before:
-        raise ObserverError("Clean discovery requires an empty index directory")
-    if scenario not in ("clean-discovery", "companion-recovery") and not before:
+    if scenario in ("clean-discovery", "cancellation") and before:
+        raise ObserverError(f"{scenario} requires an empty index directory")
+    if (
+        scenario
+        not in (
+            "clean-discovery",
+            "cancellation",
+            "cancellation-recovery",
+            "companion-recovery",
+        )
+        and not before
+    ):
         raise ObserverError(f"{scenario} requires previously created indexes")
     with tempfile.TemporaryDirectory(
         dir=evidence_root, prefix=".raw-observation-"
@@ -708,7 +734,15 @@ def observe(
         "pair_id": _required_environment("GOLDENDICT_ACCEPTANCE_PAIR_ID"),
         "phases": [
             {
-                "dictionary_key": None,
+                "dictionary_key": (
+                    next(
+                        item["logical_key"]
+                        for item in dictionaries
+                        if item["id"] == phase["dictionary_id"]
+                    )
+                    if phase["dictionary_id"]
+                    else None
+                ),
                 "name": phase["name"],
                 "sequence": phase["sequence"],
                 "status": phase["status"],

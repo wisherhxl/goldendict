@@ -30,6 +30,7 @@ SCENARIOS = (
     "explicit-rescan",
     "changed-source",
     "cancellation",
+    "cancellation-recovery",
     "unavailable-companion",
     "companion-recovery",
 )

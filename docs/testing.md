@@ -154,11 +154,11 @@ diagnostic messages to typed tokens, and atomically publishes the canonical
 observation followed by its atomic condition-acknowledgement commit marker. If
 either final write fails, the adapter removes both paths so incomplete evidence
 cannot be accepted. The observers support `clean-discovery`, `warm-restart`,
-`explicit-rescan`, `changed-source`, `unavailable-companion`, and
-`companion-recovery`. The lifecycle adapters verify the host platform and the
-bound all-enabled/clean-default/no-query condition profile, apply the locale,
-and enforce the state-specific index preconditions and transitions.
-Cancellation and progress sequencing remain separate R3.2c work.
+`explicit-rescan`, `changed-source`, `unavailable-companion`,
+`companion-recovery`, `cancellation`, and `cancellation-recovery`. The
+lifecycle adapters verify the host platform and the bound
+all-enabled/clean-default/no-query condition profile, apply the locale, and
+enforce the state-specific index preconditions and transitions.
 The Qt 6 explicit-rescan probe activates an unchanged replacement through the
 same private Core facade-activation owner used by the production source reload
 transaction. It requires a distinct prepared facade to become the active
@@ -501,6 +501,58 @@ recreate them after restoration. All four states have zero material comparison
 differences. In particular, both observers expose no structured lookup error
 while the companion is unavailable; the Qt 6 service preserves the frozen
 Qt 5 loader's skip-and-continue behavior.
+
+### Full-text cancellation and recovery coordinator
+
+R3.2 Unit 4 uses a generated Aard v1 corpus rather than mutating the operator's
+dictionary collection. `generate_aard_cancellation_fixture.py` writes the
+disposable-corpus marker and one deterministic archive with 100,000 unique
+articles. The source remains below the 64 MiB fixture limit while its retained
+text is large enough for both implementations to publish an observable
+full-text indexing interval. Generate the corpus and its payload-free manifest
+outside the repository:
+
+```powershell
+python scripts/generate_aard_cancellation_fixture.py `
+  --output "D:\workspace\goldendict\evidence\aard-cancellation"
+python scripts/real_dictionary_manifest.py `
+  "D:\workspace\goldendict\evidence\aard-cancellation" `
+  "D:\workspace\goldendict\evidence\aard-cancellation.json"
+```
+
+Create a fresh paired workspace with the normal workspace command. Run each
+version with `real_dictionary_acceptance_lifecycle.py
+run-cancellation-version`, retaining the same observer arguments documented
+above and the exact `__GOLDENDICT_ACCEPTANCE_SCENARIO__` token. Wrap the Qt 6
+command in `run_with_conan.ps1`; the frozen MinGW Qt 5 observer continues to use
+its explicit runtime and plugin paths. Finish with `compare-cancellation` using
+the same pair arguments.
+
+The coordinator requires an empty full-text-index precondition for
+`cancellation`, an ordered `started` then `cancelled` phase for the same logical
+dictionary, and no completed full-text artifact. `cancellation-recovery` must
+then publish `started` and `completed` for that dictionary and retain a current
+index. Before every unarchived recovery attempt, including a retry after the
+observer produced an index but failed before archiving its result, the
+coordinator clears only that version's confined mutable run directories while
+preserving validated cancellation evidence. Private headword and full-text
+filenames, roles, bytes, and generated IDs remain version-specific. The frozen
+Qt 5 observer has a bounded five-minute indexing-state wait inside the
+wrapper's one-hour process limit because its 100,000-article recovery build is
+materially slower than Qt 6.
+
+The paired Windows development evidence is retained under
+`evidence/qt5-qt6-cancellation-workspace-u4-final3/`, pair ID
+`e72c873d6717e7ff10595f65b4d12844bd132bc0cfbf64f9d63921ee6731b332`.
+Both cancellation and recovery comparisons are equivalent with zero material
+differences. The Qt 6 cancellation observation waits until the lifecycle is
+actively working before requesting cancellation. Qt 6 Aard construction now
+opens only an already current artifact; missing, stale, or corrupt full-text
+work is submitted through the existing serial Core lifecycle after facade
+activation, where cancellation, shutdown, failure, and atomic publication
+remain observable. Installed direct service and facade factories own that
+activation and its joined shutdown; prepared replacement candidates retain the
+existing explicit activation transaction.
 
 Run the repository-wide dependency-free script gate with:
 

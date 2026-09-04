@@ -84,6 +84,12 @@ class FullTextIndex final {
         std::chrono::steady_clock::time_point deadline =
             std::chrono::steady_clock::time_point::max());
 
+    static std::optional<FullTextIndex> OpenCurrent(
+        const std::filesystem::path& path, const SourceSnapshot& sources,
+        const CancellationToken* cancellation = nullptr,
+        std::chrono::steady_clock::time_point deadline =
+            std::chrono::steady_clock::time_point::max());
+
     FullTextResponse Search(
         const FullTextQuery& query,
         const CancellationToken* cancellation = nullptr) const;

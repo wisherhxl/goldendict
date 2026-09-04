@@ -226,7 +226,7 @@ launcher and Python tooling checks run directly.
 | R2.2 | **Complete:** Windows path/profile/process isolation corrections | R2.1 | focused restart/process tests from Unicode and long paths |
 | R2.3 | **Complete:** Windows WebEngine serialization and GPU-independent harness | R2.2 | all affected WebEngine tests serially pass; full Windows CTest log retained |
 | R3.1 | **Complete:** configuration and user-state upgrade/rollback matrix: `CRD-STATE-004`, `CRD-COMPAT-002` through `005` | R1.2, R2.3 | generated malformed/failure-injection tests plus disposable Qt 5 profile upgrade |
-| R3.2 | Real-corpus discovery, identity, counts, ordering, restart, and rescan: `CRD-TEST-REAL-004`, `CRD-COMPAT-001` | R1.2, R2.3 | paired machine-readable Qt 5/Qt 6 result files and diff |
+| R3.2 | **Complete:** real-corpus discovery, identity, counts, ordering, restart, rescan, bounded cancellation, and recovery: `CRD-TEST-REAL-004`, `CRD-COMPAT-001` | R1.2, R2.3 | paired machine-readable Qt 5/Qt 6 result files and diff |
 | R3.3 | Real MDict split-resource acceptance and evidence-confirmed corrections | R3.2 | MDX/three-MDD lookup, resource, restart, and immutable-source checks |
 | R3.4 | Real DSL and greater-than-4-GiB resource-ZIP acceptance and corrections | R3.2 | DSL/dictzip/article/resource/restart checks with bounded storage evidence |
 | R3.5 | Remaining real-corpus lookup, suggestion, article, media, and management matrix: `CRD-TEST-REAL-005` through `007` | R3.3, R3.4 | paired query catalog and machine-readable result diff |
@@ -755,9 +755,9 @@ confirmed product gap does not invalidate unrelated acceptance evidence:
    evidence. Any required production API remains transport-neutral,
    cancellable, and independent of Qt Widgets.
 
-Units 1 and 2 are integrated. Unit 3 is completed in this delivery; Unit 4
-remains open until its audited evidence or corrections are integrated. R3.2
-remains incomplete until all four units are accepted.
+Units 1 through 3 are integrated. Unit 4 is completed by the cancellation and
+recovery delivery described below. R3.2 is complete when this delivery is
+independently audited and integrated.
 
 The Unit 1 delivery was exercised end to end with the real corpus file
 `中文/古汉语常用字字典.dsl.dz`. Both versions completed clean discovery, warm
@@ -924,6 +924,42 @@ workspace is `evidence/qt5-qt6-recovery-workspace-u3-final4/`, bound to pair
 `b5b4e1017415c8485733f622b0dbe1871f39c50193f548812f355edf1ec5ed13`;
 it contains only the generated fixture, isolated runtime state, and canonical
 metadata evidence.
+
+The Unit 4 delivery adds a bounded deterministic 100,000-article Aard fixture
+and a resumable two-state coordinator for cancellation and recovery. Both
+version observers publish the same dictionary-bound `started` transition,
+followed by `cancelled` or `completed` as appropriate. The coordinator requires
+an empty full-text-index precondition before cancellation and a current artifact
+after recovery while retaining implementation-private index roles and bytes as
+version-specific evidence.
+
+The first Qt 6 attempt exposed a product lifecycle defect: Aard construction
+synchronously built missing, stale, or corrupt full-text artifacts before the
+facade and its lifecycle state could be observed or cancelled. The focused
+correction makes startup load only a validated current artifact and leaves all
+other work to the existing serial Core executor after activation. Executor
+shutdown now cancels both active and still-requested generations. The private
+inspection seam used by the acceptance observer remains inside Core, does not
+alter the installed service interface, and preserves the transport-neutral,
+headless architecture. Installed direct service and facade factories retain
+owned automatic activation and joined shutdown, while prepared replacement
+candidates keep their explicit publish-time activation boundary.
+
+The fresh paired Windows workspace
+`evidence/qt5-qt6-cancellation-workspace-u4-final3/` is bound to pair
+`e72c873d6717e7ff10595f65b4d12844bd132bc0cfbf64f9d63921ee6731b332`.
+Its Qt 6 cancellation observation waits for active lifecycle work before
+requesting cancellation. The cancellation and recovery comparisons each report
+zero material differences. The generated fixture, immutable manifest, isolated
+state, phase records, and version-specific index metadata are retained outside
+the repository. Focused Aard, application-service, full-text lifecycle,
+fixture, observer, and coordinator tests cover current reuse,
+missing/stale/corrupt background work, shutdown, cancellation, recovery,
+confinement, and contract validation. Resumability includes deterministic
+cleanup of an unarchived recovery attempt that already produced an index before
+failing. R3.2 is therefore complete after the audited delivery reaches the Qt
+6 baseline; R3.3 and later query/resource acceptance remain separate open
+leaves.
 
 ### CRD closure cross-check
 

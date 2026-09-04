@@ -37,6 +37,8 @@ void FullTextIndexWorkExecutor::Shutdown() noexcept {
     }
     if (active_identity.has_value())
         coordinator_.Cancel({*active_identity});
+    for (const auto& identity : coordinator_.DiscoverRequestedWork())
+        coordinator_.Cancel({identity});
     condition_.notify_one();
     if (worker_.joinable())
         worker_.join();

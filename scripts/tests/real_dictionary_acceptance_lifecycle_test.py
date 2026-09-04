@@ -27,6 +27,7 @@ def observation(version: str, revision: str, scenario: str) -> dict[str, object]
         "warm-restart": "reused",
         "explicit-rescan": "reused",
         "changed-source": "rebuilt",
+        "cancellation-recovery": "created",
         "companion-recovery": "created",
     }.get(scenario)
     phase = {
@@ -34,6 +35,8 @@ def observation(version: str, revision: str, scenario: str) -> dict[str, object]
         "warm-restart": "restart",
         "explicit-rescan": "rescan",
         "changed-source": "source-change",
+        "cancellation": "full-text-indexing",
+        "cancellation-recovery": "full-text-indexing",
         "unavailable-companion": "companion-unavailable",
         "companion-recovery": "companion-recovery",
     }[scenario]
@@ -63,14 +66,18 @@ def observation(version: str, revision: str, scenario: str) -> dict[str, object]
         ),
         "indexes": (
             []
-            if unavailable
+            if unavailable or scenario == "cancellation"
             else [
                 {
                     "dictionary_key": "dsl:sample.dsl",
                     "disposition": disposition,
                     "elapsed_milliseconds": None,
                     "file_name": f"{version}.gdidx",
-                    "role": "headword",
+                    "role": (
+                        "full-text"
+                        if scenario == "cancellation-recovery"
+                        else "headword"
+                    ),
                     "sha256": (
                         "e" * 64
                         if scenario
@@ -84,15 +91,28 @@ def observation(version: str, revision: str, scenario: str) -> dict[str, object]
                 }
             ]
         ),
-        "outcome": "completed",
+        "outcome": "cancelled" if scenario == "cancellation" else "completed",
         "pair_id": PAIR_ID,
         "phases": [
-            {"dictionary_key": None, "name": phase, "sequence": 0, "status": "started"},
             {
-                "dictionary_key": None,
+                "dictionary_key": (
+                    "dsl:sample.dsl"
+                    if scenario in lifecycle.CANCELLATION_SCENARIOS
+                    else None
+                ),
+                "name": phase,
+                "sequence": 0,
+                "status": "started",
+            },
+            {
+                "dictionary_key": (
+                    "dsl:sample.dsl"
+                    if scenario in lifecycle.CANCELLATION_SCENARIOS
+                    else None
+                ),
                 "name": phase,
                 "sequence": 1,
-                "status": "completed",
+                "status": "cancelled" if scenario == "cancellation" else "completed",
             },
         ],
         "revision": revision,
@@ -630,6 +650,175 @@ class AcceptanceLifecycleTest(unittest.TestCase):
                     for scenario in lifecycle.RECOVERY_SCENARIOS
                 )
             )
+
+    def test_runs_cancellation_and_recovery_state_machine(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = self._workspace(Path(temporary))
+            scenarios: list[str] = []
+
+            def run(*args: object, **kwargs: object) -> int:
+                command = args[7]
+                assert isinstance(command, list)
+                scenario = command[command.index("--scenario") + 1]
+                scenarios.append(scenario)
+                result.write_observation(
+                    workspace / "qt6" / "evidence" / "observation.json",
+                    observation("qt6", QT6_REVISION, scenario),
+                )
+                return 0
+
+            with (
+                mock.patch.object(
+                    lifecycle.acceptance_workspace,
+                    "validate_workspace",
+                    return_value=PAIR_ID,
+                ),
+                mock.patch.object(
+                    lifecycle.acceptance_workspace,
+                    "run_in_workspace",
+                    side_effect=run,
+                ),
+            ):
+                outputs = lifecycle.run_cancellation_version(
+                    workspace,
+                    Path("corpus"),
+                    Path("manifest"),
+                    Path("conditions"),
+                    QT5_REVISION,
+                    QT6_REVISION,
+                    "qt6",
+                    ["observer", "--scenario", lifecycle.SCENARIO_TOKEN],
+                )
+
+            self.assertEqual(list(lifecycle.CANCELLATION_SCENARIOS), scenarios)
+            self.assertTrue(all(path.is_file() for path in outputs))
+
+    def test_resets_interrupted_cancellation_recovery_before_resuming(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = self._workspace(Path(temporary))
+            archive = workspace / "qt6" / "evidence" / "cancellation"
+            archive.mkdir()
+            result.write_observation(
+                archive / "cancellation.json",
+                observation("qt6", QT6_REVISION, "cancellation"),
+            )
+            partial_index = workspace / "qt6" / "indexes" / "partial.gdfts"
+
+            def interrupted(*args: object, **kwargs: object) -> int:
+                self.assertFalse(partial_index.exists())
+                partial_index.parent.mkdir(parents=True, exist_ok=True)
+                partial_index.write_bytes(b"completed but not archived")
+                return 7
+
+            def resumed(*args: object, **kwargs: object) -> int:
+                self.assertFalse(partial_index.exists())
+                result.write_observation(
+                    workspace / "qt6" / "evidence" / "observation.json",
+                    observation("qt6", QT6_REVISION, "cancellation-recovery"),
+                )
+                return 0
+
+            validation = mock.patch.object(
+                lifecycle.acceptance_workspace,
+                "validate_workspace",
+                return_value=PAIR_ID,
+            )
+            with (
+                validation,
+                mock.patch.object(
+                    lifecycle.acceptance_workspace,
+                    "run_in_workspace",
+                    side_effect=interrupted,
+                ),
+                self.assertRaisesRegex(lifecycle.LifecycleError, "exit code 7"),
+            ):
+                lifecycle.run_cancellation_version(
+                    workspace,
+                    Path("corpus"),
+                    Path("manifest"),
+                    Path("conditions"),
+                    QT5_REVISION,
+                    QT6_REVISION,
+                    "qt6",
+                    ["observer", "--scenario", lifecycle.SCENARIO_TOKEN],
+                )
+            self.assertTrue(partial_index.is_file())
+
+            with (
+                mock.patch.object(
+                    lifecycle.acceptance_workspace,
+                    "validate_workspace",
+                    return_value=PAIR_ID,
+                ),
+                mock.patch.object(
+                    lifecycle.acceptance_workspace,
+                    "run_in_workspace",
+                    side_effect=resumed,
+                ),
+            ):
+                outputs = lifecycle.run_cancellation_version(
+                    workspace,
+                    Path("corpus"),
+                    Path("manifest"),
+                    Path("conditions"),
+                    QT5_REVISION,
+                    QT6_REVISION,
+                    "qt6",
+                    ["observer", "--scenario", lifecycle.SCENARIO_TOKEN],
+                )
+
+            self.assertFalse(partial_index.exists())
+            self.assertEqual(2, len(outputs))
+            self.assertTrue(outputs[-1].is_file())
+
+    def test_cancellation_state_machine_rejects_published_partial_index(self) -> None:
+        cancelled = observation("qt6", QT6_REVISION, "cancellation")
+        cancelled["indexes"] = [
+            {
+                "dictionary_key": "dsl:sample.dsl",
+                "disposition": "created",
+                "elapsed_milliseconds": None,
+                "file_name": "partial.gdfts",
+                "role": "full-text",
+                "sha256": HASH,
+                "size": 1,
+            }
+        ]
+        with self.assertRaisesRegex(lifecycle.LifecycleError, "must not publish"):
+            lifecycle._validate_cancellation_transitions([cancelled])
+
+    def test_compares_complete_paired_cancellation_lifecycle(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = self._workspace(Path(temporary))
+            for version, revision in (
+                ("qt5", QT5_REVISION),
+                ("qt6", QT6_REVISION),
+            ):
+                archive = workspace / version / "evidence" / "cancellation"
+                archive.mkdir()
+                for scenario in lifecycle.CANCELLATION_SCENARIOS:
+                    result.write_observation(
+                        archive / f"{scenario}.json",
+                        observation(version, revision, scenario),
+                    )
+            with mock.patch.object(
+                lifecycle.acceptance_workspace,
+                "validate_workspace",
+                return_value=PAIR_ID,
+            ):
+                summary = lifecycle.compare_cancellation(
+                    workspace,
+                    Path("corpus"),
+                    Path("manifest"),
+                    Path("conditions"),
+                    QT5_REVISION,
+                    QT6_REVISION,
+                )
+            summary_value = json.loads(summary.read_text(encoding="utf-8"))
+            self.assertEqual(
+                lifecycle.CANCELLATION_SUMMARY_SCHEMA, summary_value["schema"]
+            )
+            self.assertTrue(summary_value["equivalent"])
 
     def test_requires_one_scenario_placeholder(self) -> None:
         for command in (["observer"], [lifecycle.SCENARIO_TOKEN] * 2):
