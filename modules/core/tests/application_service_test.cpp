@@ -303,6 +303,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsMalformedConfiguration();
     void CatalogSanitizesInspectionMetadata();
     void DiscoversAndQueriesARealFixture();
+    void CatalogUsesLegacyDiscoveryOrder();
     void RegistersOnlyEnabledMorphologyDictionaries();
     void AppliesIndependentFullTextQueryLimits();
     void SearchesTwelveLocalFormatsFullTextWithMixedFormatErrors();
@@ -4435,6 +4436,57 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
     QVERIFY(missing.errors.empty());
 }
 
+void ApplicationServiceTest::CatalogUsesLegacyDiscoveryOrder() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto configured_first = root / "configured-z";
+    const auto configured_second = root / "configured-a";
+
+    const auto alpha = test::WriteDslFixture(configured_first / "alpha");
+    const auto beta_bgl = test::WriteBglFixture(configured_first / "Beta");
+    const auto beta_dsl = test::WriteDslFixture(configured_first / "Beta");
+    const auto beta_mdict = test::WriteMdictContainer(
+        configured_first / "Beta" / "fixture.mdx", "Fixture MDict",
+        {{"word", "article"}});
+    const auto first_top = test::WriteDslFixture(configured_first);
+    const auto second_top = test::WriteDslFixture(configured_second);
+
+    const auto sounds = formats::sounddir::test::WriteSoundDirectoryFixture(
+        root / "sounds");
+    const auto morphology = root / "morphology";
+    const auto hunspell = test::WriteHunspellFixture(
+        morphology, "en_US", "SET UTF-8\n", "1\nword\n");
+
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {configured_first.string(),
+                                      configured_second.string()};
+    configuration.sound_directories = {{sounds.string(), "Fixture sounds"}};
+    configuration.morphology_dictionary_path = morphology.string();
+    configuration.enabled_morphology_dictionary_ids = {"en_US"};
+
+    const auto catalog = CreateDictionaryService(configuration)->GetCatalog();
+    QCOMPARE(catalog.size(), std::size_t{8U});
+    const auto preferred = [](std::filesystem::path path) {
+        return path.make_preferred().string();
+    };
+    const std::vector<std::string> expected_sources = {
+        preferred(alpha),
+        preferred(beta_bgl),
+        preferred(beta_dsl),
+        preferred(beta_mdict),
+        preferred(first_top),
+        preferred(second_top),
+        preferred(sounds),
+        preferred(hunspell.affix_file),
+    };
+    std::vector<std::string> actual_sources;
+    actual_sources.reserve(catalog.size());
+    for (const auto& identity : catalog)
+        actual_sources.push_back(identity.source);
+    QCOMPARE(actual_sources, expected_sources);
+}
+
 void ApplicationServiceTest::RegistersOnlyEnabledMorphologyDictionaries() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -4461,15 +4513,30 @@ void ApplicationServiceTest::RegistersOnlyEnabledMorphologyDictionaries() {
     auto service = CreateDictionaryService(round_trip);
     const auto catalog = service->GetCatalog();
     QCOMPARE(catalog.size(), std::size_t{2});
-    QCOMPARE(catalog[0].name, std::string("en_US Morphology"));
-    QVERIFY(catalog[0].id.rfind("hunspell-", 0U) == 0U);
-    QCOMPARE(catalog[0].source, (root / "en_US.aff").make_preferred().string());
-    QCOMPARE(catalog[0].headword_count, std::size_t{1});
-    QVERIFY(catalog[1].id.rfind("stardict-", 0U) == 0U);
+    const auto morphology = std::find_if(
+        catalog.begin(), catalog.end(), [](const auto& identity) {
+            return identity.id.rfind("hunspell-", 0U) == 0U;
+        });
+    QVERIFY(morphology != catalog.end());
+    QCOMPARE(morphology->name, std::string("en_US Morphology"));
+    QCOMPARE(morphology->source,
+             (root / "en_US.aff").make_preferred().string());
+    QCOMPARE(morphology->headword_count, std::size_t{1});
+    QVERIFY(std::any_of(
+        catalog.begin(), catalog.end(), [](const auto& identity) {
+            return identity.id.rfind("stardict-", 0U) == 0U;
+        }));
 
     auto rebuilt = CreateDictionaryService(round_trip);
-    QCOMPARE(rebuilt->GetCatalog()[0].id, catalog[0].id);
-    QCOMPARE(rebuilt->GetCatalog()[0].source, catalog[0].source);
+    const auto rebuilt_catalog = rebuilt->GetCatalog();
+    const auto rebuilt_morphology = std::find_if(
+        rebuilt_catalog.begin(), rebuilt_catalog.end(),
+        [](const auto& identity) {
+            return identity.id.rfind("hunspell-", 0U) == 0U;
+        });
+    QVERIFY(rebuilt_morphology != rebuilt_catalog.end());
+    QCOMPARE(rebuilt_morphology->id, morphology->id);
+    QCOMPARE(rebuilt_morphology->source, morphology->source);
 
     LookupQuery query;
     query.text = "cot";
@@ -4477,7 +4544,7 @@ void ApplicationServiceTest::RegistersOnlyEnabledMorphologyDictionaries() {
     const auto response = service->Lookup(query);
     QCOMPARE(response.errors.size(), std::size_t{0});
     QCOMPARE(response.entries.size(), std::size_t{1});
-    QCOMPARE(response.entries[0].dictionary.id, catalog[0].id);
+    QCOMPARE(response.entries[0].dictionary.id, morphology->id);
     QVERIFY(response.entries[0].article.plain_text.find("cat") !=
             std::string::npos);
     QVERIFY(response.entries[0].article.sanitized_html.has_value());

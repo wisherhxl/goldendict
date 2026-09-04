@@ -89,6 +89,13 @@ counts, membership counts, value sizes, and duplicate IDs are validated in the
 core before an atomic replacement. Bounded legacy XML migration preserves
 group and dictionary order and retains unknown nonempty dictionary IDs without
 catalog resolution.
+Core projects newly discovered local dictionaries in the frozen Qt 5 order:
+configured roots first, child directories in case-insensitive depth-first
+order with a directory's own files after its children, then the legacy format
+precedence and case-insensitive filename order. Explicit sound directories and
+enabled Hunspell dictionaries follow local roots in their configured order;
+runtime sources remain after those built-in phases. This private ordering
+strategy changes no stable identity or installed interface.
 Local source edits use one complete `CoreConfiguration` candidate. The public
 core API owns source-list bounds and validation; the composition root restores
 a replacement facade, atomically saves the candidate, and only then rebinds

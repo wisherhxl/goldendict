@@ -768,6 +768,11 @@ empty older configurations remain compatible, nontrivial ordered groups round
 trip, group and membership bounds plus duplicate IDs are rejected
 deterministically, malformed fields fail to load, and a rejected save leaves
 the previous configuration unchanged without a temporary file.
+`CatalogUsesLegacyDiscoveryOrder` pins the clean-profile Qt 5 catalog order
+across configured roots, case-insensitive sibling directories, descendant-
+before-parent traversal, same-directory BGL/DSL/MDict precedence, explicit
+sound directories, and enabled Hunspell dictionaries. Runtime-source tests
+retain their existing appended configured order.
 It also pins explicit dictionary participation for lookup and suggestions:
 inactive empty filters retain the all/group default, active empty filters
 complete successfully without results, and nonempty filters preserve group

@@ -472,6 +472,241 @@ std::string StableId(std::string_view format,
     return output.str();
 }
 
+class Utf16Units final {
+   public:
+    explicit Utf16Units(std::string_view input) : input_(input) {}
+
+    std::optional<std::uint16_t> Next() {
+        if (low_surrogate_ != 0U) {
+            const auto result = low_surrogate_;
+            low_surrogate_ = 0U;
+            return result;
+        }
+        if (offset_ == input_.size())
+            return std::nullopt;
+        const auto first = static_cast<unsigned char>(input_[offset_++]);
+        std::uint32_t point = first;
+        std::size_t continuation = 0U;
+        if ((first & 0xe0U) == 0xc0U) {
+            point = first & 0x1fU;
+            continuation = 1U;
+        } else if ((first & 0xf0U) == 0xe0U) {
+            point = first & 0x0fU;
+            continuation = 2U;
+        } else if ((first & 0xf8U) == 0xf0U) {
+            point = first & 0x07U;
+            continuation = 3U;
+        }
+        for (std::size_t index = 0U; index < continuation; ++index) {
+            point = (point << 6U) |
+                    (static_cast<unsigned char>(input_[offset_++]) & 0x3fU);
+        }
+        if (point <= 0xffffU)
+            return static_cast<std::uint16_t>(point);
+        point -= 0x10000U;
+        low_surrogate_ =
+            static_cast<std::uint16_t>(0xdc00U + (point & 0x3ffU));
+        return static_cast<std::uint16_t>(0xd800U + (point >> 10U));
+    }
+
+   private:
+    std::string_view input_;
+    std::size_t offset_ = 0U;
+    std::uint16_t low_surrogate_ = 0U;
+};
+
+int CompareLikeQString(std::string_view left, std::string_view right) {
+    Utf16Units left_units(left);
+    Utf16Units right_units(right);
+    while (true) {
+        const auto left_unit = left_units.Next();
+        const auto right_unit = right_units.Next();
+        if (!left_unit || !right_unit)
+            return left_unit ? 1 : right_unit ? -1 : 0;
+        if (*left_unit != *right_unit)
+            return *left_unit < *right_unit ? -1 : 1;
+    }
+}
+
+struct CatalogPathPart {
+    std::string folded;
+    std::string exact;
+};
+
+CatalogPathPart MakeCatalogPathPart(std::string value) {
+    return {foundation::FoldSimpleCase(value), std::move(value)};
+}
+
+int CompareCatalogPathPart(const CatalogPathPart& left,
+                           const CatalogPathPart& right) {
+    const int folded = CompareLikeQString(left.folded, right.folded);
+    return folded != 0 ? folded : CompareLikeQString(left.exact, right.exact);
+}
+
+std::filesystem::path CanonicalPath(const std::filesystem::path& path) {
+    std::error_code error;
+    const auto canonical = std::filesystem::weakly_canonical(path, error);
+    return error ? path.lexically_normal() : canonical;
+}
+
+std::vector<CatalogPathPart> CatalogPathParts(
+    const std::filesystem::path& path) {
+    std::vector<CatalogPathPart> result;
+    for (const auto& part : path) {
+        const std::string text = part.generic_u8string();
+        if (text != "/")
+            result.push_back(MakeCatalogPathPart(text));
+    }
+    return result;
+}
+
+bool HasCatalogPathPrefix(const std::vector<CatalogPathPart>& path,
+                          const std::vector<CatalogPathPart>& prefix) {
+    if (path.size() < prefix.size())
+        return false;
+    for (std::size_t index = 0U; index < prefix.size(); ++index) {
+        if (CompareLikeQString(path[index].exact, prefix[index].exact) != 0)
+            return false;
+    }
+    return true;
+}
+
+bool HasFormatId(const dictionary::Identity& identity,
+                 std::string_view format) {
+    return identity.id.size() > format.size() &&
+           identity.id.compare(0U, format.size(), format) == 0 &&
+           identity.id[format.size()] == '-';
+}
+
+std::size_t LegacyFormatOrder(const dictionary::Identity& identity) {
+    constexpr std::array<std::string_view, 14U> kFormats = {
+        "bgl",      "stardict", "lsa",  "dsl",  "dictd",
+        "xdxf",     "sdict",    "aard", "zipsounds", "mdict",
+        "gls",      "zim",      "slob", "epwing"};
+    const auto found = std::find_if(
+        kFormats.begin(), kFormats.end(), [&](std::string_view format) {
+            return HasFormatId(identity, format);
+        });
+    return static_cast<std::size_t>(found - kFormats.begin());
+}
+
+struct CatalogRoot {
+    std::vector<CatalogPathPart> parts;
+    bool directory = false;
+};
+
+struct CatalogOrderKey {
+    std::size_t phase = 3U;
+    std::size_t configured_root = 0U;
+    std::vector<CatalogPathPart> directories;
+    std::size_t format = 0U;
+    CatalogPathPart filename;
+    std::size_t original = 0U;
+};
+
+CatalogOrderKey MakeCatalogOrderKey(
+    const dictionary::Identity& identity,
+    const std::vector<CatalogRoot>& roots, std::size_t original) {
+    CatalogOrderKey key;
+    key.original = original;
+    if (HasFormatId(identity, "sounddir")) {
+        key.phase = 1U;
+        return key;
+    }
+    if (HasFormatId(identity, "hunspell")) {
+        key.phase = 2U;
+        return key;
+    }
+
+    const auto source =
+        CatalogPathParts(CanonicalPath(std::filesystem::u8path(identity.source)));
+    for (std::size_t root_index = 0U; root_index < roots.size(); ++root_index) {
+        const auto& root = roots[root_index];
+        const bool matches = root.directory
+                                 ? source.size() > root.parts.size() &&
+                                       HasCatalogPathPrefix(source, root.parts)
+                                 : source.size() == root.parts.size() &&
+                                       HasCatalogPathPrefix(source, root.parts);
+        if (!matches)
+            continue;
+        key.phase = 0U;
+        key.configured_root = root_index;
+        if (root.directory) {
+            key.directories.assign(source.begin() + root.parts.size(),
+                                   source.end() - 1);
+        }
+        key.format = LegacyFormatOrder(identity);
+        key.filename = source.back();
+        return key;
+    }
+    return key;
+}
+
+int CompareCatalogDirectories(const std::vector<CatalogPathPart>& left,
+                              const std::vector<CatalogPathPart>& right) {
+    const std::size_t common = std::min(left.size(), right.size());
+    for (std::size_t index = 0U; index < common; ++index) {
+        const int compared = CompareCatalogPathPart(left[index], right[index]);
+        if (compared != 0)
+            return compared;
+    }
+    if (left.size() == right.size())
+        return 0;
+    return left.size() > right.size() ? -1 : 1;
+}
+
+bool CatalogOrderLess(const CatalogOrderKey& left,
+                      const CatalogOrderKey& right) {
+    if (left.phase != right.phase)
+        return left.phase < right.phase;
+    if (left.phase != 0U)
+        return left.original < right.original;
+    if (left.configured_root != right.configured_root)
+        return left.configured_root < right.configured_root;
+    const int directories =
+        CompareCatalogDirectories(left.directories, right.directories);
+    if (directories != 0)
+        return directories < 0;
+    if (left.format != right.format)
+        return left.format < right.format;
+    const int filename = CompareCatalogPathPart(left.filename, right.filename);
+    return filename != 0 ? filename < 0 : left.original < right.original;
+}
+
+void ApplyLegacyCatalogOrder(
+    const std::vector<std::filesystem::path>& dictionary_roots,
+    std::vector<std::unique_ptr<dictionary::Backend>>* dictionaries) {
+    std::vector<CatalogRoot> roots;
+    roots.reserve(dictionary_roots.size());
+    for (const auto& path : dictionary_roots) {
+        const auto canonical = CanonicalPath(path);
+        std::error_code error;
+        const bool directory = std::filesystem::is_directory(canonical, error);
+        roots.push_back({CatalogPathParts(canonical), !error && directory});
+    }
+
+    struct OrderedDictionary {
+        CatalogOrderKey key;
+        std::unique_ptr<dictionary::Backend> dictionary;
+    };
+    std::vector<OrderedDictionary> ordered;
+    ordered.reserve(dictionaries->size());
+    for (std::size_t index = 0U; index < dictionaries->size(); ++index) {
+        auto& dictionary = (*dictionaries)[index];
+        ordered.push_back(
+            {MakeCatalogOrderKey(dictionary->identity(), roots, index),
+             std::move(dictionary)});
+    }
+    std::stable_sort(ordered.begin(), ordered.end(),
+                     [](const auto& left, const auto& right) {
+                         return CatalogOrderLess(left.key, right.key);
+                     });
+    dictionaries->clear();
+    dictionaries->reserve(ordered.size());
+    for (auto& entry : ordered)
+        dictionaries->push_back(std::move(entry.dictionary));
+}
+
 DictionaryIdentity PublicIdentity(const dictionary::Identity& identity,
                                   bool supports_full_text_search) {
     DictionaryIdentity result;
@@ -1088,10 +1323,7 @@ class ServiceState final {
                     {TranslateErrorCode(error.code()), id, error.what()});
             }
         }
-        std::sort(dictionaries_.begin(), dictionaries_.end(),
-                  [](const auto& left, const auto& right) {
-                      return left->identity().id < right->identity().id;
-                  });
+        ApplyLegacyCatalogOrder(roots, &dictionaries_);
         std::unordered_set<std::string> identities;
         for (const auto& dictionary : dictionaries_) {
             identities.insert(dictionary->identity().id);

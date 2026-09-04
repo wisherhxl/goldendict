@@ -807,6 +807,14 @@ final `.mdx` extension. The focused follow-up correction applies the general
 legacy invalid-title fallback and generated coverage; it does not change the
 still-open ordering, DSL headword-count, index-role, or R3.3 query evidence.
 
+The next focused Unit 2 correction replaces Qt 6 stable-ID catalog sorting
+with the frozen Qt 5 clean-profile discovery order. A private Core ordering
+strategy retains configured-root order, legacy depth-first directory and
+format precedence, case-insensitive names, and the later sound-directory,
+Hunspell, and runtime-source phases. Generated mixed-format coverage and the
+paired lifecycle corpus are the acceptance evidence; DSL headword counts,
+index-role interpretation, and R3.3 query evidence remain open.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an
