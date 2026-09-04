@@ -181,8 +181,16 @@ four-byte numeric fields, uncompressed key-block metadata, one-byte key
 lengths, and unterminated key-info boundary words, then verifies metadata,
 headword count, and redirect resolution. The real-corpus smoke gate must no
 longer report `Only MDict 2.x files are supported by this slice` for the Oxford
-MDX. It currently advances to the separately tracked encrypted-MDD gap; this
-test does not claim encrypted resource or large split-resource support.
+MDX.
+
+`mdict_reader_test::ReadsEncryptedKeyInfo` generates an `Encrypted=2` MDict
+2.x container and verifies lookup after key-info decryption. The production
+RIPEMD-128 helper is also pinned to the published empty-string and `a` digest
+vectors, while the inverse fixture encoder is confined to test support. The
+real-corpus smoke gate must pass the Oxford base MDD's encrypted key-info and
+advance to the separately tracked aggregate decoded-resource limit in its
+`.1.mdd` volume. Other encryption flags remain typed unsupported; this test
+does not claim LZO or large split-resource streaming support.
 
 Run Qt 6 from a configured Release build through the Conan launcher so the
 child inherits the complete DLL and Qt plugin environment:

@@ -3,10 +3,13 @@
 #include <QtTest>
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
 
+#include "../src/formats/mdict/mdict_key_info_crypto.h"
 #include "../src/formats/mdict/mdict_reader.h"
 #include "support/mdict_fixture.h"
 
@@ -17,6 +20,8 @@ class MdictReaderTest : public QObject {
    private slots:
     void ReadsStylesRedirectsAndMddResources();
     void ReadsVersionOneContainers();
+    void ReadsEncryptedKeyInfo();
+    void MatchesRipemd128ReferenceDigest();
     void DecodesUtf16KeysAndRecords();
     void ExposesImmutableTerminalOwnershipView();
     void CheckpointsAndCancelsOwnershipTraversal();
@@ -58,6 +63,31 @@ void MdictReaderTest::ReadsVersionOneContainers() {
     QCOMPARE(reader.metadata().name, "Version One Fixture");
     QCOMPARE(reader.headword_count(), std::size_t{2});
     QCOMPARE(reader.LookupExact("alias").front().data, "legacy article");
+}
+
+void MdictReaderTest::ReadsEncryptedKeyInfo() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto path = test::WriteMdictContainer(
+        root / "encrypted-key-info.mdx", "Encrypted Key Info Fixture",
+        {{"alias", "@@@LINK=example"}, {"example", "encrypted article"}}, 2U);
+
+    const Reader reader = Reader::Open({path, {}});
+
+    QCOMPARE(reader.metadata().name, "Encrypted Key Info Fixture");
+    QCOMPARE(reader.LookupExact("alias").front().data, "encrypted article");
+}
+
+void MdictReaderTest::MatchesRipemd128ReferenceDigest() {
+    constexpr std::array<std::uint8_t, 16> empty_expected{
+        0xcd, 0xf2, 0x62, 0x13, 0xa1, 0x50, 0xdc, 0x3e,
+        0xcb, 0x61, 0x0f, 0x18, 0xf6, 0xb3, 0x8b, 0x46};
+    constexpr std::array<std::uint8_t, 16> a_expected{
+        0x86, 0xbe, 0x7a, 0xfa, 0x33, 0x9d, 0x0f, 0xc7,
+        0xcf, 0xc7, 0x85, 0xe7, 0x2f, 0x57, 0x8d, 0x33};
+    QVERIFY(detail::Ripemd128("") == empty_expected);
+    QVERIFY(detail::Ripemd128("a") == a_expected);
 }
 
 void MdictReaderTest::ExposesImmutableTerminalOwnershipView() {

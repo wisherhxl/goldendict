@@ -2,6 +2,8 @@
 
 #include "mdict_reader.h"
 
+#include "mdict_key_info_crypto.h"
+
 #include <expat.h>
 #include <zlib.h>
 
@@ -241,9 +243,10 @@ Header ReadHeader(Cursor* cursor, const std::filesystem::path& path) {
     if (header.version < 1.0 || header.version >= 3.0)
         Throw(ErrorCode::kUnsupported, path,
               "Only MDict 1.x and 2.x files are supported by this slice");
-    if (header.encrypted != 0U)
+    if (header.encrypted != 0U &&
+        !(header.version >= 2.0 && header.encrypted == 2U))
         Throw(ErrorCode::kUnsupported, path,
-              "Encrypted MDict files are not supported by this slice");
+              "Only MDict key-info encryption is supported by this slice");
     return header;
 }
 
@@ -470,8 +473,12 @@ ParsedContainer ParseContainer(const std::filesystem::path& path,
         (version_two && decoded_info_size > kMaxDecoded) ||
         info_size > kMaxFile || key_blocks_size > kMaxFile)
         Throw(ErrorCode::kInvalidDictionary, path, "Invalid MDict key header");
-    const auto raw_info =
-        cursor.Read(static_cast<std::size_t>(info_size), "key block info");
+    std::string raw_info(
+        cursor.Read(static_cast<std::size_t>(info_size), "key block info"));
+    if (parsed.header.encrypted == 2U &&
+        !detail::DecryptKeyInfo(&raw_info))
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Invalid encrypted MDict key block info");
     const std::string info =
         version_two
             ? DecompressBlock(raw_info,

@@ -293,6 +293,7 @@ if(TARGET mdict_reader_test)
     src/foundation/text_folding.cc
     src/foundation/utf8.cc
     src/formats/mdict/mdict_discovery.cc
+    src/formats/mdict/mdict_key_info_crypto.cc
     src/formats/mdict/mdict_reader.cc
   )
   target_link_libraries(mdict_reader_test
@@ -307,6 +308,7 @@ if(TARGET mdict_discovery_test)
     src/foundation/text_folding.cc
     src/foundation/utf8.cc
     src/formats/mdict/mdict_discovery.cc
+    src/formats/mdict/mdict_key_info_crypto.cc
     src/formats/mdict/mdict_reader.cc
   )
   target_link_libraries(mdict_discovery_test
@@ -328,6 +330,7 @@ if(TARGET mdict_dictionary_test)
     src/foundation/utf8.cc
     src/formats/mdict/mdict_dictionary.cc
     src/formats/mdict/mdict_discovery.cc
+    src/formats/mdict/mdict_key_info_crypto.cc
     src/formats/mdict/mdict_reader.cc
   )
   target_link_libraries(mdict_dictionary_test

@@ -415,9 +415,11 @@ version-specific checksums, integer widths, key-info representation, and key
 terminators. It bounds key/record tables and all decompression, strictly decodes
 declared text, applies embedded stylesheet markers, resolves bounded article
 redirects, and serves normalized MDD resource names through the typed resource
-API. Plain and zlib blocks are supported in this slice; encrypted dictionaries,
-LZO blocks, large split-resource streaming, local-file resource fallback, and
-later parity work remain explicit.
+API. Plain and zlib blocks are supported in this slice. MDict 2.x key-info
+encryption flag 2 is decoded by a private RIPEMD-128 helper ported from the
+frozen Qt 5 implementation. Other encryption modes, LZO blocks, large split-
+resource streaming, local-file resource fallback, and later parity work remain
+explicit.
 
 Aard consumes `.aar` archive volumes through a private bounded adapter. It
 validates the fixed header and 32/64-bit index layouts, decompresses metadata

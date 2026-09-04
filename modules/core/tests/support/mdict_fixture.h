@@ -5,6 +5,8 @@
 
 #include <zlib.h>
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -15,6 +17,7 @@
 #include <vector>
 
 #include "../../src/formats/mdict/mdict_discovery.h"
+#include "../../src/formats/mdict/mdict_key_info_crypto.h"
 
 namespace goldendict::core::test {
 
@@ -98,10 +101,32 @@ inline std::string MdictZlibBlock(std::string_view data) {
     return block;
 }
 
+inline std::string EncryptMdictKeyInfo(std::string block) {
+    std::array<char, 8> seed{};
+    std::copy_n(block.data() + 4U, 4U, seed.data());
+    seed[4] = static_cast<char>(0x95U);
+    seed[5] = static_cast<char>(0x36U);
+    const auto key = formats::mdict::detail::Ripemd128(
+        std::string_view(seed.data(), seed.size()));
+    std::uint8_t previous = 0x36U;
+    for (std::size_t index = 8U; index < block.size(); ++index) {
+        const std::size_t offset = index - 8U;
+        const auto plain = static_cast<std::uint8_t>(block[index]);
+        const auto mixed = static_cast<std::uint8_t>(
+            plain ^ previous ^ static_cast<std::uint8_t>(offset) ^
+            key[offset % key.size()]);
+        const auto encrypted =
+            static_cast<std::uint8_t>((mixed >> 4U) | (mixed << 4U));
+        block[index] = static_cast<char>(encrypted);
+        previous = encrypted;
+    }
+    return block;
+}
+
 inline std::filesystem::path WriteMdictContainer(
     const std::filesystem::path& path, std::string_view title,
     const std::vector<std::pair<std::string, std::string>>& entries,
-    bool encrypted = false, bool utf16 = false,
+    unsigned encryption = 0U, bool utf16 = false,
     MdictContainerVersion version = MdictContainerVersion::kVersion2_0) {
     if (entries.empty())
         throw std::runtime_error("MDict fixture needs entries");
@@ -114,7 +139,7 @@ inline std::filesystem::path WriteMdictContainer(
         std::string(utf16 ? "UTF-16" : "UTF-8") +
         "\" "
         "Encrypted=\"" +
-        std::string(encrypted ? "2" : "0") + "\" Left2Right=\"Yes\" Title=\"" +
+        std::to_string(encryption) + "\" Left2Right=\"Yes\" Title=\"" +
         std::string(title) +
         "\" Description=\"Fixture description\" "
         "StyleSheet=\"1&#10;&lt;b&gt;&#10;&lt;/b&gt;\"/>";
@@ -154,8 +179,10 @@ inline std::filesystem::path WriteMdictContainer(
         key_info.append(utf16 ? 2U : 1U, '\0');
     AppendMdictNumber(key_block.size(), number_width, &key_info);
     AppendMdictNumber(keys.size(), number_width, &key_info);
-    const std::string stored_key_info =
+    std::string stored_key_info =
         version_two ? MdictZlibBlock(key_info) : key_info;
+    if (encryption == 2U)
+        stored_key_info = EncryptMdictKeyInfo(std::move(stored_key_info));
 
     std::string file;
     AppendMdictBig32(static_cast<std::uint32_t>(header.size()), &file);
