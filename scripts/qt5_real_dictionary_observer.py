@@ -163,6 +163,8 @@ def observe(
     *,
     mdict_catalog: Path | None = None,
     mdict_catalog_sha256: str | None = None,
+    dsl_catalog: Path | None = None,
+    dsl_catalog_sha256: str | None = None,
 ) -> Path:
     if _required_environment("GOLDENDICT_ACCEPTANCE_VERSION") != "qt5":
         raise Qt5ObserverError("Qt 5 observer requires a Qt 5 paired run")
@@ -232,6 +234,21 @@ def observe(
         or _sha256(resolved_mdict_catalog) != mdict_catalog_sha256
     ):
         raise Qt5ObserverError("MDict catalog hash is invalid")
+    resolved_dsl_catalog = (
+        _resolve(dsl_catalog, "DSL acceptance catalog")
+        if dsl_catalog is not None
+        else None
+    )
+    if (resolved_dsl_catalog is None) != (dsl_catalog_sha256 is None):
+        raise Qt5ObserverError("DSL catalog path and hash must be supplied together")
+    if dsl_catalog_sha256 is not None and (
+        len(dsl_catalog_sha256) != HASH_LENGTH
+        or any(character not in "0123456789abcdef" for character in dsl_catalog_sha256)
+        or _sha256(resolved_dsl_catalog) != dsl_catalog_sha256
+    ):
+        raise Qt5ObserverError("DSL catalog hash is invalid")
+    if resolved_mdict_catalog is not None and resolved_dsl_catalog is not None:
+        raise Qt5ObserverError("Only one format-specific catalog may be supplied")
     if timeout_seconds < 1 or timeout_seconds > 24 * 60 * 60:
         raise Qt5ObserverError("Observer timeout is outside the supported bound")
 
@@ -271,6 +288,11 @@ def observe(
             )
             environment["GOLDENDICT_ACCEPTANCE_MDICT_CATALOG_SHA256"] = str(
                 mdict_catalog_sha256
+            )
+        if resolved_dsl_catalog is not None:
+            environment["GOLDENDICT_ACCEPTANCE_DSL_CATALOG"] = str(resolved_dsl_catalog)
+            environment["GOLDENDICT_ACCEPTANCE_DSL_CATALOG_SHA256"] = str(
+                dsl_catalog_sha256
             )
         path_entries = [legacy_executable.parent, *resolved_runtime_bins]
         environment["PATH"] = os.pathsep.join(

@@ -1080,6 +1080,71 @@ Release build, all 131 CTest tests, and all 129 Python tests passed with one
 intentional skip. R3.3 is complete when this audited delivery reaches the Qt 6
 baseline; the broader R3.5 and R3.13 matrices remain open and unchanged.
 
+### R3.4 real-DSL resource-ZIP acceptance readiness
+
+Readiness result: **Ready, split into evidence-driven functional units**
+(2026-09-05).
+
+R3.4 implements the already approved `CRD-DICT-003`, `CRD-COMPAT-001`, and
+`CRD-TEST-REAL-004` through `CRD-TEST-REAL-006`; it does not change product
+requirements. R3.2 is complete and provides the manifest-bound, read-only,
+paired-workspace lifecycle required by this leaf. The frozen Qt 5 DSL backend
+discovers adjacent `.dsl.files.zip` and `.dsl.dz.files.zip` archives and reads
+their indexed members through the dictionary resource contract. The current
+Qt 6 DSL backend discovers only adjacent resource directories, so the first
+pair is expected to expose a product gap rather than prove equivalence.
+
+The approved corpus contains five resource archives that have matching DSL
+sources and one orphan archive that must remain unowned. Four matching archives
+require ZIP64 entry counts. The largest archive is 4,090,975,853 bytes (greater
+than 4 GB decimal, but less than 4 GiB); its 4,482,738,078-byte aggregate
+uncompressed payload is greater than 4 GiB. R3.4 therefore avoids the ambiguous
+earlier description "archive larger than 4 GiB" and tests the exact bounded
+large-archive and ZIP64-count properties present in the approved corpus.
+
+Delivery is divided at coherent, independently auditable boundaries:
+
+1. Add a canonical DSL query/resource catalog, a bounded paired coordinator,
+   version-specific observer adapters, generated contract tests, and the
+   reproducible clean/warm real-corpus procedure. The comparator must retain
+   missing resources and component-ownership differences as structured product
+   evidence; it must not fail before publishing the pair or normalize a
+   difference away.
+2. Correct Qt 6 DSL resource-archive ownership and lazy bounded member access
+   through the existing private DSL backend. Archive indexing must not
+   materialize aggregate member data, resource reads remain size-bounded and
+   source-change safe, and unrelated or orphan archives remain unattached.
+3. Close R3.4 only after the final paired evidence is equivalent for all five
+   exact article/resource probes in clean and warm states, archive/source
+   provenance and the orphan assertion are stable, the corpus manifest is
+   unchanged, focused generated regressions pass, and the cumulative build and
+   test gates plus completion and integration audits pass.
+
+The design retains the Adapter boundary for Qt 5 and Qt 6 evidence collection
+and a coordinator for validation, normalization, comparison, and atomic
+publication. Production work remains inside the DSL backend and depends on a
+small archive-reader abstraction rather than exposing ZIP mechanics through
+Core or Widgets. This satisfies current ownership and dependency direction,
+keeps each responsibility cohesive, and creates no public interface or broad
+architecture change. Required corpus access, frozen Qt 5 observer preparation,
+Qt 6 Conan runtime activation, and external evidence storage are available.
+No unresolved product or architecture decision blocks Unit 1.
+
+Unit 1 implementation result: **Acceptance implemented; product differences
+confirmed** (2026-09-05). The final Unit 1 pair is retained at
+`evidence/qt5-qt6-dsl-r34-unit1-final2`, pair ID
+`6e9d0aa16771daf93d9deed152457824a60320de803187c7a0983f44fd374c5c`.
+The published comparison has external SHA-256
+`4a6834299fa27e8dbce42944264b466618d37727ae16c1cefbd3159759559e42`.
+Qt 5 retrieves the five frozen article-referenced resources byte-for-byte from
+their adjacent archives and reports every archive as an owned component in
+both clean and warm states. Qt 6 returns the five articles stably but reports
+none of those resources or archive ownership. The pair also exposes visible
+article-text differences for all five probes and a platform MIME-name
+difference for WAV resources. These are retained product differences, not
+acceptance-harness failures. They remain assigned to separate R3.4 correction
+units; R3.4 stays open until a fresh repeated pair is equivalent.
+
 The design uses the existing Adapter boundary for version-specific evidence
 collection and a coordinator for paired-run state and publication. These
 patterns have concrete value because Qt 5 and Qt 6 expose different APIs while

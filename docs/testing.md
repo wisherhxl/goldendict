@@ -318,6 +318,53 @@ article texts match in clean and warm states, and exact resource bytes from the
 base MDD, `.1.mdd`, and `.2.mdd` remain stable. Its comparison SHA-256 is
 `307d65659b95ce880eea577df6d3392d7ec6c9c6cc3c08e84827a771cc5b946d`.
 
+### R3.4 paired real-DSL article and resource-ZIP acceptance
+
+`real_dsl_acceptance.py` coordinates the R3.4 pair. Its catalog binds five
+exact DSL queries to five article-referenced archive members and records the
+archive file size, member count, aggregate uncompressed size, and exact
+resource size/SHA-256. It also binds the unmatched MWC11 archive as an orphan
+that neither product may attach to another dictionary. Catalog validation
+reads ZIP central-directory metadata but never materializes aggregate member
+data; each product retrieves only the selected resource through its normal
+dictionary API. Final observations retain hashes and sizes, not private
+article or resource payloads.
+
+The external catalog is
+`evidence/r3.4-dsl-query-resource-catalog-v1.json`, SHA-256
+`a896f6d979bf3d6dc1890a17e18f88e0124447af741a289b6b1d184d07c1dabe`.
+Its orphan record binds a unique member by ID, size, and SHA-256. Qt 6 tests
+ownership through the public product resource boundary because its public
+catalog identity exposes only the primary source. Qt 5 obtains the stronger
+native component list from `getDictionaryFilenames()` and checks the orphan's
+canonical archive path there.
+It is bound to the approved real-corpus manifest and to
+`evidence/qt5-qt6-acceptance-conditions-r3.4-v1.json`, canonical condition
+SHA-256
+`1d66d88eb92ffede24291fa39bde16f1c035711b60e0430f0a7d2f0d8df2b467`.
+The largest actual archive is 4,090,975,853 bytes, while its aggregate
+uncompressed payload is 4,482,738,078 bytes; four other cataloged archives use
+ZIP64 entry counts. Run `qt6_real_dsl_observer` through `run_with_conan.ps1`
+and the Qt 5 adapter through its documented MSYS2 runtime, for both
+`clean-discovery` and `warm-restart`, using the same paired-workspace command
+shape as R3.3 with `real_dsl_acceptance.py` and the R3.4 catalog. Comparison
+also requires `--catalog`, `--dictionary-root`, and `--pair`; these inputs
+rebind every persisted nested observation to the authoritative catalog,
+revisions, pair identity, manifest, and conditions before field-level
+differences are published.
+
+The comparison exits nonzero after publishing a material difference. The
+final Unit 1 pair at `evidence/qt5-qt6-dsl-r34-unit1-final2` correctly records
+five missing Qt 6 archive resources, missing Qt 5-owned additional/archive
+components, plus article-text and WAV MIME-name differences, with stable
+clean/warm observations on each version. Qt 5's component list and Qt 6's
+unique-member resource probe independently report the unmatched archive as
+unowned. The comparison records each expected and actual field value in
+addition to bounded aggregate hashes. Its comparison SHA-256 is
+`4a6834299fa27e8dbce42944264b466618d37727ae16c1cefbd3159759559e42`.
+Do not weaken these equality keys; repeat the same frozen catalog after each
+R3.4 correction.
+
 `mdict_reader_test::UsesLegacyFallbackName` pins the frozen Qt 5 title fallback
 for empty, placeholder, and header titles shorter than five UTF-16 code units,
 including non-BMP boundary cases. The fallback uses the filename before its
