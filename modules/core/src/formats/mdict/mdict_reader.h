@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -19,6 +20,10 @@
 #include "mdict_discovery.h"
 
 namespace goldendict::core::formats::mdict {
+
+namespace detail {
+class ResourceStore;
+}
 
 enum class ErrorCode { kMissingFile, kInvalidDictionary, kUnsupported };
 
@@ -110,7 +115,7 @@ class Reader final {
     std::pair<std::vector<std::string>, bool> EnumerateHeadwords(
         std::size_t offset, std::size_t result_limit, std::size_t byte_limit,
         const std::function<void()>& checkpoint = {}) const;
-    const std::string* Resource(std::string_view id) const;
+    std::optional<std::string> Resource(std::string_view id) const;
     IngestionView ReadIngestionView(
         const std::function<void()>& checkpoint = {}) const;
 
@@ -133,7 +138,7 @@ class Reader final {
     dictionary::OrderedHeadwordIndex enumeration_index_;
     std::vector<std::string> articles_;
     std::unordered_map<std::string, std::size_t> article_by_folded_word_;
-    std::unordered_map<std::string, std::string> resources_;
+    std::vector<std::shared_ptr<const detail::ResourceStore>> resources_;
     dictionary::SourceSnapshot source_snapshot_;
 };
 

@@ -412,14 +412,19 @@ repairs, and full-text indexes remain later parity work.
 MDict consumes 1.x and 2.x `.mdx` dictionaries and their `.mdd`, `.1.mdd`, and
 later resource volumes. The private adapter validates UTF-16 header XML and the
 version-specific checksums, integer widths, key-info representation, and key
-terminators. It bounds key/record tables and all decompression, strictly decodes
-declared text, applies embedded stylesheet markers, resolves bounded article
-redirects, and serves normalized MDD resource names through the typed resource
-API. Plain and zlib blocks are supported in this slice. MDict 2.x key-info
+terminators. MDX article records remain bounded in-memory data, while every MDD
+volume is streamed once into immutable key and record-block metadata. Resource
+requests open a local input stream, validate the indexed source stamp, decode
+only overlapping plain or zlib blocks, and assemble exact byte ranges across
+block boundaries. This removes any aggregate decoded-volume limit while
+retaining per-block and per-resource bounds and permits concurrent reads without
+shared stream state. The adapter strictly decodes declared text, applies
+embedded stylesheet markers, resolves bounded article redirects, and serves
+normalized MDD names through the typed resource API. MDict 2.x key-info
 encryption flag 2 is decoded by a private RIPEMD-128 helper ported from the
-frozen Qt 5 implementation. Other encryption modes, LZO blocks, large split-
-resource streaming, local-file resource fallback, and later parity work remain
-explicit.
+frozen Qt 5 implementation. Other encryption modes, LZO blocks, local-file
+resource fallback, real-corpus resource-by-resource acceptance, and later
+parity work remain explicit.
 
 Aard consumes `.aar` archive volumes through a private bounded adapter. It
 validates the fixed header and 32/64-bit index layouts, decompresses metadata

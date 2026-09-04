@@ -64,9 +64,9 @@ void MdictDictionaryTest::ExposesIdentityHtmlSuggestionsAndResources() {
 void MdictDictionaryTest::HonorsCancellationAndUnknownResources() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
-    const Dictionary dictionary = Dictionary::Open(
-        "mdict-id", test::WriteMdictFixture(
-                        std::filesystem::path(directory.path().toStdString())));
+    const auto files = test::WriteMdictFixture(
+        std::filesystem::path(directory.path().toStdString()));
+    const Dictionary dictionary = Dictionary::Open("mdict-id", files);
     CancelledSignal signal;
     dictionary::RequestOptions options;
     options.cancellation = &signal;
@@ -75,6 +75,12 @@ void MdictDictionaryTest::HonorsCancellationAndUnknownResources() {
                              dictionary::Error);
     QVERIFY(!dictionary.GetResource("missing.png").has_value());
     QVERIFY(!dictionary.GetResource("../pixel.png").has_value());
+
+    std::ofstream mutation(files.mdd.front(), std::ios::binary | std::ios::app);
+    mutation.put('\0');
+    mutation.close();
+    QVERIFY_EXCEPTION_THROWN(dictionary.GetResource("pixel.png"),
+                             dictionary::Error);
 }
 
 void MdictDictionaryTest::BuildsOwnedTerminalFullTextIndex() {

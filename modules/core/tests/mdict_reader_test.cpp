@@ -19,6 +19,8 @@ class MdictReaderTest : public QObject {
     Q_OBJECT
    private slots:
     void ReadsStylesRedirectsAndMddResources();
+    void ReadsResourcesAcrossRecordBlocks();
+    void RejectsChangedResourceSource();
     void ReadsVersionOneContainers();
     void ReadsEncryptedKeyInfo();
     void MatchesRipemd128ReferenceDigest();
@@ -44,9 +46,43 @@ void MdictReaderTest::ReadsStylesRedirectsAndMddResources() {
     QCOMPARE(reader.SuggestPrefix("exa").front(), "example");
     QVERIFY(reader.LookupPrefix("exa", 0U).empty());
     QVERIFY(reader.SuggestPrefix("exa", 0U).empty());
-    QVERIFY(reader.Resource("pixel.png") != nullptr);
+    QVERIFY(reader.Resource("pixel.png").has_value());
     QCOMPARE(*reader.Resource("/pixel.png"), "mdict-png");
-    QVERIFY(reader.Resource("../pixel.png") == nullptr);
+    QVERIFY(!reader.Resource("../pixel.png").has_value());
+}
+
+void MdictReaderTest::ReadsResourcesAcrossRecordBlocks() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto mdx = test::WriteMdictContainer(
+        root / "split.mdx", "Split Resource Fixture", {{"word", "article"}});
+    const auto mdd = test::WriteMdictContainer(
+        root / "split.mdd", "Split Resources",
+        {{"\\first.bin", "a"},
+         {"\\spanning.bin", "0123456789"},
+         {"\\last.bin", "z"}},
+        0U, false, test::MdictContainerVersion::kVersion2_0, {4U, 4U, 4U});
+
+    const Reader reader = Reader::Open({mdx, {mdd}});
+
+    QCOMPARE(*reader.Resource("first.bin"), "a");
+    QCOMPARE(*reader.Resource("spanning.bin"), "0123456789");
+    QCOMPARE(*reader.Resource("last.bin"), "z");
+}
+
+void MdictReaderTest::RejectsChangedResourceSource() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto files = test::WriteMdictFixture(root);
+    const Reader reader = Reader::Open(files);
+
+    std::ofstream mutation(files.mdd.front(), std::ios::binary | std::ios::app);
+    mutation.put('\0');
+    mutation.close();
+
+    QVERIFY_EXCEPTION_THROWN(reader.Resource("pixel.png"), Error);
 }
 
 void MdictReaderTest::ReadsVersionOneContainers() {

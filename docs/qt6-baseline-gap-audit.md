@@ -786,6 +786,18 @@ The real DSL Qt 6 smoke was then repeated after removing its archive prefix
 while retaining the generated index and other run state; the coordinator reset
 the isolated state, recreated the index, and completed all three scenarios.
 
+The first Unit 2 correction closes the confirmed Oxford split-MDD aggregate
+loading defect without changing the approved requirements or public
+architecture. The Qt 6 reader now indexes immutable MDD key and record-block
+metadata and reads only the requested bounded resource range, including exact
+assembly across block boundaries and consecutive volumes. Generated tests pin
+cross-block bytes, changed-source rejection, and common error translation. A
+Conan-launched smoke against the approved corpus completes clean discovery,
+warm restart, and explicit rescan with 17 dictionaries, zero errors, and the
+same Oxford MDict ID and 238,766 article/headword counts in every state. This is
+correction evidence within Unit 2; R3.2 and R3.3 remain incomplete until the
+paired Qt 5 lifecycle and actual resource-query catalog are accepted.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

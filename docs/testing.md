@@ -188,9 +188,26 @@ MDX.
 RIPEMD-128 helper is also pinned to the published empty-string and `a` digest
 vectors, while the inverse fixture encoder is confined to test support. The
 real-corpus smoke gate must pass the Oxford base MDD's encrypted key-info and
-advance to the separately tracked aggregate decoded-resource limit in its
-`.1.mdd` volume. Other encryption flags remain typed unsupported; this test
-does not claim LZO or large split-resource streaming support.
+open every consecutive resource volume without an aggregate decoded-resource
+limit. Other encryption flags remain typed unsupported; this test does not
+claim LZO support.
+
+`mdict_reader_test::ReadsResourcesAcrossRecordBlocks` generates three MDD
+record blocks and proves exact reads before, across, and after block boundaries.
+`mdict_reader_test::RejectsChangedResourceSource` proves that a source stamp
+change after indexing is rejected, while
+`mdict_dictionary_test::HonorsCancellationAndUnknownResources` verifies that
+the lazy-read failure is translated to the common typed dictionary error.
+
+The Conan-launched Oxford correction smoke retains `raw.json`,
+`warm-restart.json`, and `explicit-rescan.json` under
+`evidence/mdict-lazy-resources-smoke/`. Each state discovers 17 dictionaries
+with zero errors and reports the stable MDict ID `mdict-e0b9d9fb1ea25081`, name
+`牛津高阶双解(第9版)_V3.1.2版`, and 238,766 articles and headwords. Publishing the
+catalog requires opening the base MDD plus its `.1.mdd` and `.2.mdd` companions,
+whose decoded totals exceed one GiB. This correction therefore proves bounded
+split-volume discovery and generated exact resource reads; it does not by
+itself complete the R3.3 real-resource query catalog or paired Qt 5 comparison.
 
 Run Qt 6 from a configured Release build through the Conan launcher so the
 child inherits the complete DLL and Qt plugin environment:

@@ -127,7 +127,8 @@ inline std::filesystem::path WriteMdictContainer(
     const std::filesystem::path& path, std::string_view title,
     const std::vector<std::pair<std::string, std::string>>& entries,
     unsigned encryption = 0U, bool utf16 = false,
-    MdictContainerVersion version = MdictContainerVersion::kVersion2_0) {
+    MdictContainerVersion version = MdictContainerVersion::kVersion2_0,
+    const std::vector<std::size_t>& record_block_sizes = {}) {
     if (entries.empty())
         throw std::runtime_error("MDict fixture needs entries");
     std::filesystem::create_directories(path.parent_path());
@@ -201,14 +202,38 @@ inline std::filesystem::path WriteMdictContainer(
     file += stored_key_info;
     file += key_block;
 
-    const std::string record_block = MdictZlibBlock(records);
-    AppendMdictNumber(1U, number_width, &file);
+    std::vector<std::string> record_blocks;
+    if (record_block_sizes.empty()) {
+        record_blocks.push_back(MdictZlibBlock(records));
+    } else {
+        std::size_t offset = 0;
+        for (const std::size_t size : record_block_sizes) {
+            if (size == 0U || size > records.size() - offset)
+                throw std::runtime_error("invalid MDict record block split");
+            record_blocks.push_back(
+                MdictZlibBlock(std::string_view(records).substr(offset, size)));
+            offset += size;
+        }
+        if (offset != records.size())
+            throw std::runtime_error("incomplete MDict record block split");
+    }
+    std::size_t stored_record_size = 0;
+    for (const auto& block : record_blocks)
+        stored_record_size += block.size();
+    AppendMdictNumber(record_blocks.size(), number_width, &file);
     AppendMdictNumber(entries.size(), number_width, &file);
-    AppendMdictNumber(number_width * 2U, number_width, &file);
-    AppendMdictNumber(record_block.size(), number_width, &file);
-    AppendMdictNumber(record_block.size(), number_width, &file);
-    AppendMdictNumber(records.size(), number_width, &file);
-    file += record_block;
+    AppendMdictNumber(record_blocks.size() * number_width * 2U, number_width,
+                      &file);
+    AppendMdictNumber(stored_record_size, number_width, &file);
+    for (std::size_t index = 0; index < record_blocks.size(); ++index) {
+        AppendMdictNumber(record_blocks[index].size(), number_width, &file);
+        const std::size_t decoded_size = record_block_sizes.empty()
+                                             ? records.size()
+                                             : record_block_sizes[index];
+        AppendMdictNumber(decoded_size, number_width, &file);
+    }
+    for (const auto& block : record_blocks)
+        file += block;
 
     std::ofstream output(path, std::ios::binary);
     output.write(file.data(), static_cast<std::streamsize>(file.size()));

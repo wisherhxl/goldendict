@@ -197,18 +197,22 @@ std::optional<dictionary::Resource> Dictionary::GetResource(
     std::string_view resource_id,
     const dictionary::RequestOptions& options) const {
     dictionary::CheckRequest(options);
-    const std::string* data = reader_.Resource(resource_id);
-    if (data == nullptr)
-        return std::nullopt;
-    dictionary::Resource resource;
-    resource.id = std::string(resource_id);
-    resource.media_type = dictionary::MediaTypeForResourceId(resource_id);
-    resource.data.resize(data->size());
-    std::transform(
-        data->begin(), data->end(), resource.data.begin(),
-        [](unsigned char byte) { return static_cast<std::byte>(byte); });
-    dictionary::CheckRequest(options);
-    return resource;
+    try {
+        auto data = reader_.Resource(resource_id);
+        if (!data.has_value())
+            return std::nullopt;
+        dictionary::Resource resource;
+        resource.id = std::string(resource_id);
+        resource.media_type = dictionary::MediaTypeForResourceId(resource_id);
+        resource.data.resize(data->size());
+        std::transform(
+            data->begin(), data->end(), resource.data.begin(),
+            [](unsigned char byte) { return static_cast<std::byte>(byte); });
+        dictionary::CheckRequest(options);
+        return resource;
+    } catch (const Error& error) {
+        throw TranslateError(error);
+    }
 }
 
 }  // namespace goldendict::core::formats::mdict

@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <set>
 #include <tuple>
@@ -24,12 +25,44 @@
 #include "../../foundation/text_folding.h"
 
 namespace goldendict::core::formats::mdict {
+
+namespace detail {
+
+class ResourceStore final {
+   public:
+    static std::shared_ptr<const ResourceStore> Open(
+        const std::filesystem::path& path);
+
+    std::optional<std::string> Read(std::string_view id) const;
+
+   private:
+    struct Entry {
+        std::uint64_t offset = 0;
+        std::size_t size = 0;
+    };
+
+    struct Block {
+        std::uint64_t file_offset = 0;
+        std::uint64_t decoded_offset = 0;
+        std::size_t compressed_size = 0;
+        std::size_t decoded_size = 0;
+    };
+
+    std::filesystem::path path_;
+    dictionary::SourceStamp source_;
+    std::unordered_map<std::string, Entry> entries_;
+    std::vector<Block> blocks_;
+};
+
+}  // namespace detail
+
 namespace {
 
 constexpr std::size_t kMaxFile = 512U * 1024U * 1024U;
 constexpr std::size_t kMaxDecoded = 512U * 1024U * 1024U;
 constexpr std::size_t kMaxHeader = 4U * 1024U * 1024U;
 constexpr std::size_t kMaxRecord = 32U * 1024U * 1024U;
+constexpr std::size_t kMaxResource = 256U * 1024U * 1024U;
 constexpr std::size_t kMaxEntries = 10U * 1000U * 1000U;
 constexpr std::size_t kMaxBlocks = 1000U * 1000U;
 
@@ -63,6 +96,12 @@ struct BlockInfo {
 struct KeyEntry {
     std::size_t offset = 0;
     std::string word;
+};
+
+struct KeySection {
+    Header header;
+    std::vector<KeyEntry> keys;
+    std::size_t number_width = 0;
 };
 
 [[noreturn]] void Throw(ErrorCode code, const std::filesystem::path& path,
@@ -119,6 +158,57 @@ class Cursor final {
     std::string_view data_;
     const std::filesystem::path& path_;
     std::size_t position_ = 0;
+};
+
+class StreamCursor final {
+   public:
+    explicit StreamCursor(const std::filesystem::path& path) : path_(path) {
+        std::error_code error;
+        size_ = std::filesystem::file_size(path, error);
+        if (error)
+            Throw(ErrorCode::kMissingFile, path,
+                  "Cannot inspect MDict file");
+        if (size_ > static_cast<std::uint64_t>(
+                        std::numeric_limits<std::streamoff>::max()))
+            Throw(ErrorCode::kInvalidDictionary, path,
+                  "MDict file exceeds stream offset range");
+        input_.open(path, std::ios::binary);
+        if (!input_)
+            Throw(ErrorCode::kMissingFile, path, "Cannot open MDict file");
+    }
+
+    std::uint64_t position() const noexcept { return position_; }
+
+    std::uint64_t remaining() const noexcept { return size_ - position_; }
+
+    std::string Read(std::size_t size, std::string_view field) {
+        if (size > remaining() ||
+            size > static_cast<std::size_t>(
+                       std::numeric_limits<std::streamsize>::max()))
+            Throw(ErrorCode::kInvalidDictionary, path_,
+                  "Truncated MDict " + std::string(field));
+        std::string value(size, '\0');
+        if (size != 0U &&
+            !input_.read(value.data(), static_cast<std::streamsize>(size)))
+            Throw(ErrorCode::kInvalidDictionary, path_,
+                  "Cannot read MDict " + std::string(field));
+        position_ += size;
+        return value;
+    }
+
+    std::uint64_t Big(std::size_t width, std::string_view field) {
+        const auto bytes = Read(width, field);
+        std::uint64_t value = 0;
+        for (unsigned char byte : bytes)
+            value = (value << 8U) | byte;
+        return value;
+    }
+
+   private:
+    const std::filesystem::path& path_;
+    std::ifstream input_;
+    std::uint64_t size_ = 0;
+    std::uint64_t position_ = 0;
 };
 
 std::uint32_t Little32(std::string_view value) {
@@ -212,7 +302,8 @@ std::string NormalizeEncoding(std::string encoding) {
     return encoding;
 }
 
-Header ReadHeader(Cursor* cursor, const std::filesystem::path& path) {
+template <typename InputCursor>
+Header ReadHeader(InputCursor* cursor, const std::filesystem::path& path) {
     const std::size_t size =
         static_cast<std::size_t>(cursor->Big(4U, "header length"));
     if (size == 0U || size > kMaxHeader)
@@ -377,6 +468,76 @@ std::vector<KeyEntry> ParseKeyBlock(std::string_view data,
     return entries;
 }
 
+template <typename InputCursor>
+KeySection ParseKeySection(InputCursor* cursor,
+                           const std::filesystem::path& path) {
+    KeySection result;
+    result.header = ReadHeader(cursor, path);
+    const bool version_two = result.header.version >= 2.0;
+    result.number_width = version_two ? 8U : 4U;
+    const auto key_header = cursor->Read(
+        result.number_width * (version_two ? 5U : 4U), "key header");
+    Cursor key_cursor(key_header, path);
+    const auto block_count =
+        key_cursor.Big(result.number_width, "key block count");
+    const auto entry_count = key_cursor.Big(result.number_width, "entry count");
+    const auto decoded_info_size =
+        version_two
+            ? key_cursor.Big(result.number_width, "decoded key info size")
+            : 0U;
+    const auto info_size = key_cursor.Big(result.number_width, "key info size");
+    const auto key_blocks_size =
+        key_cursor.Big(result.number_width, "key blocks size");
+    if (version_two &&
+        !ValidAdler(key_header,
+                    Big32(cursor->Read(4U, "key header checksum"))))
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "MDict key header checksum does not match");
+    if (block_count == 0U || block_count > kMaxBlocks || entry_count == 0U ||
+        entry_count > kMaxEntries ||
+        (version_two && decoded_info_size > kMaxDecoded) ||
+        info_size > kMaxFile || key_blocks_size > kMaxFile)
+        Throw(ErrorCode::kInvalidDictionary, path, "Invalid MDict key header");
+    std::string raw_info(
+        cursor->Read(static_cast<std::size_t>(info_size), "key block info"));
+    if (result.header.encrypted == 2U &&
+        !detail::DecryptKeyInfo(&raw_info))
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Invalid encrypted MDict key block info");
+    const std::string info =
+        version_two
+            ? DecompressBlock(raw_info,
+                              static_cast<std::size_t>(decoded_info_size), path,
+                              "key info")
+            : std::move(raw_info);
+    const auto blocks =
+        ParseKeyInfo(info, result.number_width,
+                     static_cast<std::size_t>(block_count),
+                     static_cast<std::size_t>(entry_count),
+                     result.header.encoding, path, version_two);
+    result.keys.reserve(static_cast<std::size_t>(entry_count));
+    std::size_t compressed_total = 0;
+    for (const auto& block : blocks) {
+        if (block.compressed >
+            static_cast<std::size_t>(key_blocks_size) - compressed_total)
+            Throw(ErrorCode::kInvalidDictionary, path,
+                  "MDict key blocks exceed declared size");
+        const std::string decoded = DecompressBlock(
+            cursor->Read(block.compressed, "key block"), block.decompressed,
+            path, "key");
+        auto entries = ParseKeyBlock(decoded, result.number_width,
+                                     result.header.encoding, path);
+        result.keys.insert(result.keys.end(),
+                           std::make_move_iterator(entries.begin()),
+                           std::make_move_iterator(entries.end()));
+        compressed_total += block.compressed;
+    }
+    if (compressed_total != key_blocks_size || result.keys.size() != entry_count)
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "MDict key data does not match metadata");
+    return result;
+}
+
 std::map<int, std::pair<std::string, std::string>> ParseStyles(
     std::string_view stylesheet) {
     std::vector<std::string> lines;
@@ -444,70 +605,15 @@ std::string ApplyStyles(
     return result;
 }
 
-ParsedContainer ParseContainer(const std::filesystem::path& path,
-                               bool resources) {
+ParsedContainer ParseContainer(const std::filesystem::path& path) {
     const std::string file = ReadFile(path);
     Cursor cursor(file, path);
     ParsedContainer parsed;
-    parsed.header = ReadHeader(&cursor, path);
-    const bool version_two = parsed.header.version >= 2.0;
-    const std::size_t number_width = version_two ? 8U : 4U;
-    const auto key_header =
-        cursor.Read(number_width * (version_two ? 5U : 4U), "key header");
-    Cursor key_cursor(key_header, path);
-    const auto block_count = key_cursor.Big(number_width, "key block count");
-    const auto entry_count = key_cursor.Big(number_width, "entry count");
-    const auto decoded_info_size =
-        version_two ? key_cursor.Big(number_width, "decoded key info size")
-                    : 0U;
-    const auto info_size = key_cursor.Big(number_width, "key info size");
-    const auto key_blocks_size =
-        key_cursor.Big(number_width, "key blocks size");
-    if (version_two &&
-        !ValidAdler(key_header,
-                    Big32(cursor.Read(4U, "key header checksum"))))
-        Throw(ErrorCode::kInvalidDictionary, path,
-              "MDict key header checksum does not match");
-    if (block_count == 0U || block_count > kMaxBlocks || entry_count == 0U ||
-        entry_count > kMaxEntries ||
-        (version_two && decoded_info_size > kMaxDecoded) ||
-        info_size > kMaxFile || key_blocks_size > kMaxFile)
-        Throw(ErrorCode::kInvalidDictionary, path, "Invalid MDict key header");
-    std::string raw_info(
-        cursor.Read(static_cast<std::size_t>(info_size), "key block info"));
-    if (parsed.header.encrypted == 2U &&
-        !detail::DecryptKeyInfo(&raw_info))
-        Throw(ErrorCode::kInvalidDictionary, path,
-              "Invalid encrypted MDict key block info");
-    const std::string info =
-        version_two
-            ? DecompressBlock(raw_info,
-                              static_cast<std::size_t>(decoded_info_size), path,
-                              "key info")
-            : std::string(raw_info);
-    const auto blocks = ParseKeyInfo(
-        info, number_width, static_cast<std::size_t>(block_count),
-        static_cast<std::size_t>(entry_count), parsed.header.encoding, path,
-        version_two);
-    std::vector<KeyEntry> keys;
-    std::size_t compressed_total = 0;
-    for (const auto& block : blocks) {
-        if (block.compressed >
-            static_cast<std::size_t>(key_blocks_size) - compressed_total)
-            Throw(ErrorCode::kInvalidDictionary, path,
-                  "MDict key blocks exceed declared size");
-        const std::string decoded =
-            DecompressBlock(cursor.Read(block.compressed, "key block"),
-                            block.decompressed, path, "key");
-        auto entries =
-            ParseKeyBlock(decoded, number_width, parsed.header.encoding, path);
-        keys.insert(keys.end(), std::make_move_iterator(entries.begin()),
-                    std::make_move_iterator(entries.end()));
-        compressed_total += block.compressed;
-    }
-    if (compressed_total != key_blocks_size || keys.size() != entry_count)
-        Throw(ErrorCode::kInvalidDictionary, path,
-              "MDict key data does not match metadata");
+    KeySection key_section = ParseKeySection(&cursor, path);
+    parsed.header = std::move(key_section.header);
+    std::vector<KeyEntry>& keys = key_section.keys;
+    const std::size_t number_width = key_section.number_width;
+    const std::size_t entry_count = keys.size();
 
     const auto record_block_count =
         cursor.Big(number_width, "record block count");
@@ -560,9 +666,8 @@ ParsedContainer ParseContainer(const std::filesystem::path& path,
             Throw(ErrorCode::kInvalidDictionary, path,
                   "Invalid MDict record range");
         std::string value(records.substr(start, end - start));
-        if (!resources)
-            value = ApplyStyles(
-                Decode(value, parsed.header.encoding, path, "record"), styles);
+        value = ApplyStyles(
+            Decode(value, parsed.header.encoding, path, "record"), styles);
         parsed.entries.push_back({std::move(keys[index].word), std::move(value),
                                   start, end - start});
     }
@@ -593,6 +698,37 @@ std::string NormalizeResourceId(std::string id) {
     return path.lexically_normal().generic_string();
 }
 
+dictionary::SourceStamp CaptureSource(
+    const std::filesystem::path& path, ErrorCode error_code,
+    std::string_view failure_message) {
+    try {
+        auto snapshot = dictionary::CaptureSourceSnapshot({path});
+        return std::move(snapshot.front());
+    } catch (const dictionary::GeneratedIndexError&) {
+        Throw(error_code, path, std::string(failure_message));
+    }
+}
+
+std::string ReadRange(std::ifstream* input, const std::filesystem::path& path,
+                      std::uint64_t offset, std::size_t size) {
+    if (offset > static_cast<std::uint64_t>(
+                     std::numeric_limits<std::streamoff>::max()) ||
+        size > static_cast<std::size_t>(
+                   std::numeric_limits<std::streamsize>::max()))
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "MDict resource block exceeds stream range");
+    input->seekg(static_cast<std::streamoff>(offset));
+    if (!*input)
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Cannot seek to MDict resource block");
+    std::string value(size, '\0');
+    if (size != 0U &&
+        !input->read(value.data(), static_cast<std::streamsize>(size)))
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Cannot read complete MDict resource block");
+    return value;
+}
+
 std::string Trim(std::string value) {
     const auto whitespace = [](unsigned char byte) {
         return std::isspace(byte) != 0;
@@ -607,13 +743,154 @@ std::string Trim(std::string value) {
 
 }  // namespace
 
+std::shared_ptr<const detail::ResourceStore> detail::ResourceStore::Open(
+    const std::filesystem::path& path) {
+    const dictionary::SourceStamp initial =
+        CaptureSource(path, ErrorCode::kMissingFile,
+                      "Cannot inspect MDict resource file");
+    StreamCursor cursor(path);
+    KeySection key_section = ParseKeySection(&cursor, path);
+    const std::size_t number_width = key_section.number_width;
+    const auto record_block_count =
+        cursor.Big(number_width, "record block count");
+    const auto record_count = cursor.Big(number_width, "record count");
+    const auto record_info_size =
+        cursor.Big(number_width, "record info size");
+    const auto record_blocks_size =
+        cursor.Big(number_width, "record blocks size");
+    const std::uint64_t expected_info_size =
+        record_block_count * number_width * 2U;
+    if (record_block_count == 0U || record_block_count > kMaxBlocks ||
+        record_count != key_section.keys.size() ||
+        record_info_size != expected_info_size ||
+        record_info_size > cursor.remaining())
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Invalid MDict resource record header");
+
+    auto store = std::shared_ptr<ResourceStore>(new ResourceStore);
+    store->path_ = path;
+    store->blocks_.reserve(static_cast<std::size_t>(record_block_count));
+    std::uint64_t compressed_total = 0;
+    std::uint64_t decoded_total = 0;
+    for (std::uint64_t index = 0; index < record_block_count; ++index) {
+        const auto compressed =
+            cursor.Big(number_width, "record block size");
+        const auto decoded =
+            cursor.Big(number_width, "decoded record block size");
+        if (compressed < 8U || compressed > kMaxFile || decoded == 0U ||
+            decoded > kMaxDecoded || compressed > record_blocks_size ||
+            compressed_total > record_blocks_size - compressed ||
+            decoded_total >
+                std::numeric_limits<std::uint64_t>::max() - decoded)
+            Throw(ErrorCode::kInvalidDictionary, path,
+                  "Invalid MDict resource record block size");
+        store->blocks_.push_back(
+            {0U, decoded_total, static_cast<std::size_t>(compressed),
+             static_cast<std::size_t>(decoded)});
+        compressed_total += compressed;
+        decoded_total += decoded;
+    }
+    if (compressed_total != record_blocks_size ||
+        record_blocks_size != cursor.remaining())
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "MDict resource record sizes do not match");
+
+    std::uint64_t file_offset = cursor.position();
+    for (auto& block : store->blocks_) {
+        block.file_offset = file_offset;
+        file_offset += block.compressed_size;
+    }
+
+    store->entries_.reserve(key_section.keys.size());
+    for (std::size_t index = 0; index < key_section.keys.size(); ++index) {
+        const std::uint64_t start = key_section.keys[index].offset;
+        const std::uint64_t end =
+            index + 1U < key_section.keys.size()
+                ? key_section.keys[index + 1U].offset
+                : decoded_total;
+        if (start > end || end > decoded_total ||
+            end - start > kMaxResource)
+            Throw(ErrorCode::kInvalidDictionary, path,
+                  "Invalid MDict resource record range");
+        std::string id = NormalizeResourceId(key_section.keys[index].word);
+        if (!id.empty())
+            store->entries_.emplace(
+                std::move(id),
+                Entry{start, static_cast<std::size_t>(end - start)});
+    }
+
+    const dictionary::SourceStamp final =
+        CaptureSource(path, ErrorCode::kMissingFile,
+                      "Cannot inspect MDict resource file");
+    if (!(initial == final))
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "MDict resource file changed while indexing");
+    store->source_ = final;
+    return store;
+}
+
+std::optional<std::string> detail::ResourceStore::Read(
+    std::string_view id) const {
+    const auto entry = entries_.find(std::string(id));
+    if (entry == entries_.end())
+        return std::nullopt;
+    const dictionary::SourceStamp before =
+        CaptureSource(path_, ErrorCode::kMissingFile,
+                      "Cannot inspect MDict resource file");
+    if (!(before == source_))
+        Throw(ErrorCode::kInvalidDictionary, path_,
+              "MDict resource file changed after indexing");
+
+    const std::uint64_t start = entry->second.offset;
+    const std::uint64_t end = start + entry->second.size;
+    std::ifstream input(path_, std::ios::binary);
+    if (!input)
+        Throw(ErrorCode::kMissingFile, path_,
+              "Cannot open MDict resource file");
+    auto block = std::lower_bound(
+        blocks_.begin(), blocks_.end(), start,
+        [](const Block& candidate, std::uint64_t offset) {
+            return candidate.decoded_offset + candidate.decoded_size <= offset;
+        });
+    std::string result;
+    result.reserve(entry->second.size);
+    std::uint64_t offset = start;
+    while (offset < end) {
+        if (block == blocks_.end() || offset < block->decoded_offset ||
+            offset >= block->decoded_offset + block->decoded_size)
+            Throw(ErrorCode::kInvalidDictionary, path_,
+                  "MDict resource range is not covered by record blocks");
+        const std::string decoded =
+            DecompressBlock(ReadRange(&input, path_, block->file_offset,
+                                      block->compressed_size),
+                            block->decoded_size, path_, "resource");
+        const std::uint64_t block_end =
+            block->decoded_offset + block->decoded_size;
+        const std::uint64_t slice_end = std::min(end, block_end);
+        const std::size_t slice_offset =
+            static_cast<std::size_t>(offset - block->decoded_offset);
+        const std::size_t slice_size =
+            static_cast<std::size_t>(slice_end - offset);
+        result.append(decoded, slice_offset, slice_size);
+        offset = slice_end;
+        ++block;
+    }
+    const dictionary::SourceStamp after =
+        CaptureSource(path_, ErrorCode::kMissingFile,
+                      "Cannot inspect MDict resource file");
+    if (!(after == source_))
+        Throw(ErrorCode::kInvalidDictionary, path_,
+              "MDict resource file changed while reading");
+    return result;
+}
+
 Error::Error(ErrorCode code, std::filesystem::path path, std::string message)
     : std::runtime_error(std::move(message)),
       code_(code),
       path_(std::move(path)) {}
 
 Reader Reader::Open(const DictionaryFiles& files) {
-    const ParsedContainer mdx = ParseContainer(files.mdx, false);
+    const ParsedContainer mdx = ParseContainer(files.mdx);
     Reader reader;
     reader.path_ = files.mdx;
     reader.metadata_.name =
@@ -641,14 +918,9 @@ Reader Reader::Open(const DictionaryFiles& files) {
     if (reader.records_.empty())
         Throw(ErrorCode::kInvalidDictionary, files.mdx,
               "MDict file contains no entries");
-    for (const auto& mdd_path : files.mdd) {
-        const ParsedContainer mdd = ParseContainer(mdd_path, true);
-        for (const auto& entry : mdd.entries) {
-            std::string id = NormalizeResourceId(entry.word);
-            if (!id.empty())
-                reader.resources_.emplace(std::move(id), entry.value);
-        }
-    }
+    reader.resources_.reserve(files.mdd.size());
+    for (const auto& mdd_path : files.mdd)
+        reader.resources_.push_back(detail::ResourceStore::Open(mdd_path));
     std::vector<std::filesystem::path> sources{files.mdx};
     sources.insert(sources.end(), files.mdd.begin(), files.mdd.end());
     try {
@@ -825,12 +1097,16 @@ std::vector<std::string> Reader::SuggestPrefix(
     return result;
 }
 
-const std::string* Reader::Resource(std::string_view id) const {
+std::optional<std::string> Reader::Resource(std::string_view id) const {
     const std::string normalized = NormalizeResourceId(std::string(id));
     if (normalized.empty())
-        return nullptr;
-    const auto found = resources_.find(normalized);
-    return found == resources_.end() ? nullptr : &found->second;
+        return std::nullopt;
+    for (const auto& resources : resources_) {
+        auto value = resources->Read(normalized);
+        if (value.has_value())
+            return value;
+    }
+    return std::nullopt;
 }
 
 }  // namespace goldendict::core::formats::mdict
