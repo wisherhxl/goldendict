@@ -961,6 +961,79 @@ failing. R3.2 is therefore complete after the audited delivery reaches the Qt
 6 baseline; R3.3 and later query/resource acceptance remain separate open
 leaves.
 
+### R3.3 development readiness
+
+Readiness result: **Ready** (2026-09-04).
+
+R3.3 implements the already approved `CRD-DICT-003`, `CRD-COMPAT-001`, and
+real-corpus acceptance requirements. It does not introduce a new product
+requirement or intentional divergence. The scope is the single MDict corpus
+in the approved external manifest: its MDX, base MDD, `.1.mdd`, and `.2.mdd`
+components; exact lookup and article selection; representative referenced
+resource retrieval; warm restart; and source immutability. The broader
+suggestion, alternate-writing, missing-word, Unicode, punctuation, multi-word,
+morphology, rendered-media, and management matrices remain assigned to R3.5.
+Non-corpus MDict compression, encryption, and legacy variants remain R3.13.
+
+Acceptance orchestration and canonical comparison stay in bounded Python
+tools. Version-specific observers call the existing Qt 5 dictionary contract
+and the installed Qt 6 headless `DictionaryService`; they do not add a public
+Core interface or move backend behavior into Widgets. The private corpus is
+an operator input, query/resource catalogs and run results stay under the
+isolated evidence root, and the repository retains only generated-fixture
+tests plus non-content hashes and summaries. Every run validates the existing
+manifest and conditions bindings, requires the four ordered MDict components,
+confines mutable profile/index/output state outside the corpus, and verifies
+all source sizes and SHA-256 values again after observation.
+
+The pre-pair catalog is frozen at
+`evidence/r3.3-mdict-query-resource-catalog-v1.json`, SHA-256
+`7ececd4a6d2fae85c9ddbf6b0bf5042354e8023870916cfb86916a76147f2d29`.
+It is bound to the approved real-corpus manifest SHA-256
+`b7e91878649b61388ecb1a3713709685e243f57e60d2b8eb23838a91bba816d2`
+and to `evidence/qt5-qt6-acceptance-conditions-r3.3-v1.json`, whose
+canonical acceptance-condition SHA-256 is
+`a58bb158d54c1d0d6e60f3efc29c19023273da14261f296bcff04cd4be0319f7`.
+The conditions file contains the same three exact queries rather than the
+empty lifecycle-query set used by R3.2.
+The catalog fixes three exact headword probes and three article-referenced
+resource IDs before either product result is collected. Read-only MDD key
+enumeration confirms that one selected resource is unique to the base MDD,
+one to `.1.mdd`, and one to `.2.mdd`; the catalog records each component,
+resource size, and resource SHA-256. A repeated 88-file corpus manifest after
+that preflight remains byte-identical to the approved manifest.
+
+Delivery is split at evidence-driven functional boundaries:
+
+1. Add the paired MDict lookup/resource result contract, coordinator, Qt 5 and
+   Qt 6 observer adapters, generated contract tests, and the reproducible
+   external-corpus run procedure. The minimum retained evidence is all three
+   frozen exact MDict lookups with deterministic article identity and content
+   hashes; successful retrieval and expected byte/hash validation of the
+   cataloged base-MDD, `.1.mdd`, and `.2.mdd` resources through each product's
+   normal resource API; a clean-to-warm restart comparison; complete ordered
+   four-component provenance; unchanged manifest bindings; and zero
+   unexplained material differences.
+2. If the paired run exposes product behavior differences, deliver each
+   coherent backend correction separately under the same approved
+   requirements, with generated regression coverage and a repeated paired
+   run. Do not weaken the comparator or normalize away a product difference.
+3. Close R3.3 only after the final paired evidence is equivalent, the Qt 6
+   Release build and focused MDict/application tests pass, the cumulative
+   CTest and Python suites pass, and the completion and integration audits
+   accept every delivery.
+
+The design uses the existing Adapter boundary for version-specific evidence
+collection and a coordinator for paired-run state and publication. These
+patterns have concrete value because Qt 5 and Qt 6 expose different APIs while
+the canonical contract, bounds, atomic publication, and corpus-safety policy
+must remain shared. Responsibilities stay cohesive, dependencies continue to
+point toward transport-neutral Core contracts, and no speculative service or
+binary boundary is added. Required Windows/Qt 5/Qt 6 toolchains, Conan runtime
+activation, frozen source preparation, real manifest, corpus access, and
+isolated evidence storage are available. No unresolved product or architecture
+decision blocks implementation.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an
