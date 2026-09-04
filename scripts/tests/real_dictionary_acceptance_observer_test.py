@@ -34,14 +34,25 @@ def option(name):
 if os.environ.get("FAKE_OBSERVER_FAIL"):
     raise SystemExit(7)
 dictionary_id = "dsl-0123456789abcdef"
-if os.environ.get("FAKE_CREATE_INDEX"):
-    (Path(option("--index-root")) / f"{dictionary_id}.gdidx").write_bytes(b"index")
-source = os.environ["FAKE_COMPONENT"]
 scenario = option("--scenario")
+if os.environ.get("FAKE_CREATE_INDEX"):
+    index_path = Path(option("--index-root")) / f"{dictionary_id}.gdidx"
+    if os.environ.get("FAKE_REWRITE_SAME"):
+        index_path.write_bytes(index_path.read_bytes())
+        metadata = index_path.stat()
+        os.utime(index_path, ns=(metadata.st_atime_ns, metadata.st_mtime_ns + 2_000_000_000))
+    else:
+        content = b"rebuilt" if scenario == "changed-source" else b"index"
+        if not index_path.exists() or index_path.read_bytes() != content:
+            index_path.write_bytes(content)
+source = os.environ["FAKE_COMPONENT"]
 phase = {
     "clean-discovery": "discovery",
     "warm-restart": "restart",
     "explicit-rescan": "rescan",
+    "changed-source": "source-change",
+    "unavailable-companion": "companion-unavailable",
+    "companion-recovery": "companion-recovery",
 }[scenario]
 raw = {
     "catalog": [{
@@ -280,7 +291,7 @@ class AcceptanceObserverTest(unittest.TestCase):
             with mock.patch.dict(os.environ, environment, clear=True), mock.patch(
                 "real_dictionary_acceptance_observer.subprocess.run"
             ) as run, self.assertRaisesRegex(
-                observer.ObserverError, "supports clean-discovery"
+                observer.ObserverError, "unsupported lifecycle scenario"
             ):
                 observer.observe(
                     "qt6",
@@ -292,10 +303,12 @@ class AcceptanceObserverTest(unittest.TestCase):
                 )
             run.assert_not_called()
 
-    def test_records_reused_indexes_for_restart_and_rescan(self) -> None:
+    def test_records_reused_indexes_for_nonclean_scenarios(self) -> None:
         for scenario, phase in (
             ("warm-restart", "restart"),
             ("explicit-rescan", "rescan"),
+            ("unavailable-companion", "companion-unavailable"),
+            ("companion-recovery", "companion-recovery"),
         ):
             with self.subTest(
                 scenario=scenario
@@ -316,6 +329,40 @@ class AcceptanceObserverTest(unittest.TestCase):
                 self.assertEqual(phase, observation["phases"][0]["name"])
                 self.assertEqual("reused", observation["indexes"][0]["disposition"])
 
+    def test_records_rebuilt_index_for_changed_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            (paths["index"] / "dsl-0123456789abcdef.gdidx").write_bytes(b"index")
+            with mock.patch.dict(os.environ, environment, clear=True):
+                output = observer.observe(
+                    "qt6",
+                    Path(sys.executable),
+                    [str(paths["fake"])],
+                    paths["corpus"],
+                    paths["manifest"],
+                    "changed-source",
+                )
+            observation = result.read_observation(output)
+            self.assertEqual("source-change", observation["phases"][0]["name"])
+            self.assertEqual("rebuilt", observation["indexes"][0]["disposition"])
+
+    def test_records_same_content_rewrite_as_rebuilt_index(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            environment["FAKE_REWRITE_SAME"] = "1"
+            (paths["index"] / "dsl-0123456789abcdef.gdidx").write_bytes(b"index")
+            with mock.patch.dict(os.environ, environment, clear=True):
+                output = observer.observe(
+                    "qt6",
+                    Path(sys.executable),
+                    [str(paths["fake"])],
+                    paths["corpus"],
+                    paths["manifest"],
+                    "changed-source",
+                )
+            observation = result.read_observation(output)
+            self.assertEqual("rebuilt", observation["indexes"][0]["disposition"])
+
     def test_rejects_restart_without_existing_indexes_before_launch(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             environment, paths = self._fixture(Path(temporary_directory))
@@ -333,6 +380,21 @@ class AcceptanceObserverTest(unittest.TestCase):
                     "warm-restart",
                 )
             run.assert_not_called()
+
+    def test_allows_recovery_to_recreate_removed_indexes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            environment, paths = self._fixture(Path(temporary_directory))
+            with mock.patch.dict(os.environ, environment, clear=True):
+                output = observer.observe(
+                    "qt6",
+                    Path(sys.executable),
+                    [str(paths["fake"])],
+                    paths["corpus"],
+                    paths["manifest"],
+                    "companion-recovery",
+                )
+            observation = result.read_observation(output)
+            self.assertEqual("created", observation["indexes"][0]["disposition"])
 
     def test_rejects_nonempty_index_for_clean_discovery_before_launch(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -391,7 +453,7 @@ class AcceptanceObserverTest(unittest.TestCase):
             self.assertFalse(paths["result"].exists())
             self.assertFalse(paths["ack"].exists())
 
-    def test_expands_manifest_bound_dsl_and_mdict_companions(self) -> None:
+    def test_expands_manifest_bound_dictionary_companions(self) -> None:
         manifest = {
             path: {"path": path}
             for path in (
@@ -402,6 +464,11 @@ class AcceptanceObserverTest(unittest.TestCase):
                 "mdict/sample.mdd",
                 "mdict/sample.1.mdd",
                 "mdict/sample.2.mdd",
+                "stardict/sample.ifo",
+                "stardict/sample.idx",
+                "stardict/sample.dict",
+                "stardict/sample.dict.dz",
+                "stardict/sample.syn",
             )
         }
         self.assertEqual(
@@ -411,6 +478,15 @@ class AcceptanceObserverTest(unittest.TestCase):
                 "dsl/sample_abrv.dsl",
             ],
             observer._expand_components("dsl", ["dsl/sample.dsl.dz"], manifest),
+        )
+        self.assertEqual(
+            [
+                "stardict/sample.dict",
+                "stardict/sample.idx",
+                "stardict/sample.ifo",
+                "stardict/sample.syn",
+            ],
+            observer._expand_components("stardict", ["stardict/sample.ifo"], manifest),
         )
         self.assertEqual(
             [

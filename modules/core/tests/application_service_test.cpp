@@ -303,6 +303,7 @@ class ApplicationServiceTest : public QObject {
     void RejectsMalformedConfiguration();
     void CatalogSanitizesInspectionMetadata();
     void DiscoversAndQueriesARealFixture();
+    void RemovesStaleIndexesWhenACompanionBecomesUnavailable();
     void CatalogUsesLegacyDiscoveryOrder();
     void RegistersOnlyEnabledMorphologyDictionaries();
     void AppliesIndependentFullTextQueryLimits();
@@ -4434,6 +4435,55 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
     const auto missing = service.Lookup(query);
     QVERIFY(missing.entries.empty());
     QVERIFY(missing.errors.empty());
+}
+
+void ApplicationServiceTest::
+    RemovesStaleIndexesWhenACompanionBecomesUnavailable() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto dictionary_root = root / "dictionary";
+    const auto index_root = root / "indexes";
+    QVERIFY(std::filesystem::create_directory(dictionary_root));
+    test::WriteStardictFixture(dictionary_root, {{"example", "article"}});
+
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {dictionary_root.string()};
+    configuration.index_directory = index_root.string();
+    auto service = CreateDictionaryService(configuration);
+    const auto catalog = service->GetCatalog();
+    QCOMPARE(catalog.size(), std::size_t{1});
+    const auto headword_index = index_root / (catalog.front().id + ".gdidx");
+    const auto full_text_index = index_root / (catalog.front().id + ".gdfts");
+    QVERIFY(std::filesystem::is_regular_file(headword_index));
+    QVERIFY(std::filesystem::is_regular_file(full_text_index));
+    const auto unrelated = index_root / "operator-note.txt";
+    test::WriteBinaryFile(unrelated, "preserve");
+    QVERIFY(std::filesystem::create_directory(index_root / "foreign.gdidx"));
+    service.reset();
+
+    const auto companion = dictionary_root / "fixture.dict";
+    const auto unavailable = dictionary_root / "fixture.dict.unavailable";
+    std::filesystem::rename(companion, unavailable);
+    auto unavailable_service = CreateDictionaryService(configuration);
+    QVERIFY(unavailable_service->GetCatalog().empty());
+    LookupQuery unavailable_query;
+    unavailable_query.text = "example";
+    const auto unavailable_lookup =
+        unavailable_service->Lookup(unavailable_query);
+    QVERIFY(unavailable_lookup.entries.empty());
+    QVERIFY(unavailable_lookup.errors.empty());
+    QVERIFY(!std::filesystem::exists(headword_index));
+    QVERIFY(!std::filesystem::exists(full_text_index));
+    QVERIFY(std::filesystem::is_regular_file(unrelated));
+    QVERIFY(std::filesystem::is_directory(index_root / "foreign.gdidx"));
+    unavailable_service.reset();
+
+    std::filesystem::rename(unavailable, companion);
+    auto recovered_service = CreateDictionaryService(configuration);
+    QCOMPARE(recovered_service->GetCatalog().size(), std::size_t{1});
+    QVERIFY(std::filesystem::is_regular_file(headword_index));
+    QVERIFY(std::filesystem::is_regular_file(full_text_index));
 }
 
 void ApplicationServiceTest::CatalogUsesLegacyDiscoveryOrder() {

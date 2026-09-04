@@ -91,7 +91,9 @@ void Publish( QObject * owner,
   QByteArray const scenario = qgetenv( "GOLDENDICT_ACCEPTANCE_SCENARIO" );
   if( conditionsHash.isEmpty()
       || ( scenario != "clean-discovery" && scenario != "warm-restart"
-           && scenario != "explicit-rescan" ) )
+           && scenario != "explicit-rescan" && scenario != "changed-source"
+           && scenario != "unavailable-companion"
+           && scenario != "companion-recovery" ) )
   {
     ScheduleExit();
     return;
@@ -122,6 +124,9 @@ void Publish( QObject * owner,
   started.insert( "dictionary_id", QString() );
   QByteArray const phaseName = scenario == "warm-restart" ? "restart" :
                                scenario == "explicit-rescan" ? "rescan" :
+                               scenario == "changed-source" ? "source-change" :
+                               scenario == "unavailable-companion" ? "companion-unavailable" :
+                               scenario == "companion-recovery" ? "companion-recovery" :
                                "discovery";
   started.insert( "name", QString::fromLatin1( phaseName ) );
   started.insert( "sequence", 0 );

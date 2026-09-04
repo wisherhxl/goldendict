@@ -27,7 +27,10 @@ constexpr char kRawSchema[] = "goldendict-real-dictionary-raw-observation-v1";
 bool IsSupportedScenario(const QString& scenario) {
     return scenario == QStringLiteral("clean-discovery") ||
            scenario == QStringLiteral("warm-restart") ||
-           scenario == QStringLiteral("explicit-rescan");
+           scenario == QStringLiteral("explicit-rescan") ||
+           scenario == QStringLiteral("changed-source") ||
+           scenario == QStringLiteral("unavailable-companion") ||
+           scenario == QStringLiteral("companion-recovery");
 }
 
 QString PhaseName(const QString& scenario) {
@@ -36,6 +39,15 @@ QString PhaseName(const QString& scenario) {
     }
     if (scenario == QStringLiteral("explicit-rescan")) {
         return QStringLiteral("rescan");
+    }
+    if (scenario == QStringLiteral("changed-source")) {
+        return QStringLiteral("source-change");
+    }
+    if (scenario == QStringLiteral("unavailable-companion")) {
+        return QStringLiteral("companion-unavailable");
+    }
+    if (scenario == QStringLiteral("companion-recovery")) {
+        return QStringLiteral("companion-recovery");
     }
     return QStringLiteral("discovery");
 }

@@ -755,9 +755,9 @@ confirmed product gap does not invalidate unrelated acceptance evidence:
    evidence. Any required production API remains transport-neutral,
    cancellable, and independent of Qt Widgets.
 
-Unit 1 is the current delivery. Units 2 through 4 remain open until their
-audited evidence or corrections are integrated. R3.2 remains incomplete until
-all four units are accepted.
+Units 1 and 2 are integrated. Unit 3 is completed in this delivery; Unit 4
+remains open until its audited evidence or corrections are integrated. R3.2
+remains incomplete until all four units are accepted.
 
 The Unit 1 delivery was exercised end to end with the real corpus file
 `中文/古汉语常用字字典.dsl.dz`. Both versions completed clean discovery, warm
@@ -886,6 +886,44 @@ equivalent full-text artifacts. The limitation remains visible in the retained
 version-specific evidence and must be exercised as user-visible query behavior
 under R3.3 and R3.4; this correction neither hides it nor expands the private
 index format or memory contract prematurely.
+
+The Unit 3 recovery delivery adds a bounded mutation adapter and a separate
+four-state coordinator for clean discovery, changed source, unavailable
+companion, and companion recovery. The adapter is confined to a marker-bearing
+disposable corpus, permits only normalized regular files up to 64 MiB, touches
+only source time metadata, quarantines one companion outside the corpus, and
+restores it on every normal or failed child exit. The generated StarDict
+fixture supplies the marker and language-aligned comparison metadata; the
+operator's 88-file corpus remains untouched. Both version observers project
+the new phases through the existing raw-to-canonical adapter. Internal index
+snapshots now retain modification time so a deterministic Qt 5 rewrite is not
+misclassified as reuse, without changing the canonical evidence schema.
+
+The first paired run exposed that frozen Qt 5 removes stale generated indexes
+when the dictionary disappears, while Qt 6 retained them. The focused product
+correction restores the legacy service-level cleanup after all local and
+runtime dictionary identities are known. It removes only regular `.gdidx` and
+`.gdfts` files whose stem is not active, preserves unrelated files and
+directories, reports cleanup failures without aborting unrelated dictionary
+loading, and requires recovery to recreate the artifacts. Generated Core
+coverage and the real executables confirm removal and recreation for both
+headword and full-text indexes.
+
+The fresh paired development workspace reports zero material differences for
+all four lifecycle states. While a StarDict companion is unavailable, Qt 6 now
+matches the frozen Qt 5 loader by skipping the dictionary without exposing a
+structured lookup error; stale generated indexes are still removed and later
+recreated after recovery. Unit 3 does not change public APIs, index formats,
+dictionary identity, Widgets, or the frozen Qt 5 checkout.
+
+The repository-wide dependency-free Python gate passes 116 tests with one
+documented host-capability skip. A VS 2026/MSVC 14.44 Release build succeeds,
+and the complete Conan-launched serial CTest suite passes 130/130 after the
+diagnostic-alignment correction. The paired development
+workspace is `evidence/qt5-qt6-recovery-workspace-u3-final4/`, bound to pair
+`b5b4e1017415c8485733f622b0dbe1871f39c50193f548812f355edf1ec5ed13`;
+it contains only the generated fixture, isolated runtime state, and canonical
+metadata evidence.
 
 ### CRD closure cross-check
 

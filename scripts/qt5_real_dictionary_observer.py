@@ -26,7 +26,14 @@ from prepare_qt5_acceptance_source import (
     PROVENANCE_SCHEMA,
 )
 
-SUPPORTED_SCENARIOS = ("clean-discovery", "warm-restart", "explicit-rescan")
+SUPPORTED_SCENARIOS = (
+    "clean-discovery",
+    "warm-restart",
+    "explicit-rescan",
+    "changed-source",
+    "unavailable-companion",
+    "companion-recovery",
+)
 HASH_LENGTH = 64
 MAX_PROVENANCE_BYTES = 16 * 1024
 

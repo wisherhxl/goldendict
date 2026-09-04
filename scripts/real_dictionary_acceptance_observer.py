@@ -20,11 +20,21 @@ import real_dictionary_acceptance_result as acceptance_result
 import real_dictionary_acceptance_workspace as acceptance_workspace
 
 RAW_SCHEMA = "goldendict-real-dictionary-raw-observation-v1"
-SUPPORTED_SCENARIOS = ("clean-discovery", "warm-restart", "explicit-rescan")
+SUPPORTED_SCENARIOS = (
+    "clean-discovery",
+    "warm-restart",
+    "explicit-rescan",
+    "changed-source",
+    "unavailable-companion",
+    "companion-recovery",
+)
 SCENARIO_PHASES = {
     "clean-discovery": "discovery",
     "warm-restart": "restart",
     "explicit-rescan": "rescan",
+    "changed-source": "source-change",
+    "unavailable-companion": "companion-unavailable",
+    "companion-recovery": "companion-recovery",
 }
 MAX_RAW_BYTES = acceptance_result.MAX_RESULT_BYTES
 MAX_RAW_DICTIONARIES = acceptance_result.MAX_DICTIONARIES
@@ -362,6 +372,19 @@ def _expand_components(
             found = manifest_casefold.get(candidate.casefold())
             if found is not None:
                 selected.add(found)
+    elif kind == "stardict":
+        if not primary_lower.endswith(".ifo"):
+            raise ObserverError("StarDict observation has an invalid primary component")
+        base = primary[: -len(".ifo")]
+        for suffix in (".idx", ".syn"):
+            found = manifest_casefold.get(f"{base}{suffix}".casefold())
+            if found is not None:
+                selected.add(found)
+        plain_dictionary = manifest_casefold.get(f"{base}.dict".casefold())
+        compressed_dictionary = manifest_casefold.get(f"{base}.dict.dz".casefold())
+        selected_dictionary = plain_dictionary or compressed_dictionary
+        if selected_dictionary is not None:
+            selected.add(selected_dictionary)
     elif kind == "mdict":
         if not primary_lower.endswith(".mdx"):
             raise ObserverError("MDict observation has an invalid primary component")
@@ -382,7 +405,7 @@ def _expand_components(
     return sorted(selected, key=lambda item: (item.casefold(), item))
 
 
-def _snapshot_indexes(index_root: Path) -> dict[str, tuple[int, str]]:
+def _snapshot_indexes(index_root: Path) -> dict[str, tuple[int, str, int]]:
     try:
         index_root.mkdir(parents=True, exist_ok=True)
         entries = sorted(index_root.iterdir(), key=lambda item: item.name)
@@ -390,7 +413,7 @@ def _snapshot_indexes(index_root: Path) -> dict[str, tuple[int, str]]:
         raise ObserverError(f"Cannot inspect index directory: {index_root}") from error
     if len(entries) > MAX_RAW_DICTIONARIES * 4:
         raise ObserverError("Index directory exceeds the file-count bound")
-    snapshot: dict[str, tuple[int, str]] = {}
+    snapshot: dict[str, tuple[int, str, int]] = {}
     for path in entries:
         try:
             file_stat = path.stat(follow_symlinks=False)
@@ -398,7 +421,11 @@ def _snapshot_indexes(index_root: Path) -> dict[str, tuple[int, str]]:
             raise ObserverError(f"Cannot inspect index file: {path}") from error
         if path.is_symlink() or not stat.S_ISREG(file_stat.st_mode):
             raise ObserverError(f"Index entries must be regular files: {path}")
-        snapshot[path.name] = (file_stat.st_size, _sha256_file(path))
+        snapshot[path.name] = (
+            file_stat.st_size,
+            _sha256_file(path),
+            file_stat.st_mtime_ns,
+        )
     return snapshot
 
 
@@ -411,8 +438,8 @@ def _index_role(file_name: str) -> str:
 
 def _index_observations(
     dictionaries: list[dict[str, object]],
-    before: dict[str, tuple[int, str]],
-    after: dict[str, tuple[int, str]],
+    before: dict[str, tuple[int, str, int]],
+    after: dict[str, tuple[int, str, int]],
 ) -> list[dict[str, object]]:
     id_to_key = {item["id"]: item["logical_key"] for item in dictionaries}
     observations: list[dict[str, object]] = []
@@ -428,10 +455,10 @@ def _index_observations(
         previous = before.get(file_name)
         current = after.get(file_name)
         if current is None:
-            size, digest = previous  # type: ignore[misc]
+            size, digest, _ = previous  # type: ignore[misc]
             disposition = "removed"
         else:
-            size, digest = current
+            size, digest, _ = current
             if previous is None:
                 disposition = "created"
             elif previous == current:
@@ -552,10 +579,7 @@ def observe(
     if version != expected_version:
         raise ObserverError("Observer version does not match the paired run")
     if scenario not in SUPPORTED_SCENARIOS:
-        raise ObserverError(
-            "The observer supports clean-discovery, warm-restart, and "
-            "explicit-rescan only"
-        )
+        raise ObserverError("The observer received an unsupported lifecycle scenario")
     _validate_observer_arguments(observer_arguments)
     try:
         corpus_root = dictionary_root.resolve(strict=True)
@@ -610,7 +634,7 @@ def observe(
     before = _snapshot_indexes(index_root)
     if scenario == "clean-discovery" and before:
         raise ObserverError("Clean discovery requires an empty index directory")
-    if scenario != "clean-discovery" and not before:
+    if scenario not in ("clean-discovery", "companion-recovery") and not before:
         raise ObserverError(f"{scenario} requires previously created indexes")
     with tempfile.TemporaryDirectory(
         dir=evidence_root, prefix=".raw-observation-"

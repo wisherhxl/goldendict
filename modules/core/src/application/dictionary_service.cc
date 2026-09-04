@@ -472,6 +472,56 @@ std::string StableId(std::string_view format,
     return output.str();
 }
 
+void RemoveStaleGeneratedIndexes(
+    const std::string& index_directory,
+    const std::unordered_set<std::string>& active_dictionary_ids,
+    std::vector<LookupError>* errors) {
+    if (index_directory.empty())
+        return;
+    const auto directory = std::filesystem::u8path(index_directory);
+    std::error_code filesystem_error;
+    const bool exists = std::filesystem::exists(directory, filesystem_error);
+    if (filesystem_error) {
+        errors->push_back({LookupErrorCode::kInternal,
+                           {},
+                           directory.string() +
+                               ": cannot inspect generated index directory"});
+        return;
+    }
+    if (!exists)
+        return;
+
+    std::filesystem::directory_iterator entry(directory, filesystem_error);
+    const std::filesystem::directory_iterator end;
+    while (!filesystem_error && entry != end) {
+        const auto path = entry->path();
+        const auto status = entry->symlink_status(filesystem_error);
+        if (filesystem_error)
+            break;
+        const auto extension = path.extension();
+        if (std::filesystem::is_regular_file(status) &&
+            (extension == ".gdidx" || extension == ".gdfts") &&
+            active_dictionary_ids.find(path.stem().string()) ==
+                active_dictionary_ids.end()) {
+            std::filesystem::remove(path, filesystem_error);
+            if (filesystem_error) {
+                errors->push_back(
+                    {LookupErrorCode::kInternal,
+                     {},
+                     path.string() + ": cannot remove stale generated index"});
+                filesystem_error.clear();
+            }
+        }
+        entry.increment(filesystem_error);
+    }
+    if (filesystem_error) {
+        errors->push_back(
+            {LookupErrorCode::kInternal,
+             {},
+             directory.string() + ": cannot enumerate generated indexes"});
+    }
+}
+
 class Utf16Units final {
    public:
     explicit Utf16Units(std::string_view input) : input_(input) {}
@@ -992,8 +1042,12 @@ class ServiceState final {
                         formats::stardict::Dictionary::Open(
                             id, info_path, index_path, full_text_index_path)));
             } catch (const dictionary::Error& error) {
-                startup_errors_.push_back(
-                    {TranslateErrorCode(error.code()), id, error.what()});
+                // The Qt 5 loader skips unavailable StarDict dictionaries and
+                // continues without surfacing a lookup error to consumers.
+                if (error.code() != dictionary::ErrorCode::kUnavailable) {
+                    startup_errors_.push_back(
+                        {TranslateErrorCode(error.code()), id, error.what()});
+                }
             }
         }
         const auto dictd_discovery = formats::dictd::Discover(roots);
@@ -1338,6 +1392,8 @@ class ServiceState final {
             runtime_source_ids_.insert(source->identity().id);
             dictionaries_.push_back(std::move(source));
         }
+        RemoveStaleGeneratedIndexes(configuration.index_directory, identities,
+                                    &startup_errors_);
         for (const auto& group : configuration.dictionary_groups) {
             std::vector<const dictionary::Backend*> resolved;
             resolved.reserve(group.dictionary_ids.size());

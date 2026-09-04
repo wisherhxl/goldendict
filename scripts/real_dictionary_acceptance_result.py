@@ -31,6 +31,7 @@ SCENARIOS = (
     "changed-source",
     "cancellation",
     "unavailable-companion",
+    "companion-recovery",
 )
 OUTCOMES = ("completed", "cancelled", "failed")
 PHASE_STATUSES = ("started", "completed", "cancelled", "failed")

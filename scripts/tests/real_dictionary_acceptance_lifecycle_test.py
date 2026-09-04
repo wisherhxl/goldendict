@@ -22,42 +22,68 @@ HASH = "d" * 64
 
 
 def observation(version: str, revision: str, scenario: str) -> dict[str, object]:
-    disposition = "created" if scenario == "clean-discovery" else "reused"
+    disposition = {
+        "clean-discovery": "created",
+        "warm-restart": "reused",
+        "explicit-rescan": "reused",
+        "changed-source": "rebuilt",
+        "companion-recovery": "created",
+    }.get(scenario)
     phase = {
         "clean-discovery": "discovery",
         "warm-restart": "restart",
         "explicit-rescan": "rescan",
+        "changed-source": "source-change",
+        "unavailable-companion": "companion-unavailable",
+        "companion-recovery": "companion-recovery",
     }[scenario]
+    unavailable = scenario == "unavailable-companion"
     return {
         "conditions_sha256": HASH,
         "corpus_manifest_sha256": HASH,
         "diagnostics": [],
-        "dictionaries": [
-            {
-                "article_count": 1,
-                "edition": "",
-                "enabled": True,
-                "headword_count": 1,
-                "id": f"{version}-id",
-                "logical_key": "dsl:sample.dsl",
-                "name": "Sample",
-                "order": 0,
-                "source_components": ["sample.dsl"],
-                "source_language": "en",
-                "target_language": "de",
-            }
-        ],
-        "indexes": [
-            {
-                "dictionary_key": "dsl:sample.dsl",
-                "disposition": disposition,
-                "elapsed_milliseconds": None,
-                "file_name": f"{version}.gdidx",
-                "role": "headword",
-                "sha256": HASH,
-                "size": 1,
-            }
-        ],
+        "dictionaries": (
+            []
+            if unavailable
+            else [
+                {
+                    "article_count": 1,
+                    "edition": "",
+                    "enabled": True,
+                    "headword_count": 1,
+                    "id": f"{version}-id",
+                    "logical_key": "dsl:sample.dsl",
+                    "name": "Sample",
+                    "order": 0,
+                    "source_components": ["sample.dsl"],
+                    "source_language": "en",
+                    "target_language": "de",
+                }
+            ]
+        ),
+        "indexes": (
+            []
+            if unavailable
+            else [
+                {
+                    "dictionary_key": "dsl:sample.dsl",
+                    "disposition": disposition,
+                    "elapsed_milliseconds": None,
+                    "file_name": f"{version}.gdidx",
+                    "role": "headword",
+                    "sha256": (
+                        "e" * 64
+                        if scenario
+                        in (
+                            "changed-source",
+                            "companion-recovery",
+                        )
+                        else HASH
+                    ),
+                    "size": 1,
+                }
+            ]
+        ),
         "outcome": "completed",
         "pair_id": PAIR_ID,
         "phases": [
@@ -500,6 +526,108 @@ class AcceptanceLifecycleTest(unittest.TestCase):
                 all(
                     (workspace / "comparisons" / f"{scenario}.json").is_file()
                     for scenario in lifecycle.SCENARIOS
+                )
+            )
+
+    def test_runs_recovery_state_machine_and_archives_each_result(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = self._workspace(Path(temporary))
+            scenarios: list[str] = []
+
+            def run(*args: object, **kwargs: object) -> int:
+                command = args[7]
+                assert isinstance(command, list)
+                scenario = command[command.index("--scenario") + 1]
+                scenarios.append(scenario)
+                result.write_observation(
+                    workspace / "qt6" / "evidence" / "observation.json",
+                    observation("qt6", QT6_REVISION, scenario),
+                )
+                return 0
+
+            with (
+                mock.patch.object(
+                    lifecycle.acceptance_workspace,
+                    "validate_workspace",
+                    return_value=PAIR_ID,
+                ),
+                mock.patch.object(
+                    lifecycle.acceptance_workspace,
+                    "run_in_workspace",
+                    side_effect=run,
+                ),
+            ):
+                outputs = lifecycle.run_recovery_version(
+                    workspace,
+                    Path("corpus"),
+                    Path("manifest"),
+                    Path("conditions"),
+                    QT5_REVISION,
+                    QT6_REVISION,
+                    "qt6",
+                    ["observer", "--scenario", lifecycle.SCENARIO_TOKEN],
+                )
+
+            self.assertEqual(list(lifecycle.RECOVERY_SCENARIOS), scenarios)
+            self.assertTrue(all(path.is_file() for path in outputs))
+
+    def test_recovery_state_machine_rejects_incomplete_behavior(self) -> None:
+        clean = observation("qt6", QT6_REVISION, "clean-discovery")
+        changed = observation("qt6", QT6_REVISION, "changed-source")
+        unavailable = observation("qt6", QT6_REVISION, "unavailable-companion")
+        recovered = observation("qt6", QT6_REVISION, "companion-recovery")
+
+        changed["indexes"][0]["disposition"] = "reused"  # type: ignore[index]
+        with self.assertRaisesRegex(lifecycle.LifecycleError, "must rebuild"):
+            lifecycle._validate_recovery_transitions([clean, changed])
+
+        changed = observation("qt6", QT6_REVISION, "changed-source")
+        unavailable["dictionaries"] = clean["dictionaries"]
+        with self.assertRaisesRegex(lifecycle.LifecycleError, "must remove"):
+            lifecycle._validate_recovery_transitions([clean, changed, unavailable])
+
+        unavailable = observation("qt6", QT6_REVISION, "unavailable-companion")
+        recovered["indexes"][0]["disposition"] = "reused"  # type: ignore[index]
+        with self.assertRaisesRegex(lifecycle.LifecycleError, "must recreate"):
+            lifecycle._validate_recovery_transitions(
+                [clean, changed, unavailable, recovered]
+            )
+
+    def test_compares_complete_paired_recovery_lifecycle(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = self._workspace(Path(temporary))
+            for version, revision in (
+                ("qt5", QT5_REVISION),
+                ("qt6", QT6_REVISION),
+            ):
+                archive = workspace / version / "evidence" / "recovery"
+                archive.mkdir()
+                for scenario in lifecycle.RECOVERY_SCENARIOS:
+                    result.write_observation(
+                        archive / f"{scenario}.json",
+                        observation(version, revision, scenario),
+                    )
+            with mock.patch.object(
+                lifecycle.acceptance_workspace,
+                "validate_workspace",
+                return_value=PAIR_ID,
+            ):
+                summary = lifecycle.compare_recovery(
+                    workspace,
+                    Path("corpus"),
+                    Path("manifest"),
+                    Path("conditions"),
+                    QT5_REVISION,
+                    QT6_REVISION,
+                )
+            self.assertTrue(summary.is_file())
+            summary_value = json.loads(summary.read_text(encoding="utf-8"))
+            self.assertEqual(lifecycle.RECOVERY_SUMMARY_SCHEMA, summary_value["schema"])
+            self.assertTrue(summary_value["equivalent"])
+            self.assertTrue(
+                all(
+                    (workspace / "recovery-comparisons" / f"{scenario}.json").is_file()
+                    for scenario in lifecycle.RECOVERY_SCENARIOS
                 )
             )
 

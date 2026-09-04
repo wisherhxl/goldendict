@@ -153,12 +153,12 @@ corpus-relative components, records index-file dispositions, redacts free-form
 diagnostic messages to typed tokens, and atomically publishes the canonical
 observation followed by its atomic condition-acknowledgement commit marker. If
 either final write fails, the adapter removes both paths so incomplete evidence
-cannot be accepted. The lifecycle adapter supports `clean-discovery`,
-`warm-restart`, and `explicit-rescan`. It verifies the host platform and the
-bound all-enabled/clean-default/no-query condition profile, applies the locale,
-requires an empty isolated index directory for the clean run, and requires
-previously created indexes for the following two states. Changed-source,
-cancellation, and unavailable-companion sequencing remain separate R3.2c work.
+cannot be accepted. The observers support `clean-discovery`, `warm-restart`,
+`explicit-rescan`, `changed-source`, `unavailable-companion`, and
+`companion-recovery`. The lifecycle adapters verify the host platform and the
+bound all-enabled/clean-default/no-query condition profile, apply the locale,
+and enforce the state-specific index preconditions and transitions.
+Cancellation and progress sequencing remain separate R3.2c work.
 The Qt 6 explicit-rescan probe activates an unchanged replacement through the
 same private Core facade-activation owner used by the production source reload
 transaction. It requires a distinct prepared facade to become the active
@@ -439,6 +439,48 @@ canonical per-scenario comparisons and `comparisons/lifecycle-summary.json`.
 The summary is an index; the validated comparison files remain the authority
 for individual differences.
 
+Changed-source and unavailable-companion acceptance uses only a generated or
+otherwise explicitly disposable corpus. The mutation adapter requires the
+exact `.goldendict-disposable-acceptance-v1` marker, the paired workspace's
+corpus and evidence bindings, normalized relative regular-file components, no
+links or Windows reparse points, and a 64 MiB per-component mutation bound. It
+updates only the selected source timestamp for `changed-source`; for
+`unavailable-companion`, it atomically moves one companion to a temporary
+quarantine under the isolated evidence directory and restores it in a
+`finally` path even when the observer fails. Never use this adapter against the
+operator corpus.
+
+Run the four-state sequence by replacing the normal observer child command
+with this wrapper and using `run-recovery-version`:
+
+```powershell
+python scripts/real_dictionary_acceptance_lifecycle.py run-recovery-version `
+  --workspace "D:\workspace\goldendict\evidence\qt5-qt6-recovery" `
+  --corpus "D:\workspace\goldendict\evidence\disposable-stardict" `
+  --manifest "D:\workspace\goldendict\evidence\disposable-stardict.json" `
+  --conditions "D:\workspace\goldendict\evidence\acceptance-conditions.json" `
+  --qt5-revision "3d93dd66197aea10edf6c29998ddc9c213d0aaa8" `
+  --qt6-revision "<40-digit-qt6-commit>" --version qt6 -- `
+  python scripts/real_dictionary_acceptance_mutation.py `
+  --disposable-corpus "D:\workspace\goldendict\evidence\disposable-stardict" `
+  --source-component fixture.idx --companion-component fixture.dict `
+  --scenario __GOLDENDICT_ACCEPTANCE_SCENARIO__ -- `
+  python scripts/real_dictionary_acceptance_observer.py `
+  --version qt6 --executable build/Release/bin/qt6_real_dictionary_observer.exe `
+  --manifest "D:\workspace\goldendict\evidence\disposable-stardict.json" `
+  --dictionary-root "D:\workspace\goldendict\evidence\disposable-stardict"
+```
+
+Wrap the complete Qt 6 command in `run_with_conan.ps1`. Use the documented Qt 5
+observer child in place of the final Qt 6 observer for the Qt 5 run. Then invoke
+`compare-recovery` with the same pair arguments. The coordinator requires clean
+discovery to create indexes, a timestamp-changed source to rebuild every
+fixture index without changing ownership, a missing companion to remove the
+dictionary and its generated indexes, and companion recovery to recreate the
+same current artifacts. Same-content rewrites are classified as rebuilds from
+their file modification metadata while the canonical evidence continues to
+retain only size and SHA-256.
+
 The R3.2 Unit 2 index-role correction was validated in the fresh paired
 workspace `evidence/qt5-qt6-lifecycle-index-equivalence-96a04/`. All three
 scenario comparisons are equivalent with zero material differences across the
@@ -450,6 +492,15 @@ full-text artifacts as the Britannica and Oxford corpora exceeding the current
 256-MiB private full-text bound. Their user-visible query behavior remains an
 explicit R3.3/R3.4 gate and is not represented as R3.2 headword-index
 equivalence.
+
+The R3.2 Unit 3 development run uses a generated two-entry StarDict corpus and
+the four-state recovery lifecycle. Both Qt 5 and Qt 6 create the headword and
+full-text artifacts appropriate to their implementations, rebuild them after
+the `.idx` timestamp changes, remove them while `.dict` is unavailable, and
+recreate them after restoration. All four states have zero material comparison
+differences. In particular, both observers expose no structured lookup error
+while the companion is unavailable; the Qt 6 service preserves the frozen
+Qt 5 loader's skip-and-continue behavior.
 
 Run the repository-wide dependency-free script gate with:
 

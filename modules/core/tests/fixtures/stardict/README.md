@@ -19,6 +19,12 @@ The generated application index is not dictionary source data. Tests create it
 in a temporary index location, verify reuse and safe stale/corrupt rebuilds,
 and discard it with the temporary directory.
 
+The standalone generator also writes the exact
+`.goldendict-disposable-acceptance-v1` marker. This authorizes the bounded
+changed-source and unavailable-companion acceptance adapter to mutate only a
+generated copy outside the repository. The marker never authorizes mutation of
+operator-provided dictionaries.
+
 For the manual Qt WebEngine check, generate a persistent copy outside the
 source tree:
 
