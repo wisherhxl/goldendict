@@ -21,6 +21,7 @@ class MdictReaderTest : public QObject {
     void ReadsStylesRedirectsAndMddResources();
     void ReadsResourcesAcrossRecordBlocks();
     void RejectsChangedResourceSource();
+    void UsesLegacyFallbackName();
     void ReadsVersionOneContainers();
     void ReadsEncryptedKeyInfo();
     void MatchesRipemd128ReferenceDigest();
@@ -83,6 +84,38 @@ void MdictReaderTest::RejectsChangedResourceSource() {
     mutation.close();
 
     QVERIFY_EXCEPTION_THROWN(reader.Resource("pixel.png"), Error);
+}
+
+void MdictReaderTest::UsesLegacyFallbackName() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+
+    const auto empty_title = test::WriteMdictContainer(
+        root / "release.v3.1.mdx", "", {{"word", "article"}});
+    QCOMPARE(Reader::Open({empty_title, {}}).metadata().name, "release");
+
+    const auto placeholder_title = test::WriteMdictContainer(
+        root / "placeholder.name.mdx", "Title (No HTML code allowed)",
+        {{"word", "article"}});
+    QCOMPARE(Reader::Open({placeholder_title, {}}).metadata().name,
+             "placeholder");
+
+    const auto short_title = test::WriteMdictContainer(
+        root / "short.name.mdx", "Tiny", {{"word", "article"}});
+    QCOMPARE(Reader::Open({short_title, {}}).metadata().name, "short");
+
+    const auto utf16_four_units = test::WriteMdictContainer(
+        root / "utf16-four.name.mdx", "&#x1F600;AB",
+        {{"word", "article"}});
+    QCOMPARE(Reader::Open({utf16_four_units, {}}).metadata().name,
+             "utf16-four");
+
+    const auto utf16_five_units = test::WriteMdictContainer(
+        root / "utf16-five.name.mdx", "&#x1F600;&#x1F600;A",
+        {{"word", "article"}});
+    QCOMPARE(Reader::Open({utf16_five_units, {}}).metadata().name,
+             "\xf0\x9f\x98\x80\xf0\x9f\x98\x80" "A");
 }
 
 void MdictReaderTest::ReadsVersionOneContainers() {

@@ -741,6 +741,32 @@ std::string Trim(std::string value) {
     return value;
 }
 
+std::size_t Utf16CodeUnitCount(std::string_view text) noexcept {
+    std::size_t count = 0U;
+    for (const unsigned char byte : text) {
+        if ((byte & 0xc0U) == 0x80U)
+            continue;
+        ++count;
+        if ((byte & 0xf8U) == 0xf0U)
+            ++count;
+    }
+    return count;
+}
+
+std::string DictionaryTitle(const Header& header,
+                            const std::filesystem::path& path) {
+    constexpr std::string_view kPlaceholder = "Title (No HTML code allowed)";
+    if (Utf16CodeUnitCount(header.title) >= 5U &&
+        header.title != kPlaceholder)
+        return header.title;
+
+    const std::string filename = path.filename().string();
+    const std::size_t first_extension = filename.find('.');
+    return first_extension == std::string::npos
+               ? filename
+               : filename.substr(0U, first_extension);
+}
+
 }  // namespace
 
 std::shared_ptr<const detail::ResourceStore> detail::ResourceStore::Open(
@@ -893,8 +919,7 @@ Reader Reader::Open(const DictionaryFiles& files) {
     const ParsedContainer mdx = ParseContainer(files.mdx);
     Reader reader;
     reader.path_ = files.mdx;
-    reader.metadata_.name =
-        mdx.header.title.empty() ? files.mdx.stem().string() : mdx.header.title;
+    reader.metadata_.name = DictionaryTitle(mdx.header, files.mdx);
     reader.metadata_.description = mdx.header.description;
     reader.metadata_.right_to_left = mdx.header.right_to_left;
     reader.articles_.reserve(mdx.entries.size());

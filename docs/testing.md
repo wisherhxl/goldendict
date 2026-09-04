@@ -209,6 +209,14 @@ whose decoded totals exceed one GiB. This correction therefore proves bounded
 split-volume discovery and generated exact resource reads; it does not by
 itself complete the R3.3 real-resource query catalog or paired Qt 5 comparison.
 
+`mdict_reader_test::UsesLegacyFallbackName` pins the frozen Qt 5 title fallback
+for empty, placeholder, and header titles shorter than five UTF-16 code units,
+including non-BMP boundary cases. The fallback uses the filename before its
+first extension rather than only removing the final `.mdx` suffix. In the
+approved corpus this changes the empty-title Oxford name from
+`牛津高阶双解(第9版)_V3.1.2版` to the Qt 5 value
+`牛津高阶双解(第9版)_V3` without a corpus-specific rule.
+
 Run Qt 6 from a configured Release build through the Conan launcher so the
 child inherits the complete DLL and Qt plugin environment:
 

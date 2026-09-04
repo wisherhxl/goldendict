@@ -798,6 +798,15 @@ same Oxford MDict ID and 238,766 article/headword counts in every state. This is
 correction evidence within Unit 2; R3.2 and R3.3 remain incomplete until the
 paired Qt 5 lifecycle and actual resource-query catalog are accepted.
 
+The refreshed Unit 2 lifecycle at Qt 6 revision `0ff83d24` discovers the same
+17 logical dictionaries as Qt 5 with zero diagnostics in all three states. It
+removes both prior missing-dictionary differences and confirms one remaining
+MDict metadata defect: the Oxford file has an empty header title, for which Qt
+5 uses the filename before its first extension while Qt 6 removed only the
+final `.mdx` extension. The focused follow-up correction applies the general
+legacy invalid-title fallback and generated coverage; it does not change the
+still-open ordering, DSL headword-count, index-role, or R3.3 query evidence.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

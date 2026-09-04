@@ -422,9 +422,10 @@ shared stream state. The adapter strictly decodes declared text, applies
 embedded stylesheet markers, resolves bounded article redirects, and serves
 normalized MDD names through the typed resource API. MDict 2.x key-info
 encryption flag 2 is decoded by a private RIPEMD-128 helper ported from the
-frozen Qt 5 implementation. Other encryption modes, LZO blocks, local-file
-resource fallback, real-corpus resource-by-resource acceptance, and later
-parity work remain explicit.
+frozen Qt 5 implementation. Missing, placeholder, and titles shorter than five
+UTF-16 code units use the legacy first-extension filename base. Other
+encryption modes, LZO blocks, local-file resource fallback, real-corpus
+resource-by-resource acceptance, and later parity work remain explicit.
 
 Aard consumes `.aar` archive volumes through a private bounded adapter. It
 validates the fixed header and 32/64-bit index layouts, decompresses metadata
