@@ -175,6 +175,37 @@ gate is the real-corpus observer: it must discover `Britannica Encyclopaedia
 2010` with 73,152 articles and must not emit the former
 `Decompressed DSL exceeds the supported size limit` diagnostic.
 
+`dsl_reader_test::PreservesLegacyHeadwordExpansionSemantics` and
+`dsl_reader_test::ExposesExactLegacyExpansionRecordsAndBounds` pin the frozen
+Qt 5 preprocessing order and exact record sequence for stripped unsorted
+zones, escaped syntax, retained duplicate optional expansions, independent
+32-result limits for primary and alternate lines, the 500-Unicode-code-point
+expansion boundary, ordinary tilde replacement, and `^~` first-character case
+inversion. The exact-record fixture also proves that each successive alternate
+uses the current first merged record for tilde replacement. A 120-group
+adversarial fixture proves traversal stops at the 32-result budget instead of
+exploring the remaining exponential tree. Supplementary-plane coverage pins
+the legacy 16-bit uppercase predicate used before full-code-point `^~` mapping.
+Reader and dictionary-level assertions prove that an alternate which sorts
+before the primary changes the lookup record order without replacing the first
+source line's full-text canonical headword or its pre-insertion `dsl-index`
+record ordinal. A greater-than-16-KiB canonical primary with a retained short
+alternate proves lookup filtering cannot transfer that full-text ownership.
+An `(x)` primary proves the empty legacy expansion remains counted but is
+excluded from lookup and enumeration, while `x` remains the canonical
+full-text headword.
+`dsl_reader_test::RendersLegacyDisplayTildesAndEscapes` separately proves that
+article-body tildes use unsorted-zone text and the first optional display
+expansion; backslash and doubled-bracket escapes remain literal; escaped spaces
+become non-breaking spaces; and escaped tag, link, comment, and media
+terminators cannot close their compound construct. The companion real-corpus
+gate discovers all 16 DSL dictionaries with zero
+diagnostics and requires both article and headword counts to equal the frozen
+Qt 5 observation. The formerly different headword totals now include 65,138
+for Babylon English-Chinese, 65,283 for CALD3, 73,152 for Britannica, 19,263
+for Longman Activator, 62,963 for LDOCE5, 63,485 for Macmillan, 78,534 for
+OALD8, and 69,205 for the advanced Chinese dictionary.
+
 The MDict reader accepts both 1.x and 2.x container layouts.
 `mdict_reader_test::ReadsVersionOneContainers` generates a 1.2 MDX with
 four-byte numeric fields, uncompressed key-block metadata, one-byte key

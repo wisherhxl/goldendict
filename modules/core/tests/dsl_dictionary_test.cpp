@@ -36,6 +36,7 @@ class DslDictionaryTest : public QObject {
     void ExposesIdentityHtmlSuggestionsAndResources();
     void RejectsCancellationAndUnsafeResources();
     void BuildsDeduplicatedFullTextFromInertArticles();
+    void PreservesPrimaryFullTextOwnershipAfterLegacyMerge();
     void ReusesAndRebuildsForOnlySelectedSource();
     void SearchesCompressedAndContainsFailures();
 };
@@ -111,6 +112,59 @@ void DslDictionaryTest::BuildsDeduplicatedFullTextFromInertArticles() {
     QCOMPARE(dictionary.LookupExact("canonical").size(), std::size_t{1});
     QCOMPARE(dictionary.LookupExact("lateraliasonlysecret").size(),
              std::size_t{1});
+}
+
+void DslDictionaryTest::PreservesPrimaryFullTextOwnershipAfterLegacyMerge() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto path = test::WriteDslTextFixture(
+        root,
+        "z\n"
+        "a\n"
+        "~x\n"
+        "\trolling ownership marker\n");
+    const Dictionary dictionary =
+        Dictionary::Open("dsl-id", path, {}, root / "fixture.gdfts");
+
+    QCOMPARE(dictionary.LookupExact("a").size(), std::size_t{1});
+    QCOMPARE(dictionary.LookupExact("ax").size(), std::size_t{1});
+    QCOMPARE(dictionary.LookupExact("z").size(), std::size_t{1});
+    FullTextQuery query;
+    query.text = "marker";
+    const auto response = dictionary.SearchFullText(query);
+    QCOMPARE(response.results.size(), std::size_t{1});
+    QCOMPARE(response.results.front().headword, std::string("z"));
+    QCOMPARE(response.results.front().document_id,
+             std::string("dsl-index:0:0"));
+
+    const std::string long_primary(16U * 1024U + 1U, 'z');
+    const auto filtered_path = test::WriteDslTextFixture(
+        root / "filtered",
+        long_primary + "\nshort\n\tfiltered ownership marker\n");
+    const Dictionary filtered = Dictionary::Open(
+        "filtered-dsl-id", filtered_path, {},
+        root / "filtered" / "fixture.gdfts");
+    QCOMPARE(filtered.LookupExact("short").size(), std::size_t{1});
+    const auto filtered_response = filtered.SearchFullText(query);
+    QCOMPARE(filtered_response.results.size(), std::size_t{1});
+    QCOMPARE(filtered_response.results.front().headword, long_primary);
+    QCOMPARE(filtered_response.results.front().document_id,
+             std::string("dsl-index:0:0"));
+
+    const auto empty_path = test::WriteDslTextFixture(
+        root / "empty-filtered", "(x)\n\tempty ownership marker\n");
+    const Dictionary empty_filtered = Dictionary::Open(
+        "empty-filtered-dsl-id", empty_path, {},
+        root / "empty-filtered" / "fixture.gdfts");
+    QCOMPARE(empty_filtered.identity().headword_count, std::size_t{2});
+    QCOMPARE(empty_filtered.LookupExact("").size(), std::size_t{0});
+    QCOMPARE(empty_filtered.LookupExact("x").size(), std::size_t{1});
+    const auto empty_response = empty_filtered.SearchFullText(query);
+    QCOMPARE(empty_response.results.size(), std::size_t{1});
+    QCOMPARE(empty_response.results.front().headword, std::string("x"));
+    QCOMPARE(empty_response.results.front().document_id,
+             std::string("dsl-index:0:0"));
 }
 
 void DslDictionaryTest::ReusesAndRebuildsForOnlySelectedSource() {

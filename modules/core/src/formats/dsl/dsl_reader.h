@@ -60,7 +60,7 @@ class Reader final {
 
     const Metadata& metadata() const noexcept { return metadata_; }
 
-    std::size_t headword_count() const noexcept { return records_.size(); }
+    std::size_t headword_count() const noexcept { return headword_count_; }
 
     std::size_t article_count() const noexcept { return articles_.size(); }
 
@@ -98,12 +98,20 @@ class Reader final {
         std::size_t article = 0;
     };
 
+    struct FullTextSource {
+        std::size_t first_record_ordinal = 0U;
+        std::string canonical_headword;
+        std::size_t article = 0U;
+    };
+
     std::vector<const Record*> RankedPrefixMatches(
         std::string_view prefix, const std::function<void()>& checkpoint) const;
 
     std::filesystem::path dictionary_path_;
     Metadata metadata_;
     std::vector<Record> records_;
+    std::vector<FullTextSource> full_text_sources_;
+    std::size_t headword_count_ = 0U;
     dictionary::OrderedHeadwordIndex enumeration_index_;
     std::vector<std::string> articles_;
     dictionary::SourceSnapshot source_snapshot_;

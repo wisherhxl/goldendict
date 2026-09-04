@@ -16,6 +16,7 @@
 
 #include "../../foundation/text_encoding.h"
 #include "../../foundation/text_folding.h"
+#include "dsl_headword_parser.h"
 
 namespace goldendict::core::formats::dsl {
 namespace {
@@ -240,71 +241,6 @@ std::string LanguageCode(std::string value) {
     return value;
 }
 
-std::string Unescape(std::string_view value) {
-    std::string result;
-    result.reserve(value.size());
-    for (std::size_t index = 0; index < value.size(); ++index) {
-        if (value[index] == '\\' && index + 1U < value.size()) {
-            ++index;
-        }
-        result.push_back(value[index]);
-    }
-    return Trim(std::move(result));
-}
-
-void ExpandOptional(std::string value, std::vector<std::string>* result,
-                    std::size_t start = 0U) {
-    if (result->size() >= 32U) {
-        return;
-    }
-    for (std::size_t index = start; index < value.size(); ++index) {
-        if (value[index] == '\\') {
-            ++index;
-            continue;
-        }
-        if (value[index] != '(') {
-            continue;
-        }
-        std::size_t depth = 1U;
-        for (std::size_t end = index + 1U; end < value.size(); ++end) {
-            if (value[end] == '\\') {
-                ++end;
-            } else if (value[end] == '(') {
-                ++depth;
-            } else if (value[end] == ')' && --depth == 0U) {
-                std::string removed =
-                    value.substr(0, index) + value.substr(end + 1U);
-                ExpandOptional(std::move(removed), result, index);
-                value.erase(end, 1U);
-                value.erase(index, 1U);
-                ExpandOptional(std::move(value), result, index);
-                return;
-            }
-        }
-        value.resize(index);
-        break;
-    }
-    const std::string expanded = Unescape(value);
-    if (!expanded.empty() && expanded.size() <= kMaximumHeadwordSize &&
-        std::find(result->begin(), result->end(), expanded) == result->end()) {
-        result->push_back(expanded);
-    }
-}
-
-std::string ReplaceTildes(std::string value, std::string_view primary) {
-    std::string result;
-    result.reserve(value.size() + primary.size());
-    for (std::size_t index = 0; index < value.size(); ++index) {
-        if (value[index] == '\\' && index + 1U < value.size()) {
-            result.push_back(value[++index]);
-        } else if (value[index] == '~') {
-            result.append(primary);
-        } else {
-            result.push_back(value[index]);
-        }
-    }
-    return result;
-}
 
 std::string Escape(std::string_view value) {
     std::string escaped;
@@ -330,41 +266,152 @@ std::string Escape(std::string_view value) {
     return escaped;
 }
 
+struct DslToken {
+    std::size_t begin = 0U;
+    std::size_t end = 0U;
+    std::string_view text;
+    bool escaped = false;
+};
+
+std::optional<DslToken> NextDslToken(std::string_view value,
+                                     std::size_t index) {
+    if (index >= value.size()) {
+        return std::nullopt;
+    }
+    const std::size_t begin = index;
+    if (value[index] == '\\') {
+        if (++index == value.size()) {
+            return std::nullopt;
+        }
+    } else if ((value[index] == '[' || value[index] == ']') &&
+               index + 1U < value.size() && value[index + 1U] == value[index]) {
+        return DslToken{begin, index + 2U, value.substr(index, 1U), true};
+    }
+
+    std::size_t end = index + 1U;
+    while (end < value.size() &&
+           (static_cast<unsigned char>(value[end]) & 0xc0U) == 0x80U) {
+        ++end;
+    }
+    return DslToken{begin, end, value.substr(index, end - index),
+                    begin != index};
+}
+
+struct DslSequence {
+    std::size_t begin = 0U;
+    std::size_t end = 0U;
+};
+
+std::optional<DslSequence> FindUnescapedSequence(std::string_view value,
+                                                 std::size_t start,
+                                                 std::string_view sequence) {
+    for (std::size_t index = start; index < value.size();) {
+        const auto first = NextDslToken(value, index);
+        if (!first.has_value()) {
+            return std::nullopt;
+        }
+        if (!first->escaped && first->text.size() == 1U &&
+            first->text.front() == sequence.front()) {
+            std::size_t end = first->end;
+            bool matches = true;
+            for (std::size_t character = 1U; character < sequence.size();
+                 ++character) {
+                const auto next = NextDslToken(value, end);
+                if (!next.has_value() || next->escaped ||
+                    next->text.size() != 1U ||
+                    next->text.front() != sequence[character]) {
+                    matches = false;
+                    break;
+                }
+                end = next->end;
+            }
+            if (matches) {
+                return DslSequence{first->begin, end};
+            }
+        }
+        index = first->end;
+    }
+    return std::nullopt;
+}
+
+std::string DecodeDslLiteral(std::string_view value,
+                             bool preserve_escaped_spacing) {
+    std::string decoded;
+    decoded.reserve(value.size());
+    for (std::size_t index = 0U; index < value.size();) {
+        const auto token = NextDslToken(value, index);
+        if (!token.has_value()) {
+            break;
+        }
+        if (preserve_escaped_spacing && token->escaped &&
+            token->text == " ") {
+            decoded += "\xc2\xa0";
+        } else {
+            decoded += token->text;
+        }
+        index = token->end;
+    }
+    return decoded;
+}
+
 std::string RenderDsl(std::string_view input, std::string_view primary) {
     std::string html;
-    const std::string expanded = ReplaceTildes(std::string(input), primary);
+    const std::string expanded =
+        headword::ReplaceTildes(std::string(input), primary);
     for (std::size_t index = 0; index < expanded.size();) {
+        const auto token = NextDslToken(expanded, index);
+        if (!token.has_value()) {
+            break;
+        }
+        if (token->escaped) {
+            html += Escape(DecodeDslLiteral(
+                std::string_view(expanded).substr(index, token->end - index),
+                true));
+            index = token->end;
+            continue;
+        }
         if (expanded.compare(index, 2U, "{{") == 0) {
-            const auto end = expanded.find("}}", index + 2U);
-            index = end == std::string::npos ? expanded.size() : end + 2U;
+            const auto end =
+                FindUnescapedSequence(expanded, index + 2U, "}}");
+            index = end.has_value() ? end->end : expanded.size();
             continue;
         }
         if (expanded.compare(index, 2U, "<<") == 0) {
-            const auto end = expanded.find(">>", index + 2U);
-            if (end != std::string::npos) {
-                const std::string target =
-                    expanded.substr(index + 2U, end - index - 2U);
+            const auto end =
+                FindUnescapedSequence(expanded, index + 2U, ">>");
+            if (end.has_value()) {
+                const auto body = std::string_view(expanded).substr(
+                    index + 2U, end->begin - index - 2U);
+                const std::string target = DecodeDslLiteral(body, false);
+                const std::string label = DecodeDslLiteral(body, true);
                 html += "<a href=\"bword://" + Escape(target) + "\">" +
-                        Escape(target) + "</a>";
-                index = end + 2U;
+                        Escape(label) + "</a>";
+                index = end->end;
                 continue;
             }
+            break;
         }
         if (expanded.compare(index, 3U, "[s]") == 0) {
-            const auto end = expanded.find("[/s]", index + 3U);
-            if (end != std::string::npos) {
-                const std::string resource =
-                    expanded.substr(index + 3U, end - index - 3U);
+            const auto end =
+                FindUnescapedSequence(expanded, index + 3U, "[/s]");
+            if (end.has_value()) {
+                const std::string resource = DecodeDslLiteral(
+                    std::string_view(expanded).substr(
+                        index + 3U, end->begin - index - 3U),
+                    false);
                 html += "<img src=\"" + Escape(resource) + "\">";
-                index = end + 4U;
+                index = end->end;
                 continue;
             }
         }
         if (expanded[index] == '[') {
-            const auto end = expanded.find(']', index + 1U);
-            if (end != std::string::npos) {
-                const std::string tag =
-                    Lower(expanded.substr(index + 1U, end - index - 1U));
+            const auto end =
+                FindUnescapedSequence(expanded, index + 1U, "]");
+            if (end.has_value()) {
+                const std::string tag = Lower(DecodeDslLiteral(
+                    std::string_view(expanded).substr(
+                        index + 1U, end->begin - index - 1U),
+                    false));
                 if (tag == "b" || tag == "i" || tag == "u" || tag == "sub" ||
                     tag == "sup" || tag == "/b" || tag == "/i" || tag == "/u" ||
                     tag == "/sub" || tag == "/sup") {
@@ -385,16 +432,17 @@ std::string RenderDsl(std::string_view input, std::string_view primary) {
                 } else if (tag == "/*") {
                     html += "</gd-optional>";
                 }
-                index = end + 1U;
+                index = end->end;
                 continue;
             }
+            break;
         }
-        if (expanded[index] == '\n') {
+        if (token->text == "\n") {
             html += "<br>";
         } else {
-            html += Escape(std::string_view(expanded).substr(index, 1U));
+            html += Escape(token->text);
         }
-        ++index;
+        index = token->end;
         if (html.size() > kMaximumArticleSize) {
             break;
         }
@@ -529,17 +577,17 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path,
             raw_headwords.emplace_back(*pending);
             pending = NextLine(text, &position);
         }
-        std::vector<std::string> primary_expansions;
-        ExpandOptional(raw_headwords.front(), &primary_expansions);
-        if (primary_expansions.empty()) {
+        headword::Expansion expansion = headword::Parse(raw_headwords);
+        if (expansion.records.empty()) {
             Throw(ErrorCode::kInvalidDictionary, dictionary_path,
                   "DSL article contains an invalid headword");
         }
-        const std::string primary = primary_expansions.front();
-        std::vector<std::string> headwords;
-        for (auto& raw : raw_headwords) {
-            ExpandOptional(ReplaceTildes(std::move(raw), primary), &headwords);
+        if (expansion.records.size() >
+            kMaximumRecords - reader.headword_count_) {
+            Throw(ErrorCode::kInvalidDictionary, dictionary_path,
+                  "DSL contains too many headwords");
         }
+        reader.headword_count_ += expansion.records.size();
         std::string body;
         while (pending.has_value() &&
                (pending->empty() ||
@@ -555,7 +603,7 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path,
             }
             pending = NextLine(text, &position);
         }
-        const std::string html = RenderDsl(body, primary);
+        const std::string html = RenderDsl(body, expansion.article_tilde);
         if (html.size() > kMaximumArticleSize ||
             html.size() > kMaximumDictionaryBytes - total_article_bytes) {
             Throw(ErrorCode::kInvalidDictionary, dictionary_path,
@@ -564,10 +612,10 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path,
         const std::size_t article = reader.articles_.size();
         total_article_bytes += html.size();
         reader.articles_.push_back(html);
-        for (auto& headword : headwords) {
-            if (reader.records_.size() == kMaximumRecords) {
-                Throw(ErrorCode::kInvalidDictionary, dictionary_path,
-                      "DSL contains too many headwords");
+        const std::size_t first_record_ordinal = reader.records_.size();
+        for (auto& headword : expansion.records) {
+            if (headword.empty() || headword.size() > kMaximumHeadwordSize) {
+                continue;
             }
             try {
                 reader.records_.push_back(
@@ -577,6 +625,14 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path,
                     ErrorCode::kInvalidDictionary, dictionary_path,
                     "Invalid UTF-8 DSL headword: " + std::string(error.what()));
             }
+        }
+        if (reader.records_.size() != first_record_ordinal) {
+            reader.full_text_sources_.push_back(
+                {first_record_ordinal,
+                 expansion.primary.empty()
+                     ? reader.records_[first_record_ordinal].headword
+                     : std::move(expansion.primary),
+                 article});
         }
     }
     if (reader.records_.empty()) {
@@ -601,19 +657,14 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path,
 std::vector<FullTextArticle> Reader::ReadFullTextArticles(
     const std::function<void()>& checkpoint) const {
     std::vector<FullTextArticle> result;
-    result.reserve(articles_.size());
-    std::vector<bool> seen(articles_.size(), false);
-    for (std::size_t ordinal = 0U; ordinal < records_.size(); ++ordinal) {
+    result.reserve(full_text_sources_.size());
+    for (const auto& source : full_text_sources_) {
         if (checkpoint) {
             checkpoint();
         }
-        const auto& record = records_[ordinal];
-        if (seen[record.article]) {
-            continue;
-        }
-        seen[record.article] = true;
-        result.push_back({ordinal, record.headword, record.article,
-                          articles_[record.article]});
+        result.push_back({source.first_record_ordinal,
+                          source.canonical_headword, source.article,
+                          articles_[source.article]});
     }
     return result;
 }

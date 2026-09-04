@@ -401,10 +401,32 @@ companion `_abrv` files are not exposed as standalone dictionaries. The
 private adapter strictly decodes BOM-marked UTF-8/UTF-16 and declared
 Windows-1250/1251/1252 input, preserves name and language directives, expands
 bounded optional headword parts and tildes, and converts common DSL markup,
-word links, and image references into the common sanitized article path.
+word links, and image references into the common sanitized article path. The
+private headword preprocessor preserves the frozen Qt 5 semantics for stripped
+unsorted `{...}` zones, escaped delimiters, repeated expansions, the independent
+32-result limit for each source headword line, the 500-code-point no-expansion
+boundary, alternate-line `~`, `^~` first-character case inversion, and legacy
+ASCII-space normalization. Each successive alternate resolves tildes against
+the current first merged record, matching the legacy sorted-list behavior.
+The `^~` uppercase predicate intentionally observes the legacy truncated
+16-bit unit before applying the full-code-point case mapping.
+Expansion traversal stops as soon as each line's 32-result budget is full, so
+adversarial optional groups cannot force exponential work. Article rendering
+separately retains unsorted-zone text, uses the first display expansion for
+body tildes, and uses escape-aware token and terminator traversal. Backslash
+escapes and doubled square brackets remain literal, while escaped spaces
+outside media become non-breaking spaces. These details remain internal to the
+DSL adapter; the common dictionary and lookup contracts are unchanged. The
+adapter also retains the first nonempty expansion from the first source line
+and its pre-insertion record ordinal separately from lookup-record size
+filtering and final merged order, preserving existing full-text canonical
+ownership and stable
+`dsl-index:<first-record-ordinal>:<article-ordinal>` provenance. Empty legacy
+expansions contribute to the reported headword count but never enter lookup or
+enumeration indexes.
 Resource reads are confined to safe relative paths beside the dictionary or
 under either applicable `.files` directory. Abbreviation expansion, resource
-ZIP archives, nested cards, and full-text indexes remain later parity work.
+ZIP archives, and nested cards remain later parity work.
 
 Babylon BGL consumes original `.bgl` containers. The private adapter strictly
 validates the Babylon signature, embedded gzip stream, variable-width block

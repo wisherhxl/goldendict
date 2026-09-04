@@ -812,8 +812,31 @@ with the frozen Qt 5 clean-profile discovery order. A private Core ordering
 strategy retains configured-root order, legacy depth-first directory and
 format precedence, case-insensitive names, and the later sound-directory,
 Hunspell, and runtime-source phases. Generated mixed-format coverage and the
-paired lifecycle corpus are the acceptance evidence; DSL headword counts,
-index-role interpretation, and R3.3 query evidence remain open.
+paired lifecycle corpus are the acceptance evidence; index-role interpretation
+and R3.3 query evidence remain open.
+
+The following focused Unit 2 correction closes the DSL headword-count defect at
+the format-adapter boundary. The private preprocessor now follows the frozen
+Qt 5 ordering for unsorted-zone removal, optional expansion without duplicate
+elision, per-source-line result limits, the 500-code-point guard, escaped
+syntax, normalization, and alternate `~`/`^~` replacement. Per-line traversal
+terminates when its 32-result budget is full, and each successive alternate
+resolves tildes against the current first merged record. Supplementary-plane
+case inversion retains the legacy 16-bit uppercase predicate. The separate
+article display path retains unsorted-zone contents for body-tilde replacement
+and uses escape-aware traversal for literal backslash and doubled-bracket
+forms, non-breaking escaped spaces, and compound terminators. Generated
+exact-record, adversarial-bound, lookup, rendering, and boundary coverage
+passes. Full-text canonical headword ownership and the pre-insertion record
+ordinal remain bound to the first nonempty expansion from the first source
+line, independent of lookup-record size filtering and merged order. Empty
+legacy expansions remain in the reported count but are excluded from lookup
+and enumeration. A clean discovery of the complete approved corpus, launched
+through Conan, reports zero diagnostics and exact Qt 5 article and headword
+counts for all 16 DSL dictionaries, including all eight dictionaries that
+previously differed. This correction does not claim abbreviation expansion,
+resource ZIP support, nested cards, index-role equivalence, or R3.3 query
+acceptance.
 
 ### CRD closure cross-check
 

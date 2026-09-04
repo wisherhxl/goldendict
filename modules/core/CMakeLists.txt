@@ -678,6 +678,7 @@ if(TARGET dsl_reader_test)
       src/foundation/text_encoding.cc
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
+      src/formats/dsl/dsl_headword_parser.cc
       src/formats/dsl/dsl_reader.cc
   )
   target_link_libraries(dsl_reader_test PRIVATE ICU::uc ZLIB::ZLIB)
@@ -697,6 +698,7 @@ if(TARGET dsl_dictionary_test)
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
       src/formats/dsl/dsl_dictionary.cc
+      src/formats/dsl/dsl_headword_parser.cc
       src/formats/dsl/dsl_reader.cc
   )
   target_link_libraries(dsl_dictionary_test PRIVATE ICU::uc ZLIB::ZLIB)
