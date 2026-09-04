@@ -16,6 +16,9 @@
 
 namespace goldendict::core::formats::dsl {
 
+inline constexpr std::size_t kMaximumDictionaryBytes =
+    1024U * 1024U * 1024U;
+
 enum class ErrorCode { kMissingFile, kInvalidDictionary };
 
 class Error final : public std::runtime_error {

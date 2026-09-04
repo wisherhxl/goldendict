@@ -15,6 +15,7 @@ class DslReaderTest : public QObject {
    private slots:
     void ReadsMetadataExpansionsMarkupAndRankedMatches();
     void ReadsCompressedAndUtf16AndInvokesCheckpoints();
+    void SupportsApprovedLargeDictionaryBoundary();
     void RejectsMalformedOrCorruptInput();
 };
 
@@ -67,6 +68,11 @@ void DslReaderTest::ReadsCompressedAndUtf16AndInvokesCheckpoints() {
     const Reader compressed_utf16 = Reader::Open(test::CompressDslFixture(
         test::WriteUtf16LeDslFixture(root / "utf16-compressed")));
     QCOMPARE(compressed_utf16.LookupExact("example").size(), std::size_t{1});
+}
+
+void DslReaderTest::SupportsApprovedLargeDictionaryBoundary() {
+    constexpr std::size_t kApprovedBritannicaDecodedBytes = 595963560U;
+    QVERIFY(kMaximumDictionaryBytes >= kApprovedBritannicaDecodedBytes);
 }
 
 void DslReaderTest::RejectsMalformedOrCorruptInput() {

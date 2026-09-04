@@ -20,8 +20,6 @@
 namespace goldendict::core::formats::dsl {
 namespace {
 
-constexpr std::size_t kMaximumStoredFileSize = 512U * 1024U * 1024U;
-constexpr std::size_t kMaximumDecodedSize = 512U * 1024U * 1024U;
 constexpr std::size_t kMaximumArticleSize = 16U * 1024U * 1024U;
 constexpr std::size_t kMaximumHeadwordSize = 16U * 1024U;
 constexpr std::size_t kMaximumRecords = 10U * 1000U * 1000U;
@@ -37,7 +35,7 @@ std::string ReadFile(const std::filesystem::path& path) {
     if (error) {
         Throw(ErrorCode::kMissingFile, path, "Cannot inspect DSL file");
     }
-    if (size > kMaximumStoredFileSize) {
+    if (size > kMaximumDictionaryBytes) {
         Throw(ErrorCode::kInvalidDictionary, path,
               "DSL file exceeds the supported size limit");
     }
@@ -86,7 +84,7 @@ std::string Gunzip(std::string_view compressed,
         stream.avail_out = static_cast<uInt>(buffer.size());
         status = inflate(&stream, Z_NO_FLUSH);
         const auto produced = buffer.size() - stream.avail_out;
-        if (produced > kMaximumDecodedSize - output.size()) {
+        if (produced > kMaximumDictionaryBytes - output.size()) {
             inflateEnd(&stream);
             Throw(ErrorCode::kInvalidDictionary, path,
                   "Decompressed DSL exceeds the supported size limit");
@@ -181,7 +179,8 @@ std::string Decode(std::string data, const std::filesystem::path& path) {
     }
     try {
         std::string decoded = foundation::DecodeToUtf8(
-            std::string_view(data).substr(bom), encoding, kMaximumDecodedSize);
+            std::string_view(data).substr(bom), encoding,
+            kMaximumDictionaryBytes);
         NormalizeLineEndings(&decoded);
         return decoded;
     } catch (const foundation::TextEncodingError& error) {
@@ -558,7 +557,7 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path,
         }
         const std::string html = RenderDsl(body, primary);
         if (html.size() > kMaximumArticleSize ||
-            html.size() > kMaximumDecodedSize - total_article_bytes) {
+            html.size() > kMaximumDictionaryBytes - total_article_bytes) {
             Throw(ErrorCode::kInvalidDictionary, dictionary_path,
                   "DSL article exceeds the supported size limit");
         }

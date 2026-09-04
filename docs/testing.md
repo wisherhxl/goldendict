@@ -166,6 +166,15 @@ snapshot before publishing a completed rescan phase; creating a second
 standalone service is not accepted as rescan evidence. This covers the Core
 reload behavior required by R3.2 and does not claim that the separate legacy
 File-menu rescan action in R7.2 is already restored.
+
+The DSL reader's bounded dictionary capacity is 1 GiB for both stored and
+decoded input. `dsl_reader_test::SupportsApprovedLargeDictionaryBoundary`
+pins the capacity above the approved Britannica member's 595,963,560 decoded
+bytes without constructing a half-gigabyte synthetic fixture. The functional
+gate is the real-corpus observer: it must discover `Britannica Encyclopaedia
+2010` with 73,152 articles and must not emit the former
+`Decompressed DSL exceeds the supported size limit` diagnostic.
+
 Run Qt 6 from a configured Release build through the Conan launcher so the
 child inherits the complete DLL and Qt plugin environment:
 
