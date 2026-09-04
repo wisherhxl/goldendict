@@ -605,6 +605,12 @@ std::string ApplyStyles(
     return result;
 }
 
+void RemoveTrailingRecordTerminators(std::string* value) {
+    while (!value->empty() && value->back() == '\0') {
+        value->pop_back();
+    }
+}
+
 ParsedContainer ParseContainer(const std::filesystem::path& path) {
     const std::string file = ReadFile(path);
     Cursor cursor(file, path);
@@ -666,8 +672,9 @@ ParsedContainer ParseContainer(const std::filesystem::path& path) {
             Throw(ErrorCode::kInvalidDictionary, path,
                   "Invalid MDict record range");
         std::string value(records.substr(start, end - start));
-        value = ApplyStyles(
-            Decode(value, parsed.header.encoding, path, "record"), styles);
+        value = Decode(value, parsed.header.encoding, path, "record");
+        RemoveTrailingRecordTerminators(&value);
+        value = ApplyStyles(value, styles);
         parsed.entries.push_back({std::move(keys[index].word), std::move(value),
                                   start, end - start});
     }

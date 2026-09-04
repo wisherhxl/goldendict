@@ -26,6 +26,7 @@ class MdictReaderTest : public QObject {
     void ReadsEncryptedKeyInfo();
     void MatchesRipemd128ReferenceDigest();
     void DecodesUtf16KeysAndRecords();
+    void RemovesTrailingArticleRecordTerminators();
     void ExposesImmutableTerminalOwnershipView();
     void CheckpointsAndCancelsOwnershipTraversal();
     void RejectsCorruptionAndUnsupportedEncryption();
@@ -273,6 +274,24 @@ void MdictReaderTest::DecodesUtf16KeysAndRecords() {
     const Reader reader = Reader::Open({path, {}});
 
     QCOMPARE(reader.LookupExact("CAFE").front().data, "<b>drink</b>");
+}
+
+void MdictReaderTest::RemovesTrailingArticleRecordTerminators() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    std::string terminated = "<b>terminated</b>";
+    terminated.append(2U, '\0');
+    const auto path = test::WriteMdictContainer(
+        root / "terminated.mdx", "Terminated Fixture",
+        {{"word", terminated},
+         {"next", std::string("preserved\0middle", 16U)}});
+
+    const Reader reader = Reader::Open({path, {}});
+
+    QCOMPARE(reader.LookupExact("word").front().data, "<b>terminated</b>");
+    QCOMPARE(reader.LookupExact("next").front().data,
+             std::string("preserved\0middle", 16U));
 }
 
 void MdictReaderTest::RejectsCorruptionAndUnsupportedEncryption() {

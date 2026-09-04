@@ -14,6 +14,7 @@ class ArticleAssemblerTest : public QObject {
    private slots:
     void EscapesPlainTextAndKeepsItStructured();
     void SanitizesMarkupAndRewritesTypedLinks();
+    void PreservesTextInsideSafeCustomMarkup();
     void PreservesOnlyInternalOptionalPartSemantics();
     void PreservesSafeAudioAndCollectsItsResource();
     void DeduplicatesResourceReferencesAcrossArticles();
@@ -60,6 +61,32 @@ void ArticleAssemblerTest::SanitizesMarkupAndRewritesTypedLinks() {
     QCOMPARE(document.resources.size(), std::size_t{1});
     QCOMPARE(document.resources.front().dictionary_id, "fixture id");
     QCOMPARE(document.resources.front().resource_id, "images/pixel.png");
+}
+
+void ArticleAssemblerTest::PreservesTextInsideSafeCustomMarkup() {
+    const Document document =
+        Assemble(kDictionary,
+                 {{"example", "text/html",
+                   "<h-g eid=\"entry\"><pron e gs><xhtml:a href=\"d:word\">word"
+                   "</xhtml:a><script>hidden</script><a "
+                   "href=\"sound://spoken.mp3\">listen</a>"
+                   "<img src=\"picture.png\"></pron-gs></h-g></b>"}});
+
+    QCOMPARE(document.plain_text, "wordlisten");
+    QVERIFY(document.sanitized_html.find("word") != std::string::npos);
+    QVERIFY(document.sanitized_html.find("&lt;h-g") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("xhtml:a") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("script") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("d:word") == std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "src=\"goldendict://resource/fixture%20id/picture.png\"") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "href=\"goldendict://resource/fixture%20id/spoken.mp3\"") !=
+            std::string::npos);
+    QCOMPARE(document.resources.size(), std::size_t{2});
+    QCOMPARE(document.resources.front().resource_id, "spoken.mp3");
+    QCOMPARE(document.resources.back().resource_id, "picture.png");
 }
 
 void ArticleAssemblerTest::PreservesOnlyInternalOptionalPartSemantics() {
@@ -118,9 +145,10 @@ void ArticleAssemblerTest::RemovesActiveContentAndUnsafeAttributes() {
                    "<p style=\"display:none\" onclick=\"steal()\">safe"
                    "<style>body{display:none}</style><script>alert(1)</script>"
                    "<a href=\"javascript:steal()\">link</a>"
+                   "<a href=\"sound://../secret\">audio</a>"
                    "<img src=\"../secret\" onerror=\"steal()\"></p>"}});
 
-    QCOMPARE(document.plain_text, "safelink");
+    QCOMPARE(document.plain_text, "safelinkaudio");
     QVERIFY(document.sanitized_html.find("script") == std::string::npos);
     QVERIFY(document.sanitized_html.find("onclick") == std::string::npos);
     QVERIFY(document.sanitized_html.find("<p style=") == std::string::npos);

@@ -310,11 +310,13 @@ foreach ($scenario in "clean-discovery", "warm-restart") {
 
 The comparison exits nonzero when it publishes a material difference. Treat
 that outcome as product-gap evidence; do not weaken the visible-text or exact
-resource comparison to make it pass. The first development pair proved exact,
-stable bytes from the base MDD, `.1.mdd`, and `.2.mdd` in both products, but
-also found that Qt 6 escaped this dictionary's custom article markup into a
-visible preformatted block. That confirmed rendering correction remains an
-R3.3 product unit, so R3.3 is not yet complete.
+resource comparison to make it pass. The first development pair exposed Qt 6
+custom-markup rendering and trailing-record-terminator differences. The
+corrected fresh pair at
+`evidence/qt5-qt6-mdict-r33-unit2-final3` is equivalent: all three visible
+article texts match in clean and warm states, and exact resource bytes from the
+base MDD, `.1.mdd`, and `.2.mdd` remain stable. Its comparison SHA-256 is
+`307d65659b95ce880eea577df6d3392d7ec6c9c6cc3c08e84827a771cc5b946d`.
 
 `mdict_reader_test::UsesLegacyFallbackName` pins the frozen Qt 5 title fallback
 for empty, placeholder, and header titles shorter than five UTF-16 code units,
@@ -323,6 +325,9 @@ first extension rather than only removing the final `.mdx` suffix. In the
 approved corpus this changes the empty-title Oxford name from
 `牛津高阶双解(第9版)_V3.1.2版` to the Qt 5 value
 `牛津高阶双解(第9版)_V3` without a corpus-specific rule.
+`mdict_reader_test::RemovesTrailingArticleRecordTerminators` pins the Qt 5
+behavior for NUL-terminated article records while retaining embedded NUL bytes
+and raw record offset/size ownership evidence.
 
 Run Qt 6 from a configured Release build through the Conan launcher so the
 child inherits the complete DLL and Qt plugin environment:

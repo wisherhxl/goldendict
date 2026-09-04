@@ -114,7 +114,7 @@ std::string ReadName(std::string_view value, std::size_t* index) {
         const unsigned char character =
             static_cast<unsigned char>(value[*index]);
         if (std::isalnum(character) == 0 && character != '-' &&
-            character != '_') {
+            character != '_' && character != ':') {
             break;
         }
         ++*index;
@@ -163,7 +163,8 @@ std::optional<Tag> ParseTag(std::string_view raw) {
         }
         SkipSpace(raw, &index);
         if (index >= raw.size() || raw[index] != '=') {
-            return std::nullopt;
+            tag.attributes.emplace(name, std::string{});
+            continue;
         }
         ++index;
         SkipSpace(raw, &index);
@@ -236,6 +237,24 @@ bool HasResource(const std::vector<ResourceReference>& resources,
                        });
 }
 
+void AddResourceReference(const dictionary::Identity& dictionary,
+                          std::string_view resource_id,
+                          std::vector<ResourceReference>* resources) {
+    if (HasResource(*resources, dictionary.id, resource_id)) {
+        return;
+    }
+    if (resources->size() == kMaximumResourceReferences) {
+        throw dictionary::Error(dictionary::ErrorCode::kInvalidData,
+                                "Article contains too many resources");
+    }
+    resources->push_back({dictionary.id, std::string(resource_id)});
+}
+
+bool IsTrackedTag(std::string_view name) {
+    return name == "gd-optional" || Contains(kAllowedTags, name) ||
+           Contains(kSuppressedTags, name);
+}
+
 bool SanitizeMarkup(const dictionary::Identity& dictionary,
                     std::string_view markup, std::string* html,
                     std::string* plain_text,
@@ -278,7 +297,16 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
         }
         const Tag& tag = *parsed;
         if (tag.closing) {
-            if (stack.empty() || stack.back() != tag.name) {
+            if (!IsTrackedTag(tag.name)) {
+                position = *closing + 1U;
+                continue;
+            }
+            if (std::find(stack.begin(), stack.end(), tag.name) ==
+                stack.end()) {
+                position = *closing + 1U;
+                continue;
+            }
+            if (stack.back() != tag.name) {
                 return false;
             }
             stack.pop_back();
@@ -293,7 +321,7 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                 }
             }
         } else {
-            if (!tag.self_closing) {
+            if (!tag.self_closing && IsTrackedTag(tag.name)) {
                 stack.push_back(tag.name);
             }
             if (suppressed_depth > 0 || Contains(kSuppressedTags, tag.name)) {
@@ -316,6 +344,20 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                                                  .substr(kBword.size()))) +
                                          "\"");
                         } catch (const std::invalid_argument&) {}
+                    } else if (href != tag.attributes.end()) {
+                        constexpr std::string_view kSound = "sound://";
+                        if (href->second.substr(0, kSound.size()) == kSound) {
+                            const auto resource_id = NormalizeResourceId(
+                                href->second.substr(kSound.size()));
+                            if (resource_id.has_value()) {
+                                html->append(" href=\"" +
+                                             Escape(MakeResourceUrl(
+                                                 dictionary.id, *resource_id)) +
+                                             "\"");
+                                AddResourceReference(dictionary, *resource_id,
+                                                     resources);
+                            }
+                        }
                     }
                 } else if (tag.name == "img" || tag.name == "source") {
                     const auto source = tag.attributes.find("src");
@@ -327,17 +369,8 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                                          Escape(MakeResourceUrl(dictionary.id,
                                                                 *resource_id)) +
                                          "\"");
-                            if (!HasResource(*resources, dictionary.id,
-                                             *resource_id)) {
-                                if (resources->size() ==
-                                    kMaximumResourceReferences) {
-                                    throw dictionary::Error(
-                                        dictionary::ErrorCode::kInvalidData,
-                                        "Article contains too many resources");
-                                }
-                                resources->push_back(
-                                    {dictionary.id, *resource_id});
-                            }
+                            AddResourceReference(dictionary, *resource_id,
+                                                 resources);
                         }
                     }
                 }

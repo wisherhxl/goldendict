@@ -227,7 +227,7 @@ launcher and Python tooling checks run directly.
 | R2.3 | **Complete:** Windows WebEngine serialization and GPU-independent harness | R2.2 | all affected WebEngine tests serially pass; full Windows CTest log retained |
 | R3.1 | **Complete:** configuration and user-state upgrade/rollback matrix: `CRD-STATE-004`, `CRD-COMPAT-002` through `005` | R1.2, R2.3 | generated malformed/failure-injection tests plus disposable Qt 5 profile upgrade |
 | R3.2 | **Complete:** real-corpus discovery, identity, counts, ordering, restart, rescan, bounded cancellation, and recovery: `CRD-TEST-REAL-004`, `CRD-COMPAT-001` | R1.2, R2.3 | paired machine-readable Qt 5/Qt 6 result files and diff |
-| R3.3 | Real MDict split-resource acceptance and evidence-confirmed corrections | R3.2 | MDX/three-MDD lookup, resource, restart, and immutable-source checks |
+| R3.3 | **Complete:** real MDict split-resource acceptance and evidence-confirmed corrections | R3.2 | MDX/three-MDD lookup, resource, restart, and immutable-source checks |
 | R3.4 | Real DSL and greater-than-4-GiB resource-ZIP acceptance and corrections | R3.2 | DSL/dictzip/article/resource/restart checks with bounded storage evidence |
 | R3.5 | Remaining real-corpus lookup, suggestion, article, media, and management matrix: `CRD-TEST-REAL-005` through `007` | R3.3, R3.4 | paired query catalog and machine-readable result diff |
 | R3.6 | StarDict non-corpus variants and companions: StarDict part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining compression, metadata, resource, identity, indexing, lookup, restart, corruption, and failure variants |
@@ -1038,6 +1038,47 @@ Qt 5 renders the custom markup. This is an explained product gap, not an
 acceptance-harness failure. It remains assigned to the next separate R3.3
 backend correction; the comparator and frozen expectations remain unchanged,
 and R3.3 remains open until a repeated pair is equivalent.
+
+Unit 2 issue and readiness: **Ready** (2026-09-05). Unit 1 proves that the
+Oxford article body is well-formed custom HTML-like markup containing
+hyphenated and namespace-qualified element names plus valueless attributes.
+The current sanitizer rejects that syntax before applying its allowlist and
+therefore exposes the entire source as escaped preformatted text. The
+conforming correction extends lexical recognition of those two safe syntax
+forms and browser-compatible recovery for unmatched closing tags. Unknown
+elements remain transparent, every unknown attribute is dropped,
+active-content elements remain suppressed, and recognized links and resources
+pass through typed rewrite and confinement rules. A closing tag that cannot
+correspond to any tracked open safe or suppressed element is ignored, while an
+actual tracked nesting mismatch or unterminated element still becomes inert
+text. MDict `sound://` references are rewritten to confined internal resource
+URLs and collected through the same bounded resource-reference path as images
+and media sources. No public interface or ownership boundary changes. Focused
+generated tests must pin the accepted custom syntax, recovery behavior,
+audio-reference rewrite, and existing security behavior. Completion requires
+a repeated paired real-corpus run whose visible text is equivalent while all
+three exact split-MDD resources and clean/warm bindings remain unchanged.
+The first corrected comparison isolated one final difference: every Qt 6
+article retained the MDX record's trailing NUL terminator, while the Qt 5
+conversion omitted it. The same unit therefore removes only trailing record
+terminators at the MDict decoding boundary, preserves embedded NUL bytes and
+raw record offset/size provenance, and pins that distinction in a generated
+reader test.
+
+Unit 2 implementation result: **Equivalent** (2026-09-05). The final fresh
+paired workspace is
+`evidence/qt5-qt6-mdict-r33-unit2-final3`; its pair ID is
+`e7c84bdf6f64b0798fd0b614a63a66e11f78ae07daac2e96cd03dac45e1c0923`.
+The comparison has external SHA-256
+`307d65659b95ce880eea577df6d3392d7ec6c9c6cc3c08e84827a771cc5b946d`
+and reports `equivalent: true` with no differences. Qt 5 and Qt 6 have equal
+visible text for all three exact articles in clean and warm states; the base
+MDD, `.1.mdd`, and `.2.mdd` resources retain their exact cataloged sizes and
+SHA-256 values; same-version clean/warm results are stable; and both products
+published valid condition acknowledgements. The Qt 6 Visual Studio 2026
+Release build, all 131 CTest tests, and all 129 Python tests passed with one
+intentional skip. R3.3 is complete when this audited delivery reaches the Qt 6
+baseline; the broader R3.5 and R3.13 matrices remain open and unchanged.
 
 The design uses the existing Adapter boundary for version-specific evidence
 collection and a coordinator for paired-run state and publication. These
