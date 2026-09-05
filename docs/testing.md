@@ -538,6 +538,39 @@ approved corpus this changes the empty-title Oxford name from
 behavior for NUL-terminated article records while retaining embedded NUL bytes
 and raw record offset/size ownership evidence.
 
+R3.5 Unit 3 extends the same catalog and coordinator without breaking older
+DSL/MDict-only catalogs. Its `morphology` operation records only normalized,
+ordered text signatures for returned stems and retains the catalog query plus
+corpus-relative paths for both Hunspell pair components as structural evidence;
+dictionary contents are not copied into the observation. The unit covers every
+configured real pair: `de_DE`, `en_US`,
+`es_ES`, `fr_FR`, `it_IT`, `pt_BR`, and `ru_RU`. Qt 5 observes the frozen
+asynchronous synonym request from a fresh disposable source preparation. Qt 6
+uses the private Core provider through the registered `DictionaryService`
+identity, and every Qt 6 launch remains inside `run_with_conan.ps1`.
+
+The final paired workspace is
+`evidence/qt5-qt6-lookup-r35-unit3-morphology-dev3`, with pair ID
+`1ae23c25351d35dfa214c04eba4dbd28018d1b490e410d7236d8137c2fbcc9bb`.
+The catalog SHA-256 is
+`1564cd34107e07de97d31ff67392599437e7d3c486e5d65d6bb9277598713684`,
+the canonical conditions SHA-256 is
+`ff096675837e8c5e44734b13beb177791588d26d19825d7326cde7012ca5fcb1`,
+and the strict zero-difference comparison SHA-256 is
+`12c25517e6d182838f78aa44694c3fc633872f8b558bfd9c810c92fee747f4fb`.
+All seven probes are nonempty and both products are internally stable across
+clean and warm observations. The complete Release build succeeds, all 134
+CTest cases pass serially, and the repository Python suite passes all 160
+tests with two platform-condition skips.
+
+On managed Windows hosts, application-control policy may reject a trusted
+MSYS2 Qt 5 tool or runtime solely because of its original path. When the Code
+Integrity event log confirms this condition, the acceptance preparation may
+use a byte-identical copy inside the external disposable evidence build or run
+directory after verifying matching SHA-256 values. This does not modify the
+frozen checkout, replace a dependency, or bypass the policy; the copied file
+must still pass the host's normal application-control decision.
+
 Run Qt 6 from a configured Release build through the Conan launcher so the
 child inherits the complete DLL and Qt plugin environment:
 

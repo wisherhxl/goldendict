@@ -94,7 +94,13 @@ def _verify_provenance(path: Path) -> None:
         raise Qt5ObserverError("Qt 5 source provenance does not match this observer")
 
 
-def _write_config(path: Path, dictionary_root: Path, language: str) -> None:
+def _write_config(
+    path: Path,
+    dictionary_root: Path,
+    language: str,
+    morphology_path: Path | None = None,
+    morphology_ids: list[str] | None = None,
+) -> None:
     root = ET.Element("config")
     paths = ET.SubElement(root, "paths")
     dictionary_path = ET.SubElement(paths, "path", {"recursive": "1"})
@@ -111,6 +117,12 @@ def _write_config(path: Path, dictionary_root: Path, language: str) -> None:
         "checkForNewReleases",
     ):
         ET.SubElement(preferences, name).text = "0"
+    if morphology_path is not None:
+        hunspell = ET.SubElement(
+            root, "hunspell", {"dictionariesPath": str(morphology_path)}
+        )
+        for dictionary_id in morphology_ids or []:
+            ET.SubElement(hunspell, "enabled").text = dictionary_id
     path.parent.mkdir(parents=True)
     ET.ElementTree(root).write(path, encoding="utf-8", xml_declaration=True)
 
@@ -264,6 +276,41 @@ def observe(
         or _sha256(resolved_lookup_catalog) != lookup_catalog_sha256
     ):
         raise Qt5ObserverError("Lookup catalog hash is invalid")
+    morphology_path: Path | None = None
+    morphology_ids: list[str] = []
+    if resolved_lookup_catalog is not None:
+        try:
+            lookup_value = json.loads(resolved_lookup_catalog.read_bytes())
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise Qt5ObserverError("Lookup catalog is invalid") from error
+        dictionaries = lookup_value.get("dictionaries")
+        if not isinstance(dictionaries, list):
+            raise Qt5ObserverError("Lookup catalog dictionaries are invalid")
+        for item in dictionaries:
+            if not isinstance(item, dict) or item.get("format") != "hunspell":
+                continue
+            primary_component = item.get("primary_component")
+            if not isinstance(primary_component, str):
+                raise Qt5ObserverError("Hunspell lookup catalog item is invalid")
+            affix_file = (dictionary_root / primary_component).resolve(strict=True)
+            try:
+                affix_file.relative_to(dictionary_root)
+            except ValueError as error:
+                raise Qt5ObserverError(
+                    "Hunspell lookup catalog item escapes the corpus"
+                ) from error
+            if affix_file.suffix.casefold() != ".aff":
+                raise Qt5ObserverError("Hunspell lookup component is invalid")
+            dictionary_id = affix_file.stem
+            if morphology_path is None:
+                morphology_path = affix_file.parent
+            elif morphology_path != affix_file.parent:
+                raise Qt5ObserverError(
+                    "Hunspell lookup catalog must use one morphology directory"
+                )
+            if dictionary_id in morphology_ids:
+                raise Qt5ObserverError("Hunspell lookup catalog id is duplicated")
+            morphology_ids.append(dictionary_id)
     if (
         sum(
             catalog is not None
@@ -288,7 +335,13 @@ def observe(
         local_appdata = profile / "local-appdata"
         for directory in (appdata, home, local_appdata):
             directory.mkdir()
-        _write_config(_config_path(appdata, home), dictionary_root, interface_language)
+        _write_config(
+            _config_path(appdata, home),
+            dictionary_root,
+            interface_language,
+            morphology_path,
+            morphology_ids,
+        )
         environment = os.environ.copy()
         environment.update(
             {

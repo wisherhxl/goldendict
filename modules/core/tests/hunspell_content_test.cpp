@@ -101,10 +101,14 @@ void HunspellContentTest::RejectsDictionaryStructureAndResourceFailures() {
     auto error = Capture([&] { LoadContent(bad_header); });
     QCOMPARE(error.code(), ContentErrorCode::kInvalidDictionary);
 
-    auto bad_count = test::WriteHunspellFixture(root / "count", "x",
-                                                "SET UTF-8\n", "2\nword\n");
-    error = Capture([&] { LoadContent(bad_count); });
-    QCOMPARE(error.code(), ContentErrorCode::kInvalidDictionary);
+    const auto stale_low_count = test::WriteHunspellFixture(
+        root / "count-low", "x", "SET UTF-8\n", "1\nword\nwords\n");
+    QCOMPARE(LoadContent(stale_low_count).dictionary_entry_count,
+             std::size_t{2});
+    const auto stale_high_count = test::WriteHunspellFixture(
+        root / "count-high", "x", "SET UTF-8\n", "2\nword\n");
+    QCOMPARE(LoadContent(stale_high_count).dictionary_entry_count,
+             std::size_t{1});
 
     auto too_many = test::WriteHunspellFixture(
         root / "entries", "x", "SET UTF-8\n",

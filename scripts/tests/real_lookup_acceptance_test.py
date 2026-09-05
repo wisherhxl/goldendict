@@ -86,6 +86,9 @@ class RealLookupAcceptanceTest(unittest.TestCase):
     def _raw(self, corpus: Path, catalog: dict[str, object]) -> dict[str, object]:
         dictionaries = []
         for item in catalog["dictionaries"]:
+            components = [str(corpus / Path(item["primary_component"]))]
+            if item["format"] == "hunspell":
+                components.append(str(Path(components[0]).with_suffix(".dic")))
             probes = []
             for probe in item["probes"]:
                 entries = []
@@ -110,6 +113,8 @@ class RealLookupAcceptanceTest(unittest.TestCase):
                     )
                 elif probe["operation"] == "suggest":
                     suggestions = [probe["query"] + "mple"]
+                elif probe["operation"] == "morphology":
+                    suggestions = [probe["query"].rstrip("s")]
                 probes.append(
                     {
                         "entries": entries,
@@ -122,7 +127,7 @@ class RealLookupAcceptanceTest(unittest.TestCase):
             dictionaries.append(
                 {
                     "catalog_id": item["id"],
-                    "components": [str(corpus / Path(item["primary_component"]))],
+                    "components": components,
                     "id": "runtime-" + item["id"],
                     "name": item["id"],
                     "probes": probes,
@@ -181,6 +186,66 @@ class RealLookupAcceptanceTest(unittest.TestCase):
                 acceptance.LookupAcceptanceError, "inconsistent"
             ):
                 acceptance.read_catalog(path, corpus)
+
+    def test_catalog_accepts_all_real_hunspell_pairs_and_morphology(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            corpus, catalog, path, _ = self._fixture(root)
+            morphology = corpus / "morphology"
+            morphology.mkdir()
+            for dictionary_id in (
+                "de_DE",
+                "en_US",
+                "es_ES",
+                "fr_FR",
+                "it_IT",
+                "pt_BR",
+                "ru_RU",
+            ):
+                (morphology / f"{dictionary_id}.aff").write_bytes(b"SET UTF-8\n")
+                (morphology / f"{dictionary_id}.dic").write_bytes(b"1\nword\n")
+                catalog["dictionaries"].append(
+                    {
+                        "format": "hunspell",
+                        "id": dictionary_id,
+                        "primary_component": f"morphology/{dictionary_id}.aff",
+                        "probes": [
+                            {
+                                "category": "morphology",
+                                "id": f"{dictionary_id}-stem",
+                                "operation": "morphology",
+                                "query": "words",
+                                "result_limit": 8,
+                            }
+                        ],
+                    }
+                )
+            self._write_json(path, catalog)
+
+            actual, catalog_hash = acceptance.read_catalog(path, corpus)
+
+            self.assertEqual(16, len(acceptance.catalog_queries(actual)))
+            self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), catalog_hash)
+            raw = self._raw(corpus, actual)
+            normalized = acceptance.normalize_raw_observation(
+                raw,
+                actual,
+                catalog_hash=CATALOG_HASH,
+                corpus_root=corpus.resolve(),
+                pair_id=PAIR_ID,
+                version="qt6",
+                revision=QT6_REVISION,
+                scenario="clean-discovery",
+                manifest_hash=MANIFEST_HASH,
+                conditions_hash=CONDITIONS_HASH,
+            )
+            hunspell_probe = normalized["dictionaries"][-1]["probes"][0]
+            self.assertEqual("morphology", hunspell_probe["operation"])
+            self.assertEqual(1, len(hunspell_probe["suggestions"]))
+            self.assertEqual(
+                ["morphology/ru_RU.aff", "morphology/ru_RU.dic"],
+                normalized["dictionaries"][-1]["components"],
+            )
 
     def test_normalization_hashes_text_and_retains_references(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

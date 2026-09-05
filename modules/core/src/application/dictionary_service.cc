@@ -3,6 +3,7 @@
 #include "goldendict/core/dictionary_service.h"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cctype>
 #include <charconv>
@@ -24,6 +25,8 @@
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+#include <unicode/uloc.h>
+#include <unicode/ustring.h>
 
 #include "../article/article_assembler.h"
 #include "../dictionary/dictionary_backend.h"
@@ -471,6 +474,63 @@ std::string StableId(std::string_view format,
     output << format << '-' << std::hex << std::setfill('0') << std::setw(16)
            << hash;
     return output.str();
+}
+
+std::optional<std::string> EnglishLanguageName(std::string_view language) {
+    constexpr char kDisplayLocale[] = "en_US";
+    std::array<UChar, 128> display_name{};
+    UErrorCode status = U_ZERO_ERROR;
+    const int32_t display_length = uloc_getDisplayLanguage(
+        std::string(language).c_str(), kDisplayLocale, display_name.data(),
+        static_cast<int32_t>(display_name.size()), &status);
+    if (U_FAILURE(status) || display_length <= 0 ||
+        display_length >= static_cast<int32_t>(display_name.size())) {
+        return std::nullopt;
+    }
+
+    std::array<char, 512> utf8{};
+    int32_t utf8_length = 0;
+    status = U_ZERO_ERROR;
+    u_strToUTF8(utf8.data(), static_cast<int32_t>(utf8.size()), &utf8_length,
+                display_name.data(), display_length, &status);
+    if (U_FAILURE(status) || utf8_length <= 0 ||
+        utf8_length >= static_cast<int32_t>(utf8.size())) {
+        return std::nullopt;
+    }
+    return std::string(utf8.data(), static_cast<std::size_t>(utf8_length));
+}
+
+std::string MorphologyDisplayName(std::string_view dictionary_id) {
+    std::string language;
+    if (dictionary_id.size() == 2U) {
+        language.assign(dictionary_id);
+    } else if (dictionary_id.size() > 3U &&
+               (dictionary_id[2] == '-' || dictionary_id[2] == '_')) {
+        language.assign(dictionary_id.substr(0U, 2U));
+    }
+    if (language.size() != 2U ||
+        !std::all_of(language.begin(), language.end(), [](unsigned char ch) {
+            return std::isalpha(ch) != 0;
+        })) {
+        return std::string(dictionary_id) + " Morphology";
+    }
+    std::transform(language.begin(), language.end(), language.begin(),
+                   [](unsigned char ch) {
+                       return static_cast<char>(std::tolower(ch));
+                   });
+    std::string name =
+        EnglishLanguageName(language).value_or(std::string(dictionary_id));
+    if (dictionary_id.size() > 3U) {
+        std::string qualifier(dictionary_id.substr(3U));
+        std::string folded_qualifier = qualifier;
+        std::transform(folded_qualifier.begin(), folded_qualifier.end(),
+                       folded_qualifier.begin(), [](unsigned char ch) {
+                           return static_cast<char>(std::tolower(ch));
+                       });
+        if (folded_qualifier != language)
+            name += " (" + qualifier + ")";
+    }
+    return name + " Morphology";
 }
 
 void RemoveStaleGeneratedIndexes(
@@ -988,7 +1048,7 @@ class ServiceState final {
             const std::string id = StableId("hunspell", files.affix_file);
             try {
                 dictionaries_.push_back(morphology::hunspell::OpenProvider(
-                    files, id, files.dictionary_id + " Morphology"));
+                    files, id, MorphologyDisplayName(files.dictionary_id)));
             } catch (const dictionary::Error& error) {
                 startup_errors_.push_back(
                     {TranslateErrorCode(error.code()), id, error.what()});

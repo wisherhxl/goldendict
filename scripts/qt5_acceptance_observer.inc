@@ -659,6 +659,7 @@ class LookupPublication: public QObject
   int probeIndex;
   Dictionary::Class * dictionary;
   sptr< Dictionary::DataRequest > articleRequest;
+  sptr< Dictionary::WordSearchRequest > morphologyRequest;
   std::unique_ptr< WordFinder > wordFinder;
   std::vector< sptr< Dictionary::Class > > suggestionDictionaries;
   bool wordFinderFinished;
@@ -755,8 +756,16 @@ private:
         Fail();
         return;
       }
-      components.append( QFileInfo( QString::fromUtf8( files.front().c_str() ) )
-                           .canonicalFilePath() );
+      if( item.value( "format" ).toString() == "hunspell" )
+      {
+        for( std::vector< std::string >::const_iterator file = files.begin();
+             file != files.end(); ++file )
+          components.append( QFileInfo( QString::fromUtf8( file->c_str() ) )
+                               .canonicalFilePath() );
+      }
+      else
+        components.append( QFileInfo( QString::fromUtf8( files.front().c_str() ) )
+                             .canonicalFilePath() );
       QJsonObject result;
       result.insert( "catalog_id", item.value( "id" ) );
       result.insert( "components", components );
@@ -785,6 +794,9 @@ private:
       if( operation == "lookup" )
         articleRequest = dictionary->getArticle( gd::toWString( query ),
                                                   std::vector< gd::wstring >() );
+      else if( operation == "morphology" )
+        morphologyRequest = dictionary->findHeadwordsForSynonym(
+          gd::toWString( query ) );
       else if( operation == "suggest" )
       {
         suggestionDictionaries.clear();
@@ -827,6 +839,11 @@ private:
       return;
     }
     if( articleRequest && !articleRequest->isFinished() )
+    {
+      QTimer::singleShot( 1, this, [this]() { Poll(); } );
+      return;
+    }
+    if( morphologyRequest && !morphologyRequest->isFinished() )
     {
       QTimer::singleShot( 1, this, [this]() { Poll(); } );
       return;
@@ -884,6 +901,27 @@ private:
         entries.append( entry );
       }
       articleRequest = sptr< Dictionary::DataRequest >();
+    }
+    else if( operation == "morphology" )
+    {
+      QString const error = morphologyRequest->getErrorString();
+      if( !error.isEmpty() )
+      {
+        QJsonObject value;
+        value.insert( "dictionary_id", QString::fromUtf8( dictionary->getId().c_str() ) );
+        value.insert( "message", error );
+        errors.append( value );
+      }
+      else
+      {
+        std::vector< Dictionary::WordMatch > & matches =
+          morphologyRequest->getAllMatches();
+        int const limit = probe.value( "result_limit" ).toInt();
+        for( std::size_t index = 0; index < matches.size()
+             && index < static_cast< std::size_t >( limit ); ++index )
+          suggestions.append( gd::toQString( matches[ index ].word ) );
+      }
+      morphologyRequest = sptr< Dictionary::WordSearchRequest >();
     }
     else
     {
@@ -945,6 +983,7 @@ private:
   void Fail()
   {
     articleRequest = sptr< Dictionary::DataRequest >();
+    morphologyRequest = sptr< Dictionary::WordSearchRequest >();
     wordFinder.reset();
     suggestionDictionaries.clear();
     qApp->exit( 4 );

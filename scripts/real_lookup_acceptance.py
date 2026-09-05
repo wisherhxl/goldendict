@@ -26,9 +26,10 @@ RAW_SCHEMA = "goldendict-real-lookup-raw-observation-v1"
 OBSERVATION_SCHEMA = "goldendict-real-lookup-observation-v1"
 COMPARISON_SCHEMA = "goldendict-real-lookup-comparison-v1"
 SCENARIOS = ("clean-discovery", "warm-restart")
-FORMATS = {"dsl", "mdict"}
-OPERATIONS = {"lookup", "suggest"}
-CATEGORIES = {
+LOCAL_FORMATS = {"dsl", "mdict"}
+FORMATS = LOCAL_FORMATS | {"hunspell"}
+OPERATIONS = {"lookup", "morphology", "suggest"}
+LOCAL_CATEGORIES = {
     "alias",
     "exact",
     "media",
@@ -38,7 +39,7 @@ CATEGORIES = {
     "suggestion",
     "unicode",
 }
-REQUIRED_CATEGORIES = CATEGORIES
+CATEGORIES = LOCAL_CATEGORIES | {"morphology"}
 MAX_METADATA_BYTES = 16 * 1024 * 1024
 MAX_ARTICLE_BYTES = 4 * 1024 * 1024
 MAX_DICTIONARIES = 32
@@ -223,6 +224,8 @@ def read_catalog(
             raise LookupAcceptanceError(f"{label} component does not match its format")
         if (format_name == "mdict") != primary.casefold().endswith(".mdx"):
             raise LookupAcceptanceError(f"{label} component does not match its format")
+        if (format_name == "hunspell") != primary.casefold().endswith(".aff"):
+            raise LookupAcceptanceError(f"{label} component does not match its format")
         probes = item["probes"]
         if (
             not isinstance(probes, list)
@@ -247,7 +250,9 @@ def read_catalog(
             category = _text(probe["category"], f"{probe_label} category")
             if operation not in OPERATIONS or category not in CATEGORIES:
                 raise LookupAcceptanceError(f"{probe_label} classification is invalid")
-            if (operation == "suggest") != (category == "suggestion"):
+            if (operation == "suggest") != (category == "suggestion") or (
+                operation == "morphology"
+            ) != (category == "morphology"):
                 raise LookupAcceptanceError(f"{probe_label} operation is inconsistent")
             _text(probe["query"], f"{probe_label} query")
             _positive_integer(
@@ -255,13 +260,21 @@ def read_catalog(
             )
             categories.add(category)
             operations_by_format[format_name].add(operation)
-    if formats != FORMATS or categories != REQUIRED_CATEGORIES:
+    expected_formats = LOCAL_FORMATS | ({"hunspell"} if "hunspell" in formats else set())
+    expected_categories = LOCAL_CATEGORIES | (
+        {"morphology"} if "hunspell" in formats else set()
+    )
+    if formats != expected_formats or categories != expected_categories:
         raise LookupAcceptanceError(
             "Catalog does not cover the required families/cases"
         )
-    if any(value != OPERATIONS for value in operations_by_format.values()):
+    if any(operations_by_format[item] != {"lookup", "suggest"} for item in LOCAL_FORMATS):
         raise LookupAcceptanceError(
             "Each real dictionary family needs lookup and suggestion"
+        )
+    if "hunspell" in formats and operations_by_format["hunspell"] != {"morphology"}:
+        raise LookupAcceptanceError(
+            "Hunspell dictionaries need morphology probes"
         )
     return catalog, _sha256(content)
 
@@ -1312,7 +1325,7 @@ def _validate_observation(
             )
             if probe["operation"] == "lookup" and suggestions:
                 raise LookupAcceptanceError(f"{probe_label} has unexpected suggestions")
-            if probe["operation"] == "suggest" and entries:
+            if probe["operation"] in {"morphology", "suggest"} and entries:
                 raise LookupAcceptanceError(f"{probe_label} has unexpected entries")
     return value
 

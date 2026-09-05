@@ -4585,7 +4585,7 @@ void ApplicationServiceTest::RegistersOnlyEnabledMorphologyDictionaries() {
             return identity.id.rfind("hunspell-", 0U) == 0U;
         });
     QVERIFY(morphology != catalog.end());
-    QCOMPARE(morphology->name, std::string("en_US Morphology"));
+    QCOMPARE(morphology->name, std::string("English (US) Morphology"));
     QCOMPARE(morphology->source,
              (root / "en_US.aff").make_preferred().string());
     QCOMPARE(morphology->headword_count, std::size_t{1});

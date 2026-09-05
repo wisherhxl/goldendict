@@ -270,7 +270,8 @@ The following private content-loading prerequisite preserves the original
 affix and dictionary bytes and their `.aff`-then-`.dic` ordering while
 validating the affix `SET` encoding and complete file contents through the
 existing strict ICU boundary. It adds typed path-bearing failures, rejects
-unsafe file pairs and symlinks, validates the dictionary entry header/count,
+unsafe file pairs and symlinks, validates the dictionary entry header syntax,
+counts the bounded content independently of stale advisory header values,
 and enforces explicit file, aggregate, line, and entry limits. Generated UTF-8
 and legacy single-byte fixtures cover valid boundaries and deterministic
 format, encoding, resource, and filesystem failures. Hunspell engine/provider
@@ -331,6 +332,15 @@ encoding, request bounds, and process-wide engine mutex; the complete input is
 excluded and the request result limit is honored. Whole-query
 `LookupPrefix()`, public `SuggestPrefix()`, installed contracts, UI, settings,
 and spelling articles are unchanged.
+
+R3.5 Unit 3 exercises morphology against all seven configured real Hunspell
+pairs (`de_DE`, `en_US`, `es_ES`, `fr_FR`, `it_IT`, `pt_BR`, and `ru_RU`).
+Fresh clean and warm observations now match the frozen Qt 5 baseline for the
+registered dictionary name, both pair components, and every ordered stem. The
+real German and Italian dictionaries prove that the numeric `.dic` header is
+advisory: their declared counts trail the actual nonempty entry counts by 18
+and 32 respectively, and both products accept them while independently
+enforcing the actual-entry bound.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

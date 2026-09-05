@@ -202,10 +202,6 @@ std::size_t ParseDictionary(std::string_view decoded,
         Throw(ContentErrorCode::kInvalidDictionary, path,
               "Hunspell dictionary has no entry header");
     }
-    if (actual_count != declared_count) {
-        Throw(ContentErrorCode::kInvalidDictionary, path,
-              "Hunspell dictionary entry count does not match its header");
-    }
     return actual_count;
 }
 

@@ -7104,6 +7104,11 @@ private prefix-membership leaf restores the pinned legacy meaning of
 prefix enumeration. Exact lookup and synonym stems are unchanged; prefix
 enumeration and prefix suggestions remain excluded.
 
+The dictionary entry-count header remains syntactically required and bounded,
+but is advisory like the pinned Qt 5/Hunspell path. The loader independently
+counts and bounds the actual nonempty entries; a stale header therefore cannot
+reject an otherwise valid installed pair or bypass the resource limit.
+
 The dependent private compound-expression morphology leaf preserves the
 pinned legacy whitespace-triggered path through the same `SynonymBackend`.
 After the established outer trim and 80-character bound, it separates at most
@@ -7146,10 +7151,14 @@ behavior; legacy `hunspell` path and `enabled` records migrate without changing
 the source XML. Core privately registers each enabled pair through the existing
 backend/catalog boundary with a stable path-derived `hunspell-` identity and
 affix-file provenance, while configured-but-missing IDs become startup
-diagnostics. Hunspell remains a private module dependency; concrete types do
-not enter installed headers or exports. StarDict composition and the public
-lookup/suggestion DTOs remain unchanged. UI, network, prefix enumeration, and
-translations remain excluded.
+diagnostics. For an ISO 639-1 basename, Core derives the English language name
+through the pinned ICU dependency and retains a distinct country suffix for
+the accepted `en_US` and `pt_BR` pairs before appending `Morphology`; unknown
+basenames remain literal. This is dictionary identity owned by Core, not a UI
+translation policy. Hunspell remains a private module dependency; concrete
+types do not enter installed headers or exports. StarDict composition and the
+public lookup/suggestion DTOs remain unchanged. UI, network, prefix
+enumeration, and translations remain excluded.
 
 The dependent true-prefix leaf adds only a private Core capability for
 enumerating proper prefixes of one bounded, trimmed single-word query. It
@@ -7159,3 +7168,12 @@ query, and observes the request result limit, cancellation, and deadline.
 The existing whole-query `LookupPrefix()` behavior and public
 `SuggestPrefix()` result remain unchanged; no installed interface or Hunspell
 dependency is exposed.
+
+The R3.5 real-corpus morphology acceptance leaf follows the existing Adapter
+plus Coordinator boundary. The disposable frozen Qt 5 adapter observes its
+asynchronous synonym request, while the Qt 6 adapter privately opens the
+registered morphology provider and reports the identity supplied by
+`DictionaryService`. The coordinator validates and compares ordered stems,
+both `.aff` and `.dic` components, and clean/warm behavior for every configured
+pair. The acceptance surface does not add an installed API or move Hunspell
+format behavior out of Core.

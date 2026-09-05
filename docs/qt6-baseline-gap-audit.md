@@ -1495,6 +1495,31 @@ unsafe references. The complete Release build succeeds, all 134 CTest cases
 pass serially, and the repository Python suite passes all 159 tests with two
 platform-condition skips.
 
+Unit 3 impact check: **conforming real Hunspell morphology correction and
+acceptance expansion; no requirement, installed-interface, or module-boundary
+change** (2026-09-06). The seven configured pairs are `de_DE`, `en_US`,
+`es_ES`, `fr_FR`, `it_IT`, `pt_BR`, and `ru_RU`. Initial paired evidence found
+that ordered stems already matched, while Qt 6 rejected the German and Italian
+pairs because their advisory `.dic` header counts are respectively 18 and 32
+below their actual nonempty entry counts. It also exposed a Core-owned
+dictionary-name mismatch and incomplete pair-component observation. The
+bounded content loader now validates but does not trust the advisory count,
+registration restores the legacy language/region morphology identity, and the
+acceptance adapters report both `.aff` and `.dic` components.
+
+Fresh clean and warm observations at
+`evidence/qt5-qt6-lookup-r35-unit3-morphology-dev3`, pair
+`1ae23c25351d35dfa214c04eba4dbd28018d1b490e410d7236d8137c2fbcc9bb`,
+are internally stable for both products. Every probe returns one to three
+ordered stems, and the strict comparison reports zero differences. The catalog
+SHA-256 is
+`1564cd34107e07de97d31ff67392599437e7d3c486e5d65d6bb9277598713684`;
+the comparison SHA-256 is
+`12c25517e6d182838f78aa44694c3fc633872f8b558bfd9c810c92fee747f4fb`.
+The complete Release build succeeds, all 134 CTest cases pass serially, and
+the repository Python suite passes all 160 tests with two platform-condition
+skips. Unit 4 and the final R3.5 closure audit remain open.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an
