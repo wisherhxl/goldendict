@@ -12,6 +12,8 @@ namespace goldendict::core::formats::dsl::headword {
 struct Expansion {
     std::string primary;
     std::string article_tilde;
+    // Final legacy merge front before key unescaping.
+    std::string merged_first;
     std::vector<std::string> records;
 };
 

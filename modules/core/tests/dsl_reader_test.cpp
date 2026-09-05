@@ -18,6 +18,8 @@ class DslReaderTest : public QObject {
     void PreservesLegacyHeadwordExpansionSemantics();
     void ExposesExactLegacyExpansionRecordsAndBounds();
     void RendersLegacyDisplayTildesAndEscapes();
+    void UsesAdjacentAbbreviationCompanionsForParagraphTooltips();
+    void IgnoresMalformedAbbreviationCompanions();
     void ReadsCompressedAndUtf16AndInvokesCheckpoints();
     void SupportsApprovedLargeDictionaryBoundary();
     void RejectsMalformedOrCorruptInput();
@@ -138,8 +140,8 @@ void DslReaderTest::ExposesExactLegacyExpansionRecordsAndBounds() {
     QCOMPARE(duplicate_expansion.records[2], std::string("dupx"));
     QCOMPARE(duplicate_expansion.records[3], std::string("dupxx"));
 
-    const auto per_line_cap = headword::Parse(
-        {"cap(1)(2)(3)(4)(5)(6)", "~(a)(b)(c)(d)(e)(f)"});
+    const auto per_line_cap =
+        headword::Parse({"cap(1)(2)(3)(4)(5)(6)", "~(a)(b)(c)(d)(e)(f)"});
     QCOMPARE(per_line_cap.records.size(), std::size_t{64});
 
     std::string adversarial = "bounded";
@@ -152,12 +154,12 @@ void DslReaderTest::ExposesExactLegacyExpansionRecordsAndBounds() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     const auto root = std::filesystem::path(directory.path().toStdString());
-    const Reader reader = Reader::Open(test::WriteDslTextFixture(
-        root,
-        "z\n"
-        "a\n"
-        "~x\n"
-        "\trolling ownership\n"));
+    const Reader reader =
+        Reader::Open(test::WriteDslTextFixture(root,
+                                               "z\n"
+                                               "a\n"
+                                               "~x\n"
+                                               "\trolling ownership\n"));
     const auto full_text = reader.ReadFullTextArticles();
     QCOMPARE(full_text.size(), std::size_t{1});
     QCOMPARE(full_text.front().headword, std::string("z"));
@@ -166,8 +168,7 @@ void DslReaderTest::ExposesExactLegacyExpansionRecordsAndBounds() {
 
     const std::string long_primary(16U * 1024U + 1U, 'z');
     const Reader filtered = Reader::Open(test::WriteDslTextFixture(
-        root / "filtered",
-        long_primary + "\nshort\n\tfiltered ownership\n"));
+        root / "filtered", long_primary + "\nshort\n\tfiltered ownership\n"));
     QCOMPARE(filtered.LookupExact("short").size(), std::size_t{1});
     const auto filtered_full_text = filtered.ReadFullTextArticles();
     QCOMPARE(filtered_full_text.size(), std::size_t{1});
@@ -184,8 +185,7 @@ void DslReaderTest::ExposesExactLegacyExpansionRecordsAndBounds() {
     QVERIFY(complete);
     QCOMPARE(enumerated.size(), std::size_t{1});
     QCOMPARE(enumerated.front(), std::string("x"));
-    const auto empty_filtered_full_text =
-        empty_filtered.ReadFullTextArticles();
+    const auto empty_filtered_full_text = empty_filtered.ReadFullTextArticles();
     QCOMPARE(empty_filtered_full_text.size(), std::size_t{1});
     QCOMPARE(empty_filtered_full_text.front().headword, std::string("x"));
     QCOMPARE(empty_filtered_full_text.front().record_ordinal, std::size_t{0});
@@ -208,8 +208,8 @@ void DslReaderTest::RendersLegacyDisplayTildesAndEscapes() {
     QVERIFY(results.front().data.find("Alpha ~ [b]literal[/b]") !=
             std::string::npos);
     QVERIFY(results.front().data.find("[i]") != std::string::npos);
-    QVERIFY(results.front().data.find(std::string("A\xc2\xa0" "B")) !=
-            std::string::npos);
+    QVERIFY(results.front().data.find(std::string("A\xc2\xa0"
+                                                  "B")) != std::string::npos);
     QVERIFY(results.front().data.find(
                 "<a href=\"bword://tar&gt;&gt;get\">tar&gt;&gt;get</a>") !=
             std::string::npos);
@@ -218,6 +218,107 @@ void DslReaderTest::RendersLegacyDisplayTildesAndEscapes() {
     QVERIFY(results.front().data.find("<span>color</span>") !=
             std::string::npos);
     QVERIFY(results.front().data.find("<img src=\"pic[/s].png\">") !=
+            std::string::npos);
+}
+
+void DslReaderTest::UsesAdjacentAbbreviationCompanionsForParagraphTooltips() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto dictionary = test::WriteDslTextFixture(
+        root,
+        "#NAME \"Abbreviation fixture\"\n"
+        "entry\n"
+        "\t[p][b]US[/b][/p] [p]long[/p] [p]tilde[/p] [p]a[/p] "
+        "[p]a b[/p] [p]abbr[/p] [p]space[/p] [p]a\\ b[/p] "
+        "[p]unknown[/p]\n");
+    test::WriteDslTextFixture(root,
+                              "#NAME \"Abbrev\"\n"
+                              "{{ ignored structural comment }}\n"
+                              "U(S)\n"
+                              "\tNorth [i]American[/i]-English\n"
+                              "long\n"
+                              "\t" +
+                                  std::string(70U, 'x') +
+                                  " with-spaces\n"
+                                  "tilde{ignored}\n"
+                                  "\t~ definition\n"
+                                  "z\n"
+                                  "a\n"
+                                  "~x\n"
+                                  "\t~ rolling definition\n"
+                                  "z2\n"
+                                  "a\\ b\n"
+                                  "\t" +
+                                  std::string(70U, 'y') +
+                                  "~ tail\n"
+                                  "ab{{\n"
+                                  "ignored across lines}}br\n"
+                                  "\tjoined comment key\n"
+                                  "space\n"
+                                  "\t" +
+                                  std::string(70U, 'x') +
+                                  "\\ tail\n"
+                                  "a\xc2\xa0"
+                                  "b\n"
+                                  "\tmatched escaped key\n",
+                              "fixture_abrv.dsl");
+
+    const Reader reader = Reader::Open(dictionary);
+
+    QVERIFY(reader.abbreviation_path().has_value());
+    QCOMPARE(reader.abbreviation_path()->filename().string(),
+             std::string("fixture_abrv.dsl"));
+    const auto article = reader.LookupExact("entry").front().data;
+    const std::string nbsp{"\xc2\xa0", 2U};
+    const std::string nonbreaking_hyphen{"\xe2\x80\x91", 3U};
+    QVERIFY(article.find("<span class=\"dsl_p\" title=\"North" + nbsp +
+                         "American" + nonbreaking_hyphen +
+                         "English\"><b>US</b></span>") != std::string::npos);
+    QVERIFY(article.find("<span class=\"dsl_p\" title=\"" +
+                         std::string(70U, 'x') +
+                         " with-spaces\">long</span>") != std::string::npos);
+    QVERIFY(article.find("title=\"tilde" + nbsp +
+                         "definition\">tilde</span>") != std::string::npos);
+    QVERIFY(article.find("title=\"a" + nbsp + "rolling" + nbsp +
+                         "definition\">a</span>") != std::string::npos);
+    QVERIFY(article.find("title=\"" + std::string(70U, 'y') + "a" + nbsp +
+                         "b tail\">a b</span>") != std::string::npos);
+    QVERIFY(article.find("title=\"joined" + nbsp + "comment" + nbsp +
+                         "key\">abbr</span>") != std::string::npos);
+    QVERIFY(article.find("title=\"" + std::string(70U, 'x') + nbsp +
+                         "tail\">space</span>") != std::string::npos);
+    QVERIFY(article.find("title=\"matched" + nbsp + "escaped" + nbsp +
+                         "key\">a" + nbsp + "b</span>") != std::string::npos);
+    QVERIFY(article.find("<span class=\"dsl_p\">unknown</span>") !=
+            std::string::npos);
+    QCOMPARE(reader.source_snapshot().size(), std::size_t{1});
+
+    const auto compressed_root = root / "compressed";
+    const auto compressed_dictionary =
+        test::WriteDslTextFixture(compressed_root, "entry\n\t[p]abbr[/p]\n");
+    const auto compressed_abbreviation =
+        test::CompressDslFixture(test::WriteDslTextFixture(
+            compressed_root, "abbr\n\tcompressed value\n", "fixture_abrv.dsl"));
+    const Reader compressed = Reader::Open(compressed_dictionary);
+    QCOMPARE(compressed.abbreviation_path().value(), compressed_abbreviation);
+    QVERIFY(compressed.LookupExact("entry").front().data.find(
+                "title=\"compressed" + nbsp + "value\"") != std::string::npos);
+}
+
+void DslReaderTest::IgnoresMalformedAbbreviationCompanions() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto dictionary = test::WriteDslTextFixture(
+        root, "entry\n\t[p]abbr[/p] remains available\n");
+    std::ofstream(root / "fixture_abrv.dsl.dz", std::ios::binary) << "not gzip";
+
+    const Reader reader = Reader::Open(dictionary);
+
+    QVERIFY(reader.abbreviation_path().has_value());
+    QVERIFY(reader.LookupExact("entry").front().data.find(
+                "<span class=\"dsl_p\">abbr</span> remains available") !=
             std::string::npos);
 }
 

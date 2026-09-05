@@ -16,6 +16,7 @@ class ArticleAssemblerTest : public QObject {
     void SanitizesMarkupAndRewritesTypedLinks();
     void PreservesTextInsideSafeCustomMarkup();
     void PreservesOnlyInternalOptionalPartSemantics();
+    void PreservesOnlyDslParagraphSemantics();
     void PreservesSafeAudioAndCollectsItsResource();
     void DeduplicatesResourceReferencesAcrossArticles();
     void RemovesActiveContentAndUnsafeAttributes();
@@ -103,6 +104,24 @@ void ArticleAssemblerTest::PreservesOnlyInternalOptionalPartSemantics() {
     QVERIFY(document.sanitized_html.find("onclick") == std::string::npos);
     QVERIFY(document.sanitized_html.find("<span>plain</span>") !=
             std::string::npos);
+}
+
+void ArticleAssemblerTest::PreservesOnlyDslParagraphSemantics() {
+    const Document document = Assemble(
+        kDictionary, {{"example", "text/html",
+                       "<span class=\"dsl_p\" title=\"North &amp; American\" "
+                       "onclick=\"bad()\">US</span>"
+                       "<span class=\"dsl_p extra\" title=\"bad\">mixed</span>"
+                       "<span class=\"other\" title=\"bad\">plain</span>"}});
+
+    QCOMPARE(document.plain_text, "USmixedplain");
+    QVERIFY(document.sanitized_html.find(
+                "<span class=\"dsl_p\" title=\"North &amp; American\">"
+                "US</span>") != std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "<span>mixed</span><span>plain</span>") != std::string::npos);
+    QVERIFY(document.sanitized_html.find("onclick") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("title=\"bad\"") == std::string::npos);
 }
 
 void ArticleAssemblerTest::PreservesSafeAudioAndCollectsItsResource() {

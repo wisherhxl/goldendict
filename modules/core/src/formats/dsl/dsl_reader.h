@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -68,6 +69,11 @@ class Reader final {
         return dictionary_path_;
     }
 
+    const std::optional<std::filesystem::path>& abbreviation_path()
+        const noexcept {
+        return abbreviation_path_;
+    }
+
     const dictionary::SourceSnapshot& source_snapshot() const noexcept {
         return source_snapshot_;
     }
@@ -108,6 +114,7 @@ class Reader final {
         std::string_view prefix, const std::function<void()>& checkpoint) const;
 
     std::filesystem::path dictionary_path_;
+    std::optional<std::filesystem::path> abbreviation_path_;
     Metadata metadata_;
     std::vector<Record> records_;
     std::vector<FullTextSource> full_text_sources_;

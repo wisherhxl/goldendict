@@ -700,6 +700,7 @@ if(TARGET dsl_reader_test)
       src/foundation/text_encoding.cc
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
+      src/formats/dsl/dsl_abbreviation.cc
       src/formats/dsl/dsl_headword_parser.cc
       src/formats/dsl/dsl_reader.cc
   )
@@ -719,6 +720,7 @@ if(TARGET dsl_dictionary_test)
       src/foundation/text_encoding.cc
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
+      src/formats/dsl/dsl_abbreviation.cc
       src/formats/dsl/dsl_dictionary.cc
       src/formats/dsl/dsl_headword_parser.cc
       src/formats/dsl/dsl_reader.cc

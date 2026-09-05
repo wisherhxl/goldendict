@@ -1168,6 +1168,28 @@ observation. Unit 3 owns the retained three abbreviation-component, five
 visible-text hash/size, and three WAV media-type differences. R3.4 therefore
 remains open without weakening any equality key.
 
+Unit 3 abbreviation result: **Companion ownership and tooltip behavior
+complete; article and MIME differences retained** (2026-09-05). A private
+resolver follows the frozen Qt 5 adjacent filename precedence for plain and
+gzip `_abrv` files while discovery continues to suppress them as standalone
+dictionaries. The reader reuses bounded legacy headword expansion, expands
+definition tildes against the final merged first key before unescaping it,
+joins physical lines across DSL comments, removes DSL markup from values,
+preserves escaped-space
+nonbreaking semantics, renders exact `[p]` keys as `dsl_p` spans, applies the
+short-tooltip nonbreaking whitespace rules, and fails open when the optional
+companion is corrupt. The primary-only full-text document and revision contract
+remains unchanged.
+
+The final pair at `evidence/qt5-qt6-dsl-r34-unit3-final3`, pair ID
+`1f741371eebfacf6ced90523b35ffaf01a75e62abd054181b102a696ca3a2207`,
+has comparison SHA-256
+`9cf46ccb237049f073b73d9d524335be8e36ac436d9a5eda0b464e11f45ff229`.
+Clean and warm observations now match all three abbreviation components and
+retain only 13 differences per Qt 6 observation: five visible-text hashes and
+sizes plus three WAV media types. R3.4 remains open for those independently
+committable correction units; no equality key was removed or weakened.
+
 The design uses the existing Adapter boundary for version-specific evidence
 collection and a coordinator for paired-run state and publication. These
 patterns have concrete value because Qt 5 and Qt 6 expose different APIs while

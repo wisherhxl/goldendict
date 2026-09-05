@@ -384,6 +384,26 @@ orphan members, source mutation, and CRC corruption. Those remaining product
 differences belong to the next R3.4 correction unit; the comparison must
 continue to exit nonzero until they are resolved.
 
+The final Unit 3 abbreviation pair at
+`evidence/qt5-qt6-dsl-r34-unit3-final3` has pair ID
+`1f741371eebfacf6ced90523b35ffaf01a75e62abd054181b102a696ca3a2207`
+and comparison SHA-256
+`9cf46ccb237049f073b73d9d524335be8e36ac436d9a5eda0b464e11f45ff229`.
+The strict clean and warm observations now own the CALD3, MED2, and OALD8
+`_abrv.dsl` companions in the same ordered component positions as Qt 5. The
+remaining comparison count is 13 per Qt 6 observation: five visible-text
+hashes and sizes plus three WAV media types. Focused generated tests cover
+plain and gzip companions, optional headword expansion, escaped
+final-merged-first-key definition tildes, multiline comment joining,
+markup-stripped values, exact paragraph keys including escaped spaces, short
+and long tooltip whitespace
+behavior, unknown keys, primary-only full-text snapshots, and fail-open
+corrupt companions. Article sanitizer and application-service tests prove that
+only exact `dsl_p` class/title semantics survive the production lookup path
+while unrelated span attributes remain stripped. The evidence intentionally
+remains non-equivalent until the separate article-rendering and media-type
+corrections are complete.
+
 `mdict_reader_test::UsesLegacyFallbackName` pins the frozen Qt 5 title fallback
 for empty, placeholder, and header titles shorter than five UTF-16 code units,
 including non-BMP boundary cases. The fallback uses the filename before its

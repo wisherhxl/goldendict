@@ -167,7 +167,8 @@ The authoritative legacy discovery path is `loaddictionaries.cc`.
 - StarDict: `stardict.*`; `.ifo`, `.idx`, `.dict`, and compressed data.
 - Babylon: `bgl.*`, `bgl_babylon.*`; `.bgl`.
 - ABBYY Lingvo DSL: `dsl.*`, `dsl_details.*`, `indexedzip.*`, and `zipfile.*`;
-  `.dsl`, `.dsl.dz`, resource directories, and adjacent resource ZIP archives.
+  `.dsl`, `.dsl.dz`, `_abrv.dsl`/`_abrv.dsl.dz` companions, resource
+  directories, and adjacent resource ZIP archives.
 - Dictd: `dictdfiles.*`; `.index`, `.dict`, and `.dict.dz` families.
 - XDXF: `xdxf.*`, `xdxf2html.*`; `.xdxf` and `.xdxf.dz`.
 - SDict: `sdict.*`; `.dct`.

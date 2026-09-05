@@ -342,6 +342,7 @@ class ApplicationServiceTest : public QObject {
     void DiscoversSanitizesAndQueriesXdxfResources();
     void DiscoversSanitizesAndQueriesGlsResources();
     void DiscoversSanitizesAndQueriesDslResources();
+    void PublishesDslTooltipsAfterSanitization();
     void DiscoversSanitizesAndQueriesBglResources();
     void DiscoversSanitizesAndQueriesMdictResources();
     void DiscoversSanitizesAndQueriesAard();
@@ -5789,6 +5790,31 @@ void ApplicationServiceTest::DiscoversSanitizesAndQueriesDslResources() {
     QCOMPARE(entry.resources.size(), std::size_t{1});
     QCOMPARE(service->GetResource(entry.resources.front()).size(),
              std::size_t{8});
+}
+
+void ApplicationServiceTest::PublishesDslTooltipsAfterSanitization() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteDslTextFixture(root, "entry\n\t[p]abbr[/p]\n");
+    test::WriteDslTextFixture(root, "abbr\n\tNorth [i]American[/i]-English\n",
+                              "fixture_abrv.dsl");
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "entry";
+
+    const auto response = service->Lookup(query);
+
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    QVERIFY(response.entries.front().article.sanitized_html.has_value());
+    const std::string nbsp{"\xc2\xa0", 2U};
+    QVERIFY(response.entries.front().article.sanitized_html->find(
+                "<span class=\"dsl_p\" title=\"North" + nbsp + "American" +
+                "\xe2\x80\x91"
+                "English\">abbr</span>") != std::string::npos);
 }
 
 void ApplicationServiceTest::DiscoversSanitizesAndQueriesBglResources() {

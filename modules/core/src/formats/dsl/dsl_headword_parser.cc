@@ -321,6 +321,7 @@ Expansion Parse(const std::vector<std::string>& source_lines) {
             ReplaceTildes(std::move(alternate), expansion.records.front());
         ExpandOptional(std::move(alternate), &expansion.records);
     }
+    expansion.merged_first = expansion.records.front();
     for (auto& record : expansion.records) {
         record = Normalize(Unescape(record));
     }

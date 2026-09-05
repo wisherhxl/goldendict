@@ -359,6 +359,17 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                             }
                         }
                     }
+                } else if (tag.name == "span") {
+                    const auto class_name = tag.attributes.find("class");
+                    if (class_name != tag.attributes.end() &&
+                        class_name->second == "dsl_p") {
+                        html->append(" class=\"dsl_p\"");
+                        const auto title = tag.attributes.find("title");
+                        if (title != tag.attributes.end()) {
+                            html->append(" title=\"" + Escape(title->second) +
+                                         "\"");
+                        }
+                    }
                 } else if (tag.name == "img" || tag.name == "source") {
                     const auto source = tag.attributes.find("src");
                     if (source != tag.attributes.end()) {

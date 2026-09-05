@@ -16,11 +16,13 @@
 #include <chrono>
 #include <cstddef>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include "../src/formats/dsl/dsl_abbreviation.h"
 #include "goldendict/core/application.h"
 #include "goldendict/core/dictionary_service.h"
 
@@ -155,7 +157,7 @@ QJsonObject ObserveDictionary(
     const QJsonObject& catalog_entry,
     const goldendict::core::DictionaryIdentity& identity,
     const goldendict::core::DictionaryService& service, const QString& primary,
-    const QString& archive) {
+    const std::vector<QString>& additional_components, const QString& archive) {
     const QJsonObject probe =
         catalog_entry.value(QStringLiteral("probe")).toObject();
     const QJsonObject catalog_query =
@@ -221,6 +223,17 @@ QJsonObject ObserveDictionary(
 
     QJsonArray components;
     components.append(primary);
+    const auto abbreviation =
+        goldendict::core::formats::dsl::FindAdjacentAbbreviation(
+            std::filesystem::u8path(Utf8(primary)));
+    if (abbreviation.has_value()) {
+        const QString resolved =
+            QFileInfo(Text(abbreviation->generic_string())).canonicalFilePath();
+        for (const auto& component : additional_components) {
+            if (resolved.compare(component, Qt::CaseInsensitive) == 0)
+                components.append(component);
+        }
+    }
     if (available)
         components.append(archive);
     QJsonObject result;
@@ -335,9 +348,19 @@ int main(int argc, char* argv[]) {
                                   .toObject()
                                   .value(QStringLiteral("component"))
                                   .toString());
+            std::vector<QString> additional_components;
+            const QJsonArray additional =
+                entry.value(QStringLiteral("additional_components")).toArray();
+            additional_components.reserve(
+                static_cast<std::size_t>(additional.size()));
+            for (const QJsonValue& component : additional) {
+                additional_components.push_back(CanonicalFile(
+                    options->dictionary_root, component.toString()));
+            }
             const auto& identity = FindDictionary(identities, primary);
             dictionaries.append(
-                ObserveDictionary(entry, identity, *service, primary, archive));
+                ObserveDictionary(entry, identity, *service, primary,
+                                  additional_components, archive));
         }
 
         const bool orphan_archive_owned = ObserveOrphanArchiveOwnership(

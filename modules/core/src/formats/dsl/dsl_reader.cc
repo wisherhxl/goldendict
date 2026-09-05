@@ -9,6 +9,7 @@
 #include <locale>
 #include <optional>
 #include <set>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -16,6 +17,7 @@
 
 #include "../../foundation/text_encoding.h"
 #include "../../foundation/text_folding.h"
+#include "dsl_abbreviation.h"
 #include "dsl_headword_parser.h"
 
 namespace goldendict::core::formats::dsl {
@@ -24,6 +26,9 @@ namespace {
 constexpr std::size_t kMaximumArticleSize = 16U * 1024U * 1024U;
 constexpr std::size_t kMaximumHeadwordSize = 16U * 1024U;
 constexpr std::size_t kMaximumRecords = 10U * 1000U * 1000U;
+constexpr std::size_t kMaximumDslNesting = 64U;
+
+using AbbreviationMap = std::unordered_map<std::string, std::string>;
 
 [[noreturn]] void Throw(ErrorCode code, const std::filesystem::path& path,
                         std::string message) {
@@ -179,9 +184,9 @@ std::string Decode(std::string data, const std::filesystem::path& path) {
         encoding = DeclaredEncoding(data);
     }
     try {
-        std::string decoded = foundation::DecodeToUtf8(
-            std::string_view(data).substr(bom), encoding,
-            kMaximumDictionaryBytes);
+        std::string decoded =
+            foundation::DecodeToUtf8(std::string_view(data).substr(bom),
+                                     encoding, kMaximumDictionaryBytes);
         NormalizeLineEndings(&decoded);
         return decoded;
     } catch (const foundation::TextEncodingError& error) {
@@ -240,7 +245,6 @@ std::string LanguageCode(std::string value) {
     }
     return value;
 }
-
 
 std::string Escape(std::string_view value) {
     std::string escaped;
@@ -343,8 +347,7 @@ std::string DecodeDslLiteral(std::string_view value,
         if (!token.has_value()) {
             break;
         }
-        if (preserve_escaped_spacing && token->escaped &&
-            token->text == " ") {
+        if (preserve_escaped_spacing && token->escaped && token->text == " ") {
             decoded += "\xc2\xa0";
         } else {
             decoded += token->text;
@@ -354,7 +357,71 @@ std::string DecodeDslLiteral(std::string_view value,
     return decoded;
 }
 
-std::string RenderDsl(std::string_view input, std::string_view primary) {
+std::string PlainDslText(std::string_view input, std::string_view primary) {
+    std::string plain;
+    const std::string expanded =
+        headword::ReplaceTildes(std::string(input), primary);
+    for (std::size_t index = 0U; index < expanded.size();) {
+        const auto token = NextDslToken(expanded, index);
+        if (!token.has_value())
+            break;
+        if (token->escaped) {
+            plain += DecodeDslLiteral(
+                std::string_view(expanded).substr(index, token->end - index),
+                true);
+            index = token->end;
+            continue;
+        }
+        if (expanded.compare(index, 2U, "{{") == 0) {
+            const auto end = FindUnescapedSequence(expanded, index + 2U, "}}");
+            index = end.has_value() ? end->end : expanded.size();
+            continue;
+        }
+        if (expanded.compare(index, 2U, "<<") == 0) {
+            const auto end = FindUnescapedSequence(expanded, index + 2U, ">>");
+            if (!end.has_value())
+                break;
+            plain += DecodeDslLiteral(std::string_view(expanded).substr(
+                                          index + 2U, end->begin - index - 2U),
+                                      true);
+            index = end->end;
+            continue;
+        }
+        if (expanded[index] == '[') {
+            const auto end = FindUnescapedSequence(expanded, index + 1U, "]");
+            if (!end.has_value())
+                break;
+            index = end->end;
+            continue;
+        }
+        plain += token->text;
+        index = token->end;
+    }
+    return plain;
+}
+
+std::size_t Utf8CodePointCount(std::string_view text) noexcept;
+
+std::string TooltipTitle(std::string value) {
+    if (Utf8CodePointCount(value) >= 70U)
+        return value;
+    std::string title;
+    title.reserve(value.size());
+    for (const char character : value) {
+        if (character == ' ' || character == '\t') {
+            title += "\xc2\xa0";
+        } else if (character == '-') {
+            title += "\xe2\x80\x91";
+        } else {
+            title.push_back(character);
+        }
+    }
+    return title;
+}
+
+std::string RenderDsl(std::string_view input, std::string_view primary,
+                      const AbbreviationMap& abbreviations,
+                      std::size_t nesting = 0U) {
     std::string html;
     const std::string expanded =
         headword::ReplaceTildes(std::string(input), primary);
@@ -371,14 +438,12 @@ std::string RenderDsl(std::string_view input, std::string_view primary) {
             continue;
         }
         if (expanded.compare(index, 2U, "{{") == 0) {
-            const auto end =
-                FindUnescapedSequence(expanded, index + 2U, "}}");
+            const auto end = FindUnescapedSequence(expanded, index + 2U, "}}");
             index = end.has_value() ? end->end : expanded.size();
             continue;
         }
         if (expanded.compare(index, 2U, "<<") == 0) {
-            const auto end =
-                FindUnescapedSequence(expanded, index + 2U, ">>");
+            const auto end = FindUnescapedSequence(expanded, index + 2U, ">>");
             if (end.has_value()) {
                 const auto body = std::string_view(expanded).substr(
                     index + 2U, end->begin - index - 2U);
@@ -395,26 +460,47 @@ std::string RenderDsl(std::string_view input, std::string_view primary) {
             const auto end =
                 FindUnescapedSequence(expanded, index + 3U, "[/s]");
             if (end.has_value()) {
-                const std::string resource = DecodeDslLiteral(
-                    std::string_view(expanded).substr(
-                        index + 3U, end->begin - index - 3U),
-                    false);
+                const std::string resource =
+                    DecodeDslLiteral(std::string_view(expanded).substr(
+                                         index + 3U, end->begin - index - 3U),
+                                     false);
                 html += "<img src=\"" + Escape(resource) + "\">";
                 index = end->end;
                 continue;
             }
         }
         if (expanded[index] == '[') {
-            const auto end =
-                FindUnescapedSequence(expanded, index + 1U, "]");
+            const auto end = FindUnescapedSequence(expanded, index + 1U, "]");
             if (end.has_value()) {
-                const std::string tag = Lower(DecodeDslLiteral(
-                    std::string_view(expanded).substr(
-                        index + 1U, end->begin - index - 1U),
-                    false));
-                if (tag == "b" || tag == "i" || tag == "u" || tag == "sub" ||
-                    tag == "sup" || tag == "/b" || tag == "/i" || tag == "/u" ||
-                    tag == "/sub" || tag == "/sup") {
+                const std::string tag = Lower(
+                    DecodeDslLiteral(std::string_view(expanded).substr(
+                                         index + 1U, end->begin - index - 1U),
+                                     false));
+                if (tag == "p" && nesting < kMaximumDslNesting) {
+                    const auto close =
+                        FindUnescapedSequence(expanded, end->end, "[/p]");
+                    if (close.has_value()) {
+                        const auto body = std::string_view(expanded).substr(
+                            end->end, close->begin - end->end);
+                        const std::string key = PlainDslText(body, primary);
+                        html += "<span class=\"dsl_p\"";
+                        const auto abbreviation = abbreviations.find(key);
+                        if (abbreviation != abbreviations.end()) {
+                            html += " title=\"" +
+                                    Escape(TooltipTitle(abbreviation->second)) +
+                                    "\"";
+                        }
+                        html += ">" +
+                                RenderDsl(body, primary, abbreviations,
+                                          nesting + 1U) +
+                                "</span>";
+                        index = close->end;
+                        continue;
+                    }
+                } else if (tag == "b" || tag == "i" || tag == "u" ||
+                           tag == "sub" || tag == "sup" || tag == "/b" ||
+                           tag == "/i" || tag == "/u" || tag == "/sub" ||
+                           tag == "/sup") {
                     html += '<' + tag + '>';
                 } else if (!tag.empty() && tag[0] == 'm') {
                     html += "<div>";
@@ -462,6 +548,89 @@ std::size_t Utf8CodePointCount(std::string_view text) noexcept {
         }));
 }
 
+std::string RemoveDslComments(std::string_view text) {
+    std::string result;
+    result.reserve(text.size());
+    for (std::size_t index = 0U; index < text.size();) {
+        const auto token = NextDslToken(text, index);
+        if (!token.has_value())
+            break;
+        if (!token->escaped && text.compare(index, 2U, "{{") == 0) {
+            const auto end = FindUnescapedSequence(text, index + 2U, "}}");
+            const std::size_t comment_end =
+                end.has_value() ? end->end : text.size();
+            index = comment_end;
+            continue;
+        }
+        result.append(text.substr(token->begin, token->end - token->begin));
+        index = token->end;
+    }
+    return result;
+}
+
+AbbreviationMap ParseAbbreviations(std::string_view text) {
+    const std::string without_comments = RemoveDslComments(text);
+    text = without_comments;
+    AbbreviationMap abbreviations;
+    std::size_t retained_bytes = 0U;
+    std::size_t position = 0U;
+    std::optional<std::string_view> pending = NextLine(text, &position);
+    while (pending.has_value()) {
+        if (pending->empty() || (*pending)[0] == '#' ||
+            std::isspace(static_cast<unsigned char>((*pending)[0])) != 0) {
+            pending = NextLine(text, &position);
+            continue;
+        }
+
+        std::vector<std::string> raw_headwords;
+        while (pending.has_value() && !pending->empty() &&
+               (*pending)[0] != '#' &&
+               std::isspace(static_cast<unsigned char>((*pending)[0])) == 0) {
+            raw_headwords.emplace_back(*pending);
+            pending = NextLine(text, &position);
+        }
+        const headword::Expansion expansion = headword::Parse(raw_headwords);
+        if (!pending.has_value() || pending->empty())
+            break;
+        if (std::isspace(static_cast<unsigned char>((*pending)[0])) == 0)
+            continue;
+
+        const auto first = pending->find_first_not_of(" \t");
+        const std::string value = PlainDslText(first == std::string_view::npos
+                                                   ? std::string_view{}
+                                                   : pending->substr(first),
+                                               expansion.merged_first);
+        for (const auto& key : expansion.records) {
+            if (key.empty() || key.size() > kMaximumHeadwordSize)
+                continue;
+            const auto existing = abbreviations.find(key);
+            const std::size_t replaced_bytes =
+                existing == abbreviations.end()
+                    ? 0U
+                    : existing->first.size() + existing->second.size();
+            const std::size_t added_bytes = key.size() + value.size();
+            if (added_bytes >
+                kMaximumDictionaryBytes - (retained_bytes - replaced_bytes)) {
+                throw std::length_error("DSL abbreviation table is too large");
+            }
+            retained_bytes = retained_bytes - replaced_bytes + added_bytes;
+            abbreviations[key] = value;
+        }
+        if (abbreviations.size() > kMaximumRecords)
+            throw std::length_error("DSL abbreviation table is too large");
+        pending = NextLine(text, &position);
+    }
+    return abbreviations;
+}
+
+AbbreviationMap LoadAbbreviations(
+    const std::filesystem::path& abbreviation_path) {
+    std::string data = ReadFile(abbreviation_path);
+    if (HasCompressedSuffix(abbreviation_path))
+        data = Gunzip(data, abbreviation_path);
+    return ParseAbbreviations(Decode(std::move(data), abbreviation_path));
+}
+
 }  // namespace
 
 Error::Error(ErrorCode code, std::filesystem::path path, std::string message)
@@ -478,6 +647,16 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path,
         data = Gunzip(data, dictionary_path);
     }
     const std::string text = Decode(std::move(data), dictionary_path);
+    AbbreviationMap abbreviations;
+    reader.abbreviation_path_ = FindAdjacentAbbreviation(dictionary_path);
+    if (reader.abbreviation_path_.has_value()) {
+        try {
+            abbreviations = LoadAbbreviations(*reader.abbreviation_path_);
+        } catch (const std::exception&) {
+            // Qt 5 keeps the primary dictionary available when an optional
+            // abbreviation companion is malformed or unreadable.
+        }
+    }
 
     auto annotation_path = dictionary_path;
     std::string annotation_name = annotation_path.filename().string();
@@ -603,7 +782,8 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path,
             }
             pending = NextLine(text, &position);
         }
-        const std::string html = RenderDsl(body, expansion.article_tilde);
+        const std::string html =
+            RenderDsl(body, expansion.article_tilde, abbreviations);
         if (html.size() > kMaximumArticleSize ||
             html.size() > kMaximumDictionaryBytes - total_article_bytes) {
             Throw(ErrorCode::kInvalidDictionary, dictionary_path,

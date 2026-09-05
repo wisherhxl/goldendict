@@ -402,7 +402,21 @@ private adapter strictly decodes BOM-marked UTF-8/UTF-16 and declared
 Windows-1250/1251/1252 input, preserves name and language directives, expands
 bounded optional headword parts and tildes, and converts common DSL markup,
 word links, and image references into the common sanitized article path. The
-private headword preprocessor preserves the frozen Qt 5 semantics for stripped
+private abbreviation resolver selects the adjacent plain or gzip companion in
+the frozen Qt 5 precedence order. Reader-owned parsing reuses the existing
+headword expansion rules, joins multiline comments, expands definition tildes
+against the final merged first key before unescaping it, strips DSL markup from
+tooltip values, and treats a malformed optional companion as unavailable
+without rejecting the
+primary dictionary. Paragraph tags render as `dsl_p` spans and use exact
+abbreviation keys; escaped spaces retain their nonbreaking meaning and short
+tooltip values receive Qt 5-compatible nonbreaking spaces and hyphens. The
+companion affects lookup rendering and component ownership but does not expand
+the full-text document set or its primary-only revision. The common article
+sanitizer retains `class="dsl_p"` and its escaped `title` only on an exact
+`dsl_p` span; other caller-supplied span classes, titles, and active attributes
+remain stripped. The private headword preprocessor preserves the frozen Qt 5
+semantics for stripped
 unsorted `{...}` zones, escaped delimiters, repeated expansions, the independent
 32-result limit for each source headword line, the 500-code-point no-expansion
 boundary, alternate-line `~`, `^~` first-character case inversion, and legacy
@@ -433,8 +447,7 @@ wrap modulo 65,536, and retains only safe relative member identifiers and
 immutable source metadata. Retrieval lazily reads one bounded stored or raw-
 deflate member, verifies its CRC and the unchanged archive revision, and keeps
 directory resources ahead of archive members. Archives without a matching DSL
-source remain unattached. Abbreviation expansion and nested cards remain later
-parity work.
+source remain unattached. Nested cards remain later parity work.
 
 Babylon BGL consumes original `.bgl` containers. The private adapter strictly
 validates the Babylon signature, embedded gzip stream, variable-width block
