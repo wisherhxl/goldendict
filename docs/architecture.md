@@ -448,6 +448,10 @@ immutable source metadata. Retrieval lazily reads one bounded stored or raw-
 deflate member, verifies its CRC and the unchanged archive revision, and keeps
 directory resources ahead of archive members. Archives without a matching DSL
 source remain unattached. Nested cards remain later parity work.
+The real-DSL acceptance adapter prefers explicit lookup-entry resource metadata
+and otherwise uses the same deterministic Core extension mapping as the
+product resource boundary. It does not use host MIME aliases as cross-version
+product evidence.
 
 Babylon BGL consumes original `.bgl` containers. The private adapter strictly
 validates the Babylon signature, embedded gzip stream, variable-width block

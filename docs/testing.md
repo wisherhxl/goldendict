@@ -404,6 +404,23 @@ while unrelated span attributes remain stripped. The evidence intentionally
 remains non-equivalent until the separate article-rendering and media-type
 corrections are complete.
 
+The final Unit 4 media-type pair at
+`evidence/qt5-qt6-dsl-r34-unit4-final` has pair ID
+`e131bb9d8ef1f6f5467c1725469ceb12631f66eff93b7898c70fbee9aa78234f`
+and comparison SHA-256
+`5a1054972b8013eb7f5f500ad6731175d32b2a585d0e54f04310316595626a57`.
+The Qt 6 adapter now uses Core's deterministic extension-based resource media
+type when lookup metadata does not enumerate the referenced resource, instead
+of accepting a host `QMimeDatabase` alias. The DSL product backend already
+returned `audio/wav`; this correction aligns the acceptance observation with
+that product contract. All three previously differing WAV values now equal the
+frozen Qt 5 value in clean and warm observations; the fourth cataloged WAV
+probe already used explicit entry metadata and remains equal. The unchanged
+strict comparator
+retains exactly ten differences per Qt 6 observation: five visible-text hashes
+and five visible-text sizes. It therefore continues to exit nonzero until the
+separate article-rendering correction is complete.
+
 `mdict_reader_test::UsesLegacyFallbackName` pins the frozen Qt 5 title fallback
 for empty, placeholder, and header titles shorter than five UTF-16 code units,
 including non-BMP boundary cases. The fallback uses the filename before its

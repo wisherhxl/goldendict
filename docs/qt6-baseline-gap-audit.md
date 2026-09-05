@@ -1190,6 +1190,27 @@ retain only 13 differences per Qt 6 observation: five visible-text hashes and
 sizes plus three WAV media types. R3.4 remains open for those independently
 committable correction units; no equality key was removed or weakened.
 
+Unit 4 media-type result: **Deterministic WAV evidence parity complete;
+article differences retained** (2026-09-05). Investigation confirmed that the
+private DSL backend already returns the required `audio/wav` product media
+type for both directory and archive resources. The remaining discrepancy came
+from the Qt 6 acceptance adapter falling back to the host `QMimeDatabase`,
+which reports the platform alias `audio/vnd.wave` on this Windows runtime when
+the lookup entry does not enumerate its referenced resource. The adapter now
+uses the same deterministic, extension-based Core media-type policy as the
+product resource boundary while continuing to prefer explicit entry metadata.
+This is an evidence-adapter correction, not a product-behavior exception.
+
+The repeated pair at `evidence/qt5-qt6-dsl-r34-unit4-final`, pair ID
+`e131bb9d8ef1f6f5467c1725469ceb12631f66eff93b7898c70fbee9aa78234f`,
+has comparison SHA-256
+`5a1054972b8013eb7f5f500ad6731175d32b2a585d0e54f04310316595626a57`.
+All three WAV media-type fields now match in clean and warm states. The strict
+comparison retains exactly ten differences per Qt 6 observation: the hash and
+size of visible article text for each of the five probes. R3.4 remains open for
+the independently committable article-rendering correction; no equality key
+was removed or weakened.
+
 The design uses the existing Adapter boundary for version-specific evidence
 collection and a coordinator for paired-run state and publication. These
 patterns have concrete value because Qt 5 and Qt 6 expose different APIs while

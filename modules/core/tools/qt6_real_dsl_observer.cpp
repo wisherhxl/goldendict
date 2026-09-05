@@ -8,7 +8,6 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QMimeDatabase>
 #include <QSaveFile>
 #include <QSet>
 
@@ -22,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "../src/dictionary/dictionary_backend.h"
 #include "../src/formats/dsl/dsl_abbreviation.h"
 #include "goldendict/core/application.h"
 #include "goldendict/core/dictionary_service.h"
@@ -148,9 +148,8 @@ QString ResourceMediaType(const goldendict::core::DictionaryEntry& entry,
                      });
     if (found != entry.resources.end() && !found->media_type.empty())
         return Text(found->media_type);
-    return QMimeDatabase()
-        .mimeTypeForFile(Text(resource_id), QMimeDatabase::MatchExtension)
-        .name();
+    return Text(
+        goldendict::core::dictionary::MediaTypeForResourceId(resource_id));
 }
 
 QJsonObject ObserveDictionary(
