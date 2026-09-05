@@ -493,6 +493,18 @@ UTF-16 code units use the legacy first-extension filename base. Other
 encryption modes, LZO blocks, local-file resource fallback, real-corpus
 resource-by-resource acceptance, and later parity work remain explicit.
 
+MDict articles retain the frozen product's outer `mdict` presentation class.
+The common article sanitizer rewrites case-insensitive `entry://` targets to
+typed lookup URLs and safe relative stylesheet and script references to the
+current dictionary's typed resource URLs. Dictionary scripts remain inert:
+their bodies and attributes are discarded, their references use a non-
+executable type only for structural/resource parity, and the document CSP
+unconditionally applies `script-src 'none'`. Only `goldendict:` stylesheet
+resources are enabled; absolute, traversal, network, inline-script, and
+non-stylesheet references remain excluded. This keeps untrusted content inside
+the existing Core sanitizer and typed-resource boundary while restoring the
+observable Qt 5 article structure.
+
 Aard consumes `.aar` archive volumes through a private bounded adapter. It
 validates the fixed header and 32/64-bit index layouts, decompresses metadata
 and articles with bzip2 or zlib (while accepting legacy raw article payloads),

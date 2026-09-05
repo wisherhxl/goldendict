@@ -18,6 +18,8 @@ class ArticleAssemblerTest : public QObject {
     void PreservesOnlyInternalOptionalPartSemantics();
     void PreservesOnlyDslParagraphSemantics();
     void PreservesOnlyAllowlistedDslPresentationSemantics();
+    void PreservesSafeMdictReferences();
+    void RejectsUnsafeMdictPresentationReferences();
     void PreservesSafeAudioAndCollectsItsResource();
     void DeduplicatesResourceReferencesAcrossArticles();
     void RemovesActiveContentAndUnsafeAttributes();
@@ -78,7 +80,7 @@ void ArticleAssemblerTest::PreservesTextInsideSafeCustomMarkup() {
     QVERIFY(document.sanitized_html.find("word") != std::string::npos);
     QVERIFY(document.sanitized_html.find("&lt;h-g") == std::string::npos);
     QVERIFY(document.sanitized_html.find("xhtml:a") == std::string::npos);
-    QVERIFY(document.sanitized_html.find("script") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("<script") == std::string::npos);
     QVERIFY(document.sanitized_html.find("d:word") == std::string::npos);
     QVERIFY(document.sanitized_html.find(
                 "src=\"goldendict://resource/fixture%20id/picture.png\"") !=
@@ -164,6 +166,62 @@ void ArticleAssemblerTest::PreservesOnlyAllowlistedDslPresentationSemantics() {
             std::string::npos);
 }
 
+void ArticleAssemblerTest::PreservesSafeMdictReferences() {
+    const Document document = Assemble(
+        kDictionary,
+        {{"example", "text/html",
+          "<div class=\"mdict\"><link rel=\"StyleSheet\" "
+          "href=\"dictionary.css\"><script src=\"dictionary.js\">"
+          "active()</script><a href=\"ENTRY://linked word#anchor\">linked</a>"
+          "</div>"}});
+
+    QCOMPARE(document.plain_text, "linked");
+    QVERIFY(document.sanitized_html.find("<div class=\"mdict\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "<link rel=\"stylesheet\" href=\"goldendict://resource/"
+                "fixture%20id/dictionary.css\">") != std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "type=\"application/x-goldendict-inert\"") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "src=\"goldendict://resource/fixture%20id/dictionary.js\"") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("active()") == std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "href=\"goldendict://lookup/linked%20word\"") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("script-src 'none'") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "style-src 'unsafe-inline' goldendict:") != std::string::npos);
+    QCOMPARE(document.resources.size(), std::size_t{2});
+    QCOMPARE(document.resources[0].resource_id, "dictionary.css");
+    QCOMPARE(document.resources[1].resource_id, "dictionary.js");
+}
+
+void ArticleAssemblerTest::RejectsUnsafeMdictPresentationReferences() {
+    const Document document = Assemble(
+        kDictionary,
+        {{"example", "text/html",
+          "<div class=\"mdict\"><link rel=\"stylesheet\" "
+          "href=\"../secret.css\"><link rel=\"stylesheet\" "
+          "href=\"https://example.test/remote.css\"><link rel=\"preload\" "
+          "href=\"safe.css\"><script src=\"../secret.js\">nested()"
+          "</script><script src=\"/absolute.js\">absolute()</script>"
+          "<script>inline()</script>safe</div>"}});
+
+    QCOMPARE(document.plain_text, "safe");
+    QVERIFY(document.sanitized_html.find("<link") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("<script") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("secret") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("example.test") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("nested()") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("absolute()") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("inline()") == std::string::npos);
+    QVERIFY(document.resources.empty());
+}
+
 void ArticleAssemblerTest::PreservesSafeAudioAndCollectsItsResource() {
     const Document document = Assemble(
         kDictionary, {{"example", "text/html",
@@ -208,7 +266,7 @@ void ArticleAssemblerTest::RemovesActiveContentAndUnsafeAttributes() {
                    "<img src=\"../secret\" onerror=\"steal()\"></p>"}});
 
     QCOMPARE(document.plain_text, "safelinkaudio");
-    QVERIFY(document.sanitized_html.find("script") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("<script") == std::string::npos);
     QVERIFY(document.sanitized_html.find("onclick") == std::string::npos);
     QVERIFY(document.sanitized_html.find("<p style=") == std::string::npos);
     QVERIFY(document.sanitized_html.find("onerror") == std::string::npos);

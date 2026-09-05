@@ -10,7 +10,7 @@ constexpr std::string_view kDocumentPrefix =
     "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
     "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src "
     "'none'; img-src goldendict:; media-src goldendict:; style-src "
-    "'unsafe-inline'\"><style>"
+    "'unsafe-inline' goldendict:; script-src 'none'\"><style>"
     ":root{color-scheme:light dark}"
     "body{box-sizing:border-box;margin:0 auto;max-width:72rem;padding:1rem;"
     "font:1rem/1.55 system-ui,sans-serif;overflow-wrap:anywhere}"

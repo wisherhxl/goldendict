@@ -58,6 +58,24 @@ bool IsAllowedDslClass(std::string_view tag, std::string_view value) {
            (tag == "a" && value == "dsl_ref");
 }
 
+bool IsAllowedMdictClass(std::string_view tag, std::string_view value) {
+    return tag == "div" && value == "mdict";
+}
+
+bool EqualsAsciiCaseInsensitive(std::string_view left, std::string_view right) {
+    return left.size() == right.size() &&
+           std::equal(left.begin(), left.end(), right.begin(),
+                      [](unsigned char lhs, unsigned char rhs) {
+                          return std::tolower(lhs) == std::tolower(rhs);
+                      });
+}
+
+bool StartsWithAsciiCaseInsensitive(std::string_view value,
+                                    std::string_view prefix) {
+    return value.size() >= prefix.size() &&
+           EqualsAsciiCaseInsensitive(value.substr(0U, prefix.size()), prefix);
+}
+
 bool IsAllowedLegacyColor(std::string_view value) {
     if (value.empty() || value.size() > 64U) {
         return false;
@@ -215,7 +233,8 @@ std::optional<Tag> ParseTag(std::string_view raw) {
         tag.attributes.emplace(name, *decoded);
         index = end + 1U;
     }
-    if (tag.name == "br" || tag.name == "img" || tag.name == "source") {
+    if (tag.name == "br" || tag.name == "img" || tag.name == "link" ||
+        tag.name == "source") {
         tag.self_closing = true;
     }
     return tag;
@@ -366,20 +385,29 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                 html->append("<" + tag.name);
                 const auto class_name = tag.attributes.find("class");
                 if (class_name != tag.attributes.end() &&
-                    IsAllowedDslClass(tag.name, class_name->second)) {
+                    (IsAllowedDslClass(tag.name, class_name->second) ||
+                     IsAllowedMdictClass(tag.name, class_name->second))) {
                     html->append(" class=\"" + class_name->second + "\"");
                 }
                 if (tag.name == "a") {
                     const auto href = tag.attributes.find("href");
                     constexpr std::string_view kBword = "bword://";
+                    constexpr std::string_view kEntry = "entry://";
                     if (href != tag.attributes.end() &&
-                        href->second.substr(0, kBword.size()) == kBword) {
+                        (StartsWithAsciiCaseInsensitive(href->second, kBword) ||
+                         StartsWithAsciiCaseInsensitive(href->second,
+                                                        kEntry))) {
                         try {
+                            const std::size_t prefix_size =
+                                StartsWithAsciiCaseInsensitive(href->second,
+                                                               kBword)
+                                    ? kBword.size()
+                                    : kEntry.size();
+                            std::string_view target(href->second);
+                            target.remove_prefix(prefix_size);
+                            target = target.substr(0U, target.find('#'));
                             html->append(" href=\"" +
-                                         Escape(MakeLookupUrl(
-                                             std::string_view(href->second)
-                                                 .substr(kBword.size()))) +
-                                         "\"");
+                                         Escape(MakeLookupUrl(target)) + "\"");
                         } catch (const std::invalid_argument&) {}
                     } else if (href != tag.attributes.end()) {
                         constexpr std::string_view kSound = "sound://";
@@ -449,6 +477,40 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                 html->append(">");
                 if (tag.name == "br") {
                     AddBreak(plain_text);
+                }
+            }
+            if (tag.name == "link" && suppressed_depth == 0) {
+                const auto relationship = tag.attributes.find("rel");
+                const auto href = tag.attributes.find("href");
+                if (relationship != tag.attributes.end() &&
+                    href != tag.attributes.end() &&
+                    EqualsAsciiCaseInsensitive(relationship->second,
+                                               "stylesheet")) {
+                    const auto resource_id = NormalizeResourceId(href->second);
+                    if (resource_id.has_value()) {
+                        html->append("<link rel=\"stylesheet\" href=\"" +
+                                     Escape(MakeResourceUrl(dictionary.id,
+                                                            *resource_id)) +
+                                     "\">");
+                        AddResourceReference(dictionary, *resource_id,
+                                             resources);
+                    }
+                }
+            } else if (tag.name == "script" && suppressed_depth == 1) {
+                const auto source = tag.attributes.find("src");
+                if (source != tag.attributes.end()) {
+                    const auto resource_id =
+                        NormalizeResourceId(source->second);
+                    if (resource_id.has_value()) {
+                        html->append(
+                            "<script type=\"application/x-goldendict-inert\" "
+                            "src=\"" +
+                            Escape(
+                                MakeResourceUrl(dictionary.id, *resource_id)) +
+                            "\"></script>");
+                        AddResourceReference(dictionary, *resource_id,
+                                             resources);
+                    }
                 }
             }
         }

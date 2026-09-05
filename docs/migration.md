@@ -426,9 +426,14 @@ not depend on format implementations or concatenate trusted markup itself.
 
 The core-controlled article shell adds responsive typography, bounded media,
 scrollable tables, wrapped preformatted text, dictionary separators, and
-light/dark color support. Inline styles remain stripped from dictionary input;
-the CSP permits only the fixed inline stylesheet emitted by the core, while
-scripts and all network content remain disabled.
+light/dark color support. Inline styles remain stripped from dictionary input.
+The CSP permits the fixed inline stylesheet emitted by Core and typed
+`goldendict:` stylesheet resources from the current dictionary. MDict retains
+its legacy outer presentation class, internal `entry://` navigation, and safe
+relative CSS/JavaScript resource references; referenced scripts are retained
+only as inert structural metadata under an unconditional `script-src 'none'`
+policy. Active scripts, absolute or traversal resources, and all network
+content remain disabled.
 
 The networking foundation increment establishes an internal optional network
 module so Qt Network does not become an installed core dependency or enter its

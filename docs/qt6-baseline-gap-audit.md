@@ -1466,6 +1466,35 @@ The complete Release build succeeds, all 134 CTest cases pass serially, and
 the repository Python suite passes all 159 tests with two platform-condition
 skips.
 
+Unit 2C impact check: **conforming MDict article-boundary correction; no
+requirement, public-interface, or module-boundary change** (2026-09-06). The
+276 retained leaves from Unit 2B all arose from two exact MDict probes: Qt 6
+omitted the frozen outer `mdict` class, case-insensitive `entry://` lookup
+conversion, and the ordered local stylesheet/script resource references and
+media types. The MDict adapter now supplies the format-owned wrapper, while
+the common sanitizer retains only that allowlisted class and rewrites the
+three safe reference forms through the existing typed lookup/resource URL
+boundary. Local stylesheet loading is limited by `style-src goldendict:`.
+Script bodies and attributes remain suppressed; their safe relative resource
+references are represented with an inert type under unconditional
+`script-src 'none'`. Absolute, traversal, network, inline-script, and
+non-stylesheet references remain excluded.
+
+Fresh clean and warm observations at
+`evidence/qt5-qt6-lookup-r35-unit2c-article-dev1`, pair
+`78ba00b25b119d494757d18a2007176ce8bc40aee5b66e305d08d72533f49a36`,
+use a newly rebuilt disposable Qt 5 observer matching the current pinned
+observer-template provenance and the Qt 6 candidate based on
+`90ed42fa74a0cf8d7fa92ded66a0ad268a9f653b`. Both products are internally
+stable, and the strict comparison reports zero differences. The comparison
+artifact SHA-256 is
+`8b43e1977b5662526a79d5c68860c4afcd959e3c5346d2cb320a1f37efb8bd54`.
+Focused generated tests cover the wrapper, typed entry navigation, CSS and
+inert-script resource collection, CSP, dropped active bodies, and rejection of
+unsafe references. The complete Release build succeeds, all 134 CTest cases
+pass serially, and the repository Python suite passes all 159 tests with two
+platform-condition skips.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

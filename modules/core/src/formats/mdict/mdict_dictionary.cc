@@ -24,12 +24,13 @@ dictionary::Error TranslateError(const Error& error) {
 std::vector<dictionary::Article> Translate(std::vector<Article> source) {
     std::vector<dictionary::Article> result;
     result.reserve(source.size());
-    std::transform(source.begin(), source.end(), std::back_inserter(result),
-                   [](auto&& article) {
-                       return dictionary::Article{std::move(article.headword),
-                                                  "text/html",
-                                                  std::move(article.data)};
-                   });
+    std::transform(
+        source.begin(), source.end(), std::back_inserter(result),
+        [](auto&& article) {
+            return dictionary::Article{
+                std::move(article.headword), "text/html",
+                "<div class=\"mdict\">" + std::move(article.data) + "</div>"};
+        });
     return result;
 }
 

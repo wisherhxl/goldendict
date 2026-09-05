@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <string_view>
 #include <thread>
 
 #include "../src/formats/mdict/mdict_dictionary.h"
@@ -52,7 +53,16 @@ void MdictDictionaryTest::ExposesIdentityHtmlSuggestionsAndResources() {
     QCOMPARE(dictionary.EnumerateHeadwords(0U).headwords,
              (std::vector<std::string>{"alias", "example"}));
     QCOMPARE(dictionary.identity().description, "Fixture description");
-    QCOMPARE(dictionary.LookupExact("example").front().format, "text/html");
+    const auto exact = dictionary.LookupExact("example");
+    QCOMPARE(exact.front().format, "text/html");
+    constexpr std::string_view kMdictPrefix = "<div class=\"mdict\">";
+    constexpr std::string_view kMdictSuffix = "</div>";
+    QVERIFY(exact.front().data.compare(0U, kMdictPrefix.size(), kMdictPrefix) ==
+            0);
+    QVERIFY(exact.front().data.size() >= kMdictSuffix.size());
+    QVERIFY(exact.front().data.compare(
+                exact.front().data.size() - kMdictSuffix.size(),
+                kMdictSuffix.size(), kMdictSuffix) == 0);
     QCOMPARE(dictionary.LookupExact("alias").size(), std::size_t{1});
     QCOMPARE(dictionary.SuggestPrefix("exa").front(), "example");
     const auto resource = dictionary.GetResource("pixel.png");
