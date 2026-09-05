@@ -128,6 +128,11 @@ class Reader final {
         std::size_t record_size = 0;
     };
 
+    struct SearchKey {
+        std::string folded_suffix;
+        std::size_t record = 0;
+    };
+
     std::vector<const Record*> Ranked(
         std::string_view prefix, const std::function<void()>& checkpoint) const;
     const std::string& ResolveArticle(std::size_t article) const;
@@ -135,6 +140,7 @@ class Reader final {
     std::filesystem::path path_;
     Metadata metadata_;
     std::vector<Record> records_;
+    std::vector<SearchKey> search_index_;
     dictionary::OrderedHeadwordIndex enumeration_index_;
     std::vector<std::string> articles_;
     std::unordered_map<std::string, std::size_t> article_by_folded_word_;

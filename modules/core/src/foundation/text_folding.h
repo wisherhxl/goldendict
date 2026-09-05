@@ -14,7 +14,13 @@ class TextFoldingError final : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
+using LookupSeparatorPredicate = bool (*)(char32_t code_point);
+
 std::string FoldForLookup(std::string_view text);
+// Retains the shared normalization, case, and mark rules while allowing a
+// format compatibility boundary to provide frozen separator membership.
+std::string FoldForLookupWithSeparatorPolicy(
+    std::string_view text, LookupSeparatorPredicate is_separator);
 std::string FoldSimpleCase(std::string_view text);
 std::string NormalizeForExactLookup(std::string_view text,
                                     bool ignore_diacritics);

@@ -5,6 +5,13 @@
 #include "../src/foundation/text_folding.h"
 
 namespace goldendict::core::foundation {
+namespace {
+
+bool IsHyphen(char32_t code_point) {
+    return code_point == U'-';
+}
+
+}  // namespace
 
 class TextFoldingTest : public QObject {
     Q_OBJECT
@@ -12,6 +19,7 @@ class TextFoldingTest : public QObject {
    private slots:
     void FoldsLookupEquivalentText_data();
     void FoldsLookupEquivalentText();
+    void UsesInjectedSeparatorPolicy();
     void NormalizesExactLookupText();
     void RejectsMalformedUtf8();
 };
@@ -58,6 +66,12 @@ void TextFoldingTest::FoldsLookupEquivalentText() {
 
     QCOMPARE(QString::fromStdString(FoldForLookup(input.toStdString())),
              expected);
+}
+
+void TextFoldingTest::UsesInjectedSeparatorPolicy() {
+    QCOMPARE(FoldForLookupWithSeparatorPolicy("A-B C!", IsHyphen), "ab c!");
+    QVERIFY_EXCEPTION_THROWN(
+        FoldForLookupWithSeparatorPolicy("word", nullptr), TextFoldingError);
 }
 
 void TextFoldingTest::RejectsMalformedUtf8() {

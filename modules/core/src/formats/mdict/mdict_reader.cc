@@ -3,8 +3,10 @@
 #include "mdict_reader.h"
 
 #include "mdict_key_info_crypto.h"
+#include "mdict_legacy_index_policy.h"
 
 #include <expat.h>
+#include <unicode/utf8.h>
 #include <zlib.h>
 
 #include <algorithm>
@@ -23,6 +25,7 @@
 
 #include "../../foundation/text_encoding.h"
 #include "../../foundation/text_folding.h"
+#include "../../foundation/utf8.h"
 
 namespace goldendict::core::formats::mdict {
 
@@ -57,6 +60,9 @@ class ResourceStore final {
 }  // namespace detail
 
 namespace {
+
+constexpr std::size_t kLegacyMaximumHeadwordCodePoints = 256U;
+constexpr std::size_t kLegacyMaximumMiddleMatchChain = 1024U;
 
 constexpr std::size_t kMaxFile = 512U * 1024U * 1024U;
 constexpr std::size_t kMaxDecoded = 512U * 1024U * 1024U;
@@ -686,10 +692,23 @@ bool Prefix(std::string_view value, std::string_view prefix) {
            value.compare(0, prefix.size(), prefix) == 0;
 }
 
-std::size_t Points(std::string_view value) {
-    return std::count_if(value.begin(), value.end(), [](char byte) {
-        return (static_cast<unsigned char>(byte) & 0xc0U) != 0x80U;
-    });
+std::vector<std::size_t> LegacyWordStarts(std::string_view word) {
+    std::vector<std::size_t> starts;
+    bool after_separator = true;
+    std::int32_t position = 0;
+    const auto length = static_cast<std::int32_t>(word.size());
+    while (position < length) {
+        const std::int32_t begin = position;
+        UChar32 code_point = 0;
+        U8_NEXT(word.data(), position, length, code_point);
+        const bool separator =
+            code_point < 0 || detail::IsLegacyWhitespace(code_point) ||
+            detail::IsLegacyPunctuation(code_point);
+        if (!separator && after_separator)
+            starts.push_back(static_cast<std::size_t>(begin));
+        after_separator = separator;
+    }
+    return starts;
 }
 
 std::string NormalizeResourceId(std::string id) {
@@ -931,12 +950,19 @@ Reader Reader::Open(const DictionaryFiles& files) {
     reader.metadata_.right_to_left = mdx.header.right_to_left;
     reader.articles_.reserve(mdx.entries.size());
     reader.records_.reserve(mdx.entries.size());
+    std::vector<bool> legacy_searchable;
+    legacy_searchable.reserve(mdx.entries.size());
     for (const auto& entry : mdx.entries) {
-        if (entry.word.empty())
+        const auto qt_trimmed = detail::TrimQt5StringWhitespace(entry.word);
+        const bool searchable =
+            foundation::Utf8CodePointCount(qt_trimmed) <=
+            kLegacyMaximumHeadwordCodePoints;
+        const std::string word(detail::TrimLegacyWhitespace(qt_trimmed));
+        if (word.empty())
             continue;
         std::string folded;
         try {
-            folded = foundation::FoldForLookup(entry.word);
+            folded = detail::FoldForLegacyMdictLookup(word);
         } catch (const foundation::TextFoldingError& error) {
             Throw(ErrorCode::kInvalidDictionary, files.mdx,
                   "Invalid MDict headword: " + std::string(error.what()));
@@ -944,12 +970,45 @@ Reader Reader::Open(const DictionaryFiles& files) {
         const std::size_t article = reader.articles_.size();
         reader.articles_.push_back(entry.value);
         reader.records_.push_back(
-            {entry.word, folded, article, entry.offset, entry.size});
+            {word, folded, article, entry.offset, entry.size});
         reader.article_by_folded_word_.emplace(std::move(folded), article);
+        legacy_searchable.push_back(searchable);
     }
     if (reader.records_.empty())
         Throw(ErrorCode::kInvalidDictionary, files.mdx,
               "MDict file contains no entries");
+    reader.search_index_.reserve(reader.records_.size());
+    std::unordered_map<std::string, std::size_t> search_chain_sizes;
+    for (std::size_t record = 0U; record < reader.records_.size(); ++record) {
+        const auto& headword = reader.records_[record];
+        if (!legacy_searchable[record])
+            continue;
+        const auto starts = LegacyWordStarts(headword.word);
+        const auto add_search_key = [&](std::string folded_suffix,
+                                        bool primary) {
+            auto& chain_size = search_chain_sizes[folded_suffix];
+            if (!primary && chain_size >= kLegacyMaximumMiddleMatchChain)
+                return;
+            reader.search_index_.push_back({std::move(folded_suffix), record});
+            ++chain_size;
+        };
+        if (starts.empty()) {
+            add_search_key(headword.folded, true);
+            continue;
+        }
+        for (const std::size_t start : starts) {
+            add_search_key(
+                start == 0U
+                    ? headword.folded
+                    : detail::FoldForLegacyMdictLookup(
+                          std::string_view(headword.word).substr(start)),
+                start == 0U);
+        }
+    }
+    std::stable_sort(reader.search_index_.begin(), reader.search_index_.end(),
+                     [](const SearchKey& left, const SearchKey& right) {
+                         return left.folded_suffix < right.folded_suffix;
+                     });
     reader.resources_.reserve(files.mdd.size());
     for (const auto& mdd_path : files.mdd)
         reader.resources_.push_back(detail::ResourceStore::Open(mdd_path));
@@ -988,7 +1047,8 @@ IngestionView Reader::ReadIngestionView(
             }
             const std::string target = Trim(articles_[terminal].substr(8U));
             const auto found =
-                article_by_folded_word_.find(foundation::FoldForLookup(target));
+                article_by_folded_word_.find(
+                    detail::FoldForLegacyMdictLookup(target));
             if (found == article_by_folded_word_.end()) {
                 output.outcome = ResolutionOutcome::kMissingTarget;
                 break;
@@ -1025,29 +1085,21 @@ IngestionView Reader::ReadIngestionView(
 
 std::vector<const Reader::Record*> Reader::Ranked(
     std::string_view prefix, const std::function<void()>& checkpoint) const {
-    const std::string folded = foundation::FoldForLookup(prefix);
+    const std::string folded = detail::FoldForLegacyMdictLookup(prefix);
     std::vector<const Record*> matches;
+    auto position = std::lower_bound(
+        search_index_.begin(), search_index_.end(), folded,
+        [](const SearchKey& candidate, std::string_view value) {
+            return candidate.folded_suffix < value;
+        });
     std::size_t checked = 0;
-    for (const auto& record : records_) {
+    for (; position != search_index_.end() &&
+           Prefix(position->folded_suffix, folded);
+         ++position) {
         if (checkpoint && checked++ % 1024U == 0U)
             checkpoint();
-        if (Prefix(record.folded, folded))
-            matches.push_back(&record);
+        matches.push_back(&records_[position->record]);
     }
-    std::stable_sort(matches.begin(), matches.end(),
-                     [&folded](const Record* left, const Record* right) {
-                         const bool left_exact = left->folded == folded;
-                         const bool right_exact = right->folded == folded;
-                         if (left_exact != right_exact)
-                             return left_exact;
-                         const auto left_size = Points(left->folded);
-                         const auto right_size = Points(right->folded);
-                         if (left_size != right_size)
-                             return left_size < right_size;
-                         return left->folded == right->folded
-                                    ? left->word < right->word
-                                    : left->folded < right->folded;
-                     });
     return matches;
 }
 
@@ -1057,7 +1109,8 @@ const std::string& Reader::ResolveArticle(std::size_t article) const {
            articles_[article].compare(0U, 8U, "@@@LINK=") == 0) {
         const std::string target = Trim(articles_[article].substr(8U));
         const auto found =
-            article_by_folded_word_.find(foundation::FoldForLookup(target));
+            article_by_folded_word_.find(
+                detail::FoldForLegacyMdictLookup(target));
         if (found == article_by_folded_word_.end())
             break;
         article = found->second;
@@ -1082,7 +1135,7 @@ std::vector<Article> Reader::LookupExact(
     std::vector<Article> result;
     if (!limit)
         return result;
-    const std::string folded = foundation::FoldForLookup(word);
+    const std::string folded = detail::FoldForLegacyMdictLookup(word);
     std::unordered_set<std::size_t> seen;
     std::size_t checked = 0;
     for (const auto& record : records_) {
@@ -1104,12 +1157,13 @@ std::vector<Article> Reader::LookupPrefix(
     if (!limit)
         return result;
     std::unordered_set<std::size_t> seen;
-    for (const auto* record : Ranked(prefix, checkpoint))
+    for (const auto* record : Ranked(prefix, checkpoint)) {
         if (seen.insert(record->article).second) {
             result.push_back({record->word, ResolveArticle(record->article)});
             if (result.size() == limit)
                 break;
         }
+    }
     return result;
 }
 
@@ -1120,12 +1174,13 @@ std::vector<std::string> Reader::SuggestPrefix(
     if (!limit)
         return result;
     std::unordered_set<std::string> seen;
-    for (const auto* record : Ranked(prefix, checkpoint))
-        if (seen.insert(record->folded).second) {
+    for (const auto* record : Ranked(prefix, checkpoint)) {
+        if (seen.insert(record->word).second) {
             result.push_back(record->word);
             if (result.size() == limit)
                 break;
         }
+    }
     return result;
 }
 

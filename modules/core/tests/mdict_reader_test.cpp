@@ -19,6 +19,8 @@ class MdictReaderTest : public QObject {
     Q_OBJECT
    private slots:
     void ReadsStylesRedirectsAndMddResources();
+    void PreservesLegacyMiddleWordSuggestionOrder();
+    void EnforcesLegacySuggestionIndexBounds();
     void ReadsResourcesAcrossRecordBlocks();
     void RejectsChangedResourceSource();
     void UsesLegacyFallbackName();
@@ -51,6 +53,107 @@ void MdictReaderTest::ReadsStylesRedirectsAndMddResources() {
     QVERIFY(reader.Resource("pixel.png").has_value());
     QCOMPARE(*reader.Resource("/pixel.png"), "mdict-png");
     QVERIFY(!reader.Resource("../pixel.png").has_value());
+}
+
+void MdictReaderTest::PreservesLegacyMiddleWordSuggestionOrder() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto path = test::WriteMdictContainer(
+        root / "suggestions.mdx", "Suggestion Fixture",
+        {{"accord", "one"},
+         {"in accord", "two"},
+         {"of your own accord", "three"},
+         {"with one accord", "four"},
+         {"accordable", "five"},
+         {"accordance", "six"},
+         {"accordances", "seven"},
+         {"in accordance with", "eight"},
+         {"accords", "nine"},
+         {"accorded", "ten"},
+         {"hyphen-target", "eleven"},
+         {"wide\xc2\xa0space", "twelve"},
+         {"Case", "thirteen"},
+         {"case", "fourteen"},
+         {"Case", "fifteen"},
+         {"case ", "sixteen"},
+         {"  padded  ", "seventeen"},
+         {"wide\xe1\xa0\x8e" "marker", "eighteen"},
+         {"wide\xf0\x9e\xa5\x9e" "modern", "nineteen"},
+         {"\v\ftrimmed\v\f", "twenty"},
+         {"\xc2\x85" "nel" "\xc2\x85", "twenty-one"},
+         {"wide\v\fcontrol", "twenty-two"},
+         {"---", "twenty-three"}});
+    const Reader reader = Reader::Open({path, {}});
+
+    QCOMPARE(
+        reader.SuggestPrefix("accor", 8U),
+        (std::vector<std::string>{"accord", "in accord", "of your own accord",
+                                  "with one accord", "accordable", "accordance",
+                                  "accordances", "in accordance with"}));
+    const auto articles = reader.LookupPrefix("accor", 4U);
+    QCOMPARE(articles.size(), std::size_t{4});
+    QCOMPARE(articles[0].headword, "accord");
+    QCOMPARE(articles[0].data, "one");
+    QCOMPARE(articles[1].headword, "in accord");
+    QCOMPARE(articles[1].data, "two");
+    QCOMPARE(articles[2].headword, "of your own accord");
+    QCOMPARE(articles[2].data, "three");
+    QCOMPARE(articles[3].headword, "with one accord");
+    QCOMPARE(articles[3].data, "four");
+    QCOMPARE(reader.SuggestPrefix("tar", 1U).front(), "hyphen-target");
+    QCOMPARE(reader.SuggestPrefix("spa", 1U).front(), "wide\xc2\xa0space");
+    QCOMPARE(reader.SuggestPrefix("case", 3U),
+             (std::vector<std::string>{"Case", "case"}));
+    QCOMPARE(reader.SuggestPrefix("pad", 1U).front(), "padded");
+    QCOMPARE(reader.SuggestPrefix("mark", 1U).front(),
+             "wide\xe1\xa0\x8e" "marker");
+    QVERIFY(reader.SuggestPrefix("modern", 1U).empty());
+    QVERIFY(reader.SuggestPrefix("widemodern", 1U).empty());
+    QCOMPARE(reader.SuggestPrefix("wide\xf0\x9e\xa5\x9e" "mod", 1U).front(),
+             "wide\xf0\x9e\xa5\x9e" "modern");
+    QCOMPARE(reader.SuggestPrefix("widemark", 1U).front(),
+             "wide\xe1\xa0\x8e" "marker");
+    QCOMPARE(reader.SuggestPrefix("trim", 1U).front(), "trimmed");
+    QCOMPARE(reader.SuggestPrefix("nel", 1U).front(), "nel");
+    QVERIFY(reader.SuggestPrefix("widecontrol", 1U).empty());
+    QCOMPARE(reader.SuggestPrefix("wide\v\fcon", 1U).front(),
+             "wide\v\fcontrol");
+    QCOMPARE(reader.SuggestPrefix("-", 1U).front(), "---");
+}
+
+void MdictReaderTest::EnforcesLegacySuggestionIndexBounds() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    std::vector<std::pair<std::string, std::string>> entries;
+    entries.reserve(1030U);
+    entries.emplace_back(" " + std::string(256U, 'y') + " ", "bounded");
+    entries.emplace_back(std::string(257U, 'x'), "overlong");
+    entries.emplace_back("\xe1\xa0\x8e" + std::string(255U, 'v'),
+                         "legacy-trim-bounded");
+    entries.emplace_back("\xe1\xa0\x8e" + std::string(256U, 'u'),
+                         "legacy-trim-overlong");
+    for (std::size_t index = 0U; index < 1025U; ++index) {
+        entries.emplace_back("prefix" + std::to_string(index) + " target",
+                             "middle");
+    }
+    entries.emplace_back("target", "primary");
+    const auto path = test::WriteMdictContainer(
+        root / "suggestion-bounds.mdx", "Suggestion Bounds Fixture", entries);
+    const Reader reader = Reader::Open({path, {}});
+
+    QCOMPARE(reader.SuggestPrefix("y", 1U).front(), std::string(256U, 'y'));
+    QVERIFY(reader.SuggestPrefix("x", 1U).empty());
+    QCOMPARE(reader.SuggestPrefix("v", 1U).front(), std::string(255U, 'v'));
+    QVERIFY(reader.SuggestPrefix("u", 1U).empty());
+    const auto suggestions = reader.SuggestPrefix("target", 2000U);
+    QCOMPARE(suggestions.size(), std::size_t{1025});
+    QCOMPARE(suggestions.front(), "prefix0 target");
+    QCOMPARE(suggestions[1023], "prefix1023 target");
+    QCOMPARE(suggestions.back(), "target");
+    QVERIFY(std::find(suggestions.begin(), suggestions.end(),
+                      "prefix1024 target") == suggestions.end());
 }
 
 void MdictReaderTest::ReadsResourcesAcrossRecordBlocks() {

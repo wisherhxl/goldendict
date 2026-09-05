@@ -1343,6 +1343,49 @@ The complete Release build succeeds, all 133 CTest cases pass when the
 WebEngine smoke cases run serially, and all 159 Python tests pass with two
 platform-condition skips.
 
+Unit 2A impact check: **conforming backend correction; no requirement or
+architecture change** (2026-09-05). The first suggestion difference is one
+independently reviewable MDict Reader correction. The frozen Qt 5 index records
+the complete headword at every Unicode whitespace/punctuation-delimited word
+start, orders matching folded suffix keys lexically, preserves source order
+within an equal key chain, and removes only exact duplicate displayed
+headwords. The Qt 6 Reader reproduces that behavior behind its existing bounded
+APIs and private format boundary, with generated-fixture coverage for
+middle-word matches, equal-key ordering, frozen Qt 5 delimiter membership,
+outer-whitespace trimming and exact deduplication of the displayed result,
+prefix article ownership, the 256-code-point ceiling after Qt string trimming
+but before legacy-index trimming, and the 1,024-entry middle-match chain
+ceiling. A private fixed delimiter policy is injected into the shared Unicode
+normalization/case-folding strategy for MDict keys and queries. It prevents host
+ICU delimiter-version drift, including U+180E, vertical tab/form feed, and
+punctuation added after the frozen table, while retaining the existing shared
+normalization boundary. The size and chain bounds prevent untrusted long keys
+or repeated suffixes from amplifying the private search index while retaining
+unbounded primary-key chains as Qt 5 does.
+
+The development pair at
+`evidence/qt5-qt6-lookup-r35-unit2-suggest-dev1`, pair ID
+`20737d9a2314f8bb276e9ba21db3097ddfbc403fd8651f804365ff38ebdadf16`,
+proves that all eight MDict suggestion candidates now match as a set in clean
+and warm states. The public response still differs at five ordered positions
+because `DictionaryService` applies its separately approved deterministic
+cross-dictionary ranking after each backend returns. Resolving that conflict is
+Unit 2B and must preserve or deliberately revise the existing public ranking
+contract; it is not hidden inside this format-owned correction. Article
+presentation and resource-reference recovery is another MDict article-boundary
+delivery because it has different sanitizer, security, and rendering evidence.
+
+The post-boundary regression run at
+`evidence/qt5-qt6-lookup-r35-unit2-suggest-dev2` reuses the already validated
+Qt 5 clean/warm observations from `suggest-dev1`: the frozen revision, corpus,
+conditions, catalog, and pair ID are unchanged, while the older disposable Qt 5
+binary is intentionally rejected by the repository's newer observer-template
+provenance check. Both newly generated Conan-launched Qt 6 observations are
+byte-for-byte equivalent to their `suggest-dev1` counterparts. The strict
+comparison therefore retains the same 296 differences and the same corrected
+eight-member MDict candidate set, with no regression from the Unicode boundary
+fixes.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

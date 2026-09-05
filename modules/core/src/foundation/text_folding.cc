@@ -100,22 +100,20 @@ std::vector<UChar> FoldSimpleCase(const std::vector<UChar>& input) {
     return output;
 }
 
-bool IsDiscarded(UChar32 code_point) noexcept {
-    const auto category = static_cast<UCharCategory>(u_charType(code_point));
-    return category == U_NON_SPACING_MARK ||
-           category == U_COMBINING_SPACING_MARK ||
-           category == U_ENCLOSING_MARK || u_isUWhiteSpace(code_point) ||
-           u_ispunct(code_point);
-}
-
 bool IsMark(UChar32 code_point) noexcept {
     const auto category = static_cast<UCharCategory>(u_charType(code_point));
     return category == U_NON_SPACING_MARK ||
            category == U_COMBINING_SPACING_MARK || category == U_ENCLOSING_MARK;
 }
 
-std::vector<UChar> RemoveMarksWhitespaceAndPunctuation(
-    const std::vector<UChar>& input) {
+bool IsCurrentUnicodeSeparator(char32_t code_point) {
+    const auto value = static_cast<UChar32>(code_point);
+    return u_isUWhiteSpace(value) || u_ispunct(value);
+}
+
+std::vector<UChar> RemoveMarksAndSeparators(
+    const std::vector<UChar>& input,
+    LookupSeparatorPredicate is_separator) {
     std::vector<UChar> output;
     output.reserve(input.size());
     std::int32_t position = 0;
@@ -123,7 +121,8 @@ std::vector<UChar> RemoveMarksWhitespaceAndPunctuation(
     while (position < length) {
         UChar32 code_point = 0;
         U16_NEXT(input.data(), position, length, code_point);
-        if (code_point < 0 || IsDiscarded(code_point)) {
+        if (code_point < 0 || IsMark(code_point) ||
+            is_separator(static_cast<char32_t>(code_point))) {
             continue;
         }
         if (code_point <= 0xffff) {
@@ -173,8 +172,16 @@ std::string ToUtf8(const std::vector<UChar>& input) {
 }  // namespace
 
 std::string FoldForLookup(std::string_view text) {
+    return FoldForLookupWithSeparatorPolicy(text, IsCurrentUnicodeSeparator);
+}
+
+std::string FoldForLookupWithSeparatorPolicy(
+    std::string_view text, LookupSeparatorPredicate is_separator) {
     if (text.empty()) {
         return {};
+    }
+    if (!is_separator) {
+        throw TextFoldingError("Lookup separator policy is missing");
     }
 
     UErrorCode status = U_ZERO_ERROR;
@@ -184,7 +191,7 @@ std::string FoldForLookup(std::string_view text) {
     auto folded = Normalize(normalizer, FromUtf8(text));
     folded = FoldCase(folded);
     folded = Normalize(normalizer, folded);
-    return ToUtf8(RemoveMarksWhitespaceAndPunctuation(folded));
+    return ToUtf8(RemoveMarksAndSeparators(folded, is_separator));
 }
 
 std::string FoldSimpleCase(std::string_view text) {
