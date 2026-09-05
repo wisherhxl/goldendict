@@ -421,6 +421,24 @@ retains exactly ten differences per Qt 6 observation: five visible-text hashes
 and five visible-text sizes. It therefore continues to exit nonzero until the
 separate article-rendering correction is complete.
 
+The final Unit 5 article-rendering pair at
+`evidence/qt5-qt6-dsl-r34-unit5-final` has pair ID
+`0911f986cc3232486049cd91579f0d25c32b3e7f4ae3de5be49bf947a354aa22`
+and comparison SHA-256
+`1dd100df0ec9ed793b7b4d8c47da1c21869c23ebfbad0a0577dcc5c56bc5e500`.
+The strict clean and warm comparison is equivalent with an empty difference
+list: all five visible article texts, resource bytes and media types,
+component ownership records, and orphan-archive results match the frozen Qt 5
+reference. Generated tests cover displayed-headword/definition composition,
+source indentation, unclosed margin tags, crossed inline closures, end-of-input
+closure, optional/unsorted displayed-headword selection, alternate-record
+first-line fallback, bounded adversarial margin-transition amplification,
+allowlisted DSL classes,
+subscript/superscript, safe legacy colors, and rejection of mixed classes and
+unsafe color values. The full Release build,
+all 132 CTest cases, and all 143 Python tests pass; two Python cases remain
+platform-condition skips. This closes R3.4 without weakening an equality key.
+
 `mdict_reader_test::UsesLegacyFallbackName` pins the frozen Qt 5 title fallback
 for empty, placeholder, and header titles shorter than five UTF-16 code units,
 including non-BMP boundary cases. The fallback uses the filename before its

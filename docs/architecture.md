@@ -413,10 +413,12 @@ abbreviation keys; escaped spaces retain their nonbreaking meaning and short
 tooltip values receive Qt 5-compatible nonbreaking spaces and hyphens. The
 companion affects lookup rendering and component ownership but does not expand
 the full-text document set or its primary-only revision. The common article
-sanitizer retains `class="dsl_p"` and its escaped `title` only on an exact
-`dsl_p` span; other caller-supplied span classes, titles, and active attributes
-remain stripped. The private headword preprocessor preserves the frozen Qt 5
-semantics for stripped
+sanitizer retains only exact allowlisted DSL structure and presentation
+classes on their expected safe elements. It additionally retains an escaped
+`title` only on an exact `dsl_p` span and a bounded legacy color token only on
+`font`; caller-supplied class combinations, unrelated titles, active
+attributes, and unsafe colors remain stripped. The private headword
+preprocessor preserves the frozen Qt 5 semantics for stripped
 unsorted `{...}` zones, escaped delimiters, repeated expansions, the independent
 32-result limit for each source headword line, the 500-code-point no-expansion
 boundary, alternate-line `~`, `^~` first-character case inversion, and legacy
@@ -427,11 +429,21 @@ The `^~` uppercase predicate intentionally observes the legacy truncated
 Expansion traversal stops as soon as each line's 32-result budget is full, so
 adversarial optional groups cannot force exponential work. Article rendering
 separately retains unsorted-zone text, uses the first display expansion for
-body tildes, and uses escape-aware token and terminator traversal. Backslash
-escapes and doubled square brackets remain literal, while escaped spaces
-outside media become non-breaking spaces. These details remain internal to the
-DSL adapter; the common dictionary and lookup contracts are unchanged. The
-adapter also retains the first nonempty expansion from the first source line
+body tildes, and uses escape-aware token and terminator traversal. Its private
+tolerant stack closes and reopens displaced inline tags around out-of-order
+closures and margin transitions, then closes every remaining frame before the
+article enters the strict common sanitizer. Every emission, including displaced
+frame reopening and final closure, consumes the same bounded output budget.
+Lookup articles retain the source display form selected by the matching
+expanded record. If legacy alternate-index merging produces a record that the
+source display scan cannot reproduce, they use the first-line tilde display as
+Qt 5 does. They reproduce the legacy displayed-headword and definition wrappers
+and retain source-line indentation so visible words do not collapse across line
+boundaries.
+Backslash escapes and doubled square brackets remain literal, while escaped
+spaces outside media become non-breaking spaces. These details remain internal
+to the DSL adapter; the common dictionary and lookup contracts are unchanged.
+The adapter also retains the first nonempty expansion from the first source line
 and its pre-insertion record ordinal separately from lookup-record size
 filtering and final merged order, preserving existing full-text canonical
 ownership and stable

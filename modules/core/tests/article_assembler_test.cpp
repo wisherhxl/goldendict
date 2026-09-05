@@ -17,6 +17,7 @@ class ArticleAssemblerTest : public QObject {
     void PreservesTextInsideSafeCustomMarkup();
     void PreservesOnlyInternalOptionalPartSemantics();
     void PreservesOnlyDslParagraphSemantics();
+    void PreservesOnlyAllowlistedDslPresentationSemantics();
     void PreservesSafeAudioAndCollectsItsResource();
     void DeduplicatesResourceReferencesAcrossArticles();
     void RemovesActiveContentAndUnsafeAttributes();
@@ -122,6 +123,45 @@ void ArticleAssemblerTest::PreservesOnlyDslParagraphSemantics() {
                 "<span>mixed</span><span>plain</span>") != std::string::npos);
     QVERIFY(document.sanitized_html.find("onclick") == std::string::npos);
     QVERIFY(document.sanitized_html.find("title=\"bad\"") == std::string::npos);
+}
+
+void ArticleAssemblerTest::PreservesOnlyAllowlistedDslPresentationSemantics() {
+    const Document document = Assemble(
+        kDictionary,
+        {{"example", "text/html",
+          "<div class=\"dsl_article\"><div class=\"dsl_headwords\">head"
+          "</div><div class=\"dsl_m3\"><span class=\"dsl_ex\">example"
+          "</span><a class=\"dsl_ref\" href=\"bword://target\">link</a>"
+          "<font color=\"c_default_color\">default</font>"
+          "<font color=\"#1a2B3c\">hex</font><sub>2</sub><sup>3</sup>"
+          "</div></div><div class=\"dsl_article extra\">mixed</div>"
+          "<span class=\"dsl_unknown\">unknown</span>"
+          "<font color=\"red;display:none\">unsafe</font>"}});
+
+    QCOMPARE(document.plain_text,
+             "head\nexamplelinkdefaulthex23\nmixed\nunknownunsafe");
+    QVERIFY(document.sanitized_html.find("<div class=\"dsl_article\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("<div class=\"dsl_headwords\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("<div class=\"dsl_m3\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("<span class=\"dsl_ex\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "<a class=\"dsl_ref\" href=\"goldendict://lookup/target\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "<font color=\"c_default_color\">default</font>") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "<font color=\"#1a2B3c\">hex</font><sub>2</sub><sup>3</sup>") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("dsl_article extra") ==
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("dsl_unknown") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("red;display:none") ==
+            std::string::npos);
 }
 
 void ArticleAssemblerTest::PreservesSafeAudioAndCollectsItsResource() {

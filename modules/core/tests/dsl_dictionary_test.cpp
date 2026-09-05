@@ -7,6 +7,7 @@
 #include <string_view>
 #include <thread>
 
+#include "../src/article/article_assembler.h"
 #include "../src/formats/dsl/dsl_dictionary.h"
 #include "support/dsl_fixture.h"
 
@@ -40,6 +41,7 @@ class DslDictionaryTest : public QObject {
     Q_OBJECT
    private slots:
     void ExposesIdentityHtmlSuggestionsAndResources();
+    void ProducesSanitizerValidLegacyMarkup();
     void ReadsClassicAndZip64ResourceArchives();
     void ReadsOverflowedClassicResourceArchiveCount();
     void PreservesResourcePrecedenceAndArchiveSafety();
@@ -71,6 +73,35 @@ void DslDictionaryTest::ExposesIdentityHtmlSuggestionsAndResources() {
     const auto resource = dictionary.GetResource("images/cup.png");
     QVERIFY(resource.has_value());
     QCOMPARE(resource->media_type, "image/png");
+}
+
+void DslDictionaryTest::ProducesSanitizerValidLegacyMarkup() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto path = test::WriteDslTextFixture(
+        root,
+        "entry\n"
+        "\t[m0][b]one[m1][i]two[/b]three [c]green[/c]\n");
+    const Dictionary dictionary = Dictionary::Open("dsl-id", path);
+
+    const auto document = article::Assemble(dictionary.identity(),
+                                            dictionary.LookupExact("entry"));
+
+    QVERIFY(document.sanitized_html.find("<div class=\"dsl_article\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("<div class=\"dsl_m0\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("<div class=\"dsl_m1\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "<font color=\"c_default_color\">green</font>") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("&lt;div") == std::string::npos);
+    QVERIFY(document.plain_text.find("entry") != std::string::npos);
+    QVERIFY(document.plain_text.find("one") != std::string::npos);
+    QVERIFY(document.plain_text.find("two") != std::string::npos);
+    QVERIFY(document.plain_text.find("three green") != std::string::npos);
 }
 
 void DslDictionaryTest::ReadsClassicAndZip64ResourceArchives() {
@@ -223,12 +254,11 @@ void DslDictionaryTest::PreservesPrimaryFullTextOwnershipAfterLegacyMerge() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     const auto root = std::filesystem::path(directory.path().toStdString());
-    const auto path = test::WriteDslTextFixture(
-        root,
-        "z\n"
-        "a\n"
-        "~x\n"
-        "\trolling ownership marker\n");
+    const auto path = test::WriteDslTextFixture(root,
+                                                "z\n"
+                                                "a\n"
+                                                "~x\n"
+                                                "\trolling ownership marker\n");
     const Dictionary dictionary =
         Dictionary::Open("dsl-id", path, {}, root / "fixture.gdfts");
 
@@ -247,9 +277,9 @@ void DslDictionaryTest::PreservesPrimaryFullTextOwnershipAfterLegacyMerge() {
     const auto filtered_path = test::WriteDslTextFixture(
         root / "filtered",
         long_primary + "\nshort\n\tfiltered ownership marker\n");
-    const Dictionary filtered = Dictionary::Open(
-        "filtered-dsl-id", filtered_path, {},
-        root / "filtered" / "fixture.gdfts");
+    const Dictionary filtered =
+        Dictionary::Open("filtered-dsl-id", filtered_path, {},
+                         root / "filtered" / "fixture.gdfts");
     QCOMPARE(filtered.LookupExact("short").size(), std::size_t{1});
     const auto filtered_response = filtered.SearchFullText(query);
     QCOMPARE(filtered_response.results.size(), std::size_t{1});
@@ -259,9 +289,9 @@ void DslDictionaryTest::PreservesPrimaryFullTextOwnershipAfterLegacyMerge() {
 
     const auto empty_path = test::WriteDslTextFixture(
         root / "empty-filtered", "(x)\n\tempty ownership marker\n");
-    const Dictionary empty_filtered = Dictionary::Open(
-        "empty-filtered-dsl-id", empty_path, {},
-        root / "empty-filtered" / "fixture.gdfts");
+    const Dictionary empty_filtered =
+        Dictionary::Open("empty-filtered-dsl-id", empty_path, {},
+                         root / "empty-filtered" / "fixture.gdfts");
     QCOMPARE(empty_filtered.identity().headword_count, std::size_t{2});
     QCOMPARE(empty_filtered.LookupExact("").size(), std::size_t{0});
     QCOMPARE(empty_filtered.LookupExact("x").size(), std::size_t{1});

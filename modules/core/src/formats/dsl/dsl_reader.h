@@ -17,8 +17,7 @@
 
 namespace goldendict::core::formats::dsl {
 
-inline constexpr std::size_t kMaximumDictionaryBytes =
-    1024U * 1024U * 1024U;
+inline constexpr std::size_t kMaximumDictionaryBytes = 1024U * 1024U * 1024U;
 
 enum class ErrorCode { kMissingFile, kInvalidDictionary };
 
@@ -101,6 +100,7 @@ class Reader final {
     struct Record {
         std::string headword;
         std::string folded_headword;
+        std::size_t displayed_headword = 0U;
         std::size_t article = 0;
     };
 
@@ -120,6 +120,7 @@ class Reader final {
     std::vector<FullTextSource> full_text_sources_;
     std::size_t headword_count_ = 0U;
     dictionary::OrderedHeadwordIndex enumeration_index_;
+    std::vector<std::string> displayed_headwords_;
     std::vector<std::string> articles_;
     dictionary::SourceSnapshot source_snapshot_;
 };

@@ -419,121 +419,309 @@ std::string TooltipTitle(std::string value) {
     return title;
 }
 
-std::string RenderDsl(std::string_view input, std::string_view primary,
-                      const AbbreviationMap& abbreviations,
-                      std::size_t nesting = 0U) {
-    std::string html;
-    const std::string expanded =
-        headword::ReplaceTildes(std::string(input), primary);
-    for (std::size_t index = 0; index < expanded.size();) {
-        const auto token = NextDslToken(expanded, index);
-        if (!token.has_value()) {
-            break;
-        }
-        if (token->escaped) {
-            html += Escape(DecodeDslLiteral(
-                std::string_view(expanded).substr(index, token->end - index),
-                true));
-            index = token->end;
-            continue;
-        }
-        if (expanded.compare(index, 2U, "{{") == 0) {
-            const auto end = FindUnescapedSequence(expanded, index + 2U, "}}");
-            index = end.has_value() ? end->end : expanded.size();
-            continue;
-        }
-        if (expanded.compare(index, 2U, "<<") == 0) {
-            const auto end = FindUnescapedSequence(expanded, index + 2U, ">>");
-            if (end.has_value()) {
+struct HtmlFrame {
+    std::string dsl_tag;
+    std::string opening;
+    std::string closing;
+    bool margin = false;
+};
+
+bool IsMarginTag(std::string_view tag) {
+    return tag == "m" ||
+           (tag.size() == 2U && tag.front() == 'm' &&
+            std::isdigit(static_cast<unsigned char>(tag.back())) != 0);
+}
+
+class DslRenderer final {
+   public:
+    DslRenderer(std::string_view primary, const AbbreviationMap& abbreviations,
+                std::size_t nesting)
+        : primary_(primary), abbreviations_(abbreviations), nesting_(nesting) {}
+
+    std::string Render(std::string_view input) {
+        const std::string expanded =
+            headword::ReplaceTildes(std::string(input), primary_);
+        for (std::size_t index = 0U; index < expanded.size();) {
+            const auto token = NextDslToken(expanded, index);
+            if (!token.has_value()) {
+                break;
+            }
+            if (token->escaped) {
+                Append(
+                    Escape(DecodeDslLiteral(std::string_view(expanded).substr(
+                                                index, token->end - index),
+                                            true)));
+                index = token->end;
+                continue;
+            }
+            if (expanded.compare(index, 2U, "{{") == 0) {
+                const auto end =
+                    FindUnescapedSequence(expanded, index + 2U, "}}");
+                index = end.has_value() ? end->end : expanded.size();
+                continue;
+            }
+            if (expanded.compare(index, 2U, "<<") == 0) {
+                const auto end =
+                    FindUnescapedSequence(expanded, index + 2U, ">>");
+                if (!end.has_value()) {
+                    break;
+                }
                 const auto body = std::string_view(expanded).substr(
                     index + 2U, end->begin - index - 2U);
                 const std::string target = DecodeDslLiteral(body, false);
                 const std::string label = DecodeDslLiteral(body, true);
-                html += "<a href=\"bword://" + Escape(target) + "\">" +
-                        Escape(label) + "</a>";
+                Append("<a href=\"bword://");
+                Append(Escape(target));
+                Append("\">");
+                Append(Escape(label));
+                Append("</a>");
                 index = end->end;
                 continue;
             }
-            break;
-        }
-        if (expanded.compare(index, 3U, "[s]") == 0) {
-            const auto end =
-                FindUnescapedSequence(expanded, index + 3U, "[/s]");
-            if (end.has_value()) {
-                const std::string resource =
-                    DecodeDslLiteral(std::string_view(expanded).substr(
-                                         index + 3U, end->begin - index - 3U),
-                                     false);
-                html += "<img src=\"" + Escape(resource) + "\">";
-                index = end->end;
-                continue;
-            }
-        }
-        if (expanded[index] == '[') {
-            const auto end = FindUnescapedSequence(expanded, index + 1U, "]");
-            if (end.has_value()) {
-                const std::string tag = Lower(
+            if (expanded[index] == '[') {
+                const auto end =
+                    FindUnescapedSequence(expanded, index + 1U, "]");
+                if (!end.has_value()) {
+                    break;
+                }
+                const std::string raw_tag =
                     DecodeDslLiteral(std::string_view(expanded).substr(
                                          index + 1U, end->begin - index - 1U),
-                                     false));
-                if (tag == "p" && nesting < kMaximumDslNesting) {
+                                     false);
+                const std::string lowered = Lower(raw_tag);
+                const std::size_t separator = lowered.find_first_of(" \t");
+                const std::string tag = lowered.substr(0U, separator);
+                const std::string attributes =
+                    separator == std::string::npos
+                        ? std::string{}
+                        : Trim(raw_tag.substr(separator + 1U));
+
+                if ((tag == "p" || tag == "ref") &&
+                    nesting_ < kMaximumDslNesting) {
+                    const std::string closing_tag = "[/" + tag + "]";
                     const auto close =
-                        FindUnescapedSequence(expanded, end->end, "[/p]");
+                        FindUnescapedSequence(expanded, end->end, closing_tag);
                     if (close.has_value()) {
                         const auto body = std::string_view(expanded).substr(
                             end->end, close->begin - end->end);
-                        const std::string key = PlainDslText(body, primary);
-                        html += "<span class=\"dsl_p\"";
-                        const auto abbreviation = abbreviations.find(key);
-                        if (abbreviation != abbreviations.end()) {
-                            html += " title=\"" +
-                                    Escape(TooltipTitle(abbreviation->second)) +
-                                    "\"";
+                        if (tag == "p") {
+                            RenderParagraph(body);
+                        } else {
+                            const std::string target =
+                                PlainDslText(body, primary_);
+                            Append("<a class=\"dsl_ref\" href=\"bword://");
+                            Append(Escape(target));
+                            Append("\">");
+                            Append(DslRenderer(primary_, abbreviations_,
+                                               nesting_ + 1U)
+                                       .Render(body));
+                            Append("</a>");
                         }
-                        html += ">" +
-                                RenderDsl(body, primary, abbreviations,
-                                          nesting + 1U) +
-                                "</span>";
                         index = close->end;
                         continue;
                     }
-                } else if (tag == "b" || tag == "i" || tag == "u" ||
-                           tag == "sub" || tag == "sup" || tag == "/b" ||
-                           tag == "/i" || tag == "/u" || tag == "/sub" ||
-                           tag == "/sup") {
-                    html += '<' + tag + '>';
-                } else if (!tag.empty() && tag[0] == 'm') {
-                    html += "<div>";
-                } else if (tag == "/m" ||
-                           (tag.size() > 1U && tag.substr(0, 2U) == "/m")) {
-                    html += "</div>";
-                } else if (tag == "c" || tag.rfind("c ", 0) == 0U) {
-                    html += "<span>";
-                } else if (tag == "/c") {
-                    html += "</span>";
-                } else if (tag == "br") {
-                    html += "<br>";
-                } else if (tag == "*") {
-                    html += "<gd-optional>";
-                } else if (tag == "/*") {
-                    html += "</gd-optional>";
                 }
+                if (tag == "s" && nesting_ < kMaximumDslNesting) {
+                    const auto close =
+                        FindUnescapedSequence(expanded, end->end, "[/s]");
+                    if (close.has_value()) {
+                        const std::string resource = DecodeDslLiteral(
+                            std::string_view(expanded).substr(
+                                end->end, close->begin - end->end),
+                            false);
+                        Append("<img src=\"");
+                        Append(Escape(resource));
+                        Append("\">");
+                        index = close->end;
+                        continue;
+                    }
+                }
+                RenderTag(tag, attributes);
                 index = end->end;
                 continue;
             }
-            break;
+            if (token->text == "\n") {
+                Append("<br>");
+            } else {
+                Append(Escape(token->text));
+            }
+            index = token->end;
         }
-        if (token->text == "\n") {
-            html += "<br>";
-        } else {
-            html += Escape(token->text);
+        CloseAll();
+        return std::move(html_);
+    }
+
+   private:
+    void Append(std::string_view value) {
+        if (value.size() > kMaximumArticleSize - html_.size()) {
+            throw std::length_error("DSL rendered article exceeds size limit");
         }
-        index = token->end;
-        if (html.size() > kMaximumArticleSize) {
-            break;
+        html_.append(value);
+    }
+
+    void RenderParagraph(std::string_view body) {
+        const std::string key = PlainDslText(body, primary_);
+        Append("<span class=\"dsl_p\"");
+        const auto abbreviation = abbreviations_.find(key);
+        if (abbreviation != abbreviations_.end()) {
+            Append(" title=\"");
+            Append(Escape(TooltipTitle(abbreviation->second)));
+            Append("\"");
+        }
+        Append(">");
+        Append(
+            DslRenderer(primary_, abbreviations_, nesting_ + 1U).Render(body));
+        Append("</span>");
+    }
+
+    void Open(std::string dsl_tag, std::string opening, std::string closing,
+              bool margin = false) {
+        if (frames_.size() >= kMaximumDslNesting) {
+            return;
+        }
+        Append(opening);
+        frames_.push_back({std::move(dsl_tag), std::move(opening),
+                           std::move(closing), margin});
+    }
+
+    void CloseAt(std::size_t index, bool reopen) {
+        std::vector<HtmlFrame> displaced;
+        if (reopen) {
+            displaced.assign(
+                frames_.begin() + static_cast<std::ptrdiff_t>(index) + 1,
+                frames_.end());
+        }
+        for (std::size_t current = frames_.size(); current > index; --current) {
+            Append(frames_[current - 1U].closing);
+        }
+        frames_.resize(index);
+        for (auto& frame : displaced) {
+            Append(frame.opening);
+            frames_.push_back(std::move(frame));
         }
     }
-    return html;
+
+    void Close(std::string_view tag, bool margin = false) {
+        for (std::size_t index = frames_.size(); index > 0U; --index) {
+            const HtmlFrame& frame = frames_[index - 1U];
+            if ((margin && frame.margin) || (!margin && frame.dsl_tag == tag)) {
+                CloseAt(index - 1U, true);
+                return;
+            }
+        }
+    }
+
+    void OpenMargin(const std::string& tag) {
+        std::size_t margin_index = frames_.size();
+        for (std::size_t index = frames_.size(); index > 0U; --index) {
+            if (frames_[index - 1U].margin) {
+                margin_index = index - 1U;
+                break;
+            }
+        }
+        const std::size_t active_begin =
+            margin_index == frames_.size() ? 0U : margin_index + 1U;
+        std::vector<HtmlFrame> active(
+            frames_.begin() + static_cast<std::ptrdiff_t>(active_begin),
+            frames_.end());
+        const std::size_t close_begin =
+            margin_index == frames_.size() ? 0U : margin_index;
+        for (std::size_t index = frames_.size(); index > close_begin; --index) {
+            Append(frames_[index - 1U].closing);
+        }
+        frames_.resize(close_begin);
+        Open(tag, "<div class=\"dsl_" + tag + "\">", "</div>", true);
+        for (auto& frame : active) {
+            Append(frame.opening);
+            frames_.push_back(std::move(frame));
+        }
+    }
+
+    void RenderTag(std::string_view tag, std::string_view attributes) {
+        if (tag.empty()) {
+            return;
+        }
+        if (tag.front() == '/') {
+            const std::string_view target = tag.substr(1U);
+            Close(target, IsMarginTag(target));
+            return;
+        }
+        if (IsMarginTag(tag)) {
+            OpenMargin(std::string(tag));
+        } else if (tag == "b" || tag == "i" || tag == "sub" || tag == "sup") {
+            Open(std::string(tag), "<" + std::string(tag) + ">",
+                 "</" + std::string(tag) + ">");
+        } else if (tag == "u") {
+            Open("u", "<span class=\"dsl_u\">", "</span>");
+        } else if (tag == "c") {
+            const std::string color = attributes.empty()
+                                          ? "c_default_color"
+                                          : std::string(attributes);
+            Open("c", "<font color=\"" + Escape(color) + "\">", "</font>");
+        } else if (tag == "*") {
+            Open("*", "<gd-optional>", "</gd-optional>");
+        } else if (tag == "br") {
+            Append("<br>");
+        } else if (tag == "trn" || tag == "ex" || tag == "com" ||
+                   tag == "!trs" || tag == "t" || tag == "lang") {
+            const std::string class_name =
+                tag == "!trs" ? "trs" : std::string(tag);
+            Open(std::string(tag), "<span class=\"dsl_" + class_name + "\">",
+                 "</span>");
+        }
+    }
+
+    void CloseAll() {
+        for (std::size_t index = frames_.size(); index > 0U; --index) {
+            Append(frames_[index - 1U].closing);
+        }
+        frames_.clear();
+    }
+
+    std::string_view primary_;
+    const AbbreviationMap& abbreviations_;
+    std::size_t nesting_;
+    std::string html_;
+    std::vector<HtmlFrame> frames_;
+};
+
+std::string RenderDsl(std::string_view input, std::string_view primary,
+                      const AbbreviationMap& abbreviations,
+                      std::size_t nesting = 0U) {
+    return DslRenderer(primary, abbreviations, nesting).Render(input);
+}
+
+constexpr std::string_view kDslArticlePrefix =
+    "<div class=\"dsl_article\"><div class=\"dsl_headwords\"><p>";
+constexpr std::string_view kDslArticleMiddle =
+    "</p></div>\n<div class=\"dsl_definition\">";
+constexpr std::string_view kDslArticleSuffix = "</div></div>";
+constexpr std::size_t kDslArticleMarkupSize = kDslArticlePrefix.size() +
+                                              kDslArticleMiddle.size() +
+                                              kDslArticleSuffix.size();
+
+bool DslArticleFits(std::string_view displayed_headword_html,
+                    std::string_view definition) {
+    return displayed_headword_html.size() <=
+               kMaximumArticleSize - kDslArticleMarkupSize &&
+           definition.size() <= kMaximumArticleSize - kDslArticleMarkupSize -
+                                    displayed_headword_html.size();
+}
+
+std::string ComposeDslArticle(std::string_view displayed_headword_html,
+                              std::string_view definition) {
+    if (!DslArticleFits(displayed_headword_html, definition)) {
+        throw std::length_error("DSL composed article exceeds size limit");
+    }
+    std::string article;
+    article.reserve(kDslArticleMarkupSize + displayed_headword_html.size() +
+                    definition.size());
+    article.append(kDslArticlePrefix);
+    article.append(displayed_headword_html);
+    article.append(kDslArticleMiddle);
+    article.append(definition);
+    article.append(kDslArticleSuffix);
+    return article;
 }
 
 bool HasPrefix(std::string_view text, std::string_view prefix) noexcept {
@@ -772,18 +960,20 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path,
                (pending->empty() ||
                 std::isspace(static_cast<unsigned char>((*pending)[0])) != 0)) {
             if (!pending->empty()) {
-                const auto first = pending->find_first_not_of(" \t");
                 if (!body.empty()) {
                     body.push_back('\n');
                 }
-                body.append(first == std::string_view::npos
-                                ? std::string_view{}
-                                : pending->substr(first));
+                body.append(*pending);
             }
             pending = NextLine(text, &position);
         }
-        const std::string html =
-            RenderDsl(body, expansion.article_tilde, abbreviations);
+        std::string html;
+        try {
+            html = RenderDsl(body, expansion.article_tilde, abbreviations);
+        } catch (const std::length_error&) {
+            Throw(ErrorCode::kInvalidDictionary, dictionary_path,
+                  "DSL article exceeds the supported size limit");
+        }
         if (html.size() > kMaximumArticleSize ||
             html.size() > kMaximumDictionaryBytes - total_article_bytes) {
             Throw(ErrorCode::kInvalidDictionary, dictionary_path,
@@ -793,17 +983,47 @@ Reader Reader::Open(const std::filesystem::path& dictionary_path,
         total_article_bytes += html.size();
         reader.articles_.push_back(html);
         const std::size_t first_record_ordinal = reader.records_.size();
-        for (auto& headword : expansion.records) {
+        std::unordered_map<std::string, std::size_t> displayed_headword_indexes;
+        for (std::size_t index = 0U; index < expansion.records.size();
+             ++index) {
+            auto& headword = expansion.records[index];
             if (headword.empty() || headword.size() > kMaximumHeadwordSize) {
                 continue;
             }
             try {
-                reader.records_.push_back(
-                    {headword, foundation::FoldForLookup(headword), article});
+                const std::string& displayed_headword =
+                    expansion.displayed_headwords.at(index);
+                auto displayed =
+                    displayed_headword_indexes.find(displayed_headword);
+                if (displayed == displayed_headword_indexes.end()) {
+                    std::string displayed_headword_html = RenderDsl(
+                        displayed_headword, displayed_headword, abbreviations);
+                    if (!DslArticleFits(displayed_headword_html, html) ||
+                        displayed_headword_html.size() >
+                            kMaximumDictionaryBytes - total_article_bytes) {
+                        Throw(ErrorCode::kInvalidDictionary, dictionary_path,
+                              "DSL article exceeds the supported size limit");
+                    }
+                    const std::size_t displayed_ordinal =
+                        reader.displayed_headwords_.size();
+                    total_article_bytes += displayed_headword_html.size();
+                    reader.displayed_headwords_.push_back(
+                        std::move(displayed_headword_html));
+                    displayed =
+                        displayed_headword_indexes
+                            .emplace(displayed_headword, displayed_ordinal)
+                            .first;
+                }
+                reader.records_.push_back({headword,
+                                           foundation::FoldForLookup(headword),
+                                           displayed->second, article});
             } catch (const foundation::TextFoldingError& error) {
                 Throw(
                     ErrorCode::kInvalidDictionary, dictionary_path,
                     "Invalid UTF-8 DSL headword: " + std::string(error.what()));
+            } catch (const std::length_error&) {
+                Throw(ErrorCode::kInvalidDictionary, dictionary_path,
+                      "DSL article exceeds the supported size limit");
             }
         }
         if (reader.records_.size() != first_record_ordinal) {
@@ -874,7 +1094,11 @@ std::vector<Article> Reader::LookupExact(
             checkpoint();
         if (record.folded_headword == folded &&
             seen.insert(record.article).second) {
-            result.push_back({record.headword, articles_[record.article]});
+            result.push_back(
+                {record.headword,
+                 ComposeDslArticle(
+                     displayed_headwords_[record.displayed_headword],
+                     articles_[record.article])});
             if (result.size() == result_limit)
                 break;
         }
@@ -920,7 +1144,11 @@ std::vector<Article> Reader::LookupPrefix(
     std::set<std::size_t> seen;
     for (const auto* record : RankedPrefixMatches(prefix, checkpoint)) {
         if (seen.insert(record->article).second) {
-            result.push_back({record->headword, articles_[record->article]});
+            result.push_back(
+                {record->headword,
+                 ComposeDslArticle(
+                     displayed_headwords_[record->displayed_headword],
+                     articles_[record->article])});
             if (result.size() == result_limit)
                 break;
         }

@@ -1211,6 +1211,31 @@ size of visible article text for each of the five probes. R3.4 remains open for
 the independently committable article-rendering correction; no equality key
 was removed or weakened.
 
+Unit 5 article-rendering result: **R3.4 complete** (2026-09-05). The private
+DSL renderer now reproduces the frozen Qt 5 displayed-headword/definition
+composition, including the source display form selected by optional and
+unsorted lookup records and the first-line fallback for an alternate index
+record that the source display scan cannot reproduce. It preserves source-line
+indentation and uses a tolerant tag stack that closes and reopens displaced
+inline frames across crossed closures and margin transitions. Every append and reopened frame is
+charged to the article output limit, and every emitted frame is closed before
+the fragment reaches the strict common sanitizer, eliminating both renderer
+amplification and the inert `<pre>` fallback caused by malformed generated
+HTML. The sanitizer retains only exact safe DSL
+presentation classes and bounded legacy color tokens; unrelated classes,
+active attributes, and unsafe colors remain stripped.
+
+The final pair at `evidence/qt5-qt6-dsl-r34-unit5-final`, pair ID
+`0911f986cc3232486049cd91579f0d25c32b3e7f4ae3de5be49bf947a354aa22`,
+is equivalent in clean and warm states with no differences. Its comparison
+SHA-256 is
+`1dd100df0ec9ed793b7b4d8c47da1c21869c23ebfbad0a0577dcc5c56bc5e500`.
+All five visible article texts, exact archive-resource bytes, deterministic
+media types, component ownership records, and orphan-archive results match the
+frozen Qt 5 reference. The full Release build, 132 CTest cases, and 143 Python
+tests pass with two platform-condition skips. R3.5 is therefore unblocked by
+R3.4; nested cards and other non-corpus DSL variants remain assigned to R3.11.
+
 The design uses the existing Adapter boundary for version-specific evidence
 collection and a coordinator for paired-run state and publication. These
 patterns have concrete value because Qt 5 and Qt 6 expose different APIs while

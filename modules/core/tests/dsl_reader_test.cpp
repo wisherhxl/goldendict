@@ -18,6 +18,8 @@ class DslReaderTest : public QObject {
     void PreservesLegacyHeadwordExpansionSemantics();
     void ExposesExactLegacyExpansionRecordsAndBounds();
     void RendersLegacyDisplayTildesAndEscapes();
+    void BalancesLegacyMarkupAndComposesDisplayedHeadword();
+    void RejectsRendererExpansionBeyondArticleLimit();
     void UsesAdjacentAbbreviationCompanionsForParagraphTooltips();
     void IgnoresMalformedAbbreviationCompanions();
     void ReadsCompressedAndUtf16AndInvokesCheckpoints();
@@ -126,6 +128,18 @@ void DslReaderTest::ExposesExactLegacyExpansionRecordsAndBounds() {
     QCOMPARE(rolling_tilde.records[0], std::string("a"));
     QCOMPARE(rolling_tilde.records[1], std::string("ax"));
     QCOMPARE(rolling_tilde.records[2], std::string("z"));
+    QCOMPARE(rolling_tilde.displayed_headwords.size(), std::size_t{3});
+    QCOMPARE(rolling_tilde.displayed_headwords[0], std::string("a"));
+    QCOMPARE(rolling_tilde.displayed_headwords[1], std::string("z"));
+    QCOMPARE(rolling_tilde.displayed_headwords[2], std::string("z"));
+
+    const auto display_expansion = headword::Parse({"Al{ph}a(x)"});
+    QCOMPARE(display_expansion.records.size(), std::size_t{2});
+    QCOMPARE(display_expansion.records[0], std::string("Ala"));
+    QCOMPARE(display_expansion.records[1], std::string("Alax"));
+    QCOMPARE(display_expansion.displayed_headwords.size(), std::size_t{2});
+    QCOMPARE(display_expansion.displayed_headwords[0], std::string("Alpha(x)"));
+    QCOMPARE(display_expansion.displayed_headwords[1], std::string("Alpha(x)"));
 
     const auto empty_first = headword::Parse({"(x)"});
     QCOMPARE(empty_first.primary, std::string("x"));
@@ -165,6 +179,14 @@ void DslReaderTest::ExposesExactLegacyExpansionRecordsAndBounds() {
     QCOMPARE(full_text.front().headword, std::string("z"));
     QCOMPARE(full_text.front().record_ordinal, std::size_t{0});
     QCOMPARE(full_text.front().article_ordinal, std::size_t{0});
+    const auto rolling_exact = reader.LookupExact("ax");
+    QCOMPARE(rolling_exact.size(), std::size_t{1});
+    QVERIFY(rolling_exact.front().data.find(
+                "<div class=\"dsl_headwords\"><p>z</p></div>") !=
+            std::string::npos);
+    const auto rolling_prefix = reader.LookupPrefix("ax");
+    QCOMPARE(rolling_prefix.size(), std::size_t{1});
+    QCOMPARE(rolling_prefix.front().data, rolling_exact.front().data);
 
     const std::string long_primary(16U * 1024U + 1U, 'z');
     const Reader filtered = Reader::Open(test::WriteDslTextFixture(
@@ -205,6 +227,9 @@ void DslReaderTest::RendersLegacyDisplayTildesAndEscapes() {
 
     const auto results = reader.LookupExact("Ala");
     QCOMPARE(results.size(), std::size_t{1});
+    QVERIFY(results.front().data.find(
+                "<div class=\"dsl_headwords\"><p>Alpha(x)</p></div>") !=
+            std::string::npos);
     QVERIFY(results.front().data.find("Alpha ~ [b]literal[/b]") !=
             std::string::npos);
     QVERIFY(results.front().data.find("[i]") != std::string::npos);
@@ -215,10 +240,66 @@ void DslReaderTest::RendersLegacyDisplayTildesAndEscapes() {
             std::string::npos);
     QVERIFY(results.front().data.find("hidden") == std::string::npos);
     QVERIFY(results.front().data.find("still") == std::string::npos);
-    QVERIFY(results.front().data.find("<span>color</span>") !=
+    QVERIFY(results.front().data.find("<font color=\"attr]x\">color</font>") !=
             std::string::npos);
     QVERIFY(results.front().data.find("<img src=\"pic[/s].png\">") !=
             std::string::npos);
+
+    const auto prefix = reader.LookupPrefix("Al");
+    QCOMPARE(prefix.size(), std::size_t{1});
+    QCOMPARE(prefix.front().data, results.front().data);
+}
+
+void DslReaderTest::BalancesLegacyMarkupAndComposesDisplayedHeadword() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const Reader reader = Reader::Open(test::WriteDslTextFixture(
+        root,
+        "entry\n"
+        "\t[m0][b]one[m1][i]two[/b]three [c]green[/c] [sub]2[/sub]\n"));
+
+    const auto result = reader.LookupExact("entry");
+    QCOMPARE(result.size(), std::size_t{1});
+    QCOMPARE(result.front().data,
+             std::string(
+                 "<div class=\"dsl_article\"><div class=\"dsl_headwords\"><p>"
+                 "entry</p></div>\n<div class=\"dsl_definition\">"
+                 "\t<div class=\"dsl_m0\"><b>one</b></div>"
+                 "<div class=\"dsl_m1\"><b><i>two</i></b><i>three "
+                 "<font color=\"c_default_color\">green</font> "
+                 "<sub>2</sub></i></div></div></div>"));
+
+    const auto prefix = reader.LookupPrefix("ent");
+    QCOMPARE(prefix.size(), std::size_t{1});
+    QCOMPARE(prefix.front().data, result.front().data);
+    QCOMPARE(reader.ReadFullTextArticles().front().data,
+             std::string("\t<div class=\"dsl_m0\"><b>one</b></div>"
+                         "<div class=\"dsl_m1\"><b><i>two</i></b><i>three "
+                         "<font color=\"c_default_color\">green</font> "
+                         "<sub>2</sub></i></div>"));
+}
+
+void DslReaderTest::RejectsRendererExpansionBeyondArticleLimit() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    std::string text = "entry\n\t";
+    for (std::size_t index = 0U; index < 63U; ++index) {
+        text += "[trn]";
+    }
+    for (std::size_t index = 0U; index < 10000U; ++index) {
+        text += "[m1]";
+    }
+    text.push_back('\n');
+
+    const auto path = test::WriteDslTextFixture(root, text);
+    try {
+        static_cast<void>(Reader::Open(path));
+        QFAIL("Renderer amplification above the article limit was accepted");
+    } catch (const Error& error) {
+        QCOMPARE(error.code(), ErrorCode::kInvalidDictionary);
+    }
 }
 
 void DslReaderTest::UsesAdjacentAbbreviationCompanionsForParagraphTooltips() {

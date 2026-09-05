@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <unordered_map>
 #include <utility>
 
 #include <unicode/uchar.h>
@@ -303,6 +304,12 @@ Expansion Parse(const std::vector<std::string>& source_lines) {
                                   ? std::move(article_tilde)
                                   : article_tilde_expansions.front();
 
+    std::vector<std::string> display_tilde_expansions;
+    ExpandOptional(source_lines.front(), &display_tilde_expansions);
+    const std::string display_tilde = display_tilde_expansions.empty()
+                                          ? source_lines.front()
+                                          : display_tilde_expansions.front();
+
     ExpandOptional(ProcessUnsortedParts(source_lines.front(), true),
                    &expansion.records);
     if (expansion.records.empty()) {
@@ -324,6 +331,31 @@ Expansion Parse(const std::vector<std::string>& source_lines) {
     expansion.merged_first = expansion.records.front();
     for (auto& record : expansion.records) {
         record = Normalize(Unescape(record));
+    }
+
+    std::unordered_map<std::string, std::string> first_display_by_record;
+    for (std::size_t index = 0U; index < source_lines.size(); ++index) {
+        std::string raw = source_lines[index];
+        if (index != 0U) {
+            raw = ReplaceTildes(std::move(raw), display_tilde);
+        }
+        const std::string display = ProcessUnsortedParts(raw, false);
+        std::vector<std::string> line_records;
+        ExpandOptional(ProcessUnsortedParts(std::move(raw), true),
+                       &line_records);
+        for (auto& record : line_records) {
+            record = Normalize(Unescape(record));
+            if (!record.empty()) {
+                first_display_by_record.try_emplace(record, display);
+            }
+        }
+    }
+    expansion.displayed_headwords.reserve(expansion.records.size());
+    for (const auto& record : expansion.records) {
+        const auto display = first_display_by_record.find(record);
+        expansion.displayed_headwords.push_back(
+            display == first_display_by_record.end() ? expansion.article_tilde
+                                                     : display->second);
     }
     return expansion;
 }

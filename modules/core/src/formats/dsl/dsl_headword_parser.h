@@ -15,6 +15,8 @@ struct Expansion {
     // Final legacy merge front before key unescaping.
     std::string merged_first;
     std::vector<std::string> records;
+    // Display form selected by Qt 5 for the corresponding lookup record.
+    std::vector<std::string> displayed_headwords;
 };
 
 // Converts one main line and its alternate lines into index-ready headwords.

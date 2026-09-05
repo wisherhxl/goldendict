@@ -16,10 +16,10 @@ namespace goldendict::core::article {
 namespace {
 
 const std::vector<std::string> kAllowedTags = {
-    "p",  "div",        "span", "b",   "strong", "i",     "em",
-    "u",  "br",         "ul",   "ol",  "li",     "dl",    "dt",
-    "dd", "blockquote", "code", "pre", "table",  "thead", "tbody",
-    "tr", "th",         "td",   "a",   "img",    "audio", "source"};
+    "p",    "div", "span",  "b",      "strong", "i",   "em",  "u",
+    "br",   "ul",  "ol",    "li",     "dl",     "dt",  "dd",  "blockquote",
+    "code", "pre", "table", "thead",  "tbody",  "tr",  "th",  "td",
+    "a",    "img", "audio", "source", "sub",    "sup", "font"};
 const std::vector<std::string> kSuppressedTags = {
     "script", "style", "iframe", "object", "embed", "svg", "math"};
 constexpr std::size_t kMaximumDocumentBytes = 16U * 1024U * 1024U;
@@ -41,6 +41,38 @@ bool IsAllowedAudioType(std::string_view value) {
         "audio/wav",  "audio/ogg", "audio/mpeg", "audio/flac",
         "audio/opus", "audio/mp4", "audio/aac",  "audio/midi"};
     return Contains(kAllowedAudioTypes, value);
+}
+
+bool IsAllowedDslClass(std::string_view tag, std::string_view value) {
+    static const std::vector<std::string> kDivClasses = {
+        "dsl_article", "dsl_headwords", "dsl_definition", "dsl_m",  "dsl_m0",
+        "dsl_m1",      "dsl_m2",        "dsl_m3",         "dsl_m4", "dsl_m5",
+        "dsl_m6",      "dsl_m7",        "dsl_m8",         "dsl_m9"};
+    static const std::vector<std::string> kSpanClasses = {
+        "dsl_p", "dsl_u",    "dsl_trn", "dsl_ex", "dsl_com", "dsl_trs",
+        "dsl_t", "dsl_lang", "dsl_c",   "dsl_b",  "dsl_i"};
+    return (tag == "div" && Contains(kDivClasses, value)) ||
+           (tag == "span" && Contains(kSpanClasses, value)) ||
+           (tag == "b" && value == "dsl_b") ||
+           (tag == "i" && value == "dsl_i") ||
+           (tag == "a" && value == "dsl_ref");
+}
+
+bool IsAllowedLegacyColor(std::string_view value) {
+    if (value.empty() || value.size() > 64U) {
+        return false;
+    }
+    if (value.front() == '#') {
+        if (value.size() != 4U && value.size() != 7U) {
+            return false;
+        }
+        return std::all_of(value.begin() + 1, value.end(), [](unsigned char c) {
+            return std::isxdigit(c) != 0;
+        });
+    }
+    return std::all_of(value.begin(), value.end(), [](unsigned char c) {
+        return std::isalnum(c) != 0 || c == '-' || c == '_';
+    });
 }
 
 std::string Escape(std::string_view value) {
@@ -332,6 +364,11 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                 html->append("<span class=\"gd-optional-part\">");
             } else if (Contains(kAllowedTags, tag.name)) {
                 html->append("<" + tag.name);
+                const auto class_name = tag.attributes.find("class");
+                if (class_name != tag.attributes.end() &&
+                    IsAllowedDslClass(tag.name, class_name->second)) {
+                    html->append(" class=\"" + class_name->second + "\"");
+                }
                 if (tag.name == "a") {
                     const auto href = tag.attributes.find("href");
                     constexpr std::string_view kBword = "bword://";
@@ -359,16 +396,20 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                             }
                         }
                     }
-                } else if (tag.name == "span") {
-                    const auto class_name = tag.attributes.find("class");
-                    if (class_name != tag.attributes.end() &&
-                        class_name->second == "dsl_p") {
-                        html->append(" class=\"dsl_p\"");
-                        const auto title = tag.attributes.find("title");
-                        if (title != tag.attributes.end()) {
-                            html->append(" title=\"" + Escape(title->second) +
-                                         "\"");
-                        }
+                } else if (tag.name == "span" &&
+                           class_name != tag.attributes.end() &&
+                           class_name->second == "dsl_p") {
+                    const auto title = tag.attributes.find("title");
+                    if (title != tag.attributes.end()) {
+                        html->append(" title=\"" + Escape(title->second) +
+                                     "\"");
+                    }
+                } else if (tag.name == "font") {
+                    const auto color = tag.attributes.find("color");
+                    if (color != tag.attributes.end() &&
+                        IsAllowedLegacyColor(color->second)) {
+                        html->append(" color=\"" + Escape(color->second) +
+                                     "\"");
                     }
                 } else if (tag.name == "img" || tag.name == "source") {
                     const auto source = tag.attributes.find("src");
