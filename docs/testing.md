@@ -439,6 +439,94 @@ unsafe color values. The full Release build,
 all 132 CTest cases, and all 143 Python tests pass; two Python cases remain
 platform-condition skips. This closes R3.4 without weakening an equality key.
 
+### R3.5 paired real-corpus lookup and article matrix
+
+`real_lookup_acceptance.py` owns the first R3.5 acceptance unit. The bounded
+catalog at `evidence/r3.5-real-lookup-catalog-v1.json` has SHA-256
+`7e4753120328e14b0e9c606baae6d7b58c8493c4b29ae53145ffc5aa31349c3e` and
+is bound to the approved real-corpus manifest plus
+`evidence/qt5-qt6-acceptance-conditions-r3.5-v1.json`. The canonical
+conditions SHA-256 is
+`db7c2195bca8e7e777fe2a3caca7dfcd9bb5f21e2565438c2f981c877bbe797e`.
+Eleven probes cover real DSL and MDict exact lookup, prefix suggestions, an
+optional-headword alias, a missing lookup, Unicode, punctuation, multi-word
+input, a case-distinct query that proves the selected source headword, article
+text, internal references, deterministic media types, and presentation
+semantics. The corpus remains read-only; each version receives independent
+profile, cache, index, temporary, and evidence directories.
+
+Prepare the disposable Qt 5 observer source outside the frozen checkout and
+build it with the documented MSYS2 UCRT64 Qt 5 toolchain. Build
+`qt6_real_lookup_observer` in Release, and run every Qt 6 command through
+`run_with_conan.ps1 --build-type Release --` so the child process inherits the
+checkout's Conan DLL and Qt plugin environment. Create and validate the pair
+with `real_dictionary_acceptance_workspace.py`, then run the following child
+command shape once with `clean-discovery` and once with `warm-restart` for each
+version:
+
+```powershell
+python scripts\real_dictionary_acceptance_workspace.py run <pair arguments> `
+  --version qt6 -- `
+  python <checkout>\scripts\real_lookup_acceptance.py observe `
+    --adapter qt6 --dictionary-root D:\workspace\goldendict\content `
+    --catalog D:\workspace\goldendict\evidence\r3.5-real-lookup-catalog-v1.json `
+    --scenario clean-discovery --output <qt6-evidence>\lookup-clean.json `
+    --qt6-observer <release-bin>\qt6_real_lookup_observer.exe
+
+python scripts\real_lookup_acceptance.py compare `
+  --qt5-clean <qt5-evidence>\lookup-clean.json `
+  --qt5-warm <qt5-evidence>\lookup-warm.json `
+  --qt6-clean <qt6-evidence>\lookup-clean.json `
+  --qt6-warm <qt6-evidence>\lookup-warm.json `
+  --catalog D:\workspace\goldendict\evidence\r3.5-real-lookup-catalog-v1.json `
+  --dictionary-root D:\workspace\goldendict\content `
+  --pair <workspace>\pair.json --output <workspace>\lookup-comparison.json
+```
+
+Use `--adapter qt5` with the disposable executable, provenance file, UCRT64
+runtime directory, and Qt 5 plugin directory for the frozen side. The
+coordinator normalizes equivalent semantic markup such as Qt 5 `dsl_b` and Qt
+6 `<b>` to the same presentation token. It separately retains the hashed
+backend-selected source headword and displayed article headwords, layout
+classes including the MDict wrapper, bounded inline styles, ordered and
+multiplicity-sensitive reference events, an interleaved content sequence that
+anchors non-text resources relative to text, position-sensitive styled-text
+runs, resources, media types, visible-text hashes, result ordering, and every
+differing expected/actual leaf. Visible article text, displayed article
+headwords, and styled text runs use NFC plus canonicalization of only the HTML-
+collapsible ASCII whitespace characters before hashing; nonbreaking and other
+Unicode spacing remains strict. Backend-selected source headwords, internal
+and external link targets, and suggestion values use NFC-only exact byte
+signatures, so their whitespace remains strict. All of those derived values
+are published only as hashes and UTF-8 sizes. Resource identifiers and media
+types remain structural metadata; article payload text is never copied into
+the normalized evidence. A non-equivalent comparison is successful product-gap
+evidence, not a harness failure.
+
+The final Unit 1 pair at
+`evidence/qt5-qt6-lookup-r35-unit1-dev13`, pair ID
+`5f11061816af0610af11641da2f7beca411ffa8d3c70d4818e1fc66f36158c6b`,
+is internally stable: Qt 5 clean equals Qt 5 warm and Qt 6 clean equals Qt 6
+warm. DSL has no remaining difference across its seven representative probes.
+Displayed- and source-headword evidence also matches. In particular, the
+case-distinct probe records an independently selected source-headword signature
+that differs from the query signature in both products. The strict comparison
+retains 152 field-level differences per Qt 6 observation, all from the real
+MDict dictionary. The count is a leaf-level representation of the same bounded
+product gaps across two exact probes, not 152 independent defects: Qt 6 lacks
+the outer `mdict` presentation class, one internal link, and two named
+CSS/JavaScript article resource references and their media types; those
+omissions shift the ordered reference, content-sequence, and styled-run
+evidence. Seven bounded suggestion positions also differ. The comparison has
+SHA-256
+`2717f1f9a8a517f6e6572e6b3736aae443f70fbcee8712bfab70ef82c35eed7c`.
+These differences are the retained input to R3.5 Unit 2 and must not be
+suppressed or accepted as intentional product divergence.
+The complete Release build succeeds. Run the full CTest suite serially on
+Windows to avoid unrelated concurrent Chromium GPU-context contention; all
+133 cases pass. The Python discovery suite passes all 159 tests with two
+platform-condition skips.
+
 `mdict_reader_test::UsesLegacyFallbackName` pins the frozen Qt 5 title fallback
 for empty, placeholder, and header titles shorter than five UTF-16 code units,
 including non-BMP boundary cases. The fallback uses the filename before its

@@ -1848,6 +1848,7 @@ class ServiceState final {
                             backend) != nullptr);
                     entry.language = {identity.source_language,
                                       identity.target_language};
+                    entry.headword = article.headword;
                     const std::string folded_headword =
                         foundation::FoldForLookup(article.headword);
                     const bool exact =

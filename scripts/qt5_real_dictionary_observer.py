@@ -165,6 +165,8 @@ def observe(
     mdict_catalog_sha256: str | None = None,
     dsl_catalog: Path | None = None,
     dsl_catalog_sha256: str | None = None,
+    lookup_catalog: Path | None = None,
+    lookup_catalog_sha256: str | None = None,
 ) -> Path:
     if _required_environment("GOLDENDICT_ACCEPTANCE_VERSION") != "qt5":
         raise Qt5ObserverError("Qt 5 observer requires a Qt 5 paired run")
@@ -247,7 +249,32 @@ def observe(
         or _sha256(resolved_dsl_catalog) != dsl_catalog_sha256
     ):
         raise Qt5ObserverError("DSL catalog hash is invalid")
-    if resolved_mdict_catalog is not None and resolved_dsl_catalog is not None:
+    resolved_lookup_catalog = (
+        _resolve(lookup_catalog, "Lookup acceptance catalog")
+        if lookup_catalog is not None
+        else None
+    )
+    if (resolved_lookup_catalog is None) != (lookup_catalog_sha256 is None):
+        raise Qt5ObserverError("Lookup catalog path and hash must be supplied together")
+    if lookup_catalog_sha256 is not None and (
+        len(lookup_catalog_sha256) != HASH_LENGTH
+        or any(
+            character not in "0123456789abcdef" for character in lookup_catalog_sha256
+        )
+        or _sha256(resolved_lookup_catalog) != lookup_catalog_sha256
+    ):
+        raise Qt5ObserverError("Lookup catalog hash is invalid")
+    if (
+        sum(
+            catalog is not None
+            for catalog in (
+                resolved_mdict_catalog,
+                resolved_dsl_catalog,
+                resolved_lookup_catalog,
+            )
+        )
+        > 1
+    ):
         raise Qt5ObserverError("Only one format-specific catalog may be supplied")
     if timeout_seconds < 1 or timeout_seconds > 24 * 60 * 60:
         raise Qt5ObserverError("Observer timeout is outside the supported bound")
@@ -293,6 +320,13 @@ def observe(
             environment["GOLDENDICT_ACCEPTANCE_DSL_CATALOG"] = str(resolved_dsl_catalog)
             environment["GOLDENDICT_ACCEPTANCE_DSL_CATALOG_SHA256"] = str(
                 dsl_catalog_sha256
+            )
+        if resolved_lookup_catalog is not None:
+            environment["GOLDENDICT_ACCEPTANCE_LOOKUP_CATALOG"] = str(
+                resolved_lookup_catalog
+            )
+            environment["GOLDENDICT_ACCEPTANCE_LOOKUP_CATALOG_SHA256"] = str(
+                lookup_catalog_sha256
             )
         path_entries = [legacy_executable.parent, *resolved_runtime_bins]
         environment["PATH"] = os.pathsep.join(

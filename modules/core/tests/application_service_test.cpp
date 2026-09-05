@@ -327,6 +327,7 @@ class ApplicationServiceTest : public QObject {
     void EnumeratesStarDictHeadwordsWithStableCursors();
     void ExportsCompleteHeadwordListsAtomically();
     void ReturnsCanonicalFoldedMatchInformation();
+    void ReturnsMdictSourceHeadword();
     void AppliesLegacySynonymSearchWithoutChangingSuggestions();
     void EnforcesRuntimeDiacriticCapability();
     void ReturnsRankedPrefixMatches();
@@ -5227,8 +5228,30 @@ void ApplicationServiceTest::ReturnsCanonicalFoldedMatchInformation() {
 
     QCOMPARE(response.errors.size(), std::size_t{0});
     QCOMPARE(response.entries.size(), std::size_t{1});
+    QCOMPARE(response.entries.front().headword, "Caf\xc3\xa9 au lait");
     QCOMPARE(response.entries.front().match.requested_headword, "CAFE AU LAIT");
     QCOMPARE(response.entries.front().match.normalized_headword, "cafeaulait");
+}
+
+void ApplicationServiceTest::ReturnsMdictSourceHeadword() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteMdictContainer(root / "fixture.mdx", "Fixture MDict",
+                              {{"Accordion", "source headword definition"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    LookupQuery query;
+    query.text = "ACCORDION";
+
+    const auto response = service->Lookup(query);
+
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), std::size_t{1});
+    QCOMPARE(response.entries.front().headword, "Accordion");
+    QCOMPARE(response.entries.front().match.requested_headword, "ACCORDION");
+    QCOMPARE(response.entries.front().match.normalized_headword, "accordion");
 }
 
 void ApplicationServiceTest::

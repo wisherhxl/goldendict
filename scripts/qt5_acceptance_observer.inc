@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "btreeidx.hh"
 #include "langcoder.hh"
 #include "wstring_qt.hh"
 
@@ -643,6 +644,292 @@ private:
   }
 };
 
+class LookupPublication: public QObject
+{
+  QJsonObject catalog;
+  QByteArray catalogHash;
+  QByteArray conditionsHash;
+  QByteArray outputPath;
+  QByteArray scenario;
+  std::vector< sptr< Dictionary::Class > > const & dictionaries;
+  QJsonArray catalogDictionaries;
+  QJsonArray results;
+  int dictionaryIndex;
+  int probeIndex;
+  Dictionary::Class * dictionary;
+  sptr< Dictionary::DataRequest > articleRequest;
+  sptr< Dictionary::WordSearchRequest > wordRequest;
+  QElapsedTimer elapsed;
+
+public:
+  LookupPublication( QObject * owner,
+                     std::vector< sptr< Dictionary::Class > > const & dictionaries_,
+                     QByteArray const & catalogPath,
+                     QByteArray const & catalogHash_,
+                     QByteArray const & conditionsHash_,
+                     QByteArray const & outputPath_,
+                     QByteArray const & scenario_ ):
+    QObject( owner ), catalogHash( catalogHash_ ), conditionsHash( conditionsHash_ ),
+    outputPath( outputPath_ ), scenario( scenario_ ), dictionaries( dictionaries_ ),
+    dictionaryIndex( 0 ), probeIndex( 0 ), dictionary( 0 )
+  {
+    QFile input( QString::fromUtf8( catalogPath ) );
+    if( !input.open( QIODevice::ReadOnly ) || input.size() < 1
+        || input.size() > 1024 * 1024 )
+      return;
+    QByteArray const content = input.readAll();
+    if( content.size() != input.size()
+        || QCryptographicHash::hash( content, QCryptographicHash::Sha256 ).toHex()
+             != catalogHash )
+      return;
+    QJsonParseError error;
+    QJsonDocument const document = QJsonDocument::fromJson( content, &error );
+    if( error.error != QJsonParseError::NoError || !document.isObject() )
+      return;
+    catalog = document.object();
+    if( catalog.value( "schema" ).toString()
+          != "goldendict-real-lookup-catalog-v1" )
+      return;
+    catalogDictionaries = catalog.value( "dictionaries" ).toArray();
+    if( catalogDictionaries.isEmpty() || catalogDictionaries.size() > 32 )
+      catalog = QJsonObject();
+  }
+
+  void Start()
+  {
+    if( catalog.isEmpty() )
+    {
+      Fail();
+      return;
+    }
+    elapsed.start();
+    StartProbe();
+  }
+
+private:
+  Dictionary::Class * FindDictionary( QString const & relative ) const
+  {
+    QByteArray const corpusRoot = qgetenv( "GOLDENDICT_ACCEPTANCE_CORPUS_ROOT" );
+    QString const expected = QFileInfo( QDir( QString::fromUtf8( corpusRoot ) )
+                                        .filePath( relative ) ).canonicalFilePath();
+    if( expected.isEmpty() )
+      return 0;
+    for( std::vector< sptr< Dictionary::Class > >::const_iterator item = dictionaries.begin();
+         item != dictionaries.end(); ++item )
+    {
+      std::vector< std::string > const & files = ( *item )->getDictionaryFilenames();
+      if( !files.empty()
+          && QFileInfo( QString::fromUtf8( files.front().c_str() ) ).canonicalFilePath()
+               .compare( expected, Qt::CaseInsensitive ) == 0 )
+        return item->get();
+    }
+    return 0;
+  }
+
+  void StartProbe()
+  {
+    if( dictionaryIndex == catalogDictionaries.size() )
+    {
+      Publish();
+      return;
+    }
+    QJsonObject const item = catalogDictionaries.at( dictionaryIndex ).toObject();
+    QJsonArray const probes = item.value( "probes" ).toArray();
+    if( !dictionary )
+      dictionary = FindDictionary( item.value( "primary_component" ).toString() );
+    if( !dictionary || probes.isEmpty() || probes.size() > 16 )
+    {
+      Fail();
+      return;
+    }
+    if( probeIndex == probes.size() )
+    {
+      QJsonArray components;
+      std::vector< std::string > const & files = dictionary->getDictionaryFilenames();
+      if( files.empty() )
+      {
+        Fail();
+        return;
+      }
+      components.append( QFileInfo( QString::fromUtf8( files.front().c_str() ) )
+                           .canonicalFilePath() );
+      QJsonObject result;
+      result.insert( "catalog_id", item.value( "id" ) );
+      result.insert( "components", components );
+      result.insert( "id", QString::fromUtf8( dictionary->getId().c_str() ) );
+      result.insert( "name", QString::fromUtf8( dictionary->getName().c_str() ) );
+      result.insert( "probes", itemResults );
+      results.append( result );
+      itemResults = QJsonArray();
+      ++dictionaryIndex;
+      probeIndex = 0;
+      dictionary = 0;
+      StartProbe();
+      return;
+    }
+    QJsonObject const probe = probes.at( probeIndex ).toObject();
+    QString const operation = probe.value( "operation" ).toString();
+    QString const query = probe.value( "query" ).toString();
+    int const limit = probe.value( "result_limit" ).toInt();
+    if( query.isEmpty() || limit < 1 || limit > 32 )
+    {
+      Fail();
+      return;
+    }
+    try
+    {
+      if( operation == "lookup" )
+        articleRequest = dictionary->getArticle( gd::toWString( query ),
+                                                  std::vector< gd::wstring >() );
+      else if( operation == "suggest" )
+        wordRequest = dictionary->prefixMatch( gd::toWString( query ), limit );
+      else
+      {
+        Fail();
+        return;
+      }
+    }
+    catch( std::exception const & )
+    {
+      Fail();
+      return;
+    }
+    Poll();
+  }
+
+  QJsonArray itemResults;
+
+  void Poll()
+  {
+    if( elapsed.elapsed() > 5 * 60 * 1000 )
+    {
+      Fail();
+      return;
+    }
+    if( articleRequest && !articleRequest->isFinished() )
+    {
+      QTimer::singleShot( 1, this, [this]() { Poll(); } );
+      return;
+    }
+    if( wordRequest && !wordRequest->isFinished() )
+    {
+      QTimer::singleShot( 1, this, [this]() { Poll(); } );
+      return;
+    }
+    CompleteProbe();
+  }
+
+  void CompleteProbe()
+  {
+    QJsonObject const item = catalogDictionaries.at( dictionaryIndex ).toObject();
+    QJsonObject const probe = item.value( "probes" ).toArray().at( probeIndex ).toObject();
+    QString const operation = probe.value( "operation" ).toString();
+    QString const query = probe.value( "query" ).toString();
+    QJsonArray entries;
+    QJsonArray suggestions;
+    QJsonArray errors;
+    if( operation == "lookup" )
+    {
+      QString const error = articleRequest->getErrorString();
+      if( !error.isEmpty() )
+      {
+        QJsonObject value;
+        value.insert( "dictionary_id", QString::fromUtf8( dictionary->getId().c_str() ) );
+        value.insert( "message", error );
+        errors.append( value );
+      }
+      else if( articleRequest->dataSize() > 0 )
+      {
+        BtreeIndexing::BtreeDictionary * indexedDictionary =
+          dynamic_cast< BtreeIndexing::BtreeDictionary * >( dictionary );
+        if( !indexedDictionary )
+        {
+          Fail();
+          return;
+        }
+        std::vector< BtreeIndexing::WordArticleLink > const links =
+          indexedDictionary->findArticles( gd::toWString( query ) );
+        if( links.empty() )
+        {
+          Fail();
+          return;
+        }
+        std::vector< char > & data = articleRequest->getFullData();
+        QByteArray const bytes( &data.front(), static_cast< int >( data.size() ) );
+        QJsonObject entry;
+        entry.insert( "article_markup", QString::fromUtf8( bytes ) );
+        entry.insert( "headword", QString::fromUtf8( links.front().word.c_str() ) );
+        entry.insert( "plain_text", QString() );
+        entry.insert( "resources", QJsonArray() );
+        entries.append( entry );
+      }
+      articleRequest = sptr< Dictionary::DataRequest >();
+    }
+    else
+    {
+      QString const error = wordRequest->getErrorString();
+      if( !error.isEmpty() )
+      {
+        QJsonObject value;
+        value.insert( "dictionary_id", QString::fromUtf8( dictionary->getId().c_str() ) );
+        value.insert( "message", error );
+        errors.append( value );
+      }
+      else
+      {
+        std::vector< Dictionary::WordMatch > & matches = wordRequest->getAllMatches();
+        int const limit = probe.value( "result_limit" ).toInt();
+        for( std::size_t index = 0; index < matches.size()
+             && index < static_cast< std::size_t >( limit ); ++index )
+          suggestions.append( gd::toQString( matches[ index ].word ) );
+      }
+      wordRequest = sptr< Dictionary::WordSearchRequest >();
+    }
+    QJsonObject rawProbe;
+    rawProbe.insert( "entries", entries );
+    rawProbe.insert( "errors", errors );
+    rawProbe.insert( "id", probe.value( "id" ) );
+    rawProbe.insert( "operation", operation );
+    rawProbe.insert( "suggestions", suggestions );
+    itemResults.append( rawProbe );
+    ++probeIndex;
+    StartProbe();
+  }
+
+  void Publish()
+  {
+    QJsonObject raw;
+    raw.insert( "catalog_sha256", QString::fromLatin1( catalogHash ) );
+    raw.insert( "conditions_sha256", QString::fromLatin1( conditionsHash ) );
+    raw.insert( "dictionaries", results );
+    raw.insert( "errors", QJsonArray() );
+    raw.insert( "scenario", QString::fromLatin1( scenario ) );
+    raw.insert( "schema", "goldendict-real-lookup-raw-observation-v1" );
+    QSaveFile output( QString::fromUtf8( outputPath ) );
+    if( !output.open( QIODevice::WriteOnly ) )
+    {
+      Fail();
+      return;
+    }
+    QByteArray const content = QJsonDocument( raw ).toJson( QJsonDocument::Compact ) + '\n';
+    if( output.write( content ) != content.size() || !output.commit() )
+    {
+      Fail();
+      return;
+    }
+    ScheduleExit();
+    deleteLater();
+  }
+
+  void Fail()
+  {
+    articleRequest = sptr< Dictionary::DataRequest >();
+    wordRequest = sptr< Dictionary::WordSearchRequest >();
+    qApp->exit( 4 );
+    deleteLater();
+  }
+};
+
 void PublishMdict( QObject * owner,
                    std::vector< sptr< Dictionary::Class > > const & dictionaries,
                    QByteArray const & catalogPath,
@@ -665,6 +952,19 @@ void PublishDsl( QObject * owner,
                  QByteArray const & scenario )
 {
   DslPublication * publication = new DslPublication(
+    owner, dictionaries, catalogPath, catalogHash, conditionsHash, outputPath, scenario );
+  QTimer::singleShot( 0, publication, [publication]() { publication->Start(); } );
+}
+
+void PublishLookup( QObject * owner,
+                    std::vector< sptr< Dictionary::Class > > const & dictionaries,
+                    QByteArray const & catalogPath,
+                    QByteArray const & catalogHash,
+                    QByteArray const & conditionsHash,
+                    QByteArray const & outputPath,
+                    QByteArray const & scenario )
+{
+  LookupPublication * publication = new LookupPublication(
     owner, dictionaries, catalogPath, catalogHash, conditionsHash, outputPath, scenario );
   QTimer::singleShot( 0, publication, [publication]() { publication->Start(); } );
 }
@@ -706,6 +1006,23 @@ void Publish( QObject * owner,
     mdictStarted = true;
     PublishMdict( owner, dictionaries, mdictCatalog, mdictCatalogHash,
                   conditionsHash, outputPath, scenario );
+    return;
+  }
+
+  QByteArray const lookupCatalog = qgetenv( "GOLDENDICT_ACCEPTANCE_LOOKUP_CATALOG" );
+  if( !lookupCatalog.isEmpty() )
+  {
+    static bool lookupStarted = false;
+    QByteArray const lookupCatalogHash =
+      qgetenv( "GOLDENDICT_ACCEPTANCE_LOOKUP_CATALOG_SHA256" );
+    if( lookupStarted || lookupCatalogHash.size() != 64 )
+    {
+      ScheduleExit();
+      return;
+    }
+    lookupStarted = true;
+    PublishLookup( owner, dictionaries, lookupCatalog, lookupCatalogHash,
+                   conditionsHash, outputPath, scenario );
     return;
   }
 

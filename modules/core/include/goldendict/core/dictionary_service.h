@@ -210,6 +210,7 @@ struct ResourceReference {
 struct DictionaryEntry {
     DictionaryIdentity dictionary;
     LanguageInfo language;
+    std::string headword;
     MatchInfo match;
     ArticleContent article;
     std::vector<ResourceReference> resources;

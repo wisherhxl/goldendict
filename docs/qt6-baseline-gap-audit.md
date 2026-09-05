@@ -1247,6 +1247,102 @@ activation, frozen source preparation, real manifest, corpus access, and
 isolated evidence storage are available. No unresolved product or architecture
 decision blocks implementation.
 
+### R3.5 real-corpus lookup and management readiness
+
+Readiness result: **Ready, split into evidence-driven functional units**
+(2026-09-05).
+
+R3.5 implements the already approved `CRD-DICT-003`, `CRD-COMPAT-001`, and
+`CRD-TEST-REAL-005` through `CRD-TEST-REAL-007`; it does not introduce a new
+product requirement or intentional divergence. R3.3 and R3.4 are integrated
+and provide exact MDict and DSL article/resource parity plus the shared,
+manifest-bound paired workspace. The remaining real corpus consists of those
+two local dictionary families and seven Hunspell morphology pairs. The query
+matrix must retain exact lookup, prefix suggestions, alternate/alias forms
+where the corpus supplies them, missing results, Unicode, punctuation,
+multi-word input, morphology-assisted lookup, article ordering and text,
+internal/cross references, style/font/media references, and clean/warm
+stability. Management evidence must retain group order, enabled and muted
+state, popup muting, rescan, dictionary information, headword browsing, and
+persistence without modifying the corpus.
+
+Delivery is divided at coherent, independently auditable boundaries:
+
+1. Add a bounded local-dictionary query catalog, paired coordinator,
+   version-specific observer adapters, normalized article/reference evidence,
+   generated contract tests, and a reproducible clean/warm real-corpus run for
+   DSL and MDict. The comparator must publish product differences instead of
+   weakening equality or failing before the pair is available. Focused
+   verification is `python scripts/tests/real_lookup_acceptance_test.py` plus
+   the `qt6_real_lookup_observer` invalid-option CTest and Release target build.
+2. Correct only evidence-confirmed local dictionary differences, split again
+   when separate backend ownership makes one combined change unreviewable.
+3. Add and run the real Hunspell morphology-assisted query matrix with all
+   seven configured pairs, then correct only evidence-confirmed differences.
+4. Add and run the isolated real-corpus management matrix. Configuration,
+   groups, mute state, popup mute state, and browse cursors live under the
+   paired profiles; source rescan remains read-only and all mutation/failure
+   cases use generated fixtures or disposable copies.
+5. Close R3.5 only after a fresh repeated pair is equivalent for every
+   applicable lookup, suggestion, article/media, morphology, and management
+   field in clean and warm states, the corpus manifest is unchanged, and the
+   cumulative build/test, completion-audit, and integration-audit gates pass.
+
+The design continues the established Adapter boundary because Qt 5 exposes
+asynchronous dictionary requests while Qt 6 exposes the transport-neutral
+`DictionaryService`. A single coordinator owns validation, normalization,
+comparison, bounds, and atomic evidence publication. Format behavior remains
+inside the private Core backends. The transport-neutral `DictionaryEntry` now
+carries the backend-selected source headword alongside its existing match and
+article data; this is ordinary result ownership rather than an acceptance-only
+method, and the observer only consumes that DTO. This keeps responsibilities
+cohesive, preserves dependency direction, and applies the existing Adapter and
+Coordinator patterns without speculative abstraction. The frozen Qt 5 source,
+Visual Studio 2026/Qt 5 build, Qt 6 Conan runtime launcher, real manifest,
+corpus, and external evidence root are available. No unresolved product or
+architecture decision blocks Unit 1.
+
+Unit 1 result: **acceptance infrastructure complete; product differences
+retained** (2026-09-05). The bounded catalog contains eleven real probes across
+two DSL dictionaries and one MDict dictionary. It covers exact lookup,
+suggestions, optional-headword alias lookup, a missing lookup, Unicode,
+punctuation, multi-word input, a case-distinct source-headword check, visible
+article text, internal links, presentation semantics, resources, and
+deterministic media types. The Qt 5 adapter extends the disposable frozen-source
+observer without changing the reference checkout; the Qt 6 adapter uses the
+transport-neutral `DictionaryService`. The shared coordinator validates the
+catalog, pair, conditions, corpus-relative ownership, result bounds, clean/warm
+identities, and every normalized observation before atomically publishing
+evidence.
+
+The repeated pair at `evidence/qt5-qt6-lookup-r35-unit1-dev13`, pair ID
+`5f11061816af0610af11641da2f7beca411ffa8d3c70d4818e1fc66f36158c6b`,
+is stable within each product and retains exactly 152 field-level differences
+for each Qt 6 scenario. All DSL fields and both kinds of headword evidence are
+equivalent. The case-distinct input independently records matching
+backend-selected source signatures that differ from the query signature,
+proving that this field is not derived from the query. The MDict result lacks
+the outer `mdict` presentation class in Qt 6, one internal link, and two
+CSS/JavaScript article resource references and their media types. Those bounded
+omissions shift the ordered
+reference, interleaved content-sequence, and styled-run leaves for each of two
+exact probes; seven suggestion positions also differ. Thus 152 is a strict
+leaf count, not a count of independent product defects. The comparison SHA-256
+is `2717f1f9a8a517f6e6572e6b3736aae443f70fbcee8712bfab70ef82c35eed7c`.
+No equality key was removed: equivalent semantic HTML is canonicalized, while
+exact source headwords, exact internal/external link targets, the MDict layout
+class, inline presentation and its visible-text position, ordered reference
+binding and multiplicity, non-text resource position, resources, media types,
+and ordered exact suggestions remain strict. Displayed headwords, visible text,
+and styled text collapse only HTML-collapsible ASCII whitespace; nonbreaking
+and other Unicode spacing remains strict. All derived text values are
+represented only by hashes and UTF-8 sizes; resource identifiers and media
+types remain structural metadata. These findings route to the MDict-owned
+correction work in Unit 2; Units 3 through 5 remain unchanged.
+The complete Release build succeeds, all 133 CTest cases pass when the
+WebEngine smoke cases run serially, and all 159 Python tests pass with two
+platform-condition skips.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an
