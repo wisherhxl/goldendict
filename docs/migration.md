@@ -223,8 +223,15 @@ StarDict ranks and deduplicates matching index headwords without reading
 article bodies, while the public headless response preserves dictionary and
 language identity, canonical match metadata, filtering, cancellation,
 deadlines, partial errors, global cross-dictionary ranking, and deterministic
-result limits. The installed consumer exercises this lightweight path
-independently of prefix article lookup.
+result limits. Global ranking reproduces the frozen product's ordered exact,
+progressively folded exact, surrounded whole-word, progressively folded
+prefix, and final fallback categories. Match position orders surrounded
+results, displayed code-point length orders prefix results, and lexical
+spelling breaks equal ranks. Foundation uses exact copies of the frozen Qt 5
+Unicode 5.2 case/diacritic tables for this product-ordering path and shares the
+frozen whitespace/punctuation policy with the MDict suffix index rather than
+inferring either behavior from the host ICU version. The installed consumer
+exercises this lightweight path independently of prefix article lookup.
 The next foundation increments add private table-driven transliteration
 primitives. Russian transliteration preserves the pinned
 longest-match, case-sensitive mapping and unmatched-Unicode behavior while

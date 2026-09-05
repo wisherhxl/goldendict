@@ -332,6 +332,8 @@ class ApplicationServiceTest : public QObject {
     void EnforcesRuntimeDiacriticCapability();
     void ReturnsRankedPrefixMatches();
     void ReturnsLightweightHeadwordSuggestions();
+    void RanksMdictWordStartSuggestionsLikeLegacyProduct();
+    void RanksAllLegacyWordFinderSuggestionCategories();
     void FiltersBoundedHeadwordSuggestionsWithWildcards();
     void FiltersBoundedHeadwordSuggestionsWithRegularExpressions();
     void RejectsInvalidOrUnseededHeadwordPatterns();
@@ -4515,14 +4517,14 @@ void ApplicationServiceTest::CatalogUsesLegacyDiscoveryOrder() {
     const auto alpha = test::WriteDslFixture(configured_first / "alpha");
     const auto beta_bgl = test::WriteBglFixture(configured_first / "Beta");
     const auto beta_dsl = test::WriteDslFixture(configured_first / "Beta");
-    const auto beta_mdict = test::WriteMdictContainer(
-        configured_first / "Beta" / "fixture.mdx", "Fixture MDict",
-        {{"word", "article"}});
+    const auto beta_mdict =
+        test::WriteMdictContainer(configured_first / "Beta" / "fixture.mdx",
+                                  "Fixture MDict", {{"word", "article"}});
     const auto first_top = test::WriteDslFixture(configured_first);
     const auto second_top = test::WriteDslFixture(configured_second);
 
-    const auto sounds = formats::sounddir::test::WriteSoundDirectoryFixture(
-        root / "sounds");
+    const auto sounds =
+        formats::sounddir::test::WriteSoundDirectoryFixture(root / "sounds");
     const auto morphology = root / "morphology";
     const auto hunspell = test::WriteHunspellFixture(
         morphology, "en_US", "SET UTF-8\n", "1\nword\n");
@@ -4540,14 +4542,10 @@ void ApplicationServiceTest::CatalogUsesLegacyDiscoveryOrder() {
         return path.make_preferred().string();
     };
     const std::vector<std::string> expected_sources = {
-        preferred(alpha),
-        preferred(beta_bgl),
-        preferred(beta_dsl),
-        preferred(beta_mdict),
-        preferred(first_top),
-        preferred(second_top),
-        preferred(sounds),
-        preferred(hunspell.affix_file),
+        preferred(alpha),     preferred(beta_bgl),
+        preferred(beta_dsl),  preferred(beta_mdict),
+        preferred(first_top), preferred(second_top),
+        preferred(sounds),    preferred(hunspell.affix_file),
     };
     std::vector<std::string> actual_sources;
     actual_sources.reserve(catalog.size());
@@ -4582,8 +4580,8 @@ void ApplicationServiceTest::RegistersOnlyEnabledMorphologyDictionaries() {
     auto service = CreateDictionaryService(round_trip);
     const auto catalog = service->GetCatalog();
     QCOMPARE(catalog.size(), std::size_t{2});
-    const auto morphology = std::find_if(
-        catalog.begin(), catalog.end(), [](const auto& identity) {
+    const auto morphology =
+        std::find_if(catalog.begin(), catalog.end(), [](const auto& identity) {
             return identity.id.rfind("hunspell-", 0U) == 0U;
         });
     QVERIFY(morphology != catalog.end());
@@ -4591,18 +4589,18 @@ void ApplicationServiceTest::RegistersOnlyEnabledMorphologyDictionaries() {
     QCOMPARE(morphology->source,
              (root / "en_US.aff").make_preferred().string());
     QCOMPARE(morphology->headword_count, std::size_t{1});
-    QVERIFY(std::any_of(
-        catalog.begin(), catalog.end(), [](const auto& identity) {
+    QVERIFY(
+        std::any_of(catalog.begin(), catalog.end(), [](const auto& identity) {
             return identity.id.rfind("stardict-", 0U) == 0U;
         }));
 
     auto rebuilt = CreateDictionaryService(round_trip);
     const auto rebuilt_catalog = rebuilt->GetCatalog();
-    const auto rebuilt_morphology = std::find_if(
-        rebuilt_catalog.begin(), rebuilt_catalog.end(),
-        [](const auto& identity) {
-            return identity.id.rfind("hunspell-", 0U) == 0U;
-        });
+    const auto rebuilt_morphology =
+        std::find_if(rebuilt_catalog.begin(), rebuilt_catalog.end(),
+                     [](const auto& identity) {
+                         return identity.id.rfind("hunspell-", 0U) == 0U;
+                     });
     QVERIFY(rebuilt_morphology != rebuilt_catalog.end());
     QCOMPARE(rebuilt_morphology->id, morphology->id);
     QCOMPARE(rebuilt_morphology->source, morphology->source);
@@ -5392,6 +5390,89 @@ void ApplicationServiceTest::ReturnsLightweightHeadwordSuggestions() {
     QCOMPARE(unavailable.errors.size(), std::size_t{1});
     QCOMPARE(unavailable.errors.front().code,
              LookupErrorCode::kDictionaryUnavailable);
+}
+
+void ApplicationServiceTest::RanksMdictWordStartSuggestionsLikeLegacyProduct() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteMdictContainer(root / "fixture.mdx", "Fixture MDict",
+                              {{"accord", "exact"},
+                               {"accordable", "prefix"},
+                               {"accordance", "prefix"},
+                               {"accordances", "prefix"},
+                               {"in accord", "word start"},
+                               {"in accordance with", "word start"},
+                               {"of your own accord", "word start"},
+                               {"with one accord", "word start"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    SuggestionQuery query;
+    query.text = "accor";
+    query.result_limit = 8U;
+
+    const auto response = service->Suggest(query);
+
+    QVERIFY(response.errors.empty());
+    std::vector<std::string> headwords;
+    for (const auto& suggestion : response.suggestions)
+        headwords.push_back(suggestion.headword);
+    QCOMPARE(headwords, (std::vector<std::string>{
+                            "accord", "accordable", "accordance", "accordances",
+                            "in accord", "in accordance with",
+                            "of your own accord", "with one accord"}));
+
+    query.text = "accord";
+    const auto whole_word_response = service->Suggest(query);
+    QVERIFY(whole_word_response.errors.empty());
+    headwords.clear();
+    for (const auto& suggestion : whole_word_response.suggestions)
+        headwords.push_back(suggestion.headword);
+    QCOMPARE(headwords, (std::vector<std::string>{
+                            "accord", "in accord", "with one accord",
+                            "of your own accord", "accordable", "accordance",
+                            "accordances", "in accordance with"}));
+}
+
+void ApplicationServiceTest::RanksAllLegacyWordFinderSuggestionCategories() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteMdictContainer(root / "fixture.mdx", "Fixture MDict",
+                              {{"strasse", "exact"},
+                               {"straße", "full case"},
+                               {"strássé", "diacritics"},
+                               {"s.t.r.a.s.s.e", "punctuation"},
+                               {"s t r a s s e", "whitespace"},
+                               {"a strasse", "inside at two"},
+                               {"with strasse", "inside at five"},
+                               {"a strássé", "diacritic inside"},
+                               {"a s.t.r.a.s.s.e", "punctuation inside"},
+                               {"strassex", "prefix"},
+                               {"strásséx", "diacritic prefix"},
+                               {"s.t.r.a.s.s.ex", "punctuation prefix"},
+                               {"s t r a s s ex", "whitespace prefix"},
+                               {"in strassex", "worst"}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    auto service = CreateDictionaryService(configuration);
+    SuggestionQuery query;
+    query.text = "strasse";
+    query.result_limit = 14U;
+
+    const auto response = service->Suggest(query);
+
+    QVERIFY(response.errors.empty());
+    std::vector<std::string> headwords;
+    for (const auto& suggestion : response.suggestions)
+        headwords.push_back(suggestion.headword);
+    QCOMPARE(headwords,
+             (std::vector<std::string>{
+                 "strasse", "straße", "strássé", "s.t.r.a.s.s.e",
+                 "s t r a s s e", "a strasse", "with strasse", "a strássé",
+                 "a s.t.r.a.s.s.e", "strassex", "strásséx", "s.t.r.a.s.s.ex",
+                 "s t r a s s ex", "in strassex"}));
 }
 
 void ApplicationServiceTest::FiltersBoundedHeadwordSuggestionsWithWildcards() {

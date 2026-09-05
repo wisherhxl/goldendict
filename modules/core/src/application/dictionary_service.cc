@@ -67,6 +67,7 @@
 #include "full_text_index_lifecycle_inspection.h"
 #include "goldendict/core/application.h"
 #include "input_phrase.h"
+#include "legacy_suggestion_ranking.h"
 
 namespace goldendict::core {
 namespace {
@@ -853,26 +854,15 @@ double PrefixScore(std::string_view folded_query,
            static_cast<double>(headword_length);
 }
 
-bool SuggestionLess(const HeadwordSuggestion& left,
-                    const HeadwordSuggestion& right) noexcept {
-    const bool left_exact = left.match.mode == MatchMode::kExact;
-    const bool right_exact = right.match.mode == MatchMode::kExact;
-    if (left_exact != right_exact) {
-        return left_exact;
-    }
-    const auto left_length = Utf8CodePointCount(left.match.normalized_headword);
-    const auto right_length =
-        Utf8CodePointCount(right.match.normalized_headword);
-    if (left_length != right_length) {
-        return left_length < right_length;
-    }
-    if (left.match.normalized_headword != right.match.normalized_headword) {
-        return left.match.normalized_headword < right.match.normalized_headword;
-    }
-    if (left.headword != right.headword) {
-        return left.headword < right.headword;
-    }
-    return false;
+struct RankedSuggestion {
+    HeadwordSuggestion value;
+    application::LegacySuggestionRank rank;
+};
+
+bool SuggestionLess(const RankedSuggestion& left,
+                    const RankedSuggestion& right) noexcept {
+    return application::LegacySuggestionLess(
+        left.rank, left.value.headword, right.rank, right.value.headword);
 }
 
 std::optional<std::string> ValidateQuery(const LookupQuery& query) {
@@ -1938,6 +1928,7 @@ class ServiceState final {
             }
         }
         const std::string folded_query = foundation::FoldForLookup(seed);
+        const auto ranking_query = foundation::FoldForLegacyPrefixRanking(seed);
         if (query.dictionary_filter_active && query.dictionary_ids.empty()) {
             return response;
         }
@@ -2018,8 +2009,19 @@ class ServiceState final {
                      "Requested dictionary is unavailable"});
             }
         }
-        std::stable_sort(response.suggestions.begin(),
-                         response.suggestions.end(), SuggestionLess);
+        std::vector<RankedSuggestion> ranked;
+        ranked.reserve(response.suggestions.size());
+        for (auto& suggestion : response.suggestions) {
+            const auto rank = application::RankLegacySuggestion(
+                suggestion.headword, ranking_query);
+            ranked.push_back({std::move(suggestion), rank});
+        }
+        std::stable_sort(ranked.begin(), ranked.end(), SuggestionLess);
+        response.suggestions.clear();
+        response.suggestions.reserve(ranked.size());
+        for (auto& suggestion : ranked) {
+            response.suggestions.push_back(std::move(suggestion.value));
+        }
         if (response.suggestions.size() > options.result_limit) {
             response.suggestions.resize(options.result_limit);
         }

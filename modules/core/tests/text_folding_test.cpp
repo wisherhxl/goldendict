@@ -20,6 +20,7 @@ class TextFoldingTest : public QObject {
     void FoldsLookupEquivalentText_data();
     void FoldsLookupEquivalentText();
     void UsesInjectedSeparatorPolicy();
+    void PreservesFrozenLegacyPrefixRankingFolds();
     void NormalizesExactLookupText();
     void RejectsMalformedUtf8();
 };
@@ -72,6 +73,24 @@ void TextFoldingTest::UsesInjectedSeparatorPolicy() {
     QCOMPARE(FoldForLookupWithSeparatorPolicy("A-B C!", IsHyphen), "ab c!");
     QVERIFY_EXCEPTION_THROWN(
         FoldForLookupWithSeparatorPolicy("word", nullptr), TextFoldingError);
+}
+
+void TextFoldingTest::PreservesFrozenLegacyPrefixRankingFolds() {
+    const auto legacy_diacritic = FoldForLegacyPrefixRanking("r\xc3\xb8me");
+    QCOMPARE(legacy_diacritic.without_diacritics, "rome");
+
+    const auto post_unicode_5_2_upper =
+        FoldForLegacyPrefixRanking("\xe1\xb2\x90");
+    const auto post_unicode_5_2_lower =
+        FoldForLegacyPrefixRanking("\xe1\x83\x90");
+    QCOMPARE(post_unicode_5_2_upper.simple_case, "\xe1\xb2\x90");
+    QCOMPARE(post_unicode_5_2_lower.simple_case, "\xe1\x83\x90");
+    QVERIFY(post_unicode_5_2_upper.simple_case !=
+            post_unicode_5_2_lower.simple_case);
+
+    QVERIFY_EXCEPTION_THROWN(
+        FoldForLegacyPrefixRanking(std::string("\xc3\x28", 2)),
+        TextFoldingError);
 }
 
 void TextFoldingTest::RejectsMalformedUtf8() {

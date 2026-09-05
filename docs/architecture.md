@@ -587,10 +587,20 @@ one sanitized headword per LF-terminated line, preserve enumeration order and
 exact-duplicate semantics, and atomically replace the destination only after
 every page is written and flushed. Unsuccessful exports remove the sibling
 temporary file and leave an existing destination unchanged.
-Prefix ranking is core behavior: canonical exact matches come first, followed
-by shorter canonical candidates with deterministic scores. Neither the GUI nor
-a future AI transport reimplements folding, ranking, limits, cancellation, or
-dictionary traversal.
+Prefix ranking is core behavior and reproduces the frozen `WordFinder`
+category ladder. Exact simple-case matches are followed by full-case,
+diacritic, punctuation, and whitespace-folded exact matches; surrounded
+whole-word matches precede true prefixes, with progressively folded variants
+retaining their original category order. Surrounded matches use their
+code-point position, prefixes use displayed-headword code-point length, and
+equal ranks use lexical spelling. Remaining backend candidates form the final
+lexical category. A private application ranking policy owns this ladder while
+Foundation owns exact copies of the frozen Qt 5 Unicode 5.2 case/diacritic
+tables and whitespace/punctuation membership. This keeps product ranking
+independent of later host-ICU mappings and keeps the MDict index and
+application ranking boundaries consistent. Neither the GUI nor a future AI
+transport reimplements folding, ranking, limits, cancellation, or dictionary
+traversal.
 
 Legacy text encoding is also a private foundation concern. Format adapters use
 one bounded, strict UTF-8 conversion primitive rather than Qt GUI-era codec

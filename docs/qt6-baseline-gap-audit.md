@@ -1419,6 +1419,53 @@ align `DictionaryService` ranking with the frozen `WordFinder` presentation
 order. Article presentation and resource-reference differences remain
 separate Unit 2 work.
 
+Unit 2B ranking impact check: **conforming product correction and design-record
+clarification; no public-interface or module-boundary change** (2026-09-06).
+The frozen product uses the complete `WordFinder` category ladder: exact
+simple-case matches; full-case-, diacritic-, punctuation-, and
+whitespace-folded exact matches; surrounded whole-word matches and their
+diacritic/punctuation-folded variants; four progressively folded prefix
+categories; and a final fallback. Surrounded matches are ordered by saturated
+code-point position, prefixes by saturated displayed-headword code-point
+length, and equal ranks lexically. The Qt 6 comparator previously reduced this
+to exact plus length-ranked non-exact candidates. An initial correction then
+over-corrected the observed `accor` probe to exact/prefix/fallback and failed
+the independent completion audit because an `accord` query must rank
+surrounded `in accord` ahead of `accordable`.
+The correction remains a private Core ranking strategy: format backends still
+own candidate discovery, `DictionaryService` still owns cross-dictionary
+ranking and result limits, and Widgets continues to consume the returned order
+without reimplementation. Foundation now owns the frozen Qt 5
+Unicode 5.2 case/diacritic tables and whitespace/punctuation membership used
+by global ranking. The separator policy is also shared by MDict suffix
+indexing, preventing a format-private dependency or host-ICU category drift.
+Generated MDict fixtures pin the exact eight-item `accor` order found in the
+real OALD9 probe, the distinct `accord` whole-word order, every frozen ranking
+category, and surrounded-match position. The first full-ladder correction
+failed its independent re-audit because it still used ICU 74.2 case and
+diacritic folding: frozen Qt 5 maps U+00F8 to `o` and does not apply the
+post-Unicode-5.2 U+1C90-to-U+10D0 case mapping. The corrected Foundation path
+uses byte-identical copies of the frozen generated tables; direct and ranking
+policy tests cover those two counterexamples across exact, surrounded, and
+prefix categories. Final development evidence at
+`evidence/qt5-qt6-lookup-r35-unit2b-ranking-dev4`, pair
+`47c92adf0378310403f99fa112602e497705a89a050718b02b3454cc3b217242`,
+using a Qt 6 candidate based on `4d020d85633895711832cce5dc8378212e4babff`,
+reduced the clean/warm comparison from 298 to 276 differences and removed all
+22 suggestion leaves. Clean and warm observations are internally stable for
+both products. The remaining comparison has SHA-256
+`335c0edcd27bd14082f13dd83d6e00094c59275912e5c1bc3d5c662cdcb23700`;
+all of its differences are assigned to the separate article-presentation and
+resource-reference recovery work.
+The copied case and diacritic tables match the frozen source files with
+SHA-256 values
+`97c764c3049d81130501c43d27ad5ca41870b6a6c1d405d3b27beaf3250d096e`
+and
+`6f7758da447a0e56d390fdb76142ca653fc1e20e9cf8a98abb4e01bcff77c8ec`.
+The complete Release build succeeds, all 134 CTest cases pass serially, and
+the repository Python suite passes all 159 tests with two platform-condition
+skips.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

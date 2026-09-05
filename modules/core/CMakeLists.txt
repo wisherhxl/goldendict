@@ -447,6 +447,15 @@ if(TARGET text_folding_test)
   target_link_libraries(text_folding_test PRIVATE ICU::uc)
 endif()
 
+if(TARGET legacy_suggestion_ranking_test)
+  target_sources(legacy_suggestion_ranking_test
+    PRIVATE
+      src/foundation/text_folding.cc
+      src/foundation/utf8.cc
+  )
+  target_link_libraries(legacy_suggestion_ranking_test PRIVATE ICU::uc)
+endif()
+
 if(TARGET transliteration_test)
   target_sources(transliteration_test PRIVATE
     src/dictionary/chinese_conversion.cc

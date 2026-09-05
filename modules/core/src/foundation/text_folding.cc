@@ -3,6 +3,7 @@
 #include "text_folding.h"
 
 #include <cstdint>
+#include <iterator>
 #include <limits>
 #include <string>
 #include <vector>
@@ -11,11 +12,22 @@
 #include <unicode/unorm2.h>
 #include <unicode/ustring.h>
 #include <unicode/utf16.h>
+#include <unicode/utf8.h>
 
+#include "legacy_folding_policy.h"
 #include "utf8.h"
 
 namespace goldendict::core::foundation {
 namespace {
+
+namespace legacy_generated {
+
+using wchar = char32_t;
+
+#include "legacy_case_folding.inc"
+#include "legacy_diacritic_folding.inc"
+
+}  // namespace legacy_generated
 
 void RequireSuccess(UErrorCode status, const char* operation) {
     if (U_FAILURE(status)) {
@@ -43,6 +55,111 @@ std::vector<UChar> FromUtf8(std::string_view text) {
     u_strFromUTF8(output.data(), output_length, nullptr, text.data(),
                   source_length, &status);
     RequireSuccess(status, "Cannot convert UTF-8 text");
+    return output;
+}
+
+std::vector<char32_t> LegacyCodePointsFromUtf8(std::string_view text) {
+    if (!IsValidUtf8(text) ||
+        text.size() > static_cast<std::size_t>(
+                          std::numeric_limits<std::int32_t>::max())) {
+        throw TextFoldingError("Lookup text is not valid bounded UTF-8");
+    }
+    std::vector<char32_t> output;
+    output.reserve(text.size());
+    std::int32_t position = 0;
+    const auto length = static_cast<std::int32_t>(text.size());
+    while (position < length) {
+        UChar32 code_point = 0;
+        U8_NEXT(text.data(), position, length, code_point);
+        output.push_back(static_cast<char32_t>(code_point));
+    }
+    return output;
+}
+
+std::string LegacyCodePointsToUtf8(const std::vector<char32_t>& input) {
+    std::string output;
+    output.reserve(input.size());
+    for (const auto code_point : input) {
+        if (code_point <= 0x7fU) {
+            output.push_back(static_cast<char>(code_point));
+        } else if (code_point <= 0x7ffU) {
+            output.push_back(static_cast<char>(0xc0U | (code_point >> 6U)));
+            output.push_back(
+                static_cast<char>(0x80U | (code_point & 0x3fU)));
+        } else if (code_point <= 0xffffU) {
+            output.push_back(static_cast<char>(0xe0U | (code_point >> 12U)));
+            output.push_back(
+                static_cast<char>(0x80U | ((code_point >> 6U) & 0x3fU)));
+            output.push_back(
+                static_cast<char>(0x80U | (code_point & 0x3fU)));
+        } else {
+            output.push_back(static_cast<char>(0xf0U | (code_point >> 18U)));
+            output.push_back(
+                static_cast<char>(0x80U | ((code_point >> 12U) & 0x3fU)));
+            output.push_back(
+                static_cast<char>(0x80U | ((code_point >> 6U) & 0x3fU)));
+            output.push_back(
+                static_cast<char>(0x80U | (code_point & 0x3fU)));
+        }
+    }
+    return output;
+}
+
+bool IsLegacyCombiningMark(char32_t code_point) noexcept {
+    return (code_point >= 0x300U && code_point <= 0x36fU) ||
+           (code_point >= 0x1dc0U && code_point <= 0x1dffU) ||
+           (code_point >= 0x20d0U && code_point <= 0x20ffU) ||
+           (code_point >= 0xfe20U && code_point <= 0xfe2fU);
+}
+
+std::vector<char32_t> LegacySimpleCaseFold(
+    const std::vector<char32_t>& input) {
+    std::vector<char32_t> output;
+    output.reserve(input.size());
+    for (const auto code_point : input) {
+        output.push_back(legacy_generated::foldCaseSimple(code_point));
+    }
+    return output;
+}
+
+std::vector<char32_t> LegacyFullCaseFold(
+    const std::vector<char32_t>& input) {
+    std::vector<char32_t> output;
+    output.reserve(input.size());
+    for (const auto code_point : input) {
+        char32_t folded[legacy_generated::foldCaseMaxOut]{};
+        const auto size = legacy_generated::foldCase(code_point, folded);
+        output.insert(output.end(), folded, folded + size);
+    }
+    return output;
+}
+
+std::vector<char32_t> LegacyDiacriticFold(
+    const std::vector<char32_t>& input) {
+    std::vector<char32_t> output;
+    output.reserve(input.size());
+    std::size_t position = 0U;
+    while (position < input.size()) {
+        std::size_t consumed = 0U;
+        const auto folded = legacy_generated::foldDiacritic(
+            input.data() + position, input.size() - position, consumed);
+        if (!IsLegacyCombiningMark(folded)) {
+            output.push_back(folded);
+        }
+        position += consumed;
+    }
+    return output;
+}
+
+template <typename Predicate>
+std::vector<char32_t> RemoveLegacyCodePoints(
+    const std::vector<char32_t>& input, Predicate should_remove) {
+    std::vector<char32_t> output;
+    output.reserve(input.size());
+    std::copy_if(input.begin(), input.end(), std::back_inserter(output),
+                 [&should_remove](char32_t code_point) {
+                     return !should_remove(static_cast<UChar32>(code_point));
+                 });
     return output;
 }
 
@@ -218,6 +335,26 @@ std::string NormalizeForExactLookup(std::string_view text,
     RequireSuccess(status, "Cannot initialize NFD normalization");
     result = RemoveMarks(Normalize(nfd, result));
     return ToUtf8(Normalize(nfc, result));
+}
+
+LegacyPrefixRankingForms FoldForLegacyPrefixRanking(std::string_view text) {
+    LegacyPrefixRankingForms forms;
+    const auto input = LegacyCodePointsFromUtf8(text);
+    if (input.empty()) {
+        return forms;
+    }
+    const auto simple = LegacySimpleCaseFold(input);
+    forms.simple_case = LegacyCodePointsToUtf8(simple);
+    const auto full = LegacyFullCaseFold(simple);
+    forms.full_case = LegacyCodePointsToUtf8(full);
+    const auto without_diacritics = LegacyDiacriticFold(full);
+    forms.without_diacritics = LegacyCodePointsToUtf8(without_diacritics);
+    const auto without_punctuation = RemoveLegacyCodePoints(
+        without_diacritics, legacy::IsPunctuation);
+    forms.without_punctuation = LegacyCodePointsToUtf8(without_punctuation);
+    forms.without_whitespace = LegacyCodePointsToUtf8(
+        RemoveLegacyCodePoints(without_punctuation, legacy::IsWhitespace));
+    return forms;
 }
 
 }  // namespace goldendict::core::foundation
