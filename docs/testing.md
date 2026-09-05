@@ -343,8 +343,10 @@ It is bound to the approved real-corpus manifest and to
 SHA-256
 `1d66d88eb92ffede24291fa39bde16f1c035711b60e0430f0a7d2f0d8df2b467`.
 The largest actual archive is 4,090,975,853 bytes, while its aggregate
-uncompressed payload is 4,482,738,078 bytes; four other cataloged archives use
-ZIP64 entry counts. Run `qt6_real_dsl_observer` through `run_with_conan.ps1`
+uncompressed payload is 4,482,738,078 bytes. One archive uses a ZIP64 end
+record for 117,421 entries; three classic archives retain complete central
+directories while their 16-bit end-record counts wrap modulo 65,536. Run
+`qt6_real_dsl_observer` through `run_with_conan.ps1`
 and the Qt 5 adapter through its documented MSYS2 runtime, for both
 `clean-discovery` and `warm-restart`, using the same paired-workspace command
 shape as R3.3 with `real_dsl_acceptance.py` and the R3.4 catalog. Comparison
@@ -364,6 +366,23 @@ addition to bounded aggregate hashes. Its comparison SHA-256 is
 `4a6834299fa27e8dbce42944264b466618d37727ae16c1cefbd3159759559e42`.
 Do not weaken these equality keys; repeat the same frozen catalog after each
 R3.4 correction.
+
+The final Unit 2 pair at
+`evidence/qt5-qt6-dsl-r34-unit2-final` proves private Qt 6 ownership and lazy
+retrieval for all five matching resource archives in both clean and warm
+states. Pair ID
+`a57d3b9887a577d39fead612fd4bff50b2f145e3d79ac93d2e21f730c1664059`
+has comparison SHA-256
+`d24b4bf9a4a13b1db620632c9419b6cc9104bee601ec66a3bf0ffc5a43d6647b`.
+Every selected resource matches Qt 5 by exact size and SHA-256, every matching
+archive is owned, and the orphan remains unowned. The strict comparison now
+retains 16 differences per Qt 6 observation: three missing abbreviation
+companions, five visible-text hashes and sizes, and three WAV media-type
+values. Generated tests additionally cover classic and ZIP64 archives,
+stored/deflated members, classic count wrap, directory precedence, unsafe and
+orphan members, source mutation, and CRC corruption. Those remaining product
+differences belong to the next R3.4 correction unit; the comparison must
+continue to exit nonzero until they are resolved.
 
 `mdict_reader_test::UsesLegacyFallbackName` pins the frozen Qt 5 title fallback
 for empty, placeholder, and header titles shorter than five UTF-16 code units,
@@ -1656,8 +1675,8 @@ ownership, optional/tilde/alternate-headword alias deduplication, exact
 articles, UTF-8 and UTF-16 decoding, and plain and gzip sources. Inert-assembly
 checks must accept visible article text while excluding directives,
 annotations, alias-only text, resource paths and bytes, link/image targets,
-raw DSL/HTML markup, abbreviation dictionaries, future resource ZIPs, and
-unsupported nested cards.
+raw DSL/HTML markup, abbreviation dictionaries, adjacent resource ZIP
+contents, and unsupported nested cards.
 
 Private lifecycle tests must cover create, reuse, selected-source mutation and
 replacement, switching between `.dsl` and `.dsl.dz`, corrupt rebuild, typed

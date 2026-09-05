@@ -1095,8 +1095,10 @@ Qt 6 DSL backend discovers only adjacent resource directories, so the first
 pair is expected to expose a product gap rather than prove equivalence.
 
 The approved corpus contains five resource archives that have matching DSL
-sources and one orphan archive that must remain unowned. Four matching archives
-require ZIP64 entry counts. The largest archive is 4,090,975,853 bytes (greater
+sources and one orphan archive that must remain unowned. One matching archive
+uses a ZIP64 end record for 117,421 entries; three classic archives have full
+central directories while their 16-bit entry counts wrap modulo 65,536. The
+largest archive is 4,090,975,853 bytes (greater
 than 4 GB decimal, but less than 4 GiB); its 4,482,738,078-byte aggregate
 uncompressed payload is greater than 4 GiB. R3.4 therefore avoids the ambiguous
 earlier description "archive larger than 4 GiB" and tests the exact bounded
@@ -1144,6 +1146,27 @@ article-text differences for all five probes and a platform MIME-name
 difference for WAV resources. These are retained product differences, not
 acceptance-harness failures. They remain assigned to separate R3.4 correction
 units; R3.4 stays open until a fresh repeated pair is equivalent.
+
+Unit 2 implementation result: **Resource-archive parity complete; remaining
+article, abbreviation, and MIME differences retained** (2026-09-05). The
+private DSL `ResourceZip` component performs bounded central-directory-only
+discovery, supports classic wrapped entry counts and ZIP64 metadata, and
+lazily retrieves one stored or deflated member with path confinement, size,
+CRC, and source-revision checks. Directory resources retain precedence, and
+archives without a matching DSL source remain unattached. This preserves the
+existing Core resource contract and exposes no archive-specific public API.
+
+The final Unit 2 pair is retained at
+`evidence/qt5-qt6-dsl-r34-unit2-final`, pair ID
+`a57d3b9887a577d39fead612fd4bff50b2f145e3d79ac93d2e21f730c1664059`.
+Its comparison has external SHA-256
+`d24b4bf9a4a13b1db620632c9419b6cc9104bee601ec66a3bf0ffc5a43d6647b`.
+All five archive resources match Qt 5 by exact size and SHA-256 in clean and
+warm observations, all five matching archives are owned, and the orphan is
+unowned. The comparison difference count fell from 38 to 16 per Qt 6
+observation. Unit 3 owns the retained three abbreviation-component, five
+visible-text hash/size, and three WAV media-type differences. R3.4 therefore
+remains open without weakening any equality key.
 
 The design uses the existing Adapter boundary for version-specific evidence
 collection and a coordinator for paired-run state and publication. These

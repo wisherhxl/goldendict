@@ -425,8 +425,16 @@ ownership and stable
 expansions contribute to the reported headword count but never enter lookup or
 enumeration indexes.
 Resource reads are confined to safe relative paths beside the dictionary or
-under either applicable `.files` directory. Abbreviation expansion, resource
-ZIP archives, and nested cards remain later parity work.
+under either applicable `.files` directory. Adjacent `.dsl.files.zip` and
+`.dsl.dz.files.zip` archives are owned by a private DSL `ResourceZip`
+component rather than a public Core interface. Discovery reads only a bounded
+central directory, supports exact ZIP64 counts and legacy classic counts that
+wrap modulo 65,536, and retains only safe relative member identifiers and
+immutable source metadata. Retrieval lazily reads one bounded stored or raw-
+deflate member, verifies its CRC and the unchanged archive revision, and keeps
+directory resources ahead of archive members. Archives without a matching DSL
+source remain unattached. Abbreviation expansion and nested cards remain later
+parity work.
 
 Babylon BGL consumes original `.bgl` containers. The private adapter strictly
 validates the Babylon signature, embedded gzip stream, variable-width block
@@ -914,8 +922,8 @@ aliases and do not duplicate the document. Stable provenance is
 bounded plain text produced by passing the existing sanitized `text/html`
 article through the inert assembler. Alias-only text, directives, annotations,
 resource paths and bytes, link and image targets, raw DSL or HTML markup,
-unsupported abbreviation dictionaries, future resource ZIPs, and unsupported
-nested-card behavior are excluded.
+unsupported abbreviation dictionaries, adjacent resource ZIP contents, and
+unsupported nested-card behavior are excluded.
 
 The distinct private `.gdfts` artifact uses the selected `.dsl` or `.dsl.dz`
 file as its complete source revision; content mutation, replacement, or a

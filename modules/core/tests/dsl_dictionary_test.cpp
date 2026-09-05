@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <string_view>
 #include <thread>
 
 #include "../src/formats/dsl/dsl_dictionary.h"
@@ -30,10 +31,18 @@ class SlowFullTextToken final : public CancellationToken {
     }
 };
 
+std::string ResourceText(const dictionary::Resource& resource) {
+    return {reinterpret_cast<const char*>(resource.data.data()),
+            resource.data.size()};
+}
+
 class DslDictionaryTest : public QObject {
     Q_OBJECT
    private slots:
     void ExposesIdentityHtmlSuggestionsAndResources();
+    void ReadsClassicAndZip64ResourceArchives();
+    void ReadsOverflowedClassicResourceArchiveCount();
+    void PreservesResourcePrecedenceAndArchiveSafety();
     void RejectsCancellationAndUnsafeResources();
     void BuildsDeduplicatedFullTextFromInertArticles();
     void PreservesPrimaryFullTextOwnershipAfterLegacyMerge();
@@ -62,6 +71,102 @@ void DslDictionaryTest::ExposesIdentityHtmlSuggestionsAndResources() {
     const auto resource = dictionary.GetResource("images/cup.png");
     QVERIFY(resource.has_value());
     QCOMPARE(resource->media_type, "image/png");
+}
+
+void DslDictionaryTest::ReadsClassicAndZip64ResourceArchives() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+
+    const auto plain_path = test::WriteDslFixture(root / "classic");
+    test::WriteDslResourceZip(
+        plain_path, {{"images/stored.png", "stored-image", false},
+                     {"styles/main.css", "body { color: green; }", true}});
+    const Dictionary plain = Dictionary::Open("classic-id", plain_path);
+    const auto stored = plain.GetResource("images/stored.png");
+    QVERIFY(stored.has_value());
+    QCOMPARE(stored->media_type, "image/png");
+    QCOMPARE(ResourceText(*stored), "stored-image");
+    const auto deflated = plain.GetResource("styles/main.css");
+    QVERIFY(deflated.has_value());
+    QCOMPARE(deflated->media_type, "text/css");
+    QCOMPARE(ResourceText(*deflated), "body { color: green; }");
+
+    const auto compressed_path =
+        test::CompressDslFixture(test::WriteDslFixture(root / "zip64"));
+    test::WriteDslResourceZip(
+        compressed_path, {{"audio/sample.wav", "RIFF-zip64-resource", true}},
+        true);
+    const Dictionary zip64 = Dictionary::Open("zip64-id", compressed_path);
+    const auto audio = zip64.GetResource("audio/sample.wav");
+    QVERIFY(audio.has_value());
+    QCOMPARE(audio->media_type, "audio/wav");
+    QCOMPARE(ResourceText(*audio), "RIFF-zip64-resource");
+}
+
+void DslDictionaryTest::ReadsOverflowedClassicResourceArchiveCount() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto path = test::WriteDslFixture(root);
+    std::vector<test::DslZipResource> resources;
+    resources.reserve(65537U);
+    for (std::size_t index = 0U; index < 65537U; ++index)
+        resources.push_back(
+            {"bulk/" + std::to_string(index) + ".dat", {}, false});
+    resources.back().data = "last-resource";
+    test::WriteDslResourceZip(path, resources);
+
+    const Dictionary dictionary = Dictionary::Open("overflow-id", path);
+    const auto resource = dictionary.GetResource("bulk/65536.dat");
+    QVERIFY(resource.has_value());
+    QCOMPARE(ResourceText(*resource), "last-resource");
+}
+
+void DslDictionaryTest::PreservesResourcePrecedenceAndArchiveSafety() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto path = test::WriteDslFixture(root);
+    const auto archive = test::WriteDslResourceZip(
+        path,
+        {{"shared.txt", "archive", true}, {"../outside.txt", "unsafe", false}});
+    test::WriteDslResource(path, "shared.txt", "directory");
+    test::WriteDslResourceZip(root / "orphan.dsl",
+                              {{"orphan.txt", "orphan", false}});
+
+    const Dictionary dictionary = Dictionary::Open("dsl-id", path);
+    const auto preferred = dictionary.GetResource("shared.txt");
+    QVERIFY(preferred.has_value());
+    QCOMPARE(ResourceText(*preferred), "directory");
+    QVERIFY(!dictionary.GetResource("../outside.txt").has_value());
+    QVERIFY(!dictionary.GetResource("orphan.txt").has_value());
+
+    const auto archive_only_path =
+        test::WriteDslFixture(root / "source-change");
+    const auto changed_archive = test::WriteDslResourceZip(
+        archive_only_path, {{"changed.txt", "before", false}});
+    const Dictionary source_change =
+        Dictionary::Open("source-change-id", archive_only_path);
+    std::ofstream(changed_archive, std::ios::binary | std::ios::app).put('x');
+    QVERIFY_EXCEPTION_THROWN(source_change.GetResource("changed.txt"),
+                             dictionary::Error);
+
+    const auto corrupt_path = test::WriteDslFixture(root / "corrupt");
+    const auto corrupt_archive = test::WriteDslResourceZip(
+        corrupt_path, {{"bad.txt", "original", false}});
+    std::fstream corrupt(corrupt_archive,
+                         std::ios::binary | std::ios::in | std::ios::out);
+    QVERIFY(corrupt.is_open());
+    constexpr std::streamoff kLocalHeaderSize = 30;
+    corrupt.seekp(kLocalHeaderSize + static_cast<std::streamoff>(
+                                         std::string_view("bad.txt").size()));
+    corrupt.put('X');
+    corrupt.close();
+    const Dictionary corrupted = Dictionary::Open("corrupt-id", corrupt_path);
+    QVERIFY_EXCEPTION_THROWN(corrupted.GetResource("bad.txt"),
+                             dictionary::Error);
+    QVERIFY(std::filesystem::is_regular_file(archive));
 }
 
 void DslDictionaryTest::BuildsDeduplicatedFullTextFromInertArticles() {

@@ -25,6 +25,13 @@ dictionary::Error TranslateError(const Error& error) {
                              error.what());
 }
 
+dictionary::Error TranslateError(const ResourceZipError& error) {
+    return dictionary::Error(error.code() == ResourceZipErrorCode::kUnavailable
+                                 ? dictionary::ErrorCode::kUnavailable
+                                 : dictionary::ErrorCode::kInvalidData,
+                             error.what());
+}
+
 std::vector<dictionary::Article> Translate(std::vector<Article> source) {
     std::vector<dictionary::Article> articles;
     articles.reserve(source.size());
@@ -105,6 +112,7 @@ Dictionary Dictionary::Open(
     try {
         Dictionary dictionary;
         dictionary.reader_ = Reader::Open(dictionary_path, preferred_language);
+        dictionary.resource_zip_ = ResourceZip::OpenAdjacent(dictionary_path);
         dictionary.identity_.id = std::move(id);
         dictionary.identity_.name = dictionary.reader_.metadata().name;
         dictionary.identity_.article_count = dictionary.reader_.article_count();
@@ -180,6 +188,8 @@ Dictionary Dictionary::Open(
         }
         return dictionary;
     } catch (const Error& error) {
+        throw TranslateError(error);
+    } catch (const ResourceZipError& error) {
         throw TranslateError(error);
     }
 }
@@ -265,8 +275,24 @@ std::optional<dictionary::Resource> Dictionary::GetResource(
     const dictionary::RequestOptions& options) const {
     dictionary::CheckRequest(options);
     const auto path = ResolveResource(reader_.dictionary_path(), resource_id);
-    if (!path.has_value())
-        return std::nullopt;
+    if (!path.has_value()) {
+        if (!resource_zip_.has_value())
+            return std::nullopt;
+        try {
+            auto data = resource_zip_->Read(resource_id);
+            if (!data.has_value())
+                return std::nullopt;
+            dictionary::Resource resource;
+            resource.id = std::string(resource_id);
+            resource.media_type =
+                dictionary::MediaTypeForResourceId(resource_id);
+            resource.data = std::move(*data);
+            dictionary::CheckRequest(options);
+            return resource;
+        } catch (const ResourceZipError& error) {
+            throw TranslateError(error);
+        }
+    }
     std::error_code error;
     const auto size = std::filesystem::file_size(*path, error);
     if (error || size > kMaximumResourceSize) {

@@ -11,6 +11,7 @@
 
 #include "../../dictionary/dictionary_backend.h"
 #include "dsl_reader.h"
+#include "dsl_resource_zip.h"
 
 namespace goldendict::core::formats::dsl {
 
@@ -67,6 +68,7 @@ class Dictionary final : public dictionary::Backend,
    private:
     dictionary::Identity identity_;
     Reader reader_;
+    std::optional<ResourceZip> resource_zip_;
     std::optional<dictionary::FullTextIndex> full_text_index_;
     std::optional<FullTextError> full_text_error_;
 };

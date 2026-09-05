@@ -722,6 +722,7 @@ if(TARGET dsl_dictionary_test)
       src/formats/dsl/dsl_dictionary.cc
       src/formats/dsl/dsl_headword_parser.cc
       src/formats/dsl/dsl_reader.cc
+      src/formats/dsl/dsl_resource_zip.cc
   )
   target_link_libraries(dsl_dictionary_test PRIVATE ICU::uc ZLIB::ZLIB)
 endif()

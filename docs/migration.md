@@ -1505,8 +1505,8 @@ article are aliases. Provenance is
 `dsl-index:<first-record-ordinal>:<article-ordinal>`. Only bounded plain text
 from inert assembly of the existing `text/html` article is searchable.
 Directives, annotations, alias-only text, resource paths/bytes, link and image
-targets, raw markup, abbreviation dictionaries, future resource ZIPs, and
-unsupported nested cards are excluded.
+targets, raw markup, abbreviation dictionaries, adjacent resource ZIP
+contents, and unsupported nested cards are excluded.
 
 The distinct private `.gdfts` artifact snapshots only the selected `.dsl` or
 `.dsl.dz` source. Mutation, replacement, or switching the discovered
