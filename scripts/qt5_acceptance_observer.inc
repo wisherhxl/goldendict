@@ -18,6 +18,7 @@
 
 #include "btreeidx.hh"
 #include "langcoder.hh"
+#include "wordfinder.hh"
 #include "wstring_qt.hh"
 
 namespace Qt5AcceptanceObserver {
@@ -658,7 +659,9 @@ class LookupPublication: public QObject
   int probeIndex;
   Dictionary::Class * dictionary;
   sptr< Dictionary::DataRequest > articleRequest;
-  sptr< Dictionary::WordSearchRequest > wordRequest;
+  std::unique_ptr< WordFinder > wordFinder;
+  std::vector< sptr< Dictionary::Class > > suggestionDictionaries;
+  bool wordFinderFinished;
   QElapsedTimer elapsed;
 
 public:
@@ -671,7 +674,8 @@ public:
                      QByteArray const & scenario_ ):
     QObject( owner ), catalogHash( catalogHash_ ), conditionsHash( conditionsHash_ ),
     outputPath( outputPath_ ), scenario( scenario_ ), dictionaries( dictionaries_ ),
-    dictionaryIndex( 0 ), probeIndex( 0 ), dictionary( 0 )
+    dictionaryIndex( 0 ), probeIndex( 0 ), dictionary( 0 ),
+    wordFinderFinished( false )
   {
     QFile input( QString::fromUtf8( catalogPath ) );
     if( !input.open( QIODevice::ReadOnly ) || input.size() < 1
@@ -782,7 +786,23 @@ private:
         articleRequest = dictionary->getArticle( gd::toWString( query ),
                                                   std::vector< gd::wstring >() );
       else if( operation == "suggest" )
-        wordRequest = dictionary->prefixMatch( gd::toWString( query ), limit );
+      {
+        suggestionDictionaries.clear();
+        for( std::vector< sptr< Dictionary::Class > >::const_iterator item = dictionaries.begin();
+             item != dictionaries.end(); ++item )
+          if( item->get() == dictionary )
+            suggestionDictionaries.push_back( *item );
+        if( suggestionDictionaries.size() != 1 )
+        {
+          Fail();
+          return;
+        }
+        wordFinder.reset( new WordFinder( 0 ) );
+        wordFinderFinished = false;
+        connect( wordFinder.get(), &WordFinder::finished, this,
+                 [this]() { wordFinderFinished = true; } );
+        wordFinder->prefixMatch( query, suggestionDictionaries, limit );
+      }
       else
       {
         Fail();
@@ -811,7 +831,7 @@ private:
       QTimer::singleShot( 1, this, [this]() { Poll(); } );
       return;
     }
-    if( wordRequest && !wordRequest->isFinished() )
+    if( wordFinder && !wordFinderFinished )
     {
       QTimer::singleShot( 1, this, [this]() { Poll(); } );
       return;
@@ -867,7 +887,7 @@ private:
     }
     else
     {
-      QString const error = wordRequest->getErrorString();
+      QString const error = wordFinder->getErrorString();
       if( !error.isEmpty() )
       {
         QJsonObject value;
@@ -877,13 +897,14 @@ private:
       }
       else
       {
-        std::vector< Dictionary::WordMatch > & matches = wordRequest->getAllMatches();
+        WordFinder::SearchResults const & matches = wordFinder->getResults();
         int const limit = probe.value( "result_limit" ).toInt();
         for( std::size_t index = 0; index < matches.size()
              && index < static_cast< std::size_t >( limit ); ++index )
-          suggestions.append( gd::toQString( matches[ index ].word ) );
+          suggestions.append( matches[ index ].first );
       }
-      wordRequest = sptr< Dictionary::WordSearchRequest >();
+      wordFinder.reset();
+      suggestionDictionaries.clear();
     }
     QJsonObject rawProbe;
     rawProbe.insert( "entries", entries );
@@ -924,7 +945,8 @@ private:
   void Fail()
   {
     articleRequest = sptr< Dictionary::DataRequest >();
-    wordRequest = sptr< Dictionary::WordSearchRequest >();
+    wordFinder.reset();
+    suggestionDictionaries.clear();
     qApp->exit( 4 );
     deleteLater();
   }

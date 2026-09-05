@@ -1386,6 +1386,39 @@ comparison therefore retains the same 296 differences and the same corrected
 eight-member MDict candidate set, with no regression from the Unicode boundary
 fixes.
 
+Unit 2B impact check: **conforming acceptance-boundary correction; no
+requirement or architecture change** (2026-09-06). The retained five ordered
+suggestion positions do not yet prove a product defect because the paired
+adapters observe different layers. The Qt 5 lookup adapter currently calls a
+single dictionary's raw `prefixMatch()` request, while the Qt 6 adapter calls
+the application-level `DictionaryService`, which applies the product's global
+ranking policy. The frozen Qt 5 product does not present raw backend order: its
+`WordFinder::prefixMatch()` merges, simple-case deduplicates, classifies, and
+sorts results before the main-window word list consumes them. Unit 2B first
+routes the disposable Qt 5 observer through that existing product use case for
+the selected dictionary and keeps the catalog limit, timeout, error, and
+read-only corpus boundaries unchanged. A fresh paired run will then determine
+whether any application-level Qt 6 ranking correction is actually required.
+This reinforces the existing Adapter and Coordinator boundaries: the observer
+adapts the frozen product use case, the coordinator remains the sole comparison
+owner, and neither production tree receives acceptance-only behavior.
+
+The product-level development pair at
+`evidence/qt5-qt6-lookup-r35-unit2b-product-order-dev1`, pair ID
+`3584e1cdbaf546a6aee0c75ead674f98225e19017ddc2502b39e1b2b7b131a04`,
+uses the rebuilt disposable Qt 5 observer and the integrated Unit 2A Qt 6
+candidate `9c4a16af3c7bd1bcdf5904dcd209356969933f77`. Both products are internally
+stable between clean discovery and warm restart. The comparison retains 298
+field-level differences and has SHA-256
+`9e4ccd553e6d60e8d84371cda2cf819db9dbaa665604d7ca238268c1d66ffba7`.
+The eight MDict candidates still match as a set, but 22 suggestion leaf
+differences across six positions remain in the two Qt 6 observations. The
+acceptance-layer mismatch therefore overstated neither the existence nor the
+product ownership of the ordering gap: a subsequent production delivery must
+align `DictionaryService` ranking with the frozen `WordFinder` presentation
+order. Article presentation and resource-reference differences remain
+separate Unit 2 work.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an
