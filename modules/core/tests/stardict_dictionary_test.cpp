@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "../src/formats/stardict/stardict_article_decoder.h"
 #include "../src/formats/stardict/stardict_dictionary.h"
 #include "support/stardict_fixture.h"
 
@@ -28,7 +29,17 @@ class StardictDictionaryTest : public QObject {
     void ReturnsBoundedHeadwordSuggestions();
     void EnumeratesUniqueHeadwordsInLegacyOrder();
     void PreservesFormattedArticleData();
+    void DecodesSameTypeSequenceFieldsInOrder();
+    void DecodesPerRecordFieldsHandledByQt5();
+    void PreservesLegacyXdxfVisualAndResourceSemantics();
+    void PreservesNestedPowerWordAndPangoPresentation();
+    void UsesFirstStrongDirectionForPreformattedLines();
+    void ChecksCancellationDuringArticleDecoding();
+    void PreservesPartialArticlesForMalformedFieldTails();
+    void PreservesLegacySameSequenceBlobDispatch();
+    void RejectsOversizedArticleConversion();
     void BuildsPrimaryOnlyFullTextIndexWithStableProvenance();
+    void IndexesDecodedMultiFieldArticleText();
     void ReusesAndRebuildsFullTextIndex();
     void RebuildsFullTextIndexForCurrentStardictSemantics();
     void SkipsLegacyEmptyHeadwordsInFullTextIndex();
@@ -45,6 +56,11 @@ class StardictDictionaryTest : public QObject {
 
 std::filesystem::path TemporaryPath(const QTemporaryDir& directory) {
     return std::filesystem::path(directory.path().toStdString());
+}
+
+std::string LegacyArticle(std::string_view headword, std::string_view body) {
+    return "<h3 class=\"sdct_headwords\">" + std::string(headword) + "</h3>" +
+           std::string(body);
 }
 
 void StardictDictionaryTest::ExposesIdentityAndBoundedArticles() {
@@ -70,8 +86,10 @@ void StardictDictionaryTest::ExposesIdentityAndBoundedArticles() {
              "Author: Fixture Author\n\nFixture description");
     QCOMPARE(articles.size(), std::size_t{1});
     QCOMPARE(articles.front().headword, "example");
-    QCOMPARE(articles.front().format, "text/plain");
-    QCOMPARE(articles.front().data, "first");
+    QCOMPARE(articles.front().format, "text/html");
+    QCOMPARE(articles.front().data,
+             LegacyArticle("example",
+                           "<div class=\"sdct_m\"><div>first</div></div>"));
 }
 
 void StardictDictionaryTest::ExposesLegacyPrimaryAndHeadwordCounts() {
@@ -87,7 +105,9 @@ void StardictDictionaryTest::ExposesLegacyPrimaryAndHeadwordCounts() {
 
     QCOMPARE(dictionary.identity().article_count, std::size_t{2});
     QCOMPARE(dictionary.identity().headword_count, std::size_t{5});
-    QCOMPARE(dictionary.LookupExact("alias").front().data, "one");
+    QCOMPARE(
+        dictionary.LookupExact("alias").front().data,
+        LegacyArticle("first", "<div class=\"sdct_m\"><div>one</div></div>"));
     QVERIFY(dictionary.LookupExact("/discard$").empty());
     QVERIFY(dictionary.LookupExact("discard/$").empty());
 }
@@ -105,8 +125,12 @@ void StardictDictionaryTest::ReturnsBoundedPrefixArticles() {
     const auto articles = dictionary.LookupPrefix("EXAMPLE", options);
 
     QCOMPARE(articles.size(), std::size_t{2});
-    QCOMPARE(articles[0].data, "exact");
-    QCOMPARE(articles[1].data, "prefix");
+    QCOMPARE(articles[0].data,
+             LegacyArticle("example",
+                           "<div class=\"sdct_m\"><div>exact</div></div>"));
+    QCOMPARE(articles[1].data,
+             LegacyArticle("examples",
+                           "<div class=\"sdct_m\"><div>prefix</div></div>"));
 }
 
 void StardictDictionaryTest::ReturnsBoundedHeadwordSuggestions() {
@@ -168,7 +192,296 @@ void StardictDictionaryTest::PreservesFormattedArticleData() {
 
     QCOMPARE(articles.size(), std::size_t{1});
     QCOMPARE(articles.front().format, "text/html");
-    QCOMPARE(articles.front().data, html);
+    QCOMPARE(articles.front().data,
+             LegacyArticle("example", std::string("<div class=\"sdct_h\">") +
+                                          html + "</div>"));
+}
+
+void StardictDictionaryTest::DecodesSameTypeSequenceFieldsInOrder() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    std::string record = "meaning";
+    record.push_back('\0');
+    record += "transcription";
+    record.push_back('\0');
+    record += "kana";
+    const auto info_path = test::WriteStardictFixture(
+        TemporaryPath(directory), {{"entry", record}}, "mty");
+
+    const auto article =
+        Dictionary::Open("fixture-id", info_path).LookupExact("entry").front();
+
+    QCOMPARE(article.format, "text/html");
+    QCOMPARE(article.data,
+             LegacyArticle("entry",
+                           "<div class=\"sdct_m\"><div>meaning</div></div>"
+                           "<div class=\"sdct_t\">transcription</div>"
+                           "<div class=\"sdct_y\">kana</div>"));
+}
+
+void StardictDictionaryTest::DecodesPerRecordFieldsHandledByQt5() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    std::string record;
+    const auto append_text = [&record](char type, std::string_view value) {
+        record.push_back(type);
+        record.append(value);
+        record.push_back('\0');
+    };
+    const auto append_blob = [&record](char type, std::string_view value) {
+        record.push_back(type);
+        test::AppendBigEndian32(static_cast<std::uint32_t>(value.size()),
+                                &record);
+        record.append(value);
+    };
+    append_text('x',
+                "<k>key</k><tr>phon</tr><ex author=\"Writer\" "
+                "source=\"Corpus\"><ex_orig>usage</ex_orig></ex>"
+                "<kref>linked</kref><iref "
+                "href=\"https://example.test/reference\">remote</iref>"
+                "<rref>pixel.png</rref><rref>spoken.wav</rref>");
+    append_text('h',
+                "<b>html</b><a href=\"bare link\">linked</a>"
+                "<audio src=\"spoken.wav\">listen</audio>");
+    append_text('m', "  plain\nnext");
+    append_text('l', "local");
+    append_text('g',
+                "<span weight=\"bold\" foreground=\"#123456\">pango</span>\n"
+                "next");
+    append_text('t', "<phonetic>");
+    append_text('y', "kana & tone");
+    append_text('k', "<root><v>&amp;b{bold}</v><v>plain</v></root>");
+    append_text('w', "wiki <raw>");
+    append_text('n', "wordnet & raw");
+    append_text('r', "resource.png");
+    append_blob('W', "wave bytes");
+    append_blob('P', "picture bytes");
+    append_text('q', "unknown <text>");
+    append_blob('Z', "unknown blob");
+    const auto info_path = test::WriteStardictFixture(TemporaryPath(directory),
+                                                      {{"entry", record}}, "");
+
+    const auto article =
+        Dictionary::Open("fixture-id", info_path).LookupExact("entry").front();
+
+    QCOMPARE(
+        article.data,
+        LegacyArticle(
+            "entry",
+            "<div class=\"sdct_x\"> <span class=\"xdxf_k\">key</span>"
+            " <span class=\"xdxf_tr_old\">phon</span> <span "
+            "class=\"xdxf_ex_old\"><span class=\"xdxf_ex_orig\">usage</span>"
+            " <span class=\"xdxf_ex_source\">Writer, Corpus</span></span>"
+            " <a class=\"xdxf_kref\" "
+            "href=\"bword://linked\">linked</a>"
+            " <a href=\"https://example.test/reference\">remote</a>"
+            " <img src=\"pixel.png\" alt=\"pixel.png\"> <a class=\"xdxf_wav\" "
+            "href=\"sound://spoken.wav\"></a></div>"
+            "<div class=\"sdct_h\"><b>html</b><a href=\"bare link\">linked"
+            "</a><span class=\"sdict_h_wav\"><a "
+            "href=\"sound://spoken.wav\">listen </a></span></div>"
+            "<div class=\"sdct_m\"><div>&nbsp;&nbsp;plain</div>"
+            "<div>next</div></div><div class=\"sdct_l\"><div>local</div></div>"
+            "<div class=\"sdct_g\"><span style=\"font-weight:bold;"
+            "color:#123456;\">pango</span><br>next</div>"
+            "<div class=\"sdct_t\">&lt;phonetic&gt;</div>"
+            "<div class=\"sdct_y\">kana &amp; tone</div>"
+            "<div class=\"sdct_k\"><b>bold</b><br>plain<br></div>"
+            "<div class=\"sdct_w\">wiki &lt;raw&gt;</div>"
+            "<div class=\"sdct_n\">wordnet &amp; raw</div>"
+            "<div class=\"sdct_r\">resource.png</div>"
+            "<div class=\"sdct_W\">(an embedded .wav file)</div>"
+            "<div class=\"sdct_P\">(an embedded picture file)</div>"
+            "<b>Unknown textual entry type q:</b> unknown &lt;text&gt;<br>"
+            "<b>Unknown blob entry type Z</b><br>"));
+}
+
+void StardictDictionaryTest::PreservesLegacyXdxfVisualAndResourceSemantics() {
+    const std::string decoded = DecodeArticleFields(
+        "<k>first\n  second</k>"
+        "<img src=\"normal.png\" losrc=\"small.png\" "
+        "hisrc=\"large.png\" alt=\"variants\"/>"
+        "<rref start=\"4\">sprite.png</rref>"
+        "<iref href=\"\">https://example.test/fallback</iref>"
+        "<rref>picture.jpe</rref><rref>picture.tga</rref>"
+        "<rref>picture.pcx</rref><rref>audio.au</rref>"
+        "<rref>audio.voc</rref><rref>audio.kar</rref>"
+        "<rref>audio.mpc</rref><rref>audio.wma</rref>"
+        "<rref>audio.wv</rref><rref>audio.ape</rref>"
+        "<rref>audio.spx</rref><rref>audio.mpa</rref>"
+        "<rref>audio.mp2</rref>",
+        "x", "en");
+
+    QVERIFY(decoded.find("first<br>&nbsp;&nbsp;second") != std::string::npos);
+    QVERIFY(decoded.find("<img src=\"normal.png\" hisrc=\"large.png\" "
+                         "losrc=\"small.png\" alt=\"variants\">") !=
+            std::string::npos);
+    QVERIFY(decoded.find("<span class=\"xdxf_rref\">sprite.png</span>") !=
+            std::string::npos);
+    QVERIFY(decoded.find("<a href=\"https://example.test/fallback\">") !=
+            std::string::npos);
+    for (const std::string_view picture :
+         {"picture.jpe", "picture.tga", "picture.pcx"}) {
+        QVERIFY2(decoded.find("<img src=\"" + std::string(picture)) !=
+                     std::string::npos,
+                 picture.data());
+    }
+    for (const std::string_view sound :
+         {"audio.au", "audio.voc", "audio.kar", "audio.mpc", "audio.wma",
+          "audio.wv", "audio.ape", "audio.spx", "audio.mpa", "audio.mp2"}) {
+        QVERIFY2(decoded.find("href=\"sound://" + std::string(sound)) !=
+                     std::string::npos,
+                 sound.data());
+    }
+}
+
+void StardictDictionaryTest::PreservesNestedPowerWordAndPangoPresentation() {
+    QCOMPARE(DecodeArticleFields("<root><v>&amp;b{&amp;i{nested}}</v></root>",
+                                 "k", "en"),
+             std::string("<div class=\"sdct_k\"><i>nested</i><br></div>"));
+
+    const std::string pango = DecodeArticleFields(
+        "<span font_desc=\"Noto Sans Bold 12pt\" background=\"#112233\" "
+        "underline_color=\"blue\" underline=\"single\" "
+        "strikethrough=\"true\" rise=\"1024\" letter_spacing=\"512\">"
+        "styled</span>",
+        "g", "en");
+    QVERIFY(pango.find("font-family:Noto,Sans;") != std::string::npos);
+    QVERIFY(pango.find("font-weight:bold;") != std::string::npos);
+    QVERIFY(pango.find("font-size:12pt;") != std::string::npos);
+    QVERIFY(pango.find("background-color:#112233;") != std::string::npos);
+    QVERIFY(pango.find("text-decoration-color:blue;") != std::string::npos);
+    QVERIFY(pango.find("text-decoration-line:none;") != std::string::npos);
+    QVERIFY(pango.find("vertical-align:1.000pt;") != std::string::npos);
+    QVERIFY(pango.find("letter-spacing:0.500pt;") != std::string::npos);
+}
+
+void StardictDictionaryTest::UsesFirstStrongDirectionForPreformattedLines() {
+    const std::string value = u8"Latin العربية\nالعربية Latin";
+
+    QCOMPARE(DecodeArticleFields(value, "m", "en"),
+             std::string(u8"<div class=\"sdct_m\"><div>Latin العربية</div>"
+                         u8"<div dir=\"rtl\">العربية Latin</div></div>"));
+    QCOMPARE(DecodeArticleFields(value, "m", "ar"),
+             std::string(u8"<div class=\"sdct_m\"><div dir=\"ltr\">Latin "
+                         u8"العربية</div><div>العربية Latin</div></div>"));
+
+    const std::string article =
+        DecodeArticle(u8"العربية", "Latin", "m", "sd", "ug");
+    QVERIFY(article.find("class=\"sdct_headwords\" dir=\"rtl\"") !=
+            std::string::npos);
+    QVERIFY(article.find("<div dir=\"rtl\"><div class=\"sdct_m\">"
+                         "<div dir=\"ltr\">Latin</div></div></div>") !=
+            std::string::npos);
+}
+
+void StardictDictionaryTest::ChecksCancellationDuringArticleDecoding() {
+    const auto expect_cancelled = [](std::string record,
+                                     std::string_view sequence,
+                                     std::size_t cancel_at) {
+        std::size_t checkpoints = 0U;
+        try {
+            static_cast<void>(DecodeArticleFields(
+                record, sequence, "en", [&checkpoints, cancel_at]() {
+                    ++checkpoints;
+                    if (checkpoints == cancel_at) {
+                        throw dictionary::Error(
+                            dictionary::ErrorCode::kCancelled,
+                            "cancelled during decoding");
+                    }
+                }));
+            QFAIL("Article decoding should propagate cancellation checkpoints");
+        } catch (const dictionary::Error& error) {
+            QCOMPARE(error.code(), dictionary::ErrorCode::kCancelled);
+            QCOMPARE(checkpoints, cancel_at);
+        }
+    };
+
+    expect_cancelled(std::string(512U * 1024U, 'x'), "m", 3U);
+    expect_cancelled(std::string(512U * 1024U, 'x'), "h", 3U);
+    expect_cancelled(std::string(512U * 1024U, 'x'), "l", 1U);
+
+    std::string per_record = "m";
+    per_record.append(512U * 1024U, 'x');
+    per_record.push_back('\0');
+    per_record += "ttail";
+    expect_cancelled(std::move(per_record), "", 3U);
+}
+
+void StardictDictionaryTest::PreservesPartialArticlesForMalformedFieldTails() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    std::string per_record = "mfirst";
+    per_record.push_back('\0');
+    per_record += "htruncated";
+    const auto root = TemporaryPath(directory);
+    const auto per_record_info =
+        test::WriteStardictFixture(root, {{"per-record", per_record}}, "");
+    const auto per_record_article =
+        Dictionary::Open("per-record", per_record_info)
+            .LookupExact("per-record")
+            .front();
+    QCOMPARE(per_record_article.data,
+             LegacyArticle("per-record",
+                           "<div class=\"sdct_m\"><div>first</div></div>"));
+
+    QTemporaryDir same_sequence_directory;
+    QVERIFY(same_sequence_directory.isValid());
+    std::string same_sequence = "first";
+    same_sequence.push_back('\0');
+    same_sequence += "unterminated";
+    const auto same_sequence_info =
+        test::WriteStardictFixture(TemporaryPath(same_sequence_directory),
+                                   {{"same", same_sequence}}, "mtm");
+    const auto same_sequence_article =
+        Dictionary::Open("same", same_sequence_info)
+            .LookupExact("same")
+            .front();
+    QCOMPARE(
+        same_sequence_article.data,
+        LegacyArticle("same", "<div class=\"sdct_m\"><div>first</div></div>"));
+}
+
+void StardictDictionaryTest::PreservesLegacySameSequenceBlobDispatch() {
+    QTemporaryDir accepted_directory;
+    QVERIFY(accepted_directory.isValid());
+    const auto accepted_info =
+        test::WriteStardictFixture(TemporaryPath(accepted_directory),
+                                   {{"accepted", "Accepted bytes"}}, "W");
+    QCOMPARE(
+        Dictionary::Open("accepted", accepted_info)
+            .LookupExact("accepted")
+            .front()
+            .data,
+        LegacyArticle("accepted",
+                      "<div class=\"sdct_W\">(an embedded .wav file)</div>"));
+
+    QTemporaryDir rejected_directory;
+    QVERIFY(rejected_directory.isValid());
+    const auto rejected_info =
+        test::WriteStardictFixture(TemporaryPath(rejected_directory),
+                                   {{"rejected", "lowercase bytes"}}, "W");
+    QCOMPARE(Dictionary::Open("rejected", rejected_info)
+                 .LookupExact("rejected")
+                 .front()
+                 .data,
+             LegacyArticle("rejected", ""));
+}
+
+void StardictDictionaryTest::RejectsOversizedArticleConversion() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto info_path = test::WriteStardictFixture(
+        TemporaryPath(directory),
+        {{"entry", std::string(16U * 1024U * 1024U + 1U, 'x')}}, "h");
+
+    try {
+        static_cast<void>(
+            Dictionary::Open("fixture-id", info_path).LookupExact("entry"));
+        QFAIL("LookupExact should reject oversized article conversion");
+    } catch (const dictionary::Error& error) {
+        QCOMPARE(error.code(), dictionary::ErrorCode::kInvalidData);
+    }
 }
 
 void StardictDictionaryTest::
@@ -204,6 +517,31 @@ void StardictDictionaryTest::
     const auto primary = dictionary.SearchFullText(query);
     QCOMPARE(primary.results.size(), 1U);
     QCOMPARE(primary.results.front().headword, std::string("plain"));
+}
+
+void StardictDictionaryTest::IndexesDecodedMultiFieldArticleText() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    std::string record = "first searchable";
+    record.push_back('\0');
+    record += "<b>second searchable</b>";
+    const auto info_path = test::WriteStardictFixture(
+        root, {{"entry", record}, {"other", "unrelated\0ignored"}}, "mh");
+    const Dictionary dictionary =
+        Dictionary::Open("fixture-id", info_path, root / "fixture.gdidx",
+                         root / "fixture.gdfts");
+
+    FullTextQuery query;
+    query.text = "searchable";
+    const auto response = dictionary.SearchFullText(query);
+
+    QCOMPARE(response.results.size(), 1U);
+    QCOMPARE(response.results.front().headword, std::string("entry"));
+    QVERIFY(response.results.front().excerpt.find("first searchable") !=
+            std::string::npos);
+    QVERIFY(response.results.front().excerpt.find("second searchable") !=
+            std::string::npos);
 }
 
 void StardictDictionaryTest::ReusesAndRebuildsFullTextIndex() {

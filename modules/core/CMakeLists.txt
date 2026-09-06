@@ -549,11 +549,13 @@ if(TARGET stardict_dictionary_test)
       src/dictionary/generated_index.cc
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
+      src/formats/stardict/stardict_article_decoder.cc
       src/formats/stardict/stardict_dictionary.cc
       src/formats/stardict/stardict_reader.cc
       src/formats/stardict/stardict_resource.cc
   )
-  target_link_libraries(stardict_dictionary_test PRIVATE ICU::uc ZLIB::ZLIB)
+  target_link_libraries(stardict_dictionary_test
+    PRIVATE expat::expat ICU::uc ZLIB::ZLIB)
 endif()
 
 if(TARGET stardict_discovery_test)

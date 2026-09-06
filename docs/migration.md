@@ -409,6 +409,27 @@ invalid. 64-bit offsets, nonempty
 Article fields,
 resource ZIPs, and icon evidence remain assigned to R3.6 Units 3 and 4.
 
+R3.6 Unit 3 restores the frozen StarDict article-field contract inside a
+private bounded decoder. Both `sametypesequence` and per-record layouts retain
+field order and the complete Qt 5 type dispatch for `x`, `h`, `m`, `l`, `g`,
+`t`, `y`, `k`, `w`, `n`, `r`, `W`, `P`, and unknown textual/blob fields.
+Lookup articles again include the source headword, while private full-text
+ingestion indexes only decoded field content. XDXF, HTML audio, PowerWord, and
+Pango inputs preserve their observable text, safe presentation, internal
+links, XDXF example attribution, allowlisted external references, and the
+complete frozen image/audio resource extension set; active content remains
+inert. XDXF visual-format newlines and indentation, ordered
+`src`/`losrc`/`hisrc` image attributes, empty internal-reference fallback, and
+non-converted `rref start` presentation are retained. Leading preformatted
+non-breaking spaces, first-strong per-line direction including `sd` and `ug`,
+local-text conversion, partial output before malformed tails, cancellation
+during record scans and conversions, final rendered-output bounds, the frozen
+single-pass nested PowerWord behavior, and the same-sequence uppercase dispatch
+quirk are covered without exposing a format-specific public API.
+The final generated clean/warm pair reports zero strict semantic differences
+against frozen Qt 5. Resource-directory/ZIP closure and icon evidence remain
+assigned to R3.6 Unit 4.
+
 ### Phase 6 — Dictionary Backends In Priority Batches
 
 - Port backends in approved core, common optional, and deferred/high-cost

@@ -1760,6 +1760,82 @@ comparison SHA-256 values are respectively
 `d4444f79a93f91d1e9105ec44d685126108bcada3f6b480c2b74b61b52a04b6e`,
 and `ac83b78e5e351b46c1421193cf3c37d595946ceccc2519064f159814c6c0748a`.
 
+#### R3.6 Unit 3 implementation result
+
+Status: **Implementation complete** (2026-09-06).
+
+The private `stardict_article_decoder` Adapter now owns bounded article layout
+and presentation conversion while the reader retains binary-record ownership
+and the dictionary maps the result to the format-neutral HTML article
+contract. It decodes the frozen `sametypesequence` and per-record layouts in
+source order for every Qt 5 textual and blob type. Textual `m` and `l` fields
+retain preformatted lines, leading non-breaking spaces, carriage-return
+handling, first-strong line direction, and local encoding conversion. XDXF
+preserves its observable key/transcription structure, visual-format newlines
+and leading spaces, example author/source attribution, internal and allowlisted
+external links, `src`/`losrc`/`hisrc` images, non-converted `rref start`
+presentation, and sound references.
+StarDict HTML preserves bare lookup links and converts the frozen relative
+audio form to an inert typed resource link. PowerWord conversion retains the
+frozen single-pass behavior for nested markers. Pango conversion retains the
+tested font family, size, style, weight, variant, stretch, foreground and
+background colors, decoration, rise, and letter spacing while rejecting unsafe
+CSS. Unhandled text and blob types retain the frozen diagnostic presentation.
+
+Lookup articles again include the source primary headword, including synonym
+lookups, and retain source/target direction metadata without changing the
+public dictionary API. Full-text ingestion intentionally uses the decoded
+field-only form, so the presentation headword is not duplicated in searchable
+content; the private StarDict full-text semantics stamp advances from `v2` to
+`v3`. The public article sanitizer now recognizes only the exact StarDict/XDXF
+presentation classes, safe `ltr`/`rtl`, bounded legacy non-breaking-space
+entities, a validated color-only inline style, bare and legacy lookup links,
+`http`/`https`/`mailto` external links, and typed image/audio sources. Scripts,
+unsafe URL schemes, and other active content remain
+suppressed. A malformed typed tail preserves fields already decoded, while a
+record or final rendered article over 16 MiB fails with typed invalid-data
+status. Bounded decode work invokes the request checkpoint throughout record
+terminator scans, local-text and HTML-audio conversion, text conversion, and
+chunked XML parsing, so lookup cancellation and deadlines do not wait for a
+large record to finish rendering. Empty XDXF internal references use their
+visible text, the complete frozen image/audio extension set remains typed, and
+first-strong direction recognizes the frozen `sd` and `ug` RTL codes.
+The frozen same-sequence uppercase-content dispatch quirk is retained as
+observable compatibility behavior.
+
+Focused generated tests cover both layouts, all legacy field types, field
+order, partial malformed tails, the uppercase dispatch quirk, oversized
+conversion, decoded full-text content, source-headword presentation, legacy
+HTML audio, XDXF example attribution/external/resource references, visual
+formatting, ordered image variants, empty-reference fallback, non-converted
+references, first-strong direction, decode-time cancellation, expanded Pango
+styles, the complete media extension matrix, final-render expansion bounds,
+and active-content/unsafe-scheme removal. No public,
+application, GUI, resource-provider, generated
+index, or asset contract changed.
+
+The final independent pair is retained under
+`evidence/qt5-qt6-r36-unit3-stardict-final-v9` with pair ID
+`ac151e826ad3a9d957393bd547a5ab88d9fdb3752acd036e1916f01e92182899`.
+It binds frozen Qt 5 revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` to Qt 6 implementation Tree ID
+`5c1f5d1429706e4f194b869fa7cf8c305e03c7c0` and the 29-file, 3,192-byte
+generated fixture manifest at SHA-256
+`591eecfe5e6bff14232e40973ddfaeeb1fe6fe2ce69c40296198c0dfc64e841d`.
+The clean and warm observations cover exact, media, missing, multi-word,
+punctuation, Unicode, XDXF attribution/external-link/visual-format/image-
+variant/non-converted-reference behavior, compatibility edges, LTR and RTL
+first-strong direction, suggestion, and same-sequence probes under canonical
+conditions SHA-256
+`801b961a09ab7031c34b0d6e7a4ae2e723271b28901671fc46479fb059d30136`.
+Their combined strict comparison is equivalent with an empty difference list;
+its SHA-256 is
+`9435c97e0fb791a02129ec4592065f837326c5470eddaeca0708f7abcda069c9`.
+The VS 2026/MSVC 14.44 Release build completed, the complete serial CTest
+suite passed 135 of 135 tests, and the repository Python suite passed 170 of
+170 tests with its two expected platform-condition skips. Every Qt 6 observer
+and test executable ran through `run_with_conan.ps1`. R3.6 Unit 4 remains open.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

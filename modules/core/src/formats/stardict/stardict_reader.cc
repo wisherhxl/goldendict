@@ -876,17 +876,6 @@ std::string LegacyCopyrightText(std::string value) {
     return output;
 }
 
-const std::string& RequireField(
-    const std::map<std::string, std::string>& fields, std::string_view name,
-    const std::filesystem::path& path) {
-    const auto iterator = fields.find(std::string(name));
-    if (iterator == fields.end() || iterator->second.empty()) {
-        Throw(ErrorCode::kInvalidInfo, path,
-              "Missing required field: " + std::string(name));
-    }
-    return iterator->second;
-}
-
 std::uint32_t ReadBigEndian32(const std::string& data, std::size_t offset) {
     const auto byte = [&data](std::size_t position) {
         return static_cast<std::uint32_t>(
@@ -973,12 +962,11 @@ Reader Reader::Open(
     };
     const auto word_count = parse_optional_count("wordcount");
     const auto index_file_size = parse_optional_count("idxfilesize");
-    const auto& same_type_sequence =
-        RequireField(fields, "sametypesequence", info_path);
-    if (same_type_sequence != "m" && same_type_sequence != "h") {
-        Throw(ErrorCode::kUnsupportedFeature, info_path,
-              "Only sametypesequence=m or h is supported in this increment");
-    }
+    const auto same_type_sequence_iterator = fields.find("sametypesequence");
+    const std::string same_type_sequence =
+        same_type_sequence_iterator == fields.end()
+            ? std::string{}
+            : same_type_sequence_iterator->second;
 
     auto base_path = info_path;
     base_path.replace_extension();
@@ -1323,6 +1311,7 @@ std::vector<Article> Reader::LookupExact(
         }
         Article article;
         article.headword = record.headword;
+        article.display_headword = record.primary_headword;
         article.data =
             dictionary_data_.substr(record.article_offset, record.article_size);
         articles.push_back(std::move(article));
@@ -1347,6 +1336,7 @@ std::vector<Article> Reader::LookupPrefix(
         }
         Article article;
         article.headword = record->headword;
+        article.display_headword = record->primary_headword;
         article.data = dictionary_data_.substr(record->article_offset,
                                                record->article_size);
         articles.push_back(std::move(article));

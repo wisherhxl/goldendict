@@ -5275,7 +5275,7 @@ void ApplicationServiceTest::
     QVERIFY(disabled.errors.empty());
     QCOMPARE(disabled.entries.size(), std::size_t{1});
     QCOMPARE(disabled.entries.front().article.plain_text,
-             "synonym source article");
+             "primary\nsynonym source article");
 
     SuggestionQuery suggestion;
     suggestion.text = "ali";
@@ -5294,8 +5294,9 @@ void ApplicationServiceTest::
         QCOMPARE(entry.match.requested_headword, "alias");
         QCOMPARE(entry.match.mode, MatchMode::kExact);
     }
-    QCOMPARE(articles, (std::set<std::string>{"cross-dictionary article",
-                                              "synonym source article"}));
+    QCOMPARE(articles,
+             (std::set<std::string>{"primary\ncross-dictionary article",
+                                    "primary\nsynonym source article"}));
 
     const auto enabled_suggestions = service->Suggest(suggestion);
     QCOMPARE(enabled_suggestions.suggestions.size(), std::size_t{1});

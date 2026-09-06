@@ -63,6 +63,7 @@ struct Metadata {
 
 struct Article {
     std::string headword;
+    std::string display_headword;
     std::string data;
 };
 

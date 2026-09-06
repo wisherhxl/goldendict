@@ -20,6 +20,8 @@ class ArticleAssemblerTest : public QObject {
     void PreservesOnlyAllowlistedDslPresentationSemantics();
     void PreservesSafeMdictReferences();
     void RejectsUnsafeMdictPresentationReferences();
+    void PreservesSafeStardictPresentationAndReferences();
+    void PreservesSafePangoPresentation();
     void PreservesSafeAudioAndCollectsItsResource();
     void DeduplicatesResourceReferencesAcrossArticles();
     void RemovesActiveContentAndUnsafeAttributes();
@@ -222,6 +224,109 @@ void ArticleAssemblerTest::RejectsUnsafeMdictPresentationReferences() {
     QVERIFY(document.resources.empty());
 }
 
+void ArticleAssemblerTest::PreservesSafeStardictPresentationAndReferences() {
+    const Document document = Assemble(
+        kDictionary,
+        {{"example", "text/html",
+          "<h3 class=\"sdct_headwords\">example</h3>"
+          "<div class=\"sdct_x\"><span class=\"xdxf_k\">entry</span>"
+          "<span class=\"xdxf_ex_source\">Writer, Corpus</span>"
+          "<a class=\"xdxf_kref\" href=\"linked word#anchor\">linked</a>"
+          "<a href=\"https://example.test/reference\">remote</a>"
+          "<a href=\"http://example.test/reference\">http</a>"
+          "<a href=\"mailto:editor@example.test\">mail</a>"
+          "<a href=\"javascript:bad()\">unsafe</a>"
+          "<a href=\"data:text/plain,bad\">data</a>"
+          "<img src=\"pixel.png\" losrc=\"pixel-small.png\" "
+          "hisrc=\"pixel-large.png\"><span class=\"xdxf_rref\">sprite.png"
+          "</span></div><div class=\"sdct_m\">"
+          "<div dir=\"rtl\">&nbsp;meaning</div></div>"
+          "<span style=\"color:#123456;\">colored</span>"
+          "<audio src=\"spoken.wav\">"
+          "listen</audio>"}});
+
+    QCOMPARE(document.plain_text,
+             "example\nentryWriter, Corpuslinkedremotehttpmailunsafedata"
+             "sprite.png\n"
+             "\xc2\xa0meaning\ncoloredlisten");
+    QVERIFY(document.sanitized_html.find(
+                "<h3 class=\"sdct_headwords\">example</h3>") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("<div class=\"sdct_x\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("<span class=\"xdxf_k\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "<span class=\"xdxf_ex_source\">Writer, Corpus</span>") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "class=\"xdxf_kref\" href=\"goldendict://lookup/"
+                "linked%20word\"") != std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "href=\"https://example.test/reference\"") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "href=\"http://example.test/reference\"") != std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "href=\"mailto:editor@example.test\"") != std::string::npos);
+    QVERIFY(document.sanitized_html.find("javascript:") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("data:text") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("<div dir=\"rtl\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "src=\"goldendict://resource/fixture%20id/pixel.png\"") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "losrc=\"goldendict://resource/fixture%20id/"
+                "pixel-small.png\"") != std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "hisrc=\"goldendict://resource/fixture%20id/"
+                "pixel-large.png\"") != std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "<span class=\"xdxf_rref\">sprite.png</span>") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("sprite.png") != std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "<span style=\"color:#123456;\">colored</span>") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "<audio src=\"goldendict://resource/fixture%20id/"
+                "spoken.wav\" controls=\"controls\">") != std::string::npos);
+    QCOMPARE(document.resources.size(), std::size_t{4});
+    QCOMPARE(document.resources[0].resource_id, "pixel.png");
+    QCOMPARE(document.resources[1].resource_id, "pixel-small.png");
+    QCOMPARE(document.resources[2].resource_id, "pixel-large.png");
+    QCOMPARE(document.resources[3].resource_id, "spoken.wav");
+}
+
+void ArticleAssemblerTest::PreservesSafePangoPresentation() {
+    const Document document = Assemble(
+        kDictionary,
+        {{"example", "text/html",
+          "<span style=\"font-family:Noto,Sans;font-size:2.000pt;"
+          "font-style:italic;font-weight:bold;font-variant:small-caps;"
+          "font-stretch:condensed;background-color:#112233;"
+          "text-decoration-color:blue;text-decoration-line:none;"
+          "text-decoration-style:dotted;vertical-align:1.000pt;"
+          "letter-spacing:0.500pt;\">safe</span>"
+          "<span "
+          "style=\"font-weight:bold;position:absolute;\">unsafe</span>"}});
+
+    QCOMPARE(document.plain_text, "safeunsafe");
+    QVERIFY(document.sanitized_html.find(
+                "style=\"font-family:Noto,Sans;font-size:2.000pt;"
+                "font-style:italic;font-weight:bold;font-variant:small-caps;"
+                "font-stretch:condensed;background-color:#112233;"
+                "text-decoration-color:blue;text-decoration-line:none;"
+                "text-decoration-style:dotted;vertical-align:1.000pt;"
+                "letter-spacing:0.500pt;\"") != std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "style=\"font-weight:bold;position:absolute;\"") ==
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("<span>unsafe</span>") !=
+            std::string::npos);
+}
+
 void ArticleAssemblerTest::PreservesSafeAudioAndCollectsItsResource() {
     const Document document = Assemble(
         kDictionary, {{"example", "text/html",
@@ -291,6 +396,15 @@ void ArticleAssemblerTest::EnforcesDocumentSizeLimit() {
         static_cast<void>(
             Assemble(kDictionary, {{"example", "text/plain", oversized}}));
         QFAIL("Assemble should reject an oversized document");
+    } catch (const dictionary::Error& error) {
+        QCOMPARE(error.code(), dictionary::ErrorCode::kInvalidData);
+    }
+
+    const std::string expanding_markup(3U * 1024U * 1024U, '"');
+    try {
+        static_cast<void>(Assemble(
+            kDictionary, {{"example", "text/html", expanding_markup}}));
+        QFAIL("Assemble should reject an expanded rendered document");
     } catch (const dictionary::Error& error) {
         QCOMPARE(error.code(), dictionary::ErrorCode::kInvalidData);
     }

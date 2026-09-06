@@ -1289,6 +1289,49 @@ The external fixture's `zzz-yyy` book name makes both products publish `zz`
 and `yy`; clean discovery, warm restart, and explicit rescan each report zero
 strict differences.
 
+R3.6 Unit 3 adds generated article records for every textual and blob field
+type handled by frozen Qt 5. `stardict_dictionary_test` covers ordered
+`sametypesequence` and per-record layouts, source-primary headwords for synonym
+presentation, XDXF key/example-attribution/internal-and-external-link/
+image/sound conversion, visual-format newline/indent conversion, ordered
+legacy image source attributes, empty internal-reference fallback,
+non-converted `rref start` presentation, StarDict HTML audio, preformatted
+UTF-8 and local text, extended safe Pango conversion, frozen single-pass nested
+PowerWord markup, escaped transcription/KANA/MediaWiki/WordNet/resource-list
+text, embedded wave/picture placeholders, unknown types, partial output before
+malformed tails, the complete legacy media extension set, first-strong per-line
+direction including `sd`/`ug`, record-scan and conversion request checkpoints,
+the frozen same-sequence uppercase-content dispatch, 16 MiB decode and final
+rendered-output bounds, and decoded field-only full-text ingestion.
+`article_assembler_test` pins the exact StarDict/XDXF presentation allowlist,
+source-headword and direction markup, legacy non-breaking-space entities,
+validated color-only inline style, bare lookup links, allowlisted
+`http`/`https`/`mailto` links, typed image/audio references, resource
+deduplication, and continued active-content/unsafe-scheme suppression.
+
+The final paired fixture is retained at
+`evidence/qt5-qt6-r36-unit3-stardict-final-v9`. Pair ID
+`ac151e826ad3a9d957393bd547a5ab88d9fdb3752acd036e1916f01e92182899`
+binds frozen Qt 5 commit `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`,
+Qt 6 implementation Tree ID
+`5c1f5d1429706e4f194b869fa7cf8c305e03c7c0`, fixture-manifest SHA-256
+`591eecfe5e6bff14232e40973ddfaeeb1fe6fe2ce69c40296198c0dfc64e841d`,
+and canonical conditions SHA-256
+`801b961a09ab7031c34b0d6e7a4ae2e723271b28901671fc46479fb059d30136`.
+The 29 generated GPL-3.0-or-later files total 3,192 bytes. Thirteen catalog
+probes cover exact and media articles, missing lookup, multi-word,
+punctuation, Unicode, XDXF attribution/external links, visual-format and image-
+variant behavior, non-converted references, extended compatibility edges, both
+first-strong direction bases, suggestion, and same-sequence behavior. Independent
+clean-discovery and warm-restart observations from both products are
+internally stable and strictly equivalent with zero differences. The combined
+comparison SHA-256 is
+`9435c97e0fb791a02129ec4592065f837326c5470eddaeca0708f7abcda069c9`.
+The VS 2026/MSVC 14.44 Release build succeeds, serial CTest passes 135 of 135,
+and the repository Python suite passes 170 of 170 with two expected
+platform-condition skips. All Qt 6 observers, build-tree executables, and
+tests use the Release Conan launcher environment.
+
 `stardict_dictionary_test` verifies the private backend contract and StarDict
 adapter: identity and provenance, bounded exact results, cancellation,
 deadlines, bounded prefix results, translated format errors, raw formatted
@@ -1301,10 +1344,11 @@ stable deduplication, unrelated-file filtering, and partial results when a
 configured dictionary root is missing.
 
 `article_assembler_test` verifies browser-independent plain-text and HTML
-assembly, a strict formatting allowlist, active-content and event-attribute
-removal, inert malformed-markup fallback, bounded document size, and canonical
-typed lookup and resource URLs. It also verifies that unsafe resource paths and
-non-internal navigation are not emitted into rendered HTML.
+assembly, a strict formatting/URL-scheme allowlist, active-content and
+event-attribute removal, inert malformed-markup fallback, bounded document
+size, and canonical typed lookup and resource URLs. It also verifies that
+unsafe resource paths and unsupported navigation are not emitted into rendered
+HTML.
 
 `text_encoding_test` verifies strict bounded conversion between UTF-8 and the
 representative legacy encodings Latin-1, UTF-16LE, GB18030, and EUC-JP. It also

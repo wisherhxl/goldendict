@@ -9,13 +9,14 @@
 
 #include "../../article/article_assembler.h"
 #include "goldendict/core/dictionary_service.h"
+#include "stardict_article_decoder.h"
 #include "stardict_resource.h"
 
 namespace goldendict::core::formats::stardict {
 namespace {
 
 constexpr std::string_view kFullTextSemanticsStamp =
-    "goldendict:stardict-full-text-v2";
+    "goldendict:stardict-full-text-v3";
 
 dictionary::SourceSnapshot FullTextSources(dictionary::SourceSnapshot sources) {
     sources.push_back(
@@ -41,18 +42,39 @@ dictionary::Error TranslateReaderError(const Error& error) {
     return dictionary::Error(dictionary::ErrorCode::kInvalidData, error.what());
 }
 
+std::string DecodeFields(std::string_view record,
+                         std::string_view same_type_sequence,
+                         std::string_view target_language) {
+    try {
+        return DecodeArticleFields(record, same_type_sequence, target_language);
+    } catch (const ArticleDecodeError& error) {
+        throw dictionary::Error(dictionary::ErrorCode::kInvalidData,
+                                error.what());
+    }
+}
+
 std::vector<dictionary::Article> TranslateArticles(
-    std::vector<Article> raw_articles, std::string_view same_type_sequence) {
+    std::vector<Article> raw_articles, std::string_view same_type_sequence,
+    std::string_view source_language, std::string_view target_language,
+    const ArticleDecodeCheckpoint& checkpoint) {
     std::vector<dictionary::Article> articles;
     articles.reserve(raw_articles.size());
     std::transform(
         raw_articles.begin(), raw_articles.end(), std::back_inserter(articles),
-        [same_type_sequence](auto&& raw_article) {
+        [same_type_sequence, source_language, target_language,
+         &checkpoint](auto&& raw_article) {
             dictionary::Article article;
             article.headword = std::move(raw_article.headword);
-            article.format =
-                same_type_sequence == "h" ? "text/html" : "text/plain";
-            article.data = std::move(raw_article.data);
+            article.format = "text/html";
+            try {
+                article.data =
+                    DecodeArticle(raw_article.display_headword,
+                                  raw_article.data, same_type_sequence,
+                                  source_language, target_language, checkpoint);
+            } catch (const ArticleDecodeError& error) {
+                throw dictionary::Error(dictionary::ErrorCode::kInvalidData,
+                                        error.what());
+            }
             return article;
         });
     return articles;
@@ -102,11 +124,11 @@ Dictionary Dictionary::Open(
                     }
                     dictionary::Article article;
                     article.headword = primary.headword;
-                    article.format =
-                        dictionary.reader_.metadata().same_type_sequence == "h"
-                            ? "text/html"
-                            : "text/plain";
-                    article.data = primary.data;
+                    article.format = "text/html";
+                    article.data = DecodeFields(
+                        primary.data,
+                        dictionary.reader_.metadata().same_type_sequence,
+                        dictionary.reader_.metadata().target_language);
                     auto assembled = article::Assemble(dictionary.identity_,
                                                        {std::move(article)});
                     dictionary::FullTextDocument document;
@@ -188,8 +210,12 @@ std::vector<dictionary::Article> Dictionary::LookupExact(
         [&options]() { dictionary::CheckRequest(options); });
     dictionary::CheckRequest(options);
 
-    return TranslateArticles(std::move(raw_articles),
-                             reader_.metadata().same_type_sequence);
+    auto articles = TranslateArticles(
+        std::move(raw_articles), reader_.metadata().same_type_sequence,
+        reader_.metadata().source_language, reader_.metadata().target_language,
+        [&options]() { dictionary::CheckRequest(options); });
+    dictionary::CheckRequest(options);
+    return articles;
 }
 
 std::vector<dictionary::Article> Dictionary::LookupPrefix(
@@ -203,8 +229,12 @@ std::vector<dictionary::Article> Dictionary::LookupPrefix(
         prefix, options.result_limit,
         [&options]() { dictionary::CheckRequest(options); });
     dictionary::CheckRequest(options);
-    return TranslateArticles(std::move(raw_articles),
-                             reader_.metadata().same_type_sequence);
+    auto articles = TranslateArticles(
+        std::move(raw_articles), reader_.metadata().same_type_sequence,
+        reader_.metadata().source_language, reader_.metadata().target_language,
+        [&options]() { dictionary::CheckRequest(options); });
+    dictionary::CheckRequest(options);
+    return articles;
 }
 
 std::vector<std::string> Dictionary::SuggestPrefix(

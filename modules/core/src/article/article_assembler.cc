@@ -3,6 +3,7 @@
 #include "article_assembler.h"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <map>
 #include <stdexcept>
@@ -16,10 +17,10 @@ namespace goldendict::core::article {
 namespace {
 
 const std::vector<std::string> kAllowedTags = {
-    "p",    "div", "span",  "b",      "strong", "i",   "em",  "u",
-    "br",   "ul",  "ol",    "li",     "dl",     "dt",  "dd",  "blockquote",
-    "code", "pre", "table", "thead",  "tbody",  "tr",  "th",  "td",
-    "a",    "img", "audio", "source", "sub",    "sup", "font"};
+    "p",          "div",  "span", "h3",    "b",      "strong", "i",   "em",
+    "u",          "br",   "ul",   "ol",    "li",     "dl",     "dt",  "dd",
+    "blockquote", "code", "pre",  "table", "thead",  "tbody",  "tr",  "th",
+    "td",         "a",    "img",  "audio", "source", "sub",    "sup", "font"};
 const std::vector<std::string> kSuppressedTags = {
     "script", "style", "iframe", "object", "embed", "svg", "math"};
 constexpr std::size_t kMaximumDocumentBytes = 16U * 1024U * 1024U;
@@ -62,6 +63,21 @@ bool IsAllowedMdictClass(std::string_view tag, std::string_view value) {
     return tag == "div" && value == "mdict";
 }
 
+bool IsAllowedStardictClass(std::string_view tag, std::string_view value) {
+    static const std::vector<std::string> kDivClasses = {
+        "sdct_h", "sdct_m", "sdct_l", "sdct_g", "sdct_t", "sdct_y", "sdct_k",
+        "sdct_w", "sdct_n", "sdct_r", "sdct_W", "sdct_P", "sdct_x"};
+    static const std::vector<std::string> kSpanClasses = {
+        "sdict_h_wav",  "xdxf_k",        "xdxf_ex_old",    "xdxf_ex_orig",
+        "xdxf_ex_tran", "xdxf_ex_markd", "xdxf_ex_source", "xdxf_opt",
+        "xdxf_abbr",    "xdxf_dtrn",     "xdxf_co_old",    "xdxf_gr_old",
+        "xdxf_tr_old",  "xdxf_rref",     "xdxf_wav",       "xdxf_def"};
+    return (tag == "div" && Contains(kDivClasses, value)) ||
+           (tag == "span" && Contains(kSpanClasses, value)) ||
+           (tag == "h3" && value == "sdct_headwords") ||
+           (tag == "a" && (value == "xdxf_kref" || value == "xdxf_wav"));
+}
+
 bool EqualsAsciiCaseInsensitive(std::string_view left, std::string_view right) {
     return left.size() == right.size() &&
            std::equal(left.begin(), left.end(), right.begin(),
@@ -74,6 +90,23 @@ bool StartsWithAsciiCaseInsensitive(std::string_view value,
                                     std::string_view prefix) {
     return value.size() >= prefix.size() &&
            EqualsAsciiCaseInsensitive(value.substr(0U, prefix.size()), prefix);
+}
+
+bool IsSafeExternalLink(std::string_view value) {
+    constexpr std::array<std::string_view, 3U> kPrefixes = {
+        "http://", "https://", "mailto:"};
+    const auto prefix = std::find_if(kPrefixes.begin(), kPrefixes.end(),
+                                     [value](std::string_view candidate) {
+                                         return StartsWithAsciiCaseInsensitive(
+                                             value, candidate);
+                                     });
+    if (prefix == kPrefixes.end() || value.size() == prefix->size()) {
+        return false;
+    }
+    return std::none_of(value.begin(), value.end(),
+                        [](unsigned char character) {
+                            return character <= 0x20U || character == 0x7fU;
+                        });
 }
 
 bool IsAllowedLegacyColor(std::string_view value) {
@@ -91,6 +124,156 @@ bool IsAllowedLegacyColor(std::string_view value) {
     return std::all_of(value.begin(), value.end(), [](unsigned char c) {
         return std::isalnum(c) != 0 || c == '-' || c == '_';
     });
+}
+
+std::string_view TrimAsciiSpace(std::string_view value) {
+    while (!value.empty() &&
+           std::isspace(static_cast<unsigned char>(value.front())) != 0) {
+        value.remove_prefix(1U);
+    }
+    while (!value.empty() &&
+           std::isspace(static_cast<unsigned char>(value.back())) != 0) {
+        value.remove_suffix(1U);
+    }
+    return value;
+}
+
+bool IsSafeCssFamily(std::string_view value) {
+    return !value.empty() && value.size() <= 256U &&
+           std::all_of(value.begin(), value.end(), [](unsigned char character) {
+               return std::isalnum(character) != 0 || character >= 0x80U ||
+                      character == ' ' || character == '-' ||
+                      character == '_' || character == ',';
+           });
+}
+
+bool IsSafeCssLength(std::string_view value, bool allow_size_keyword) {
+    static const std::array<std::string_view, 9U> kSizeKeywords = {
+        "xx-small", "x-small",  "small",   "medium", "large",
+        "x-large",  "xx-large", "smaller", "larger"};
+    if (allow_size_keyword &&
+        std::any_of(kSizeKeywords.begin(), kSizeKeywords.end(),
+                    [value](std::string_view item) {
+                        return EqualsAsciiCaseInsensitive(value, item);
+                    })) {
+        return true;
+    }
+    std::string_view number = value;
+    if (!number.empty() && number.back() == '%') {
+        number.remove_suffix(1U);
+    } else {
+        constexpr std::array<std::string_view, 3U> kUnits = {"px", "pt", "em"};
+        const auto unit = std::find_if(
+            kUnits.begin(), kUnits.end(), [number](std::string_view candidate) {
+                return number.size() > candidate.size() &&
+                       EqualsAsciiCaseInsensitive(
+                           number.substr(number.size() - candidate.size()),
+                           candidate);
+            });
+        if (unit == kUnits.end()) {
+            return false;
+        }
+        number.remove_suffix(unit->size());
+    }
+    if (!number.empty() && (number.front() == '-' || number.front() == '+')) {
+        number.remove_prefix(1U);
+    }
+    bool decimal = false;
+    bool digit = false;
+    for (const unsigned char character : number) {
+        if (character == '.' && !decimal) {
+            decimal = true;
+        } else if (std::isdigit(character) != 0) {
+            digit = true;
+        } else {
+            return false;
+        }
+    }
+    return digit;
+}
+
+bool IsSafePangoDeclaration(std::string_view property, std::string_view value) {
+    if (property == "color" || property == "background-color" ||
+        property == "text-decoration-color") {
+        return IsAllowedLegacyColor(value);
+    }
+    if (property == "font-family") {
+        return IsSafeCssFamily(value);
+    }
+    if (property == "font-size") {
+        return IsSafeCssLength(value, true);
+    }
+    if (property == "vertical-align" || property == "letter-spacing") {
+        return IsSafeCssLength(value, false);
+    }
+    const auto is_one_of =
+        [value](std::initializer_list<std::string_view> items) {
+            return std::any_of(
+                items.begin(), items.end(), [value](std::string_view item) {
+                    return EqualsAsciiCaseInsensitive(value, item);
+                });
+        };
+    if (property == "font-style") {
+        return is_one_of({"normal", "oblique", "italic"});
+    }
+    if (property == "font-weight") {
+        return is_one_of({"normal", "bold", "100", "200", "300", "400", "500",
+                          "600", "700", "800", "900", "1000"});
+    }
+    if (property == "font-variant") {
+        return is_one_of({"normal", "small-caps"});
+    }
+    if (property == "font-stretch") {
+        return is_one_of({"normal", "ultra-condensed", "extra-condensed",
+                          "condensed", "semi-condensed", "semi-expanded",
+                          "expanded", "extra-expanded", "ultra-expanded"});
+    }
+    if (property == "text-decoration-line") {
+        return is_one_of({"none", "underline", "line-through"});
+    }
+    if (property == "text-decoration-style") {
+        return is_one_of({"solid", "double", "dotted", "dashed", "wavy"});
+    }
+    return false;
+}
+
+std::optional<std::string> SafeInlineStyle(std::string_view value) {
+    if (value.empty() || value.size() > 2048U) {
+        return std::nullopt;
+    }
+    std::string safe;
+    std::size_t position = 0U;
+    while (position < value.size()) {
+        const auto end = value.find(';', position);
+        const auto declaration = TrimAsciiSpace(value.substr(
+            position, end == std::string_view::npos ? value.size() - position
+                                                    : end - position));
+        if (!declaration.empty()) {
+            const auto separator = declaration.find(':');
+            if (separator == std::string_view::npos) {
+                return std::nullopt;
+            }
+            std::string property(
+                TrimAsciiSpace(declaration.substr(0U, separator)));
+            std::transform(
+                property.begin(), property.end(), property.begin(),
+                [](unsigned char character) {
+                    return static_cast<char>(std::tolower(character));
+                });
+            const auto property_value =
+                TrimAsciiSpace(declaration.substr(separator + 1U));
+            if (!IsSafePangoDeclaration(property, property_value)) {
+                return std::nullopt;
+            }
+            safe += property + ":" + std::string(property_value) + ";";
+        }
+        if (end == std::string_view::npos) {
+            break;
+        }
+        position = end + 1U;
+    }
+    return safe.empty() ? std::nullopt
+                        : std::optional<std::string>(std::move(safe));
 }
 
 std::string Escape(std::string_view value) {
@@ -143,6 +326,9 @@ std::optional<std::string> DecodeEntities(std::string_view value) {
             decoded.push_back('"');
         } else if (entity == "apos" || entity == "#39") {
             decoded.push_back('\'');
+        } else if (entity == "nbsp" || entity == "#160" || entity == "#xa0" ||
+                   entity == "#xA0") {
+            decoded += "\xc2\xa0";
         } else {
             return std::nullopt;
         }
@@ -265,8 +451,9 @@ void AddBreak(std::string* plain_text) {
 }
 
 bool IsBlock(std::string_view tag) {
-    return tag == "p" || tag == "div" || tag == "li" || tag == "dt" ||
-           tag == "dd" || tag == "blockquote" || tag == "pre" || tag == "tr";
+    return tag == "p" || tag == "div" || tag == "h3" || tag == "li" ||
+           tag == "dt" || tag == "dd" || tag == "blockquote" || tag == "pre" ||
+           tag == "tr";
 }
 
 std::optional<std::string> NormalizeResourceId(std::string value) {
@@ -299,6 +486,16 @@ void AddResourceReference(const dictionary::Identity& dictionary,
                                 "Article contains too many resources");
     }
     resources->push_back({dictionary.id, std::string(resource_id)});
+}
+
+void AppendDocument(std::string_view value, std::string* document) {
+    if (document->size() > kMaximumDocumentBytes ||
+        value.size() > kMaximumDocumentBytes - document->size()) {
+        throw dictionary::Error(
+            dictionary::ErrorCode::kInvalidData,
+            "Rendered article document exceeds the size limit");
+    }
+    document->append(value);
 }
 
 bool IsTrackedTag(std::string_view name) {
@@ -386,29 +583,51 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                 const auto class_name = tag.attributes.find("class");
                 if (class_name != tag.attributes.end() &&
                     (IsAllowedDslClass(tag.name, class_name->second) ||
-                     IsAllowedMdictClass(tag.name, class_name->second))) {
+                     IsAllowedMdictClass(tag.name, class_name->second) ||
+                     IsAllowedStardictClass(tag.name, class_name->second))) {
                     html->append(" class=\"" + class_name->second + "\"");
+                }
+                const auto direction = tag.attributes.find("dir");
+                if (direction != tag.attributes.end() &&
+                    (EqualsAsciiCaseInsensitive(direction->second, "ltr") ||
+                     EqualsAsciiCaseInsensitive(direction->second, "rtl"))) {
+                    html->append(
+                        EqualsAsciiCaseInsensitive(direction->second, "rtl")
+                            ? " dir=\"rtl\""
+                            : " dir=\"ltr\"");
                 }
                 if (tag.name == "a") {
                     const auto href = tag.attributes.find("href");
                     constexpr std::string_view kBword = "bword://";
+                    constexpr std::string_view kBwordShort = "bword:";
                     constexpr std::string_view kEntry = "entry://";
                     if (href != tag.attributes.end() &&
                         (StartsWithAsciiCaseInsensitive(href->second, kBword) ||
                          StartsWithAsciiCaseInsensitive(href->second,
-                                                        kEntry))) {
+                                                        kBwordShort) ||
+                         StartsWithAsciiCaseInsensitive(href->second, kEntry) ||
+                         href->second.find(':') == std::string::npos)) {
                         try {
                             const std::size_t prefix_size =
                                 StartsWithAsciiCaseInsensitive(href->second,
                                                                kBword)
                                     ? kBword.size()
-                                    : kEntry.size();
+                                : StartsWithAsciiCaseInsensitive(href->second,
+                                                                 kBwordShort)
+                                    ? kBwordShort.size()
+                                : StartsWithAsciiCaseInsensitive(href->second,
+                                                                 kEntry)
+                                    ? kEntry.size()
+                                    : 0U;
                             std::string_view target(href->second);
                             target.remove_prefix(prefix_size);
                             target = target.substr(0U, target.find('#'));
                             html->append(" href=\"" +
                                          Escape(MakeLookupUrl(target)) + "\"");
                         } catch (const std::invalid_argument&) {}
+                    } else if (href != tag.attributes.end() &&
+                               IsSafeExternalLink(href->second)) {
+                        html->append(" href=\"" + Escape(href->second) + "\"");
                     } else if (href != tag.attributes.end()) {
                         constexpr std::string_view kSound = "sound://";
                         if (href->second.substr(0, kSound.size()) == kSound) {
@@ -432,6 +651,14 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                         html->append(" title=\"" + Escape(title->second) +
                                      "\"");
                     }
+                } else if (tag.name == "span") {
+                    const auto style = tag.attributes.find("style");
+                    if (style != tag.attributes.end()) {
+                        const auto safe_style = SafeInlineStyle(style->second);
+                        if (safe_style.has_value()) {
+                            html->append(" style=\"" + *safe_style + "\"");
+                        }
+                    }
                 } else if (tag.name == "font") {
                     const auto color = tag.attributes.find("color");
                     if (color != tag.attributes.end() &&
@@ -439,19 +666,32 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                         html->append(" color=\"" + Escape(color->second) +
                                      "\"");
                     }
-                } else if (tag.name == "img" || tag.name == "source") {
-                    const auto source = tag.attributes.find("src");
-                    if (source != tag.attributes.end()) {
-                        const auto resource_id =
-                            NormalizeResourceId(source->second);
-                        if (resource_id.has_value()) {
-                            html->append(" src=\"" +
-                                         Escape(MakeResourceUrl(dictionary.id,
-                                                                *resource_id)) +
-                                         "\"");
-                            AddResourceReference(dictionary, *resource_id,
-                                                 resources);
-                        }
+                } else if (tag.name == "img" || tag.name == "source" ||
+                           tag.name == "audio") {
+                    const auto append_resource_attribute =
+                        [&dictionary, &tag, html,
+                         resources](std::string_view attribute_name) {
+                            const auto source = tag.attributes.find(
+                                std::string(attribute_name));
+                            if (source != tag.attributes.end()) {
+                                const auto resource_id =
+                                    NormalizeResourceId(source->second);
+                                if (resource_id.has_value()) {
+                                    html->append(
+                                        " " + std::string(attribute_name) +
+                                        "=\"" +
+                                        Escape(MakeResourceUrl(dictionary.id,
+                                                               *resource_id)) +
+                                        "\"");
+                                    AddResourceReference(
+                                        dictionary, *resource_id, resources);
+                                }
+                            }
+                        };
+                    append_resource_attribute("src");
+                    if (tag.name == "img") {
+                        append_resource_attribute("losrc");
+                        append_resource_attribute("hisrc");
                     }
                 }
                 for (const std::string_view attribute_name : {"alt", "title"}) {
@@ -464,7 +704,8 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                     }
                 }
                 if (tag.name == "audio" &&
-                    tag.attributes.find("controls") != tag.attributes.end()) {
+                    (tag.attributes.find("controls") != tag.attributes.end() ||
+                     tag.attributes.find("src") != tag.attributes.end())) {
                     html->append(" controls=\"controls\"");
                 }
                 if (tag.name == "source") {
@@ -533,15 +774,27 @@ Document Assemble(const dictionary::Identity& dictionary,
         input_size += article.data.size();
     }
     document.sanitized_html = NewDocument();
+    if (document.sanitized_html.size() > kMaximumDocumentBytes) {
+        throw dictionary::Error(
+            dictionary::ErrorCode::kInvalidData,
+            "Rendered article document exceeds the size limit");
+    }
     for (const auto& article : articles) {
-        document.sanitized_html += "<section class=\"gd-article\">";
+        AppendDocument("<section class=\"gd-article\">",
+                       &document.sanitized_html);
         if (article.format == "text/html") {
             std::string sanitized;
             std::string plain;
             std::vector<ResourceReference> resources;
             if (SanitizeMarkup(dictionary, article.data, &sanitized, &plain,
                                &resources)) {
-                document.sanitized_html += sanitized;
+                AppendDocument(sanitized, &document.sanitized_html);
+                if (plain.size() >
+                    kMaximumDocumentBytes - document.plain_text.size()) {
+                    throw dictionary::Error(
+                        dictionary::ErrorCode::kInvalidData,
+                        "Rendered article text exceeds the size limit");
+                }
                 document.plain_text += plain;
                 for (auto& resource : resources) {
                     if (HasResource(document.resources, resource.dictionary_id,
@@ -557,21 +810,41 @@ Document Assemble(const dictionary::Identity& dictionary,
                     document.resources.push_back(std::move(resource));
                 }
             } else {
-                document.sanitized_html +=
-                    "<pre>" + Escape(article.data) + "</pre>";
+                AppendDocument("<pre>", &document.sanitized_html);
+                AppendDocument(Escape(article.data), &document.sanitized_html);
+                AppendDocument("</pre>", &document.sanitized_html);
+                if (article.data.size() >
+                    kMaximumDocumentBytes - document.plain_text.size()) {
+                    throw dictionary::Error(
+                        dictionary::ErrorCode::kInvalidData,
+                        "Rendered article text exceeds the size limit");
+                }
                 document.plain_text += article.data;
             }
         } else {
-            document.sanitized_html += "<p>" + Escape(article.data) + "</p>";
+            AppendDocument("<p>", &document.sanitized_html);
+            AppendDocument(Escape(article.data), &document.sanitized_html);
+            AppendDocument("</p>", &document.sanitized_html);
+            if (article.data.size() >
+                kMaximumDocumentBytes - document.plain_text.size()) {
+                throw dictionary::Error(
+                    dictionary::ErrorCode::kInvalidData,
+                    "Rendered article text exceeds the size limit");
+            }
             document.plain_text += article.data;
         }
-        document.sanitized_html += "</section>";
+        AppendDocument("</section>", &document.sanitized_html);
         AddBreak(&document.plain_text);
     }
     while (!document.plain_text.empty() && document.plain_text.back() == '\n') {
         document.plain_text.pop_back();
     }
     FinishDocument(&document.sanitized_html);
+    if (document.sanitized_html.size() > kMaximumDocumentBytes) {
+        throw dictionary::Error(
+            dictionary::ErrorCode::kInvalidData,
+            "Rendered article document exceeds the size limit");
+    }
     return document;
 }
 
