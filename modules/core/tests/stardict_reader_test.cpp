@@ -22,6 +22,14 @@ class StardictReaderTest : public QObject {
     void RanksFoldedPrefixMatches();
     void SuggestsDistinctRankedHeadwords();
     void ReadsSynonymsAndPreservesPrimaryHeadwordsInGeneratedIndex();
+    void ReadsCompressedIndexVariants();
+    void ReadsLegacyDictionaryNameVariants();
+    void ReadsSynonymNameAndCompressionVariants();
+    void PrefersCanonicalPlainIndexAndSynonymFiles();
+    void ContinuesWhenDeclaredSynonymFileIsMissing();
+    void IgnoresUndeclaredSynonymFile();
+    void RejectsCorruptCompressedIndexAndSynonymFiles();
+    void RebuildsGeneratedIndexWhenCompressedSynonymChanges();
     void InvokesLookupCheckpoints();
     void ReturnsNoArticleForMissingHeadword();
     void RejectsInvalidInfoSignature();
@@ -112,6 +120,214 @@ void StardictReaderTest::
     QCOMPARE(reused.index_state(), IndexState::kReused);
     QCOMPARE(reused.FindHeadwordsForSynonym("alias", 20U),
              std::vector<std::string>{"primary"});
+}
+
+void StardictReaderTest::ReadsCompressedIndexVariants() {
+    for (const std::string suffix :
+         {".idx.gz", ".idx.dz", ".IDX.GZ", ".IDX.DZ"}) {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto root = TemporaryPath(directory);
+        const auto info_path = test::WriteStardictFixture(
+            root, {{"example", "compressed index definition"}});
+        const auto source_index = root / "fixture.idx";
+        const auto compressed_index = root / ("fixture" + suffix);
+        test::CompressStardictCompanion(source_index, compressed_index);
+        QVERIFY(std::filesystem::remove(source_index));
+
+        const Reader reader = Reader::Open(info_path);
+
+        QCOMPARE(reader.LookupExact("example").front().data,
+                 "compressed index definition");
+    }
+
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "uppercase index"}});
+    std::filesystem::rename(root / "fixture.idx", root / "fixture.IDX");
+
+    const Reader reader = Reader::Open(info_path);
+
+    QCOMPARE(reader.LookupExact("example").front().data, "uppercase index");
+}
+
+void StardictReaderTest::ReadsLegacyDictionaryNameVariants() {
+    {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto root = TemporaryPath(directory);
+        const auto info_path = test::WriteStardictFixture(
+            root, {{"example", "uppercase dictionary"}});
+        std::filesystem::rename(root / "fixture.dict", root / "fixture.DICT");
+
+        const Reader reader = Reader::Open(info_path);
+
+        QCOMPARE(reader.LookupExact("example").front().data,
+                 "uppercase dictionary");
+    }
+    {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto root = TemporaryPath(directory);
+        const auto info_path = test::WriteStardictFixture(
+            root, {{"example", "mixed-case compressed dictionary"}});
+        const auto source_dictionary = root / "fixture.dict";
+        test::CompressStardictCompanion(source_dictionary,
+                                        root / "fixture.dict.DZ");
+        QVERIFY(std::filesystem::remove(source_dictionary));
+
+        const Reader reader = Reader::Open(info_path);
+
+        QCOMPARE(reader.LookupExact("example").front().data,
+                 "mixed-case compressed dictionary");
+    }
+}
+
+void StardictReaderTest::ReadsSynonymNameAndCompressionVariants() {
+    for (const std::string suffix :
+         {".syn.gz", ".syn.dz", ".SYN.GZ", ".SYN.DZ"}) {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto root = TemporaryPath(directory);
+        const auto info_path = test::WriteStardictFixture(
+            root, {{"primary", "compressed synonym definition"}});
+        test::WriteStardictSynonyms(info_path, {{"alias", 0U}});
+        const auto source_synonym = root / "fixture.syn";
+        const auto compressed_synonym = root / ("fixture" + suffix);
+        test::CompressStardictCompanion(source_synonym, compressed_synonym);
+        QVERIFY(std::filesystem::remove(source_synonym));
+
+        const Reader reader = Reader::Open(info_path);
+
+        QCOMPARE(reader.LookupExact("alias").front().data,
+                 "compressed synonym definition");
+    }
+
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"primary", "uppercase synonym"}});
+    test::WriteStardictSynonyms(info_path, {{"alias", 0U}});
+    std::filesystem::rename(root / "fixture.syn", root / "fixture.SYN");
+
+    const Reader reader = Reader::Open(info_path);
+
+    QCOMPARE(reader.LookupExact("alias").front().data, "uppercase synonym");
+}
+
+void StardictReaderTest::PrefersCanonicalPlainIndexAndSynonymFiles() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"primary", "definition"}});
+    test::WriteStardictSynonyms(info_path, {{"alias", 0U}});
+    test::WriteBinaryFile(root / "fixture.idx.gz", "corrupt index shadow");
+    test::WriteBinaryFile(root / "fixture.syn.gz", "corrupt synonym shadow");
+
+    const Reader reader = Reader::Open(info_path);
+
+    QCOMPARE(reader.LookupExact("alias").front().data, "definition");
+}
+
+void StardictReaderTest::ContinuesWhenDeclaredSynonymFileIsMissing() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto info_path = test::WriteStardictFixture(
+        TemporaryPath(directory), {{"primary", "definition"}});
+    test::AppendStardictInfoField(info_path, "synwordcount", "1");
+
+    const Reader reader = Reader::Open(info_path);
+
+    QCOMPARE(reader.LookupExact("primary").front().data, "definition");
+    QVERIFY(reader.LookupExact("alias").empty());
+}
+
+void StardictReaderTest::IgnoresUndeclaredSynonymFile() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"primary", "definition"}});
+    const auto synonym_path =
+        test::WriteStardictSynonymData(info_path, {{"alias", 0U}});
+    const auto generated_index = root / "fixture.gdidx";
+
+    const Reader created = Reader::Open(info_path, generated_index);
+    QCOMPARE(created.index_state(), IndexState::kCreated);
+    QVERIFY(created.LookupExact("alias").empty());
+    test::WriteBinaryFile(synonym_path, "changed but still ignored");
+
+    const Reader reused = Reader::Open(info_path, generated_index);
+    QCOMPARE(reused.index_state(), IndexState::kReused);
+    QVERIFY(reused.LookupExact("alias").empty());
+}
+
+void StardictReaderTest::RejectsCorruptCompressedIndexAndSynonymFiles() {
+    {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto root = TemporaryPath(directory);
+        const auto info_path =
+            test::WriteStardictFixture(root, {{"primary", "definition"}});
+        QVERIFY(std::filesystem::remove(root / "fixture.idx"));
+        test::WriteBinaryFile(root / "fixture.idx.gz", "not gzip data");
+
+        try {
+            static_cast<void>(Reader::Open(info_path));
+            QFAIL("Reader::Open should reject a corrupt compressed index");
+        } catch (const Error& error) {
+            QCOMPARE(error.code(), ErrorCode::kInvalidIndex);
+        }
+    }
+    {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const auto root = TemporaryPath(directory);
+        const auto info_path =
+            test::WriteStardictFixture(root, {{"primary", "definition"}});
+        test::AppendStardictInfoField(info_path, "synwordcount", "1");
+        test::WriteBinaryFile(root / "fixture.syn.gz", "not gzip data");
+
+        try {
+            static_cast<void>(Reader::Open(info_path));
+            QFAIL("Reader::Open should reject a corrupt compressed synonym");
+        } catch (const Error& error) {
+            QCOMPARE(error.code(), ErrorCode::kInvalidIndex);
+        }
+    }
+}
+
+void StardictReaderTest::RebuildsGeneratedIndexWhenCompressedSynonymChanges() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"primary", "definition"}});
+    test::WriteStardictSynonyms(info_path, {{"first alias", 0U}});
+    const auto source_synonym = root / "fixture.syn";
+    const auto compressed_synonym = root / "fixture.syn.gz";
+    test::CompressStardictCompanion(source_synonym, compressed_synonym);
+    QVERIFY(std::filesystem::remove(source_synonym));
+    const auto generated_index = root / "fixture.gdidx";
+    const Reader created = Reader::Open(info_path, generated_index);
+    QCOMPARE(created.index_state(), IndexState::kCreated);
+    QCOMPARE(created.LookupExact("first alias").front().data, "definition");
+
+    test::WriteStardictSynonymData(info_path, {{"second alias", 0U}});
+    test::CompressStardictCompanion(source_synonym, compressed_synonym);
+    QVERIFY(std::filesystem::remove(source_synonym));
+    const auto modified = std::filesystem::last_write_time(compressed_synonym);
+    std::filesystem::last_write_time(compressed_synonym,
+                                     modified + std::chrono::seconds(2));
+
+    const Reader rebuilt = Reader::Open(info_path, generated_index);
+    QCOMPARE(rebuilt.index_state(), IndexState::kRebuiltStale);
+    QVERIFY(rebuilt.LookupExact("first alias").empty());
+    QCOMPARE(rebuilt.LookupExact("second alias").front().data, "definition");
 }
 
 void StardictReaderTest::RanksFoldedPrefixMatches() {

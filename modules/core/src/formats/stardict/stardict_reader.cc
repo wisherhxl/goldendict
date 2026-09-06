@@ -4,10 +4,13 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <charconv>
 #include <fstream>
+#include <initializer_list>
 #include <limits>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <system_error>
 #include <unordered_set>
@@ -26,7 +29,7 @@ constexpr std::string_view kInfoSignature = "StarDict's dict ifo file";
 constexpr std::uintmax_t kMaximumIndexSize = 256U * 1024U * 1024U;
 constexpr std::uintmax_t kMaximumDictionarySize =
     static_cast<std::uintmax_t>(2U) * 1024U * 1024U * 1024U;
-constexpr std::string_view kGeneratedIndexFormat = "stardict-records-v2";
+constexpr std::string_view kGeneratedIndexFormat = "stardict-records-v3";
 
 bool HasPrefix(std::string_view text, std::string_view prefix) noexcept {
     return text.size() >= prefix.size() &&
@@ -71,39 +74,94 @@ std::string ReadFile(const std::filesystem::path& path, ErrorCode error_code,
     return data;
 }
 
-std::string ReadCompressedDictionary(const std::filesystem::path& path) {
+bool IsCompressedCompanion(const std::filesystem::path& path) {
+    std::string extension = path.extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+                   [](unsigned char character) {
+                       return static_cast<char>(std::tolower(character));
+                   });
+    return extension == ".gz" || extension == ".dz";
+}
+
+std::optional<std::filesystem::path> ResolveOptionalCompanion(
+    const std::filesystem::path& base_path,
+    std::initializer_list<std::string_view> suffixes) {
+    for (const auto suffix : suffixes) {
+        auto candidate = base_path;
+        candidate += suffix;
+        std::error_code filesystem_error;
+        if (std::filesystem::exists(candidate, filesystem_error)) {
+            return candidate;
+        }
+        if (filesystem_error) {
+            Throw(ErrorCode::kMissingFile, candidate,
+                  "Cannot inspect companion file");
+        }
+    }
+    return std::nullopt;
+}
+
+std::filesystem::path ResolveRequiredCompanion(
+    const std::filesystem::path& base_path,
+    std::initializer_list<std::string_view> suffixes,
+    std::string_view description) {
+    if (const auto path = ResolveOptionalCompanion(base_path, suffixes);
+        path.has_value()) {
+        return *path;
+    }
+    auto expected_path = base_path;
+    expected_path += *suffixes.begin();
+    Throw(ErrorCode::kMissingFile, expected_path,
+          "Cannot find required " + std::string(description));
+}
+
+gzFile OpenCompressedFile(const std::filesystem::path& path) {
+#ifdef _WIN32
+    return gzopen_w(path.c_str(), "rb");
+#else
+    return gzopen(path.c_str(), "rb");
+#endif
+}
+
+std::string ReadCompressedFile(const std::filesystem::path& path,
+                               ErrorCode error_code,
+                               std::uintmax_t maximum_size,
+                               std::string_view description) {
     std::error_code filesystem_error;
     const auto compressed_size =
         std::filesystem::file_size(path, filesystem_error);
     if (filesystem_error) {
         Throw(ErrorCode::kMissingFile, path,
-              "Cannot inspect compressed dictionary file");
+              "Cannot inspect compressed " + std::string(description));
     }
-    if (compressed_size > kMaximumDictionarySize) {
-        Throw(ErrorCode::kInvalidDictionary, path,
-              "Compressed dictionary exceeds the supported size limit");
+    if (compressed_size > maximum_size) {
+        Throw(error_code, path,
+              "Compressed " + std::string(description) +
+                  " exceeds the supported size limit");
     }
 
     std::ifstream header(path, std::ios::binary);
     if (!header) {
         Throw(ErrorCode::kMissingFile, path,
-              "Cannot open compressed dictionary file");
+              "Cannot open compressed " + std::string(description));
     }
     std::array<unsigned char, 2> signature{};
     if (!header.read(reinterpret_cast<char*>(signature.data()),
                      static_cast<std::streamsize>(signature.size()))) {
-        Throw(ErrorCode::kInvalidDictionary, path,
-              "Compressed dictionary header is truncated");
+        Throw(
+            error_code, path,
+            "Compressed " + std::string(description) + " header is truncated");
     }
     if (signature[0] != 0x1fU || signature[1] != 0x8bU) {
-        Throw(ErrorCode::kInvalidDictionary, path,
-              "Compressed dictionary has an invalid gzip signature");
+        Throw(error_code, path,
+              "Compressed " + std::string(description) +
+                  " has an invalid gzip signature");
     }
 
-    gzFile input = gzopen(path.string().c_str(), "rb");
+    gzFile input = OpenCompressedFile(path);
     if (input == nullptr) {
         Throw(ErrorCode::kMissingFile, path,
-              "Cannot open compressed dictionary file");
+              "Cannot open compressed " + std::string(description));
     }
 
     std::string data;
@@ -113,31 +171,41 @@ std::string ReadCompressedDictionary(const std::filesystem::path& path) {
             gzread(input, buffer.data(), static_cast<unsigned>(buffer.size()));
         if (count > 0) {
             const auto size = static_cast<std::size_t>(count);
-            if (size > kMaximumDictionarySize - data.size()) {
+            if (size > maximum_size - data.size()) {
                 gzclose(input);
-                Throw(ErrorCode::kInvalidDictionary, path,
-                      "Decompressed dictionary exceeds the supported size "
-                      "limit");
+                Throw(error_code, path,
+                      "Decompressed " + std::string(description) +
+                          " exceeds the supported size limit");
             }
             data.append(buffer.data(), size);
             continue;
         }
         if (count < 0) {
-            int error_code = Z_OK;
-            const char* message = gzerror(input, &error_code);
+            int zlib_error = Z_OK;
+            const char* message = gzerror(input, &zlib_error);
             const std::string detail =
                 message == nullptr ? "Unknown decompression error" : message;
             gzclose(input);
-            Throw(ErrorCode::kInvalidDictionary, path,
-                  "Cannot decompress dictionary: " + detail);
+            Throw(error_code, path,
+                  "Cannot decompress " + std::string(description) + ": " +
+                      detail);
         }
         break;
     }
     if (gzclose(input) != Z_OK) {
-        Throw(ErrorCode::kInvalidDictionary, path,
-              "Compressed dictionary checksum or trailer is invalid");
+        Throw(error_code, path,
+              "Compressed " + std::string(description) +
+                  " checksum or trailer is invalid");
     }
     return data;
+}
+
+std::string ReadCompanion(const std::filesystem::path& path,
+                          ErrorCode error_code, std::uintmax_t maximum_size,
+                          std::string_view description) {
+    return IsCompressedCompanion(path)
+               ? ReadCompressedFile(path, error_code, maximum_size, description)
+               : ReadFile(path, error_code, maximum_size);
 }
 
 std::uint64_t ParseUnsigned(std::string_view text,
@@ -238,38 +306,6 @@ Error::Error(ErrorCode code, std::filesystem::path path, std::string message)
 Reader Reader::Open(
     const std::filesystem::path& info_path,
     const std::optional<std::filesystem::path>& generated_index_path) {
-    auto index_path = info_path;
-    index_path.replace_extension(".idx");
-    auto dictionary_path = info_path;
-    dictionary_path.replace_extension(".dict");
-    std::error_code filesystem_error;
-    if (!std::filesystem::exists(dictionary_path, filesystem_error)) {
-        if (filesystem_error) {
-            Throw(ErrorCode::kMissingFile, dictionary_path,
-                  "Cannot inspect dictionary file");
-        }
-        dictionary_path += ".dz";
-    }
-    auto synonym_path = info_path;
-    synonym_path.replace_extension(".syn");
-    std::vector<std::filesystem::path> source_paths = {info_path, index_path,
-                                                       dictionary_path};
-    if (std::filesystem::exists(synonym_path, filesystem_error)) {
-        source_paths.push_back(synonym_path);
-    } else if (filesystem_error) {
-        Throw(ErrorCode::kMissingFile, synonym_path,
-              "Cannot inspect optional synonym file");
-    }
-    std::optional<dictionary::SourceSnapshot> initial_sources;
-    if (generated_index_path.has_value()) {
-        try {
-            initial_sources = dictionary::CaptureSourceSnapshot(source_paths);
-        } catch (const dictionary::GeneratedIndexError& error) {
-            Throw(ErrorCode::kIndexStorage, *generated_index_path,
-                  error.what());
-        }
-    }
-
     const std::string info_contents =
         ReadFile(info_path, ErrorCode::kInvalidInfo, 1024U * 1024U);
     const auto fields = ParseInfoFields(info_contents, info_path);
@@ -289,9 +325,55 @@ Reader Reader::Open(
         Throw(ErrorCode::kUnsupportedFeature, info_path,
               "Special dictionary types are not supported");
     }
+    const auto& book_name = RequireField(fields, "bookname", info_path);
+    const auto word_count = ParseUnsigned(
+        RequireField(fields, "wordcount", info_path), info_path, "wordcount");
+    const auto index_file_size =
+        ParseUnsigned(RequireField(fields, "idxfilesize", info_path), info_path,
+                      "idxfilesize");
+    const auto& same_type_sequence =
+        RequireField(fields, "sametypesequence", info_path);
+    if (same_type_sequence != "m" && same_type_sequence != "h") {
+        Throw(ErrorCode::kUnsupportedFeature, info_path,
+              "Only sametypesequence=m or h is supported in this increment");
+    }
+
+    auto base_path = info_path;
+    base_path.replace_extension();
+    const auto index_path = ResolveRequiredCompanion(
+        base_path, {".idx", ".idx.gz", ".idx.dz", ".IDX", ".IDX.GZ", ".IDX.DZ"},
+        "StarDict index file");
+    const auto dictionary_path = ResolveRequiredCompanion(
+        base_path, {".dict", ".dict.dz", ".DICT", ".dict.DZ"},
+        "StarDict dictionary data file");
+    const auto resolved_synonym_path = ResolveOptionalCompanion(
+        base_path,
+        {".syn", ".syn.gz", ".syn.dz", ".SYN", ".SYN.GZ", ".SYN.DZ"});
+    const auto declared_synonym_count = [&fields, &info_path]() {
+        const auto declared = fields.find("synwordcount");
+        return declared == fields.end()
+                   ? std::uint64_t{0}
+                   : ParseUnsigned(declared->second, info_path, "synwordcount");
+    }();
+    const std::optional<std::filesystem::path> synonym_path =
+        declared_synonym_count == 0U ? std::nullopt : resolved_synonym_path;
+    std::vector<std::filesystem::path> source_paths = {info_path, index_path,
+                                                       dictionary_path};
+    if (synonym_path.has_value()) {
+        source_paths.push_back(*synonym_path);
+    }
+    std::optional<dictionary::SourceSnapshot> initial_sources;
+    if (generated_index_path.has_value()) {
+        try {
+            initial_sources = dictionary::CaptureSourceSnapshot(source_paths);
+        } catch (const dictionary::GeneratedIndexError& error) {
+            Throw(ErrorCode::kIndexStorage, *generated_index_path,
+                  error.what());
+        }
+    }
 
     Reader reader;
-    reader.metadata_.book_name = RequireField(fields, "bookname", info_path);
+    reader.metadata_.book_name = book_name;
     if (const auto iterator = fields.find("lang_from");
         iterator != fields.end()) {
         reader.metadata_.source_language = iterator->second;
@@ -315,29 +397,18 @@ Reader Reader::Open(
     append_metadata("website", "Website: ");
     append_metadata("date", "Date: ");
     append_metadata("description", "");
-    reader.metadata_.word_count = ParseUnsigned(
-        RequireField(fields, "wordcount", info_path), info_path, "wordcount");
-    reader.metadata_.index_file_size =
-        ParseUnsigned(RequireField(fields, "idxfilesize", info_path), info_path,
-                      "idxfilesize");
-    reader.metadata_.same_type_sequence =
-        RequireField(fields, "sametypesequence", info_path);
-    if (reader.metadata_.same_type_sequence != "m" &&
-        reader.metadata_.same_type_sequence != "h") {
-        Throw(ErrorCode::kUnsupportedFeature, info_path,
-              "Only sametypesequence=m or h is supported in this increment");
-    }
+    reader.metadata_.word_count = word_count;
+    reader.metadata_.index_file_size = index_file_size;
+    reader.metadata_.same_type_sequence = same_type_sequence;
 
     reader.dictionary_data_ =
-        dictionary_path.extension() == ".dz"
-            ? ReadCompressedDictionary(dictionary_path)
-            : ReadFile(dictionary_path, ErrorCode::kInvalidDictionary,
-                       kMaximumDictionarySize);
+        ReadCompanion(dictionary_path, ErrorCode::kInvalidDictionary,
+                      kMaximumDictionarySize, "dictionary data");
 
     const auto parse_source_index = [&reader, &index_path, &synonym_path,
-                                     &fields, &info_path]() {
-        const std::string index_data =
-            ReadFile(index_path, ErrorCode::kInvalidIndex, kMaximumIndexSize);
+                                     declared_synonym_count, &info_path]() {
+        const std::string index_data = ReadCompanion(
+            index_path, ErrorCode::kInvalidIndex, kMaximumIndexSize, "index");
         if (reader.metadata_.index_file_size != index_data.size()) {
             Throw(ErrorCode::kInvalidIndex, index_path,
                   "Index size does not match idxfilesize");
@@ -365,9 +436,10 @@ Reader Reader::Open(
             Throw(ErrorCode::kInvalidIndex, index_path,
                   "Index record count does not match wordcount");
         }
-        if (std::filesystem::exists(synonym_path)) {
-            const std::string synonym_data = ReadFile(
-                synonym_path, ErrorCode::kInvalidIndex, kMaximumIndexSize);
+        if (synonym_path.has_value()) {
+            const std::string synonym_data =
+                ReadCompanion(*synonym_path, ErrorCode::kInvalidIndex,
+                              kMaximumIndexSize, "synonym index");
             std::size_t synonym_cursor = 0U;
             std::size_t synonym_count = 0U;
             while (synonym_cursor < synonym_data.size()) {
@@ -375,13 +447,13 @@ Reader Reader::Open(
                 if (terminator == std::string::npos ||
                     terminator == synonym_cursor ||
                     synonym_data.size() - terminator - 1U < 4U) {
-                    Throw(ErrorCode::kInvalidIndex, synonym_path,
+                    Throw(ErrorCode::kInvalidIndex, *synonym_path,
                           "Truncated or malformed synonym record");
                 }
                 const auto article_index =
                     ReadBigEndian32(synonym_data, terminator + 1U);
                 if (article_index >= reader.metadata_.word_count) {
-                    Throw(ErrorCode::kInvalidIndex, synonym_path,
+                    Throw(ErrorCode::kInvalidIndex, *synonym_path,
                           "Synonym references an invalid index record");
                 }
                 IndexRecord record = records[article_index];
@@ -391,19 +463,10 @@ Reader Reader::Open(
                 synonym_cursor = terminator + 5U;
                 ++synonym_count;
             }
-            const auto declared = fields.find("synwordcount");
-            if (declared == fields.end() ||
-                ParseUnsigned(declared->second, info_path, "synwordcount") !=
-                    synonym_count) {
+            if (declared_synonym_count != synonym_count) {
                 Throw(ErrorCode::kInvalidInfo, info_path,
                       "Synonym count does not match synwordcount");
             }
-        } else if (const auto declared = fields.find("synwordcount");
-                   declared != fields.end() &&
-                   ParseUnsigned(declared->second, info_path, "synwordcount") !=
-                       0U) {
-            Throw(ErrorCode::kMissingFile, synonym_path,
-                  "Declared synonym file is missing");
         }
         return records;
     };

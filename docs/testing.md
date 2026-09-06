@@ -1223,16 +1223,22 @@ Phase 4 adds `core_api_test` for the bounded headless API defaults and a C++
 link only against the installed `goldendict::core` target, without Qt Widgets,
 Qt Gui, or Qt WebEngine.
 
-`stardict_reader_test` generates deterministic uncompressed and gzip/dictzip-
-compatible `.dict.dz` StarDict fixtures at runtime. It verifies metadata,
-duplicate and UTF-8 headwords, exact and missing lookup, uncompressed-file
-precedence, Unicode-folded ranked prefix lookup, distinct lightweight headword
-suggestions, scan checkpoints, and stable error categories for invalid
-metadata, corrupt compression, truncated indexes, missing companion files, and
-article ranges outside dictionary data. It also verifies generated-index
-creation and reuse, source-stamp invalidation for either data representation,
-checksum corruption recovery, temporary-file cleanup, and rejection of a
-directory used as an index-file target.
+`stardict_reader_test` generates deterministic plain and gzip/dictzip-compatible
+StarDict fixtures at runtime. R3.6 Unit 1 covers the complete pinned companion
+name and precedence matrix for `.idx`, `.idx.gz`, `.idx.dz`, `.dict`,
+`.dict.dz`, `.syn`, `.syn.gz`, and `.syn.dz`, including the retained case
+variants. It proves bounded decompression and typed corrupt-stream failures for
+index, dictionary, and synonym data; plain-companion precedence; recovery when
+a declared synonym file is absent; and complete exclusion of a present but
+undeclared synonym file from lookup and source identity. It also proves that a
+consumed compressed synonym change rebuilds the generated index, while an
+ignored undeclared synonym change permits reuse. The generated-index format is
+`stardict-records-v3`, so earlier implementation-generated caches rebuild
+instead of retaining superseded synonym semantics. Existing coverage retains
+metadata, duplicate and UTF-8 headwords, exact and missing lookup,
+Unicode-folded ranked prefix lookup, distinct lightweight suggestions, scan
+checkpoints, article bounds, generated-index create/reuse/stale/corrupt
+lifecycle, temporary-file cleanup, and invalid storage-target rejection.
 
 `stardict_dictionary_test` verifies the private backend contract and StarDict
 adapter: identity and provenance, bounded exact results, cancellation,

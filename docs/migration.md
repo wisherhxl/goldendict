@@ -363,6 +363,17 @@ strict comparisons report zero differences, and a byte-identical post-repeat
 manifest proves that the 88-file corpus remained unchanged. R3.5 is therefore
 complete; the non-corpus format-variant leaves beginning at R3.6 remain open.
 
+R3.6 Unit 1 restores the pinned StarDict companion resolver without changing
+the public dictionary contract. The private reader now applies the Qt 5 name,
+case, and precedence order for plain and gzip/dictzip-compatible index,
+dictionary, and synonym companions. Declared but missing synonyms fail open as
+an empty optional companion, while present but undeclared synonyms are ignored
+and excluded from source identity. Consumed compressed companions retain
+bounded decompression, typed failures, and generated-index invalidation. The
+private cache format advances to `stardict-records-v3`; older generated caches
+rebuild automatically. Index/metadata semantics, article fields, resource ZIPs,
+and icon evidence remain assigned to R3.6 Units 2 through 4.
+
 ### Phase 6 — Dictionary Backends In Priority Batches
 
 - Port backends in approved core, common optional, and deferred/high-cost

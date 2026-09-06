@@ -1660,6 +1660,33 @@ activation, disposable fixture storage, and test infrastructure are available;
 no product, architecture, licensing, platform, or access decision blocks Unit
 1.
 
+#### R3.6 Unit 1 implementation result
+
+Status: **Implementation complete** (2026-09-06).
+
+The private Qt 6 StarDict reader now resolves every pinned index, dictionary,
+and synonym companion name in Qt 5 precedence order, including the retained
+case variants and gzip/dictzip-compatible index and synonym streams. A shared
+bounded companion reader retains the existing typed index-versus-dictionary
+failure boundary. Declared but missing synonyms continue with primary records;
+present but undeclared synonyms are ignored and are not part of the generated
+index source snapshot. Only selected and consumed companions participate in
+create/reuse/stale/corrupt lifecycle checks. The generated cache format advances
+to `stardict-records-v3`, forcing safe reconstruction of older private caches.
+No public, application, GUI, article-field, resource-provider, or asset contract
+changed.
+
+Focused generated-fixture coverage exercises all non-default index and synonym
+compression/case variants, retained dictionary case variants, canonical plain
+precedence, both recoverable synonym cases, typed corrupt compressed index and
+synonym failures, and compressed-synonym source invalidation. The existing
+dictionary compression, bounds, index lifecycle, metadata, lookup, and error
+tests remain active. The VS 2026/MSVC 14.44 Release build completed all 829
+targets, the complete serial CTest suite passed 135 of 135 tests, and the
+repository Python suite passed 170 of 170 tests with its two expected skips.
+Every executable and test ran through `run_with_conan.ps1`. R3.6 Units 2
+through 4 remain open.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

@@ -9,6 +9,7 @@
 #include <iterator>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -35,6 +36,23 @@ inline void WriteBinaryFile(const std::filesystem::path& path,
     std::ofstream output(path, std::ios::binary);
     output.write(contents.data(),
                  static_cast<std::streamsize>(contents.size()));
+}
+
+inline std::string ReadBinaryFile(const std::filesystem::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        throw std::runtime_error("Cannot read StarDict fixture file");
+    }
+    return std::string((std::istreambuf_iterator<char>(input)),
+                       std::istreambuf_iterator<char>());
+}
+
+inline void AppendStardictInfoField(const std::filesystem::path& info_path,
+                                    std::string_view key,
+                                    std::string_view value) {
+    auto info = ReadBinaryFile(info_path);
+    info += std::string(key) + "=" + std::string(value) + "\n";
+    WriteBinaryFile(info_path, info);
 }
 
 inline std::filesystem::path WriteStardictFixture(
@@ -81,7 +99,7 @@ inline std::filesystem::path WriteStardictResource(
     return path;
 }
 
-inline void WriteStardictSynonyms(
+inline std::filesystem::path WriteStardictSynonymData(
     const std::filesystem::path& info_path,
     const std::vector<std::pair<std::string, std::uint32_t>>& synonyms) {
     std::string data;
@@ -93,22 +111,21 @@ inline void WriteStardictSynonyms(
     auto synonym_path = info_path;
     synonym_path.replace_extension(".syn");
     WriteBinaryFile(synonym_path, data);
-    std::ifstream input(info_path, std::ios::binary);
-    std::string info((std::istreambuf_iterator<char>(input)),
-                     std::istreambuf_iterator<char>());
-    info += "synwordcount=" + std::to_string(synonyms.size()) + "\n";
-    WriteBinaryFile(info_path, info);
+    return synonym_path;
 }
 
-inline std::filesystem::path CompressStardictDictionary(
-    const std::filesystem::path& info_path) {
-    auto dictionary_path = info_path;
-    dictionary_path.replace_extension(".dict");
-    std::ifstream input(dictionary_path, std::ios::binary);
-    const std::string contents((std::istreambuf_iterator<char>(input)),
-                               std::istreambuf_iterator<char>());
-    auto compressed_path = dictionary_path;
-    compressed_path += ".dz";
+inline void WriteStardictSynonyms(
+    const std::filesystem::path& info_path,
+    const std::vector<std::pair<std::string, std::uint32_t>>& synonyms) {
+    static_cast<void>(WriteStardictSynonymData(info_path, synonyms));
+    AppendStardictInfoField(info_path, "synwordcount",
+                            std::to_string(synonyms.size()));
+}
+
+inline std::filesystem::path CompressStardictCompanion(
+    const std::filesystem::path& source_path,
+    const std::filesystem::path& compressed_path) {
+    const auto contents = ReadBinaryFile(source_path);
     gzFile output = OpenGzipFixture(compressed_path, "wb9");
     if (output == nullptr) {
         throw std::runtime_error("Cannot open compressed StarDict fixture");
@@ -120,6 +137,15 @@ inline std::filesystem::path CompressStardictDictionary(
         throw std::runtime_error("Cannot write compressed StarDict fixture");
     }
     return compressed_path;
+}
+
+inline std::filesystem::path CompressStardictDictionary(
+    const std::filesystem::path& info_path) {
+    auto dictionary_path = info_path;
+    dictionary_path.replace_extension(".dict");
+    auto compressed_path = dictionary_path;
+    compressed_path += ".dz";
+    return CompressStardictCompanion(dictionary_path, compressed_path);
 }
 
 }  // namespace goldendict::core::test
