@@ -1571,6 +1571,95 @@ The post-repeat 88-file, 9,303,289,246-byte corpus manifest is byte-identical to
 the preflight manifest at SHA-256
 `b7e91878649b61388ecb1a3713709685e243f57e60d2b8eb23838a91bba816d2`.
 
+### R3.6 StarDict non-corpus variant readiness
+
+Readiness result: **Ready, split into four compatibility-driven functional
+units** (2026-09-06).
+
+R3.6 implements the already approved `CRD-DICT-003` and `CRD-COMPAT-001`; it
+does not introduce a new product requirement or discretionary divergence. The
+frozen Qt 5 backend remains the behavioral authority. It resolves `.idx`,
+`.idx.gz`, and `.idx.dz` plus their documented case variants; resolves plain or
+compressed synonym companions with the same naming rules; prefers the plain
+dictionary data file over `.dict.dz`; and treats declared-missing and
+present-but-undeclared synonyms as recoverable conditions. The current Qt 6
+adapter supports only plain `.idx`/`.syn`, rejects a declared missing synonym,
+and rejects rather than ignores an undeclared plain synonym, so those are
+confirmed compatibility gaps. Qt 5 explicitly rejects 64-bit index offsets and
+nonempty `dicttype`; R3.6 must retain those failures rather than silently
+expanding supported scope. The architecture-governed unsafe-resource exception
+is recorded below.
+
+Ownership remains inside the private StarDict adapter in `goldendict_core`.
+The existing Adapter boundary, generated-index lifecycle, request checkpoints,
+bounded structured results, and format-neutral dictionary contracts remain
+unchanged. Companion selection and compressed reads belong to the reader;
+StarDict field decoding and safe presentation conversion belong to the format
+adapter; adjacent directory/ZIP resource lookup belongs to its private resource
+provider. The application and installed interfaces must not learn StarDict
+details. Existing bounded compression, source-snapshot, article sanitization,
+and archive primitives are reused where their contracts fit; no speculative
+module, public abstraction, or GUI dependency is introduced. This preserves
+single responsibilities, dependency inversion toward the dictionary contract,
+and substitutability with the other built-in format adapters.
+
+Delivery is divided as follows:
+
+1. **R3.6 Unit 1 — companion resolution and compression.** Match Qt 5 naming,
+   case, and precedence for `.idx`, `.idx.gz`, `.idx.dz`, `.dict`, `.dict.dz`,
+   `.syn`, `.syn.gz`, and `.syn.dz`; preserve source-snapshot identity and
+   generated-index create/reuse/stale/corrupt behavior; and match the recoverable
+   declared-missing and present-but-undeclared synonym cases.
+2. **R3.6 Unit 2 — index, metadata, and synonym semantics.** Match retained
+   32-bit index parsing, counts, metadata/language identity, HTML-escaped
+   headwords, synonym target ownership and legacy filtering, deterministic
+   lookup/enumeration order, cancellation, and malformed/truncated/range
+   failures. Retain explicit rejection of 64-bit offsets and `dicttype`.
+3. **R3.6 Unit 3 — article field compatibility.** Decode both
+   `sametypesequence` and per-field typed records for every field type handled
+   by Qt 5, preserve ordered multi-field articles, links and resource/media
+   references, apply bounded inert conversion, and match malformed/truncated
+   field behavior without executing active content.
+4. **R3.6 Unit 4 — resource companions and closure.** Match adjacent `res`
+   directory and supported `res.zip` discovery/precedence/read behavior,
+   valid in-root case variants, corruption, source-change invalidation, and
+   restart. Repeat the complete generated fixture matrix through independent
+   Qt 5 and Qt 6 adapters, close every applicable R3.6 field, and leave the
+   source fixtures byte-identical.
+
+Qt 5 also loads a same-basename `.bmp`, `.png`, `.jpg`, or `.ico` dictionary
+icon and otherwise publishes the built-in StarDict icon. R3.6 Unit 4 owns a
+generated source inventory and paired evidence for that resolution,
+precedence, and fallback behavior. The transport-neutral Qt 6 dictionary
+identity currently has no icon payload; introducing and presenting that
+cross-format product resource is assigned durably to R9.1, whose asset
+inventory/import gate depends on R3.6-R3.20. R3.6 cannot close until the
+StarDict icon evidence and R9.1 handoff are complete, while actual installed
+asset import and UI publication remain R9.1 responsibilities.
+
+For valid confined resource identifiers, paired results remain strictly equal.
+Qt 5 can append absolute or traversing identifiers beneath its resource path,
+whereas the mandatory untrusted-payload rule requires Qt 6 to reject absolute,
+traversing, and symlink-escaping resource paths. This is an
+architecture-governed security exception under the approved baseline's
+default-to-Qt-5 rule, not a discretionary redesign. Negative paired evidence
+must retain the exact Qt 5 result and typed Qt 6 rejection as an explicit
+allowed difference; it must not normalize away, omit, or report equality for
+that field. No other resource difference is accepted by this exception.
+
+Every unit uses deterministic generated GPL-3.0-or-later fixtures with explicit
+provenance rather than the operator corpus. Focused reader, dictionary,
+discovery, facade, and negative tests must cover valid behavior, bounds,
+cancellation, restart/rebuild, corrupt input, missing companions, stable
+diagnostics, and source immutability. Paired fixture observations must retain
+the exact source revision, fixture manifest, scenario, normalized result, and
+strict difference list. Each unit also requires a complete Release build,
+serial CTest, repository Python tests, an independent completion audit, and the
+Integration Contract gate. Required Qt 5/Qt 6 toolchains, Conan runtime
+activation, disposable fixture storage, and test infrastructure are available;
+no product, architecture, licensing, platform, or access decision blocks Unit
+1.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an
