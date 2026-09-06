@@ -75,7 +75,7 @@ inline std::filesystem::path WriteStardictFixture(
     const std::string info =
         "StarDict's dict ifo file\n"
         "version=2.4.2\n"
-        "bookname=Generated Test Dictionary\n"
+        "bookname=Generated Test Dictionary en-en\n"
         "lang_from=en\n"
         "lang_to=en\n"
         "author=Fixture Author\n"

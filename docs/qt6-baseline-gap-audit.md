@@ -1687,6 +1687,79 @@ repository Python suite passed 170 of 170 tests with its two expected skips.
 Every executable and test ran through `run_with_conan.ps1`. R3.6 Units 2
 through 4 remain open.
 
+#### R3.6 Unit 2 implementation result
+
+Status: **Implementation complete** (2026-09-06).
+
+The private StarDict adapter now matches the frozen 32-bit index identity and
+record ownership rules. Published article and headword counts come from the
+declared IFO values; actual parsed primary records remain a separate bounded
+ownership set for safe article reads, synonym targets, and full-text ingestion.
+Completed records survive truncated index or synonym tails, an advisory
+`idxfilesize` does not reject valid data, and synonym declarations do not make
+missing records addressable. The legacy Babylon-conversion alias filter and
+deterministic lookup/enumeration behavior remain adapter-local. Unsafe article
+ranges, out-of-range synonym targets, malformed numeric metadata, 64-bit
+offsets, and nonempty `dicttype` retain typed failures.
+
+Language identity is inferred first from the selected dictionary filename and
+then from the book name using the exact frozen bibliographic ISO 639 mapping;
+unknown two- and three-letter captures retain Qt 5's unconditional first-two-
+letter fallback. Unicode case folding precedes the legacy ASCII token scan,
+and IFO `lang_from` and `lang_to` fields are not legacy inputs.
+The second-line version marker remains required while its value is not
+artificially restricted, and a missing book name or count retains the frozen
+empty/zero default. Copyright and description fields receive bounded
+legacy-compatible plain-text conversion. Descriptions without markup markers
+remain verbatim, including leading and trailing ASCII or Unicode whitespace.
+The private rich-text converter contains the sorted classic 258-name Qt entity
+set, numeric Windows-1252 and invalid-scalar mapping, source trimming,
+collapsible and non-breaking whitespace, preformatted text, block boundaries,
+the exact leading/trailing `hr` and closing-`div` boundary behavior, optional
+leading plus signs in numeric references, preformatted boundary-newline
+stripping, and nested hidden-content handling needed by the frozen path while keeping Core
+independent of Qt GUI. Labeled fields retain their trailing `\n\n`; when no
+field contributes visible text, the published description is `NONE`.
+The frozen Qt 5 HTML-headword helper's empty result for strings
+containing `&#` is preserved as observable behavior. Such unreachable empty
+headwords are omitted only from private full-text ingestion so one malformed
+legacy entry cannot disable valid searchable documents.
+
+The private generated-index format advances to `stardict-records-v4` because
+its payload now records actual primary ownership independently of declared
+identity counts. A StarDict-specific full-text source stamp similarly makes
+pre-Unit-2 `.gdfts` artifacts stale. Focused tests construct both previous
+artifacts and prove stale rebuild rather than reuse. No public dictionary,
+application, GUI, article-field, resource, or asset contract changed. Frozen
+Qt 5 source revision `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` remains the
+behavioral evidence for `%u`-prefix IFO parsing, language inference, count
+publication,
+HTML-headword conversion, index-tail continuation, synonym ownership, and
+alias filtering. Published primary-plus-synonym identity retains Qt 5's
+32-bit unsigned addition and wraparound. Index widths other than 32 and 64 are
+malformed metadata;
+the syntactically valid 64-bit mode remains a typed unsupported feature. The
+VS 2026/MSVC 14.44 Release build completed, the complete
+serial CTest suite passed 135 of 135 tests, and the repository Python suite
+passed 170 of 170 tests with its two expected skips. Every executable and test
+ran through `run_with_conan.ps1`. R3.6 Units 3 and 4 remain open.
+
+The final independent generated-fixture pair is retained under
+`evidence/qt5-qt6-r36-unit2-stardict-final9` with pair ID
+`7c8310317a2f1cb4bca6327fc1bc1e7bd9709ce1a452e8e9789adfbcae47bfcf`.
+It binds frozen Qt 5 revision
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8` to Qt 6 implementation Tree ID
+`0d83adc453810762220c400b63c72b4103b54de1` and the six-file, 584-byte
+fixture manifest at SHA-256
+`7c7761775edf732864276ae9fa28a8cc25db4e82f2b504fa8de18ae2613a62b1`.
+Its `zzz-yyy` book name proves that both products publish the legacy `zz` to
+`yy` fallback. Clean discovery, warm restart, and explicit rescan are each
+internally stable and equivalent with zero strict differences. Their
+comparison SHA-256 values are respectively
+`25914f034acf516c8c8cb8067dccf590cb0eef1d1a9558556904ded97512a4ce`,
+`d4444f79a93f91d1e9105ec44d685126108bcada3f6b480c2b74b61b52a04b6e`,
+and `ac83b78e5e351b46c1421193cf3c37d595946ceccc2519064f159814c6c0748a`.
+
 ### CRD closure cross-check
 
 This cross-check prevents a completed leaf graph from silently leaving an

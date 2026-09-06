@@ -23,12 +23,15 @@ class StardictDictionaryTest : public QObject {
 
    private slots:
     void ExposesIdentityAndBoundedArticles();
+    void ExposesLegacyPrimaryAndHeadwordCounts();
     void ReturnsBoundedPrefixArticles();
     void ReturnsBoundedHeadwordSuggestions();
     void EnumeratesUniqueHeadwordsInLegacyOrder();
     void PreservesFormattedArticleData();
     void BuildsPrimaryOnlyFullTextIndexWithStableProvenance();
     void ReusesAndRebuildsFullTextIndex();
+    void RebuildsFullTextIndexForCurrentStardictSemantics();
+    void SkipsLegacyEmptyHeadwordsInFullTextIndex();
     void SearchesCompressedDictionaryText();
     void ContainsFullTextStorageFailures();
     void HonorsCancellationAndDeadline();
@@ -59,7 +62,7 @@ void StardictDictionaryTest::ExposesIdentityAndBoundedArticles() {
     preferred_info_path.make_preferred();
 
     QCOMPARE(dictionary.identity().id, "fixture-id");
-    QCOMPARE(dictionary.identity().name, "Generated Test Dictionary");
+    QCOMPARE(dictionary.identity().name, "Generated Test Dictionary en-en");
     QCOMPARE(dictionary.identity().source, preferred_info_path.string());
     QCOMPARE(dictionary.identity().article_count, std::size_t{2});
     QCOMPARE(dictionary.identity().headword_count, std::size_t{2});
@@ -69,6 +72,24 @@ void StardictDictionaryTest::ExposesIdentityAndBoundedArticles() {
     QCOMPARE(articles.front().headword, "example");
     QCOMPARE(articles.front().format, "text/plain");
     QCOMPARE(articles.front().data, "first");
+}
+
+void StardictDictionaryTest::ExposesLegacyPrimaryAndHeadwordCounts() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"first", "one"}, {"second", "two"}});
+    test::WriteStardictSynonyms(
+        info_path, {{"alias", 0U}, {"/discard$", 0U}, {"discard/$", 1U}});
+
+    const Dictionary dictionary = Dictionary::Open("fixture-id", info_path);
+
+    QCOMPARE(dictionary.identity().article_count, std::size_t{2});
+    QCOMPARE(dictionary.identity().headword_count, std::size_t{5});
+    QCOMPARE(dictionary.LookupExact("alias").front().data, "one");
+    QVERIFY(dictionary.LookupExact("/discard$").empty());
+    QVERIFY(dictionary.LookupExact("discard/$").empty());
 }
 
 void StardictDictionaryTest::ReturnsBoundedPrefixArticles() {
@@ -212,6 +233,56 @@ void StardictDictionaryTest::ReusesAndRebuildsFullTextIndex() {
                               full_text_path)
                  .full_text_index_state(),
              std::optional(dictionary::FullTextIndexState::kRebuiltCorrupt));
+}
+
+void StardictDictionaryTest::
+    RebuildsFullTextIndexForCurrentStardictSemantics() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"entry", "searchable text"}});
+    const auto full_text_path = root / "fixture.gdfts";
+    const Reader reader = Reader::Open(info_path);
+    dictionary::FullTextDocument old_document;
+    old_document.dictionary.id = "fixture-id";
+    old_document.headword = "obsolete";
+    old_document.document_id = "obsolete:0";
+    old_document.plain_text = "obsolete text";
+    QCOMPARE(dictionary::FullTextIndex::OpenOrBuild(
+                 full_text_path, reader.source_snapshot(), {old_document})
+                 .state(),
+             dictionary::FullTextIndexState::kCreated);
+
+    const Dictionary dictionary = Dictionary::Open(
+        "fixture-id", info_path, root / "fixture.gdidx", full_text_path);
+
+    QCOMPARE(dictionary.full_text_index_state(),
+             std::optional(dictionary::FullTextIndexState::kRebuiltStale));
+    FullTextQuery query;
+    query.text = "searchable";
+    QCOMPARE(dictionary.SearchFullText(query).results.size(), 1U);
+    query.text = "obsolete";
+    QVERIFY(dictionary.SearchFullText(query).results.empty());
+}
+
+void StardictDictionaryTest::SkipsLegacyEmptyHeadwordsInFullTextIndex() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path = test::WriteStardictFixture(
+        root, {{"broken&#65;", "hidden text"}, {"visible", "searchable text"}});
+    const Dictionary dictionary =
+        Dictionary::Open("fixture-id", info_path, root / "fixture.gdidx",
+                         root / "fixture.gdfts");
+
+    QCOMPARE(dictionary.full_text_index_state(),
+             std::optional(dictionary::FullTextIndexState::kCreated));
+    FullTextQuery query;
+    query.text = "searchable";
+    const auto response = dictionary.SearchFullText(query);
+    QCOMPARE(response.results.size(), 1U);
+    QCOMPARE(response.results.front().headword, std::string("visible"));
 }
 
 void StardictDictionaryTest::SearchesCompressedDictionaryText() {

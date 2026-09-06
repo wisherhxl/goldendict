@@ -374,6 +374,41 @@ private cache format advances to `stardict-records-v3`; older generated caches
 rebuild automatically. Index/metadata semantics, article fields, resource ZIPs,
 and icon evidence remain assigned to R3.6 Units 2 through 4.
 
+R3.6 Unit 2 restores the frozen StarDict index, metadata, and synonym
+semantics inside the same private adapter. Declared 32-bit primary and synonym
+counts remain the published identity even when a truncated tail yields fewer
+safe records; completed records retain deterministic lookup and enumeration.
+Synonyms resolve only against actual primary records and retain the legacy
+Babylon-conversion filter. Language identity is inferred from the selected
+dictionary filename and then the book name through the frozen bibliographic
+language-code table, including the Qt 5 first-two-letter fallback for an
+unknown two- or three-letter capture, while legacy-only IFO language fields
+are ignored. Filename and book-name matching use Unicode case folding before
+the legacy ASCII language-token scan. Metadata description conversion returns values without markup
+markers verbatim. Rich-text values retain the complete classic 258-name Qt
+entity set, numeric Windows-1252 and invalid-scalar compatibility, source
+trimming, collapsible versus non-breaking whitespace, preformatted text,
+preformatted leading/trailing-newline boundaries, block boundaries (including
+the frozen `div` and `hr` edge behavior), and nested hidden-content behavior
+without introducing a Qt GUI
+dependency into Core. Labeled metadata retains its trailing separator and an
+otherwise empty description publishes `NONE`. The frozen
+HTML-escaped-headword behavior is
+also preserved, with empty legacy headwords excluded only from the private
+full-text corpus so they cannot disable valid documents. The generated cache
+advances to `stardict-records-v4`, and a StarDict-specific full-text semantics stamp makes
+older `.gdfts` artifacts stale. Arbitrary second-line version values and an
+absent book name remain accepted. Numeric IFO values retain the frozen `%u`
+prefix grammar, including leading whitespace/signs and ignored trailing text;
+numeric HTML references likewise accept the frozen optional leading plus.
+Published headword totals retain the resulting 32-bit unsigned count
+arithmetic, including wraparound for accepted signed prefixes.
+Values without a numeric prefix and index widths other than 32 or 64 remain
+invalid. 64-bit offsets, nonempty
+`dicttype`, unsafe ranges, and malformed numeric metadata remain rejected.
+Article fields,
+resource ZIPs, and icon evidence remain assigned to R3.6 Units 3 and 4.
+
 ### Phase 6 — Dictionary Backends In Priority Batches
 
 - Port backends in approved core, common optional, and deferred/high-cost

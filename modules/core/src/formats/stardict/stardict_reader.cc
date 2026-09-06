@@ -6,8 +6,10 @@
 #include <array>
 #include <cctype>
 #include <charconv>
+#include <cstdio>
 #include <fstream>
 #include <initializer_list>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <optional>
@@ -15,7 +17,10 @@
 #include <system_error>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
+#include <unicode/ucasemap.h>
+#include <unicode/utf8.h>
 #include <zlib.h>
 
 #include "../../dictionary/generated_index.h"
@@ -29,7 +34,34 @@ constexpr std::string_view kInfoSignature = "StarDict's dict ifo file";
 constexpr std::uintmax_t kMaximumIndexSize = 256U * 1024U * 1024U;
 constexpr std::uintmax_t kMaximumDictionarySize =
     static_cast<std::uintmax_t>(2U) * 1024U * 1024U * 1024U;
-constexpr std::string_view kGeneratedIndexFormat = "stardict-records-v3";
+constexpr std::string_view kGeneratedIndexFormat = "stardict-records-v4";
+
+using LegacyLanguageCode = std::pair<std::string_view, std::string_view>;
+constexpr LegacyLanguageCode kLegacyLanguageCodes[] = {
+#include "legacy_language_codes.inc"
+};
+
+struct LegacyHtmlEntity {
+    std::string_view name;
+    std::uint32_t code_point;
+};
+
+constexpr LegacyHtmlEntity kLegacyHtmlEntities[] = {
+#include "legacy_html_entities.inc"
+};
+static_assert(std::size(kLegacyHtmlEntities) == 258U);
+
+constexpr std::array<std::uint32_t, 32U> kWindowsLatin1ExtendedCharacters = {
+    0x20acU, 0x0081U, 0x201aU, 0x0192U, 0x201eU, 0x2026U, 0x2020U, 0x2021U,
+    0x02c6U, 0x2030U, 0x0160U, 0x2039U, 0x0152U, 0x008dU, 0x017dU, 0x008fU,
+    0x0090U, 0x2018U, 0x2019U, 0x201cU, 0x201dU, 0x2022U, 0x2013U, 0x2014U,
+    0x02dcU, 0x2122U, 0x0161U, 0x203aU, 0x0153U, 0x009dU, 0x017eU, 0x0178U};
+
+constexpr std::array<UChar32, 25U> kQt5StringWhitespace = {
+    0x9U,    0xaU,    0xbU,    0xcU,    0xdU,    0x20U,   0x85U,
+    0xa0U,   0x1680U, 0x2000U, 0x2001U, 0x2002U, 0x2003U, 0x2004U,
+    0x2005U, 0x2006U, 0x2007U, 0x2008U, 0x2009U, 0x200aU, 0x2028U,
+    0x2029U, 0x202fU, 0x205fU, 0x3000U};
 
 bool HasPrefix(std::string_view text, std::string_view prefix) noexcept {
     return text.size() >= prefix.size() &&
@@ -208,18 +240,16 @@ std::string ReadCompanion(const std::filesystem::path& path,
                : ReadFile(path, error_code, maximum_size);
 }
 
-std::uint64_t ParseUnsigned(std::string_view text,
-                            const std::filesystem::path& path,
-                            std::string_view field_name) {
-    std::uint64_t value = 0;
-    const auto result =
-        std::from_chars(text.data(), text.data() + text.size(), value);
-    if (text.empty() || result.ec != std::errc{} ||
-        result.ptr != text.data() + text.size()) {
+std::uint32_t ParseLegacyUnsigned(std::string_view text,
+                                  const std::filesystem::path& path,
+                                  std::string_view field_name) {
+    unsigned int value = 0U;
+    const std::string terminated(text);
+    if (std::sscanf(terminated.c_str(), "%u", &value) != 1) {
         Throw(ErrorCode::kInvalidInfo, path,
               "Invalid unsigned value for " + std::string(field_name));
     }
-    return value;
+    return static_cast<std::uint32_t>(value);
 }
 
 std::map<std::string, std::string> ParseInfoFields(
@@ -237,6 +267,20 @@ std::map<std::string, std::string> ParseInfoFields(
     }
 
     std::map<std::string, std::string> fields;
+    if (!std::getline(input, line)) {
+        Throw(ErrorCode::kInvalidInfo, path,
+              "Info file does not declare a version on its second line");
+    }
+    if (!line.empty() && line.back() == '\r') {
+        line.pop_back();
+    }
+    constexpr std::string_view kVersionPrefix = "version=";
+    if (!HasPrefix(line, kVersionPrefix)) {
+        Throw(ErrorCode::kInvalidInfo, path,
+              "Info file does not declare a version on its second line");
+    }
+    fields.insert_or_assign("version", line.substr(kVersionPrefix.size()));
+
     while (std::getline(input, line)) {
         if (!line.empty() && line.back() == '\r') {
             line.pop_back();
@@ -246,12 +290,590 @@ std::map<std::string, std::string> ParseInfoFields(
         }
         const auto separator = line.find('=');
         if (separator == std::string::npos || separator == 0U) {
-            Throw(ErrorCode::kInvalidInfo, path, "Malformed info field");
+            continue;
         }
         fields.insert_or_assign(line.substr(0, separator),
                                 line.substr(separator + 1U));
     }
     return fields;
+}
+
+std::string FoldAscii(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char character) {
+                       return character >= 'A' && character <= 'Z'
+                                  ? static_cast<char>(character - 'A' + 'a')
+                                  : static_cast<char>(character);
+                   });
+    return value;
+}
+
+std::string FoldUnicodeCase(std::string_view value) {
+    if (value.empty()) {
+        return {};
+    }
+    if (value.size() >
+        static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max())) {
+        return FoldAscii(std::string(value));
+    }
+    UErrorCode status = U_ZERO_ERROR;
+    UCaseMap* case_map = ucasemap_open(nullptr, U_FOLD_CASE_DEFAULT, &status);
+    if (U_FAILURE(status) || case_map == nullptr) {
+        return FoldAscii(std::string(value));
+    }
+    status = U_ZERO_ERROR;
+    const auto source_size = static_cast<std::int32_t>(value.size());
+    const auto output_size = ucasemap_utf8FoldCase(
+        case_map, nullptr, 0, value.data(), source_size, &status);
+    if (status != U_BUFFER_OVERFLOW_ERROR && U_FAILURE(status)) {
+        ucasemap_close(case_map);
+        return FoldAscii(std::string(value));
+    }
+    status = U_ZERO_ERROR;
+    std::string output(static_cast<std::size_t>(output_size), '\0');
+    const auto written =
+        ucasemap_utf8FoldCase(case_map, output.data(), output_size,
+                              value.data(), source_size, &status);
+    ucasemap_close(case_map);
+    if (U_FAILURE(status)) {
+        return FoldAscii(std::string(value));
+    }
+    output.resize(static_cast<std::size_t>(written));
+    return output;
+}
+
+bool IsAsciiLetter(char character) noexcept {
+    return character >= 'a' && character <= 'z';
+}
+
+std::string GuessLegacyLanguage(std::string_view token) {
+    if (token.size() == 3U) {
+        const auto found = std::find_if(
+            std::begin(kLegacyLanguageCodes), std::end(kLegacyLanguageCodes),
+            [token](const LegacyLanguageCode& entry) {
+                return entry.first == token;
+            });
+        if (found != std::end(kLegacyLanguageCodes)) {
+            return std::string(found->second);
+        }
+    }
+    // Frozen Qt 5 accepts any captured token and falls back to its first two
+    // letters when the exact three-letter mapping is unknown.
+    return std::string(token.substr(0U, 2U));
+}
+
+std::pair<std::string, std::string> InferLegacyLanguagePair(std::string name) {
+    name = "|" + FoldUnicodeCase(name) + "|";
+    for (std::size_t boundary = 0U; boundary < name.size(); ++boundary) {
+        if (IsAsciiLetter(name[boundary])) {
+            continue;
+        }
+        for (const std::size_t source_size : {2U, 3U}) {
+            const auto source = boundary + 1U;
+            const auto separator = source + source_size;
+            if (separator >= name.size() || name[separator] != '-' ||
+                !std::all_of(
+                    name.begin() + static_cast<std::ptrdiff_t>(source),
+                    name.begin() + static_cast<std::ptrdiff_t>(separator),
+                    IsAsciiLetter)) {
+                continue;
+            }
+            for (const std::size_t target_size : {2U, 3U}) {
+                const auto target = separator + 1U;
+                const auto end = target + target_size;
+                if (end >= name.size() || IsAsciiLetter(name[end]) ||
+                    !std::all_of(
+                        name.begin() + static_cast<std::ptrdiff_t>(target),
+                        name.begin() + static_cast<std::ptrdiff_t>(end),
+                        IsAsciiLetter)) {
+                    continue;
+                }
+                auto languages =
+                    std::pair{GuessLegacyLanguage(std::string_view(name).substr(
+                                  source, source_size)),
+                              GuessLegacyLanguage(std::string_view(name).substr(
+                                  target, target_size))};
+                if (!languages.first.empty() && !languages.second.empty()) {
+                    return languages;
+                }
+            }
+        }
+    }
+    return {};
+}
+
+std::pair<std::string, std::string> InferLegacyLanguagePair(
+    const std::filesystem::path& dictionary_path, std::string_view book_name) {
+    auto languages =
+        InferLegacyLanguagePair(dictionary_path.filename().u8string());
+    if (languages.first.empty() || languages.second.empty()) {
+        languages = InferLegacyLanguagePair(std::string(book_name));
+    }
+    return languages;
+}
+
+std::string ApplyLegacyHtmlHeadwordConversion(std::string headword) {
+    if (headword.find("&#") == std::string::npos) {
+        return headword;
+    }
+    // The frozen Qt 5 helper constructs std::string(decoded, saveFormat).
+    // Its default false count makes every matching headword empty; preserve
+    // that observable index behavior rather than silently repairing it.
+    return {};
+}
+
+void AppendUtf8(std::uint32_t code_point, std::string* output) {
+    if (code_point <= 0x7fU) {
+        output->push_back(static_cast<char>(code_point));
+    } else if (code_point <= 0x7ffU) {
+        output->push_back(static_cast<char>(0xc0U | (code_point >> 6U)));
+        output->push_back(static_cast<char>(0x80U | (code_point & 0x3fU)));
+    } else if (code_point <= 0xffffU) {
+        output->push_back(static_cast<char>(0xe0U | (code_point >> 12U)));
+        output->push_back(
+            static_cast<char>(0x80U | ((code_point >> 6U) & 0x3fU)));
+        output->push_back(static_cast<char>(0x80U | (code_point & 0x3fU)));
+    } else {
+        output->push_back(static_cast<char>(0xf0U | (code_point >> 18U)));
+        output->push_back(
+            static_cast<char>(0x80U | ((code_point >> 12U) & 0x3fU)));
+        output->push_back(
+            static_cast<char>(0x80U | ((code_point >> 6U) & 0x3fU)));
+        output->push_back(static_cast<char>(0x80U | (code_point & 0x3fU)));
+    }
+}
+
+struct DecodedHtmlEntity {
+    std::string text;
+    std::uint32_t code_point = 0U;
+    bool has_code_point = false;
+};
+
+std::optional<DecodedHtmlEntity> DecodeHtmlEntity(std::string_view entity) {
+    std::uint32_t code_point = 0U;
+    if (!entity.empty() && entity.front() == '#') {
+        int base = 10;
+        std::size_t offset = 1U;
+        if (entity.size() > 2U && (entity[1] == 'x' || entity[1] == 'X')) {
+            base = 16;
+            offset = 2U;
+        }
+        if (offset < entity.size() && entity[offset] == '+') {
+            ++offset;
+        }
+        const auto parsed =
+            std::from_chars(entity.data() + offset,
+                            entity.data() + entity.size(), code_point, base);
+        if (offset == entity.size() || parsed.ec != std::errc{} ||
+            parsed.ptr != entity.data() + entity.size()) {
+            return std::nullopt;
+        }
+        if (code_point > 0x10ffffU) {
+            return DecodedHtmlEntity{std::string{"??"}, 0U, false};
+        }
+        if (code_point >= 0xd800U && code_point <= 0xdfffU) {
+            return DecodedHtmlEntity{std::string{"?"}, 0U, false};
+        }
+        if (code_point >= 0x80U && code_point < 0xa0U) {
+            code_point = kWindowsLatin1ExtendedCharacters[code_point - 0x80U];
+        }
+    } else {
+        const auto found = std::lower_bound(
+            std::begin(kLegacyHtmlEntities), std::end(kLegacyHtmlEntities),
+            entity,
+            [](const LegacyHtmlEntity& candidate, std::string_view requested) {
+                return candidate.name < requested;
+            });
+        if (found == std::end(kLegacyHtmlEntities) || found->name != entity) {
+            return std::nullopt;
+        }
+        code_point = found->code_point;
+    }
+    return DecodedHtmlEntity{{}, code_point, true};
+}
+
+std::optional<DecodedHtmlEntity> DecodeHtmlEntityAt(std::string_view source,
+                                                    std::size_t ampersand,
+                                                    std::size_t* consumed) {
+    const auto entity_begin = ampersand + 1U;
+    auto cursor = entity_begin;
+    std::size_t entity_size = 0U;
+    while (cursor < source.size()) {
+        const auto character = static_cast<unsigned char>(source[cursor++]);
+        if (std::isspace(character) != 0 || cursor - entity_begin > 9U) {
+            return std::nullopt;
+        }
+        if (character == ';') {
+            break;
+        }
+        ++entity_size;
+    }
+    if (entity_size == 0U) {
+        return std::nullopt;
+    }
+    const auto decoded =
+        DecodeHtmlEntity(source.substr(entity_begin, entity_size));
+    if (decoded.has_value()) {
+        *consumed = cursor - ampersand;
+    }
+    return decoded;
+}
+
+struct HtmlTag {
+    std::string name;
+    bool closing = false;
+    bool self_closing = false;
+};
+
+bool HasHtmlTagNamePrefix(std::string_view contents) {
+    std::size_t cursor = 0U;
+    while (cursor < contents.size() &&
+           std::isspace(static_cast<unsigned char>(contents[cursor])) != 0) {
+        ++cursor;
+    }
+    if (cursor < contents.size() && contents[cursor] == '/') {
+        ++cursor;
+    }
+    while (cursor < contents.size() &&
+           std::isspace(static_cast<unsigned char>(contents[cursor])) != 0) {
+        ++cursor;
+    }
+    if (cursor == contents.size()) {
+        return false;
+    }
+    const auto character = static_cast<char>(
+        std::tolower(static_cast<unsigned char>(contents[cursor])));
+    return IsAsciiLetter(character) ||
+           (contents[cursor] >= '0' && contents[cursor] <= '9');
+}
+
+std::optional<HtmlTag> ParseHtmlTag(std::string_view contents) {
+    std::size_t cursor = 0U;
+    while (cursor < contents.size() &&
+           std::isspace(static_cast<unsigned char>(contents[cursor])) != 0) {
+        ++cursor;
+    }
+    HtmlTag tag;
+    if (cursor < contents.size() && contents[cursor] == '/') {
+        tag.closing = true;
+        ++cursor;
+    }
+    while (cursor < contents.size() &&
+           std::isspace(static_cast<unsigned char>(contents[cursor])) != 0) {
+        ++cursor;
+    }
+    const auto begin = cursor;
+    while (cursor < contents.size() &&
+           (IsAsciiLetter(static_cast<char>(
+                std::tolower(static_cast<unsigned char>(contents[cursor])))) ||
+            (contents[cursor] >= '0' && contents[cursor] <= '9'))) {
+        ++cursor;
+    }
+    if (cursor == begin) {
+        return std::nullopt;
+    }
+    tag.name = FoldAscii(std::string(contents.substr(begin, cursor - begin)));
+    auto suffix = contents.size();
+    while (suffix > cursor && std::isspace(static_cast<unsigned char>(
+                                  contents[suffix - 1U])) != 0) {
+        --suffix;
+    }
+    tag.self_closing = suffix > cursor && contents[suffix - 1U] == '/';
+    return tag;
+}
+
+bool IsLegacyBlockElement(std::string_view name) {
+    constexpr std::array<std::string_view, 23U> kBlockElements = {
+        "blockquote", "body", "caption", "center", "dd", "div", "dl", "dt",
+        "h1",         "h2",   "h3",      "h4",     "h5", "h6",  "hr", "li",
+        "ol",         "p",    "pre",     "qt",     "ul", "td",  "th"};
+    return std::find(kBlockElements.begin(), kBlockElements.end(), name) !=
+           kBlockElements.end();
+}
+
+bool IsLegacyHiddenElement(std::string_view name) {
+    constexpr std::array<std::string_view, 4U> kHiddenElements = {
+        "head", "script", "style", "title"};
+    return std::find(kHiddenElements.begin(), kHiddenElements.end(), name) !=
+           kHiddenElements.end();
+}
+
+void AppendExplicitLineBreak(std::string* output) {
+    output->push_back('\n');
+}
+
+void EnsureBlockBoundary(std::string* output) {
+    if (!output->empty() && output->back() != '\n') {
+        output->push_back('\n');
+    }
+}
+
+std::string_view TrimQt5StringWhitespace(std::string_view source) noexcept {
+    std::int32_t begin = 0;
+    const auto length = static_cast<std::int32_t>(source.size());
+    while (begin < length) {
+        auto next = begin;
+        UChar32 code_point = 0;
+        U8_NEXT(source.data(), next, length, code_point);
+        if (code_point < 0 ||
+            !std::binary_search(kQt5StringWhitespace.begin(),
+                                kQt5StringWhitespace.end(), code_point)) {
+            break;
+        }
+        begin = next;
+    }
+
+    auto end = length;
+    while (end > begin) {
+        auto previous = end;
+        UChar32 code_point = 0;
+        U8_PREV(source.data(), 0, previous, code_point);
+        if (code_point < 0 ||
+            !std::binary_search(kQt5StringWhitespace.begin(),
+                                kQt5StringWhitespace.end(), code_point)) {
+            break;
+        }
+        end = previous;
+    }
+    return source.substr(static_cast<std::size_t>(begin),
+                         static_cast<std::size_t>(end - begin));
+}
+
+bool IsQt5StringWhitespace(UChar32 code_point) noexcept {
+    return std::binary_search(kQt5StringWhitespace.begin(),
+                              kQt5StringWhitespace.end(), code_point);
+}
+
+std::string LegacyDescriptionText(std::string_view source) {
+    const bool requires_rich_text =
+        source.find('<') != std::string_view::npos ||
+        source.find('&') != std::string_view::npos ||
+        source.find('\t') != std::string_view::npos ||
+        source.find("\\n") != std::string_view::npos;
+    if (!requires_rich_text) {
+        // Html::unescape returns strings without markup markers verbatim.
+        return std::string(source);
+    }
+
+    // StarDict replaces its two legacy line-break spellings before calling
+    // Html::unescape. That helper trims only the resulting rich-text source;
+    // its plain-text result is deliberately not trimmed afterwards.
+    std::string rich_text;
+    rich_text.reserve(source.size());
+    for (std::size_t cursor = 0U; cursor < source.size();) {
+        if (source[cursor] == '\t') {
+            rich_text += "<br/>";
+            ++cursor;
+        } else if (source[cursor] == '\\' && cursor + 1U < source.size() &&
+                   source[cursor + 1U] == 'n') {
+            rich_text += "<br/>";
+            cursor += 2U;
+        } else {
+            rich_text.push_back(source[cursor++]);
+        }
+    }
+    source = TrimQt5StringWhitespace(rich_text);
+    std::string output;
+    output.reserve(source.size());
+    std::vector<std::string> hidden_elements;
+    std::size_t preformatted_depth = 0U;
+    std::vector<std::size_t> preformatted_output_starts;
+    bool pending_block_boundary = false;
+    bool pending_hr_boundary = false;
+    bool pending_collapsed_space = false;
+    auto next_tag_end = source.find('>');
+    const auto apply_pending_block_boundary = [&]() {
+        if (pending_hr_boundary) {
+            pending_collapsed_space = false;
+            AppendExplicitLineBreak(&output);
+            pending_hr_boundary = false;
+        }
+        if (pending_block_boundary) {
+            pending_collapsed_space = false;
+            EnsureBlockBoundary(&output);
+            pending_block_boundary = false;
+        }
+    };
+    const auto flush_collapsed_space = [&]() {
+        if (pending_collapsed_space && !output.empty() &&
+            output.back() != '\n' && output.back() != '\t') {
+            output.push_back(' ');
+        }
+        pending_collapsed_space = false;
+    };
+    for (std::size_t cursor = 0U; cursor < source.size();) {
+        if (source[cursor] == '<') {
+            if (source.substr(cursor, 4U) == "<!--") {
+                const auto end = source.find("-->", cursor + 4U);
+                cursor =
+                    end == std::string_view::npos ? source.size() : end + 3U;
+                continue;
+            }
+            if (!HasHtmlTagNamePrefix(source.substr(cursor + 1U))) {
+                if (hidden_elements.empty()) {
+                    apply_pending_block_boundary();
+                    flush_collapsed_space();
+                    output.push_back(source[cursor]);
+                }
+                ++cursor;
+                continue;
+            }
+            while (next_tag_end != std::string_view::npos &&
+                   next_tag_end < cursor) {
+                next_tag_end = source.find('>', next_tag_end + 1U);
+            }
+            const auto end = next_tag_end;
+            if (end != std::string_view::npos) {
+                const auto tag =
+                    ParseHtmlTag(source.substr(cursor + 1U, end - cursor - 1U));
+                if (tag.has_value()) {
+                    if (IsLegacyHiddenElement(tag->name)) {
+                        if (!tag->closing && !tag->self_closing) {
+                            hidden_elements.push_back(tag->name);
+                        } else if (tag->closing && !hidden_elements.empty() &&
+                                   hidden_elements.back() == tag->name) {
+                            hidden_elements.pop_back();
+                        }
+                        cursor = end + 1U;
+                        continue;
+                    }
+                    if (!hidden_elements.empty()) {
+                        cursor = end + 1U;
+                        continue;
+                    }
+                    if (tag->name == "pre" && tag->closing &&
+                        !preformatted_output_starts.empty()) {
+                        if (output.size() > preformatted_output_starts.back() &&
+                            output.back() == '\n') {
+                            output.pop_back();
+                        }
+                        preformatted_output_starts.pop_back();
+                        if (preformatted_depth != 0U) {
+                            --preformatted_depth;
+                        }
+                    }
+                    if (tag->name == "br" && !tag->closing) {
+                        pending_collapsed_space = false;
+                        apply_pending_block_boundary();
+                        AppendExplicitLineBreak(&output);
+                    } else if (tag->name == "hr" && !tag->closing) {
+                        pending_collapsed_space = false;
+                        apply_pending_block_boundary();
+                        AppendExplicitLineBreak(&output);
+                        pending_hr_boundary = true;
+                    } else if (!tag->closing &&
+                               IsLegacyBlockElement(tag->name)) {
+                        pending_collapsed_space = false;
+                        apply_pending_block_boundary();
+                        EnsureBlockBoundary(&output);
+                        pending_block_boundary = false;
+                    } else if (tag->closing &&
+                               IsLegacyBlockElement(tag->name)) {
+                        pending_collapsed_space = false;
+                        if (tag->name != "div") {
+                            pending_block_boundary = true;
+                        }
+                    }
+                    cursor = end + 1U;
+                    if (tag->name == "pre" && !tag->closing) {
+                        ++preformatted_depth;
+                        preformatted_output_starts.push_back(output.size());
+                        if (cursor < source.size() && source[cursor] == '\n') {
+                            ++cursor;
+                        }
+                    }
+                    continue;
+                }
+            }
+        }
+        if (!hidden_elements.empty()) {
+            ++cursor;
+            continue;
+        }
+        if (source[cursor] == '&') {
+            std::size_t consumed = 0U;
+            const auto decoded = DecodeHtmlEntityAt(source, cursor, &consumed);
+            if (decoded.has_value()) {
+                if (decoded->has_code_point &&
+                    (decoded->code_point == 0x2029U ||
+                     (decoded->code_point == 0x2028U &&
+                      preformatted_depth != 0U))) {
+                    pending_collapsed_space = false;
+                    apply_pending_block_boundary();
+                    AppendExplicitLineBreak(&output);
+                    cursor += consumed;
+                    continue;
+                }
+                if (decoded->has_code_point && decoded->code_point != 0x00a0U &&
+                    IsQt5StringWhitespace(
+                        static_cast<UChar32>(decoded->code_point)) &&
+                    preformatted_depth == 0U) {
+                    if (!pending_block_boundary) {
+                        pending_collapsed_space = !output.empty();
+                    }
+                    cursor += consumed;
+                    continue;
+                }
+                apply_pending_block_boundary();
+                flush_collapsed_space();
+                if (!decoded->has_code_point) {
+                    output += decoded->text;
+                } else if (decoded->code_point == 0x00a0U) {
+                    output.push_back(' ');
+                } else {
+                    AppendUtf8(decoded->code_point, &output);
+                }
+                cursor += consumed;
+                continue;
+            }
+        }
+        auto next = static_cast<std::int32_t>(cursor);
+        UChar32 code_point = 0;
+        U8_NEXT(source.data(), next, static_cast<std::int32_t>(source.size()),
+                code_point);
+        if (code_point >= 0 && IsQt5StringWhitespace(code_point)) {
+            if (code_point == 0x2029U ||
+                (code_point == 0x2028U && preformatted_depth != 0U)) {
+                pending_collapsed_space = false;
+                apply_pending_block_boundary();
+                AppendExplicitLineBreak(&output);
+            } else if (code_point == 0x00a0U) {
+                apply_pending_block_boundary();
+                flush_collapsed_space();
+                output.push_back(' ');
+            } else if (preformatted_depth == 0U) {
+                if (!pending_block_boundary) {
+                    pending_collapsed_space = !output.empty();
+                }
+            } else {
+                output.append(source.substr(
+                    cursor, static_cast<std::size_t>(next) - cursor));
+            }
+            cursor = static_cast<std::size_t>(next);
+            continue;
+        }
+        apply_pending_block_boundary();
+        flush_collapsed_space();
+        output.push_back(source[cursor++]);
+    }
+    return output;
+}
+
+std::string LegacyCopyrightText(std::string value) {
+    std::string output;
+    output.reserve(value.size());
+    for (std::size_t cursor = 0U; cursor < value.size();) {
+        if (cursor + 4U <= value.size() && value[cursor] == '<' &&
+            (value[cursor + 1U] == 'b' || value[cursor + 1U] == 'B') &&
+            (value[cursor + 2U] == 'r' || value[cursor + 2U] == 'R') &&
+            value[cursor + 3U] == '>') {
+            output.push_back('\n');
+            cursor += 4U;
+        } else {
+            output.push_back(value[cursor++]);
+        }
+    }
+    return output;
 }
 
 const std::string& RequireField(
@@ -298,6 +920,14 @@ std::uint64_t ReadBigEndian64(const std::string& data, std::size_t offset) {
 
 }  // namespace
 
+namespace internal {
+
+std::string ConvertLegacyDescriptionText(std::string_view source) {
+    return LegacyDescriptionText(source);
+}
+
+}  // namespace internal
+
 Error::Error(ErrorCode code, std::filesystem::path path, std::string message)
     : std::runtime_error(message + ": " + path.string()),
       code_(code),
@@ -310,27 +940,39 @@ Reader Reader::Open(
         ReadFile(info_path, ErrorCode::kInvalidInfo, 1024U * 1024U);
     const auto fields = ParseInfoFields(info_contents, info_path);
 
-    const auto& version = RequireField(fields, "version", info_path);
-    if (version != "2.4.2" && version != "3.0.0") {
-        Throw(ErrorCode::kUnsupportedFeature, info_path,
-              "Unsupported StarDict version: " + version);
-    }
     if (const auto iterator = fields.find("idxoffsetbits");
-        iterator != fields.end() && iterator->second != "32") {
-        Throw(ErrorCode::kUnsupportedFeature, info_path,
-              "Only 32-bit index offsets are supported");
+        iterator != fields.end()) {
+        const auto offset_bits =
+            ParseLegacyUnsigned(iterator->second, info_path, "idxoffsetbits");
+        if (offset_bits != 32U && offset_bits != 64U) {
+            Throw(ErrorCode::kInvalidInfo, info_path,
+                  "Invalid idxoffsetbits value");
+        }
+        if (offset_bits == 64U) {
+            Throw(ErrorCode::kUnsupportedFeature, info_path,
+                  "Only 32-bit index offsets are supported");
+        }
     }
     if (const auto iterator = fields.find("dicttype");
         iterator != fields.end() && !iterator->second.empty()) {
         Throw(ErrorCode::kUnsupportedFeature, info_path,
               "Special dictionary types are not supported");
     }
-    const auto& book_name = RequireField(fields, "bookname", info_path);
-    const auto word_count = ParseUnsigned(
-        RequireField(fields, "wordcount", info_path), info_path, "wordcount");
-    const auto index_file_size =
-        ParseUnsigned(RequireField(fields, "idxfilesize", info_path), info_path,
-                      "idxfilesize");
+    const auto book_name_iterator = fields.find("bookname");
+    const std::string book_name = book_name_iterator == fields.end()
+                                      ? std::string{}
+                                      : book_name_iterator->second;
+    const auto parse_optional_count = [&fields,
+                                       &info_path](std::string_view name) {
+        const auto found = fields.find(std::string(name));
+        if (found == fields.end()) {
+            return std::uint64_t{0};
+        }
+        return static_cast<std::uint64_t>(
+            ParseLegacyUnsigned(found->second, info_path, name));
+    };
+    const auto word_count = parse_optional_count("wordcount");
+    const auto index_file_size = parse_optional_count("idxfilesize");
     const auto& same_type_sequence =
         RequireField(fields, "sametypesequence", info_path);
     if (same_type_sequence != "m" && same_type_sequence != "h") {
@@ -349,12 +991,7 @@ Reader Reader::Open(
     const auto resolved_synonym_path = ResolveOptionalCompanion(
         base_path,
         {".syn", ".syn.gz", ".syn.dz", ".SYN", ".SYN.GZ", ".SYN.DZ"});
-    const auto declared_synonym_count = [&fields, &info_path]() {
-        const auto declared = fields.find("synwordcount");
-        return declared == fields.end()
-                   ? std::uint64_t{0}
-                   : ParseUnsigned(declared->second, info_path, "synwordcount");
-    }();
+    const auto declared_synonym_count = parse_optional_count("synwordcount");
     const std::optional<std::filesystem::path> synonym_path =
         declared_synonym_count == 0U ? std::nullopt : resolved_synonym_path;
     std::vector<std::filesystem::path> source_paths = {info_path, index_path,
@@ -374,30 +1011,37 @@ Reader Reader::Open(
 
     Reader reader;
     reader.metadata_.book_name = book_name;
-    if (const auto iterator = fields.find("lang_from");
-        iterator != fields.end()) {
-        reader.metadata_.source_language = iterator->second;
-    }
-    if (const auto iterator = fields.find("lang_to");
-        iterator != fields.end()) {
-        reader.metadata_.target_language = iterator->second;
-    }
-    const auto append_metadata = [&reader, &fields](std::string_view key,
-                                                    std::string_view label) {
-        const auto iterator = fields.find(std::string(key));
-        if (iterator == fields.end() || iterator->second.empty())
-            return;
-        if (!reader.metadata_.description.empty())
+    const auto languages = InferLegacyLanguagePair(dictionary_path, book_name);
+    reader.metadata_.source_language = languages.first;
+    reader.metadata_.target_language = languages.second;
+    const auto append_labeled_metadata =
+        [&reader, &fields](std::string_view key, std::string_view label) {
+            const auto iterator = fields.find(std::string(key));
+            if (iterator == fields.end() || iterator->second.empty())
+                return;
+            std::string value = iterator->second;
+            if (key == "copyright") {
+                value = LegacyCopyrightText(std::move(value));
+            }
+            reader.metadata_.description += std::string(label) + value;
             reader.metadata_.description += "\n\n";
-        reader.metadata_.description += std::string(label) + iterator->second;
-    };
-    append_metadata("copyright", "Copyright: ");
-    append_metadata("author", "Author: ");
-    append_metadata("email", "E-mail: ");
-    append_metadata("website", "Website: ");
-    append_metadata("date", "Date: ");
-    append_metadata("description", "");
+        };
+    append_labeled_metadata("copyright", "Copyright: ");
+    append_labeled_metadata("author", "Author: ");
+    append_labeled_metadata("email", "E-mail: ");
+    append_labeled_metadata("website", "Website: ");
+    append_labeled_metadata("date", "Date: ");
+    if (const auto description = fields.find("description");
+        description != fields.end() && !description->second.empty()) {
+        reader.metadata_.description +=
+            internal::ConvertLegacyDescriptionText(description->second);
+    }
+    if (reader.metadata_.description.empty()) {
+        reader.metadata_.description = "NONE";
+    }
     reader.metadata_.word_count = word_count;
+    reader.metadata_.synonym_count =
+        synonym_path.has_value() ? declared_synonym_count : 0U;
     reader.metadata_.index_file_size = index_file_size;
     reader.metadata_.same_type_sequence = same_type_sequence;
 
@@ -405,26 +1049,21 @@ Reader Reader::Open(
         ReadCompanion(dictionary_path, ErrorCode::kInvalidDictionary,
                       kMaximumDictionarySize, "dictionary data");
 
-    const auto parse_source_index = [&reader, &index_path, &synonym_path,
-                                     declared_synonym_count, &info_path]() {
+    const auto parse_source_index = [&reader, &index_path, &synonym_path]() {
         const std::string index_data = ReadCompanion(
             index_path, ErrorCode::kInvalidIndex, kMaximumIndexSize, "index");
-        if (reader.metadata_.index_file_size != index_data.size()) {
-            Throw(ErrorCode::kInvalidIndex, index_path,
-                  "Index size does not match idxfilesize");
-        }
 
         std::vector<IndexRecord> records;
         std::size_t cursor = 0;
         while (cursor < index_data.size()) {
             const auto terminator = index_data.find('\0', cursor);
-            if (terminator == std::string::npos || terminator == cursor ||
+            if (terminator == std::string::npos ||
                 index_data.size() - terminator - 1U < 8U) {
-                Throw(ErrorCode::kInvalidIndex, index_path,
-                      "Truncated or malformed index record");
+                break;
             }
             IndexRecord record;
-            record.headword = index_data.substr(cursor, terminator - cursor);
+            record.headword = ApplyLegacyHtmlHeadwordConversion(
+                index_data.substr(cursor, terminator - cursor));
             record.primary_headword = record.headword;
             record.article_offset =
                 ReadBigEndian32(index_data, terminator + 1U);
@@ -432,68 +1071,72 @@ Reader Reader::Open(
             records.push_back(std::move(record));
             cursor = terminator + 9U;
         }
-        if (records.size() != reader.metadata_.word_count) {
-            Throw(ErrorCode::kInvalidIndex, index_path,
-                  "Index record count does not match wordcount");
-        }
+        reader.primary_record_count_ = records.size();
         if (synonym_path.has_value()) {
             const std::string synonym_data =
                 ReadCompanion(*synonym_path, ErrorCode::kInvalidIndex,
                               kMaximumIndexSize, "synonym index");
             std::size_t synonym_cursor = 0U;
-            std::size_t synonym_count = 0U;
             while (synonym_cursor < synonym_data.size()) {
                 const auto terminator = synonym_data.find('\0', synonym_cursor);
                 if (terminator == std::string::npos ||
-                    terminator == synonym_cursor ||
                     synonym_data.size() - terminator - 1U < 4U) {
-                    Throw(ErrorCode::kInvalidIndex, *synonym_path,
-                          "Truncated or malformed synonym record");
+                    break;
                 }
                 const auto article_index =
                     ReadBigEndian32(synonym_data, terminator + 1U);
-                if (article_index >= reader.metadata_.word_count) {
+                if (article_index >= reader.primary_record_count_) {
                     Throw(ErrorCode::kInvalidIndex, *synonym_path,
                           "Synonym references an invalid index record");
                 }
                 IndexRecord record = records[article_index];
-                record.headword = synonym_data.substr(
-                    synonym_cursor, terminator - synonym_cursor);
-                records.push_back(std::move(record));
+                record.headword =
+                    ApplyLegacyHtmlHeadwordConversion(synonym_data.substr(
+                        synonym_cursor, terminator - synonym_cursor));
+                const bool starts_with_slash =
+                    !record.headword.empty() && record.headword.front() == '/';
+                const bool ends_with_dollar =
+                    !record.headword.empty() && record.headword.back() == '$';
+                const bool has_slash =
+                    record.headword.find('/') != std::string::npos;
+                const bool has_dollar =
+                    record.headword.find('$') != std::string::npos;
+                if (!((starts_with_slash && has_dollar) ||
+                      (!starts_with_slash && ends_with_dollar && has_slash))) {
+                    records.push_back(std::move(record));
+                }
                 synonym_cursor = terminator + 5U;
-                ++synonym_count;
-            }
-            if (declared_synonym_count != synonym_count) {
-                Throw(ErrorCode::kInvalidInfo, info_path,
-                      "Synonym count does not match synwordcount");
             }
         }
         return records;
     };
 
-    const auto serialize_records = [](const std::vector<IndexRecord>& records) {
-        std::string payload;
-        AppendBigEndian64(records.size(), &payload);
-        for (const auto& record : records) {
-            if (record.headword.size() >
-                    std::numeric_limits<std::uint32_t>::max() ||
-                record.primary_headword.size() >
-                    std::numeric_limits<std::uint32_t>::max()) {
-                throw dictionary::GeneratedIndexError(
-                    "StarDict headword exceeds the index size limit");
+    const auto serialize_records =
+        [&reader](const std::vector<IndexRecord>& records) {
+            std::string payload;
+            AppendBigEndian64(reader.primary_record_count_, &payload);
+            AppendBigEndian64(records.size(), &payload);
+            for (const auto& record : records) {
+                if (record.headword.size() >
+                        std::numeric_limits<std::uint32_t>::max() ||
+                    record.primary_headword.size() >
+                        std::numeric_limits<std::uint32_t>::max()) {
+                    throw dictionary::GeneratedIndexError(
+                        "StarDict headword exceeds the index size limit");
+                }
+                AppendBigEndian32(
+                    static_cast<std::uint32_t>(record.headword.size()),
+                    &payload);
+                payload.append(record.headword);
+                AppendBigEndian32(
+                    static_cast<std::uint32_t>(record.primary_headword.size()),
+                    &payload);
+                payload.append(record.primary_headword);
+                AppendBigEndian32(record.article_offset, &payload);
+                AppendBigEndian32(record.article_size, &payload);
             }
-            AppendBigEndian32(
-                static_cast<std::uint32_t>(record.headword.size()), &payload);
-            payload.append(record.headword);
-            AppendBigEndian32(
-                static_cast<std::uint32_t>(record.primary_headword.size()),
-                &payload);
-            payload.append(record.primary_headword);
-            AppendBigEndian32(record.article_offset, &payload);
-            AppendBigEndian32(record.article_size, &payload);
-        }
-        return payload;
-    };
+            return payload;
+        };
 
     const auto parse_generated_index = [&reader](const std::string& payload) {
         const auto require = [&payload](std::size_t position,
@@ -503,17 +1146,19 @@ Reader Reader::Open(
                     "Generated StarDict index is truncated");
             }
         };
-        require(0U, 8U);
-        const auto record_count = ReadBigEndian64(payload, 0U);
-        if (record_count < reader.metadata_.word_count ||
+        require(0U, 16U);
+        const auto primary_record_count = ReadBigEndian64(payload, 0U);
+        const auto record_count = ReadBigEndian64(payload, 8U);
+        if (primary_record_count > record_count ||
+            primary_record_count > std::numeric_limits<std::size_t>::max() ||
             record_count > std::numeric_limits<std::size_t>::max() ||
-            record_count > (payload.size() - 8U) / 16U) {
+            record_count > (payload.size() - 16U) / 16U) {
             throw dictionary::GeneratedIndexError(
                 "Generated StarDict index has an invalid record count");
         }
         std::vector<IndexRecord> records;
         records.reserve(static_cast<std::size_t>(record_count));
-        std::size_t cursor = 8U;
+        std::size_t cursor = 16U;
         for (std::uint64_t index = 0; index < record_count; ++index) {
             require(cursor, 4U);
             const auto headword_size = ReadBigEndian32(payload, cursor);
@@ -536,6 +1181,8 @@ Reader Reader::Open(
             throw dictionary::GeneratedIndexError(
                 "Generated StarDict index contains trailing data");
         }
+        reader.primary_record_count_ =
+            static_cast<std::size_t>(primary_record_count);
         return records;
     };
 
@@ -623,9 +1270,8 @@ Reader Reader::Open(
 std::vector<PrimaryArticle> Reader::ReadPrimaryArticles(
     const std::function<void()>& checkpoint) const {
     std::vector<PrimaryArticle> articles;
-    articles.reserve(static_cast<std::size_t>(metadata_.word_count));
-    for (std::size_t ordinal = 0U;
-         ordinal < static_cast<std::size_t>(metadata_.word_count); ++ordinal) {
+    articles.reserve(primary_record_count_);
+    for (std::size_t ordinal = 0U; ordinal < primary_record_count_; ++ordinal) {
         if (checkpoint)
             checkpoint();
         const auto& record = index_[ordinal];

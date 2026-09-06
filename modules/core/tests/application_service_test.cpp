@@ -4419,7 +4419,7 @@ void ApplicationServiceTest::DiscoversAndQueriesARealFixture() {
 
     const auto catalog = service.GetCatalog();
     QCOMPARE(catalog.size(), std::size_t{1});
-    QCOMPARE(catalog.front().name, "Generated Test Dictionary");
+    QCOMPARE(catalog.front().name, "Generated Test Dictionary en-en");
     QCOMPARE(catalog.front().source,
              (root / "fixture.ifo").make_preferred().string());
     QCOMPARE(catalog.front().article_count, std::size_t{1});
@@ -5374,7 +5374,7 @@ void ApplicationServiceTest::ReturnsLightweightHeadwordSuggestions() {
     QCOMPARE(response.suggestions[1].match.mode, MatchMode::kPrefix);
     QCOMPARE(response.suggestions[1].match.normalized_headword, "cafenoir");
     QCOMPARE(response.suggestions[1].dictionary.name,
-             "Generated Test Dictionary");
+             "Generated Test Dictionary en-en");
 
     const CancelledToken cancelled;
     const auto cancelled_response = service->Suggest(query, &cancelled);

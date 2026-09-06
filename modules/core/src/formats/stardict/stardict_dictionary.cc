@@ -14,6 +14,15 @@
 namespace goldendict::core::formats::stardict {
 namespace {
 
+constexpr std::string_view kFullTextSemanticsStamp =
+    "goldendict:stardict-full-text-v2";
+
+dictionary::SourceSnapshot FullTextSources(dictionary::SourceSnapshot sources) {
+    sources.push_back(
+        dictionary::SourceStamp{std::string(kFullTextSemanticsStamp), 0U, 0});
+    return sources;
+}
+
 dictionary::Error TranslateReaderError(const Error& error) {
     switch (error.code()) {
         case ErrorCode::kMissingFile:
@@ -84,6 +93,13 @@ Dictionary Dictionary::Open(
                     dictionary.reader_.ReadPrimaryArticles();
                 documents.reserve(primary_articles.size());
                 for (const auto& primary : primary_articles) {
+                    // The frozen Qt 5 HTML conversion bug can produce an empty
+                    // headword. Such an unreachable entry must not disable the
+                    // full-text index for every valid article in the
+                    // dictionary.
+                    if (primary.headword.empty()) {
+                        continue;
+                    }
                     dictionary::Article article;
                     article.headword = primary.headword;
                     article.format =
@@ -121,7 +137,7 @@ Dictionary Dictionary::Open(
                 dictionary.full_text_index_ =
                     dictionary::FullTextIndex::OpenOrBuild(
                         *full_text_index_path,
-                        dictionary.reader_.source_snapshot(),
+                        FullTextSources(dictionary.reader_.source_snapshot()),
                         std::move(documents));
             } catch (const dictionary::FullTextIndexError& error) {
                 dictionary.full_text_error_ = FullTextError{

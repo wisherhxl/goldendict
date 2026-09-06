@@ -1240,6 +1240,55 @@ Unicode-folded ranked prefix lookup, distinct lightweight suggestions, scan
 checkpoints, article bounds, generated-index create/reuse/stale/corrupt
 lifecycle, temporary-file cleanup, and invalid storage-target rejection.
 
+R3.6 Unit 2 extends the same generated fixture with the frozen 32-bit index,
+declared primary/synonym count, and metadata rules. It covers filename-first
+and book-name-fallback language inference through the pinned bibliographic
+three-letter mapping plus the unconditional first-two-letter fallback for
+unknown two- and three-letter captures, Unicode case-folded filename and book
+name matching, ignored IFO language fields, optional
+book names and counts, arbitrary second-line version values, advisory
+`idxfilesize`, `%u`-compatible leading whitespace/sign and trailing-text
+numeric prefixes, 32-bit unsigned declared-count wraparound, bounded
+linear-time metadata text conversion, labeled-field
+trailing separators, `NONE` fallback, verbatim unmarked-description
+whitespace, and the full 258-name classic Qt entity set with exhaustive named
+entity decoding plus numeric control, Windows-1252, invalid-scalar,
+collapsible/non-breaking whitespace, preformatted, block, and hidden-content
+checks. Numeric references cover an optional leading plus; block coverage pins
+leading and trailing `hr`, content following `hr`, and content following a
+closing `div`. Preformatted coverage pins one stripped boundary newline and
+retained additional newlines; hidden-content coverage includes self-closing
+elements nested inside same-name hidden ancestors. It also covers the frozen
+HTML-escaped-headword result, retained synonym filtering, and targets owned by
+actual parsed primary records.
+Additional cases pin safe continuation after truncated index and synonym
+tails, strict article
+ranges and numeric bounds, explicit 64-bit-offset and `dicttype` rejection,
+invalid non-32/non-64 index-width metadata,
+lookup/enumeration behavior, and cancellation checkpoints. The generated
+format is `stardict-records-v4`; a direct previous-format artifact test proves
+that `v3` is rebuilt as stale. Dictionary tests pin the same declared identity
+counts and prove that a StarDict full-text semantics stamp rebuilds pre-Unit-2
+`.gdfts` artifacts. Unreachable empty legacy headwords are skipped without
+disabling full-text search for valid primary records.
+
+The Windows R3.6 Unit 2 gate uses VS 2026/MSVC 14.44 and the Release Conan
+environment. The complete build succeeds, serial CTest passes 135 of 135, and
+the repository Python suite passes 170 of 170 with two expected
+platform-condition skips. Build-tree executables and both test suites run
+through `run_with_conan.ps1`.
+
+The final paired generated-fixture run is retained at
+`evidence/qt5-qt6-r36-unit2-stardict-final9`. Pair ID
+`7c8310317a2f1cb4bca6327fc1bc1e7bd9709ce1a452e8e9789adfbcae47bfcf`
+binds frozen Qt 5 commit `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`,
+Qt 6 implementation Tree ID
+`0d83adc453810762220c400b63c72b4103b54de1`, and fixture-manifest SHA-256
+`7c7761775edf732864276ae9fa28a8cc25db4e82f2b504fa8de18ae2613a62b1`.
+The external fixture's `zzz-yyy` book name makes both products publish `zz`
+and `yy`; clean discovery, warm restart, and explicit rescan each report zero
+strict differences.
+
 `stardict_dictionary_test` verifies the private backend contract and StarDict
 adapter: identity and provenance, bounded exact results, cancellation,
 deadlines, bounded prefix results, translated format errors, raw formatted

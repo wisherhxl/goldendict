@@ -56,6 +56,7 @@ struct Metadata {
     std::string target_language;
     std::string description;
     std::uint64_t word_count = 0;
+    std::uint64_t synonym_count = 0;
     std::uint64_t index_file_size = 0;
     std::string same_type_sequence;
 };
@@ -81,9 +82,15 @@ class Reader final {
 
     const Metadata& metadata() const noexcept { return metadata_; }
 
-    std::size_t headword_count() const noexcept { return index_.size(); }
+    std::size_t headword_count() const noexcept {
+        std::uint32_t count = static_cast<std::uint32_t>(metadata_.word_count);
+        count += static_cast<std::uint32_t>(metadata_.synonym_count);
+        return static_cast<std::size_t>(count);
+    }
 
-    std::size_t article_count() const noexcept { return index_.size(); }
+    std::size_t article_count() const noexcept {
+        return static_cast<std::size_t>(metadata_.word_count);
+    }
 
     IndexState index_state() const noexcept { return index_state_; }
 
@@ -127,6 +134,7 @@ class Reader final {
 
     Metadata metadata_;
     std::vector<IndexRecord> index_;
+    std::size_t primary_record_count_ = 0U;
     std::string dictionary_data_;
     IndexState index_state_ = IndexState::kSourceOnly;
     dictionary::SourceSnapshot source_snapshot_;
