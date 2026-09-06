@@ -228,8 +228,8 @@ launcher and Python tooling checks run directly.
 | R3.1 | **Complete:** configuration and user-state upgrade/rollback matrix: `CRD-STATE-004`, `CRD-COMPAT-002` through `005` | R1.2, R2.3 | generated malformed/failure-injection tests plus disposable Qt 5 profile upgrade |
 | R3.2 | **Complete:** real-corpus discovery, identity, counts, ordering, restart, rescan, bounded cancellation, and recovery: `CRD-TEST-REAL-004`, `CRD-COMPAT-001` | R1.2, R2.3 | paired machine-readable Qt 5/Qt 6 result files and diff |
 | R3.3 | **Complete:** real MDict split-resource acceptance and evidence-confirmed corrections | R3.2 | MDX/three-MDD lookup, resource, restart, and immutable-source checks |
-| R3.4 | Real DSL and greater-than-4-GiB resource-ZIP acceptance and corrections | R3.2 | DSL/dictzip/article/resource/restart checks with bounded storage evidence |
-| R3.5 | Remaining real-corpus lookup, suggestion, article, media, and management matrix: `CRD-TEST-REAL-005` through `007` | R3.3, R3.4 | paired query catalog and machine-readable result diff |
+| R3.4 | **Complete:** real DSL and greater-than-4-GiB resource-ZIP acceptance and corrections | R3.2 | DSL/dictzip/article/resource/restart checks with bounded storage evidence |
+| R3.5 | **Complete:** real-corpus lookup, suggestion, article, media, morphology, and management matrix: `CRD-TEST-REAL-005` through `007` | R3.3, R3.4 | paired query catalogs, clean/warm machine-readable result diffs, and immutable-corpus proof |
 | R3.6 | StarDict non-corpus variants and companions: StarDict part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining compression, metadata, resource, identity, indexing, lookup, restart, corruption, and failure variants |
 | R3.7 | Dictd non-corpus variants and companions: Dictd part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining index/data, dictzip, metadata, identity, indexing, lookup, restart, corruption, and failure variants |
 | R3.8 | SDict non-corpus variants and companions: SDict part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining field encodings/compression, identity, indexing, lookup, article, restart, corruption, and failure variants |
@@ -972,7 +972,8 @@ in the approved external manifest: its MDX, base MDD, `.1.mdd`, and `.2.mdd`
 components; exact lookup and article selection; representative referenced
 resource retrieval; warm restart; and source immutability. The broader
 suggestion, alternate-writing, missing-word, Unicode, punctuation, multi-word,
-morphology, rendered-media, and management matrices remain assigned to R3.5.
+morphology, rendered-media, and management matrices were assigned to and are
+now closed by R3.5.
 Non-corpus MDict compression, encryption, and legacy variants remain R3.13.
 
 Acceptance orchestration and canonical comparison stay in bounded Python
@@ -1078,7 +1079,8 @@ SHA-256 values; same-version clean/warm results are stable; and both products
 published valid condition acknowledgements. The Qt 6 Visual Studio 2026
 Release build, all 131 CTest tests, and all 129 Python tests passed with one
 intentional skip. R3.3 is complete when this audited delivery reaches the Qt 6
-baseline; the broader R3.5 and R3.13 matrices remain open and unchanged.
+baseline; R3.5 now closes the broader real-corpus matrix, while R3.13 remains
+open and unchanged.
 
 ### R3.4 real-DSL resource-ZIP acceptance readiness
 
@@ -1545,8 +1547,29 @@ the comparison SHA-256 is
 The regenerated post-run corpus manifest is byte-identical to the preflight
 manifest. The complete Release build succeeds through the Conan launcher, all
 135 CTest cases pass serially, and the repository Python suite passes all 170
-tests with two platform-condition skips. Only the fresh repeated-pair and final
-R3.5 closure audit remain open.
+tests with two platform-condition skips.
+
+Unit 5 closure check: **R3.5 complete; evidence-only repeat with no requirement,
+installed-interface, production-code, or module-boundary change** (2026-09-06).
+The fresh comprehensive lookup workspace at
+`evidence/qt5-qt6-lookup-r35-unit5-final`, pair
+`6512c0612cf5e3c29de467871f474360cc805bac86016fcdae6fdcb62609112c`,
+repeats every applicable DSL/MDict lookup, suggestion, article, and media field
+plus all seven Hunspell morphology probes in clean and warm states. Both
+products are internally stable, and the strict comparison reports zero
+differences at comparison SHA-256
+`c433788c0f72847d4d404262ce55953b7252a4931ab6a554bcac5c279e1af85b`.
+The independently repeated management workspace at
+`evidence/qt5-qt6-management-r35-unit5-final`, pair
+`a7412d374e2ca25090bcf0657a5b1f16f810d697d001f3776857abae7b5757be`,
+also remains internally stable and reports zero differences for group
+persistence/order, ordinary and popup mute state, dictionary information,
+two-page browsing, cursor invalidation, and read-only rescan. Its comparison
+SHA-256 is
+`c560fbef000c88d74021fe35296f9cf44a2b9914833f8aacea94b915c4e06fdc`.
+The post-repeat 88-file, 9,303,289,246-byte corpus manifest is byte-identical to
+the preflight manifest at SHA-256
+`b7e91878649b61388ecb1a3713709685e243f57e60d2b8eb23838a91bba816d2`.
 
 ### CRD closure cross-check
 

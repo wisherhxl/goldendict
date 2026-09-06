@@ -350,8 +350,18 @@ including ordinary mute and popup mute state. They also record bounded sorted
 headword browsing, dictionary information, and read-only source rescan. The
 final clean/warm pair is internally stable and reports zero semantic
 differences; a byte-identical post-run corpus manifest confirms that no source
-dictionary was modified. R3.5 final repeated-pair closure remains a separate
-delivery unit.
+dictionary was modified.
+
+R3.5 Unit 5 closes the real-corpus matrix with two fresh repeated pairs from a
+fresh Qt 6 build and a newly prepared disposable Qt 5 observer. The complete
+lookup pair repeats all DSL/MDict lookup, suggestion, article, and media fields
+plus all seven configured Hunspell morphology pairs; the management pair
+repeats group persistence/order, ordinary and popup mute state, dictionary
+information, two-page headword browsing, cursor invalidation, and read-only
+rescan. Both products are internally stable across clean and warm states, both
+strict comparisons report zero differences, and a byte-identical post-repeat
+manifest proves that the 88-file corpus remained unchanged. R3.5 is therefore
+complete; the non-corpus format-variant leaves beginning at R3.6 remain open.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

@@ -621,6 +621,37 @@ pass for the added and modified acceptance sources. Negative coordinator tests
 prove that catalog-incomplete observations cannot compare as equivalent and
 that every reported difference remains inside the 4,096-item bound.
 
+R3.5 Unit 5 repeats the complete applicable matrix from a fresh Qt 6 build and
+a newly prepared disposable Qt 5 observer. Re-preparation was required because
+the current observer source-template hash correctly rejected the older Unit 4
+observer provenance; the frozen Qt 5 checkout remained clean and pinned to
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
+
+The comprehensive workspace is
+`evidence/qt5-qt6-lookup-r35-unit5-final`, with pair ID
+`6512c0612cf5e3c29de467871f474360cc805bac86016fcdae6fdcb62609112c`.
+It covers all eleven DSL/MDict lookup, suggestion, article, and media probes plus
+all seven configured Hunspell morphology pairs in clean and warm states. Both
+products are internally stable, the strict comparison reports zero
+differences, and the comparison SHA-256 is
+`c433788c0f72847d4d404262ce55953b7252a4931ab6a554bcac5c279e1af85b`.
+
+The repeated management workspace is
+`evidence/qt5-qt6-management-r35-unit5-final`, with pair ID
+`a7412d374e2ca25090bcf0657a5b1f16f810d697d001f3776857abae7b5757be`.
+Both products again remain internally stable across clean and warm states, and
+the strict comparison reports zero differences at comparison SHA-256
+`c560fbef000c88d74021fe35296f9cf44a2b9914833f8aacea94b915c4e06fdc`.
+The regenerated post-repeat manifest at
+`evidence/qt6-baseline-real-corpus-manifest.r35-unit5-post.json` is byte-for-byte
+identical to the preflight manifest at SHA-256
+`b7e91878649b61388ecb1a3713709685e243f57e60d2b8eb23838a91bba816d2`,
+so all 88 files and 9,303,289,246 bytes remained unchanged. This repeated pair
+closes the R3.5 real-corpus acceptance leaf without weakening or omitting an
+equality field. The complete Release build succeeds through the Conan launcher,
+all 135 CTest cases pass serially, and the repository Python suite passes all
+170 tests with two platform-condition skips.
+
 On managed Windows hosts, application-control policy may reject a trusted
 MSYS2 Qt 5 tool or runtime solely because of its original path. When the Code
 Integrity event log confirms this condition, the acceptance preparation may
