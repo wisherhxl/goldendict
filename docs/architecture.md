@@ -7177,3 +7177,16 @@ registered morphology provider and reports the identity supplied by
 both `.aff` and `.dic` components, and clean/warm behavior for every configured
 pair. The acceptance surface does not add an installed API or move Hunspell
 format behavior out of Core.
+
+The R3.5 management acceptance leaf applies the same Adapter plus Coordinator
+boundary to product-management state. One coordinator validates the
+manifest-bound catalog, confinement, normalized private evidence, and the
+clean/warm four-way comparison. The disposable Qt 5 adapter observes the
+legacy configuration and UI-thread rescan path; the Qt 6 adapter composes the
+existing configuration services and private production
+`DesktopFacadeActivationOwner`, requiring its prepared replacement facade to
+become the current published snapshot before inspecting the replacement
+service. Both adapters own only observation mechanics. They do not add an
+installed contract, move format behavior into test code, or give Widgets
+ownership of configuration persistence. This keeps collection variation
+behind adapters and comparison policy in one cohesive coordinator.

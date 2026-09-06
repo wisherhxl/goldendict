@@ -160,6 +160,19 @@ def _bound_directory(environment_name: str, supplied: Path, label: str) -> Path:
     return supplied
 
 
+@contextmanager
+def _observer_profile(config_root: Path, persistent: bool):
+    if persistent:
+        profile = config_root / "management-profile"
+        profile.mkdir(exist_ok=True)
+        yield profile
+        return
+    with tempfile.TemporaryDirectory(
+        dir=config_root, prefix=".qt5-observer-profile-"
+    ) as temporary_profile:
+        yield Path(temporary_profile)
+
+
 def observe(
     legacy_executable: Path,
     provenance: Path,
@@ -179,6 +192,8 @@ def observe(
     dsl_catalog_sha256: str | None = None,
     lookup_catalog: Path | None = None,
     lookup_catalog_sha256: str | None = None,
+    management_catalog: Path | None = None,
+    management_catalog_sha256: str | None = None,
 ) -> Path:
     if _required_environment("GOLDENDICT_ACCEPTANCE_VERSION") != "qt5":
         raise Qt5ObserverError("Qt 5 observer requires a Qt 5 paired run")
@@ -276,6 +291,24 @@ def observe(
         or _sha256(resolved_lookup_catalog) != lookup_catalog_sha256
     ):
         raise Qt5ObserverError("Lookup catalog hash is invalid")
+    resolved_management_catalog = (
+        _resolve(management_catalog, "Management acceptance catalog")
+        if management_catalog is not None
+        else None
+    )
+    if (resolved_management_catalog is None) != (management_catalog_sha256 is None):
+        raise Qt5ObserverError(
+            "Management catalog path and hash must be supplied together"
+        )
+    if management_catalog_sha256 is not None and (
+        len(management_catalog_sha256) != HASH_LENGTH
+        or any(
+            character not in "0123456789abcdef"
+            for character in management_catalog_sha256
+        )
+        or _sha256(resolved_management_catalog) != management_catalog_sha256
+    ):
+        raise Qt5ObserverError("Management catalog hash is invalid")
     morphology_path: Path | None = None
     morphology_ids: list[str] = []
     if resolved_lookup_catalog is not None:
@@ -318,6 +351,7 @@ def observe(
                 resolved_mdict_catalog,
                 resolved_dsl_catalog,
                 resolved_lookup_catalog,
+                resolved_management_catalog,
             )
         )
         > 1
@@ -326,22 +360,27 @@ def observe(
     if timeout_seconds < 1 or timeout_seconds > 24 * 60 * 60:
         raise Qt5ObserverError("Observer timeout is outside the supported bound")
 
-    with tempfile.TemporaryDirectory(
-        dir=config_root, prefix=".qt5-observer-profile-"
-    ) as temporary_profile:
-        profile = Path(temporary_profile)
+    with _observer_profile(
+        config_root, resolved_management_catalog is not None
+    ) as profile:
         appdata = profile / "appdata"
         home = profile / "home"
         local_appdata = profile / "local-appdata"
         for directory in (appdata, home, local_appdata):
-            directory.mkdir()
-        _write_config(
-            _config_path(appdata, home),
-            dictionary_root,
-            interface_language,
-            morphology_path,
-            morphology_ids,
-        )
+            directory.mkdir(exist_ok=True)
+        configuration_path = _config_path(appdata, home)
+        if resolved_management_catalog is None or scenario == "clean-discovery":
+            if resolved_management_catalog is not None and configuration_path.exists():
+                raise Qt5ObserverError("Clean management profile already exists")
+            _write_config(
+                configuration_path,
+                dictionary_root,
+                interface_language,
+                morphology_path,
+                morphology_ids,
+            )
+        elif not configuration_path.is_file():
+            raise Qt5ObserverError("Warm management profile is missing")
         environment = os.environ.copy()
         environment.update(
             {
@@ -381,6 +420,13 @@ def observe(
             environment["GOLDENDICT_ACCEPTANCE_LOOKUP_CATALOG_SHA256"] = str(
                 lookup_catalog_sha256
             )
+        if resolved_management_catalog is not None:
+            environment["GOLDENDICT_ACCEPTANCE_MANAGEMENT_CATALOG"] = str(
+                resolved_management_catalog
+            )
+            environment["GOLDENDICT_ACCEPTANCE_MANAGEMENT_CATALOG_SHA256"] = str(
+                management_catalog_sha256
+            )
         path_entries = [legacy_executable.parent, *resolved_runtime_bins]
         environment["PATH"] = os.pathsep.join(
             [*(str(path) for path in path_entries), os.environ.get("PATH", "")]
@@ -409,9 +455,17 @@ def observe(
                 "Qt 5 observer process could not complete"
             ) from error
         if completed.returncode != 0:
+            diagnostic = output.with_name(output.name + ".failure")
+            reason = ""
+            try:
+                reason = diagnostic.read_text(encoding="utf-8").strip()
+            except OSError:
+                pass
+            diagnostic.unlink(missing_ok=True)
             output.unlink(missing_ok=True)
+            detail = f": {reason}" if reason else ""
             raise Qt5ObserverError(
-                f"Qt 5 observer failed with exit code {completed.returncode}"
+                f"Qt 5 observer failed with exit code {completed.returncode}{detail}"
             )
         if not output.is_file():
             raise Qt5ObserverError("Qt 5 observer did not publish a raw result")

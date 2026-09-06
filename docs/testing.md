@@ -563,6 +563,64 @@ clean and warm observations. The complete Release build succeeds, all 134
 CTest cases pass serially, and the repository Python suite passes all 160
 tests with two platform-condition skips.
 
+R3.5 Unit 4 uses the separate `real_management_acceptance.py` coordinator and
+`qt6_real_management_observer` test tool. Its catalog is
+`evidence/r3.5-real-management-catalog-unit4-v1.json`, with SHA-256
+`ead083bfdf40b031a4a1fa78b3a0e1cda589b6ecbc5c92da8dee9fac45b20343`,
+and its canonical conditions SHA-256 is
+`ec7a557d3fd45ac3eceb1660ddcbdcbf317019e070ed8c7df6258f34b9139541`.
+The matrix selects two real DSL dictionaries and the real Oxford MDict,
+persists two ordered groups, exercises ordinary and popup mute sets, records
+dictionary identity/count information, reads two bounded headword pages, and
+requires every pre-rescan cursor to become stale after a read-only source
+rescan. The Qt 6 observer prepares and activates the replacement through the
+same private Core facade-activation owner used by production source reload,
+then requires that exact replacement to be the current published snapshot.
+Clean and warm observations share one persistent profile per product.
+
+The frozen Qt 5 adapter sorts the complete legacy headword list before taking
+the bounded sample because the user-visible Qt 5 dialog applies the same
+sorting while the backing `QSet` iteration is randomized between processes.
+Dictionary descriptions are published only as hashes of their visible token
+stream: Unicode whitespace is collapsed and the Qt rich-text object
+replacement character is ignored. This compares the same visible MDict text
+without treating Qt 5 `QTextDocument` line layout as a Core semantic field;
+line breaks, geometry, and spacing remain strict responsibilities of the
+paired real-corpus screenshot gate.
+
+Run each adapter through `real_dictionary_acceptance_workspace.py run`, once
+with `clean-discovery` and once with `warm-restart`, then compare the four
+normalized observations:
+
+```powershell
+python scripts\real_management_acceptance.py compare `
+  --qt5-clean <qt5-evidence>\management-clean.json `
+  --qt5-warm <qt5-evidence>\management-warm.json `
+  --qt6-clean <qt6-evidence>\management-clean.json `
+  --qt6-warm <qt6-evidence>\management-warm.json `
+  --catalog D:\workspace\goldendict\evidence\r3.5-real-management-catalog-unit4-v1.json `
+  --dictionary-root D:\workspace\goldendict\content `
+  --pair <workspace>\pair.json `
+  --output <workspace>\management-comparison.json
+```
+
+The final Unit 4 workspace is
+`evidence/qt5-qt6-management-r35-unit4-final2`, with pair ID
+`f815470f2285982014288aa38ea95abc11b548513903299ab7d7043a6b23433a`.
+Both products are internally stable across clean and warm observations and the
+strict semantic comparison reports zero differences. The comparison SHA-256
+is `ab518a1b49cadda6004a1ba55036020785e9ead1ad9046976a10004cdc8c7e4a`.
+A post-run manifest regeneration is byte-identical to the preflight manifest
+at SHA-256
+`b7e91878649b61388ecb1a3713709685e243f57e60d2b8eb23838a91bba816d2`,
+proving that the 88-file, 9,303,289,246-byte corpus remained unchanged.
+The complete Release build succeeds through the Conan launcher, all 135 CTest
+cases pass serially, and the repository Python suite passes all 170 tests with
+two platform-condition skips. Focused Ruff, Black, and clang-format checks also
+pass for the added and modified acceptance sources. Negative coordinator tests
+prove that catalog-incomplete observations cannot compare as equivalent and
+that every reported difference remains inside the 4,096-item bound.
+
 On managed Windows hosts, application-control policy may reject a trusted
 MSYS2 Qt 5 tool or runtime solely because of its original path. When the Code
 Integrity event log confirms this condition, the acceptance preparation may

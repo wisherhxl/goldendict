@@ -1518,7 +1518,35 @@ the comparison SHA-256 is
 `12c25517e6d182838f78aa44694c3fc633872f8b558bfd9c810c92fee747f4fb`.
 The complete Release build succeeds, all 134 CTest cases pass serially, and
 the repository Python suite passes all 160 tests with two platform-condition
-skips. Unit 4 and the final R3.5 closure audit remain open.
+skips.
+
+Unit 4 impact check: **conforming real-corpus management acceptance expansion;
+no requirement, installed-interface, production-code, or module-boundary
+change** (2026-09-06). A dedicated coordinator owns catalog validation,
+confinement, normalization, four-way comparison, and atomic evidence
+publication. The frozen Qt 5 adapter reuses one persistent management profile,
+sorts headwords as its visible proxy model does, invokes rescan synchronously
+on the UI thread, and reports GUI-subsystem failures through a confined
+diagnostic sidecar. The Qt 6 observer stays outside the installed surface and
+uses the existing configuration contracts plus the production Core private
+facade-activation owner; it requires the prepared replacement to become the
+current published snapshot before accepting stale-cursor evidence.
+
+Fresh clean and warm observations at
+`evidence/qt5-qt6-management-r35-unit4-final2`, pair
+`f815470f2285982014288aa38ea95abc11b548513903299ab7d7043a6b23433a`,
+cover three real dictionaries, two ordered groups, ordinary and popup mute
+sets, dictionary information, two-page browsing, cursor invalidation, and
+read-only rescan. Both products are internally stable and the strict semantic
+comparison reports zero differences. The catalog SHA-256 is
+`ead083bfdf40b031a4a1fa78b3a0e1cda589b6ecbc5c92da8dee9fac45b20343`;
+the comparison SHA-256 is
+`ab518a1b49cadda6004a1ba55036020785e9ead1ad9046976a10004cdc8c7e4a`.
+The regenerated post-run corpus manifest is byte-identical to the preflight
+manifest. The complete Release build succeeds through the Conan launcher, all
+135 CTest cases pass serially, and the repository Python suite passes all 170
+tests with two platform-condition skips. Only the fresh repeated-pair and final
+R3.5 closure audit remain open.
 
 ### CRD closure cross-check
 

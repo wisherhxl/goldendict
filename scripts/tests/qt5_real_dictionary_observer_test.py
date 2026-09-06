@@ -156,6 +156,36 @@ class Qt5RealDictionaryObserverTest(unittest.TestCase):
             self.assertEqual(config.findtext("preferences/interfaceLanguage"), "en_US")
             self.assertEqual(captured["command"], [str(paths["executable"])])
 
+    def test_reports_and_removes_gui_subsystem_failure_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            diagnostic = paths["output"].with_name(paths["output"].name + ".failure")
+
+            def run(
+                command: list[str], **kwargs: object
+            ) -> subprocess.CompletedProcess:
+                diagnostic.write_text(
+                    "post-rescan dictionary selection\n", encoding="utf-8"
+                )
+                return subprocess.CompletedProcess(command, 4)
+
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                mock.patch.object(
+                    observer,
+                    "_suppressed_windows_error_dialogs",
+                    return_value=nullcontext(),
+                ),
+                mock.patch.object(observer.subprocess, "run", side_effect=run),
+                self.assertRaisesRegex(
+                    observer.Qt5ObserverError,
+                    "exit code 4: post-rescan dictionary selection",
+                ),
+            ):
+                self._call(paths)
+
+            self.assertFalse(diagnostic.exists())
+
     def test_projects_hash_bound_mdict_catalog(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             environment, paths = self._fixture(Path(temporary))
@@ -207,6 +237,76 @@ class Qt5RealDictionaryObserverTest(unittest.TestCase):
                 captured["GOLDENDICT_ACCEPTANCE_MDICT_CATALOG_SHA256"],
                 catalog_hash,
             )
+
+    def test_management_catalog_reuses_one_profile_for_clean_and_warm_runs(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment, paths = self._fixture(Path(temporary))
+            catalog = paths["evidence"] / "management-catalog.json"
+            catalog.write_text('{"schema":"fixture"}\n', encoding="utf-8")
+            catalog_hash = hashlib.sha256(catalog.read_bytes()).hexdigest()
+            appdata_paths: list[str] = []
+            configuration_contents: list[bytes] = []
+
+            def run(
+                command: list[str], **kwargs: object
+            ) -> subprocess.CompletedProcess:
+                child_environment = kwargs["env"]
+                assert isinstance(child_environment, dict)
+                appdata_paths.append(child_environment["APPDATA"])
+                configuration = (
+                    Path(child_environment["APPDATA"]) / "GoldenDict" / "config"
+                )
+                configuration_contents.append(configuration.read_bytes())
+                self.assertEqual(
+                    child_environment["GOLDENDICT_ACCEPTANCE_MANAGEMENT_CATALOG"],
+                    str(catalog),
+                )
+                self.assertEqual(
+                    child_environment[
+                        "GOLDENDICT_ACCEPTANCE_MANAGEMENT_CATALOG_SHA256"
+                    ],
+                    catalog_hash,
+                )
+                Path(
+                    child_environment["GOLDENDICT_ACCEPTANCE_RAW_RESULT_PATH"]
+                ).write_text("{}", encoding="utf-8")
+                return subprocess.CompletedProcess(command, 0)
+
+            def observe(scenario: str) -> None:
+                observer.observe(
+                    paths["executable"],
+                    paths["provenance"],
+                    [paths["runtime"]],
+                    paths["plugins"],
+                    paths["corpus"],
+                    paths["index"],
+                    "en_US",
+                    CONDITIONS_HASH,
+                    scenario,
+                    paths["output"],
+                    60,
+                    management_catalog=catalog,
+                    management_catalog_sha256=catalog_hash,
+                )
+
+            with (
+                mock.patch.dict(os.environ, environment, clear=False),
+                mock.patch.object(
+                    observer,
+                    "_suppressed_windows_error_dialogs",
+                    return_value=nullcontext(),
+                ),
+                mock.patch.object(observer.subprocess, "run", side_effect=run),
+            ):
+                observe("clean-discovery")
+                paths["output"] = paths["output"].with_name("raw-warm.json")
+                observe("warm-restart")
+
+            self.assertEqual(2, len(appdata_paths))
+            self.assertEqual(appdata_paths[0], appdata_paths[1])
+            self.assertEqual(configuration_contents[0], configuration_contents[1])
 
     def test_rejects_mdict_catalog_hash_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -123,14 +123,15 @@ def _instrument(source: Path, observer_include: Path) -> None:
         "  updateStatusLine();\n  updateGroupList();\n}\n",
         "  updateStatusLine();\n"
         "  updateGroupList();\n"
-        "  Qt5AcceptanceObserver::Publish( this, groupInstances.front().dictionaries, ftsIndexing );\n"
+        "  Qt5AcceptanceObserver::Publish( this, dictionaries, ftsIndexing, cfg );\n"
         "}\n",
     )
     _replace_once(
         source / "mainwindow.cc",
         "  updateGroupList();\n\n  makeScanPopup();\n",
         "  updateGroupList();\n"
-        "  Qt5AcceptanceObserver::Publish( this, groupInstances.front().dictionaries, ftsIndexing );\n\n"
+        '  if( qgetenv( "GOLDENDICT_ACCEPTANCE_MANAGEMENT_CATALOG" ).isEmpty() )\n'
+        "    Qt5AcceptanceObserver::Publish( this, dictionaries, ftsIndexing, cfg );\n\n"
         "  makeScanPopup();\n",
     )
     _replace_once(

@@ -12,6 +12,7 @@
 #include <QSaveFile>
 #include <QTimer>
 
+#include <cstdio>
 #include <memory>
 #include <string>
 #include <vector>
@@ -1030,11 +1031,407 @@ void PublishLookup( QObject * owner,
   QTimer::singleShot( 0, publication, [publication]() { publication->Start(); } );
 }
 
+class ManagementPublication: public QObject
+{
+public:
+  ManagementPublication( QObject * parent,
+                         std::vector< sptr< Dictionary::Class > > const & dictionaries_,
+                         Config::Class & configuration_,
+                         QByteArray const & catalogPath,
+                         QByteArray const & catalogHash_,
+                         QByteArray const & conditionsHash_,
+                         QByteArray const & outputPath_,
+                         QByteArray const & scenario_ ):
+    QObject( parent ), dictionaries( dictionaries_ ), configuration( configuration_ ),
+    catalogHash( catalogHash_ ), conditionsHash( conditionsHash_ ),
+    outputPath( outputPath_ ), scenario( scenario_ )
+  {
+    QFile file( QString::fromUtf8( catalogPath ) );
+    if( !file.open( QIODevice::ReadOnly ) || file.size() < 1
+        || file.size() > 1024 * 1024 )
+      return;
+    QByteArray const content = file.readAll();
+    if( content.size() != file.size()
+        || QCryptographicHash::hash( content, QCryptographicHash::Sha256 ).toHex()
+             != catalogHash )
+      return;
+    QJsonParseError error;
+    QJsonDocument const document = QJsonDocument::fromJson( content, &error );
+    if( error.error != QJsonParseError::NoError || !document.isObject() )
+      return;
+    catalog = document.object();
+    if( catalog.value( "schema" ).toString()
+          != "goldendict-real-management-catalog-v1" )
+      catalog = QJsonObject();
+  }
+
+  void Start()
+  {
+    if( catalog.isEmpty() || !SelectDictionaries() )
+    {
+      Fail( "catalog or dictionary selection" );
+      return;
+    }
+    if( scenario == "clean-discovery" )
+    {
+      if( !ApplyWorkflow() )
+      {
+        Fail( "workflow application" );
+        return;
+      }
+      try
+      {
+        Config::save( configuration );
+      }
+      catch( ... )
+      {
+        Fail( "configuration persistence" );
+        return;
+      }
+    }
+    if( !CaptureBeforeRescan() )
+    {
+      Fail( "pre-rescan evidence capture" );
+      return;
+    }
+    if( !QMetaObject::invokeMethod( parent(), "on_rescanFiles_triggered",
+                                   Qt::DirectConnection ) )
+    {
+      Fail( "rescan dispatch" );
+      return;
+    }
+    CaptureAfterRescan();
+  }
+
+private:
+  struct Selected
+  {
+    QString alias;
+    QString primary;
+    Dictionary::Class * dictionary;
+  };
+
+  std::vector< sptr< Dictionary::Class > > const & dictionaries;
+  Config::Class & configuration;
+  QByteArray catalogHash;
+  QByteArray conditionsHash;
+  QByteArray outputPath;
+  QByteArray scenario;
+  QJsonObject catalog;
+  std::vector< Selected > selected;
+  QJsonArray dictionaryEvidence;
+  QJsonArray groupEvidence;
+  QJsonArray browseEvidence;
+
+  Dictionary::Class * FindDictionary( QString const & relative,
+                                      QString * primary ) const
+  {
+    QByteArray const corpusRoot = qgetenv( "GOLDENDICT_ACCEPTANCE_CORPUS_ROOT" );
+    QString const expected = QFileInfo( QDir( QString::fromUtf8( corpusRoot ) )
+                                        .filePath( relative ) ).canonicalFilePath();
+    if( expected.isEmpty() )
+      return 0;
+    for( std::vector< sptr< Dictionary::Class > >::const_iterator item = dictionaries.begin();
+         item != dictionaries.end(); ++item )
+    {
+      std::vector< std::string > const & files = ( *item )->getDictionaryFilenames();
+      for( std::vector< std::string >::const_iterator file = files.begin();
+           file != files.end(); ++file )
+      {
+        QString const candidate =
+          QFileInfo( QString::fromUtf8( file->c_str() ) ).canonicalFilePath();
+        if( candidate.compare( expected, Qt::CaseInsensitive ) == 0 )
+        {
+          *primary = expected;
+          return item->get();
+        }
+      }
+    }
+    return 0;
+  }
+
+  bool SelectDictionaries()
+  {
+    selected.clear();
+    QJsonArray const items = catalog.value( "dictionaries" ).toArray();
+    if( items.size() < 2 || items.size() > 16 )
+      return false;
+    for( QJsonArray::const_iterator item = items.begin(); item != items.end(); ++item )
+    {
+      QJsonObject const value = item->toObject();
+      QString primary;
+      Dictionary::Class * dictionary =
+        FindDictionary( value.value( "primary_component" ).toString(), &primary );
+      if( !dictionary )
+        return false;
+      Selected found;
+      found.alias = value.value( "id" ).toString();
+      found.primary = primary;
+      found.dictionary = dictionary;
+      selected.push_back( found );
+    }
+    return true;
+  }
+
+  Selected const * ByAlias( QString const & alias ) const
+  {
+    for( std::vector< Selected >::const_iterator item = selected.begin();
+         item != selected.end(); ++item )
+      if( item->alias == alias )
+        return &( *item );
+    return 0;
+  }
+
+  QString AliasForRuntimeId( QString const & id ) const
+  {
+    for( std::vector< Selected >::const_iterator item = selected.begin();
+         item != selected.end(); ++item )
+      if( QString::fromUtf8( item->dictionary->getId().c_str() ) == id )
+        return item->alias;
+    return QString();
+  }
+
+  bool ResolveReferences( QJsonArray const & aliases,
+                          QVector< Config::DictionaryRef > * references ) const
+  {
+    references->clear();
+    for( QJsonArray::const_iterator alias = aliases.begin(); alias != aliases.end(); ++alias )
+    {
+      Selected const * dictionary = ByAlias( alias->toString() );
+      if( !dictionary )
+        return false;
+      references->push_back( Config::DictionaryRef(
+        QString::fromUtf8( dictionary->dictionary->getId().c_str() ),
+        QString::fromUtf8( dictionary->dictionary->getName().c_str() ) ) );
+    }
+    return true;
+  }
+
+  bool ResolveMuted( QJsonArray const & aliases,
+                     Config::MutedDictionaries * muted ) const
+  {
+    muted->clear();
+    for( QJsonArray::const_iterator alias = aliases.begin(); alias != aliases.end(); ++alias )
+    {
+      Selected const * dictionary = ByAlias( alias->toString() );
+      if( !dictionary )
+        return false;
+      muted->insert( QString::fromUtf8( dictionary->dictionary->getId().c_str() ) );
+    }
+    return true;
+  }
+
+  bool ApplyWorkflow()
+  {
+    configuration.groups.clear();
+    configuration.groups.nextId = 1;
+    QJsonArray const groups =
+      catalog.value( "workflow" ).toObject().value( "groups" ).toArray();
+    for( QJsonArray::const_iterator item = groups.begin(); item != groups.end(); ++item )
+    {
+      QJsonObject const value = item->toObject();
+      Config::Group group;
+      group.id = static_cast< unsigned >( value.value( "id" ).toInt() );
+      group.name = value.value( "name" ).toString();
+      if( !ResolveReferences( value.value( "dictionary_ids" ).toArray(),
+                              &group.dictionaries )
+          || !ResolveMuted( value.value( "muted_dictionary_ids" ).toArray(),
+                            &group.mutedDictionaries )
+          || !ResolveMuted( value.value( "popup_muted_dictionary_ids" ).toArray(),
+                            &group.popupMutedDictionaries ) )
+        return false;
+      configuration.groups.push_back( group );
+      configuration.groups.nextId = qMax( configuration.groups.nextId,
+                                           group.id + 1 );
+    }
+    return !configuration.groups.isEmpty();
+  }
+
+  QJsonArray AliasArray( QVector< Config::DictionaryRef > const & values ) const
+  {
+    QJsonArray result;
+    for( QVector< Config::DictionaryRef >::const_iterator value = values.begin();
+         value != values.end(); ++value )
+    {
+      QString const alias = AliasForRuntimeId( value->id );
+      if( alias.isEmpty() )
+        return QJsonArray();
+      result.append( alias );
+    }
+    return result;
+  }
+
+  QJsonArray AliasArray( Config::MutedDictionaries const & values,
+                         QVector< Config::DictionaryRef > const & members ) const
+  {
+    QJsonArray result;
+    for( QVector< Config::DictionaryRef >::const_iterator member = members.begin();
+         member != members.end(); ++member )
+    {
+      if( !values.contains( member->id ) )
+        continue;
+      QString const alias = AliasForRuntimeId( member->id );
+      if( alias.isEmpty() )
+        return QJsonArray();
+      result.append( alias );
+    }
+    return result;
+  }
+
+  bool CaptureGroups()
+  {
+    groupEvidence = QJsonArray();
+    for( Config::Groups::const_iterator group = configuration.groups.begin();
+         group != configuration.groups.end(); ++group )
+    {
+      QJsonArray const members = AliasArray( group->dictionaries );
+      if( members.size() != group->dictionaries.size() )
+        return false;
+      QJsonObject value;
+      value.insert( "dictionary_ids", members );
+      value.insert( "id", static_cast< qint64 >( group->id ) );
+      value.insert( "muted_dictionary_ids",
+                    AliasArray( group->mutedDictionaries, group->dictionaries ) );
+      value.insert( "name", group->name );
+      value.insert( "popup_muted_dictionary_ids",
+                    AliasArray( group->popupMutedDictionaries,
+                                group->dictionaries ) );
+      groupEvidence.append( value );
+    }
+    return true;
+  }
+
+  bool CaptureDictionaries()
+  {
+    dictionaryEvidence = QJsonArray();
+    for( std::vector< Selected >::const_iterator item = selected.begin();
+         item != selected.end(); ++item )
+    {
+      QJsonObject value;
+      value.insert( "article_count",
+                    static_cast< qint64 >( item->dictionary->getArticleCount() ) );
+      value.insert( "catalog_id", item->alias );
+      QJsonArray components;
+      components.append( item->primary );
+      value.insert( "components", components );
+      QString const description = item->dictionary->getDescription();
+      value.insert( "description", description == "NONE" ? QString() : description );
+      value.insert( "headword_count",
+                    static_cast< qint64 >( item->dictionary->getWordCount() ) );
+      value.insert( "name", QString::fromUtf8( item->dictionary->getName().c_str() ) );
+      value.insert( "source_language", LangCoder::intToCode2( item->dictionary->getLangFrom() ) );
+      value.insert( "target_language", LangCoder::intToCode2( item->dictionary->getLangTo() ) );
+      dictionaryEvidence.append( value );
+    }
+    return true;
+  }
+
+  bool CaptureBrowse()
+  {
+    browseEvidence = QJsonArray();
+    QJsonArray const requests =
+      catalog.value( "workflow" ).toObject().value( "browse" ).toArray();
+    for( QJsonArray::const_iterator request = requests.begin();
+         request != requests.end(); ++request )
+    {
+      QJsonObject const value = request->toObject();
+      Selected const * dictionary = ByAlias( value.value( "dictionary_id" ).toString() );
+      int const maximum = value.value( "page_size" ).toInt() * 2;
+      QStringList headwords;
+      if( !dictionary || maximum < 2 || !dictionary->dictionary->getHeadwords( headwords )
+          || headwords.isEmpty() )
+        return false;
+      headwords.sort( Qt::CaseSensitive );
+      QJsonArray bounded;
+      for( int index = 0; index < headwords.size() && index < maximum; ++index )
+        bounded.append( headwords.at( index ) );
+      QJsonObject evidence;
+      evidence.insert( "dictionary_id", dictionary->alias );
+      evidence.insert( "headwords", bounded );
+      browseEvidence.append( evidence );
+    }
+    return true;
+  }
+
+  bool CaptureBeforeRescan()
+  {
+    return CaptureDictionaries() && CaptureGroups() && CaptureBrowse();
+  }
+
+  void CaptureAfterRescan()
+  {
+    if( !SelectDictionaries() )
+    {
+      Fail( "post-rescan dictionary selection" );
+      return;
+    }
+    QJsonArray rescanned;
+    for( std::vector< Selected >::const_iterator item = selected.begin();
+         item != selected.end(); ++item )
+      rescanned.append( item->alias );
+    QJsonObject raw;
+    raw.insert( "browse", browseEvidence );
+    raw.insert( "catalog_sha256", QString::fromLatin1( catalogHash ) );
+    raw.insert( "conditions_sha256", QString::fromLatin1( conditionsHash ) );
+    raw.insert( "dictionaries", dictionaryEvidence );
+    raw.insert( "groups", groupEvidence );
+    raw.insert( "rescan_dictionary_ids", rescanned );
+    raw.insert( "scenario", QString::fromLatin1( scenario ) );
+    raw.insert( "schema", "goldendict-real-management-raw-observation-v1" );
+    QSaveFile output( QString::fromUtf8( outputPath ) );
+    if( !output.open( QIODevice::WriteOnly ) )
+    {
+      Fail( "output open" );
+      return;
+    }
+    QByteArray const content =
+      QJsonDocument( raw ).toJson( QJsonDocument::Compact ) + '\n';
+    if( output.write( content ) != content.size() || !output.commit() )
+    {
+      Fail( "output commit" );
+      return;
+    }
+    ScheduleExit();
+    deleteLater();
+  }
+
+  void Fail( char const * reason )
+  {
+    QFile diagnostic( QString::fromUtf8( outputPath ) + ".failure" );
+    if( diagnostic.open( QIODevice::WriteOnly ) )
+    {
+      diagnostic.write( reason );
+      diagnostic.write( "\n" );
+      diagnostic.close();
+    }
+    std::fprintf( stderr, "Qt 5 management observation failed: %s\n", reason );
+    std::fflush( stderr );
+    qApp->exit( 4 );
+    deleteLater();
+  }
+};
+
+void PublishManagement( QObject * owner,
+                        std::vector< sptr< Dictionary::Class > > const & dictionaries,
+                        Config::Class & configuration,
+                        QByteArray const & catalogPath,
+                        QByteArray const & catalogHash,
+                        QByteArray const & conditionsHash,
+                        QByteArray const & outputPath,
+                        QByteArray const & scenario )
+{
+  ManagementPublication * publication = new ManagementPublication(
+    owner, dictionaries, configuration, catalogPath, catalogHash,
+    conditionsHash, outputPath, scenario );
+  QTimer::singleShot( 0, publication, [publication]() { publication->Start(); } );
+}
+
 } // unnamed namespace
 
 void Publish( QObject * owner,
               std::vector< sptr< Dictionary::Class > > const & dictionaries,
-              FTS::FtsIndexing & ftsIndexing )
+              FTS::FtsIndexing & ftsIndexing,
+              Config::Class & configuration )
 {
   QByteArray const outputPath = qgetenv( "GOLDENDICT_ACCEPTANCE_RAW_RESULT_PATH" );
   if( outputPath.isEmpty() )
@@ -1067,6 +1464,25 @@ void Publish( QObject * owner,
     mdictStarted = true;
     PublishMdict( owner, dictionaries, mdictCatalog, mdictCatalogHash,
                   conditionsHash, outputPath, scenario );
+    return;
+  }
+
+  QByteArray const managementCatalog =
+    qgetenv( "GOLDENDICT_ACCEPTANCE_MANAGEMENT_CATALOG" );
+  if( !managementCatalog.isEmpty() )
+  {
+    static bool managementStarted = false;
+    QByteArray const managementCatalogHash =
+      qgetenv( "GOLDENDICT_ACCEPTANCE_MANAGEMENT_CATALOG_SHA256" );
+    if( managementStarted || managementCatalogHash.size() != 64 )
+    {
+      ScheduleExit();
+      return;
+    }
+    managementStarted = true;
+    PublishManagement( owner, dictionaries, configuration, managementCatalog,
+                       managementCatalogHash, conditionsHash, outputPath,
+                       scenario );
     return;
   }
 

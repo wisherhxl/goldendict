@@ -342,6 +342,17 @@ advisory: their declared counts trail the actual nonempty entry counts by 18
 and 32 respectively, and both products accept them while independently
 enforcing the actual-entry bound.
 
+R3.5 Unit 4 adds an isolated real-corpus management matrix without changing an
+installed interface or product architecture. The frozen Qt 5 adapter and the
+Qt 6 `DictionaryService` adapter use independent persistent profiles to apply
+and reload two ordered groups over two DSL dictionaries and one MDict,
+including ordinary mute and popup mute state. They also record bounded sorted
+headword browsing, dictionary information, and read-only source rescan. The
+final clean/warm pair is internally stable and reports zero semantic
+differences; a byte-identical post-run corpus manifest confirms that no source
+dictionary was modified. R3.5 final repeated-pair closure remains a separate
+delivery unit.
+
 ### Phase 6 — Dictionary Backends In Priority Batches
 
 - Port backends in approved core, common optional, and deferred/high-cost
