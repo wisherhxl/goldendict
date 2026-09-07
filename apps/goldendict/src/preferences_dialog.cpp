@@ -8,8 +8,10 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
+#include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
@@ -26,27 +28,42 @@ PreferencesDialog::PreferencesDialog(
       apply_callback_(std::move(apply_callback)) {
     setObjectName(QStringLiteral("preferencesDialog"));
     setWindowTitle(QStringLiteral("Preferences"));
+    setWindowIcon(QIcon(QStringLiteral(":/icons/configure.png")));
     setModal(true);
+    resize(636, 431);
 
     auto* layout = new QVBoxLayout(this);
     auto* tabs = new QTabWidget(this);
     tabs->setObjectName(QStringLiteral("preferencesTabs"));
-    auto* general_page = new QWidget(tabs);
-    general_page->setObjectName(QStringLiteral("preferencesGeneralPage"));
-    auto* general_layout = new QVBoxLayout(general_page);
-    auto* tab_group = new QGroupBox(QStringLiteral("Tabs"), general_page);
+    tabs->setIconSize(QSize(15, 15));
+    tabs->setUsesScrollButtons(false);
+    auto* interface_page = new QWidget(tabs);
+    interface_page->setObjectName(QStringLiteral("preferencesInterfacePage"));
+    auto* interface_layout = new QGridLayout(interface_page);
+    interface_layout->setRowStretch(0, 1);
+    interface_layout->setRowStretch(7, 1);
+    auto* tab_group =
+        new QGroupBox(QStringLiteral("Tabbed browsing"), interface_page);
     tab_group->setObjectName(QStringLiteral("preferencesTabGroup"));
-    auto* tab_layout = new QVBoxLayout(tab_group);
-    open_in_background_ = new QCheckBox(
-        QStringLiteral("Open new tabs in the background"), tab_group);
+    auto* tab_layout = new QGridLayout(tab_group);
+    open_in_background_ =
+        new QCheckBox(QStringLiteral("Open new tabs in background"), tab_group);
     open_in_background_->setObjectName(
         QStringLiteral("newTabsOpenInBackground"));
     open_in_background_->setChecked(preferences.open_new_tabs_in_background);
+    open_in_background_->setToolTip(QStringLiteral(
+        "Normally, opening a new tab switches to it immediately.\n"
+        "With this on however, new tabs will be opened without\n"
+        "switching to them."));
     open_after_current_ = new QCheckBox(
         QStringLiteral("Open new tabs after the current one"), tab_group);
     open_after_current_->setObjectName(
         QStringLiteral("newTabsOpenAfterCurrentOne"));
     open_after_current_->setChecked(preferences.open_new_tabs_after_current);
+    open_after_current_->setToolTip(
+        QStringLiteral("With this on, new tabs are opened just after the\n"
+                       "current, active one. Otherwise they are added to\n"
+                       "be the last ones."));
     hide_single_tab_ =
         new QCheckBox(QStringLiteral("Hide single tab"), tab_group);
     hide_single_tab_->setObjectName(QStringLiteral("hideSingleTab"));
@@ -58,32 +75,32 @@ PreferencesDialog::PreferencesDialog(
         QStringLiteral("Ctrl-Tab navigates tabs in MRU order"), tab_group);
     mru_tab_order_->setObjectName(QStringLiteral("mruTabOrder"));
     mru_tab_order_->setChecked(preferences.mru_tab_order);
-    tab_layout->addWidget(open_in_background_);
-    tab_layout->addWidget(open_after_current_);
-    tab_layout->addWidget(hide_single_tab_);
-    tab_layout->addWidget(mru_tab_order_);
-    general_layout->addWidget(tab_group);
+    tab_layout->addWidget(open_in_background_, 0, 0);
+    tab_layout->addWidget(open_after_current_, 1, 0);
+    tab_layout->addWidget(hide_single_tab_, 0, 1);
+    tab_layout->addWidget(mru_tab_order_, 1, 1);
+    interface_layout->addWidget(tab_group, 1, 0, 1, 2);
 
     escape_hides_main_window_ = new QCheckBox(
-        QStringLiteral("ESC key hides main window"), general_page);
+        QStringLiteral("ESC key hides main window"), interface_page);
     escape_hides_main_window_->setObjectName(
         QStringLiteral("escKeyHidesMainWindow"));
     escape_hides_main_window_->setToolTip(QStringLiteral(
         "Normally, pressing ESC key moves focus to the translation line.\n"
         "With this on however, it will hide the main window."));
     escape_hides_main_window_->setChecked(preferences.escape_hides_main_window);
-    general_layout->addWidget(escape_hides_main_window_);
+    interface_layout->addWidget(escape_hides_main_window_, 5, 0);
 
     double_click_translates_ = new QCheckBox(
         QStringLiteral("Double-click translates the word clicked"),
-        general_page);
+        interface_page);
     double_click_translates_->setObjectName(
         QStringLiteral("doubleClickTranslates"));
     double_click_translates_->setChecked(preferences.double_click_translates);
-    general_layout->addWidget(double_click_translates_);
+    interface_layout->addWidget(double_click_translates_, 3, 0);
 
     select_word_by_single_click_ = new QCheckBox(
-        QStringLiteral("Select word by single click"), general_page);
+        QStringLiteral("Select word by single click"), interface_page);
     select_word_by_single_click_->setObjectName(
         QStringLiteral("selectBySingleClick"));
     select_word_by_single_click_->setToolTip(QStringLiteral(
@@ -91,15 +108,15 @@ PreferencesDialog::PreferencesDialog(
         "click"));
     select_word_by_single_click_->setChecked(
         preferences.select_word_by_single_click);
-    general_layout->addWidget(select_word_by_single_click_);
+    interface_layout->addWidget(select_word_by_single_click_, 4, 0);
 
 #if defined(Q_OS_LINUX)
     auto* interface_language_layout = new QHBoxLayout;
     auto* interface_language_label =
-        new QLabel(tr("Interface language:"), general_page);
+        new QLabel(tr("Interface language:"), interface_page);
     interface_language_label->setObjectName(
         QStringLiteral("interfaceLanguageLabel"));
-    interface_language_ = new QComboBox(general_page);
+    interface_language_ = new QComboBox(interface_page);
     interface_language_->setObjectName(QStringLiteral("interfaceLanguage"));
     interface_language_->addItem(tr("Default"), QString());
     interface_language_->addItem(tr("English"), QStringLiteral("en_US"));
@@ -111,13 +128,12 @@ PreferencesDialog::PreferencesDialog(
     interface_language_layout->addWidget(interface_language_label);
     interface_language_layout->addWidget(interface_language_);
     interface_language_layout->addStretch();
-    general_layout->addLayout(interface_language_layout);
 
     auto* help_language_layout = new QHBoxLayout;
     auto* help_language_label =
-        new QLabel(QStringLiteral("Help language:"), general_page);
+        new QLabel(QStringLiteral("Help language"), interface_page);
     help_language_label->setObjectName(QStringLiteral("helpLanguageLabel"));
-    help_language_ = new QComboBox(general_page);
+    help_language_ = new QComboBox(interface_page);
     help_language_->setObjectName(QStringLiteral("helpLanguage"));
     help_language_->addItem(QStringLiteral("Default"), QString());
     help_language_->addItem(QStringLiteral("English"), QStringLiteral("en_US"));
@@ -129,11 +145,17 @@ PreferencesDialog::PreferencesDialog(
     help_language_layout->addWidget(help_language_label);
     help_language_layout->addWidget(help_language_);
     help_language_layout->addStretch();
-    general_layout->addLayout(help_language_layout);
+    interface_language_layout->addLayout(help_language_layout);
+    interface_layout->addLayout(interface_language_layout, 6, 0, 1, 2);
 #endif
 
+    auto* advanced_page = new QWidget(tabs);
+    advanced_page->setObjectName(QStringLiteral("preferencesAdvancedPage"));
+    auto* advanced_layout = new QVBoxLayout(advanced_page);
+    advanced_layout->addStretch();
+    auto* state_layout = new QHBoxLayout;
     auto* history_group =
-        new QGroupBox(QStringLiteral("History"), general_page);
+        new QGroupBox(QStringLiteral("History"), advanced_page);
     history_group->setObjectName(QStringLiteral("preferencesHistoryGroup"));
     auto* history_layout = new QVBoxLayout(history_group);
     store_history_ =
@@ -161,10 +183,10 @@ PreferencesDialog::PreferencesDialog(
     maximum_layout->addWidget(maximum_history_entries_);
     maximum_layout->addStretch();
     history_layout->addLayout(maximum_layout);
-    general_layout->addWidget(history_group);
+    state_layout->addWidget(history_group);
 
     auto* favorites_group =
-        new QGroupBox(QStringLiteral("Favorites"), general_page);
+        new QGroupBox(QStringLiteral("Favorites"), advanced_page);
     favorites_group->setObjectName(QStringLiteral("favoritesBox"));
     auto* favorites_layout = new QVBoxLayout(favorites_group);
     confirm_favorites_deletion_ = new QCheckBox(
@@ -176,12 +198,14 @@ PreferencesDialog::PreferencesDialog(
     confirm_favorites_deletion_->setChecked(
         preferences.confirm_favorites_deletion);
     favorites_layout->addWidget(confirm_favorites_deletion_);
-    general_layout->addWidget(favorites_group);
+    favorites_layout->addStretch();
+    state_layout->addWidget(favorites_group);
+    advanced_layout->addLayout(state_layout);
 
     auto* articles_group =
-        new QGroupBox(QStringLiteral("Articles"), general_page);
+        new QGroupBox(QStringLiteral("Articles"), advanced_page);
     articles_group->setObjectName(QStringLiteral("preferencesArticlesGroup"));
-    auto* articles_layout = new QHBoxLayout(articles_group);
+    auto* articles_layout = new QGridLayout(articles_group);
     collapse_large_articles_ = new QCheckBox(
         QStringLiteral("Collapse articles more than"), articles_group);
     collapse_large_articles_->setObjectName(
@@ -202,36 +226,30 @@ PreferencesDialog::PreferencesDialog(
             &QSpinBox::setEnabled);
     auto* symbols = new QLabel(QStringLiteral("symbols"), articles_group);
     symbols->setObjectName(QStringLiteral("articleSizeLimitLabel"));
-    articles_layout->addWidget(collapse_large_articles_);
-    articles_layout->addWidget(article_size_limit_);
-    articles_layout->addWidget(symbols);
-    articles_layout->addStretch();
-    general_layout->addWidget(articles_group);
+    articles_layout->addWidget(collapse_large_articles_, 0, 0);
+    articles_layout->addWidget(article_size_limit_, 0, 1);
+    articles_layout->addWidget(symbols, 0, 2);
+    articles_layout->setColumnStretch(3, 1);
 
     always_expand_optional_parts_ =
-        new QCheckBox(QStringLiteral("Expand optional &parts"), general_page);
+        new QCheckBox(QStringLiteral("Expand optional &parts"), articles_group);
     always_expand_optional_parts_->setObjectName(
         QStringLiteral("alwaysExpandOptionalParts"));
     always_expand_optional_parts_->setToolTip(QStringLiteral(
         "Turn this option on to always expand optional parts of articles"));
     always_expand_optional_parts_->setChecked(
         preferences.always_expand_optional_parts);
-    general_layout->addWidget(always_expand_optional_parts_);
-
-    auto* input_phrase_group =
-        new QGroupBox(QStringLiteral("Input phrase length"), general_page);
-    input_phrase_group->setObjectName(
-        QStringLiteral("preferencesInputPhraseLengthGroup"));
-    auto* input_phrase_layout = new QHBoxLayout(input_phrase_group);
+    articles_layout->addWidget(always_expand_optional_parts_, 0, 4);
     limit_input_phrase_length_ = new QCheckBox(
-        QStringLiteral("Ignore input phrases longer than"), input_phrase_group);
+        QStringLiteral("Ignore input phrases longer than"), articles_group);
     limit_input_phrase_length_->setObjectName(
         QStringLiteral("limitInputPhraseLength"));
     limit_input_phrase_length_->setToolTip(QStringLiteral(
-        "Turn this option on to ignore unreasonably long input text"));
+        "Turn this option on to ignore unreasonably long input text\n"
+        "from mouse-over, selection, clipboard or command line"));
     limit_input_phrase_length_->setChecked(
         preferences.limit_input_phrase_length);
-    input_phrase_length_limit_ = new QSpinBox(input_phrase_group);
+    input_phrase_length_limit_ = new QSpinBox(articles_group);
     input_phrase_length_limit_->setObjectName(
         QStringLiteral("inputPhraseLengthLimit"));
     input_phrase_length_limit_->setToolTip(
@@ -245,39 +263,39 @@ PreferencesDialog::PreferencesDialog(
     connect(limit_input_phrase_length_, &QCheckBox::toggled,
             input_phrase_length_limit_, &QSpinBox::setEnabled);
     auto* input_phrase_symbols =
-        new QLabel(QStringLiteral("symbols"), input_phrase_group);
+        new QLabel(QStringLiteral("symbols"), articles_group);
     input_phrase_symbols->setObjectName(
         QStringLiteral("inputPhraseLengthLimitLabel"));
-    input_phrase_layout->addWidget(limit_input_phrase_length_);
-    input_phrase_layout->addWidget(input_phrase_length_limit_);
-    input_phrase_layout->addWidget(input_phrase_symbols);
-    input_phrase_layout->addStretch();
-    general_layout->addWidget(input_phrase_group);
-    ignore_diacritics_ =
-        new QCheckBox(QStringLiteral("Ignore diacritics"), general_page);
+    articles_layout->addWidget(limit_input_phrase_length_, 1, 0);
+    articles_layout->addWidget(input_phrase_length_limit_, 1, 1);
+    articles_layout->addWidget(input_phrase_symbols, 1, 2);
+    ignore_diacritics_ = new QCheckBox(
+        QStringLiteral("Ignore diacritics while searching"), articles_group);
     ignore_diacritics_->setObjectName(QStringLiteral("ignoreDiacritics"));
     ignore_diacritics_->setToolTip(QStringLiteral(
         "Turn this option on to ignore diacritics while searching articles"));
     ignore_diacritics_->setChecked(preferences.ignore_diacritics);
-    general_layout->addWidget(ignore_diacritics_);
+    articles_layout->addWidget(ignore_diacritics_, 1, 4);
+    advanced_layout->addWidget(articles_group);
     synonym_search_enabled_ = new QCheckBox(
-        QStringLiteral("Extra search via synonyms"), general_page);
+        QStringLiteral("Extra search via synonyms"), advanced_page);
     synonym_search_enabled_->setObjectName(
         QStringLiteral("synonymSearchEnabled"));
     synonym_search_enabled_->setToolTip(QStringLiteral(
         "Turn this option on to enable extra articles search via synonym "
         "lists from Stardict, Babylon and GLS dictionaries"));
     synonym_search_enabled_->setChecked(preferences.synonym_search_enabled);
-    general_layout->addWidget(synonym_search_enabled_);
+    advanced_layout->addWidget(synonym_search_enabled_);
+    advanced_layout->addStretch();
 
     auto* dictionary_context_layout = new QHBoxLayout;
     auto* dictionary_context_label = new QLabel(
-        QStringLiteral("Context menu dictionaries limit:"), general_page);
+        QStringLiteral("Context menu dictionaries limit:"), interface_page);
     dictionary_context_label->setObjectName(
         QStringLiteral("maxDictsInContextMenuLabel"));
     dictionary_context_label->setToolTip(
         QStringLiteral("Adjust this value to avoid huge context menus."));
-    maximum_dictionary_references_ = new QSpinBox(general_page);
+    maximum_dictionary_references_ = new QSpinBox(interface_page);
     maximum_dictionary_references_->setObjectName(
         QStringLiteral("maxDictsInContextMenu"));
     maximum_dictionary_references_->setRange(0, 9999);
@@ -288,9 +306,9 @@ PreferencesDialog::PreferencesDialog(
     dictionary_context_layout->addWidget(dictionary_context_label);
     dictionary_context_layout->addWidget(maximum_dictionary_references_);
     dictionary_context_layout->addStretch();
-    general_layout->addLayout(dictionary_context_layout);
-    general_layout->addStretch();
-    tabs->addTab(general_page, QStringLiteral("General"));
+    interface_layout->addLayout(dictionary_context_layout, 3, 1);
+    tabs->addTab(interface_page, QIcon(QStringLiteral(":/icons/interface.png")),
+                 QStringLiteral("&Interface"));
 
     auto* network_page = new QWidget(tabs);
     network_page->setObjectName(QStringLiteral("preferencesNetworkPage"));
@@ -380,11 +398,13 @@ PreferencesDialog::PreferencesDialog(
     cache_layout->addWidget(maximum_network_cache_megabytes_);
     cache_layout->addWidget(clear_network_cache_on_exit_);
     cache_layout->addStretch();
-    network_layout->addLayout(cache_layout);
     network_layout->addStretch();
     network_layout->addWidget(use_proxy_server_);
+    network_layout->addLayout(cache_layout);
     network_layout->addStretch();
-    tabs->addTab(network_page, QStringLiteral("&Network"));
+    tabs->addTab(network_page, QIcon(QStringLiteral(":/icons/network.png")),
+                 QStringLiteral("&Network"));
+    tabs->addTab(advanced_page, QStringLiteral("Ad&vanced"));
     layout->addWidget(tabs);
 
     validation_error_ = new QLabel(this);

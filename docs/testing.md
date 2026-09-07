@@ -24,6 +24,28 @@ Conan dependencies:
 python scripts/tests/run_with_conan_test.py
 ```
 
+### Backed Preferences page layout
+
+`preferences_dialog_test` checks the actual Widgets dialog's page ownership,
+legacy relative order, tab icon bytes, grouped grid positions, labels,
+cross-page complete-candidate success/cancel/failure, and usable geometry.
+Run it together with the existing persistence/runtime-effect smokes:
+
+```powershell
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -R 'preferences|edit_menu' --output-on-failure -j 1
+```
+
+For Windows visual evidence, set `GOLDENDICT_PREFERENCES_CAPTURE_DIR` to a
+disposable directory and `QT_QPA_PLATFORM=windows`, then invoke the test through
+the launcher with `-style Fusion UsableGeometryAndOptionalCapture`. Capture
+mode uses Segoe UI 9 pt and 670 by 475 logical pixels. It records the actual
+dialog's three backed pages and font/style/DPR metadata. Match the frozen
+Qt 5 dialog under identical conditions. Qt 5's Windows offscreen plugin can
+produce blank text on this host; such captures are invalid, not a tolerance.
+Unmasked pixel differences and the remaining-control checklist are retained
+in [the focused delivery record](preferences-page-layout.md). These captures
+do not prove seven-page or Linux parity.
+
 ### Real-dictionary corpus manifest
 
 Before a real-corpus acceptance run, generate the deterministic payload-free

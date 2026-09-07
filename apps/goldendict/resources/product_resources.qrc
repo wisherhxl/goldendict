@@ -13,7 +13,9 @@
     <file>icons/icon32_zoombase.png</file>
     <file>icons/icon32_zoomin.png</file>
     <file>icons/icon32_zoomout.png</file>
+    <file>icons/interface.png</file>
     <file>icons/menu_button.png</file>
+    <file>icons/network.png</file>
     <file>icons/next.png</file>
     <file>icons/playsound_full.png</file>
     <file>icons/previous.png</file>

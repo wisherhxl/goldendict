@@ -281,6 +281,19 @@ add_test(NAME full_text_response_model_test
 set_tests_properties(full_text_response_model_test PROPERTIES
   ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen")
 
+ti_add_executable(preferences_dialog_test
+  tests/preferences_dialog_test.cpp
+  src/preferences_dialog.cpp
+  src/preferences_dialog.h
+  resources/product_resources.qrc)
+target_include_directories(preferences_dialog_test PRIVATE src)
+ti_target_include_modules_recurse(preferences_dialog_test goldendict_core)
+ti_target_link_libraries(preferences_dialog_test
+  goldendict_core ${QT_NAMESPACE}::Test ${QT_NAMESPACE}::Widgets)
+add_test(NAME preferences_dialog_test COMMAND preferences_dialog_test)
+set_tests_properties(preferences_dialog_test PROPERTIES
+  ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen")
+
 ti_add_executable(full_text_query_composer_test
   tests/full_text_query_composer_test.cpp
   src/full_text_query_composer.cpp

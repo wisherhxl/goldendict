@@ -4032,7 +4032,8 @@ void MainWindow::RunArticlesPreferencesSmokeCheck(
                 static_cast<int>(initial_preferences.article_size_limit) &&
             limit->isEnabled() == initial_preferences.collapse_large_articles &&
             label->text() == QStringLiteral("symbols") &&
-            ignore->text() == QStringLiteral("Ignore diacritics") &&
+            ignore->text() ==
+                QStringLiteral("Ignore diacritics while searching") &&
             ignore->toolTip() ==
                 QStringLiteral(
                     "Turn this option on to ignore diacritics while searching "

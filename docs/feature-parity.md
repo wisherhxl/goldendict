@@ -160,6 +160,14 @@ remains part of the Audio And Speech gate below.
 | Clipboard/selection lookup | mapped | Phase 9 | Linux main-window middle-click lookup through the X11 primary selection is restored; continuous monitoring, scan-popup presentation, modifiers, and native Wayland behavior remain mapped |
 | Tray integration | mapped | Phase 9 | desktop smoke test |
 
+The [backed Preferences layout correction](preferences-page-layout.md)
+supersedes the Preferences row's historical General-page description and
+no-ready-leaf statement: existing controls now occupy Interface, Network and
+Advanced in legacy relative order, with original tab icons and restored group
+layout. This is a shared prerequisite within R4.1, not complete Preferences
+parity. The gap inventory and approved product CRD govern every remaining
+control and platform requirement; historical exclusions do not remove them.
+
 Legacy configuration, groups, history, and favorites must not be silently
 discarded. Migration may normalize representation only with tested read/upgrade
 behavior and a recoverable failure path.

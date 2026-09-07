@@ -127,10 +127,16 @@ Requirements: `CRD-TEST-REAL-004` through `CRD-TEST-REAL-007` and
 Requirements: `CRD-PREF-001` through `CRD-PREF-004`.
 
 Qt 5 exposes Interface, Scan Popup, Hotkeys, Audio, Network, Full-text Search,
-and Advanced pages. Qt 6 currently exposes only a reduced General and Network
-surface. Restore the seven-page structure in legacy order through backed,
+and Advanced pages. Qt 6 exposes reduced Interface, Network and Advanced
+pages after the backed-layout correction. Restore the seven-page structure through backed,
 working controls. Deliver page families separately: Interface/Advanced,
 Audio, Full-text Search, Scan Popup, and Hotkeys. Do not expose inert controls.
+
+The first R4.1 unit is the [backed-page layout correction](preferences-page-layout.md).
+It restores existing Interface/Advanced control ownership and layout without
+claiming complete page parity. Full R4.1 closure also depends on R7.4 tray/startup
+and R9 appearance/language resources and runtimes; R2.3 alone enables only the
+already-backed layout unit. Missing runtime-owned controls remain required.
 
 ### R5 — Full-Text Lifecycle Completion
 
@@ -245,7 +251,7 @@ launcher and Python tooling checks run directly.
 | R3.18 | LSA non-corpus icon and large-stream variants: LSA part of `CRD-DICT-003` | R3.5 | generated fixtures for icons, bounded large-file streaming, identity, indexing, lookup/playback, restart, corruption, and failure behavior |
 | R3.19 | ZIP sound-pack non-corpus ZIP64/split/encryption/icon/stream variants: ZIP-sound part of `CRD-DICT-003` | R3.5 | generated fixtures for every supported remaining archive/icon/stream case, identity, indexing, lookup/playback, restart, corruption, and failure behavior |
 | R3.20 | Sound-directory non-corpus icon and large-stream variants: sound-directory part of `CRD-DICT-003` | R3.5 | generated fixtures for icons, bounded large-file streaming, confinement, identity, indexing, lookup/playback, restart, corruption, and failure behavior |
-| R4.1 | Qt 5 Interface Preferences page and backed behavior | R2.3 | focused preference persistence/effect test plus paired page capture |
+| R4.1 | Qt 5 Interface Preferences page and backed behavior | R2.3 for backed layout; R7.4 and R9 assets/runtimes for complete page | focused preference persistence/effect test plus paired page capture |
 | R4.2 | Qt 5 Advanced Preferences page and backed behavior | R4.1 | focused persistence/effect test plus paired page capture |
 | R4.3 | Qt 5 Audio Preferences page and backed behavior | R4.1 | focused persistence/routing test plus paired page capture |
 | R4.4 | Qt 5 Full-text Search Preferences page and backed policy controls | R5.2 | focused policy/persistence test plus paired page capture |
