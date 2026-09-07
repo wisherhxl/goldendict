@@ -25,8 +25,9 @@ and destruction, and usable built-in Elements/Console tools. It preserves the
 existing context actions and dictionary-reference order. Native DevTools is
 the already mapped WebKit-to-WebEngine replacement in `porting-map.md`, not a
 copy of obsolete WebKit frontend code. Its engine-specific frontend appearance
-must remain visible in comparison evidence; full visual acceptance is not
-declared by this entry-point/lifecycle unit.
+must remain visible in comparison evidence. The subsequently approved IG-02
+boundary below permits that appearance; this entry-point/lifecycle unit does
+not by itself declare full visual acceptance.
 
 ## Readiness and design
 
@@ -120,6 +121,53 @@ independent of the article window. Qt 5 is 5.15.19; Qt 6 is 6.11.1.
 | Qt 6 Console | Actual keyboard entry evaluates against the inspected document; returned marker is captured | Complete matched Console/popup-focus/media/error-state visual matrix remains R9.8 |
 
 These are entry-point/lifecycle conformance results, not a visual-equivalence,
-complete R8.2, Linux acceptance, or baseline-cutover declaration. No obsolete
-frontend is copied or intentionally excluded. Unit 2 geometry and the full
-R9.8 engine/frontend comparison remain required follow-up work.
+complete R8.2, Linux acceptance, or baseline-cutover declaration. Unit 2
+geometry is now delivered separately. Remaining R9.8 comparison follows the
+approved boundary below; no legacy inspection capability is silently excluded.
+
+## IG-02: Approved inspector frontend visual boundary
+
+Classification: CRD acceptance amendment under CRD-LOOKUP-003, CRD-SHELL-003
+and Section 6 of [the product CRD](qt6-product-baseline-crd.md).
+Option 1 was explicitly approved on 2026-09-07. The paired native evidence
+above and in [Unit 2](article-inspector-geometry.md) establishes the different
+WebKit and Chromium frontend appearance; this decision accepts a bounded
+visual divergence, not functional equivalence inferred from screenshots.
+
+- Permit Chromium-owned toolbar/panel layout, colors, frontend wording and
+  language prompts inside the inspector. Use the native frontend rather than
+  copying the Qt 5 frontend or introducing a custom frontend/protocol adapter.
+  This keeps the existing Qt 6 ownership and avoids a separate frontend
+  maintenance obligation.
+- GoldenDict-controlled window geometry, persistence, lifecycle, Inspect/F12
+  entry points, target selection and focus/shortcut behavior remain governed
+  by Qt 5 parity and the approved IG-01 correction. The exception does not
+  waive a missing or broken inspection capability.
+- Ordinary lookup/article rendering, menus, preferences, product resources,
+  translations and all other GoldenDict UI retain their existing visual and
+  behavior requirements. In particular, article text rasterization differences
+  in the evidence table are not covered by this inspector-only exception.
+- Retain paired, unmasked captures with fixed dimensions, DPI, locale, theme
+  and fixtures. Label accepted engine-owned differences separately from
+  actionable GoldenDict presentation differences; do not hide missing behavior
+  behind a broad screenshot mask or treat pixel similarity as capability proof.
+- Continue capability-by-capability verification, including matched Console,
+  popup-focus/shortcut, media and error-state checks. Record implementation
+  gaps separately and raise a new decision only for infeasible parity or a
+  material optimization. Full R8.2/R9.8 remain open until their remaining
+  evidence passes under this boundary.
+
+Readiness: Ready. This is one documentation-only requirements delivery at
+base `cdbc41eec517c0d8ab39b2bba0c6a0f43f44a096`; it changes no code, dependency,
+architecture, ABI, configuration format, migration, security policy or failure
+handling. No new design pattern or abstraction is required. The boundary
+applies across supported platforms; Windows-first execution and the same-
+candidate Linux/Windows cutover gate are unchanged. Linux execution is not
+inferred from Windows evidence, and no package or cutover acceptance is claimed.
+
+Verification for this unit: review CRD, parity and gap-record consistency,
+validate changed Markdown links and run `git diff --check`, then obtain fresh
+read-only completion and integration audits. No product rebuild is needed for
+this documentation-only change. There is no user-data migration or rollback
+operation; changing the approved exception later requires a new explicit
+requirements decision, not a silent relaxation of the remaining gates.

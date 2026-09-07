@@ -105,8 +105,10 @@ The Qt 5 bytes import unchanged through Core; Qt 6 restores logical client
 geometry `(100, 110, 610, 410)`. Native tests also verify latest-adjusted exit
 precedence after both windows are destroyed, empty/invalid/offscreen fallback,
 maximized state and no-adjustment exit. Engine toolbar/panels/language banner
-still differ; geometry evidence does not approve those R9.8 differences or
-declare complete R8.2 or baseline cutover. Linux execution remains pending.
+still differ; geometry evidence alone does not approve those R9.8 differences.
+The subsequent [IG-02 decision](article-inspector-parity.md#ig-02-approved-inspector-frontend-visual-boundary)
+accepts only engine-owned inspector appearance. It does not declare complete
+R8.2 or baseline cutover. Linux execution remains pending.
 
 ## Integration verification correction: IG-01-V1
 

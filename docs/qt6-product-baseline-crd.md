@@ -153,6 +153,13 @@ decision says otherwise:
 Native rendering tolerance does not permit missing controls, changed layout,
 different icons, different wording, changed defaults, or changed workflows.
 
+IG-02 is an explicit, narrow exception: the engine-owned inspector frontend
+may retain Chromium DevTools appearance instead of reproducing the Qt 5
+WebKit inspector frontend. This does not extend to dictionary article content,
+ordinary product UI, or GoldenDict-controlled inspector window/entry-point
+interaction. Inspection capabilities still require individual verification.
+See [the acceptance boundary](article-inspector-parity.md#ig-02-approved-inspector-frontend-visual-boundary).
+
 ## 7. Functional Requirements
 
 ### 7.1 Product Shell
@@ -652,6 +659,7 @@ baseline decision.
 
 | Date | Decision | Status |
 | --- | --- | --- |
+| 2026-09-07 | IG-02: retain native Chromium DevTools appearance only inside the engine-owned inspector frontend. Preserve GoldenDict-controlled window and interaction alignment, and verify inspection capabilities individually. Ordinary lookup/article UI parity is unchanged. No custom frontend fork or protocol adapter is authorized. See the focused inspector acceptance boundary; this decision does not close R8.2, R9.8, platform acceptance or baseline cutover. | Approved |
 | 2026-09-07 | IG-01: repair inspector geometry save timing. Save on inspector close and normal application exit; at exit the latest user-adjusted geometry wins independently of destruction order. Preserve shared geometry and Qt 5 `inspectorGeometry` import. Core owns persistence and private Widgets owns geometry. This explicitly corrects the frozen legacy close/exit save-timing defect; abnormal-termination recovery and frontend redesign are not included. | Approved |
 | 2026-09-07 | This delivery task completes Windows acceptance first; a separate agent implements the Linux environment. Code must preserve Linux compatibility. This execution assignment does not change supported scope or the same-candidate Linux/Windows cutover gate. | Approved |
 | 2026-09-02 | Qt 5 layout, logical dimensions, icons, wording, defaults, and interaction are the hard product baseline. Unavoidable Qt 6/OS native rendering differences are acceptable. | Approved |
