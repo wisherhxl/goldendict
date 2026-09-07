@@ -652,6 +652,7 @@ baseline decision.
 
 | Date | Decision | Status |
 | --- | --- | --- |
+| 2026-09-07 | This delivery task completes Windows acceptance first; a separate agent implements the Linux environment. Code must preserve Linux compatibility. This execution assignment does not change supported scope or the same-candidate Linux/Windows cutover gate. | Approved |
 | 2026-09-02 | Qt 5 layout, logical dimensions, icons, wording, defaults, and interaction are the hard product baseline. Unavoidable Qt 6/OS native rendering differences are acceptable. | Approved |
 | 2026-09-02 | Write and approve this CRD before resuming product-shell source changes. | Approved |
 | 2026-09-02 | Formal Qt 6 baseline cutover requires complete Linux and Windows acceptance against the same candidate revision. macOS restoration follows cutover. | Approved |

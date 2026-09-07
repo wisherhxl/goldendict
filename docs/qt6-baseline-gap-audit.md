@@ -26,6 +26,36 @@ behavior. A new product decision is required only when that behavior cannot be
 implemented within the mandatory architecture, security, licensing, or
 maintained-dependency constraints.
 
+## Platform execution assignment
+
+Approved 2026-09-07: this delivery task prioritizes completing Windows product
+acceptance. A separate agent owns Linux environment implementation. This is
+an execution assignment under the existing CRD, not a reduced product scope
+or a Windows-only baseline cutover. Local Linux-environment availability does
+not block independent Windows or platform-neutral work; Linux execution
+evidence remains pending until it is actually supplied.
+
+Implementation must continue to preserve Linux compatibility: keep native
+Windows behavior behind private platform adapters, retain portable Core and
+Conan/CMake boundaries, and avoid Windows-only paths, APIs, shell assumptions
+or filesystem semantics in shared logic and tests. Record platform-specific
+checks and unverified Linux behavior explicitly. Review shared changes for
+Linux impact even when only Windows execution is available.
+
+Concurrent deliveries retain separate branches/worktrees and the existing
+independent audit and integration gates. Handoff evidence identifies the exact
+commit, relevant changes, build/test commands and remaining platform checks.
+Windows acceptance alone does not close Linux gaps: final cutover still needs
+complete Linux and Windows evidence for the same candidate and product-owner
+approval, as required by CRD Section 12. No Linux environment is claimed ready
+by this assignment.
+
+Documentation readiness: Ready. The user confirmed the assignment; product
+behavior, architecture, release platforms and final acceptance gates do not
+change. Verify this documentation-only delivery through local Markdown link
+checks, diff whitespace checks, requirement consistency and fresh independent
+completion/integration audits; no product rebuild is required.
+
 ## Evidence Reviewed
 
 - The frozen Qt 5 source, including 19 Designer UI files and the main-window,
@@ -2056,7 +2086,7 @@ expected revisions, and the corpus still matched the R1.1 manifest afterward.
 
 | ID | Observation | Disposition |
 | --- | --- | --- |
-| IQ-01 | The current host has no WSL/Linux environment and the repository has no CI workflow. | Continue platform-independent and Windows work; resolve Linux execution in R10 unless an earlier Linux-only unit requires it. |
+| IQ-01 | Linux execution evidence is not available in this Windows task. | Per the 2026-09-07 assignment, a separate agent owns Linux environment implementation. Complete Windows acceptance here while preserving Linux compatibility; retain Linux-only checks as pending and require same-candidate Linux/Windows acceptance before cutover. |
 | IQ-02 | The broad Windows suite retained documented infrastructure/toolchain failures. | Resolved by R2.1-R2.3; the complete Windows-applicable Release suite passes 127 of 127 tests. |
 | IQ-03 | The real corpus contains private multi-gigabyte resources unsuitable for repository or CI storage. | R1 records only safe hashes/metadata and uses operator-provided paths. |
 | IQ-04 | Several format, WebEngine, and platform gaps may require maintained replacements for obsolete Qt 5 APIs. | Investigate within the existing adapter boundaries; raise only an infeasible parity or intentional divergence decision. |
