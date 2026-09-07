@@ -396,6 +396,7 @@ struct CoreConfiguration {
     ApplicationPreferences preferences;
     std::optional<ArticleTabSession> article_tab_session;
     std::string full_text_dialog_geometry;
+    std::string inspector_geometry;
     std::string main_window_geometry;
     std::string main_window_state;
     // Syntactically valid records from a newer configuration version. They

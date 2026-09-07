@@ -43,6 +43,8 @@ namespace {
 bool IsSmokeInvocation(const QStringList& arguments) {
     static const QStringList kSmokeArguments = {
         QStringLiteral("--smoke"),
+        QStringLiteral("--inspector-geometry-smoke"),
+        QStringLiteral("--inspector-geometry-restart-smoke"),
         QStringLiteral("--article-click-preferences-smoke"),
         QStringLiteral("--article-click-restart-smoke"),
         QStringLiteral("--article-context-menu-smoke"),
@@ -887,6 +889,7 @@ int main(int argc, char* argv[]) {
     window.RestoreMainWindowGeometry(configuration.main_window_geometry);
     window.RestoreMainWindowState(configuration.main_window_state);
     window.SetFullTextDialogGeometry(configuration.full_text_dialog_geometry);
+    window.SetInspectorGeometry(configuration.inspector_geometry);
     window.SetDictionaryGroups(configuration.dictionary_groups);
     window.SetSourceDirectories(configuration.dictionary_paths,
                                 configuration.sound_directories);
@@ -925,8 +928,10 @@ int main(int argc, char* argv[]) {
     std::vector<ReloadBoundary> source_reload_boundaries;
     std::optional<ReloadBoundary> group_reload_injection;
     std::vector<std::vector<ReloadBoundary>> group_reload_traces;
+    std::optional<std::string> inspector_expected_exit_geometry;
     const auto persist_article_tab_session = [&]() {
         auto updated = configuration;
+        updated.inspector_geometry = window.CaptureInspectorGeometry();
         updated.article_tab_session = facade->ExportArticleTabSession();
         updated.main_window_geometry = window.CaptureMainWindowGeometry();
         updated.main_window_state = window.CaptureMainWindowState();
@@ -940,6 +945,8 @@ int main(int argc, char* argv[]) {
         }
     };
     QObject::connect(&window, &MainWindow::ArticleTabSessionMutated, &window,
+                     persist_article_tab_session);
+    QObject::connect(&window, &MainWindow::InspectorGeometryCaptured, &window,
                      persist_article_tab_session);
     QObject::connect(
         &window, &MainWindow::FullTextDialogGeometryCaptured, &window,
@@ -960,8 +967,10 @@ int main(int argc, char* argv[]) {
                                      QString::fromLocal8Bit(error.what()));
             }
         });
-    QObject::connect(&app, &QApplication::aboutToQuit, &window,
-                     persist_article_tab_session);
+    QObject::connect(&app, &QApplication::aboutToQuit, &window, [&]() {
+        window.CheckpointInspectorGeometryForExit();
+        persist_article_tab_session();
+    });
     const auto refresh_history = [&window, &history]() {
         std::vector<HistoryViewItem> items;
         items.reserve(history.size());
@@ -2129,6 +2138,30 @@ int main(int argc, char* argv[]) {
                 });
         });
     } else if (HasArgument(argc, argv,
+                           QStringLiteral("--inspector-geometry-smoke")) ||
+               HasArgument(
+                   argc, argv,
+                   QStringLiteral("--inspector-geometry-restart-smoke"))) {
+        const bool restart = HasArgument(
+            argc, argv, QStringLiteral("--inspector-geometry-restart-smoke"));
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(0, &window, [&, restart]() {
+            window.RunInspectorGeometrySmokeCheck(
+                restart, [&](bool passed, std::string closed,
+                             std::string exit_geometry) {
+                    try {
+                        passed = passed && !closed.empty() &&
+                                 goldendict::core::LoadConfiguration(
+                                     configuration_path.toStdString())
+                                         .inspector_geometry == closed;
+                    } catch (const std::exception&) {
+                        passed = false;
+                    }
+                    inspector_expected_exit_geometry = std::move(exit_geometry);
+                    app.exit(passed ? 0 : 1);
+                });
+        });
+    } else if (HasArgument(argc, argv,
                            QStringLiteral("--product-shell-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(0, &window, [&app, &window]() {
@@ -2987,7 +3020,17 @@ int main(int argc, char* argv[]) {
             });
     }
 
-    const int result = app.exec();
+    int result = app.exec();
+    if (inspector_expected_exit_geometry) {
+        try {
+            if (goldendict::core::LoadConfiguration(
+                    configuration_path.toStdString())
+                    .inspector_geometry != *inspector_expected_exit_geometry)
+                result = 1;
+        } catch (const std::exception&) {
+            result = 1;
+        }
+    }
     coordinator.Shutdown();
     window.SetFacade(nullptr);
     facade.reset();

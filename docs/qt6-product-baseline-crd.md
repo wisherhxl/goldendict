@@ -652,6 +652,7 @@ baseline decision.
 
 | Date | Decision | Status |
 | --- | --- | --- |
+| 2026-09-07 | IG-01: repair inspector geometry save timing. Save on inspector close and normal application exit; at exit the latest user-adjusted geometry wins independently of destruction order. Preserve shared geometry and Qt 5 `inspectorGeometry` import. Core owns persistence and private Widgets owns geometry. This explicitly corrects the frozen legacy close/exit save-timing defect; abnormal-termination recovery and frontend redesign are not included. | Approved |
 | 2026-09-07 | This delivery task completes Windows acceptance first; a separate agent implements the Linux environment. Code must preserve Linux compatibility. This execution assignment does not change supported scope or the same-candidate Linux/Windows cutover gate. | Approved |
 | 2026-09-02 | Qt 5 layout, logical dimensions, icons, wording, defaults, and interaction are the hard product baseline. Unavoidable Qt 6/OS native rendering differences are acceptable. | Approved |
 | 2026-09-02 | Write and approve this CRD before resuming product-shell source changes. | Approved |

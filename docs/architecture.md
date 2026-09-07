@@ -20,10 +20,16 @@ app-private `ArticleInspector`. Composition/RAII provides one independently
 owned nonmodal window per article view. The adapter owns a separate
 off-the-record WebEngine profile and frontend page, detaches the inspected
 page before teardown, and keeps the profile alive until its pages are gone.
-No Core ABI, network policy, dictionary JavaScript policy, or remote debugging
-listener is introduced. Page/document identity guards reject stale menu
-inspection. The focused [parity record](article-inspector-parity.md) preserves
-the separate Core-owned geometry/persistence follow-up.
+No network policy, dictionary JavaScript policy, or remote debugging listener
+is introduced. Page/document identity guards reject stale menu inspection.
+The private application-lifetime `ArticleInspectorState` coordinates retained
+windows, close checkpoints and the latest adjusted geometry for exit. The
+composition root forwards close/quit state to Core's atomic configuration
+store; Widgets never writes files. `CoreConfiguration::inspector_geometry`
+is a bounded binary, transport-neutral field with legacy Base64 import. Its
+DTO layout addition changes ABI, identified by exact SCM/Conan revisions;
+consumers must rebuild. See the [geometry record](article-inspector-geometry.md)
+for approved IG-01 semantics and evidence.
 
 ## Supported Platforms And Toolchains
 

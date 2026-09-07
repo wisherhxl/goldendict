@@ -274,6 +274,7 @@ class ApplicationServiceTest : public QObject {
     void ConfigurationRejectsUnknownFullTextSearchModeAtomically();
     void ConfigurationRoundTripsBoundedFullTextDialogGeometry();
     void ConfigurationRoundTripsBoundedMainWindowGeometry();
+    void InspectorGeometryConfigurationAndMigration();
     void ConfigurationRoundTripsBoundedMainWindowState();
     void ConfigurationAcceptsLegacyMinimumZoom();
     void ConfigurationRejectsMalformedPreferencesAtomically();
@@ -1481,6 +1482,82 @@ void ApplicationServiceTest::
         QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
                                  std::runtime_error);
     }
+}
+
+void ApplicationServiceTest::InspectorGeometryConfigurationAndMigration() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto path = root / "core.conf";
+    const auto legacy_path = root / "config";
+    CoreConfiguration expected;
+    expected.dictionary_paths = {"/preserved"};
+    expected.opaque_fields = {"future_inspector=preserved"};
+    expected.inspector_geometry.assign(64U * 1024U, '\0');
+    expected.inspector_geometry[1] = '%';
+    expected.inspector_geometry[2] = '\n';
+    expected.inspector_geometry[3] = static_cast<char>(255);
+    SaveConfiguration(path.string(), expected);
+    const auto loaded = LoadConfiguration(path.string());
+    QCOMPARE(loaded.inspector_geometry, expected.inspector_geometry);
+    QCOMPARE(loaded.dictionary_paths, expected.dictionary_paths);
+    QCOMPARE(loaded.opaque_fields, expected.opaque_fields);
+    const auto original = ReadFile(path);
+    expected.inspector_geometry.push_back('x');
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), expected),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original);
+    expected.inspector_geometry.pop_back();
+    expected.opaque_fields.push_back("inspector_geometry=collision");
+    QVERIFY_EXCEPTION_THROWN(SaveConfiguration(path.string(), expected),
+                             std::runtime_error);
+    QCOMPARE(ReadFile(path), original);
+    for (const auto& value : std::vector<std::string>{
+             "%", "%GG", "first\ninspector_geometry=second",
+             std::string(65537U, 'x')}) {
+        test::WriteBinaryFile(
+            path,
+            "goldendict-core-config-v1\ninspector_geometry=" + value + "\n");
+        QVERIFY_EXCEPTION_THROWN(LoadConfiguration(path.string()),
+                                 std::runtime_error);
+    }
+    SaveConfiguration(path.string(), CoreConfiguration{});
+    QVERIFY(LoadConfiguration(path.string()).inspector_geometry.empty());
+    QVERIFY(ReadFile(path).find("inspector_geometry=") == std::string::npos);
+    std::filesystem::remove(path);
+    const auto bytes = QByteArray::fromStdString(expected.inspector_geometry);
+    const std::string legacy = "<config><inspectorGeometry>" +
+                               bytes.toBase64().toStdString() +
+                               "</inspectorGeometry></config>";
+    test::WriteBinaryFile(legacy_path, legacy);
+    const auto migrated = LoadOrMigrateConfiguration(
+        path.string(), legacy_path.string(), "/indexes");
+    QCOMPARE(migrated.inspector_geometry, expected.inspector_geometry);
+    QCOMPARE(LoadConfiguration(path.string()).inspector_geometry,
+             expected.inspector_geometry);
+    QCOMPARE(ReadFile(legacy_path), legacy);
+    std::filesystem::remove(path);
+    for (const auto& value : std::vector<std::string>{
+             "not-base64", "Zg=", "Zh==", "Zg==<nested/>",
+             "Zg==</inspectorGeometry><inspectorGeometry>Zg==",
+             std::string(87388U, 'A')}) {
+        const std::string invalid = "<config><inspectorGeometry>" + value +
+                                    "</inspectorGeometry></config>";
+        test::WriteBinaryFile(legacy_path, invalid);
+        QVERIFY_EXCEPTION_THROWN(
+            LoadOrMigrateConfiguration(path.string(), legacy_path.string(),
+                                       "/indexes"),
+            std::runtime_error);
+        QVERIFY(!std::filesystem::exists(path));
+        QVERIFY(!std::filesystem::exists(path.string() + ".tmp"));
+        QCOMPARE(ReadFile(legacy_path), invalid);
+    }
+    test::WriteBinaryFile(legacy_path,
+                          "<config><preferences><inspectorGeometry>Zg==</"
+                          "inspectorGeometry></preferences></config>");
+    QVERIFY(LoadOrMigrateConfiguration(path.string(), legacy_path.string(),
+                                       "/indexes")
+                .inspector_geometry.empty());
 }
 
 void ApplicationServiceTest::ConfigurationRoundTripsBoundedMainWindowState() {

@@ -21,6 +21,7 @@ class DesktopFacade;
 
 class ArticleWebView;
 class ArticleInspector;
+class ArticleInspectorState;
 class QAction;
 class QPrinter;
 
@@ -90,6 +91,7 @@ class ArticleView final : public QWidget {
    public:
     explicit ArticleView(QWidget* parent = nullptr);
     ~ArticleView() override;
+    void SetInspectorState(std::shared_ptr<ArticleInspectorState> state);
 
     QWebEnginePage* page() const;
     void setPage(QWebEnginePage* page);
@@ -189,6 +191,7 @@ class ArticleView final : public QWidget {
     QAction* inspect_action_ = nullptr;
     bool inspector_context_menu_active_ = false;
     std::unique_ptr<ArticleInspector> inspector_;
+    std::shared_ptr<ArticleInspectorState> inspector_state_;
     QWidget* full_text_navigation_row_ = nullptr;
     class QPushButton* full_text_previous_ = nullptr;
     class QPushButton* full_text_next_ = nullptr;

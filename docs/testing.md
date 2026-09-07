@@ -6943,6 +6943,29 @@ may report failed hardware GLES context creation while using the requested
 offscreen software path; that diagnostic is not a failed assertion and the
 complete gate is independent of hardware GPU availability.
 
+## Inspector geometry verification
+
+R8.2 Unit 2 is governed by [IG-01](article-inspector-geometry.md).
+`application_service_test::InspectorGeometryConfigurationAndMigration`
+checks current/legacy bounded binary state, corruption, duplicates and atomic
+validation failure. `article_inspector_test` checks sharing, defaults,
+close/reopen, destruction-order-independent exit state and screen recovery.
+`goldendict_inspector_geometry_smoke` runs the real application twice in one
+isolated profile and checks disk state after close, after normal exit and on
+restart. The native Qt 5 import check additionally consumes
+`GOLDENDICT_LEGACY_INSPECTOR_GEOMETRY`, a paired Qt 5 `saveGeometry()` file;
+without it that evidence-only case is explicitly skipped, not inferred passed.
+
+```powershell
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -j 1 -R 'inspector|application_service_test' --output-on-failure
+```
+
+For native Windows restart evidence, invoke the same
+`apps/goldendict/tests/inspector_geometry_smoke.cmake` through the Conan launcher,
+passing quoted `-DGOLDENDICT_EXECUTABLE=...`, `-DTEST_HOME=.../inspector-geometry-test-home`
+and `-DTEST_QPA=windows`. Runs retain isolated logs instead of deleting earlier
+evidence. These tests do not waive R9.8 frontend visual or Linux acceptance.
+
 ## Pre-PR Verification Checklist
 
 - Run the relevant Debug or Release build workflow, with Release preferred

@@ -47,8 +47,10 @@ the supported environment-independent launch path.
 
 Press F12 in an article tab, or choose **Inspect** at the end of its context
 menu, to open that article's independent WebEngine DevTools window. Closing
-and reopening reuses the window while the article view exists. Shared and
-persisted inspector geometry remains a tracked parity follow-up; see
+and reopening reuses the window while the article view exists. Inspector
+position and size are shared, imported from Qt 5 configuration, and saved on
+close and normal exit (the last adjusted window wins at exit); see
+[geometry behavior](docs/article-inspector-geometry.md) and
 [the inspector parity record](docs/article-inspector-parity.md).
 
 ## Install And Package

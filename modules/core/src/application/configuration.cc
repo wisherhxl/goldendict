@@ -274,6 +274,7 @@ bool IsKnownRecordKey(std::string_view key) {
         "dictionary_group_metadata",
         "preference",
         "full_text_dialog_geometry",
+        "inspector_geometry",
         "main_window_geometry",
         "main_window_state",
         "article_tab_session",
@@ -676,6 +677,9 @@ void ValidateConfigurationImpl(const CoreConfiguration& configuration) {
         kMaximumMainWindowGeometryBytes) {
         throw std::runtime_error("Main-window geometry is too large");
     }
+    if (configuration.inspector_geometry.size() > 64U * 1024U) {
+        throw std::runtime_error("Inspector geometry is too large");
+    }
     if (configuration.main_window_state.size() > kMaximumMainWindowStateBytes) {
         throw std::runtime_error("Main-window state is too large");
     }
@@ -941,6 +945,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
     std::unordered_map<ArticleTabId, std::size_t> tab_indexes;
     bool has_article_tab_session = false;
     bool has_full_text_dialog_geometry = false;
+    bool has_inspector_geometry = false;
     bool has_main_window_geometry = false;
     bool has_main_window_state = false;
     bool has_index_directory = false;
@@ -979,6 +984,7 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
         constexpr std::string_view kPreference = "preference=";
         constexpr std::string_view kFullTextDialogGeometry =
             "full_text_dialog_geometry=";
+        constexpr std::string_view kInspectorGeometry = "inspector_geometry=";
         constexpr std::string_view kMainWindowGeometry =
             "main_window_geometry=";
         constexpr std::string_view kMainWindowState = "main_window_state=";
@@ -1000,6 +1006,13 @@ CoreConfiguration LoadConfiguration(const std::string& configuration_path) {
             has_full_text_dialog_geometry = true;
             configuration.full_text_dialog_geometry =
                 Decode(line.substr(kFullTextDialogGeometry.size()));
+        } else if (line.substr(0, kInspectorGeometry.size()) ==
+                   kInspectorGeometry) {
+            if (has_inspector_geometry)
+                throw std::runtime_error("Duplicate inspector geometry");
+            has_inspector_geometry = true;
+            configuration.inspector_geometry =
+                Decode(line.substr(kInspectorGeometry.size()));
         } else if (line.substr(0, kMainWindowState.size()) ==
                    kMainWindowState) {
             if (has_main_window_state) {
@@ -1586,6 +1599,11 @@ void SaveConfiguration(const std::string& configuration_path,
     if (!configuration.main_window_geometry.empty()) {
         contents += "main_window_geometry=" +
                     Encode(configuration.main_window_geometry) + "\n";
+    }
+    if (!configuration.inspector_geometry.empty()) {
+        contents +=
+            "inspector_geometry=" + Encode(configuration.inspector_geometry) +
+            "\n";
     }
     if (!configuration.main_window_state.empty()) {
         contents +=

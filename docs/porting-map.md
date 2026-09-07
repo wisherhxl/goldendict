@@ -231,7 +231,11 @@ R8.2 Unit 1 uses the app-private `ArticleInspector` adapter owned by
 profile/page without a remote-debugging endpoint or public Core dependency.
 Keyboard and pointer entry points retain different inspection intent. See
 [article-inspector-parity.md](article-inspector-parity.md) for source evidence,
-lifetime tests, native frontend differences, and the remaining geometry unit.
+lifetime tests and native frontend differences. [Unit 2](article-inspector-geometry.md)
+maps `articleinspector.cc` sharing to private presentation state and
+`config.cc` root `inspectorGeometry` to Core's bounded binary field. IG-01
+explicitly repairs close/exit save timing while retaining legacy sharing and
+450 by 300 initial logical dimensions.
 
 ### Online And External Sources
 

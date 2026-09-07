@@ -11,16 +11,20 @@
 #include <QJsonObject>
 #include <QMenu>
 #include <QPointer>
+#include <QScreen>
 #include <QStyle>
 #include <QTabWidget>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QWebEngineProfile>
 #include <QWebEngineSettings>
 #include <QWebEngineView>
 #include <QtTest>
 
+#include "article_inspector.h"
 #include "article_page.h"
 #include "article_view.h"
+#include "goldendict/core/application.h"
 
 namespace {
 
@@ -144,6 +148,170 @@ class ArticleInspectorTest final : public QObject {
     Q_OBJECT
 
    private slots:
+
+    void GeometryCloseSharingAndExit() {
+        auto state = std::make_shared<ArticleInspectorState>();
+        QWidget seed;
+        seed.setGeometry(80, 90, 600, 400);
+        state->SetInitialGeometry(seed.saveGeometry());
+        QSignalSpy checkpoints(state.get(),
+                               &ArticleInspectorState::GeometryCaptured);
+        QWebEnginePage page1, page2;
+        auto first = std::make_unique<ArticleInspector>(&page1, state);
+        first->Inspect(false);
+        QTest::qWait(100);
+        QCOMPARE(first->size(), seed.size());
+        first->setGeometry(110, 120, 640, 420);
+        QTest::qWait(50);
+        const QByteArray adjusted_first = first->saveGeometry();
+        first->close();
+        QCOMPARE(checkpoints.size(), 1);
+        QCOMPARE(state->geometry(), adjusted_first);
+
+        auto second = std::make_unique<ArticleInspector>(&page2, state);
+        second->Inspect(false);
+        QTest::qWait(100);
+        QCOMPARE(second->geometry(), first->geometry());
+        second->setGeometry(140, 150, 660, 440);
+        QTest::qWait(50);
+        const QByteArray adjusted_second = second->saveGeometry();
+        // Reopening copies the retained first window, but must not become
+        // the latest user adjustment. Closing the older window saves it now.
+        first->Inspect(false);
+        QTest::qWait(100);
+        first->close();
+        QCOMPARE(state->geometry(), first->saveGeometry());
+        second.reset();
+        first.reset();
+        state->CheckpointForExit();
+        QCOMPARE(state->geometry(), adjusted_second);
+    }
+
+    void GeometryRestartAndFallback() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const std::string path = directory.filePath("core.conf").toStdString();
+        QWebEnginePage page;
+        QByteArray saved;
+        {
+            auto state = std::make_shared<ArticleInspectorState>();
+            ArticleInspector window(&page, state);
+            window.Inspect(false);
+            QTest::qWait(100);
+            window.setGeometry(100, 110, 610, 410);
+            QTest::qWait(50);
+            saved = window.saveGeometry();
+            window.close();
+            goldendict::core::CoreConfiguration config;
+            config.inspector_geometry = state->geometry().toStdString();
+            goldendict::core::SaveConfiguration(path, config);
+        }
+        auto state = std::make_shared<ArticleInspectorState>();
+        state->SetInitialGeometry(QByteArray::fromStdString(
+            goldendict::core::LoadConfiguration(path).inspector_geometry));
+        {
+            ArticleInspector restarted(&page, state);
+            restarted.Inspect(false);
+            QTest::qWait(100);
+            QCOMPARE(restarted.size(), QSize(610, 410));
+            state->CheckpointForExit();
+            QCOMPARE(state->geometry(), saved);
+        }
+        for (const QByteArray geometry :
+             {QByteArray(), QByteArray("invalid")}) {
+            auto invalid = std::make_shared<ArticleInspectorState>();
+            invalid->SetInitialGeometry(geometry);
+            ArticleInspector fallback(&page, invalid);
+            const QSize initial = fallback.size();
+            QCOMPARE(initial, QSize(450, 300));
+            fallback.Inspect(false);
+            QTest::qWait(50);
+            QCOMPARE(fallback.size(), initial);
+        }
+        QWidget offscreen;
+        offscreen.setGeometry(100000, 100000, 600, 400);
+        auto recovery = std::make_shared<ArticleInspectorState>();
+        recovery->SetInitialGeometry(offscreen.saveGeometry());
+        ArticleInspector recovered(&page, recovery);
+        recovered.Inspect(false);
+        QTest::qWait(100);
+        QVERIFY(recovered.screen()->availableGeometry().intersects(
+            recovered.frameGeometry()));
+    }
+
+    void MaximizedGeometryAndNoAdjustmentExit() {
+        QWebEnginePage page;
+        QByteArray geometry;
+        {
+            auto state = std::make_shared<ArticleInspectorState>();
+            ArticleInspector inspector(&page, state);
+            inspector.Inspect(false);
+            QTest::qWait(100);
+            inspector.setGeometry(100, 100, 600, 400);
+            inspector.showMaximized();
+            QTest::qWait(100);
+            QVERIFY(inspector.isMaximized());
+            inspector.close();
+            geometry = state->geometry();
+            state->CheckpointForExit();
+            QCOMPARE(state->geometry(), geometry);
+        }
+        auto state = std::make_shared<ArticleInspectorState>();
+        state->SetInitialGeometry(geometry);
+        ArticleInspector restored(&page, state);
+        restored.Inspect(false);
+        QTest::qWait(100);
+        QVERIFY(restored.isMaximized());
+        state->CheckpointForExit();
+        QCOMPARE(state->geometry(), geometry);
+    }
+
+    void NativeLegacyGeometryImport() {
+        const QString geometry_path =
+            qEnvironmentVariable("GOLDENDICT_LEGACY_INSPECTOR_GEOMETRY");
+        if (geometry_path.isEmpty())
+            QSKIP(
+                "Native Qt 5 geometry evidence is supplied by the paired "
+                "capture run");
+        QFile fixture(geometry_path);
+        QVERIFY(fixture.open(QIODevice::ReadOnly));
+        const auto bytes = fixture.readAll();
+        QVERIFY(!bytes.isEmpty());
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        QFile legacy(directory.filePath("config"));
+        QVERIFY(legacy.open(QIODevice::WriteOnly));
+        const QByteArray xml = "<config><inspectorGeometry>" +
+                               bytes.toBase64() +
+                               "</inspectorGeometry></config>";
+        QCOMPARE(legacy.write(xml), xml.size());
+        legacy.close();
+        const auto configuration = goldendict::core::LoadOrMigrateConfiguration(
+            directory.filePath("core.conf").toStdString(),
+            legacy.fileName().toStdString(),
+            directory.filePath("indexes").toStdString());
+        QCOMPARE(configuration.inspector_geometry, bytes.toStdString());
+        auto state = std::make_shared<ArticleInspectorState>();
+        state->SetInitialGeometry(bytes);
+        ArticleView article;
+        QVERIFY(LoadFixture(article));
+        ArticleInspector inspector(article.page(), state);
+        inspector.Inspect(false);
+        QVERIFY(WaitForFrontendText(
+            article.page()->devToolsPage(),
+            QStringLiteral("GoldenDict inspector fixture")));
+        QTest::qWait(1000);
+        QCOMPARE(inspector.geometry(), QRect(100, 110, 610, 410));
+        const auto output =
+            qEnvironmentVariable("GOLDENDICT_INSPECTOR_CAPTURE_DIR");
+        if (!output.isEmpty()) {
+            QVERIFY(QDir().mkpath(output));
+            QVERIFY(inspector.grab().save(
+                QDir(output).filePath("legacy-geometry-restored.png")));
+        }
+        inspector.close();
+        QCOMPARE(state->geometry(), inspector.saveGeometry());
+    }
 
     void LazyKeyboardEntryAndReuse() {
         ArticleView view;

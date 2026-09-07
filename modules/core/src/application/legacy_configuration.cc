@@ -71,6 +71,8 @@ struct LegacyParserState {
     bool has_full_text_dialog_geometry = false;
     bool reading_main_window_geometry = false;
     bool has_main_window_geometry = false;
+    bool reading_inspector_geometry = false;
+    bool has_inspector_geometry = false;
     bool source_containers[static_cast<std::size_t>(SourceContainer::kCount)] =
         {};
     std::unordered_set<std::string> online_ids;
@@ -629,6 +631,11 @@ bool IsMainWindowGeometryElement(const LegacyParserState& state) {
            state.elements[1] == "mainWindowGeometry";
 }
 
+bool IsInspectorGeometryElement(const LegacyParserState& state) {
+    return state.elements.size() == 2U && state.elements[0] == "config" &&
+           state.elements[1] == "inspectorGeometry";
+}
+
 bool IsFullTextDialogGeometryElement(const LegacyParserState& state) {
     return state.elements.size() == 4U && state.elements[0] == "config" &&
            state.elements[1] == "preferences" &&
@@ -664,7 +671,8 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
         CurrentGroupValue(*state) != GroupValue::kNone ||
         !state->preference_key.empty() ||
         state->reading_full_text_dialog_geometry ||
-        state->reading_main_window_geometry) {
+        state->reading_main_window_geometry ||
+        state->reading_inspector_geometry) {
         Fail(state, "Legacy configuration values cannot contain markup");
         return;
     }
@@ -870,6 +878,16 @@ void XMLCALL StartElement(void* user_data, const XML_Char* name,
         state->value.clear();
         return;
     }
+    if (IsInspectorGeometryElement(*state)) {
+        if (state->has_inspector_geometry) {
+            Fail(state, "Legacy inspector geometry is duplicated");
+            return;
+        }
+        state->has_inspector_geometry = true;
+        state->reading_inspector_geometry = true;
+        state->value.clear();
+        return;
+    }
     if (IsPreferenceContainer(*state, name) &&
         std::string_view(name) == "proxyserver") {
         if (!state->preference_keys.insert("proxyserver").second) {
@@ -1012,13 +1030,15 @@ void XMLCALL CharacterData(void* user_data, const XML_Char* value, int length) {
         state->preference_key.empty() && state->forvo_field.empty() &&
         !state->reading_morphology_id &&
         !state->reading_full_text_dialog_geometry &&
-        !state->reading_main_window_geometry) {
+        !state->reading_main_window_geometry &&
+        !state->reading_inspector_geometry) {
         return;
     }
     const std::size_t maximum =
         state->reading_full_text_dialog_geometry
             ? kMaximumEncodedFullTextDialogGeometryBytes
-        : state->reading_main_window_geometry
+        : state->reading_main_window_geometry ||
+                state->reading_inspector_geometry
             ? kMaximumEncodedMainWindowGeometryBytes
         : !state->preference_key.empty() || !state->forvo_field.empty()
             ? kMaximumPreferenceValueBytes
@@ -1118,6 +1138,17 @@ void XMLCALL EndElement(void* user_data, const XML_Char*) {
             return;
         }
         state->reading_main_window_geometry = false;
+    } else if (state->reading_inspector_geometry &&
+               IsInspectorGeometryElement(*state)) {
+        try {
+            state->configuration.inspector_geometry = DecodeGeometry(
+                state->value, kMaximumEncodedMainWindowGeometryBytes,
+                kMaximumMainWindowGeometryBytes);
+        } catch (const std::runtime_error&) {
+            Fail(state, "Legacy inspector geometry is invalid");
+            return;
+        }
+        state->reading_inspector_geometry = false;
     } else if (!state->preference_key.empty() &&
                PreferenceKey(*state) == state->preference_key) {
         try {

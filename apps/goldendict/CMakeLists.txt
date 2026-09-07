@@ -236,6 +236,13 @@ ti_target_include_modules_recurse(article_inspector_test goldendict_core)
 ti_target_link_libraries(article_inspector_test
   goldendict_core ${QT_NAMESPACE}::Test ${QT_NAMESPACE}::Widgets
   ${QT_NAMESPACE}::WebEngineWidgets ${QT_NAMESPACE}::PrintSupport)
+add_test(NAME goldendict_inspector_geometry_smoke
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/inspector-geometry-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/inspector_geometry_smoke.cmake)
+set_tests_properties(goldendict_inspector_geometry_smoke PROPERTIES TIMEOUT 45)
+
 add_test(NAME article_inspector_test COMMAND article_inspector_test
   -o "${CMAKE_CURRENT_BINARY_DIR}/article-inspector-test.txt,txt")
 set_tests_properties(article_inspector_test PROPERTIES

@@ -514,10 +514,19 @@ ArticleView::ArticleView(QWidget* parent) : QWidget(parent) {
 
 ArticleView::~ArticleView() = default;
 
+void ArticleView::SetInspectorState(
+    std::shared_ptr<ArticleInspectorState> state) {
+    if (inspector_state_ == state)
+        return;
+    inspector_.reset();
+    inspector_state_ = std::move(state);
+}
+
 void ArticleView::ShowInspector(bool context_target) {
     auto* inspected = page();
     if (!inspector_ || inspector_->inspectedPage() != inspected)
-        inspector_ = std::make_unique<ArticleInspector>(inspected);
+        inspector_ =
+            std::make_unique<ArticleInspector>(inspected, inspector_state_);
     inspector_->Inspect(context_target);
 }
 

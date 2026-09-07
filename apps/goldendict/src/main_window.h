@@ -24,6 +24,7 @@
 
 class ArticlePage;
 class ArticleView;
+class ArticleInspectorState;
 class AudioPlaybackService;
 enum class ArticleHighlightNavigationDirection;
 class ArticleSchemeHandler;
@@ -213,6 +214,9 @@ class MainWindow final : public QMainWindow {
     bool RestoreMainWindowGeometry(const std::string& geometry);
     std::string CaptureMainWindowGeometry() const;
     void SetFullTextDialogGeometry(std::string geometry);
+    void SetInspectorGeometry(const std::string& geometry);
+    std::string CaptureInspectorGeometry() const;
+    void CheckpointInspectorGeometryForExit();
     bool RestoreMainWindowState(const std::string& state);
     std::string CaptureMainWindowState() const;
     void SetHistoryWords(const QStringList& words);
@@ -312,6 +316,9 @@ class MainWindow final : public QMainWindow {
         std::function<void(bool)> completion);
     void RunFullTextDialogSmokeCheck(std::function<void(bool)> completion);
     void RunProductShellSmokeCheck(std::function<void(bool)> completion);
+    void RunInspectorGeometrySmokeCheck(
+        bool restart,
+        std::function<void(bool, std::string, std::string)> completion);
     void RunViewMenuSmokeCheck(std::function<void(bool)> completion);
     void RunHistoryMenuSmokeCheck(const QString& path,
                                   std::function<void(bool)> completion);
@@ -351,6 +358,7 @@ class MainWindow final : public QMainWindow {
     void DictionaryGroupsEdited();
     void ArticleTabSessionMutated();
     void FullTextDialogGeometryCaptured(std::string geometry);
+    void InspectorGeometryCaptured();
 
    private slots:
     void EditSourceDirectories();
@@ -693,6 +701,7 @@ class MainWindow final : public QMainWindow {
     goldendict::app::FullTextSearchDialog* published_full_text_search_dialog_ =
         nullptr;
     std::string full_text_dialog_geometry_;
+    std::shared_ptr<ArticleInspectorState> inspector_state_;
     QAction* visit_homepage_action_ = nullptr;
     QAction* show_reference_action_ = nullptr;
 #if defined(Q_OS_LINUX)

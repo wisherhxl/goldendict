@@ -82,6 +82,7 @@
 #include <QWebEngineView>
 #include <QWidget>
 
+#include "article_inspector.h"
 #include "article_page.h"
 #include "article_scheme_handler.h"
 #include "article_view.h"
@@ -842,6 +843,9 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
       configuration_directory_(QDir::cleanPath(configuration_directory)),
       external_url_dispatcher_(
           [](const QUrl& url) { return QDesktopServices::openUrl(url); }) {
+    inspector_state_ = std::make_shared<ArticleInspectorState>();
+    connect(inspector_state_.get(), &ArticleInspectorState::GeometryCaptured,
+            this, &MainWindow::InspectorGeometryCaptured);
     setWindowTitle(QStringLiteral("GoldenDict"));
     setWindowIcon(QIcon(QStringLiteral(":/icons/programicon.png")));
     resize(653, 538);
@@ -8423,6 +8427,7 @@ void MainWindow::RunDictionaryBrowserExportSmokeCheck(
 }
 
 MainWindow::~MainWindow() {
+    disconnect(inspector_state_.get(), nullptr, this, nullptr);
     if (widgets_maintenance_active_) {
         if (widgets_publication_decided_)
             FinishPublishedFacadeCommitInternal();
@@ -8490,6 +8495,7 @@ ArticleView* MainWindow::ArticleViewForTab(
 ArticleView* MainWindow::CreateArticleView(
     goldendict::core::ArticleTabId tab_id) {
     auto* view = new ArticleView(article_tabs_);
+    view->SetInspectorState(inspector_state_);
     connect(view, &ArticleView::PageReplaced, this, [this, tab_id, view]() {
         if (ArticleViewForTab(tab_id) == view) {
             pending_article_scroll_restorations_.erase(tab_id);
@@ -9677,6 +9683,19 @@ void MainWindow::ShowHelp(goldendict::app::HelpIntent intent) {
 
 void MainWindow::SetFullTextDialogGeometry(std::string geometry) {
     full_text_dialog_geometry_ = std::move(geometry);
+}
+
+void MainWindow::SetInspectorGeometry(const std::string& geometry) {
+    inspector_state_->SetInitialGeometry(
+        QByteArray(geometry.data(), static_cast<qsizetype>(geometry.size())));
+}
+
+std::string MainWindow::CaptureInspectorGeometry() const {
+    return inspector_state_->geometry().toStdString();
+}
+
+void MainWindow::CheckpointInspectorGeometryForExit() {
+    inspector_state_->CheckpointForExit();
 }
 
 void MainWindow::NavigateToFullTextResult(
@@ -12351,6 +12370,7 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
         int active_index = -1;
         for (const auto& tab : resources->tabs.tabs) {
             auto* view = new ArticleView(staged_tabs);
+            view->SetInspectorState(inspector_state_);
             connect(view, &ArticleView::PageReplaced, relay,
                     [relay, tab_id = tab.id, view]() {
                         relay->ArticlePageReplaced(tab_id, view);
@@ -13439,6 +13459,46 @@ void MainWindow::ActivateSuggestion() {
         return;
     ActivateSuggestionText(suggestions_list_->currentItem()->text(),
                            QApplication::keyboardModifiers());
+}
+
+void MainWindow::RunInspectorGeometrySmokeCheck(
+    bool restart,
+    std::function<void(bool, std::string, std::string)> completion) {
+    if (!article_view_) {
+        completion(false, {}, {});
+        return;
+    }
+    auto* action = article_view_->findChild<QAction*>("inspectArticle");
+    action->trigger();
+    auto* frontend = article_view_->page()->devToolsPage();
+    auto* content = QWebEngineView::forPage(frontend);
+    QPointer<QWidget> inspector = content ? content->window() : nullptr;
+    QTimer::singleShot(200, this, [this, inspector, restart, completion]() {
+        if (!inspector) {
+            completion(false, {}, {});
+            return;
+        }
+        if (restart) {
+            const bool passed = inspector->size() == QSize(660, 440);
+            completion(passed, CaptureInspectorGeometry(),
+                       inspector->saveGeometry().toStdString());
+            return;
+        }
+        inspector->setGeometry(100, 110, 610, 410);
+        QTimer::singleShot(100, this, [this, inspector, completion]() {
+            inspector->close();
+            const std::string closed = CaptureInspectorGeometry();
+            const bool passed =
+                closed == inspector->saveGeometry().toStdString();
+            inspector->show();
+            inspector->setGeometry(140, 150, 660, 440);
+            QTimer::singleShot(
+                100, this, [inspector, completion, closed, passed]() {
+                    completion(passed, closed,
+                               inspector->saveGeometry().toStdString());
+                });
+        });
+    });
 }
 
 void MainWindow::ActivateSuggestionText(

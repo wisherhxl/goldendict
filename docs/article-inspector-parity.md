@@ -45,8 +45,10 @@ public interface. Core, persistence, dictionary parsing and network policy are
 unchanged. There is no remote-debugging port, global developer switch, article
 JavaScript-policy relaxation or inspector creation from untrusted markup.
 
-Unit 2 will restore the exact geometry sharing and current/legacy persistence
-through Core-owned state and composition-root callbacks. Full R8.2 and R9.8
+The subsequent [Unit 2 record](article-inspector-geometry.md) restores geometry
+sharing and current/legacy persistence through Core-owned state and
+composition-root callbacks, with the explicitly approved IG-01 save-timing
+correction. Full R8.2 and R9.8
 remain open until their complete evidence is accepted; no geometry requirement
 or remaining legacy capability is excluded by this split.
 
