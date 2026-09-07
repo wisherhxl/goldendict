@@ -107,3 +107,21 @@ precedence after both windows are destroyed, empty/invalid/offscreen fallback,
 maximized state and no-adjustment exit. Engine toolbar/panels/language banner
 still differ; geometry evidence does not approve those R9.8 differences or
 declare complete R8.2 or baseline cutover. Linux execution remains pending.
+
+## Integration verification correction: IG-01-V1
+
+Classification: minor test correction under the same frontend-readiness
+acceptance requirement; impact check Ready. The first integration native
+capture passed every geometry case but observed an empty frontend body after
+the URL/readyState checks. Those checks can observe the DevTools navigation
+before its actual content is ready. Wait for the existing inspected-fixture
+text readiness condition before asserting child content. No assertion is
+removed, and no product code, requirement, geometry or architecture changes.
+Rebuild and rerun focused/native capture and cumulative tests, then obtain a
+fresh delivery audit before committing this independently verifiable test fix.
+
+Correction verification: Release rebuild and 138/138 serial CTest pass (51.86
+seconds); two consecutive native seven-case geometry/import/frontend capture
+runs pass, with no skips. Evidence is retained under
+`evidence/article-inspector-geometry-ready-fix/qt6/` and
+`evidence/article-inspector-geometry-ready-fix-repeat/qt6/`.

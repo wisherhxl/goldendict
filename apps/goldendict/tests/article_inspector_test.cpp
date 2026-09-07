@@ -524,9 +524,9 @@ class ArticleInspectorTest final : public QObject {
         QTRY_COMPARE_WITH_TIMEOUT(
             Evaluate(frontend, "document.readyState").toString(),
             QString("complete"), 15000);
+        QVERIFY(WaitForFrontendText(frontend, "GoldenDict inspector fixture"));
         QVERIFY(Evaluate(frontend, "document.body.childElementCount").toInt() >
                 0);
-        QVERIFY(WaitForFrontendText(frontend, "GoldenDict inspector fixture"));
         QCOMPARE(
             Evaluate(view.page(),
                      "document.getElementById('inspection-target').textContent")
