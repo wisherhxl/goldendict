@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <vector>
 
 #include "article_page.h"
@@ -19,6 +20,8 @@ class DesktopFacade;
 }
 
 class ArticleWebView;
+class ArticleInspector;
+class QAction;
 class QPrinter;
 
 enum class ArticleContextAction {
@@ -33,6 +36,7 @@ enum class ArticleContextAction {
     kCopyAsText,
     kCopyImage,
     kSelectAll,
+    kInspect,
 };
 
 struct ArticleDictionaryContextEntry {
@@ -85,6 +89,7 @@ class ArticleView final : public QWidget {
 
    public:
     explicit ArticleView(QWidget* parent = nullptr);
+    ~ArticleView() override;
 
     QWebEnginePage* page() const;
     void setPage(QWebEnginePage* page);
@@ -172,6 +177,7 @@ class ArticleView final : public QWidget {
     void TriggerDictionaryContextOverflow(
         const ArticleDictionaryContextSnapshot& snapshot);
     void HandleContextMenuEvent(QContextMenuEvent* event);
+    void ShowInspector(bool context_target);
     void HandleMousePressEvent(QMouseEvent* event);
     void HandleMouseDoubleClickEvent(QMouseEvent* event);
     void PublishFullTextNavigationSnapshot(
@@ -180,6 +186,9 @@ class ArticleView final : public QWidget {
                                  bool force = false);
 
     ArticleWebView* web_view_ = nullptr;
+    QAction* inspect_action_ = nullptr;
+    bool inspector_context_menu_active_ = false;
+    std::unique_ptr<ArticleInspector> inspector_;
     QWidget* full_text_navigation_row_ = nullptr;
     class QPushButton* full_text_previous_ = nullptr;
     class QPushButton* full_text_next_ = nullptr;

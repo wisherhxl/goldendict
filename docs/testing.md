@@ -46,6 +46,37 @@ Unmasked pixel differences and the remaining-control checklist are retained
 in [the focused delivery record](preferences-page-layout.md). These captures
 do not prove seven-page or Linux parity.
 
+### Article inspector entry points and lifecycle
+
+Run the real WebEngine QTest and existing article regressions serially:
+
+```powershell
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -R 'article_inspector|article_context_menu|article_tabs|webengine' --output-on-failure -j 1
+```
+
+The detailed QTest log is
+`build/Release/apps/goldendict/article-inspector-test.txt`. The test sends F12
+to actual visible article tabs, selects the actual right-click menu, checks
+its final dictionary/Inspect order, and evaluates `$0.id` in the built-in
+Console to prove the original pointer target. It also checks close/reuse,
+separate profiles, replacement/destruction, and suppression of an old menu's
+Inspect after page replacement or a newly requested HTML document.
+
+Frontend `loadFinished` is insufficient: Elements must contain the fixture
+DOM, and Console must return a marker read from that inspected document.
+For native Windows captures, set `QT_QPA_PLATFORM=windows` and
+`GOLDENDICT_INSPECTOR_CAPTURE_DIR` to a disposable external directory, then
+launch `build/Release/bin/article_inspector_test.exe -style Fusion
+FrontendAndOptionalCapture` through `run_with_conan.ps1`. Capture mode uses
+Segoe UI 9 pt, records 1000 by 700 logical-pixel Elements and Console windows,
+and writes article, style/font/DPR/frontend metadata. Compare with the frozen
+Qt 5 widget under the same native conditions; do not accept an empty frontend
+captured before its asynchronous document connection completes.
+
+See [the focused record](article-inspector-parity.md) for evidence and pending
+geometry/full-visual/Linux obligations. These deterministic fixtures do not
+replace the separate real-dictionary acceptance matrix.
+
 ### Real-dictionary corpus manifest
 
 Before a real-corpus acceptance run, generate the deterministic payload-free

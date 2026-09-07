@@ -99,7 +99,7 @@ not authorize dropping a legacy format.
 | Embedded images/styles/resources | slice | Phase 4 | generated fixture resources |
 | Navigation, links, search, zoom | slice | Phase 7/8 | WebEngine integration tests |
 | Context menus, copy, print, save | slice | Phase 7/8 | bounded safe link/selection/image menu, accepted 20-entry per-dictionary article navigation with results-pane overflow, native/system print dialog and preview, retained HTML/PDF export, and offscreen checks; resource saving remains |
-| Inspector/DevTools integration | later | Phase 7 | manual parity check |
+| Inspector/DevTools integration | slice | Phase 7 | real Inspect/F12 entry points, per-article private DevTools lifecycle, Elements/Console and stale-context tests; [R8.2 Unit 1](article-inspector-parity.md) retains shared/persisted geometry and full visual/platform acceptance as pending |
 | Bounded HTTP transport | slice | Phase 7 | deterministic local HTTP server |
 | Proxy and authentication | slice | Phase 7 | explicit HTTP proxy and scoped Basic credentials, including cross-origin redirect isolation, verified by local origin/proxy fixtures; system proxy discovery and interactive credential storage remain |
 | MediaWiki sources | slice | Phase 7/8 | bounded JSON adapter, ordered current/legacy persistence, and enabled runtime catalog composition through the core extension contract; application wiring remains |

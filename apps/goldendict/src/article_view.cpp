@@ -3,12 +3,14 @@
 #include "article_view.h"
 
 #include "article_content_origin.h"
+#include "article_inspector.h"
 
 #include <utility>
 
 #include <cmath>
 #include <limits>
 
+#include <QAction>
 #include <QApplication>
 #include <QClipboard>
 #include <QContextMenuEvent>
@@ -22,6 +24,7 @@
 #include <QMouseEvent>
 #include <QPointer>
 #include <QPushButton>
+#include <QScopedValueRollback>
 #include <QUrlQuery>
 #include <QVBoxLayout>
 #include <QWebEngineContextMenuRequest>
@@ -449,6 +452,15 @@ ArticleView::ArticleView(QWidget* parent) : QWidget(parent) {
     web_view_ = new ArticleWebView(this);
     web_view_->setObjectName(QStringLiteral("articleWebContent"));
     layout->addWidget(web_view_, 1);
+    inspect_action_ = new QAction(tr("Inspect"), web_view_);
+    inspect_action_->setObjectName(QStringLiteral("inspectArticle"));
+    inspect_action_->setShortcut(QKeySequence(Qt::Key_F12));
+    web_view_->addAction(inspect_action_);
+    connect(inspect_action_, &QAction::triggered, this,
+            [this]() {
+                if (!inspector_context_menu_active_)
+                    ShowInspector(false);
+            });
 
     full_text_navigation_row_ = new QWidget(this);
     full_text_navigation_row_->setObjectName(
@@ -500,11 +512,22 @@ ArticleView::ArticleView(QWidget* parent) : QWidget(parent) {
     });
 }
 
+ArticleView::~ArticleView() = default;
+
+void ArticleView::ShowInspector(bool context_target) {
+    auto* inspected = page();
+    if (!inspector_ || inspector_->inspectedPage() != inspected)
+        inspector_ = std::make_unique<ArticleInspector>(inspected);
+    inspector_->Inspect(context_target);
+}
+
 QWebEnginePage* ArticleView::page() const {
     return web_view_->page();
 }
 
 void ArticleView::setPage(QWebEnginePage* page) {
+    if (page != web_view_->page())
+        inspector_.reset();
     disconnect(page_loading_connection_);
     ++document_generation_;
     ++pointer_generation_;
@@ -787,6 +810,7 @@ QList<ArticleContextAction> ArticleView::AvailableContextActions(
     }
     if (context.has_image_content)
         actions << ArticleContextAction::kCopyImage;
+    actions << ArticleContextAction::kInspect;
     return actions;
 }
 
@@ -830,6 +854,9 @@ void ArticleView::TriggerContextAction(ArticleContextAction action,
             break;
         case ArticleContextAction::kSelectAll:
             page()->triggerAction(QWebEnginePage::SelectAll);
+            break;
+        case ArticleContextAction::kInspect:
+            ShowInspector(true);
             break;
     }
 }
@@ -907,6 +934,9 @@ void ArticleView::HandleContextMenuEvent(QContextMenuEvent* event) {
         request->mediaType() == QWebEngineContextMenuRequest::MediaTypeImage &&
             !request->mediaUrl().isEmpty()};
     const auto available = AvailableContextActions(context);
+    const QPointer<QWebEnginePage> context_page = page();
+    const quint64 context_generation = document_generation_;
+    const quint64 context_navigation = next_html_navigation_token_;
     const auto dictionary_snapshot = DictionaryContextSnapshot();
     QMenu menu(this);
     QHash<QAction*, ArticleContextAction> action_map;
@@ -948,6 +978,8 @@ void ArticleView::HandleContextMenuEvent(QContextMenuEvent* event) {
             case ArticleContextAction::kSelectAll:
                 label = tr("Select All");
                 break;
+            case ArticleContextAction::kInspect:
+                continue;  // Inspect follows the dictionary-reference group.
         }
         action_map.insert(menu.addAction(label), action);
     }
@@ -964,6 +996,14 @@ void ArticleView::HandleContextMenuEvent(QContextMenuEvent* event) {
     QAction* overflow_action = nullptr;
     if (dictionary_snapshot.overflow)
         overflow_action = menu.addAction(QStringLiteral("........."));
+    menu.addSeparator();
+    auto* inspect = inspect_action_;
+    menu.addAction(inspect);
+    action_map.insert(inspect, ArticleContextAction::kInspect);
+    // Reuse the shortcut's action, as Qt 5 does. Menu activation is dispatched
+    // below with its captured target, not as an ordinary keyboard invocation.
+    const QScopedValueRollback<bool> menu_scope(
+        inspector_context_menu_active_, true);
     QAction* selected = menu.exec(event->globalPos());
     if (selected == overflow_action) {
         TriggerDictionaryContextOverflow(dictionary_snapshot);
@@ -971,6 +1011,12 @@ void ArticleView::HandleContextMenuEvent(QContextMenuEvent* event) {
         TriggerDictionaryContextAction(dictionary_snapshot,
                                        dictionary_action_map.value(selected));
     } else if (action_map.contains(selected)) {
+        if (selected == inspect &&
+            (!context_page || context_page != page() ||
+             context_generation != document_generation_ ||
+             context_navigation != next_html_navigation_token_)) {
+            return;
+        }
         TriggerContextAction(action_map.value(selected), context);
     }
 }

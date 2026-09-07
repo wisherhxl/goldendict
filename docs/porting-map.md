@@ -226,6 +226,13 @@ testing do not have mechanical one-to-one replacements. Use Qt WebEngine page,
 profile, URL-scheme handler, request interceptor, JavaScript callbacks, and
 DevTools APIs behind an article-view interface.
 
+R8.2 Unit 1 uses the app-private `ArticleInspector` adapter owned by
+`ArticleView`. It owns an independent window and off-the-record DevTools
+profile/page without a remote-debugging endpoint or public Core dependency.
+Keyboard and pointer entry points retain different inspection intent. See
+[article-inspector-parity.md](article-inspector-parity.md) for source evidence,
+lifetime tests, native frontend differences, and the remaining geometry unit.
+
 ### Online And External Sources
 
 Legacy evidence includes `mediawiki.*`, `website.*`, `forvo.*`,

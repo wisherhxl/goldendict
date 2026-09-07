@@ -13,6 +13,18 @@ Tiger owns module and application conventions, Conan dependency integration,
 installation layout, and generated project configuration files. GoldenDict
 owns product identity and behavior. See [migration.md](migration.md).
 
+## Private Article Inspector
+
+`ArticleView` translates F12 and context-menu Inspect intent into an
+app-private `ArticleInspector`. Composition/RAII provides one independently
+owned nonmodal window per article view. The adapter owns a separate
+off-the-record WebEngine profile and frontend page, detaches the inspected
+page before teardown, and keeps the profile alive until its pages are gone.
+No Core ABI, network policy, dictionary JavaScript policy, or remote debugging
+listener is introduced. Page/document identity guards reject stale menu
+inspection. The focused [parity record](article-inspector-parity.md) preserves
+the separate Core-owned geometry/persistence follow-up.
+
 ## Supported Platforms And Toolchains
 
 Supported operating systems:

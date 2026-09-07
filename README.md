@@ -43,6 +43,14 @@ On Windows, use `run_with_conan.ps1` from PowerShell or `run_with_conan.bat`
 from `cmd.exe` with the same arguments. A runtime-mode install or package is
 the supported environment-independent launch path.
 
+## Article Inspector
+
+Press F12 in an article tab, or choose **Inspect** at the end of its context
+menu, to open that article's independent WebEngine DevTools window. Closing
+and reopening reuses the window while the article view exists. Shared and
+persisted inspector geometry remains a tracked parity follow-up; see
+[the inspector parity record](docs/article-inspector-parity.md).
+
 ## Install And Package
 
 ```sh

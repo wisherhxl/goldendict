@@ -6123,16 +6123,20 @@ void MainWindow::RunArticleContextMenuCheck(
                 ArticleContextAction::kSendSelectionToInput,
                 ArticleContextAction::kCopy,
                 ArticleContextAction::kCopyAsText,
-                ArticleContextAction::kCopyImage} &&
+                ArticleContextAction::kCopyImage,
+                ArticleContextAction::kInspect} &&
         external_actions ==
             QList<ArticleContextAction>{ArticleContextAction::kOpenExternalLink,
                                         ArticleContextAction::kCopyLink,
-                                        ArticleContextAction::kSelectAll} &&
+                                        ArticleContextAction::kSelectAll,
+                                        ArticleContextAction::kInspect} &&
         rejected_actions ==
             QList<ArticleContextAction>{ArticleContextAction::kCopy,
-                                        ArticleContextAction::kCopyAsText} &&
+                                        ArticleContextAction::kCopyAsText,
+                                        ArticleContextAction::kInspect} &&
         credential_actions ==
-            QList<ArticleContextAction>{ArticleContextAction::kSelectAll} &&
+            QList<ArticleContextAction>{ArticleContextAction::kSelectAll,
+                                        ArticleContextAction::kInspect} &&
         selection == internal.selected_text && link == internal.link_url &&
         link_copied && copy_preserved_session && navigation_preserved_origin &&
         restored;

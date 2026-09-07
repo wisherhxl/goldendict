@@ -309,7 +309,7 @@ launcher and Python tooling checks run directly.
 | R7.8 | Windows scan/clipboard, hotkey, tray, startup, activation, always-on-top, and single-instance adapters: `CRD-PLATFORM-001`, `005` | R6.1, R7.2-R7.4, R7.6 | private adapter tests and native Windows integration matrix covering registration, conflicts, lifecycle, groups/options, forwarding, and teardown |
 | R7.9 | Windows playback, external player, pronunciation, and SAPI speech: `CRD-PLATFORM-002`, `005` | R4.3, R6.5 | controlled process/media/SAPI adapter tests and manual native audio check |
 | R8.1 | Article resource saving and remaining safe context actions | R3.6-R3.20 | local resource fixture, cancellation/error tests, and paired menu capture |
-| R8.2 | Qt WebEngine DevTools/inspector parity | R2.3 | private page/profile lifecycle tests and manual DevTools check |
+| R8.2 | Qt WebEngine DevTools/inspector parity; [Unit 1](article-inspector-parity.md) restores Inspect/F12 and private lifecycle; Unit 2 shared/persisted geometry remains | R2.3 | private page/profile lifecycle tests, real target inspection and Console evaluation, native DevTools comparison; full row remains open |
 | R8.3 | About, homepage, forum, configuration-folder, credits, and attribution workflows | R9.1 | focused action/URL/path tests and paired dialogs |
 | R8.4 | Remaining proxy/authentication, request identity, remote-content, and update behavior | R6.3, R6.4 | deterministic local proxy/origin/update fixtures and redaction tests |
 | R8.5 | Help window geometry and zoom persistence | R4.6, R8.3 | focused current/legacy persistence, invalid-state fallback, DPI/topology normalization, and paired Help capture |
