@@ -972,6 +972,11 @@ Run the repository-wide dependency-free script gate with:
 python -m unittest discover -s scripts/tests -p "*_test.py"
 ```
 
+Synthetic observer tests bind their fixture platform before replacing process
+execution; they must not consult real host discovery inside the process mock.
+See [observer platform test isolation](observer-platform-test-isolation.md)
+for the Windows/POSIX boundary and Python runtime regression coverage.
+
 For focused acceptance-contract iteration, run the changed suites with:
 
 ```sh

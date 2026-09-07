@@ -24,6 +24,32 @@ CONDITIONS_HASH = "a" * 64
 
 
 class Qt5RealDictionaryObserverTest(unittest.TestCase):
+    def setUp(self) -> None:
+        # These are Windows profile fixtures; the POSIX case overrides this.
+        # Real host discovery may launch a subprocess and hit our process mock.
+        platform_patch = mock.patch.object(
+            observer.platform, "system", return_value="Windows"
+        )
+        platform_patch.start()
+        self.addCleanup(platform_patch.stop)
+
+    def test_profile_selection_does_not_query_the_host(self) -> None:
+        with mock.patch.object(
+            observer.platform, "uname", side_effect=AssertionError("host discovery")
+        ) as uname:
+            appdata = Path("fixture-appdata")
+            home = Path("fixture-home")
+            self.assertEqual(
+                observer._config_path(appdata, home),
+                appdata / "GoldenDict" / "config",
+            )
+            with mock.patch.object(observer.platform, "system", return_value="Linux"):
+                self.assertEqual(
+                    observer._config_path(appdata, home),
+                    home / ".goldendict" / "config",
+                )
+            uname.assert_not_called()
+
     def _fixture(self, root: Path) -> tuple[dict[str, str], dict[str, Path]]:
         corpus = root / "corpus & dictionaries"
         index = root / "index"
