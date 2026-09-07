@@ -129,6 +129,13 @@ module built as a shared library when `BUILD_SHARED_LIBS=ON`.
   `ti_define_module(...)`. Exposing a dependency through installed headers or
   exported usage requirements makes it public; implementation-only
   dependencies remain private.
+- Image-codec compatibility is a narrow exception to the QtGui-free runtime
+  boundary: a private static adapter may use QImage/QImageReader solely for
+  bounded image decoding and encoding. Its header contains only standard C++
+  data and cancellation callbacks. Dictionary formats, public APIs, and other
+  Core components must not include QtGui headers or require a GUI application,
+  window, display server, or GUI thread. This adapter has no installed ABI;
+  its QtGui linkage remains private to the Core implementation.
 - GoldenDict-managed HTTP/HTTPS response caching belongs exclusively to the
   Qt Network adapter. Core may persist transport-neutral cache policy, but the
   network module owns the application-lifetime manager, disk-cache instance,

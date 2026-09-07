@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include "../adapters/image_codec.h"
 
 #include "../src/formats/stardict/stardict_article_decoder.h"
 #include "../src/formats/stardict/stardict_dictionary.h"
@@ -49,6 +50,12 @@ class StardictDictionaryTest : public QObject {
     void HonorsCancellationAndDeadline();
     void TranslatesReaderFailures();
     void LoadsTypedResourcesAndLegacyDelimiters();
+    void ConvertsLegacyMonochromeTiffResources();
+    void DecodesImageContentBehindTiffNames();
+    void BoundsAndCancelsImageConversion();
+    void RewritesAndIsolatesLegacyCssResources();
+    void PreservesUnicodeCssDecoding();
+    void PreservesUndecodableTiffResources();
     void LoadsResourceZipWithDirectoryAndCasePrecedence();
     void DiscoversLegacyResourceZipCandidatesInOrder();
     void RejectsCorruptResourceZipData();
@@ -58,6 +65,7 @@ class StardictDictionaryTest : public QObject {
     void RejectsUnsafeResourcePaths();
     void RejectsResourceSymlinkEscapes();
     void RejectsOversizedResources();
+    void RejectsResourcesGrowingDuringRead();
 };
 
 std::filesystem::path TemporaryPath(const QTemporaryDir& directory) {
@@ -93,6 +101,46 @@ std::string ResourceText(const std::optional<dictionary::Resource>& resource) {
     }
     return std::string(reinterpret_cast<const char*>(resource->data.data()),
                        resource->data.size());
+}
+
+void AppendLittleEndian16(std::uint16_t value, std::string* output) {
+    output->push_back(static_cast<char>(value & 0xffU));
+    output->push_back(static_cast<char>((value >> 8U) & 0xffU));
+}
+
+void AppendLittleEndian32(std::uint32_t value, std::string* output) {
+    for (unsigned shift = 0U; shift < 32U; shift += 8U) {
+        output->push_back(static_cast<char>((value >> shift) & 0xffU));
+    }
+}
+
+std::string LegacyMonochromeTiff() {
+    std::string result = "II";
+    AppendLittleEndian16(42U, &result);
+    AppendLittleEndian32(8U, &result);
+    AppendLittleEndian16(7U, &result);
+    const auto append_tag = [&result](std::uint16_t tag, std::uint16_t type,
+                                      std::uint32_t value) {
+        AppendLittleEndian16(tag, &result);
+        AppendLittleEndian16(type, &result);
+        AppendLittleEndian32(1U, &result);
+        if (type == 3U) {
+            AppendLittleEndian16(static_cast<std::uint16_t>(value), &result);
+            AppendLittleEndian16(0U, &result);
+        } else {
+            AppendLittleEndian32(value, &result);
+        }
+    };
+    append_tag(256U, 4U, 32U);
+    append_tag(257U, 4U, 2U);
+    append_tag(258U, 3U, 1U);
+    append_tag(259U, 3U, 1U);
+    append_tag(273U, 4U, 98U);
+    append_tag(278U, 4U, 2U);
+    append_tag(279U, 4U, 8U);
+    AppendLittleEndian32(0U, &result);
+    result.append("\xaa\x55\xaa\x55\x55\xaa\x55\xaa", 8U);
+    return result;
 }
 
 void StardictDictionaryTest::ExposesIdentityAndBoundedArticles() {
@@ -759,6 +807,167 @@ void StardictDictionaryTest::LoadsTypedResourcesAndLegacyDelimiters() {
     QCOMPARE(loaded, image_data);
 }
 
+void StardictDictionaryTest::ConvertsLegacyMonochromeTiffResources() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    test::WriteStardictResource(root, "sample.tif", LegacyMonochromeTiff());
+    const Dictionary dictionary = Dictionary::Open("fixture-id", info_path);
+
+    const auto resource = dictionary.GetResource("sample.tif");
+
+    QVERIFY(resource.has_value());
+    QCOMPARE(resource->media_type, "image/bmp");
+    QCOMPARE(resource->data.size(), std::size_t{70U});
+    QCOMPARE(ResourceText(resource).substr(0U, 2U), "BM");
+    const std::string pixels = ResourceText(resource).substr(62U);
+    QCOMPARE(pixels,
+             std::string("\x55\xaa\x55\xaa\xaa\x55\xaa\x55", 8U));
+}
+
+void StardictDictionaryTest::DecodesImageContentBehindTiffNames() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    const auto png = QByteArray::fromHex(
+        "89504e470d0a1a0a0000000d49484452000000010000000108060000"
+        "001f15c4890000000d4944415478da63b82362f31f000528022ccf56"
+        "67cb0000000049454e44ae426082");
+    test::WriteStardictResource(root, "png.tif", png.toStdString());
+    const Dictionary dictionary = Dictionary::Open("fixture-id", info_path);
+    const auto resource = dictionary.GetResource("png.tif");
+    QVERIFY(resource.has_value());
+    QCOMPARE(resource->media_type, "image/bmp");
+    const auto bmp = ResourceText(resource);
+    QCOMPARE(bmp.size(), std::size_t{58U});
+    QCOMPARE(bmp.substr(0U, 2U), "BM");
+    QCOMPARE(bmp.substr(54U, 3U), std::string("\x3c\x14\xdc", 3U));
+    test::WriteStardictResource(root, "bmp.tiff", bmp);
+    QCOMPARE(ResourceText(dictionary.GetResource("bmp.tiff")), bmp);
+    const auto gray = QByteArray::fromHex(
+        "49492a00080000000c0000010400010000000400000001010400010000000100"
+        "0000020103000100000008000000030103000100000001000000060103000100"
+        "0000010000001101040001000000ae0000001501030001000000010000001601"
+        "040001000000010000001701040001000000040000001a010500010000009e00"
+        "00001b01050001000000a6000000280103000100000002000000000000007800"
+        "000001000000780000000100000000407fff" );
+    test::WriteStardictResource(root, "gray.tif", gray.toStdString());
+    const auto decoded_gray = dictionary.GetResource("gray.tif");
+    QVERIFY(decoded_gray.has_value());
+    QCOMPARE(decoded_gray->media_type, "image/bmp");
+    const auto gray_bmp = ResourceText(decoded_gray);
+    QCOMPARE(gray_bmp.size(), std::size_t{1082U});
+    QCOMPARE(gray_bmp.substr(1078U), std::string("\x00\x40\x7f\xff", 4U));
+}
+
+void StardictDictionaryTest::BoundsAndCancelsImageConversion() {
+    const auto encoded = QByteArray::fromHex(
+        "89504e470d0a1a0a0000000d49484452000000010000000108060000"
+        "001f15c4890000000d4944415478da63b82362f31f000528022ccf56"
+        "67cb0000000049454e44ae426082");
+    const auto* first = reinterpret_cast<const std::byte*>(encoded.data());
+    const std::vector<std::byte> input(first, first + encoded.size());
+    QVERIFY_EXCEPTION_THROWN(
+        image_codec::DecodeToBmp(input, 1024U, [] {}), std::length_error);
+    std::size_t checkpoints = 0U;
+    const auto converted = image_codec::DecodeToBmp(
+        input, 64U * 1024U * 1024U, [&] { ++checkpoints; });
+    QVERIFY(!converted.empty());
+    QVERIFY(checkpoints >= 4U);
+    for (std::size_t cancel_at = 1U; cancel_at <= checkpoints; ++cancel_at) {
+        std::size_t seen = 0U;
+        QVERIFY_EXCEPTION_THROWN(
+            image_codec::DecodeToBmp(input, 64U * 1024U * 1024U, [&] {
+                if (++seen == cancel_at) throw std::runtime_error("cancelled");
+            }),
+            std::runtime_error);
+        QCOMPARE(seen, cancel_at);
+    }
+}
+
+void StardictDictionaryTest::RewritesAndIsolatesLegacyCssResources() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    test::WriteStardictResource(
+        root, "styles/site.css",
+        "/* remove me */body,.entry{background:url('../img/bg.png');"
+        "mask:url(data:image/png;base64,AA);"
+        "cursor:url(https://example.invalid/c.cur)}"
+        "@media screen{html{background:url(icons/paper.png)}}"
+        "@page{margin:0}");
+    const Dictionary dictionary = Dictionary::Open("fixture-id", info_path);
+
+    const auto resource = dictionary.GetResource("styles/site.css");
+
+    QVERIFY(resource.has_value());
+    QCOMPARE(resource->media_type, "text/css");
+    QCOMPARE(
+        ResourceText(resource),
+        std::string(
+            "body #gdfrom-fixture-id ,#gdfrom-fixture-id .entry{background:"
+            "url('bres://fixture-id/../img/bg.png');"
+            "mask:url(data:image/png;base64,AA);"
+            "cursor:url(https://example.invalid/c.cur)}"
+            "@media screen{html #gdfrom-fixture-id {background:"
+            "url(icons/paper.png)}}"));
+
+    // A later quoted declaration forces the frozen regex to backtrack to
+    // the closing parenthesis of the preceding unquoted resource URL.
+    test::WriteStardictResource(
+        root, "backtracking.css",
+        "a{background:url(foo.png);font-family:\"Arial\"}"
+        "b{background:URL( bar.png );content:'label'}"
+        "c{background:url(\"quoted.png\");content:\"tail\"}");
+    const auto backtracking = dictionary.GetResource("backtracking.css");
+    QVERIFY(backtracking.has_value());
+    QCOMPARE(ResourceText(backtracking),
+             std::string("#gdfrom-fixture-id a{background:"
+                         "url(bres://fixture-id/foo.png);font-family:\"Arial\"}"
+                         "#gdfrom-fixture-id b{background:"
+                         "url(bres://fixture-id/bar.png );content:'label'}"
+                         "#gdfrom-fixture-id c{background:"
+                         "url(\"bres://fixture-id/quoted.png\");content:\"tail\"}"));
+}
+
+void StardictDictionaryTest::PreservesUnicodeCssDecoding() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    test::WriteStardictResource(
+        root, "unicode.css", "\xef\xbb\xbf" "body{color:red}"
+        "\xc2\xa9" "html{color:blue}\xff" "html{color:green}");
+    const Dictionary dictionary = Dictionary::Open("fixture-id", info_path);
+    QCOMPARE(ResourceText(dictionary.GetResource("unicode.css")),
+             std::string("body #gdfrom-fixture-id {color:red}"
+                         "\xc2\xa9" "html #gdfrom-fixture-id {color:blue}"
+                         "\xef\xbf\xbd" "html #gdfrom-fixture-id {color:green}"));
+}
+
+void StardictDictionaryTest::PreservesUndecodableTiffResources() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    test::WriteStardictResource(root, "broken.tiff", "not a TIFF");
+    const Dictionary dictionary = Dictionary::Open("fixture-id", info_path);
+
+    const auto resource = dictionary.GetResource("broken.tiff");
+
+    QVERIFY(resource.has_value());
+    QCOMPARE(resource->media_type, "application/octet-stream");
+    QCOMPARE(ResourceText(resource), "not a TIFF");
+}
+
 void StardictDictionaryTest::LoadsResourceZipWithDirectoryAndCasePrecedence() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -973,6 +1182,43 @@ void StardictDictionaryTest::RejectsOversizedResources() {
     } catch (const dictionary::Error& error) {
         QCOMPARE(error.code(), dictionary::ErrorCode::kInvalidData);
     }
+}
+
+void StardictDictionaryTest::RejectsResourcesGrowingDuringRead() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    const auto path = test::WriteStardictResource(root, "growing.bin", "small");
+    class GrowingResource final : public dictionary::CancellationSignal {
+       public:
+        explicit GrowingResource(std::filesystem::path path)
+            : path_(std::move(path)) {}
+        bool IsCancellationRequested() const noexcept override {
+            if (++checks_ == 2U) {
+                // The provider's first check precedes file_size; its second
+                // occurs after opening the file and before reading a chunk.
+                std::filesystem::resize_file(
+                    path_, 64U * 1024U * 1024U + 1U, error_);
+            }
+            return false;
+        }
+        mutable std::error_code error_;
+       private:
+        std::filesystem::path path_;
+        mutable std::size_t checks_ = 0U;
+    } growth(path);
+    const auto provider = ResourceProvider::Open(info_path, "fixture-id");
+    dictionary::RequestOptions options;
+    options.cancellation = &growth;
+    try {
+        static_cast<void>(provider.Load("growing.bin", options));
+        QFAIL("A growing resource must remain bounded");
+    } catch (const dictionary::Error& error) {
+        QCOMPARE(error.code(), dictionary::ErrorCode::kInvalidData);
+    }
+    QVERIFY(!growth.error_);
 }
 
 }  // namespace

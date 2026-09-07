@@ -73,8 +73,13 @@ article, configuration, and infrastructure components.
 The internal components preserve dependency inversion and focused tests
 without creating a public ABI for each layer or dictionary format. The
 headless API supports discovery, indexing, lookup, article/resource retrieval,
-cancellation, and lifecycle without Qt Widgets, Qt Gui, or Qt WebEngine. It
-does not choose HTTP, gRPC, JSON, or another future service transport.
+cancellation, and lifecycle without Qt Widgets or Qt WebEngine, and without
+QtGui types in its public or domain interfaces. A private static image-codec
+adapter is the narrowly scoped QtGui runtime exception needed to preserve
+frozen image resource behavior. It accepts bytes and a request checkpoint,
+returns bounded BMP bytes, and needs no GUI application, window, display
+server, or GUI thread. It does not create another public module or installed
+ABI. The API does not choose HTTP, gRPC, JSON, or another future transport.
 
 Consumers inject a `CoreConfiguration` containing dictionary roots and the
 generated-index directory. `LoadConfiguration` treats a missing file as a

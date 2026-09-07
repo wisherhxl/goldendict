@@ -107,7 +107,8 @@ Dictionary Dictionary::Open(
             dictionary.reader_.metadata().target_language;
         dictionary.identity_.description =
             dictionary.reader_.metadata().description;
-        dictionary.resources_ = ResourceProvider::Open(info_path);
+        dictionary.resources_ =
+            ResourceProvider::Open(info_path, dictionary.identity_.id);
         if (full_text_index_path.has_value()) {
             try {
                 std::vector<dictionary::FullTextDocument> documents;

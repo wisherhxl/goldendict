@@ -1333,36 +1333,66 @@ platform-condition skips. All Qt 6 observers, build-tree executables, and
 tests use the Release Conan launcher environment.
 
 R3.6 Unit 4 reuses the complete Unit 3 generated article matrix and adds
-adjacent StarDict resource companions. The final pair is retained at
-`evidence/qt5-qt6-r36-unit4-stardict-final-v2`. Pair ID
-`51027370e28b1e0be44206cdb93e08a6d16e3c85182c51dafe85ee0f8d23f277`
+adjacent StarDict resource companions. The superseding final pair is retained
+at `evidence/qt5-qt6-r36-unit4-stardict-v11`. Pair ID
+`2df27ea8a9aa003134550f1cf5334ac05596765682b6e474810ba0587d214551`
 binds frozen Qt 5 commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, Qt 6 implementation Tree ID
-`af3a1334122de921fb54ea2d05b1c288e6fd995c`, fixture-manifest SHA-256
-`35bde631c94d2eb7729f5ceda14165b2edbb7e301058ea6508c5016d2bd2c1c8`,
+`a1905549dde2f2fa4f7c6a1bb58d3b2d73457462`, fixture-manifest SHA-256
+`18891eb01eadcd5af9bb8b9a1a1c0d47a6110a7775a5648c96d44aec21d5d3c3`,
 and canonical conditions SHA-256
-`811bad1b707bfcc39c63b1ead67ddc3584ac7bab6867dc607e998a701d6d21a6`.
-The 80 generated GPL-3.0-or-later files total 6,598 bytes; the inherited Unit
-3 source files remain byte-identical. The 28-probe catalog has SHA-256
-`c36c95080d77ec01047f1a0b08da89666c5f7d04530e5958a73a5659abdfe60e`.
+`a83a970815c53b01287915eb93da149d6f77d7e21ab907ef478ce5aeab313ba0`.
+The 87 generated GPL-3.0-or-later files total 7,424 bytes; the inherited Unit
+3 source files remain byte-identical. The 35-probe catalog has SHA-256
+`d8bca6949c21ef7eb9ce6617bee4f8c29c9062dd4b6fdcd6cacc97dc045e2ccf`.
 
 Clean-discovery and warm-restart observations from both independently built
 products are internally stable. All thirteen inherited article/suggestion
-probes and all six valid resource probes are strictly equal. The valid
+probes, all six lookup resources, and the added TIFF resource are strictly
+equal. The valid
 resource matrix covers directory-over-archive precedence, stored and deflated
 archive members, case-folded member lookup, uppercase and nested archive
-candidates, and all-candidate precedence. The strict comparison deliberately
-reports non-equivalence with exactly 34 leaves and has SHA-256
-`23d6dfe5cc050ba63b5d882783fb0e390e7fc68021a1634a1c2b3c052516176b`.
+candidates, all-candidate precedence, TIFF-to-BMP conversion, and CSS URL and
+selector isolation. The strict comparison deliberately reports
+non-equivalence with exactly 52 leaves and has SHA-256
+`74cedc65a15af9a8b22f9d577fc3105822de2ba4df5928be79f679077bedd20c`.
 Ten leaves are the approved security exception in the two Qt 6 observations:
 the frozen Qt 5 traversal and Windows junction/reparse payloads are absent,
 and traversal, absolute, and reparse-escaping identifiers each report one
 Qt 6 error. The exact legacy result signatures and raw Qt 6 `kInvalidData`
 diagnostics are retained in `allowed-resource-differences.json`, SHA-256
-`42fb593cf33cc736b77b9f1b6ac45232a4fe527cac65c3e7b3897c027ce7d475`.
+`4953c7875ec992171066849ad5d5c814221a87ca0c4e4acf08be4de14f55be13`.
+
+`stardict-resource-transform-inventory.json`, SHA-256
+`01ad19f6e3941762e73c40a17bcb5d01b9c49d0835cab9852e6ac912ce3dc26e`,
+proves that both products return the same 70-byte BMP for the generated
+photometric-less monochrome TIFF. It also validates each CSS payload against
+the frozen URL-rewrite and selector-isolation algorithm. The remaining eighteen
+CSS hash leaves are exactly the required substitution of frozen Qt 5's
+32-character dictionary ID with Qt 6's stable runtime ID; each product must
+use its own ID for `bres://` routing, so this already-governed identity
+distinction is retained explicitly instead of being mislabeled byte parity.
+
+The same inventory verifies primary PNG/BMP content under TIFF extensions,
+grayscale TIFF decoding, CSS backtracking, and Unicode CSS decoding (BOM,
+non-letter Unicode, and malformed UTF-8). Primary-image
+fixtures declare source density explicitly; four-pixel grayscale scanlines
+avoid frozen Qt 5's uninitialized BMP padding. Diagnostic pair `v9` retains
+the observed GUI-default-DPI and scanline-padding variability. These are not
+silently masked: the final strict comparison uses reproducible source inputs.
+Default-density presentation/printing belongs to the R9/R10 same-environment
+visual and release matrix. The Qt 5 runtime now includes its official
+`mingw-w64-ucrt-x86_64-qt5-imageformats` 5.15.19-1 package, so primary TIFF
+decoding is exercised rather than hidden by an absent plugin.
+
+The private image adapter is tested in an app-less process for primary image
+decoding, output bounds, and cancellation at each exposed checkpoint. Core
+public headers and exported target interfaces remain free of QtGui and the
+adapter has no installed ABI. It links privately to the already-resolved QtGui
+runtime; application deployment must include that runtime and codec plugins.
 
 `stardict-icon-source-inventory.json`, SHA-256
-`2e156dd68261a9cbfa544841eb0a876775f564f93536cea5253fdc13f2ae3fd7`,
+`32d1e9cec4af3f574a928962207470e57a81820b365d8e7365547fe29832c7b6`,
 binds six actual paired icon probes to the same manifest and pair. Frozen Qt 5
 decodes and renders every generated source through `QIcon`: the BMP-only and
 all-candidate signatures are equal, proving BMP precedence, while the PNG,
@@ -1370,14 +1400,16 @@ JPG, ICO, and built-in fallback signatures are distinct. The remaining 24
 strict leaves record Qt 6's explicit `dictionary-error-4` R9.1 handoff for a
 cross-format identity payload and UI publication. The normalized Qt 5 clean
 observation and retained raw Qt 6 clean observation have SHA-256
-`ed596829486fd82ae3ad95ecf4002f6b22110041e6648763b1d3b2d58d41bae3`
-and `a9c9de0f324f0c807b6b80f1aa928b51086d804af10aca88261040e5a996d6dd`.
+`1fe198bcea10e6c3c9684fa6bf3929e275e797d80f0a6f9a4767be2fe61bae78`
+and `0dd1c0c1028544cd9b8181a85a798daf3ca8cf67c597ad580a0c4fb11ee8a8f0`.
 
 Focused `stardict_dictionary_test` cases cover directory/archive precedence,
 stored/deflated and case-folded archive members, candidate selection,
 corruption and CRC failure, source mutation and reopen recovery, media typing,
 legacy delimiters, request cancellation, missing resources, unsafe paths,
-symlink/reparse escape, and size bounds. `dsl_dictionary_test` remains green
+symlink/reparse escape, size bounds, exact monochrome TIFF conversion,
+undecodable-TIFF fail-open behavior, and legacy CSS transformation.
+`dsl_dictionary_test` remains green
 against the extracted shared archive foundation, and all acceptance commands
 run from the Release Conan environment. The VS 2026/MSVC 14.44 complete
 Release build succeeds, serial CTest passes 135 of 135, and the repository Python suite

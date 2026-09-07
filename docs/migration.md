@@ -439,12 +439,27 @@ until the dictionary is reopened. The reusable archive mechanics are extracted
 from the accepted DSL implementation into a private foundation component;
 DSL's candidate naming and observable behavior remain unchanged. Request
 cancellation and typed corruption/unavailability failures cross the same
-format-neutral resource boundary.
+format-neutral resource boundary. A separate private transformer restores the
+frozen post-read behavior: content-sniffed images with TIFF resource names
+become bounded BMP payloads, with the legacy monochrome fallback retained,
+while CSS resources receive the legacy relative-URL
+rewrite and `#gdfrom-<dictionary-id>` selector isolation. libtiff remains a
+private Core implementation dependency. QtGui is isolated in a private static
+image-codec adapter with standard-C++ inputs and outputs, no installed ABI,
+and no GUI application or thread requirement. Undecodable data remains
+unchanged, matching the frozen
+fail-open resource behavior.
 
 The final generated pair repeats the complete Unit 3 article matrix and adds
 directory/archive precedence, case-folded archive paths, every legacy archive
-candidate, and candidate precedence. All valid probes are strictly equal and
-both products are stable across clean discovery and warm restart. Ten retained
+candidate, candidate precedence, TIFF conversion, and CSS transformation. All
+valid probes other than the identity-bearing CSS payload are strictly equal
+and both products are stable across clean discovery and warm restart. The TIFF
+probe produces a byte-identical 70-byte BMP. CSS output is semantically
+equivalent after substituting each product's stable runtime dictionary ID;
+retaining each ID is required so its `bres://` URL resolves in that product.
+The eighteen resulting CSS hash leaves are recorded as the already-governed runtime
+identity distinction rather than normalized away. Ten retained
 strict differences are exactly the approved negative-path exception: frozen
 Qt 5 exposes the traversing fixture and a Windows junction/reparse escape and
 treats the absolute probe as missing, while Qt 6 reports `kInvalidData` for
@@ -458,8 +473,8 @@ BMP-only and all-candidate observations are identical while the remaining
 source/fallback signatures are distinct, proving precedence and decoding.
 Qt 6 reports an explicit unsupported result because its transport-neutral
 identity still has no icon payload; the 24 icon leaves and raw R9.1 handoff
-remain durable evidence. With that handoff, all R3.6 resource and icon-evidence
-obligations are closed.
+remain durable evidence. With that handoff and the explicit transform
+inventory, all R3.6 resource and icon-evidence obligations are closed.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

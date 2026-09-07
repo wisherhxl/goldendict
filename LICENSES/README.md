@@ -38,6 +38,10 @@ Phase 2 directly declares these external components:
   license.
 - Vorbis 1.3.7 and Ogg 1.3.5, used privately for bounded LSA audio decoding,
   under their BSD-3-Clause licenses.
+- libtiff 4.7.2, used privately for bounded StarDict TIFF resource decoding,
+  under the libtiff permissive license and its bundled BSD-style LZW notice.
+  The selected static package reuses the graph's libjpeg-turbo and zlib and
+  adds xz/lzma as a private codec dependency.
 - `python-html5lib/1.1`, used only in Qt's build context. Its local Conan
   recipe packages the html5lib, six, and webencodings license files and
   declares their MIT and BSD-3-Clause licenses.

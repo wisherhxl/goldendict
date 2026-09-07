@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "../../foundation/text_folding.h"
+#include "stardict_resource_transform.h"
 
 namespace goldendict::core::formats::stardict {
 namespace {
@@ -83,8 +84,9 @@ bool IsWithin(const std::filesystem::path& root,
 }  // namespace
 
 ResourceProvider ResourceProvider::Open(
-    const std::filesystem::path& info_path) {
+    const std::filesystem::path& info_path, std::string dictionary_id) {
     ResourceProvider provider;
+    provider.dictionary_id_ = std::move(dictionary_id);
     const auto directory = info_path.parent_path();
     provider.resource_root_ = directory / "res";
     const std::array<std::filesystem::path, 3U> candidates = {
@@ -130,10 +132,8 @@ std::optional<dictionary::Resource> ResourceProvider::Load(
             if (!data.has_value()) {
                 return std::nullopt;
             }
-            return dictionary::Resource{
-                normalized_id,
-                dictionary::MediaTypeForResourceId(normalized_id),
-                std::move(*data)};
+            return TransformResource(normalized_id, dictionary_id_,
+                                     std::move(*data), options);
         } catch (const foundation::ZipArchiveError& error) {
             throw TranslateArchiveError(error);
         } catch (const foundation::TextFoldingError& error) {
@@ -188,24 +188,28 @@ std::optional<dictionary::Resource> ResourceProvider::Load(
         throw dictionary::Error(dictionary::ErrorCode::kUnavailable,
                                 "Cannot open StarDict resource");
     }
-    dictionary::Resource resource;
-    resource.id = normalized_id;
-    resource.media_type = dictionary::MediaTypeForResourceId(normalized_id);
-    resource.data.reserve(static_cast<std::size_t>(size));
+    std::vector<std::byte> data;
+    data.reserve(static_cast<std::size_t>(size));
     std::array<char, 64U * 1024U> buffer{};
     while (input) {
         dictionary::CheckRequest(options);
         input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
         const auto count = input.gcount();
+        if (static_cast<std::uintmax_t>(count) >
+            kMaximumResourceSize - data.size()) {
+            throw dictionary::Error(dictionary::ErrorCode::kInvalidData,
+                                    "StarDict resource grew beyond the size limit");
+        }
         const auto* begin = reinterpret_cast<const std::byte*>(buffer.data());
-        resource.data.insert(resource.data.end(), begin, begin + count);
+        data.insert(data.end(), begin, begin + count);
     }
     if (!input.eof()) {
         throw dictionary::Error(dictionary::ErrorCode::kUnavailable,
                                 "Cannot read complete StarDict resource");
     }
     dictionary::CheckRequest(options);
-    return resource;
+    return TransformResource(normalized_id, dictionary_id_, std::move(data),
+                             options);
 }
 
 }  // namespace goldendict::core::formats::stardict

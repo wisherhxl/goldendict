@@ -1838,7 +1838,52 @@ and test executable ran through `run_with_conan.ps1`.
 
 #### R3.6 Unit 4 implementation result
 
-Status: **Implementation complete** (2026-09-07).
+Status: **Implementation revised; awaiting completion and integration audits**
+(2026-09-07).
+
+The retained results below describe the tested candidate, not accepted Unit 4
+closure. The latest independent audit identified two omitted behaviors under
+CRD-DICT-003 and CRD-COMPAT-001:
+
+- CSS rewriting must preserve the frozen regular expression's backtracking
+  when an unquoted URL precedes quoted declaration text. The correction uses
+  the existing private PCRE2 dependency and adds focused regression coverage;
+  expanded paired evidence and a fresh audit remain required.
+- TIFF-named resources must preserve the primary content-sniffing image
+  decoder before the legacy monochrome fallback. The current candidate covers
+  only that fallback. This includes non-TIFF image content named `.tif`.
+
+The active decision is the primary image-decoder ownership boundary. Existing
+architecture describes the headless Core API without QtGui. The goal is
+frozen Qt 5 image behavior with bounded transport-neutral results and no
+window or GUI-thread requirement. Three alternatives are under discussion:
+
+1. Isolate QImage in a private image-codec adapter behind transport-neutral
+   inputs and results. This best preserves the original decoder behavior but
+   needs an explicit, narrowly scoped QtGui dependency exception.
+2. Retain an entirely QtGui-free implementation using a separate native image
+   library. This preserves the current dependency boundary but adds codec
+   dependencies and requires format-by-format equivalence evidence.
+3. Permit Core to depend privately on QtGui and call QImage directly. This
+   minimizes implementation changes but expands Core's runtime dependency.
+
+Resolution: use alternative 1, the recommended isolated Qt image-codec
+adapter, under the continuation authorization. The exception is limited to
+private image conversion; no public QtGui types or GUI-thread requirement are
+introduced. Readiness: **Ready**. A private static adapter preserves the
+original content-sniffing decoder, bounds decoded dimensions and encoded
+output, and exposes a standard-C++ checkpoint for cancellation. The existing
+monochrome fallback remains format-owned. Verification must cover real TIFF,
+PNG/BMP bytes named `.tif`, malformed and oversized inputs, cancellation, the
+CSS backtracking case, a headless test process, installed exports, and paired
+Qt 5 evidence. Do not commit or integrate until fresh audits pass.
+
+The subsequent audit's Unicode CSS and directory-growth findings are also
+implemented: CSS decoding and selector classification use the frozen QString
+and QChar semantics, while every directory read append checks the remaining
+64 MiB budget. Focused regressions cover BOM, non-letter Unicode, invalid
+UTF-8, and a resource enlarged after its initial size check. The final paired
+inventory explicitly validates the Unicode CSS outputs against Qt 5.
 
 The private StarDict `ResourceProvider` now owns the frozen adjacent-resource
 candidate order. A safe file below `res` wins; otherwise `res.zip`, `RES.ZIP`,
@@ -1860,20 +1905,39 @@ member decoding, lazy reads, CRC checks, and immutable-source enforcement have
 one responsibility. No public, installed, GUI, configuration, or generated-
 index contract changes.
 
+A separate private StarDict transformer restores the frozen post-read resource
+behavior. Primary content-sniffed images with TIFF names become bounded BMP
+payloads, followed by the legacy monochrome TIFF fallback when necessary.
+Undecodable data remains unchanged. CSS resources receive
+the legacy relative-URL rewrite and `#gdfrom-<dictionary-id>` selector
+isolation. libtiff is a static, private Core implementation dependency; its
+types and linkage do not enter public headers or exported target usage
+requirements. QtGui remains isolated inside the private static adapter under
+the resolution above; no GUI application or thread is required.
+
 The final implementation-tree pair is retained under
-`evidence/qt5-qt6-r36-unit4-stardict-final-v2`. It repeats every Unit 3 article
+`evidence/qt5-qt6-r36-unit4-stardict-v11`. It repeats every Unit 3 article
 probe and adds directory/archive precedence, stored/deflated payloads,
 case-folded archive paths, all three archive candidates, and candidate
-precedence. The fixture manifest, pair ID, canonical conditions, comparison,
-and allowed-difference report are recorded in `docs/testing.md`. Both products
-are internally stable across clean discovery and warm restart. Every valid
-resource probe is strictly equal. The strict comparison retains exactly ten
-negative-path leaves: in both Qt 6 observations the traversal and Windows
-junction/reparse results exposed by frozen Qt 5 are absent and traversal,
-absolute, and reparse-escape requests each report one error. The separately
-retained raw Qt 6 observation proves all three are `kInvalidData`; both exact
-Qt 5 result signatures remain in the strict comparison. No other resource
-difference is allowed or present.
+precedence, TIFF conversion, and CSS transformation. The fixture manifest,
+pair ID, canonical conditions, comparison, allowed-difference report, and
+transform inventory are recorded in `docs/testing.md`. Both products are
+internally stable across clean discovery and warm restart. Every valid probe
+except the identity-bearing CSS payload is strictly equal, including the
+byte-identical 70-byte TIFF-to-BMP result. The CSS inventory proves the same
+legacy transformation after substituting each product's stable runtime
+dictionary ID; each product must retain its own ID for `bres://` routing.
+
+The strict comparison retains exactly 52 leaves. Ten are the approved
+negative-path security exception: in both Qt 6 observations the traversal and
+Windows junction/reparse results exposed by frozen Qt 5 are absent and
+traversal, absolute, and reparse-escape requests each report one error. The
+separately retained raw Qt 6 observation proves all three are `kInvalidData`;
+both exact Qt 5 result signatures remain in the strict comparison. Twenty-four
+leaves are the existing R9.1 icon handoff described below. The remaining eighteen
+are exactly the required CSS runtime-ID hash distinction and are bound to the
+transform inventory rather than normalized away. No other resource difference
+is allowed or present.
 
 The same immutable fixture contains all `.bmp`/`.png`/`.jpg`/`.ico`
 same-basename source combinations plus fallback. Six paired probes decode and

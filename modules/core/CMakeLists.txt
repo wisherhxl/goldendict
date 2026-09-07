@@ -6,6 +6,7 @@ find_package(BZip2 REQUIRED)
 find_package(expat REQUIRED CONFIG)
 find_package(ICU REQUIRED CONFIG COMPONENTS uc)
 find_package(hunspell REQUIRED CONFIG)
+find_package(TIFF REQUIRED)
 find_package(OpenCC REQUIRED CONFIG GLOBAL)
 set(opencc_package_directories "")
 foreach(opencc_configuration IN ITEMS
@@ -27,10 +28,22 @@ find_package(PCRE2 REQUIRED CONFIG)
 find_package(Vorbis REQUIRED CONFIG)
 find_package(ZLIB REQUIRED)
 
+# Image codecs are an implementation-only adapter with no installed ABI.
+# QtGui includes are limited to this target, not inherited by Core formats.
+if(NOT TARGET goldendict_image_codec)
+  add_library(goldendict_image_codec STATIC adapters/qt_image_codec.cc)
+  set_target_properties(goldendict_image_codec PROPERTIES
+    POSITION_INDEPENDENT_CODE ON)
+  target_compile_features(goldendict_image_codec PRIVATE cxx_std_17)
+  target_link_libraries(goldendict_image_codec PRIVATE ${QT_NAMESPACE}::Gui)
+endif()
+
 ti_define_module(core
   REQUIRED PUBLIC MODULES tiger
-  REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat hunspell::hunspell ICU::uc OpenCC::OpenCC PCRE2::8BIT Vorbis::vorbisfile ZLIB::ZLIB
+  REQUIRED PRIVATE EXTRAS BZip2::BZip2 expat::expat hunspell::hunspell ICU::uc OpenCC::OpenCC PCRE2::8BIT TIFF::TIFF Vorbis::vorbisfile ZLIB::ZLIB
 )
+target_link_libraries(goldendict_core PRIVATE goldendict_image_codec
+  ${QT_NAMESPACE}::Core)
 
 if(BUILD_TESTS)
   ti_add_executable(qt6_real_dictionary_observer
@@ -111,6 +124,10 @@ get_target_property(core_interface_links goldendict_core
 if(core_interface_links AND core_interface_links MATCHES "OpenCC")
   message(FATAL_ERROR
     "OpenCC must remain private to the goldendict_core implementation")
+endif()
+if(core_interface_links AND core_interface_links MATCHES "TIFF")
+  message(FATAL_ERROR
+    "libtiff must remain private to the goldendict_core implementation")
 endif()
 
 if(TARGET sounddir_reader_test)
@@ -555,9 +572,11 @@ if(TARGET stardict_dictionary_test)
       src/formats/stardict/stardict_dictionary.cc
       src/formats/stardict/stardict_reader.cc
       src/formats/stardict/stardict_resource.cc
+      src/formats/stardict/stardict_resource_transform.cc
   )
   target_link_libraries(stardict_dictionary_test
-    PRIVATE expat::expat ICU::uc ZLIB::ZLIB)
+    PRIVATE expat::expat ICU::uc PCRE2::8BIT TIFF::TIFF ZLIB::ZLIB
+      goldendict_image_codec)
 endif()
 
 if(TARGET stardict_discovery_test)

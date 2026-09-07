@@ -45,6 +45,8 @@ class GoldenDictRecipe(ConanFile):
         "qt/*:with_libjpeg": "libjpeg-turbo",
         "qt/*:with_openal": True,
         "qt/*:with_pq": False,
+        "libtiff/*:cxx": False,
+        "libtiff/*:jpeg": "libjpeg-turbo",
         "ffmpeg/*:avdevice": False,
         "ffmpeg/*:avfilter": False,
         "ffmpeg/*:postproc": False,
@@ -102,6 +104,7 @@ class GoldenDictRecipe(ConanFile):
         self.requires("expat/2.7.5")
         self.requires("icu/74.2")
         self.requires("hunspell/1.7.2")
+        self.requires("libtiff/4.7.2")
         self.requires("opencc/1.4.1")
         self.requires("pcre2/10.42")
         self.requires("qt/6.11.1")

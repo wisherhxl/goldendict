@@ -390,6 +390,24 @@ Vorbis/Ogg types and linkage do not appear in installed public headers or
 exported target usage requirements. Both libraries use BSD-style licenses and
 are covered by the package dependency/license inventory.
 
+libtiff 4.7.2 is a direct private `goldendict_core` implementation dependency
+for bounded StarDict TIFF resource conversion. The Conan package is static,
+disables its unused C++ API, selects the graph's existing libjpeg-turbo
+provider, and retains zlib and xz/lzma codec support. The private StarDict
+transformer returns transport-neutral BMP bytes; libtiff types and linkage do
+not appear in installed public headers or exported target usage requirements.
+The libtiff permissive license and bundled BSD-style LZW notice are covered by
+the package dependency/license inventory. Because the dependency is static it
+does not add a build-tree runtime DLL or change the Conan launcher requirement.
+
+The private static `goldendict_image_codec` adapter links QtGui for primary
+content-sniffed image conversion. Only that adapter receives QtGui include
+paths. It has no installed header, library, or public ABI; the shared Core
+export does not expose the adapter or QtGui. Core resource consumers therefore
+need QtGui and its image plugins at runtime, supplied by the existing Conan
+launcher or the full runtime deployment. A GUI application, window, or display
+server is not required for bitmap conversion.
+
 ## Packaging
 
 Packages are produced through CMake/CPack from the current CMake install rules.

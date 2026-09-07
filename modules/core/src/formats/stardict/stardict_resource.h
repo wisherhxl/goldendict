@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "../../dictionary/dictionary_backend.h"
@@ -14,7 +15,8 @@ namespace goldendict::core::formats::stardict {
 
 class ResourceProvider final {
    public:
-    static ResourceProvider Open(const std::filesystem::path& info_path);
+    static ResourceProvider Open(const std::filesystem::path& info_path,
+                                 std::string dictionary_id);
 
     std::optional<dictionary::Resource> Load(
         std::string_view resource_id,
@@ -26,6 +28,7 @@ class ResourceProvider final {
 
    private:
     std::filesystem::path resource_root_;
+    std::string dictionary_id_;
     std::optional<std::filesystem::path> archive_path_;
     std::optional<foundation::ZipArchive> archive_;
 };
