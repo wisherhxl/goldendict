@@ -230,7 +230,7 @@ launcher and Python tooling checks run directly.
 | R3.3 | **Complete:** real MDict split-resource acceptance and evidence-confirmed corrections | R3.2 | MDX/three-MDD lookup, resource, restart, and immutable-source checks |
 | R3.4 | **Complete:** real DSL and greater-than-4-GiB resource-ZIP acceptance and corrections | R3.2 | DSL/dictzip/article/resource/restart checks with bounded storage evidence |
 | R3.5 | **Complete:** real-corpus lookup, suggestion, article, media, morphology, and management matrix: `CRD-TEST-REAL-005` through `007` | R3.3, R3.4 | paired query catalogs, clean/warm machine-readable result diffs, and immutable-corpus proof |
-| R3.6 | StarDict non-corpus variants and companions: StarDict part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining compression, metadata, resource, identity, indexing, lookup, restart, corruption, and failure variants |
+| R3.6 | **Complete:** StarDict non-corpus variants and companions: StarDict part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining compression, metadata, resource, identity, indexing, lookup, restart, corruption, and failure variants |
 | R3.7 | Dictd non-corpus variants and companions: Dictd part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining index/data, dictzip, metadata, identity, indexing, lookup, restart, corruption, and failure variants |
 | R3.8 | SDict non-corpus variants and companions: SDict part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining field encodings/compression, identity, indexing, lookup, article, restart, corruption, and failure variants |
 | R3.9 | XDXF non-corpus variants and companions: XDXF part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining compression, markup/link/resource, identity, indexing, lookup, restart, corruption, and failure variants |
@@ -1834,7 +1834,61 @@ its SHA-256 is
 The VS 2026/MSVC 14.44 Release build completed, the complete serial CTest
 suite passed 135 of 135 tests, and the repository Python suite passed 170 of
 170 tests with its two expected platform-condition skips. Every Qt 6 observer
-and test executable ran through `run_with_conan.ps1`. R3.6 Unit 4 remains open.
+and test executable ran through `run_with_conan.ps1`.
+
+#### R3.6 Unit 4 implementation result
+
+Status: **Implementation complete** (2026-09-07).
+
+The private StarDict `ResourceProvider` now owns the frozen adjacent-resource
+candidate order. A safe file below `res` wins; otherwise `res.zip`, `RES.ZIP`,
+and `res/res.zip` are considered in order. The provider strips the retained
+record-separator delimiters, confines filesystem paths, rejects absolute,
+traversing, and link/reparse-escaping identifiers, preserves the 64 MiB
+resource bound, and keeps media typing on the existing format-neutral resource
+DTO.
+Archive identifiers are Unicode simple-case folded, so valid member case
+variants match on every platform. Stored and raw-deflate members are read
+lazily, CRC checked, and guarded by source-size/time snapshots plus request
+checkpoints. Corrupt archives and checksums are typed invalid data; changed
+archives are unavailable until the dictionary is reopened.
+
+The accepted DSL central-directory implementation is extracted without
+behavior change into the private foundation `ZipArchive`. ZIP naming and case
+policy remain in each format adapter, while bounded classic/ZIP64 parsing,
+member decoding, lazy reads, CRC checks, and immutable-source enforcement have
+one responsibility. No public, installed, GUI, configuration, or generated-
+index contract changes.
+
+The final implementation-tree pair is retained under
+`evidence/qt5-qt6-r36-unit4-stardict-final-v2`. It repeats every Unit 3 article
+probe and adds directory/archive precedence, stored/deflated payloads,
+case-folded archive paths, all three archive candidates, and candidate
+precedence. The fixture manifest, pair ID, canonical conditions, comparison,
+and allowed-difference report are recorded in `docs/testing.md`. Both products
+are internally stable across clean discovery and warm restart. Every valid
+resource probe is strictly equal. The strict comparison retains exactly ten
+negative-path leaves: in both Qt 6 observations the traversal and Windows
+junction/reparse results exposed by frozen Qt 5 are absent and traversal,
+absolute, and reparse-escape requests each report one error. The separately
+retained raw Qt 6 observation proves all three are `kInvalidData`; both exact
+Qt 5 result signatures remain in the strict comparison. No other resource
+difference is allowed or present.
+
+The same immutable fixture contains all `.bmp`/`.png`/`.jpg`/`.ico`
+same-basename source combinations plus fallback. Six paired probes decode and
+render them through frozen Qt 5: BMP-only equals the all-candidate result and
+the remaining source/fallback signatures are distinct. The inventory binds
+those actual observations and all 24 icon difference leaves to the pair and
+manifest. The transport-neutral Qt 6 identity still has no icon payload, so
+each Qt 6 probe records an explicit unsupported R9.1 handoff for installed
+asset import and UI publication rather than creating a StarDict-specific
+public API.
+
+The VS 2026/MSVC 14.44 complete Release build succeeds, serial CTest passes
+135 of 135, and the repository Python suite passes 170 of 170 with two
+expected platform-condition skips. That evidence and handoff close Unit 4 and
+R3.6.
 
 ### CRD closure cross-check
 

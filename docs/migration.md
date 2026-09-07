@@ -427,8 +427,39 @@ during record scans and conversions, final rendered-output bounds, the frozen
 single-pass nested PowerWord behavior, and the same-sequence uppercase dispatch
 quirk are covered without exposing a format-specific public API.
 The final generated clean/warm pair reports zero strict semantic differences
-against frozen Qt 5. Resource-directory/ZIP closure and icon evidence remain
-assigned to R3.6 Unit 4.
+against frozen Qt 5.
+
+R3.6 Unit 4 restores StarDict's adjacent resource companions through a private
+provider without changing the installed dictionary contract. Safe resources
+under `res` remain preferred over archive members. The provider selects
+`res.zip`, `RES.ZIP`, then `res/res.zip`, folds archive-member case like the
+legacy index, reads stored and deflated members lazily under the 64 MiB
+StarDict resource bound, verifies CRCs, and rejects an archive revision change
+until the dictionary is reopened. The reusable archive mechanics are extracted
+from the accepted DSL implementation into a private foundation component;
+DSL's candidate naming and observable behavior remain unchanged. Request
+cancellation and typed corruption/unavailability failures cross the same
+format-neutral resource boundary.
+
+The final generated pair repeats the complete Unit 3 article matrix and adds
+directory/archive precedence, case-folded archive paths, every legacy archive
+candidate, and candidate precedence. All valid probes are strictly equal and
+both products are stable across clean discovery and warm restart. Ten retained
+strict differences are exactly the approved negative-path exception: frozen
+Qt 5 exposes the traversing fixture and a Windows junction/reparse escape and
+treats the absolute probe as missing, while Qt 6 reports `kInvalidData` for
+all three in each scenario. The comparison, exact legacy result signatures,
+and typed Qt 6 raw errors remain in the evidence set rather than being
+normalized away.
+
+Six paired icon operations decode and render the generated same-basename
+`.bmp`/`.png`/`.jpg`/`.ico` sources and built-in fallback through frozen Qt 5.
+BMP-only and all-candidate observations are identical while the remaining
+source/fallback signatures are distinct, proving precedence and decoding.
+Qt 6 reports an explicit unsupported result because its transport-neutral
+identity still has no icon payload; the 24 icon leaves and raw R9.1 handoff
+remain durable evidence. With that handoff, all R3.6 resource and icon-evidence
+obligations are closed.
 
 ### Phase 6 — Dictionary Backends In Priority Batches
 

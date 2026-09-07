@@ -8,12 +8,27 @@
 #include <string_view>
 
 #include "../../dictionary/dictionary_backend.h"
+#include "../../foundation/zip_archive.h"
 
 namespace goldendict::core::formats::stardict {
 
-std::optional<dictionary::Resource> LoadResource(
-    const std::filesystem::path& resource_root, std::string_view resource_id,
-    const dictionary::RequestOptions& options);
+class ResourceProvider final {
+   public:
+    static ResourceProvider Open(const std::filesystem::path& info_path);
+
+    std::optional<dictionary::Resource> Load(
+        std::string_view resource_id,
+        const dictionary::RequestOptions& options) const;
+
+    const std::optional<std::filesystem::path>& archive_path() const noexcept {
+        return archive_path_;
+    }
+
+   private:
+    std::filesystem::path resource_root_;
+    std::optional<std::filesystem::path> archive_path_;
+    std::optional<foundation::ZipArchive> archive_;
+};
 
 }  // namespace goldendict::core::formats::stardict
 

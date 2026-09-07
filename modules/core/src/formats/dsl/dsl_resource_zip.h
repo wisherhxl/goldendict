@@ -3,29 +3,18 @@
 #ifndef GOLDENDICT_CORE_SRC_FORMATS_DSL_DSL_RESOURCE_ZIP_H_
 #define GOLDENDICT_CORE_SRC_FORMATS_DSL_DSL_RESOURCE_ZIP_H_
 
-#include <cstddef>
-#include <cstdint>
 #include <filesystem>
 #include <optional>
-#include <stdexcept>
-#include <string>
 #include <string_view>
-#include <unordered_map>
+#include <utility>
 #include <vector>
+
+#include "../../foundation/zip_archive.h"
 
 namespace goldendict::core::formats::dsl {
 
-enum class ResourceZipErrorCode { kUnavailable, kInvalidData };
-
-class ResourceZipError final : public std::runtime_error {
-   public:
-    ResourceZipError(ResourceZipErrorCode code, std::string message);
-
-    ResourceZipErrorCode code() const noexcept { return code_; }
-
-   private:
-    ResourceZipErrorCode code_;
-};
+using ResourceZipErrorCode = foundation::ZipArchiveErrorCode;
+using ResourceZipError = foundation::ZipArchiveError;
 
 class ResourceZip final {
    public:
@@ -33,25 +22,19 @@ class ResourceZip final {
         const std::filesystem::path& dictionary_path);
 
     std::optional<std::vector<std::byte>> Read(
-        std::string_view resource_id) const;
+        std::string_view resource_id) const {
+        return archive_.Read(resource_id);
+    }
 
-    const std::filesystem::path& path() const noexcept { return path_; }
+    const std::filesystem::path& path() const noexcept {
+        return archive_.path();
+    }
 
    private:
-    struct Entry {
-        std::uint16_t flags = 0;
-        std::uint16_t method = 0;
-        std::uint32_t crc = 0;
-        std::uint64_t compressed_size = 0;
-        std::uint64_t uncompressed_size = 0;
-        std::uint64_t local_offset = 0;
-    };
+    explicit ResourceZip(foundation::ZipArchive archive)
+        : archive_(std::move(archive)) {}
 
-    std::filesystem::path path_;
-    std::uintmax_t source_size_ = 0;
-    std::filesystem::file_time_type source_write_time_;
-    std::uint64_t central_offset_ = 0;
-    std::unordered_map<std::string, Entry> entries_;
+    foundation::ZipArchive archive_;
 };
 
 }  // namespace goldendict::core::formats::dsl

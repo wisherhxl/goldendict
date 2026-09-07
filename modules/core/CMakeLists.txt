@@ -547,8 +547,10 @@ if(TARGET stardict_dictionary_test)
       src/dictionary/full_text_index.cc
       src/dictionary/full_text_matcher.cc
       src/dictionary/generated_index.cc
+      src/foundation/text_encoding.cc
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
+      src/foundation/zip_archive.cc
       src/formats/stardict/stardict_article_decoder.cc
       src/formats/stardict/stardict_dictionary.cc
       src/formats/stardict/stardict_reader.cc
@@ -753,6 +755,7 @@ if(TARGET dsl_dictionary_test)
       src/foundation/text_encoding.cc
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
+      src/foundation/zip_archive.cc
       src/formats/dsl/dsl_abbreviation.cc
       src/formats/dsl/dsl_dictionary.cc
       src/formats/dsl/dsl_headword_parser.cc

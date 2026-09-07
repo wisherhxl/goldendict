@@ -11,6 +11,7 @@
 
 #include "../../dictionary/dictionary_backend.h"
 #include "stardict_reader.h"
+#include "stardict_resource.h"
 
 namespace goldendict::core::formats::stardict {
 
@@ -72,7 +73,7 @@ class Dictionary final : public dictionary::Backend,
    private:
     dictionary::Identity identity_;
     Reader reader_;
-    std::filesystem::path resource_root_;
+    ResourceProvider resources_;
     std::optional<dictionary::FullTextIndex> full_text_index_;
     std::optional<FullTextError> full_text_error_;
 };

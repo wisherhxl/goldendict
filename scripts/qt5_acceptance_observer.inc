@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QBuffer>
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDir>
@@ -9,6 +10,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QPixmap>
 #include <QSaveFile>
 #include <QTimer>
 
@@ -660,6 +662,7 @@ class LookupPublication: public QObject
   int probeIndex;
   Dictionary::Class * dictionary;
   sptr< Dictionary::DataRequest > articleRequest;
+  sptr< Dictionary::DataRequest > resourceRequest;
   sptr< Dictionary::WordSearchRequest > morphologyRequest;
   std::unique_ptr< WordFinder > wordFinder;
   std::vector< sptr< Dictionary::Class > > suggestionDictionaries;
@@ -795,6 +798,14 @@ private:
       if( operation == "lookup" )
         articleRequest = dictionary->getArticle( gd::toWString( query ),
                                                   std::vector< gd::wstring >() );
+      else if( operation == "resource" )
+        resourceRequest = dictionary->getResource( query.toUtf8().constData() );
+      else if( operation == "icon" )
+      {
+        // Icon publication is synchronous. CompleteProbe renders the native
+        // dictionary icon so acceptance evidence observes actual Qt decoding
+        // and the legacy candidate-precedence decision.
+      }
       else if( operation == "morphology" )
         morphologyRequest = dictionary->findHeadwordsForSynonym(
           gd::toWString( query ) );
@@ -840,6 +851,11 @@ private:
       return;
     }
     if( articleRequest && !articleRequest->isFinished() )
+    {
+      QTimer::singleShot( 1, this, [this]() { Poll(); } );
+      return;
+    }
+    if( resourceRequest && !resourceRequest->isFinished() )
     {
       QTimer::singleShot( 1, this, [this]() { Poll(); } );
       return;
@@ -902,6 +918,56 @@ private:
         entries.append( entry );
       }
       articleRequest = sptr< Dictionary::DataRequest >();
+    }
+    else if( operation == "resource" )
+    {
+      QString const error = resourceRequest->getErrorString();
+      if( !error.isEmpty() )
+      {
+        QJsonObject value;
+        value.insert( "dictionary_id", QString::fromUtf8( dictionary->getId().c_str() ) );
+        value.insert( "message", error );
+        errors.append( value );
+      }
+      else if( resourceRequest->dataSize() >= 0 )
+      {
+        std::vector< char > & data = resourceRequest->getFullData();
+        QByteArray const bytes( data.empty() ? "" : &data.front(),
+                                static_cast< int >( data.size() ) );
+        QByteArray const digest =
+          QCryptographicHash::hash( bytes, QCryptographicHash::Sha256 ).toHex();
+        QJsonObject entry;
+        entry.insert( "article_markup",
+                      QString( "resource sha256=%1 size=%2" )
+                        .arg( QString::fromLatin1( digest ) ).arg( bytes.size() ) );
+        entry.insert( "headword", query );
+        entry.insert( "plain_text", QString() );
+        entry.insert( "resources", QJsonArray() );
+        entries.append( entry );
+      }
+      resourceRequest = sptr< Dictionary::DataRequest >();
+    }
+    else if( operation == "icon" )
+    {
+      QPixmap const pixmap = dictionary->getNativeIcon().pixmap( 32, 32 );
+      QByteArray bytes;
+      QBuffer buffer( &bytes );
+      if( pixmap.isNull() || !buffer.open( QIODevice::WriteOnly )
+          || !pixmap.save( &buffer, "PNG" ) )
+      {
+        Fail();
+        return;
+      }
+      QByteArray const digest =
+        QCryptographicHash::hash( bytes, QCryptographicHash::Sha256 ).toHex();
+      QJsonObject entry;
+      entry.insert( "article_markup",
+                    QString( "icon sha256=%1 size=%2" )
+                      .arg( QString::fromLatin1( digest ) ).arg( bytes.size() ) );
+      entry.insert( "headword", query );
+      entry.insert( "plain_text", QString() );
+      entry.insert( "resources", QJsonArray() );
+      entries.append( entry );
     }
     else if( operation == "morphology" )
     {
@@ -984,6 +1050,7 @@ private:
   void Fail()
   {
     articleRequest = sptr< Dictionary::DataRequest >();
+    resourceRequest = sptr< Dictionary::DataRequest >();
     morphologyRequest = sptr< Dictionary::WordSearchRequest >();
     wordFinder.reset();
     suggestionDictionaries.clear();

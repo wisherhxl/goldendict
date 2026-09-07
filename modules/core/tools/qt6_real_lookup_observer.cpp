@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "../src/dictionary/dictionary_backend.h"
+#include "../src/formats/stardict/stardict_dictionary.h"
 #include "../src/morphology/hunspell_discovery.h"
 #include "../src/morphology/hunspell_provider.h"
 #include "goldendict/core/application.h"
@@ -151,10 +152,9 @@ QJsonArray Errors(const std::vector<goldendict::core::LookupError>& errors) {
     return result;
 }
 
-QJsonObject ObserveLookup(
-    const QJsonObject& probe,
-    const goldendict::core::DictionaryIdentity& identity,
-    const goldendict::core::DictionaryService& service) {
+QJsonObject ObserveLookup(const QJsonObject& probe,
+                          const goldendict::core::DictionaryIdentity& identity,
+                          const goldendict::core::DictionaryService& service) {
     goldendict::core::LookupQuery query;
     query.text = Utf8(probe.value(QStringLiteral("query")).toString());
     query.dictionary_ids = {identity.id};
@@ -216,6 +216,73 @@ QJsonObject ObserveSuggestions(
     };
 }
 
+QJsonObject ObserveResource(
+    const QJsonObject& probe,
+    const goldendict::core::DictionaryIdentity& identity,
+    const QString& primary) {
+    QJsonArray entries;
+    QJsonArray errors;
+    try {
+        const auto dictionary =
+            goldendict::core::formats::stardict::Dictionary::Open(
+                identity.id, std::filesystem::u8path(Utf8(primary)));
+        const std::string resource_id =
+            Utf8(probe.value(QStringLiteral("query")).toString());
+        const auto resource = dictionary.GetResource(resource_id);
+        if (resource.has_value()) {
+            const QByteArray bytes(
+                reinterpret_cast<const char*>(resource->data.data()),
+                static_cast<qsizetype>(resource->data.size()));
+            const QString digest = QString::fromLatin1(
+                QCryptographicHash::hash(bytes, QCryptographicHash::Sha256)
+                    .toHex());
+            entries.append(QJsonObject{
+                {QStringLiteral("article_markup"),
+                 QStringLiteral("resource sha256=%1 size=%2")
+                     .arg(digest)
+                     .arg(bytes.size())},
+                {QStringLiteral("headword"), Text(resource_id)},
+                {QStringLiteral("plain_text"), QString()},
+                {QStringLiteral("resources"), QJsonArray()},
+            });
+        }
+    } catch (const goldendict::core::dictionary::Error& error) {
+        errors.append(QJsonObject{
+            {QStringLiteral("dictionary_id"), Text(identity.id)},
+            {QStringLiteral("message"),
+             QStringLiteral("dictionary-error-%1: %2")
+                 .arg(static_cast<int>(error.code()))
+                 .arg(QString::fromUtf8(error.what()))},
+        });
+    }
+    return QJsonObject{
+        {QStringLiteral("entries"), entries},
+        {QStringLiteral("errors"), errors},
+        {QStringLiteral("id"), probe.value(QStringLiteral("id"))},
+        {QStringLiteral("operation"), QStringLiteral("resource")},
+        {QStringLiteral("suggestions"), QJsonArray()},
+    };
+}
+
+QJsonObject ObserveIconHandoff(
+    const QJsonObject& probe,
+    const goldendict::core::DictionaryIdentity& identity) {
+    return QJsonObject{
+        {QStringLiteral("entries"), QJsonArray()},
+        {QStringLiteral("errors"),
+         QJsonArray{QJsonObject{
+             {QStringLiteral("dictionary_id"), Text(identity.id)},
+             {QStringLiteral("message"),
+              QStringLiteral(
+                  "dictionary-error-4: Qt 6 dictionary identity icon "
+                  "publication is assigned to R9.1")},
+         }}},
+        {QStringLiteral("id"), probe.value(QStringLiteral("id"))},
+        {QStringLiteral("operation"), QStringLiteral("icon")},
+        {QStringLiteral("suggestions"), QJsonArray()},
+    };
+}
+
 QJsonObject ObserveMorphology(
     const QJsonObject& probe,
     const goldendict::core::dictionary::Backend& backend) {
@@ -223,12 +290,13 @@ QJsonObject ObserveMorphology(
         dynamic_cast<const goldendict::core::dictionary::SynonymBackend*>(
             &backend);
     if (synonyms == nullptr)
-        throw std::runtime_error("Hunspell provider lacks morphology capability");
+        throw std::runtime_error(
+            "Hunspell provider lacks morphology capability");
     goldendict::core::dictionary::RequestOptions options;
     options.result_limit = static_cast<std::size_t>(
         probe.value(QStringLiteral("result_limit")).toInteger());
-    options.deadline = std::chrono::steady_clock::now() +
-                       std::chrono::seconds(30);
+    options.deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(30);
     QJsonArray suggestions;
     for (const auto& headword : synonyms->FindHeadwordsForSynonym(
              Utf8(probe.value(QStringLiteral("query")).toString()), options)) {
@@ -258,6 +326,14 @@ QJsonObject ObserveDictionary(
             probes.append(ObserveLookup(probe, identity, service));
         else if (operation == QStringLiteral("suggest"))
             probes.append(ObserveSuggestions(probe, identity, service));
+        else if (operation == QStringLiteral("resource") &&
+                 item.value(QStringLiteral("format")).toString() ==
+                     QStringLiteral("stardict"))
+            probes.append(ObserveResource(probe, identity, primary));
+        else if (operation == QStringLiteral("icon") &&
+                 item.value(QStringLiteral("format")).toString() ==
+                     QStringLiteral("stardict"))
+            probes.append(ObserveIconHandoff(probe, identity));
         else
             throw std::runtime_error("lookup catalog operation is invalid");
     }
@@ -271,12 +347,11 @@ QJsonObject ObserveDictionary(
     };
 }
 
-QJsonObject ObserveHunspellDictionary(const QJsonObject& item,
-                                       const QString& primary,
-                                       const goldendict::core::DictionaryIdentity&
-                                           identity) {
-    const auto directory = std::filesystem::u8path(
-        Utf8(QFileInfo(primary).absolutePath()));
+QJsonObject ObserveHunspellDictionary(
+    const QJsonObject& item, const QString& primary,
+    const goldendict::core::DictionaryIdentity& identity) {
+    const auto directory =
+        std::filesystem::u8path(Utf8(QFileInfo(primary).absolutePath()));
     const auto discovery =
         goldendict::core::morphology::hunspell::Discover(directory);
     const auto found = std::find_if(
@@ -335,10 +410,10 @@ int main(int argc, char* argv[]) {
     try {
         const QByteArray catalog_content = ReadBounded(options->catalog);
         const QJsonObject catalog = ReadCatalog(catalog_content);
-        const QString catalog_hash = QString::fromLatin1(
-            QCryptographicHash::hash(catalog_content,
-                                     QCryptographicHash::Sha256)
-                .toHex());
+        const QString catalog_hash =
+            QString::fromLatin1(QCryptographicHash::hash(
+                                    catalog_content, QCryptographicHash::Sha256)
+                                    .toHex());
         goldendict::core::CoreConfiguration configuration;
         configuration.dictionary_paths = {Utf8(options->dictionary_root)};
         configuration.index_directory = Utf8(options->index_root);
@@ -378,15 +453,14 @@ int main(int argc, char* argv[]) {
                 dictionaries.append(ObserveHunspellDictionary(
                     item, primary, FindDictionary(identities, primary)));
             } else {
-                dictionaries.append(ObserveDictionary(
-                    item, FindDictionary(identities, primary), *service,
-                    primary));
+                dictionaries.append(
+                    ObserveDictionary(item, FindDictionary(identities, primary),
+                                      *service, primary));
             }
         }
         const QJsonObject raw{
             {QStringLiteral("catalog_sha256"), catalog_hash},
-            {QStringLiteral("conditions_sha256"),
-             options->conditions_sha256},
+            {QStringLiteral("conditions_sha256"), options->conditions_sha256},
             {QStringLiteral("dictionaries"), dictionaries},
             {QStringLiteral("errors"), QJsonArray()},
             {QStringLiteral("scenario"), options->scenario},

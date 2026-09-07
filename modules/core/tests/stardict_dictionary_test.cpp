@@ -9,6 +9,7 @@
 
 #include "../src/formats/stardict/stardict_article_decoder.h"
 #include "../src/formats/stardict/stardict_dictionary.h"
+#include "support/dsl_fixture.h"
 #include "support/stardict_fixture.h"
 
 namespace goldendict::core::formats::stardict {
@@ -48,6 +49,11 @@ class StardictDictionaryTest : public QObject {
     void HonorsCancellationAndDeadline();
     void TranslatesReaderFailures();
     void LoadsTypedResourcesAndLegacyDelimiters();
+    void LoadsResourceZipWithDirectoryAndCasePrecedence();
+    void DiscoversLegacyResourceZipCandidatesInOrder();
+    void RejectsCorruptResourceZipData();
+    void DetectsResourceZipChangesAndReloadsAfterRestart();
+    void HonorsCancellationForResourceZipReads();
     void ReturnsMissingResourceWithoutAnError();
     void RejectsUnsafeResourcePaths();
     void RejectsResourceSymlinkEscapes();
@@ -61,6 +67,32 @@ std::filesystem::path TemporaryPath(const QTemporaryDir& directory) {
 std::string LegacyArticle(std::string_view headword, std::string_view body) {
     return "<h3 class=\"sdct_headwords\">" + std::string(headword) + "</h3>" +
            std::string(body);
+}
+
+std::filesystem::path WriteResourceZip(
+    const std::filesystem::path& root,
+    const std::filesystem::path& relative_archive,
+    const std::vector<test::DslZipResource>& resources, bool zip64 = false) {
+    const auto temporary = test::WriteDslResourceZip(
+        root / "resource-fixture.dsl", resources, zip64);
+    const auto destination = root / relative_archive;
+    std::filesystem::create_directories(destination.parent_path());
+    std::error_code error;
+    std::filesystem::remove(destination, error);
+    error.clear();
+    std::filesystem::rename(temporary, destination, error);
+    if (error) {
+        throw std::runtime_error("Cannot place StarDict resource ZIP fixture");
+    }
+    return destination;
+}
+
+std::string ResourceText(const std::optional<dictionary::Resource>& resource) {
+    if (!resource.has_value()) {
+        return {};
+    }
+    return std::string(reinterpret_cast<const char*>(resource->data.data()),
+                       resource->data.size());
 }
 
 void StardictDictionaryTest::ExposesIdentityAndBoundedArticles() {
@@ -725,6 +757,147 @@ void StardictDictionaryTest::LoadsTypedResourcesAndLegacyDelimiters() {
         reinterpret_cast<const char*>(resource->data.data()),
         resource->data.size());
     QCOMPARE(loaded, image_data);
+}
+
+void StardictDictionaryTest::LoadsResourceZipWithDirectoryAndCasePrecedence() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    WriteResourceZip(root, "res.zip",
+                     {{"shared.txt", "archive", false},
+                      {"Images/Case.PNG", "case-sensitive-member", true},
+                      {"archive-only.wav", "wave", true}});
+    test::WriteStardictResource(root, "shared.txt", "directory");
+    const Dictionary dictionary = Dictionary::Open("fixture-id", info_path);
+
+    QCOMPARE(ResourceText(dictionary.GetResource("shared.txt")), "directory");
+    QCOMPARE(ResourceText(dictionary.GetResource("images/case.png")),
+             "case-sensitive-member");
+    const auto wave = dictionary.GetResource(
+        "\x1e"
+        "archive-only.wav"
+        "\x1f");
+    QVERIFY(wave.has_value());
+    QCOMPARE(wave->id, "archive-only.wav");
+    QCOMPARE(wave->media_type, "audio/wav");
+    QCOMPARE(ResourceText(wave), "wave");
+}
+
+void StardictDictionaryTest::DiscoversLegacyResourceZipCandidatesInOrder() {
+    const auto run =
+        [](const std::filesystem::path& root,
+           const std::vector<std::pair<std::filesystem::path, std::string>>&
+               archives) {
+            const auto info_path =
+                test::WriteStardictFixture(root, {{"example", "article"}});
+            for (const auto& [path, value] : archives) {
+                WriteResourceZip(root, path, {{"selected.txt", value, false}});
+            }
+            return ResourceText(Dictionary::Open("fixture-id", info_path)
+                                    .GetResource("selected.txt"));
+        };
+
+    QTemporaryDir uppercase_directory;
+    QVERIFY(uppercase_directory.isValid());
+    QCOMPARE(run(TemporaryPath(uppercase_directory), {{"RES.ZIP", "upper"}}),
+             "upper");
+
+    QTemporaryDir nested_directory;
+    QVERIFY(nested_directory.isValid());
+    QCOMPARE(run(TemporaryPath(nested_directory),
+                 {{std::filesystem::path("res") / "res.zip", "nested"}}),
+             "nested");
+
+    QTemporaryDir precedence_directory;
+    QVERIFY(precedence_directory.isValid());
+    QCOMPARE(run(TemporaryPath(precedence_directory),
+                 {{std::filesystem::path("res") / "res.zip", "nested"},
+                  {"RES.ZIP", "upper"},
+                  {"res.zip", "lower"}}),
+             "lower");
+}
+
+void StardictDictionaryTest::RejectsCorruptResourceZipData() {
+    QTemporaryDir invalid_directory;
+    QVERIFY(invalid_directory.isValid());
+    const auto invalid_root = TemporaryPath(invalid_directory);
+    const auto invalid_info =
+        test::WriteStardictFixture(invalid_root, {{"example", "article"}});
+    test::WriteBinaryFile(invalid_root / "res.zip", "not a ZIP archive");
+    try {
+        static_cast<void>(Dictionary::Open("invalid", invalid_info));
+        QFAIL("Dictionary open should reject a corrupt resource ZIP");
+    } catch (const dictionary::Error& error) {
+        QCOMPARE(error.code(), dictionary::ErrorCode::kInvalidData);
+    }
+
+    QTemporaryDir checksum_directory;
+    QVERIFY(checksum_directory.isValid());
+    const auto checksum_root = TemporaryPath(checksum_directory);
+    const auto checksum_info =
+        test::WriteStardictFixture(checksum_root, {{"example", "article"}});
+    const auto archive = WriteResourceZip(checksum_root, "res.zip",
+                                          {{"corrupt.txt", "payload", false}});
+    auto bytes = test::ReadBinaryFile(archive);
+    const auto payload = bytes.find("payload");
+    QVERIFY(payload != std::string::npos);
+    bytes[payload] = static_cast<char>(bytes[payload] ^ 0x01);
+    test::WriteBinaryFile(archive, bytes);
+    const Dictionary checksum = Dictionary::Open("checksum", checksum_info);
+    try {
+        static_cast<void>(checksum.GetResource("corrupt.txt"));
+        QFAIL("Resource read should reject a checksum mismatch");
+    } catch (const dictionary::Error& error) {
+        QCOMPARE(error.code(), dictionary::ErrorCode::kInvalidData);
+    }
+}
+
+void StardictDictionaryTest::DetectsResourceZipChangesAndReloadsAfterRestart() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    const auto archive =
+        WriteResourceZip(root, "res.zip", {{"changing.txt", "before", true}});
+    const Dictionary before = Dictionary::Open("fixture-id", info_path);
+    QCOMPARE(ResourceText(before.GetResource("changing.txt")), "before");
+
+    std::ofstream(archive, std::ios::binary | std::ios::app).put('x');
+    try {
+        static_cast<void>(before.GetResource("changing.txt"));
+        QFAIL("An open dictionary should reject a changed resource archive");
+    } catch (const dictionary::Error& error) {
+        QCOMPARE(error.code(), dictionary::ErrorCode::kUnavailable);
+    }
+
+    WriteResourceZip(root, "res.zip",
+                     {{"changing.txt", "after-restart", true}});
+    const Dictionary after = Dictionary::Open("fixture-id", info_path);
+    QCOMPARE(ResourceText(after.GetResource("changing.txt")), "after-restart");
+}
+
+void StardictDictionaryTest::HonorsCancellationForResourceZipReads() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto info_path =
+        test::WriteStardictFixture(root, {{"example", "article"}});
+    WriteResourceZip(root, "res.zip",
+                     {{"cancel.txt", std::string(256U * 1024U, 'x'), true}});
+    const Dictionary dictionary = Dictionary::Open("fixture-id", info_path);
+    CancelledSignal signal;
+    dictionary::RequestOptions options;
+    options.cancellation = &signal;
+
+    try {
+        static_cast<void>(dictionary.GetResource("cancel.txt", options));
+        QFAIL("Resource ZIP reads should honor cancellation");
+    } catch (const dictionary::Error& error) {
+        QCOMPARE(error.code(), dictionary::ErrorCode::kCancelled);
+    }
 }
 
 void StardictDictionaryTest::ReturnsMissingResourceWithoutAnError() {

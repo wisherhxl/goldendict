@@ -368,7 +368,26 @@ contract without adding GUI-owned history. Bounded geometry and tab-opening
 preferences use the same atomic configuration path without adding GUI types.
 
 Built-in local formats are composed behind the same private backend contract.
-StarDict owns its generated index and typed resource adapter. Dictd consumes
+StarDict owns its generated index and a private `ResourceProvider`. The
+provider confines directory reads below the adjacent `res` root, preserves
+directory-before-archive precedence, and selects `res.zip`, `RES.ZIP`, then
+`res/res.zip` in frozen Qt 5 order. Archive members use Unicode simple-case
+keys, bounded lazy stored/raw-deflate reads, CRC verification, immutable source
+metadata, and request checkpoints. Absolute, traversing, and link/reparse-
+escaping identifiers remain typed invalid-data failures under the approved
+security exception. The format-neutral dictionary resource DTO and installed
+APIs do not change.
+
+The central-directory, ZIP64, decoding, CRC, and source-snapshot mechanics are
+owned once by a private foundation `ZipArchive`; the existing DSL `ResourceZip`
+is now a thin format-specific candidate resolver over that component. This
+keeps archive mechanics independent of dictionary naming and case policy while
+avoiding a public archive abstraction or GUI dependency. Paired frozen-Qt-5
+icon rendering proves StarDict candidate precedence and fallback behavior, but
+Qt 6 dictionary icon publication remains an explicit unsupported handoff until
+the cross-format identity asset and UI contract is delivered by R9.1.
+
+Dictd consumes
 the original `.index` plus `.dict` or `.dict.dz` files directly, including the
 optional original-headword column and `00databaseshort` title metadata. Dictd
 articles enter the common inert article assembler as untrusted plain text;

@@ -268,7 +268,10 @@ def read_catalog(
         raise LookupAcceptanceError(
             "Catalog does not cover the required families/cases"
         )
-    if any(operations_by_format[item] != {"lookup", "suggest"} for item in LOCAL_FORMATS):
+    if any(
+        not {"lookup", "suggest"}.issubset(operations_by_format[item])
+        for item in LOCAL_FORMATS
+    ):
         raise LookupAcceptanceError(
             "Each real dictionary family needs lookup and suggestion"
         )

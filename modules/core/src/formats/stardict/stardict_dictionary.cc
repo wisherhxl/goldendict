@@ -107,7 +107,7 @@ Dictionary Dictionary::Open(
             dictionary.reader_.metadata().target_language;
         dictionary.identity_.description =
             dictionary.reader_.metadata().description;
-        dictionary.resource_root_ = info_path.parent_path() / "res";
+        dictionary.resources_ = ResourceProvider::Open(info_path);
         if (full_text_index_path.has_value()) {
             try {
                 std::vector<dictionary::FullTextDocument> documents;
@@ -275,7 +275,7 @@ dictionary::HeadwordPage Dictionary::EnumerateHeadwords(
 std::optional<dictionary::Resource> Dictionary::GetResource(
     std::string_view resource_id,
     const dictionary::RequestOptions& options) const {
-    return LoadResource(resource_root_, resource_id, options);
+    return resources_.Load(resource_id, options);
 }
 
 }  // namespace goldendict::core::formats::stardict

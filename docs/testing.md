@@ -1332,6 +1332,57 @@ and the repository Python suite passes 170 of 170 with two expected
 platform-condition skips. All Qt 6 observers, build-tree executables, and
 tests use the Release Conan launcher environment.
 
+R3.6 Unit 4 reuses the complete Unit 3 generated article matrix and adds
+adjacent StarDict resource companions. The final pair is retained at
+`evidence/qt5-qt6-r36-unit4-stardict-final-v2`. Pair ID
+`51027370e28b1e0be44206cdb93e08a6d16e3c85182c51dafe85ee0f8d23f277`
+binds frozen Qt 5 commit
+`3d93dd66197aea10edf6c29998ddc9c213d0aaa8`, Qt 6 implementation Tree ID
+`af3a1334122de921fb54ea2d05b1c288e6fd995c`, fixture-manifest SHA-256
+`35bde631c94d2eb7729f5ceda14165b2edbb7e301058ea6508c5016d2bd2c1c8`,
+and canonical conditions SHA-256
+`811bad1b707bfcc39c63b1ead67ddc3584ac7bab6867dc607e998a701d6d21a6`.
+The 80 generated GPL-3.0-or-later files total 6,598 bytes; the inherited Unit
+3 source files remain byte-identical. The 28-probe catalog has SHA-256
+`c36c95080d77ec01047f1a0b08da89666c5f7d04530e5958a73a5659abdfe60e`.
+
+Clean-discovery and warm-restart observations from both independently built
+products are internally stable. All thirteen inherited article/suggestion
+probes and all six valid resource probes are strictly equal. The valid
+resource matrix covers directory-over-archive precedence, stored and deflated
+archive members, case-folded member lookup, uppercase and nested archive
+candidates, and all-candidate precedence. The strict comparison deliberately
+reports non-equivalence with exactly 34 leaves and has SHA-256
+`23d6dfe5cc050ba63b5d882783fb0e390e7fc68021a1634a1c2b3c052516176b`.
+Ten leaves are the approved security exception in the two Qt 6 observations:
+the frozen Qt 5 traversal and Windows junction/reparse payloads are absent,
+and traversal, absolute, and reparse-escaping identifiers each report one
+Qt 6 error. The exact legacy result signatures and raw Qt 6 `kInvalidData`
+diagnostics are retained in `allowed-resource-differences.json`, SHA-256
+`42fb593cf33cc736b77b9f1b6ac45232a4fe527cac65c3e7b3897c027ce7d475`.
+
+`stardict-icon-source-inventory.json`, SHA-256
+`2e156dd68261a9cbfa544841eb0a876775f564f93536cea5253fdc13f2ae3fd7`,
+binds six actual paired icon probes to the same manifest and pair. Frozen Qt 5
+decodes and renders every generated source through `QIcon`: the BMP-only and
+all-candidate signatures are equal, proving BMP precedence, while the PNG,
+JPG, ICO, and built-in fallback signatures are distinct. The remaining 24
+strict leaves record Qt 6's explicit `dictionary-error-4` R9.1 handoff for a
+cross-format identity payload and UI publication. The normalized Qt 5 clean
+observation and retained raw Qt 6 clean observation have SHA-256
+`ed596829486fd82ae3ad95ecf4002f6b22110041e6648763b1d3b2d58d41bae3`
+and `a9c9de0f324f0c807b6b80f1aa928b51086d804af10aca88261040e5a996d6dd`.
+
+Focused `stardict_dictionary_test` cases cover directory/archive precedence,
+stored/deflated and case-folded archive members, candidate selection,
+corruption and CRC failure, source mutation and reopen recovery, media typing,
+legacy delimiters, request cancellation, missing resources, unsafe paths,
+symlink/reparse escape, and size bounds. `dsl_dictionary_test` remains green
+against the extracted shared archive foundation, and all acceptance commands
+run from the Release Conan environment. The VS 2026/MSVC 14.44 complete
+Release build succeeds, serial CTest passes 135 of 135, and the repository Python suite
+passes 170 of 170 with two expected platform-condition skips.
+
 `stardict_dictionary_test` verifies the private backend contract and StarDict
 adapter: identity and provenance, bounded exact results, cancellation,
 deadlines, bounded prefix results, translated format errors, raw formatted
