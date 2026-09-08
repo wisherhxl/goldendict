@@ -39,7 +39,10 @@ class DictdDictionaryTest : public QObject {
     void HonorsCancellationAndHasNoResources();
     void BuildsRangeDeduplicatedFullTextIndex();
     void ReusesAndRebuildsFullTextIndexForBothSources();
-    void SearchesDictzipAndContainsFullTextFailures();
+    void SearchesGzipAndContainsFullTextFailures();
+    void ReusesRealDictzipCompanions_data();
+    void ReusesRealDictzipCompanions();
+    void RebuildsPreContentDetectionFullTextIndex();
 };
 
 void DictdDictionaryTest::ExposesPlainArticlesAndSuggestions() {
@@ -156,7 +159,7 @@ void DictdDictionaryTest::ReusesAndRebuildsFullTextIndexForBothSources() {
              FullTextErrorCode::kUnsupported);
 }
 
-void DictdDictionaryTest::SearchesDictzipAndContainsFullTextFailures() {
+void DictdDictionaryTest::SearchesGzipAndContainsFullTextFailures() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     const auto root = std::filesystem::path(directory.path().toStdString());
@@ -196,6 +199,117 @@ void DictdDictionaryTest::SearchesDictzipAndContainsFullTextFailures() {
     query.timeout = std::chrono::seconds(5);
     QCOMPARE(oversized.SearchFullText(query).errors.front().code,
              FullTextErrorCode::kResourceLimit);
+}
+
+void DictdDictionaryTest::ReusesRealDictzipCompanions_data() {
+    QTest::addColumn<QString>("suffix");
+    QTest::newRow("ra-dict") << ".dict";
+    QTest::newRow("ra-dz") << ".dict.dz";
+}
+
+void DictdDictionaryTest::ReusesRealDictzipCompanions() {
+    QFETCH(QString, suffix);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const std::string title = "00databaseshort\nRA title\n";
+    const std::string info = "RA description";
+    const std::string article =
+        "searchable " + std::string(140U, 'x') + " ending";
+    const auto index =
+        test::WriteDictdFixture(root, {{"00databaseshort", title, {}},
+                                       {"00databaseinfo", info, {}},
+                                       {"entry", article, "alias"}});
+    const auto selected = root / ("fixture" + suffix.toStdString());
+    const auto bytes = test::EncodeDictzipFixture(title + info + article);
+    QVERIFY(std::filesystem::remove(root / "fixture.dict"));
+    std::ofstream(selected, std::ios::binary)
+        .write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    const auto original_sources =
+        dictionary::CaptureSourceSnapshot({index, selected});
+    const auto full_text_path = root / "fixture.gdfts";
+    FullTextQuery query;
+    query.text = "searchable";
+    for (const bool warm : {false, true}) {
+        const auto dictionary =
+            Dictionary::Open("dictd-id", index, full_text_path);
+        QCOMPARE(dictionary.identity().name, "RA title");
+        QCOMPARE(dictionary.identity().description, info);
+        QCOMPARE(dictionary.identity().article_count, 3U);
+        QCOMPARE(dictionary.identity().headword_count, 4U);
+        QCOMPARE(dictionary.identity().id, "dictd-id");
+        QCOMPARE(dictionary.identity().source,
+                 std::filesystem::weakly_canonical(index).string());
+        QCOMPARE(dictionary.LookupExact("entry", {}).front().data, article);
+        QCOMPARE(dictionary.LookupExact("alias", {}).front().data, article);
+        QCOMPARE(
+            dictionary.full_text_index_state(),
+            std::optional(warm ? dictionary::FullTextIndexState::kReused
+                               : dictionary::FullTextIndexState::kCreated));
+        const auto response = dictionary.SearchFullText(query);
+        QVERIFY(response.errors.empty());
+        QVERIFY(!response.partial);
+        QCOMPARE(response.results.size(), 1U);
+        QCOMPARE(response.results.front().headword, "entry");
+        QCOMPARE(response.results.front().dictionary.name, "RA title");
+        QCOMPARE(response.results.front().document_id,
+                 "dictd-index:2:" + std::to_string(title.size() + info.size()) +
+                     ":" + std::to_string(article.size()));
+        QCOMPARE(dictionary::CaptureSourceSnapshot({index, selected}),
+                 original_sources);
+    }
+    auto damaged = bytes;
+    damaged[damaged.size() - 8U] ^= 1;
+    std::ofstream(selected, std::ios::binary | std::ios::trunc)
+        .write(damaged.data(), static_cast<std::streamsize>(damaged.size()));
+    try {
+        static_cast<void>(Dictionary::Open("dictd-id", index, full_text_path));
+        QFAIL("Damaged selected dictzip must report invalid data");
+    } catch (const dictionary::Error& error) {
+        QCOMPARE(error.code(), dictionary::ErrorCode::kInvalidData);
+    }
+}
+
+void DictdDictionaryTest::RebuildsPreContentDetectionFullTextIndex() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = root / "fixture.index";
+    const auto data = root / "fixture.dict";
+    const auto full_text_path = root / "fixture.gdfts";
+    std::ofstream(index, std::ios::binary) << "entry\tM\tC\n";
+    const auto bytes = test::EncodeDictzipFixture(std::string(12U, 'x') + "OK");
+    std::ofstream(data, std::ios::binary)
+        .write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    // The former raw .dict path loaded the valid UTF-8 RA header at this range.
+    // Seed precisely that old document against the unchanged original sources.
+    QCOMPARE(bytes.substr(12U, 2U), "RA");
+    dictionary::FullTextDocument old_document;
+    old_document.dictionary.id = "dictd-id";
+    old_document.dictionary.name = "fixture";
+    old_document.headword = "entry";
+    old_document.document_id = "dictd-index:0:12:2";
+    old_document.plain_text = bytes.substr(12U, 2U);
+    const auto sources = dictionary::CaptureSourceSnapshot({index, data});
+    const auto old_index = dictionary::FullTextIndex::OpenOrBuild(
+        full_text_path, sources, {old_document});
+    FullTextQuery query;
+    query.text = "RA";
+    QCOMPARE(old_index.Search(query).results.size(), 1U);
+    for (const bool warm : {false, true}) {
+        const auto dictionary =
+            Dictionary::Open("dictd-id", index, full_text_path);
+        QCOMPARE(dictionary.full_text_index_state(),
+                 std::optional(
+                     warm ? dictionary::FullTextIndexState::kReused
+                          : dictionary::FullTextIndexState::kRebuiltStale));
+        query.text = "RA";
+        QVERIFY(dictionary.SearchFullText(query).results.empty());
+        query.text = "OK";
+        QCOMPARE(dictionary.SearchFullText(query).results.size(), 1U);
+        QCOMPARE(dictionary.LookupExact("entry", {}).front().data, "OK");
+        QCOMPARE(dictionary::CaptureSourceSnapshot({index, data}), sources);
+    }
 }
 
 void DictdDictionaryTest::HonorsCancellationAndHasNoResources() {

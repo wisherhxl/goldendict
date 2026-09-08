@@ -1533,10 +1533,18 @@ characters, unknown or oversized encoding names, and output-limit violations.
 generated `.index` and data fixtures. They verify companion discovery,
 base-64 offset/size parsing, the optional original-headword column,
 `00databaseshort` naming, Unicode-folded ranking, distinct suggestions, plain
-and gzip/dictzip-compatible data, scan checkpoints, cancellation, malformed
+and ordinary-gzip data, scan checkpoints, cancellation, malformed
 indexes, corrupt compression, and out-of-range article rejection.
 `application_service_test` also verifies that Dictd and StarDict coexist behind
 the same catalog and lookup facade.
+
+[R3.7a](dictd-companion-loading-parity.md) adds genuine version-1 RA dictzip
+fixtures with independent chunk-table parsing and out-of-order raw inflation.
+The Dictd tests verify plain/RA content under both companion suffixes, selected
+`.dict` precedence, cross-chunk article bytes, metadata/source identity, typed
+stream/checksum/truncation failures, cold/warm full-text reuse, and one-time
+invalidation of a pre-correction artifact against unchanged source files.
+Ordinary gzip remains an observed Qt 5 difference, not approved parity.
 
 `sdict_discovery_test`, `sdict_reader_test`, and `sdict_dictionary_test` use a
 generated packed `.dct` container. They verify recursive discovery, title and

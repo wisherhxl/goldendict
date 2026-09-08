@@ -14,7 +14,27 @@ class DictdDiscoveryTest : public QObject {
 
    private slots:
     void DiscoversCompleteDictionariesAndReportsMissingData();
+    void DiscoversRealDictzipWithEitherCompanionName();
 };
+
+void DictdDiscoveryTest::DiscoversRealDictzipWithEitherCompanionName() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    for (const std::string suffix : {".dict", ".dict.dz"}) {
+        const auto folder = root / suffix;
+        const auto index =
+            test::WriteDictdFixture(folder, {{"entry", "definition", {}}});
+        QVERIFY(std::filesystem::remove(folder / "fixture.dict"));
+        const auto bytes = test::EncodeDictzipFixture("definition");
+        std::ofstream(folder / ("fixture" + suffix), std::ios::binary)
+            .write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+        const auto discovered = Discover({folder, index});
+        QCOMPARE(discovered.index_files,
+                 std::vector<std::filesystem::path>{index});
+        QVERIFY(discovered.issues.empty());
+    }
+}
 
 void DictdDiscoveryTest::DiscoversCompleteDictionariesAndReportsMissingData() {
     QTemporaryDir directory;

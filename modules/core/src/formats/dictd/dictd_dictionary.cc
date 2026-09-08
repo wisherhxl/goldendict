@@ -13,6 +13,11 @@
 namespace goldendict::core::formats::dictd {
 namespace {
 
+dictionary::SourceSnapshot FullTextSources(dictionary::SourceSnapshot sources) {
+    sources.push_back({"goldendict:dictd-content-detection-v1", 0U, 0});
+    return sources;
+}
+
 dictionary::Error TranslateError(const Error& error) {
     switch (error.code()) {
         case ErrorCode::kMissingFile:
@@ -93,7 +98,7 @@ Dictionary Dictionary::Open(
                 dictionary.full_text_index_ =
                     dictionary::FullTextIndex::OpenOrBuild(
                         *full_text_index_path,
-                        dictionary.reader_.source_snapshot(),
+                        FullTextSources(dictionary.reader_.source_snapshot()),
                         std::move(documents));
             } catch (const dictionary::FullTextIndexError& error) {
                 dictionary.full_text_error_ = FullTextError{

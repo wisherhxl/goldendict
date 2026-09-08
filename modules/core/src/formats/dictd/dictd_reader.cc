@@ -92,6 +92,24 @@ std::string ReadCompressedFile(const std::filesystem::path& path) {
     return data;
 }
 
+std::string ReadDictionaryData(const std::filesystem::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        Throw(ErrorCode::kMissingFile, path, "Cannot open dictionary data");
+    }
+    std::array<unsigned char, 2U> magic{};
+    input.read(reinterpret_cast<char*>(magic.data()), magic.size());
+    if (input.bad()) {
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Cannot read dictionary data header");
+    }
+    const bool compressed = input.gcount() == 2 && magic[0] == 0x1fU &&
+                            magic[1] == 0x8bU;
+    input.close();
+    return compressed ? ReadCompressedFile(path)
+                      : ReadFile(path, kMaximumDictionarySize);
+}
+
 std::uint32_t DecodeBase64(std::string_view encoded,
                            const std::filesystem::path& path,
                            std::size_t line_number) {
@@ -194,7 +212,6 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
     if (std::filesystem::is_regular_file(plain_path, filesystem_error) &&
         !filesystem_error) {
         reader.dictionary_path_ = plain_path;
-        reader.dictionary_data_ = ReadFile(plain_path, kMaximumDictionarySize);
     } else {
         filesystem_error.clear();
         if (!std::filesystem::is_regular_file(compressed_path,
@@ -204,8 +221,8 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
                   "Dictd dictionary data companion is missing");
         }
         reader.dictionary_path_ = compressed_path;
-        reader.dictionary_data_ = ReadCompressedFile(compressed_path);
     }
+    reader.dictionary_data_ = ReadDictionaryData(reader.dictionary_path_);
 
     std::ifstream input(index_path, std::ios::binary);
     if (!input) {

@@ -3,6 +3,7 @@
 #ifndef GOLDENDICT_CORE_TESTS_SUPPORT_DICTD_FIXTURE_H_
 #define GOLDENDICT_CORE_TESTS_SUPPORT_DICTD_FIXTURE_H_
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -10,6 +11,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -106,6 +108,84 @@ inline std::filesystem::path CompressDictdFixture(
         throw std::runtime_error("Cannot finish compressed Dictd fixture");
     }
     return compressed_path;
+}
+
+// Generated test content only. Each table entry ends with Z_FULL_FLUSH so
+// the frozen Dictd reader can inflate that chunk from an independent offset.
+inline std::string EncodeDictzipFixture(std::string_view data,
+                                        std::uint16_t chunk_length = 64U) {
+    if (data.empty() || chunk_length == 0U) {
+        throw std::runtime_error("Dictzip fixture needs data and a chunk size");
+    }
+    const auto chunk_count = (data.size() + chunk_length - 1U) / chunk_length;
+    if (chunk_count > (65535U - 10U) / 2U) {
+        throw std::runtime_error("Dictzip fixture RA table is too large");
+    }
+    z_stream stream{};
+    if (deflateInit2(&stream, Z_BEST_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 8,
+                     Z_DEFAULT_STRATEGY) != Z_OK) {
+        throw std::runtime_error("Cannot initialize dictzip fixture");
+    }
+
+    struct EndDeflate {
+        z_stream* stream;
+
+        ~EndDeflate() { deflateEnd(stream); }
+    } end_deflate{&stream};
+
+    std::vector<std::uint16_t> lengths;
+    std::string payload;
+    std::vector<char> buffer(deflateBound(&stream, chunk_length) + 64U);
+    for (std::size_t offset = 0U; offset < data.size();
+         offset += chunk_length) {
+        const auto size =
+            std::min<std::size_t>(chunk_length, data.size() - offset);
+        stream.next_in =
+            reinterpret_cast<Bytef*>(const_cast<char*>(data.data() + offset));
+        stream.avail_in = static_cast<uInt>(size);
+        stream.next_out = reinterpret_cast<Bytef*>(buffer.data());
+        stream.avail_out = static_cast<uInt>(buffer.size());
+        const int status = deflate(&stream, Z_FULL_FLUSH);
+        const auto written = buffer.size() - stream.avail_out;
+        if (status != Z_OK || stream.avail_in != 0U || stream.avail_out == 0U ||
+            written > 65535U) {
+            throw std::runtime_error("Cannot encode dictzip fixture chunk");
+        }
+        lengths.push_back(static_cast<std::uint16_t>(written));
+        payload.append(buffer.data(), written);
+    }
+    stream.next_out = reinterpret_cast<Bytef*>(buffer.data());
+    stream.avail_out = static_cast<uInt>(buffer.size());
+    if (deflate(&stream, Z_FINISH) != Z_STREAM_END) {
+        throw std::runtime_error("Cannot finish dictzip fixture stream");
+    }
+    payload.append(buffer.data(), buffer.size() - stream.avail_out);
+
+    std::string result("\x1f\x8b\x08\x04\0\0\0\0\0\xff", 10U);
+    const auto append16 = [&result](std::uint16_t value) {
+        result.push_back(static_cast<char>(value & 0xffU));
+        result.push_back(static_cast<char>(value >> 8U));
+    };
+    append16(static_cast<std::uint16_t>(10U + 2U * chunk_count));
+    result += "RA";
+    append16(static_cast<std::uint16_t>(6U + 2U * chunk_count));
+    append16(1U);
+    append16(chunk_length);
+    append16(static_cast<std::uint16_t>(chunk_count));
+    for (const auto length : lengths) {
+        append16(length);
+    }
+    result += payload;
+    const auto append32 = [&result](std::uint32_t value) {
+        for (unsigned shift = 0U; shift < 32U; shift += 8U) {
+            result.push_back(static_cast<char>((value >> shift) & 0xffU));
+        }
+    };
+    append32(static_cast<std::uint32_t>(
+        crc32(0U, reinterpret_cast<const Bytef*>(data.data()),
+              static_cast<uInt>(data.size()))));
+    append32(static_cast<std::uint32_t>(data.size()));
+    return result;
 }
 
 }  // namespace goldendict::core::test
