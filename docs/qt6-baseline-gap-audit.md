@@ -2,9 +2,9 @@
 
 Status: Active execution baseline
 
-Audit date: 2026-09-03
+Original audit date: 2026-09-03
 
-Audited Qt 6 commit: `d3491598257a542dbc8d8dbf0bd36c3894711419`
+Originally audited Qt 6 commit: `d3491598257a542dbc8d8dbf0bd36c3894711419`
 
 Qt 5 evidence commit: `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`
 
@@ -56,7 +56,64 @@ change. Verify this documentation-only delivery through local Markdown link
 checks, diff whitespace checks, requirement consistency and fresh independent
 completion/integration audits; no product rebuild is required.
 
-## Evidence Reviewed
+## Current Status Snapshot (2026-09-08)
+
+Reconciled against integrated Qt 6 commit
+`ed579a6502a7cf5ca3fcb415602eb5bf8f04d20e`. This is a documentation
+reconciliation of accepted delivery evidence, not a new product acceptance run
+or a requirements change. The original audit observations and dated delivery
+records below remain historical evidence; the snapshot and explicitly marked
+leaf/subunit statuses identify their current disposition.
+
+**Complete** means the named leaf or subunit has its recorded implementation
+and acceptance evidence integrated. It does not close an enclosing workstream,
+prove Linux execution from Windows results, or waive later regression gates.
+**Open** includes partially delivered work and remaining acceptance obligations.
+R1 and R2 are complete within their inventory/harness and Windows stabilization
+scopes. R3 remains open after R3.1-R3.6; R3.7-R3.20 remain required. R4-R10
+remain open, including full Preferences, inspector/browser capability and
+visual matrices, platform integration, packaging and formal cutover.
+
+The commit column identifies integrated closure commits; earlier dependent
+corrections remain in their ancestry. Detailed evidence and limitations remain
+in the linked records. Commit IDs are exact Git object identities.
+
+| Leaf or subunit | Current status and evidence | Integrated commit(s) |
+| --- | --- | --- |
+| R1.1 / R1.2 | **Complete:** safe manifest and paired isolated workspace; [original R1 evidence](#readiness-and-architecture-audit) | `18f3cfc5c308d730e9b52f5b69c579d585b73c14`, `576d518e486d3a95eeb1aa5b1e56fdd7c4f8d9aa` |
+| R2.1 / R2.2 / R2.3 | **Complete:** [exception](#r21-issue-record-and-readiness), [path/process](#r22-issue-record-and-readiness), and [WebEngine](#r23-issue-record-and-readiness) corrections; subsequent candidate suites remain mandatory | `ffc1a41f7ef2e0f49ea1328ca44c82fb9f12b2be`, `69cd2b54883266d3acc8398f36e7ec1ef24f4e56`, `416d861f5db16eb3d156df7e5938a70943952537` |
+| R3.1 | **Complete:** [user-state upgrade and rollback-safety matrix](#r31-delivery-verification) | `333eee52c0e6bf91ed792522967e60774dbd9b08` |
+| R3.2 | **Complete:** [discovery/lifecycle, cancellation and recovery](#r32c-implementation-plan) | `f8642f3e2e8204412abcf0504914de9a5b406c05` |
+| R3.3 | **Complete:** [real MDict split-resource acceptance](#r33-development-readiness); non-corpus variants remain R3.13 | `541aa99e5f6f2e396d6691615b22d2ddaff68a75` |
+| R3.4 | **Complete:** [real DSL article/resource-ZIP acceptance](#r34-real-dsl-resource-zip-acceptance-readiness); advanced non-corpus variants remain R3.11 | `74b5cea7108ab8fb02163dbed0149145b5b44ec4` |
+| R3.5 | **Complete:** [paired lookup, morphology and management closure](#r35-real-corpus-lookup-and-management-readiness); full-text and visual matrices remain separate | `4a08ba92f10c02726582ad0ba04e5482777dc02c` |
+| R3.6 Units 1 / 2 / 3 | **Complete:** [companions](#r36-unit-1-implementation-result), [index/metadata](#r36-unit-2-implementation-result), and [article fields](#r36-unit-3-implementation-result) | `11ed561dec4d82e14c6d10a19f616e940092fcc6`, `decb49f0eb5af9f474e908bcf0b73400261bce46`, `cdc2dad3f19637a2f99f246572c39bbae14f2dac` |
+| R3.6 Unit 4 and leaf closure | **Complete:** [resource companions, transformations and paired closure](#r36-unit-4-implementation-result); icon publication remains R9.1 | `29df43d10ef7fef23f0676a191914a211f0d2523`, `3b03f09c7635940f86a07813308e635cb1d7a0cc`, `cd48f6b4fc1584b0dad8327cd2cffa126c2ccda7` |
+| R4.1 shared backed-layout subunit | **Complete:** [Interface/Network/Advanced layout](preferences-page-layout.md); R4.1/R4.2 and seven-page acceptance remain **Open** | `67d95342294ee6e11889dd08618fc2444e38aa6c` |
+| R8.2 Unit 1 | **Complete:** [Inspect/F12, actual target/Console and private lifecycle](article-inspector-parity.md); complete capability acceptance remains **Open** | `9cd55c6321e7f9a5a78e4a55cf1155aac3f556aa` |
+| R8.2 Unit 2 / IG-01 | **Complete:** [shared/persisted geometry and approved close/exit timing](article-inspector-geometry.md), including frontend-readiness verification correction | `5ad6993bdee3af541923ce67d87e56755bd2e1c3`, `cdbc41eec517c0d8ab39b2bba0c6a0f43f44a096` |
+| IG-02 acceptance amendment | **Complete:** [approved engine-owned inspector appearance boundary](article-inspector-parity.md#ig-02-approved-inspector-frontend-visual-boundary); no capability or ordinary-UI waiver | `1a85fa7d01b237432453d4639858bca55930f252` |
+| R8.2/R9.8 Unit 3 / IG-03 | **Complete:** [popup cancellation, focus and approved keyboard-only reactivation](article-inspector-focus.md); remaining inspector/media/error-state and visual matrix stays **Open** | `67ce503bc1146c918eaca0255e21ccce5a6c2004`, `c0f9e17a4b042bc3ff1202f97b2d92c827f04ca8` |
+| R8.1/R9.8 Select Current Article subunit | **Complete:** [Ctrl+Shift+A and current-dictionary selection](article-selection-parity.md), including Windows synthetic and opt-in real-dictionary checks; resource saving, other actions and ordinary-menu/article visuals remain **Open** | `ed579a6502a7cf5ca3fcb415602eb5bf8f04d20e` |
+
+The latest recorded Windows Release evidence is the 2026-09-08
+[article-selection delivery](article-selection-parity.md#acceptance-evidence-and-remaining-gaps)
+at the snapshot commit: serial CTest 139/139, Python regressions 171 tests with
+two platform skips, and native selection checks 12/12 with no skips. These are
+dated results, not new runs by this reconciliation. Historical counts below
+remain attached to their original candidates. Linux execution, the full visual
+matrix, standalone release packages and same-candidate cutover remain pending.
+
+R3.7 (Dictd non-corpus variants) is the next numerical Windows-compatible leaf
+with its listed R3.5 dependency integrated. It still needs its own focused
+readiness/design check; this snapshot grants no automatic readiness to later
+leaves and does not change the dependency graph.
+
+## Evidence Reviewed (Original Audit)
+
+The following observations describe the 2026-09-03 audit, not the current
+snapshot. In particular, its test failures and missing DevTools predate the
+integrated corrections listed above.
 
 - The frozen Qt 5 source, including 19 Designer UI files and the main-window,
   Preferences, scan, dictionary-management, full-text, and platform sources.
@@ -85,9 +142,9 @@ completion/integration audits; no product rebuild is required.
 File counts are evidence of audit coverage, not a requirement to reproduce the
 Qt 5 source layout. Qt 6 may continue to construct Widgets programmatically.
 
-## Confirmed Complete Or Substantially Complete Areas
+## Confirmed Complete Or Substantially Complete Areas (Original Audit)
 
-| Area | Current evidence | Remaining boundary |
+| Area | Evidence at original audit | Boundary at original audit |
 | --- | --- | --- |
 | Product identity and build skeleton | Qt 6.11.1, Conan 2, CMake package, `goldendict_core`, install/package foundations | Release matrix and CI remain open |
 | Local dictionary foundation | All fifteen required local/specialized source families have bounded discovery, lookup, article, and focused fixture coverage | Advanced format variants and real-corpus proof remain open |
@@ -96,7 +153,7 @@ Qt 5 source layout. Qt 6 may continue to construct Widgets programmatically.
 | Online/external source composition | MediaWiki, websites, Forvo, DICT, and external programs compose transactionally | Narrow protocol, credentials, resources, audio, and process-policy gaps remain open |
 | Initial Linux integration | Single-instance lookup/activation, XWayland fallback, middle-click primary selection, desktop launcher/metainfo, help, and Russian locale | Continuous scanning, hotkeys, tray, broader localization, and release registration remain open |
 
-## Remaining Conformance Units
+## Conformance Workstreams And Remaining Scope
 
 The R1-R10 headings are coverage workstreams, not a strict execution order or
 commit-sized deliveries. The leaf delivery table below defines the
@@ -162,8 +219,9 @@ pages after the backed-layout correction. Restore the seven-page structure throu
 working controls. Deliver page families separately: Interface/Advanced,
 Audio, Full-text Search, Scan Popup, and Hotkeys. Do not expose inert controls.
 
-The first R4.1 unit is the [backed-page layout correction](preferences-page-layout.md).
-It restores existing Interface/Advanced control ownership and layout without
+The first R4.1 unit, the [backed-page layout correction](preferences-page-layout.md),
+is **Complete** at the current snapshot. It restores existing
+Interface/Advanced control ownership and layout without
 claiming complete page parity. Full R4.1 closure also depends on R7.4 tray/startup
 and R9 appearance/language resources and runtimes; R2.3 alone enables only the
 already-backed layout unit. Missing runtime-owned controls remain required.
@@ -281,8 +339,8 @@ launcher and Python tooling checks run directly.
 | R3.18 | LSA non-corpus icon and large-stream variants: LSA part of `CRD-DICT-003` | R3.5 | generated fixtures for icons, bounded large-file streaming, identity, indexing, lookup/playback, restart, corruption, and failure behavior |
 | R3.19 | ZIP sound-pack non-corpus ZIP64/split/encryption/icon/stream variants: ZIP-sound part of `CRD-DICT-003` | R3.5 | generated fixtures for every supported remaining archive/icon/stream case, identity, indexing, lookup/playback, restart, corruption, and failure behavior |
 | R3.20 | Sound-directory non-corpus icon and large-stream variants: sound-directory part of `CRD-DICT-003` | R3.5 | generated fixtures for icons, bounded large-file streaming, confinement, identity, indexing, lookup/playback, restart, corruption, and failure behavior |
-| R4.1 | Qt 5 Interface Preferences page and backed behavior | R2.3 for backed layout; R7.4 and R9 assets/runtimes for complete page | focused preference persistence/effect test plus paired page capture |
-| R4.2 | Qt 5 Advanced Preferences page and backed behavior | R4.1 | focused persistence/effect test plus paired page capture |
+| R4.1 | **Open:** Qt 5 Interface Preferences page and backed behavior; shared [backed-layout subunit Complete](preferences-page-layout.md) | R2.3 for backed layout; R7.4 and R9 assets/runtimes for complete page | focused preference persistence/effect test plus paired page capture; remaining tray/startup and appearance/language controls and complete-page geometry/visual acceptance |
+| R4.2 | **Open:** Qt 5 Advanced Preferences page and backed behavior; existing control layout is Complete within the R4.1 shared subunit | R4.1 | focused persistence/effect test plus paired page capture; remaining controls, bounds/defaults and platform groups |
 | R4.3 | Qt 5 Audio Preferences page and backed behavior | R4.1 | focused persistence/routing test plus paired page capture |
 | R4.4 | Qt 5 Full-text Search Preferences page and backed policy controls | R5.2 | focused policy/persistence test plus paired page capture |
 | R4.5 | Qt 5 Scan Popup Preferences page and backed controls | R7.2 | focused adapter/persistence test plus paired page capture |
@@ -308,8 +366,8 @@ launcher and Python tooling checks run directly.
 | R7.7 | X11, XWayland, and native-Wayland capability contract: `CRD-PLATFORM-005` | R7.1-R7.6 | platform matrix documenting and testing each supported/fallback/unsupported selection, scan, hotkey, tray, activation, and audio path without representing a platform limit as product removal |
 | R7.8 | Windows scan/clipboard, hotkey, tray, startup, activation, always-on-top, and single-instance adapters: `CRD-PLATFORM-001`, `005` | R6.1, R7.2-R7.4, R7.6 | private adapter tests and native Windows integration matrix covering registration, conflicts, lifecycle, groups/options, forwarding, and teardown |
 | R7.9 | Windows playback, external player, pronunciation, and SAPI speech: `CRD-PLATFORM-002`, `005` | R4.3, R6.5 | controlled process/media/SAPI adapter tests and manual native audio check |
-| R8.1 | Article resource saving and remaining safe context actions; [Select Current Article](article-selection-parity.md) restores Ctrl+Shift+A and current-dictionary selection | R3.6-R3.20 | local resource fixture, cancellation/error tests, and paired menu capture; remaining actions and ordinary-menu visuals stay open |
-| R8.2 | Qt WebEngine DevTools/inspector parity; [Unit 1](article-inspector-parity.md) restores Inspect/F12 and private lifecycle; [Unit 2](article-inspector-geometry.md) restores shared/persisted geometry and initial size under approved IG-01 | R2.3 | lifecycle, actual target/Console, Core import, close/exit/restart and native geometry evidence; IG-02 accepts only engine-owned appearance; remaining capability, GoldenDict-controlled visual and platform acceptance stay open |
+| R8.1 | **Open:** article resource saving and remaining safe context actions; [Select Current Article subunit Complete](article-selection-parity.md) for Ctrl+Shift+A and current-dictionary selection | R3.6-R3.20 | local resource fixture, cancellation/error tests, and paired menu capture; remaining actions and ordinary-menu visuals stay open |
+| R8.2 | **Open:** Qt WebEngine DevTools/inspector parity; [Unit 1](article-inspector-parity.md), [Unit 2/IG-01](article-inspector-geometry.md), and [Unit 3/IG-03](article-inspector-focus.md) are Complete for their recorded scopes | R2.3 | accepted entry-point, lifecycle, target/Console, geometry and popup/focus evidence; IG-02 accepts only engine-owned appearance; matched remaining Console/media/error capability, GoldenDict-controlled visual and platform acceptance stay open |
 | R8.3 | About, homepage, forum, configuration-folder, credits, and attribution workflows | R9.1 | focused action/URL/path tests and paired dialogs |
 | R8.4 | Remaining proxy/authentication, request identity, remote-content, and update behavior | R6.3, R6.4 | deterministic local proxy/origin/update fixtures and redaction tests |
 | R8.5 | Help window geometry and zoom persistence | R4.6, R8.3 | focused current/legacy persistence, invalid-state fallback, DPI/topology normalization, and paired Help capture |
@@ -320,7 +378,7 @@ launcher and Python tooling checks run directly.
 | R9.5 | Locale batch C enablement: `qt_it` through `zh_TW` in the R9.2 manifest | R9.4 | `lrelease`, fifteen locale smokes, fallback tests, and paired representative surfaces |
 | R9.6 | Matched empty/synthetic main-shell visual matrix: main window, menus, toolbars, tabs, lookup, results, Favorites, History, scan popup, and tray | R4.1, R4.5, R7.2, R7.4, R9.5 | fixed-environment captures, per-surface semantic checklist, and documented narrow masks |
 | R9.7 | Matched empty/synthetic settings-and-management visual matrix: seven Preferences pages, Sources, Dictionaries, Groups, dictionary info, headword browser, full-text search, Help, About, and message dialogs | R4.1-R6.4, R6.8, R8.2, R8.3, R8.5, R9.5 | fixed-environment captures, per-dialog semantic checklist, state coverage, and documented narrow masks |
-| R9.8 | Matched synthetic article/browser visual matrix: Welcome/article states, navigation, search, zoom, context menus, media, print, save, authentication, error, and DevTools states | R5.1, R6.3-R6.5, R8.1, R8.2, R8.4, R9.5 | deterministic local fixtures, fixed-environment captures, semantic checklist, and documented narrow masks; apply the approved [IG-02 inspector-only boundary](article-inspector-parity.md#ig-02-approved-inspector-frontend-visual-boundary), retaining unmasked evidence and capability checks |
+| R9.8 | **Open:** matched synthetic article/browser visual matrix: Welcome/article states, navigation, search, zoom, context menus, media, print, save, authentication, error, and DevTools states; completed inspector/selection subunits are listed in the current snapshot | R5.1, R6.3-R6.5, R8.1, R8.2, R8.4, R9.5 | deterministic local fixtures, fixed-environment captures, semantic checklist, and documented narrow masks; apply the approved [IG-02 inspector-only boundary](article-inspector-parity.md#ig-02-approved-inspector-frontend-visual-boundary), retaining unmasked evidence and capability checks; repeated dictionary headings and Select All shortcut-label/menu geometry differences remain as recorded in the selection evidence |
 | R9.9 | Matched real-corpus visual matrix: `CRD-TEST-REAL-009` | R5.4, R6.2, R9.6-R9.8 | private paired captures and retained non-content metadata/results |
 | R10.1 | Linux/Windows clean-build and test CI with pinned profiles/locks | R2.3 | clean runner logs for the same commit |
 | R10.2 | Linux runtime bundle, launcher, WebEngine, help, translations, and product assets | R7.5, R7.7, R8.4, R9.5, R10.1 | clean staged-runtime dependency scan and launch/lookup/help/media smoke |
@@ -1874,7 +1932,19 @@ and test executable ran through `run_with_conan.ps1`.
 
 #### R3.6 Unit 4 implementation result
 
-Status: **Implementation revised; awaiting completion and integration audits**
+Current status: **Complete and integrated**, including Unit 4 and R3.6 closure,
+through `cd48f6b4fc1584b0dad8327cd2cffa126c2ccda7`. The final independent
+integration Pass is retained at workspace-relative
+`evidence/r36-unit4-final-integration-audit.md`, bound to candidate Tree ID
+`df38926a118109eec3b9f03e426dead36aff0d2e`. It confirms 135/135 Release
+CTest, 171 Python tests with two expected skips, strict paired evidence and
+immutable fixtures. R9.1 icon publication and broader visual/release gates
+remain open.
+
+The following intermediate status and findings are preserved as history;
+the final accepted evidence supersedes their pending-audit disposition.
+
+Historical status: **Implementation revised; awaiting completion and integration audits**
 (2026-09-07).
 
 The retained results below describe the tested candidate, not accepted Unit 4
@@ -2034,6 +2104,10 @@ commands in `docs/build.md` and retain their logs with the candidate identity.
 
 ## Readiness And Architecture Audit
 
+Historical R1 readiness/delivery record (2026-09-03). Its result describes that
+delivery point; both R1 leaves and subsequent completed leaves are integrated
+as listed in the [current snapshot](#current-status-snapshot-2026-09-08).
+
 Result: **R1.1 is integrated and R1.2 is complete in this delivery. No later leaf is declared ready by this result.**
 
 R1.2 readiness record (2026-09-03): R1.1 is integrated at
@@ -2087,7 +2161,7 @@ expected revisions, and the corpus still matched the R1.1 manifest afterward.
 | ID | Observation | Disposition |
 | --- | --- | --- |
 | IQ-01 | Linux execution evidence is not available in this Windows task. | Per the 2026-09-07 assignment, a separate agent owns Linux environment implementation. Complete Windows acceptance here while preserving Linux compatibility; retain Linux-only checks as pending and require same-candidate Linux/Windows acceptance before cutover. |
-| IQ-02 | The broad Windows suite retained documented infrastructure/toolchain failures. | Resolved by R2.1-R2.3; the complete Windows-applicable Release suite passes 127 of 127 tests. |
+| IQ-02 | The original broad Windows suite retained documented infrastructure/toolchain failures. | Resolved by R2.1-R2.3, whose historical complete Windows-applicable Release suite passed 127 of 127 tests. The current snapshot records later candidate results; non-reproducing harness observations remain in their focused delivery records. |
 | IQ-03 | The real corpus contains private multi-gigabyte resources unsuitable for repository or CI storage. | R1 records only safe hashes/metadata and uses operator-provided paths. |
 | IQ-04 | Several format, WebEngine, and platform gaps may require maintained replacements for obsolete Qt 5 APIs. | Investigate within the existing adapter boundaries; raise only an infeasible parity or intentional divergence decision. |
 
