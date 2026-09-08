@@ -52,14 +52,14 @@ to the real article widget. This invokes its actual menu and event handling.
 | Escape, then F12 without manual focus repair | Article retains activation; inspector opens and activates | Same | Conforming regression assertion |
 | Click article, then F12 with existing inspector | Same inspector activates | Same | Conforming regression assertion |
 | Close inspector, click article, then F12 | Same retained inspector reopens and activates | Same | Conforming regression assertion |
-| Reactivate article without a pointer event, then F12 | QAction triggers, but existing inspector does not activate | Same inspector activates | IG-03 pending; observation only, not accepted equivalence |
+| Reactivate article without a pointer event, then F12 | QAction triggers, but existing inspector does not activate | Same inspector activates | Approved IG-03 correction; positive Qt 6 regression assertion |
 
-IG-03 requires separate direction because IG-02 approves appearance only.
+IG-03 was approved separately on 2026-09-08 because IG-02 approves appearance only.
 The frozen ArticleWebView clears `showInspectorDirectly` on direct invocation
 and restores it on mouse release/double-click, not on keyboard/window activation.
-Do not add that event dependency to Qt 6 or declare its absence approved until
-the decision is resolved. The test records this branch diagnostically and
-asserts dispatch only; it does not prescribe either activation outcome.
+Do not add that event dependency to Qt 6. The original Unit 3 recorded this
+branch diagnostically; the approved IG-03 follow-up below now prescribes
+reliable Qt 6 activation without claiming identical frozen behavior.
 
 The unmasked popup captures also expose a separate existing ordinary-menu gap:
 Qt 5 offers `Select Current Article` for this synthetic context, while Qt 6
@@ -121,3 +121,48 @@ selects Windows QPA/Fusion/DPR 1, loads the prepared Qt 5 runtime for its probe,
 and suppresses OS error dialogs without suppressing process failures. For
 Qt 6 it inherits the owning checkout's Conan environment. Compare JSON fields
 and inspect the screenshots; a probe exit alone does not establish parity.
+
+## IG-03: Approved keyboard reactivation correction
+
+Classification: approved CRD behavioral correction under CRD-LOOKUP-003 and
+CRD-SHELL-003; authority is the product CRD decision log. Option 1 approved
+2026-09-08. Base: `67ce503bc1146c918eaca0255e21ccce5a6c2004`.
+Readiness: Ready. The existing private `ArticleInspector::Inspect` already
+shows/raises/activates the article's inspector independently of pointer state.
+Retain that implementation and strengthen regression evidence; no production,
+architecture, dependency, ABI, configuration, migration or failure-policy
+change is needed. No new abstraction or pattern is justified.
+
+From an active article, F12 must show and activate its lazily owned inspector
+even without a preceding pointer event. Reuse the same window and frontend
+both while visible and after close; keyboard invocation must not select a
+stale context-menu target. Popup F12 suppression, per-article identity,
+context-target routing, geometry, lifetime and security policy are unchanged.
+No OS-wide shortcut or application activation from an inactive process is
+authorized. This corrects the legacy event-dependent defect only.
+
+One delivery contains the CRD disposition, focused positive assertions and
+related testing records. It sequentially reuses the now-clean Unit 3 worktree
+on a new dedicated branch with the same sole writer and owning build tree.
+Verification: Release rebuild, focused Windows-native capture, cumulative
+Conan CTest in fresh process-local TEMP/TMP, script regressions, and separate
+independent delivery/integration audits. Native tests first prove the article
+is active, then require retained-inspector activation for visible and closed
+states; offscreen tests prove dispatch, identity and visibility only.
+The frozen evidence above remains the comparison authority and is not rewritten.
+
+The decision applies to shared Qt 6 behavior, but Windows acceptance does not
+prove Linux/other native window-manager results. R8.2/R9.8 remaining capability
+and ordinary-menu gaps, platform/package gates and formal cutover remain open.
+There is no user-data rollback operation; reversing the approved behavior
+requires a new requirements decision and audited delivery, not history rewriting.
+
+IG-03 verification (2026-09-08): Release rebuild passes; serial cumulative
+CTest passes 138/138 in 53.19 seconds with fresh process-local TEMP/TMP.
+Script regressions pass 171 tests with two platform skips. Native Windows
+focus capture passes the test method plus initialization/cleanup (3/3, no
+skips, 3.762 seconds), proving both visible and closed keyboard-only paths
+activate the same window/frontend after the article activation precondition.
+Evidence: `evidence/ig03-keyboard-reactivation/qt6/{result.json,test.log,popup.png,inspector.png}`.
+The existing Conan launcher is used throughout; no dependency or production
+code changes are part of this delivery.

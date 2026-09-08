@@ -81,8 +81,10 @@ replace the separate real-dictionary acceptance matrix.
 Escape-to-F12 dispatch without manually repairing article focus, and reuse after
 pointer return and close/reopen. Windows-native runs assert window activation;
 offscreen runs verify dispatch/identity/visibility, not operating-system focus.
-Capture mode also records the separately unresolved keyboard-only reactivation
-outcome; it does not accept either outcome as parity. See
+Under approved IG-03, keyboard-only return also asserts retained window/frontend
+identity and visibility, plus native Windows activation, for both visible and
+closed inspectors without an intervening pointer event. This is an explicitly
+approved legacy defect correction, not a claim of identical Qt 5 behavior. See
 [the matched focus record](article-inspector-focus.md). The frozen Qt 5 probe
 entry point is retained in `apps/goldendict/tests/qt5_inspector_focus_probe.inc`;
 it is compiled only by the external Qt 5 evidence build, not the Qt 6 product.

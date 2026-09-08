@@ -58,8 +58,9 @@ ownership. [Unit 3](article-inspector-focus.md) compares the real Qt 5/Qt 6
 menus and verifies no F12 dispatch while the popup remains open, Escape-to-F12
 focus restoration, and pointer-return reactivation/reuse. No custom popup
 shortcut override is introduced. Keyboard-only reactivation without a pointer
-event differs and remains the separately tracked IG-03 decision; the rest of
-the R9.8 state matrix remains required.
+event uses the separately approved IG-03 correction: reliably activate the
+same inspector without the legacy pointer-state dependency. The remaining
+R9.8 state matrix still requires acceptance.
 
 ## Verification plan
 

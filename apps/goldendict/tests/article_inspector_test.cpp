@@ -516,19 +516,35 @@ class ArticleInspectorTest final : public QObject {
         result.insert("popup_f12_inspector_created", popup_created_inspector);
         result.insert("popup_f12_menu_still_visible", popup_still_visible);
         result.insert("article_f12_inspector_active", window->isActiveWindow());
-        // Diagnostic only: legacy activation without an intervening pointer
-        // event is tracked separately, not accepted as equivalent here. The
-        // assertion below proves dispatch, not the unresolved focus outcome.
-        view.activateWindow();
-        view.setFocus();
-        QTest::qWait(250);
-        QTest::keyClick(web->focusProxy(), Qt::Key_F12);
-        QTRY_COMPARE(triggered.count(), 2);
-        QTest::qWait(500);
+        // IG-03 retains reliable keyboard activation instead of Qt 5's
+        // dependency on an intervening mouse release/double-click.
+        QPointer<QWebEnginePage> frontend = source->devToolsPage();
+        int expected_dispatches = 1;
+        for (const bool close_first : {false, true}) {
+            if (close_first) {
+                window->close();
+                QVERIFY(!window->isVisible());
+            }
+            view.activateWindow();
+            view.setFocus();
+            QTest::qWait(250);
+            if (native)
+                QTRY_VERIFY(view.isActiveWindow());
+            QTest::keyClick(web->focusProxy(), Qt::Key_F12);
+            ++expected_dispatches;
+            QTRY_COMPARE(triggered.count(), expected_dispatches);
+            QVERIFY(frontend && window);
+            QCOMPARE(source->devToolsPage(), frontend.data());
+            QCOMPARE(InspectorWindow(source), window.data());
+            QTRY_VERIFY(window->isVisible());
+            if (native)
+                QTRY_VERIFY(window->isActiveWindow());
+            result.insert(close_first ? "keyboard_reopened_active"
+                                      : "repeated_f12_inspector_active",
+                          window->isActiveWindow());
+        }
         result.insert("repeated_f12_same_inspector",
                       InspectorWindow(source) == window);
-        result.insert("repeated_f12_inspector_active",
-                      window->isActiveWindow());
         // A pointer return to the article is the explicit frozen direct-
         // invocation path; it must raise/reuse, not create another inspector.
         for (const bool close_first : {false, true}) {
@@ -545,7 +561,7 @@ class ArticleInspectorTest final : public QObject {
             if (native)
                 QTRY_VERIFY(window->isActiveWindow());
         }
-        QCOMPARE(triggered.count(), 4);
+        QCOMPARE(triggered.count(), 5);
         QCOMPARE(source->inspected_targets, 0);
         if (!output.isEmpty()) {
             window->resize(1000, 700);
