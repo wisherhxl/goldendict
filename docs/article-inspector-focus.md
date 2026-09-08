@@ -63,8 +63,9 @@ reliable Qt 6 activation without claiming identical frozen behavior.
 
 The unmasked popup captures also expose a separate existing ordinary-menu gap:
 Qt 5 offers `Select Current Article` for this synthetic context, while Qt 6
-does not. This remains actionable R8.1/R9.8 follow-up, not an IG-02 exception
-and not part of this focused shortcut/cancellation delivery.
+did not. The separate [article-selection correction](article-selection-parity.md)
+addresses that R8.1/R9.8 follow-up, not an IG-02 exception and not part of this
+focused shortcut/cancellation delivery.
 
 The first Qt 5 probe lacked the native context-menu event and did not observe
 a menu; its output is diagnostic only. The corrected matched runs exercise

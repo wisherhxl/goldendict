@@ -8,6 +8,11 @@ The current cross-cutting replacement status, ordered remaining conformance
 units, readiness record, and non-blocking issue queue are maintained in the
 [Qt 6 Baseline Replacement Gap Audit](qt6-baseline-gap-audit.md).
 
+The [Select Current Article slice](article-selection-parity.md) restores
+Ctrl+Shift+A and current-dictionary selection in the private Qt 6 article view.
+Windows synthetic and real-dictionary verification does not imply Linux
+execution or completion of the remaining ordinary article/menu visual matrix.
+
 ## Status Vocabulary
 
 - `done`: implemented and verified in the Qt 6 migration.

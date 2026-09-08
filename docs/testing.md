@@ -24,6 +24,27 @@ Conan dependencies:
 python scripts/tests/run_with_conan_test.py
 ```
 
+### Current article selection
+
+`article_selection_test` verifies the real ArticleView shortcut and context
+menu, actual DOM selection, same-dictionary multi-entry grouping, pointer and
+result-navigation targets, selected-text menu suppression, cancellation,
+stale-popup rejection, page replacement and hidden-tab isolation. The ordinary
+CTest run is deterministic. A native run can add real `apple` and `book`
+lookups by setting `GOLDENDICT_SELECTION_CORPUS` to an existing dictionary
+directory; it uses temporary indexes and does not write dictionary content.
+`GOLDENDICT_SELECTION_CAPTURE_DIR` optionally captures synthetic states only.
+
+```powershell
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -j 1 -R 'article_selection_test|article_composer_test|goldendict_article_context_menu_smoke' --output-on-failure
+```
+
+For native acceptance select `QT_QPA_PLATFORM=windows` and invoke
+`build/Release/bin/article_selection_test.exe -style Fusion -o <log>,txt`
+through the Conan launcher with a fresh profile. See
+[article-selection-parity.md](article-selection-parity.md) for frozen Qt 5
+evidence, matched captures and remaining ordinary-UI visual gaps.
+
 ### Backed Preferences page layout
 
 `preferences_dialog_test` checks the actual Widgets dialog's page ownership,

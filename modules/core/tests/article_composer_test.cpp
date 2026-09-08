@@ -22,6 +22,7 @@ class ArticleComposerTest : public QObject {
 void ArticleComposerTest::CombinesEntriesAndEscapesDictionaryLabels() {
     LookupResponse response;
     DictionaryEntry first;
+    first.dictionary.id = "first\"<&'";
     first.dictionary.name = "First <Dictionary>";
     first.article.plain_text = "first article";
     first.article.sanitized_html = NewDocument();
@@ -40,6 +41,9 @@ void ArticleComposerTest::CombinesEntriesAndEscapesDictionaryLabels() {
     const ArticleContent page = ComposeLookupPage(response);
 
     QVERIFY(page.sanitized_html.has_value());
+    QVERIFY(page.sanitized_html->find(
+                "data-gd-dictionary-id=\"first&quot;&lt;&amp;&#39;\"") !=
+            std::string::npos);
     QVERIFY(page.sanitized_html->find("First &lt;Dictionary&gt;") !=
             std::string::npos);
     QVERIFY(page.sanitized_html->find("first article") != std::string::npos);

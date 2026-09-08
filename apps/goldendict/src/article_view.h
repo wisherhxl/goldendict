@@ -36,6 +36,7 @@ enum class ArticleContextAction {
     kCopy,
     kCopyAsText,
     kCopyImage,
+    kSelectCurrentArticle,
     kSelectAll,
     kInspect,
 };
@@ -100,6 +101,7 @@ class ArticleView final : public QWidget {
     void SetHtmlNavigation(quint64 navigation_token, const QString& html,
                            const QUrl& base_url = QUrl());
     void reload();
+    void NavigateToResult(int result_index);
     void findText(const QString& text, QWebEnginePage::FindFlags options = {},
                   const std::function<void(const QWebEngineFindTextResult&)>&
                       callback = {});
@@ -180,6 +182,7 @@ class ArticleView final : public QWidget {
         const ArticleDictionaryContextSnapshot& snapshot);
     void HandleContextMenuEvent(QContextMenuEvent* event);
     void ShowInspector(bool context_target);
+    void SelectCurrentArticle();
     void HandleMousePressEvent(QMouseEvent* event);
     void HandleMouseDoubleClickEvent(QMouseEvent* event);
     void PublishFullTextNavigationSnapshot(
@@ -189,7 +192,8 @@ class ArticleView final : public QWidget {
 
     ArticleWebView* web_view_ = nullptr;
     QAction* inspect_action_ = nullptr;
-    bool inspector_context_menu_active_ = false;
+    QAction* select_current_article_action_ = nullptr;
+    bool context_menu_active_ = false;
     std::unique_ptr<ArticleInspector> inspector_;
     std::shared_ptr<ArticleInspectorState> inspector_state_;
     QWidget* full_text_navigation_row_ = nullptr;

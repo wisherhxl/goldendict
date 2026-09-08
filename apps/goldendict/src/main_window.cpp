@@ -6130,17 +6130,21 @@ void MainWindow::RunArticleContextMenuCheck(
                 ArticleContextAction::kCopyImage,
                 ArticleContextAction::kInspect} &&
         external_actions ==
-            QList<ArticleContextAction>{ArticleContextAction::kOpenExternalLink,
-                                        ArticleContextAction::kCopyLink,
-                                        ArticleContextAction::kSelectAll,
-                                        ArticleContextAction::kInspect} &&
+            QList<ArticleContextAction>{
+                ArticleContextAction::kOpenExternalLink,
+                ArticleContextAction::kCopyLink,
+                ArticleContextAction::kSelectCurrentArticle,
+                ArticleContextAction::kSelectAll,
+                ArticleContextAction::kInspect} &&
         rejected_actions ==
             QList<ArticleContextAction>{ArticleContextAction::kCopy,
                                         ArticleContextAction::kCopyAsText,
                                         ArticleContextAction::kInspect} &&
         credential_actions ==
-            QList<ArticleContextAction>{ArticleContextAction::kSelectAll,
-                                        ArticleContextAction::kInspect} &&
+            QList<ArticleContextAction>{
+                ArticleContextAction::kSelectCurrentArticle,
+                ArticleContextAction::kSelectAll,
+                ArticleContextAction::kInspect} &&
         selection == internal.selected_text && link == internal.link_url &&
         link_copied && copy_preserved_session && navigation_preserved_origin &&
         restored;
@@ -13545,11 +13549,7 @@ void MainWindow::NavigateToSelectedResult() {
 void MainWindow::NavigateToArticleResult(ArticleView* view, int result_index) {
     if (view == nullptr || result_index < 0)
         return;
-    view->page()->runJavaScript(
-        QStringLiteral(
-            "const entries=document.querySelectorAll('.gd-dictionary-result');"
-            "if(entries[%1]) entries[%1].scrollIntoView(true);")
-            .arg(result_index));
+    view->NavigateToResult(result_index);
     view->setFocus(Qt::OtherFocusReason);
 }
 

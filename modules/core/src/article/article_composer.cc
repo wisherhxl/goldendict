@@ -174,7 +174,12 @@ ArticleContent ComposeLookupPage(const LookupResponse& response,
         }
         const bool collapse =
             may_collapse && visible_size > options.article_size_limit;
-        AppendBounded("<section class=\"gd-dictionary-result\">", &html);
+        AppendBounded(
+            "<section class=\"gd-dictionary-result\" "
+            "data-gd-dictionary-id=\"",
+            &html);
+        AppendBounded(Escape(entry.dictionary.id), &html);
+        AppendBounded("\">", &html);
         if (collapse) {
             AppendBounded("<details class=\"gd-collapsed-article\"><summary>",
                           &html);

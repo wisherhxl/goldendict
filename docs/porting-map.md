@@ -215,6 +215,12 @@ and resource requests before restoring browser behavior.
 
 ### WebKit UI To Qt WebEngine
 
+The [Select Current Article correction](article-selection-parity.md) maps
+legacy `gdSelectArticle` and current-dictionary pointer/navigation state to
+private ArticleView isolated-world DOM selection. Core supplies only escaped
+dictionary identity on inert result sections; no WebEngine dependency enters
+the public library boundary.
+
 Legacy evidence includes `articleview.*`, `articlewebview.*`,
 `articleinspector.*`, and WebKit calls in `mainwindow.*`, `main.*`, and
 `article_netmgr.*`.

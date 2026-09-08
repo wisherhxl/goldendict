@@ -31,6 +31,7 @@
 #include <QWebEngineLoadingInfo>
 #include <QWebEnginePage>
 #include <QWebEngineScript>
+#include <QWebEngineScriptCollection>
 #include <QWebEngineView>
 
 #include "goldendict/core/desktop_facade.h"
@@ -38,6 +39,59 @@
 namespace {
 
 constexpr auto kFullTextHighlightName = "goldendict-full-text-match";
+
+// Presentation state lives in the isolated application world, not dictionary
+// script. Only Core's top-level result sections can become selection targets.
+void InstallArticleSelection(QWebEnginePage* page) {
+    QWebEngineScript script;
+    script.setName(QStringLiteral("goldendict-article-selection"));
+    script.setWorldId(QWebEngineScript::ApplicationWorld);
+    script.setInjectionPoint(QWebEngineScript::DocumentReady);
+    script.setRunsOnSubFrames(false);
+    script.setSourceCode(QStringLiteral(R"JS(
+(() => {
+  let current = null;
+  const entries = () => [...document.querySelectorAll(
+      'body > section.gd-dictionary-result')];
+  const activate = target => {
+    const section = target instanceof Element
+        ? target.closest('body > section.gd-dictionary-result') : null;
+    if (section) current = section;
+  };
+  document.addEventListener('click', event => activate(event.target), true);
+  document.addEventListener('contextmenu', event => activate(event.target), true);
+  globalThis.gdArticleSelection = {
+    navigate(index) {
+      const target = entries()[index];
+      if (target) { current = target; target.scrollIntoView(true); }
+    },
+    select() {
+      const results = entries();
+      if (!results.includes(current)) current = results[0];
+      if (!current) return;
+      const id = current.getAttribute('data-gd-dictionary-id');
+      let first = results.indexOf(current), last = first;
+      if (id) {
+        while (first > 0 && results[first - 1].getAttribute(
+            'data-gd-dictionary-id') === id) --first;
+        while (last + 1 < results.length && results[last + 1].getAttribute(
+            'data-gd-dictionary-id') === id) ++last;
+      }
+      const range = document.createRange();
+      range.setStart(results[first], 0);
+      range.setEnd(results[last], results[last].childNodes.length);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  };
+})()
+)JS"));
+    const auto previous = page->scripts().find(script.name());
+    for (const auto& existing : previous)
+        page->scripts().remove(existing);
+    page->scripts().insert(script);
+}
 
 QString DisplaySelection(QString text) {
     text = text.trimmed();
@@ -452,15 +506,26 @@ ArticleView::ArticleView(QWidget* parent) : QWidget(parent) {
     web_view_ = new ArticleWebView(this);
     web_view_->setObjectName(QStringLiteral("articleWebContent"));
     layout->addWidget(web_view_, 1);
+    InstallArticleSelection(page());
+    select_current_article_action_ =
+        new QAction(tr("Select Current Article"), web_view_);
+    select_current_article_action_->setObjectName(
+        QStringLiteral("selectCurrentArticle"));
+    select_current_article_action_->setShortcut(QKeySequence("Ctrl+Shift+A"));
+    web_view_->addAction(select_current_article_action_);
+    connect(select_current_article_action_, &QAction::triggered, this,
+            [this]() {
+                if (!context_menu_active_)
+                    SelectCurrentArticle();
+            });
     inspect_action_ = new QAction(tr("Inspect"), web_view_);
     inspect_action_->setObjectName(QStringLiteral("inspectArticle"));
     inspect_action_->setShortcut(QKeySequence(Qt::Key_F12));
     web_view_->addAction(inspect_action_);
-    connect(inspect_action_, &QAction::triggered, this,
-            [this]() {
-                if (!inspector_context_menu_active_)
-                    ShowInspector(false);
-            });
+    connect(inspect_action_, &QAction::triggered, this, [this]() {
+        if (!context_menu_active_)
+            ShowInspector(false);
+    });
 
     full_text_navigation_row_ = new QWidget(this);
     full_text_navigation_row_->setObjectName(
@@ -542,6 +607,7 @@ void ArticleView::setPage(QWebEnginePage* page) {
     ++pointer_generation_;
     ClearFullTextNavigation({}, true);
     web_view_->setPage(page);
+    InstallArticleSelection(page);
     page_loading_connection_ = connect(
         page, &QWebEnginePage::loadingChanged, this,
         [this](const QWebEngineLoadingInfo& info) {
@@ -789,6 +855,21 @@ ArticleView::LinkKind ArticleView::ClassifyLink(const QUrl& url) const {
     return LinkKind::kNone;
 }
 
+void ArticleView::SelectCurrentArticle() {
+    page()->runJavaScript(
+        QStringLiteral("globalThis.gdArticleSelection?.select()"),
+        QWebEngineScript::ApplicationWorld);
+}
+
+void ArticleView::NavigateToResult(int result_index) {
+    if (result_index < 0)
+        return;
+    page()->runJavaScript(
+        QStringLiteral("globalThis.gdArticleSelection?.navigate(%1)")
+            .arg(result_index),
+        QWebEngineScript::ApplicationWorld);
+}
+
 QList<ArticleContextAction> ArticleView::AvailableContextActions(
     const ArticleContext& context) const {
     QList<ArticleContextAction> actions;
@@ -815,7 +896,8 @@ QList<ArticleContextAction> ArticleView::AvailableContextActions(
         actions << ArticleContextAction::kCopy
                 << ArticleContextAction::kCopyAsText;
     } else {
-        actions << ArticleContextAction::kSelectAll;
+        actions << ArticleContextAction::kSelectCurrentArticle
+                << ArticleContextAction::kSelectAll;
     }
     if (context.has_image_content)
         actions << ArticleContextAction::kCopyImage;
@@ -864,6 +946,9 @@ void ArticleView::TriggerContextAction(ArticleContextAction action,
         case ArticleContextAction::kSelectAll:
             page()->triggerAction(QWebEnginePage::SelectAll);
             break;
+        case ArticleContextAction::kSelectCurrentArticle:
+            SelectCurrentArticle();
+            break;
         case ArticleContextAction::kInspect:
             ShowInspector(true);
             break;
@@ -876,9 +961,9 @@ void ArticleView::TriggerContextActionForTest(ArticleContextAction action,
         TriggerContextAction(action, context);
 }
 
-void ArticleView::TriggerWordQueryForTest(
-    const QPointF& position, bool translate,
-    std::function<void()> completion) {
+void ArticleView::TriggerWordQueryForTest(const QPointF& position,
+                                          bool translate,
+                                          std::function<void()> completion) {
     QueryWordAt(position, translate, std::move(completion));
 }
 
@@ -987,6 +1072,10 @@ void ArticleView::HandleContextMenuEvent(QContextMenuEvent* event) {
             case ArticleContextAction::kSelectAll:
                 label = tr("Select All");
                 break;
+            case ArticleContextAction::kSelectCurrentArticle:
+                menu.addAction(select_current_article_action_);
+                action_map.insert(select_current_article_action_, action);
+                continue;
             case ArticleContextAction::kInspect:
                 continue;  // Inspect follows the dictionary-reference group.
         }
@@ -1011,8 +1100,7 @@ void ArticleView::HandleContextMenuEvent(QContextMenuEvent* event) {
     action_map.insert(inspect, ArticleContextAction::kInspect);
     // Reuse the shortcut's action, as Qt 5 does. Menu activation is dispatched
     // below with its captured target, not as an ordinary keyboard invocation.
-    const QScopedValueRollback<bool> menu_scope(
-        inspector_context_menu_active_, true);
+    const QScopedValueRollback<bool> menu_scope(context_menu_active_, true);
     QAction* selected = menu.exec(event->globalPos());
     if (selected == overflow_action) {
         TriggerDictionaryContextOverflow(dictionary_snapshot);
@@ -1020,7 +1108,8 @@ void ArticleView::HandleContextMenuEvent(QContextMenuEvent* event) {
         TriggerDictionaryContextAction(dictionary_snapshot,
                                        dictionary_action_map.value(selected));
     } else if (action_map.contains(selected)) {
-        if (selected == inspect &&
+        if ((selected == inspect ||
+             selected == select_current_article_action_) &&
             (!context_page || context_page != page() ||
              context_generation != document_generation_ ||
              context_navigation != next_html_navigation_token_)) {
