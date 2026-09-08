@@ -89,6 +89,7 @@ in the linked records. Commit IDs are exact Git object identities.
 | R3.5 | **Complete:** [paired lookup, morphology and management closure](#r35-real-corpus-lookup-and-management-readiness); full-text and visual matrices remain separate | `4a08ba92f10c02726582ad0ba04e5482777dc02c` |
 | R3.6 Units 1 / 2 / 3 | **Complete:** [companions](#r36-unit-1-implementation-result), [index/metadata](#r36-unit-2-implementation-result), and [article fields](#r36-unit-3-implementation-result) | `11ed561dec4d82e14c6d10a19f616e940092fcc6`, `decb49f0eb5af9f474e908bcf0b73400261bce46`, `cdc2dad3f19637a2f99f246572c39bbae14f2dac` |
 | R3.6 Unit 4 and leaf closure | **Complete:** [resource companions, transformations and paired closure](#r36-unit-4-implementation-result); icon publication remains R9.1 | `29df43d10ef7fef23f0676a191914a211f0d2523`, `3b03f09c7635940f86a07813308e635cb1d7a0cc`, `cd48f6b4fc1584b0dad8327cd2cffa126c2ccda7` |
+| R3.7a | **Complete:** [Dictd companion-content loading](dictd-companion-loading-parity.md#delivery-and-verification), including Windows acceptance and independent completion/integration audits; parent R3.7 and Linux acceptance remain **Open** | `ced8bb1abdbece6b07313b31095d01307670b8f9` |
 | R4.1 shared backed-layout subunit | **Complete:** [Interface/Network/Advanced layout](preferences-page-layout.md); R4.1/R4.2 and seven-page acceptance remain **Open** | `67d95342294ee6e11889dd08618fc2444e38aa6c` |
 | R8.2 Unit 1 | **Complete:** [Inspect/F12, actual target/Console and private lifecycle](article-inspector-parity.md); complete capability acceptance remains **Open** | `9cd55c6321e7f9a5a78e4a55cf1155aac3f556aa` |
 | R8.2 Unit 2 / IG-01 | **Complete:** [shared/persisted geometry and approved close/exit timing](article-inspector-geometry.md), including frontend-readiness verification correction | `5ad6993bdee3af541923ce67d87e56755bd2e1c3`, `cdbc41eec517c0d8ab39b2bba0c6a0f43f44a096` |
@@ -104,11 +105,13 @@ dated results, not new runs by this reconciliation. Historical counts below
 remain attached to their original candidates. Linux execution, the full visual
 matrix, standalone release packages and same-candidate cutover remain pending.
 
-R3.7 (Dictd non-corpus variants) remains open with its listed R3.5 dependency
-integrated. The bounded [R3.7a companion-content correction](dictd-companion-loading-parity.md)
-records its design, implementation and Windows verification separately from
-completion audit/integration. Remaining Dictd variants and the observed
-ordinary-gzip difference are not closed by that subunit. This snapshot grants
+R3.7 (Dictd non-corpus variants) remains **Open** with its listed R3.5 dependency
+integrated. The bounded [R3.7a companion-content correction](dictd-companion-loading-parity.md#delivery-and-verification)
+is **Complete**, integrated on 2026-09-08 at
+`ced8bb1abdbece6b07313b31095d01307670b8f9` after independent completion and
+integration audit Pass results. This focused status update extends the earlier
+snapshot above. Remaining Dictd variants, ordinary-gzip disposition, complete
+RA-header validation and Linux execution remain pending. This snapshot grants
 no automatic readiness to later leaves and does not change the dependency graph.
 
 ## Evidence Reviewed (Original Audit)

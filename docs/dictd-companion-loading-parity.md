@@ -104,6 +104,17 @@ reproduced reader failure. No dictionary corpus or frozen Qt 5 files were
 modified. Linux execution is pending; portable C++/filesystem and existing
 Zlib boundaries are preserved without Windows APIs in shared logic.
 
-This records implementation and verification, not an independent audit Pass
-or completed integration. Completion audit binds the staged base/tree, and
-integration follows the project contract. Parent R3.7 remains open.
+Final status (2026-09-08): **Complete and integrated** for bounded R3.7a Windows
+acceptance. The implementation record above remains historical. Independent
+completion and integration audits returned **Pass**, both bound to base
+`4ddf676dbe092023a701c2c7cb2b425a40803c12` and tree
+`ffe9cd94736c5ca8e7a0afa277a6c3c5e152c4c3`. The normal fast-forward push to
+`origin/feature/tiger-qt6-migration` integrated commit
+`ced8bb1abdbece6b07313b31095d01307670b8f9`. The separate integration auditor
+passed the full Release build, focused CTest 4/4, cumulative serial CTest
+139/139, and 171 Python tests with two Windows capability skips. Reports and
+the actual target-push record are retained as `completion-audit.md`,
+`integration-audit.md`, and `integration-verification.md` in the workspace's
+`evidence/r3.7a-20260908/` directory. Parent R3.7 remains **Open**; Linux
+execution, ordinary-gzip disposition, complete RA-header validation and
+remaining Dictd variants remain pending.
