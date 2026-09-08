@@ -74,8 +74,18 @@ Qt 5 widget under the same native conditions; do not accept an empty frontend
 captured before its asynchronous document connection completes.
 
 See [the focused record](article-inspector-parity.md) for evidence and pending
-geometry/full-visual/Linux obligations. These deterministic fixtures do not
+capability/full-visual/Linux obligations. These deterministic fixtures do not
 replace the separate real-dictionary acceptance matrix.
+
+`PopupCancellationAndKeyboardFocus` additionally verifies popup F12 suppression,
+Escape-to-F12 dispatch without manually repairing article focus, and reuse after
+pointer return and close/reopen. Windows-native runs assert window activation;
+offscreen runs verify dispatch/identity/visibility, not operating-system focus.
+Capture mode also records the separately unresolved keyboard-only reactivation
+outcome; it does not accept either outcome as parity. See
+[the matched focus record](article-inspector-focus.md). The frozen Qt 5 probe
+entry point is retained in `apps/goldendict/tests/qt5_inspector_focus_probe.inc`;
+it is compiled only by the external Qt 5 evidence build, not the Qt 6 product.
 
 ### Real-dictionary corpus manifest
 

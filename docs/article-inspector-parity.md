@@ -54,12 +54,12 @@ remain open until their complete evidence is accepted; no geometry requirement
 or remaining legacy capability is excluded by this split.
 
 The context menu reuses the article's QAction, matching the frozen action
-ownership. A probe sending F12 directly to an already-open QMenu did not
-activate Qt's WindowShortcut on this host. It is not evidence that Qt 5
-supports that combined state, and no custom shortcut override is introduced.
-R9.8 retains matched popup-focus/shortcut behavior verification; Unit 1 proves
-F12 from the article window and activation of the actual context-menu item
-separately.
+ownership. [Unit 3](article-inspector-focus.md) compares the real Qt 5/Qt 6
+menus and verifies no F12 dispatch while the popup remains open, Escape-to-F12
+focus restoration, and pointer-return reactivation/reuse. No custom popup
+shortcut override is introduced. Keyboard-only reactivation without a pointer
+event differs and remains the separately tracked IG-03 decision; the rest of
+the R9.8 state matrix remains required.
 
 ## Verification plan
 

@@ -444,6 +444,133 @@ class ArticleInspectorTest final : public QObject {
         QTest::newRow("navigated-document") << 2;
     }
 
+    void PopupCancellationAndKeyboardFocus() {
+        ArticleView view;
+        auto* source = new RecordingPage(&view);
+        view.setPage(source);
+        QVERIFY(LoadFixture(view));
+        auto* web = view.findChild<QWebEngineView*>("articleWebContent");
+        auto* inspect = view.findChild<QAction*>("inspectArticle");
+        QVERIFY(web && web->focusProxy() && inspect);
+        QSignalSpy triggered(inspect, &QAction::triggered);
+        const bool native = QApplication::platformName() == "windows";
+        const auto output =
+            qEnvironmentVariable("GOLDENDICT_INSPECTOR_CAPTURE_DIR");
+        QJsonObject result;
+        bool menu_seen = false;
+        bool menu_has_inspect = false;
+        bool popup_still_visible = false;
+        bool popup_created_inspector = false;
+        int popup_trigger_count = -1;
+        bool capture_saved = output.isEmpty();
+        QTimer driver;
+        connect(&driver, &QTimer::timeout, &view, [&]() {
+            auto* menu =
+                qobject_cast<QMenu*>(QApplication::activePopupWidget());
+            if (!menu)
+                return;
+            driver.stop();
+            menu_seen = true;
+            menu_has_inspect = menu->actions().contains(inspect);
+            QTest::keyClick(menu, Qt::Key_F12);
+            QTest::qWait(250);
+            popup_trigger_count = triggered.count();
+            popup_created_inspector = source->devToolsPage() != nullptr;
+            popup_still_visible = menu->isVisible();
+            if (!output.isEmpty())
+                capture_saved =
+                    QDir().mkpath(output) &&
+                    menu->grab().save(QDir(output).filePath("popup.png"));
+            QTest::keyClick(menu, Qt::Key_Escape);
+        });
+        view.activateWindow();
+        view.setFocus();
+        QTest::qWait(250);
+        if (native)
+            QTRY_VERIFY(view.isActiveWindow());
+        driver.start(20);
+        QTest::mouseClick(web->focusProxy(), Qt::RightButton, Qt::NoModifier,
+                          QPoint(100, 50));
+        QTRY_VERIFY_WITH_TIMEOUT(menu_seen, 10000);
+        QVERIFY(menu_has_inspect);
+        QCOMPARE(popup_trigger_count, 0);
+        QVERIFY(!popup_created_inspector);
+        QVERIFY(popup_still_visible);
+        QVERIFY(capture_saved);
+        QTRY_VERIFY(!QApplication::activePopupWidget());
+        // Do not manually reactivate or refocus the article after Escape:
+        // the next real shortcut must work with the restored popup focus.
+        if (native)
+            QTRY_VERIFY(view.isActiveWindow());
+        QTest::keyClick(web->focusProxy(), Qt::Key_F12);
+        QTRY_COMPARE(triggered.count(), 1);
+        QTRY_VERIFY(source->devToolsPage());
+        QPointer<QWidget> window = InspectorWindow(source);
+        QVERIFY(window && window->isVisible());
+        QCOMPARE(source->inspected_targets, 0);
+        if (native)
+            QTRY_VERIFY(window->isActiveWindow());
+        QVERIFY(WaitForFrontendText(source->devToolsPage(),
+                                    "GoldenDict inspector fixture"));
+        result.insert("popup_f12_trigger_count", popup_trigger_count);
+        result.insert("popup_f12_inspector_created", popup_created_inspector);
+        result.insert("popup_f12_menu_still_visible", popup_still_visible);
+        result.insert("article_f12_inspector_active", window->isActiveWindow());
+        // Diagnostic only: legacy activation without an intervening pointer
+        // event is tracked separately, not accepted as equivalent here. The
+        // assertion below proves dispatch, not the unresolved focus outcome.
+        view.activateWindow();
+        view.setFocus();
+        QTest::qWait(250);
+        QTest::keyClick(web->focusProxy(), Qt::Key_F12);
+        QTRY_COMPARE(triggered.count(), 2);
+        QTest::qWait(500);
+        result.insert("repeated_f12_same_inspector",
+                      InspectorWindow(source) == window);
+        result.insert("repeated_f12_inspector_active",
+                      window->isActiveWindow());
+        // A pointer return to the article is the explicit frozen direct-
+        // invocation path; it must raise/reuse, not create another inspector.
+        for (const bool close_first : {false, true}) {
+            if (close_first)
+                window->close();
+            view.activateWindow();
+            view.setFocus();
+            QTest::qWait(250);
+            QTest::mouseClick(web->focusProxy(), Qt::LeftButton, Qt::NoModifier,
+                              QPoint(100, 50));
+            QTest::keyClick(web->focusProxy(), Qt::Key_F12);
+            QTRY_VERIFY(window->isVisible());
+            QCOMPARE(InspectorWindow(source), window.data());
+            if (native)
+                QTRY_VERIFY(window->isActiveWindow());
+        }
+        QCOMPARE(triggered.count(), 4);
+        QCOMPARE(source->inspected_targets, 0);
+        if (!output.isEmpty()) {
+            window->resize(1000, 700);
+            QVERIFY(
+                WaitForFrontendText(source->devToolsPage(), "element.style"));
+            QTest::qWait(500);
+            QVERIFY(
+                window->grab().save(QDir(output).filePath("inspector.png")));
+            result.insert("qt_version", qVersion());
+            result.insert("platform", QApplication::platformName());
+            result.insert("style", window->style()->objectName());
+            result.insert("font", window->font().toString());
+            result.insert("device_pixel_ratio", window->devicePixelRatioF());
+            result.insert("clicked_article_f12_inspector_active",
+                          window->isActiveWindow());
+            result.insert("reopened_same_inspector",
+                          InspectorWindow(source) == window);
+            result.insert("reopened_visible", window->isVisible());
+            QFile file(QDir(output).filePath("result.json"));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            const auto bytes = QJsonDocument(result).toJson();
+            QCOMPARE(file.write(bytes), qint64(bytes.size()));
+        }
+    }
+
     void ContextMenuTargetAndTailOrder() {
         QFETCH(int, change);
         ArticleView view;
