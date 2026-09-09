@@ -369,6 +369,8 @@ class ApplicationServiceTest : public QObject {
     void CompletesAnOwnedAsynchronousLookup();
     void AppliesArticlePreferencesBehindTheDesktopFacade();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
+    void PreservesLookupControlTargetsThroughSessionAndBackend_data();
+    void PreservesLookupControlTargetsThroughSessionAndBackend();
     void BuildsRenderedTextMatchPlansBehindTheDesktopFacade();
     void RejectsInvalidRenderedTextMatchPlanRequests();
     void ReportsCancellationAndUnavailableDictionaries();
@@ -7008,6 +7010,64 @@ void ApplicationServiceTest::
     QCOMPARE(result.ranges.size(), std::size_t{1});
     QCOMPARE(result.ranges.front().byte_length, std::string(u8"😀").size());
     QCOMPARE(result.ranges.front().literal, std::string(u8"😀"));
+}
+
+void ApplicationServiceTest::
+    PreservesLookupControlTargetsThroughSessionAndBackend_data() {
+    QTest::addColumn<QByteArray>("target");
+    QTest::newRow("U+0001") << QByteArray("a\x01" "b");
+    QTest::newRow("DEL") << QByteArray("a\x7f" "b");
+}
+
+void ApplicationServiceTest::
+    PreservesLookupControlTargetsThroughSessionAndBackend() {
+    QFETCH(QByteArray, target);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    test::WriteDictdFixture(root, {{target.toStdString(), "exact marker", {}}});
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    configuration.index_directory = (root / "indexes").string();
+    configuration.preferences.limit_input_phrase_length = true;
+    configuration.preferences.input_phrase_length_limit = 3U;
+    auto facade = CreateDesktopFacade(configuration);
+    const auto url = std::string("goldendict://lookup/") +
+                     QUrl::toPercentEncoding(QString::fromUtf8(target))
+                         .toStdString();
+    const auto resolved = facade->ResolveArticleUrl(url);
+    QVERIFY(resolved.has_value());
+    QCOMPARE(resolved->kind, ArticleUrlKind::kLookup);
+    QCOMPARE(resolved->lookup_text, target.toStdString());
+    TabNavigationState navigation;
+    navigation.kind = TabNavigationKind::kInternalLink;
+    navigation.query = resolved->lookup_text;
+    navigation.title = navigation.query;
+    navigation.internal_url = url;
+    QVERIFY(facade->OpenArticleTab(navigation, TabOpenPolicy::kCurrentTab,
+                                   TabActivationPolicy::kActivate));
+    configuration.article_tab_session = facade->ExportArticleTabSession();
+    const auto configuration_path = (root / "configuration").string();
+    SaveConfiguration(configuration_path, configuration);
+    const auto saved = LoadConfiguration(configuration_path);
+    QCOMPARE(saved.article_tab_session, configuration.article_tab_session);
+    auto restored = CreateDesktopFacade(saved);
+    QVERIFY(restored->RestoreArticleTabSession(*saved.article_tab_session));
+    const auto actual = restored->GetArticleTabsState().tabs.front().navigation;
+    QCOMPARE(actual, navigation);
+    LookupQuery query;
+    query.text = actual.query;
+    query.match_mode = MatchMode::kExact;
+    const auto response = restored->GetDictionaryService().Lookup(query);
+    QVERIFY(response.errors.empty());
+    QCOMPARE(response.entries.size(), 1U);
+    QCOMPARE(response.entries.front().headword, target.toStdString());
+    QCOMPARE(response.entries.front().match.requested_headword,
+             target.toStdString());
+    QVERIFY(response.entries.front().article.plain_text.find("exact marker") !=
+            std::string::npos);
+    QVERIFY(!restored->ResolveArticleUrl("goldendict://lookup/").has_value());
+    QCOMPARE(restored->GetArticleTabsState().tabs.front().navigation, actual);
 }
 
 void ApplicationServiceTest::RejectsInvalidRenderedTextMatchPlanRequests() {

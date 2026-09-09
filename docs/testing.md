@@ -24,6 +24,25 @@ Conan dependencies:
 python scripts/tests/run_with_conan_test.py
 ```
 
+### Lookup target routing
+
+The [N2 lookup URL correction](lookup-target-url-parity.md) is covered by
+`article_assembler_test` (every residual C0/DEL byte and canonical sanitizer
+admission), `application_service_test` (generated Dictd lookup through facade,
+tab and saved configuration), and `article_page_lookup_routing_test` (actual
+WebEngine pointer clicks through ArticlePage and the production scheme handler).
+The latter checks exact QUrl targets and confirms an attempted empty-link click
+emits no lookup/audio/external signal and preserves the current page URL.
+Full EL-01 producer and application-state acceptance remains separately open.
+
+```powershell
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -j 1 -R 'article_assembler_test|application_service_test|article_tabs_test|article_page_.*routing_test|dictd_dictionary_test' --output-on-failure
+```
+
+For Windows native pointer evidence, set `QT_QPA_PLATFORM=windows` and launch
+`build/Release/bin/article_page_lookup_routing_test.exe -style Fusion` through
+the same launcher, with fresh short `TEMP`/`TMP` paths.
+
 ### Current article selection
 
 `article_selection_test` verifies the real ArticleView shortcut and context

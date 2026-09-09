@@ -634,6 +634,12 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                                IsSafeExternalLink(href->second)) {
                         html->append(" href=\"" + Escape(href->second) + "\"");
                     } else if (href != tag.attributes.end()) {
+                        const auto internal = ParseInternalUrl(href->second);
+                        if (internal.has_value() &&
+                            internal->kind == InternalUrlKind::kLookup) {
+                            html->append(" href=\"" + Escape(href->second) +
+                                         "\"");
+                        }
                         constexpr std::string_view kSound = "sound://";
                         if (href->second.substr(0, kSound.size()) == kSound) {
                             const auto resource_id = NormalizeResourceId(

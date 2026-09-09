@@ -20,8 +20,10 @@ This is a narrow approved divergence from observable Qt 5 behavior, chosen to
 avoid disruptive navigation with no lookup target. It does not authorize
 rejecting other nonempty targets, changing legacy target normalization,
 loosening URL decoding or sanitization, or changing resource/security policy.
-R3.7g N2 (nonempty targets containing retained C0/DEL characters) is unresolved
-and independent. Ordinary blank/welcome pages remain outside this decision.
+R3.7g N2 (nonempty targets containing retained C0/DEL characters) is independent
+and technically resolved by the [lookup URL correction](lookup-target-url-parity.md)
+under the existing parity requirements. Ordinary blank/welcome pages remain
+outside this decision.
 
 ## Frozen evidence and current implementation
 
@@ -62,7 +64,8 @@ R3.7f preserves literal inline markers; R3.7g production changes are pending.
 Readiness: **Ready for EL-01's documentation-only decision unit**. The approved
 outcome, exception boundary and observable acceptance are unambiguous. No
 production change is part of this unit. Full R3.7g readiness remains open
-pending N2 and its focused rendering design and verification.
+pending its focused rendering design and verification. N2 has a separate
+bounded implementation and acceptance record linked above.
 
 Architecture is unchanged under the
 [Shared-Library And GUI Boundary](project-design-rules.md#shared-library-and-gui-boundary):

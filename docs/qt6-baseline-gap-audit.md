@@ -168,8 +168,10 @@ normalized-empty Dictd targets are inert, with no query/navigation or changes
 to page, audio, article search, history or tab state. The decision is **Ready**
 as a documentation-only CRD amendment. Existing Qt 6 empty-URL rejection is
 source evidence, not completion of the future inline producer or dispatch
-acceptance tests. Issue N2 (nonempty targets retaining C0/DEL) remains
-unresolved; full R3.7g readiness, implementation and acceptance remain open.
+acceptance tests. Issue N2 (nonempty targets retaining C0/DEL) is technically
+resolved by the [bounded lookup URL correction](lookup-target-url-parity.md),
+which owns its implementation and acceptance status. Full R3.7g readiness,
+inline renderer/full-text implementation and acceptance remain open.
 
 ## Evidence Reviewed (Original Audit)
 

@@ -30,6 +30,8 @@ class ArticleAssemblerTest : public QObject {
     void EnforcesDocumentSizeLimit();
     void BuildsAndParsesCanonicalInternalUrls();
     void RejectsMalformedAndUnsafeInternalUrls();
+    void PreservesCanonicalLookupTargets_data();
+    void PreservesCanonicalLookupTargets();
 };
 
 const dictionary::Identity kDictionary{"fixture id", "Fixture", "/fixture", "",
@@ -457,11 +459,81 @@ void ArticleAssemblerTest::RejectsMalformedAndUnsafeInternalUrls() {
         "goldendict://lookup/",
         "goldendict://lookup/%",
         "goldendict://lookup/a/b",
+        "goldendict://lookup/a#b",
+        "goldendict://lookup/a?b",
+        "goldendict://lookup/%61",
+        "goldendict://lookup/%7f",
+        "goldendict://lookup/%GG",
+        "goldendict://lookup/%C3%28",
+        "goldendict://lookup/%FF",
+        "goldendict://lookup/%00",
+        "goldendict://lookup/%09",
+        "goldendict://lookup/%0A",
+        "goldendict://lookup/%0B",
+        "goldendict://lookup/%0C",
+        "goldendict://lookup/%0D",
+        "goldendict://lookup:80/word",
+        "goldendict://user@lookup/word",
+        "goldendict://resource/id/%01",
+        "goldendict://resource/%7F/name",
         "goldendict://resource/id/../secret",
         "goldendict://resource/id/%2E%2E%2Fsecret",
         "goldendict://resource/id/path/extra"};
     for (const auto& url : invalid) {
         QVERIFY2(!ParseInternalUrl(url).has_value(), url.c_str());
+        if (url.rfind("goldendict:", 0U) == 0U) {
+            const auto document = Assemble(
+                kDictionary, {{"entry", "text/html", "<a href=\"" + url +
+                                                       "\">inert</a>"}});
+            QVERIFY(document.sanitized_html.find("<a href=") ==
+                    std::string::npos);
+        }
+    }
+    for (const std::string value : {std::string{}, std::string(1, '\0'),
+                                    std::string("\t"), std::string("\n"),
+                                    std::string("\v"), std::string("\f"),
+                                    std::string("\r"), std::string("\xff")}) {
+        QVERIFY_EXCEPTION_THROWN(MakeLookupUrl(value), std::invalid_argument);
+    }
+    const auto resource = Assemble(
+        kDictionary, {{"entry", "text/html",
+                       "<a href=\"goldendict://resource/id/safe.wav\">inert</a>"}});
+    QVERIFY(resource.sanitized_html.find("<a href=") == std::string::npos);
+}
+
+void ArticleAssemblerTest::PreservesCanonicalLookupTargets_data() {
+    QTest::addColumn<QByteArray>("target");
+    for (int byte = 1; byte <= 0x7f; ++byte) {
+        if ((byte < 0x20 && (byte < 9 || byte > 13)) || byte == 0x7f) {
+            QTest::newRow(qPrintable(QString::number(byte, 16)))
+                << QByteArray(1, static_cast<char>(byte));
+        }
+    }
+    QTest::newRow("printable") << QByteArray("ordinary target");
+    QTest::newRow("literal-percent-hash-slash-unicode")
+        << QByteArray(u8"%01#part/你好");
+    QTest::newRow("embedded-controls") << QByteArray("a\x01" "b\x7f" "c");
+}
+
+void ArticleAssemblerTest::PreservesCanonicalLookupTargets() {
+    QFETCH(QByteArray, target);
+    const auto url = MakeLookupUrl(target.toStdString());
+    const auto parsed = ParseInternalUrl(url);
+    QVERIFY(parsed.has_value());
+    QCOMPARE(parsed->kind, InternalUrlKind::kLookup);
+    QCOMPARE(parsed->target, target.toStdString());
+    const auto document = Assemble(
+        kDictionary, {{"entry", "text/html", "<a href=\"" + url +
+                                               "\">target</a>"}});
+    QVERIFY(document.sanitized_html.find("<a href=\"" + url + "\">target</a>") !=
+            std::string::npos);
+    QCOMPARE(document.plain_text, "target");
+    QVERIFY(document.resources.empty());
+    if (target.size() == 1) {
+        QVERIFY_EXCEPTION_THROWN(MakeResourceUrl("id", target.toStdString()),
+                                 std::invalid_argument);
+        QVERIFY_EXCEPTION_THROWN(MakeResourceUrl(target.toStdString(), "name"),
+                                 std::invalid_argument);
     }
 }
 

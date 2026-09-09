@@ -5,6 +5,8 @@
 #include <cctype>
 #include <stdexcept>
 
+#include "../foundation/utf8.h"
+
 namespace goldendict::core::article {
 namespace {
 
@@ -45,7 +47,8 @@ int HexValue(char value) {
     return -1;
 }
 
-std::optional<std::string> Decode(std::string_view value) {
+std::optional<std::string> Decode(std::string_view value,
+                                  bool lookup_target = false) {
     std::string decoded;
     decoded.reserve(value.size());
     for (std::size_t index = 0; index < value.size(); ++index) {
@@ -62,12 +65,18 @@ std::optional<std::string> Decode(std::string_view value) {
             byte = static_cast<unsigned char>((high << 4U) | low);
             index += 2U;
         }
-        if (byte == 0U || byte < 0x20U || byte == 0x7fU) {
+        // Dictd normalizes whitespace before producing lookup links. Retained
+        // non-whitespace controls are target text, never resource identifiers.
+        const bool forbidden_control = lookup_target
+                                           ? (byte >= 0x09U && byte <= 0x0dU)
+                                           : (byte < 0x20U || byte == 0x7fU);
+        if (byte == 0U || forbidden_control) {
             return std::nullopt;
         }
         decoded.push_back(static_cast<char>(byte));
     }
-    if (decoded.empty()) {
+    if (decoded.empty() ||
+        (lookup_target && !foundation::IsValidUtf8(decoded))) {
         return std::nullopt;
     }
     return decoded;
@@ -103,7 +112,9 @@ void RequireResourceId(std::string_view resource_id) {
 }  // namespace
 
 std::string MakeLookupUrl(std::string_view headword) {
-    RequireValue(headword, "headword");
+    if (!Decode(Encode(headword), true).has_value()) {
+        throw std::invalid_argument("headword is empty or invalid");
+    }
     return std::string(kPrefix) + "lookup/" + Encode(headword);
 }
 
@@ -127,7 +138,7 @@ std::optional<InternalUrl> ParseInternalUrl(std::string_view url) {
     const auto kind = body.substr(0, first_slash);
     const auto payload = body.substr(first_slash + 1U);
     if (kind == "lookup" && payload.find('/') == std::string_view::npos) {
-        const auto target = Decode(payload);
+        const auto target = Decode(payload, true);
         if (target.has_value() && Encode(*target) == payload) {
             return InternalUrl{InternalUrlKind::kLookup, {}, *target};
         }

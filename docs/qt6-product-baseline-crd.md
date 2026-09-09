@@ -686,8 +686,10 @@ baseline decision.
 ## 15. Open-Decision Policy
 
 EL-01 resolves R3.7g issue N1. R3.7g issue N2, concerning nonempty targets
-containing retained C0/DEL characters, remains a separate unresolved decision;
-EL-01 grants no authority to relax validation or suppress those targets.
+containing retained C0/DEL characters, is technically resolved by the
+[bounded lookup URL correction](lookup-target-url-parity.md) under existing
+parity requirements. Its acceptance is recorded separately; EL-01 itself
+grants no authority to relax validation or suppress nonempty targets.
 
 Future questions are raised only when pinned Qt 5 behavior cannot be reproduced
 within mandatory constraints or when a clear, material optimization may
