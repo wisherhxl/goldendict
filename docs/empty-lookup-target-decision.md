@@ -25,6 +25,11 @@ and technically resolved by the [lookup URL correction](lookup-target-url-parity
 under the existing parity requirements. Ordinary blank/welcome pages remain
 outside this decision.
 
+The separately approved [N3 decision](malformed-reference-decision.md) covers
+failed complete generated href rewrites and every reconstructed anchor from
+those origins. Its classification precedes browser URL interpretation and must
+not be conflated with EL-01's normalized-empty target rule.
+
 ## Frozen evidence and current implementation
 
 Qt 5 reference: `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.
@@ -63,9 +68,10 @@ R3.7f preserves literal inline markers; R3.7g production changes are pending.
 
 Readiness: **Ready for EL-01's documentation-only decision unit**. The approved
 outcome, exception boundary and observable acceptance are unambiguous. No
-production change is part of this unit. Full R3.7g readiness remains open
-pending its focused rendering design and verification. N2 has a separate
-bounded implementation and acceptance record linked above.
+production change is part of this unit. The [N3 record](malformed-reference-decision.md)
+identifies the separate R3.7g technical readiness and delivery sequence;
+renderer implementation and full state acceptance remain open. N2 has a
+separate bounded implementation and acceptance record linked above.
 
 Architecture is unchanged under the
 [Shared-Library And GUI Boundary](project-design-rules.md#shared-library-and-gui-boundary):

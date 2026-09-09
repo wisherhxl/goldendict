@@ -168,10 +168,22 @@ normalized-empty Dictd targets are inert, with no query/navigation or changes
 to page, audio, article search, history or tab state. The decision is **Ready**
 as a documentation-only CRD amendment. Existing Qt 6 empty-URL rejection is
 source evidence, not completion of the future inline producer or dispatch
-acceptance tests. Issue N2 (nonempty targets retaining C0/DEL) is technically
-resolved by the [bounded lookup URL correction](lookup-target-url-parity.md),
-which owns its implementation and acceptance status. Full R3.7g readiness,
-inline renderer/full-text implementation and acceptance remain open.
+acceptance tests. Issue N2 (nonempty targets retaining C0/DEL) is **Complete and
+integrated** at `d9f4947f06c5ebe8da7b37dc69426b1581a4676c` after independent
+completion and integration audit Pass results. The
+[bounded lookup URL correction](lookup-target-url-parity.md) owns its Windows
+acceptance; reports and target-push evidence reside in the workspace's
+`evidence/n2-lookup-target-20260909/`.
+
+Issue N3 is resolved by the approved [malformed-reference decision](malformed-reference-decision.md),
+`CRD-LOOKUP-007`: preserve Qt 5 observed text/layout/styles for failed complete
+generated href rewrites while disabling every affected reconstructed anchor.
+Successfully rewritten nonempty references remain compatible; EL-01 is separate.
+N3 is **Ready** as a documentation-only decision unit. Separate technical
+readiness is **Ready after N3 canonical decision delivery**, with full-text
+extraction/cache migration (R3.7g.1) preceding coupled display/activation
+(R3.7g.2), as recorded in the focused decision. Their implementation and runtime
+acceptance remain open; neither decision closes R3.7 or platform/cutover gates.
 
 ## Evidence Reviewed (Original Audit)
 

@@ -57,8 +57,12 @@ This boundary check does not assert every EL-01 application state consequence.
 Release build, 140 serial CTest cases and 172 Python tests (two existing skips)
 pass. Local Markdown targets and whitespace checks pass. Commands and logs are
 retained outside the repository in the workspace's
-`evidence/n2-lookup-target-20260909/`; the staged delivery still requires an
-independent completion audit and separate integration audit before integration.
+`evidence/n2-lookup-target-20260909/`. Independent completion and integration
+audits returned Pass, and N2 is complete and integrated at
+`d9f4947f06c5ebe8da7b37dc69426b1581a4676c` (tree
+`f41ba7033b0df06430b1657e490a441419bc1932`). The separate approved
+[N3 decision](malformed-reference-decision.md) disables activation only for
+failed complete generated reference rewrites; it does not broaden N2 decoding.
 The coupled R3.7g Dictd inline renderer/full-text changes, full EL-01 state
 acceptance, remaining Dictd parity, Linux/macOS verification and cutover remain
 open. No Linux or macOS execution is claimed by the Windows evidence.

@@ -200,6 +200,16 @@ See [the acceptance boundary](article-inspector-parity.md#ig-02-approved-inspect
   whitespace-only references; it does not decide nonempty-target handling or
   change resource/security policy. See the
   [decision and acceptance record](empty-lookup-target-decision.md).
+- `CRD-LOOKUP-007` (N3): Preserve observed Qt 5 text, layout and styles for
+  Dictd references whose complete generated opening tag fails the frozen
+  href-cleanup rewrite, but omit actionable hrefs from every anchor derived
+  from that origin, including reconstructed anchors. Activation must have no
+  query, navigation, page, audio, article-search, history or tab/session effects.
+  Successfully rewritten nonempty references retain compatibility; EL-01
+  handles normalized-empty targets separately. This approved divergence under
+  `CRD-LOOKUP-003`, `CRD-DICT-003` and `CRD-COMPAT-001` adds no semantic repair,
+  navigation API or resource/security-policy change. See the
+  [decision and acceptance record](malformed-reference-decision.md).
 
 ### 7.3 User-Owned State
 
@@ -668,6 +678,7 @@ baseline decision.
 
 | Date | Decision | Status |
 | --- | --- | --- |
+| 2026-09-09 | N3: preserve Qt 5 browser-observed text/layout/styles for generated Dictd references that fail complete href rewriting, but disable every affected anchor, retaining origin through reconstruction. Successfully rewritten nonempty references remain compatible; EL-01 is separate. The [focused record](malformed-reference-decision.md) defines this narrow divergence, documentation readiness and pending renderer acceptance. | Approved |
 | 2026-09-09 | EL-01: reject normalized-empty Dictd lookup targets with no navigation or state side effects. Preserve inert reference content and existing query interfaces. This narrow exception to `CRD-LOOKUP-003` and `CRD-DICT-003` avoids disruptive empty navigation; it does not authorize suppression of nonempty targets. The [focused record](empty-lookup-target-decision.md) defines acceptance and remaining implementation evidence. | Approved |
 | 2026-09-08 | IG-03: retain Qt 6 direct F12 activation of the article's existing inspector regardless of intervening pointer events. Show/raise/activate the same lazily owned inspector, including after close, instead of reproducing Qt 5's pointer-dependent activation defect. Preserve popup-menu F12 suppression, context-target inspection, lifetime, geometry and security policy. This is a narrow behavioral correction, separate from IG-02; other capability/platform/cutover gates remain unchanged. | Approved |
 | 2026-09-07 | IG-02: retain native Chromium DevTools appearance only inside the engine-owned inspector frontend. Preserve GoldenDict-controlled window and interaction alignment, and verify inspection capabilities individually. Ordinary lookup/article UI parity is unchanged. No custom frontend fork or protocol adapter is authorized. See the focused inspector acceptance boundary; this decision does not close R8.2, R9.8, platform acceptance or baseline cutover. | Approved |
@@ -690,6 +701,11 @@ containing retained C0/DEL characters, is technically resolved by the
 [bounded lookup URL correction](lookup-target-url-parity.md) under existing
 parity requirements. Its acceptance is recorded separately; EL-01 itself
 grants no authority to relax validation or suppress nonempty targets.
+
+N3 is resolved by `CRD-LOOKUP-007` and the approved
+[malformed-reference decision](malformed-reference-decision.md). This separate
+exception suppresses activation only for failed complete generated-tag rewrites;
+full R3.7g renderer readiness, implementation and acceptance remain separate.
 
 Future questions are raised only when pinned Qt 5 behavior cannot be reproduced
 within mandatory constraints or when a clear, material optimization may
