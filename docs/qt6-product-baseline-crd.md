@@ -205,11 +205,22 @@ See [the acceptance boundary](article-inspector-parity.md#ig-02-approved-inspect
   href-cleanup rewrite, but omit actionable hrefs from every anchor derived
   from that origin, including reconstructed anchors. Activation must have no
   query, navigation, page, audio, article-search, history or tab/session effects.
-  Successfully rewritten nonempty references retain compatibility; EL-01
-  handles normalized-empty targets separately. This approved divergence under
+  Successfully rewritten nonempty references retain compatibility except for
+  the separately approved N4 rule; EL-01 handles normalized-empty targets
+  separately. This approved divergence under
   `CRD-LOOKUP-003`, `CRD-DICT-003` and `CRD-COMPAT-001` adds no semantic repair,
   navigation API or resource/security-policy change. See the
   [decision and acceptance record](malformed-reference-decision.md).
+- `CRD-LOOKUP-008` (N4): A successfully rewritten Dictd reference whose complete
+  target after normal legacy normalization is exactly `.` or `..` must retain
+  its observed text, layout and styles but have no actionable href on any
+  anchor derived from that origin, including reconstructed anchors. Activation
+  must have no query, navigation, page, audio, article-search, history or
+  tab/session effects. This narrow approved Qt 5 divergence avoids empty-query
+  navigation; it changes no shared URL validation or public interface. Other
+  successfully rewritten nonempty targets, including `../word`, `/word`, `...`
+  and percent/entity literals, retain compatibility. N3 and EL-01 remain
+  distinct predicates. See the [decision and acceptance record](dot-only-reference-decision.md).
 
 ### 7.3 User-Owned State
 
@@ -678,6 +689,7 @@ baseline decision.
 
 | Date | Decision | Status |
 | --- | --- | --- |
+| 2026-09-09 | N4: successfully rewritten Dictd references whose complete legacy-normalized target is exactly `.` or `..` preserve appearance but omit actionable hrefs and have no activation side effects. Preserve other nonempty references, shared URL validation and public interfaces. The [focused record](dot-only-reference-decision.md) records approval, readiness, the additional Qt 5 divergence and pending R3.7g.2 acceptance. | Approved |
 | 2026-09-09 | N3: preserve Qt 5 browser-observed text/layout/styles for generated Dictd references that fail complete href rewriting, but disable every affected anchor, retaining origin through reconstruction. Successfully rewritten nonempty references remain compatible; EL-01 is separate. The [focused record](malformed-reference-decision.md) defines this narrow divergence, documentation readiness and pending renderer acceptance. | Approved |
 | 2026-09-09 | EL-01: reject normalized-empty Dictd lookup targets with no navigation or state side effects. Preserve inert reference content and existing query interfaces. This narrow exception to `CRD-LOOKUP-003` and `CRD-DICT-003` avoids disruptive empty navigation; it does not authorize suppression of nonempty targets. The [focused record](empty-lookup-target-decision.md) defines acceptance and remaining implementation evidence. | Approved |
 | 2026-09-08 | IG-03: retain Qt 6 direct F12 activation of the article's existing inspector regardless of intervening pointer events. Show/raise/activate the same lazily owned inspector, including after close, instead of reproducing Qt 5's pointer-dependent activation defect. Preserve popup-menu F12 suppression, context-target inspection, lifetime, geometry and security policy. This is a narrow behavioral correction, separate from IG-02; other capability/platform/cutover gates remain unchanged. | Approved |
@@ -706,6 +718,13 @@ N3 is resolved by `CRD-LOOKUP-007` and the approved
 [malformed-reference decision](malformed-reference-decision.md). This separate
 exception suppresses activation only for failed complete generated-tag rewrites;
 full R3.7g renderer readiness, implementation and acceptance remain separate.
+
+N4 is resolved by `CRD-LOOKUP-008` and the approved
+[dot-only-reference decision](dot-only-reference-decision.md). Its exact
+successful normalized-dot predicate extends the exception set independently
+of EL-01/N3; it does not broaden URL rejection or suppress other nonempty
+targets. Canonical decision delivery precedes resumed R3.7g.2 implementation;
+runtime acceptance remains open.
 
 Future questions are raised only when pinned Qt 5 behavior cannot be reproduced
 within mandatory constraints or when a clear, material optimization may

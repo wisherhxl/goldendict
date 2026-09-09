@@ -8,6 +8,11 @@ The approved bounded impact check found no new requirement, public interface,
 schema, navigation kind, dependency or architecture decision. EL-01 remains
 the narrow [normalized-empty exception](empty-lookup-target-decision.md).
 
+The later approved [N4 dot-only decision](dot-only-reference-decision.md) omits
+href at the private Dictd producer boundary for successful normalized targets
+exactly `.` or `..`. It changes neither N2 decoding nor its completed acceptance,
+and does not authorize suppressing other nonempty dot-containing targets.
+
 Frozen Qt 5 `dictdfiles.cc:349-394` normalizes reference whitespace before
 percent encoding; actual WebKit evidence at reference commit
 `3d93dd66197aea10edf6c29998ddc9c213d0aaa8` retains U+0001 and DEL in

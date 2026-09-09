@@ -30,6 +30,12 @@ failed complete generated href rewrites and every reconstructed anchor from
 those origins. Its classification precedes browser URL interpretation and must
 not be conflated with EL-01's normalized-empty target rule.
 
+The separately approved [N4 decision](dot-only-reference-decision.md) makes
+successfully rewritten targets exactly `.` or `..` after legacy normalization
+inert as well. These targets are nonempty before browser interpretation and
+are not EL-01. N4 alone authorizes this additional narrow divergence; it does
+not change EL-01, shared URL validation or other nonempty-reference behavior.
+
 ## Frozen evidence and current implementation
 
 Qt 5 reference: `3d93dd66197aea10edf6c29998ddc9c213d0aaa8`.

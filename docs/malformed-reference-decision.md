@@ -23,13 +23,20 @@ silently remove duplicated display fragments. Attempted activation must issue
 no query or navigation, replace no page, stop no audio, close no article search,
 record no history, and create, activate or alter no tab/session state.
 
-Successfully rewritten nonempty references retain normal legacy normalization
+Except for the separately approved [N4 dot-only rule](dot-only-reference-decision.md),
+successfully rewritten nonempty references retain normal legacy normalization
 and exact lookup behavior through the [N2 URL boundary](lookup-target-url-parity.md),
 including escaped entities, literal percent/hash/slash, residual admitted
 controls, neutral cross-line references and overlapping span closures. The
 [EL-01 normalized-empty rule](empty-lookup-target-decision.md) remains separate;
 N3 must not classify an empty decoded browser path as an EL-01 target. Literal
 `{}` remains unmatched by the frozen brace pattern.
+
+N4 applies only to successful rewrites whose complete legacy-normalized target
+is exactly `.` or `..`, before URL interpretation. It is not a failed N3 origin
+or an originally normalized-empty EL-01 target. Other nonempty dot-containing
+targets remain compatible. The later N4 record updates readiness for resuming
+R3.7g.2; the historical N3 readiness and acceptance scope below remain intact.
 
 This deliberate divergence avoids activating renderer-generated broken hrefs
 while retaining ordinary reference compatibility. It does not classify the

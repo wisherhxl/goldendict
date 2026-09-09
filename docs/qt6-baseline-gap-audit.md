@@ -178,7 +178,8 @@ acceptance; reports and target-push evidence reside in the workspace's
 Issue N3 is resolved by the approved [malformed-reference decision](malformed-reference-decision.md),
 `CRD-LOOKUP-007`: preserve Qt 5 observed text/layout/styles for failed complete
 generated href rewrites while disabling every affected reconstructed anchor.
-Successfully rewritten nonempty references remain compatible; EL-01 is separate.
+Successfully rewritten nonempty references remain compatible except for the
+later N4 rule below; EL-01 is separate.
 N3 is **Ready** as a documentation-only decision unit. Separate technical
 readiness is **Ready after N3 canonical decision delivery**, with full-text
 extraction/cache migration (R3.7g.1) preceding coupled display/activation
@@ -186,6 +187,20 @@ extraction/cache migration (R3.7g.1) preceding coupled display/activation
 [R3.7g.1 focused record](dictd-full-text-extraction-parity.md) owns extraction
 implementation and verification status. Display/activation acceptance remains
 open; neither decision closes R3.7 or platform/cutover gates.
+
+Issue N4 is resolved by approved `CRD-LOOKUP-008` and the
+[dot-only-reference decision](dot-only-reference-decision.md): successfully
+rewritten references whose complete legacy-normalized target is exactly `.` or
+`..` retain appearance but omit actionable hrefs and have no activation side
+effects. Ordinary nonempty/slash/punctuation/entity targets remain compatible.
+Readiness is **Ready** on 2026-09-09; the isolated canonical documentation unit
+must pass completion and integration audits before paused R3.7g.2 resumes on
+that integrated base. The frozen styled supplement and valid Qt 6 pointer
+diagnostic motivate this additional divergence; neither proves full N4 runtime
+acceptance. The existing R3.7g.1 delivery at
+`0659a4f12494f693ba28980c18e9ebcba5811386` and its independent pre-href full-text
+contract remain unchanged. R3.7g.2 display/activation acceptance, parent R3.7,
+Linux/macOS verification and cutover remain **Open**.
 
 ## Evidence Reviewed (Original Audit)
 
