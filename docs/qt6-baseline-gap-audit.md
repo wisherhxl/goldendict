@@ -114,6 +114,13 @@ snapshot above. Remaining Dictd variants, ordinary-gzip disposition, complete
 RA-header validation and Linux execution remain pending. This snapshot grants
 no automatic readiness to later leaves and does not change the dependency graph.
 
+The bounded [R3.7b index-row recovery correction](dictd-index-row-recovery-parity.md)
+restores Qt 5's behavior of skipping rows with zero, one, or more than three
+tabs while retaining usable records and accepted-row validation. Its focused
+record owns verification: implementation and Windows checks are complete
+(focused 4/4, cumulative 139/139). Delivery and independent audit evidence is
+recorded separately; parent R3.7 remains **Open**.
+
 ## Evidence Reviewed (Original Audit)
 
 The following observations describe the 2026-09-03 audit, not the current
@@ -330,7 +337,7 @@ launcher and Python tooling checks run directly.
 | R3.4 | **Complete:** real DSL and greater-than-4-GiB resource-ZIP acceptance and corrections | R3.2 | DSL/dictzip/article/resource/restart checks with bounded storage evidence |
 | R3.5 | **Complete:** real-corpus lookup, suggestion, article, media, morphology, and management matrix: `CRD-TEST-REAL-005` through `007` | R3.3, R3.4 | paired query catalogs, clean/warm machine-readable result diffs, and immutable-corpus proof |
 | R3.6 | **Complete:** StarDict non-corpus variants and companions: StarDict part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining compression, metadata, resource, identity, indexing, lookup, restart, corruption, and failure variants |
-| R3.7 | **Open:** Dictd non-corpus variants and companions: Dictd part of `CRD-DICT-003`; [R3.7a companion-content subunit](dictd-companion-loading-parity.md) | R3.5 | generated fixtures for remaining index/data, dictzip, metadata, identity, indexing, lookup, restart, corruption, and failure variants |
+| R3.7 | **Open:** Dictd non-corpus variants and companions: Dictd part of `CRD-DICT-003`; [R3.7a companion-content subunit](dictd-companion-loading-parity.md), [R3.7b index-row recovery subunit](dictd-index-row-recovery-parity.md) | R3.5 | generated fixtures for remaining index/data, dictzip, metadata, identity, indexing, lookup, restart, corruption, and failure variants |
 | R3.8 | SDict non-corpus variants and companions: SDict part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining field encodings/compression, identity, indexing, lookup, article, restart, corruption, and failure variants |
 | R3.9 | XDXF non-corpus variants and companions: XDXF part of `CRD-DICT-003` | R3.5 | generated fixtures for remaining compression, markup/link/resource, identity, indexing, lookup, restart, corruption, and failure variants |
 | R3.10 | GLS non-corpus variants and resource ZIP: GLS part of `CRD-DICT-003` | R3.5 | generated fixtures for encoding/compression/resource ZIP, identity, indexing, lookup, article, restart, corruption, and failure variants |

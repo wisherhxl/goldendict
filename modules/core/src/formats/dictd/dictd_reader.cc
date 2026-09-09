@@ -241,8 +241,7 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
         }
         const auto fields = SplitFields(line);
         if (fields.size() != 3U && fields.size() != 4U) {
-            Throw(ErrorCode::kInvalidIndex, index_path,
-                  "Malformed Dictd index line " + std::to_string(line_number));
+            continue;
         }
         const auto offset = DecodeBase64(fields[1], index_path, line_number);
         const auto size = DecodeBase64(fields[2], index_path, line_number);

@@ -3,6 +3,8 @@
 #include <QtTest>
 
 #include <filesystem>
+#include <iterator>
+#include <sstream>
 
 #include "../src/formats/dictd/dictd_reader.h"
 #include "support/dictd_fixture.h"
@@ -24,7 +26,122 @@ class DictdReaderTest : public QObject {
     void InvokesScanCheckpoints();
     void RejectsCorruptCompressedData();
     void RejectsMalformedBase64AndOutOfRangeArticles();
+    void RecoversMalformedRows_data();
+    void RecoversMalformedRows();
+    void OpensIndexesWithoutAcceptedRows_data();
+    void OpensIndexesWithoutAcceptedRows();
+    void PreservesAcceptedRowValidation_data();
+    void PreservesAcceptedRowValidation();
 };
+
+void DictdReaderTest::RecoversMalformedRows_data() {
+    QTest::addColumn<QString>("row");
+    QTest::newRow("blank") << "";
+    QTest::newRow("no-tabs") << "ignored";
+    QTest::newRow("one-tab") << "ignored\t!";
+    QTest::newRow("four-tabs") << "ignored\t!\t!\talias\textra";
+    QTest::newRow("five-tabs") << "ignored\t!\t!\talias\textra\tmore";
+    QTest::newRow("trailing-extra-tab") << "ignored\tA\tA\talias\t";
+}
+
+void DictdReaderTest::RecoversMalformedRows() {
+    QFETCH(QString, row);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = test::WriteDictdFixture(
+        root, {{"first", "first searchable", "original"},
+               {"second", "second searchable", {}},
+               {"00databaseshort", "Recovered title", {}},
+               {"00databaseinfo", "Recovered description", {}}});
+    std::ifstream input(index, std::ios::binary);
+    const std::string original{std::istreambuf_iterator<char>(input), {}};
+    input.close();
+    std::istringstream lines(original);
+    std::string line;
+    std::ofstream output(index, std::ios::binary | std::ios::trunc);
+    output << row.toStdString() << '\n';
+    while (std::getline(lines, line)) {
+        output << line << '\n' << row.toStdString() << '\n';
+    }
+    output << row.toStdString();  // Exercise the final unterminated row too.
+    output.close();
+
+    const auto reader = Reader::Open(index);
+    QCOMPARE(reader.article_count(), 4U);
+    QCOMPARE(reader.headword_count(), 5U);
+    QCOMPARE(reader.name(), "Recovered title");
+    QCOMPARE(reader.description(), "Recovered description");
+    QCOMPARE(reader.LookupExact("first").front().data, "first searchable");
+    QCOMPARE(reader.LookupExact("original").front().data, "first searchable");
+    QCOMPARE(reader.LookupExact("second").front().data, "second searchable");
+    QVERIFY(reader.LookupExact("ignored").empty());
+    const auto articles = reader.ReadFullTextArticles();
+    QCOMPARE(articles.size(), 2U);
+    QCOMPARE(articles[0].record_ordinal, 1U);
+    QCOMPARE(articles[1].record_ordinal, 3U);
+    QCOMPARE(reader.source_snapshot(),
+             dictionary::CaptureSourceSnapshot({index, root / "fixture.dict"}));
+}
+
+void DictdReaderTest::OpensIndexesWithoutAcceptedRows_data() {
+    QTest::addColumn<QString>("index_text");
+    QTest::newRow("empty") << "";
+    QTest::newRow("all-skipped") << "\nignored\nignored\t!\nignored\t!\t!\ta\textra";
+}
+
+void DictdReaderTest::OpensIndexesWithoutAcceptedRows() {
+    QFETCH(QString, index_text);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = test::WriteDictdFixture(root, {});
+    std::ofstream(index, std::ios::binary | std::ios::trunc)
+        << index_text.toStdString();
+    const auto reader = Reader::Open(index);
+    QCOMPARE(reader.name(), "fixture");
+    QVERIFY(reader.description().empty());
+    QCOMPARE(reader.article_count(), 0U);
+    QCOMPARE(reader.headword_count(), 0U);
+    QVERIFY(reader.LookupExact("ignored").empty());
+    QVERIFY(reader.ReadFullTextArticles().empty());
+    QVERIFY(reader.EnumerateHeadwords(0U, 10U, 1024U).first.empty());
+}
+
+void DictdReaderTest::PreservesAcceptedRowValidation_data() {
+    QTest::addColumn<QByteArray>("row");
+    QTest::addColumn<bool>("invalid_dictionary");
+    QTest::newRow("base64") << QByteArray("entry\t!\tA") << false;
+    QTest::newRow("range") << QByteArray("entry\tA\t/") << true;
+    QTest::newRow("utf8") << QByteArray("\xff\tA\tB") << false;
+    QTest::newRow("alias-utf8") << QByteArray("entry\tA\tB\t\xff") << false;
+    QTest::newRow("oversized-malformed-row")
+        << QByteArray(16U * 1024U + 1U, 'x') << false;
+}
+
+void DictdReaderTest::PreservesAcceptedRowValidation() {
+    QFETCH(QByteArray, row);
+    QFETCH(bool, invalid_dictionary);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = test::WriteDictdFixture(root, {{"entry", "data", {}}});
+    std::ofstream output(index, std::ios::binary | std::ios::trunc);
+    output << "ignored\n";
+    output.write(row.data(), row.size());
+    output.close();
+    try {
+        static_cast<void>(Reader::Open(index));
+        QFAIL("Accepted corrupt rows and oversized rows must fail");
+    } catch (const Error& error) {
+        QCOMPARE(error.code(), invalid_dictionary ? ErrorCode::kInvalidDictionary
+                                                  : ErrorCode::kInvalidIndex);
+        QCOMPARE(error.path(), index);
+        if (row.size() <= 16U * 1024U) {
+            QVERIFY(std::string(error.what()).find("line 2") != std::string::npos);
+        }
+    }
+}
 
 void DictdReaderTest::ValidatesRealDictzipFixtureChunks() {
     const std::string source =

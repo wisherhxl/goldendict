@@ -5828,7 +5828,10 @@ void ApplicationServiceTest::DiscoversAndQueriesDictdAlongsideStardict() {
     QVERIFY(std::filesystem::create_directories(root / "stardict"));
     test::WriteStardictFixture(root / "stardict",
                                {{"example", "StarDict article"}});
-    test::WriteDictdFixture(root / "dictd", {{"example", "Dictd article", {}}});
+    const auto dictd_index =
+        test::WriteDictdFixture(root / "dictd", {{"example", "Dictd article", {}}});
+    std::ofstream(dictd_index, std::ios::binary | std::ios::app)
+        << "ignored\t!\t!\talias\textra\n";
     CoreConfiguration configuration;
     configuration.dictionary_paths = {root.string()};
     auto service = CreateDictionaryService(configuration);

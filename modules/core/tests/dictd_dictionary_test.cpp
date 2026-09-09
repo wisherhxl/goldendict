@@ -5,6 +5,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <thread>
 
 #include "../src/formats/dictd/dictd_dictionary.h"
@@ -43,7 +44,73 @@ class DictdDictionaryTest : public QObject {
     void ReusesRealDictzipCompanions_data();
     void ReusesRealDictzipCompanions();
     void RebuildsPreContentDetectionFullTextIndex();
+    void ReusesRecoveredIndexRows();
+    void RejectsAcceptedCorruptionAfterSkippedRow();
 };
+
+void DictdDictionaryTest::ReusesRecoveredIndexRows() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = test::WriteDictdFixture(
+        root, {{"first", "first searchable", "original"},
+               {"second", "second searchable", {}}});
+    std::ifstream input(index, std::ios::binary);
+    const std::string original{std::istreambuf_iterator<char>(input), {}};
+    input.close();
+    std::ofstream(index, std::ios::binary | std::ios::trunc)
+        << "ignored\t!\t!\talias\textra\n" << original << "ignored\n";
+    const auto sources =
+        dictionary::CaptureSourceSnapshot({index, root / "fixture.dict"});
+    const auto full_text_path = root / "fixture.gdfts";
+    FullTextQuery query;
+    query.text = "searchable";
+    for (const bool warm : {false, true}) {
+        const auto dictionary =
+            Dictionary::Open("dictd-id", index, full_text_path);
+        QCOMPARE(dictionary.identity().id, "dictd-id");
+        QCOMPARE(dictionary.identity().source,
+                 std::filesystem::weakly_canonical(index).string());
+        QCOMPARE(dictionary.identity().article_count, 2U);
+        QCOMPARE(dictionary.identity().headword_count, 3U);
+        QCOMPARE(dictionary.EnumerateHeadwords(0U).headwords,
+                 (std::vector<std::string>{"first", "original", "second"}));
+        QCOMPARE(dictionary.LookupExact("original", {}).front().data,
+                 "first searchable");
+        QVERIFY(dictionary.LookupExact("ignored", {}).empty());
+        QCOMPARE(dictionary.full_text_index_state(),
+                 std::optional(warm ? dictionary::FullTextIndexState::kReused
+                                    : dictionary::FullTextIndexState::kCreated));
+        const auto response = dictionary.SearchFullText(query);
+        QVERIFY(response.errors.empty());
+        QVERIFY(!response.partial);
+        QCOMPARE(response.results.size(), 2U);
+        QCOMPARE(response.results[0].headword, "first");
+        QCOMPARE(response.results[0].document_id, "dictd-index:1:0:16");
+        QCOMPARE(response.results[1].headword, "second");
+        QCOMPARE(response.results[1].document_id, "dictd-index:2:16:17");
+        QCOMPARE(dictionary::CaptureSourceSnapshot({index, root / "fixture.dict"}),
+                 sources);
+    }
+}
+
+void DictdDictionaryTest::RejectsAcceptedCorruptionAfterSkippedRow() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = test::WriteDictdFixture(root, {{"entry", "data", {}}});
+    std::ofstream(index, std::ios::binary | std::ios::trunc)
+        << "ignored\nentry\t!\tB\n";
+    const auto full_text_path = root / "fixture.gdfts";
+    try {
+        static_cast<void>(Dictionary::Open("dictd-id", index, full_text_path));
+        QFAIL("Accepted corrupt rows must still report invalid data");
+    } catch (const dictionary::Error& error) {
+        QCOMPARE(error.code(), dictionary::ErrorCode::kInvalidData);
+        QVERIFY(std::string(error.what()).find("line 2") != std::string::npos);
+    }
+    QVERIFY(!std::filesystem::exists(full_text_path));
+}
 
 void DictdDictionaryTest::ExposesPlainArticlesAndSuggestions() {
     QTemporaryDir directory;
