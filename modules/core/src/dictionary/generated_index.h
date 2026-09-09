@@ -53,6 +53,11 @@ void StoreGeneratedIndex(const std::filesystem::path& index_path,
                          std::string_view format, const SourceSnapshot& sources,
                          std::string_view payload);
 
+// Publishes a closed, fully written temporary file beside a distinct target.
+// Failure preserves the target and removes only the temporary file, if possible.
+void PublishGeneratedIndex(const std::filesystem::path& temporary_path,
+                           const std::filesystem::path& index_path);
+
 }  // namespace goldendict::core::dictionary
 
 #endif  // GOLDENDICT_CORE_SRC_DICTIONARY_GENERATED_INDEX_H_

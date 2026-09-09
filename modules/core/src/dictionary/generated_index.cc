@@ -299,20 +299,13 @@ void StoreGeneratedIndex(const std::filesystem::path& index_path,
     }
     output.close();
 
+    PublishGeneratedIndex(temporary_path, index_path);
+}
+
+void PublishGeneratedIndex(const std::filesystem::path& temporary_path,
+                           const std::filesystem::path& index_path) {
+    std::error_code filesystem_error;
     std::filesystem::rename(temporary_path, index_path, filesystem_error);
-    if (filesystem_error) {
-        std::error_code remove_error;
-        if (std::filesystem::is_regular_file(index_path, remove_error)) {
-            std::filesystem::remove(index_path, remove_error);
-        }
-        if (remove_error) {
-            std::filesystem::remove(temporary_path, filesystem_error);
-            throw GeneratedIndexError("Cannot replace generated index: " +
-                                      index_path.string());
-        }
-        filesystem_error.clear();
-        std::filesystem::rename(temporary_path, index_path, filesystem_error);
-    }
     if (filesystem_error) {
         std::filesystem::remove(temporary_path, filesystem_error);
         throw GeneratedIndexError("Cannot commit generated index: " +

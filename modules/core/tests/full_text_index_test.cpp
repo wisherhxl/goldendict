@@ -15,11 +15,16 @@
 #include <tuple>
 #include <type_traits>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include "../src/dictionary/full_text_index.h"
 #include "../src/dictionary/full_text_index_lifecycle.h"
 #include "../src/dictionary/full_text_index_snapshot.h"
 #include "../src/dictionary/full_text_index_work_executor.h"
 #include "../src/dictionary/full_text_matcher.h"
+#include "../src/dictionary/generated_index.h"
 #include "../src/foundation/utf8.h"
 
 namespace goldendict::core::dictionary {
@@ -359,6 +364,121 @@ class GatedFormatWorkPort final : public FullTextIndexFormatWorkPort {
 class FullTextIndexTest : public QObject {
     Q_OBJECT
    private slots:
+
+    void GeneratedIndexPublicationAndRecovery() {
+        TemporaryDirectory directory;
+        const auto source = directory.path() / "source";
+        const auto target = directory.path() / "index";
+        const QByteArray source_bytes("original dictionary data");
+        QFile source_file(QString::fromStdString(source.string()));
+        QVERIFY(source_file.open(QIODevice::WriteOnly));
+        QCOMPARE(source_file.write(source_bytes), source_bytes.size());
+        source_file.close();
+        const auto sources = CaptureSourceSnapshot({source});
+        QCOMPARE(LoadGeneratedIndex(target, "fixture", sources).state,
+                 GeneratedIndexState::kMissing);
+        StoreGeneratedIndex(target, "fixture", sources, "first");
+        QCOMPARE(LoadGeneratedIndex(target, "fixture", sources).payload,
+                 std::string("first"));
+        StoreGeneratedIndex(target, "fixture", sources, "replacement");
+        QCOMPARE(LoadGeneratedIndex(target, "fixture", sources).payload,
+                 std::string("replacement"));
+
+        auto changed_sources = sources;
+        ++changed_sources.front().modified;
+        QCOMPARE(LoadGeneratedIndex(target, "fixture", changed_sources).state,
+                 GeneratedIndexState::kStale);
+        StoreGeneratedIndex(target, "fixture", changed_sources, "rebuilt");
+        QCOMPARE(LoadGeneratedIndex(target, "fixture", changed_sources).state,
+                 GeneratedIndexState::kCurrent);
+        QFile index_file(QString::fromStdString(target.string()));
+        QVERIFY(index_file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        QCOMPARE(index_file.write("corrupt"), qint64(7));
+        index_file.close();
+        QCOMPARE(LoadGeneratedIndex(target, "fixture", changed_sources).state,
+                 GeneratedIndexState::kCorrupt);
+        StoreGeneratedIndex(target, "fixture", changed_sources, "recovered");
+        QCOMPARE(LoadGeneratedIndex(target, "fixture", changed_sources).payload,
+                 std::string("recovered"));
+        QVERIFY(source_file.open(QIODevice::ReadOnly));
+        QCOMPARE(source_file.readAll(), source_bytes);
+        source_file.close();
+        QCOMPARE(
+            std::distance(std::filesystem::directory_iterator(directory.path()),
+                          std::filesystem::directory_iterator()),
+            std::ptrdiff_t(2));
+    }
+
+    void GeneratedIndexFailedPublicationCleansTemporary() {
+        TemporaryDirectory directory;
+        const auto target = directory.path() / "target";
+        const auto temporary = directory.path() / "prepared.tmp";
+        std::filesystem::create_directory(target);
+        StoreGeneratedIndex(target / "retained", "fixture", {}, "old");
+        StoreGeneratedIndex(temporary, "fixture", {}, "new");
+        try {
+            PublishGeneratedIndex(temporary, target);
+            QFAIL("Publication over a nonempty directory must fail");
+        } catch (const GeneratedIndexError& error) {
+            QVERIFY(std::string(error.what()).find(target.string()) !=
+                    std::string::npos);
+        }
+        QVERIFY(!std::filesystem::exists(temporary));
+        QCOMPARE(LoadGeneratedIndex(target / "retained", "fixture", {}).payload,
+                 std::string("old"));
+    }
+
+    void GeneratedIndexSourceLockPreservesDeletableTarget() {
+#ifdef _WIN32
+        TemporaryDirectory directory;
+        const auto target = directory.path() / "target";
+        const auto temporary = directory.path() / "prepared.tmp";
+        StoreGeneratedIndex(target, "fixture", {}, "old");
+        StoreGeneratedIndex(temporary, "fixture", {}, "new");
+        QFile original(QString::fromStdString(target.string()));
+        QVERIFY(original.open(QIODevice::ReadOnly));
+        const auto original_bytes = original.readAll();
+        original.close();
+
+        // The old target permits deletion; only the prepared source is locked.
+        const auto deletable =
+            CreateFileW(target.c_str(), DELETE,
+                        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                        nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        QVERIFY(deletable != INVALID_HANDLE_VALUE);
+        QVERIFY(CloseHandle(deletable));
+        const auto locked = CreateFileW(
+            temporary.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        QVERIFY(locked != INVALID_HANDLE_VALUE);
+        const auto close_handle = [](void* handle) {
+            CloseHandle(handle);
+        };
+        std::unique_ptr<void, decltype(close_handle)> source_lock(locked,
+                                                                  close_handle);
+        try {
+            PublishGeneratedIndex(temporary, target);
+            QFAIL("A source without delete sharing must reject publication");
+        } catch (const GeneratedIndexError& error) {
+            QVERIFY(std::string(error.what()).find(target.string()) !=
+                    std::string::npos);
+        }
+        QVERIFY(original.open(QIODevice::ReadOnly));
+        QCOMPARE(original.readAll(), original_bytes);
+        original.close();
+        QCOMPARE(LoadGeneratedIndex(target, "fixture", {}).payload,
+                 std::string("old"));
+        // Cleanup is best-effort while the same source lock blocks deletion.
+        QVERIFY(std::filesystem::exists(temporary));
+        source_lock.reset();
+        QVERIFY(std::filesystem::remove(temporary));
+#else
+        QSKIP(
+            "Windows delete-sharing behavior; portable failures are tested "
+            "separately");
+#endif
+    }
+
     void Lifecycle();
     void OpensOnlyCurrentArtifacts();
     void PreparesWithoutPersisting();
