@@ -37,6 +37,23 @@ owning Conan launcher. Repeat the dictionary-bar smoke with both `TEMP` and
 `TMP` set to fresh C-drive and D-drive roots. These are configuration ownership
 checks, not Linux/macOS or complete dictionary parity acceptance.
 
+### Dictd full-text extraction
+
+The [R3.7g.1 Dictd extraction correction](dictd-full-text-extraction-parity.md)
+adds 111 actual Qt 5 FTS oracle rows, malformed UTF-8/CR/NUL cases, bounded
+expansion and private early/middle/late checkpoint tests to
+`dictd_dictionary_test`. Its full R3.7f cache fixture checks semantic migration,
+stable IDs, warm reuse, corrupt recovery, exact excerpts, unchanged sources
+and display. Windows holds the prior generated artifact open to test contained
+replacement failure. The integrated
+[publication prerequisite](generated-index-publication.md) independently
+proves that failed replacement retains a deletable prior artifact.
+`Dictionary::Open` still has no ingestion cancellation/deadline parameter.
+
+```powershell
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -j 1 -R '^(dictd_reader_test|dictd_dictionary_test|article_assembler_test|application_service_test)$' --output-on-failure
+```
+
 ### Lookup target routing
 
 The [N2 lookup URL correction](lookup-target-url-parity.md) is covered by

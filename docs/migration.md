@@ -1540,6 +1540,12 @@ implementation gate is focused generated-fixture, lifecycle, and mixed-service
 coverage, the unchanged installed consumer, the complete Linux Release
 test/install path, and clean committed exact-SCM Conan package creation.
 
+The [R3.7g.1 correction](dictd-full-text-extraction-parity.md) supersedes this
+historical assembled-text path with independent frozen pre-href extraction.
+It retains physical sources, range/metadata ownership and document identity,
+adding only a private semantic revision to rebuild older generated artifacts.
+Inline display and activation remain R3.7g.2; neither unit closes Dictd parity.
+
 P6-FT-4 is complete. Dictd now contributes one private full-text document per
 distinct validated non-metadata article range, with source-record canonical
 provenance, alias deduplication, inert plain-text assembly, two-source

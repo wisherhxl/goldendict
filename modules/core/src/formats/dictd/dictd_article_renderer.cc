@@ -10,6 +10,8 @@
 #include <optional>
 #include <utility>
 
+#include <QChar>
+
 #include <unicode/uchar.h>
 
 #include "../../dictionary/dictionary_backend.h"
@@ -46,8 +48,12 @@ class RenderControl final {
                 dictionary::ErrorCode::kInvalidData,
                 "Rendered Dictd article exceeds the size limit");
         }
-        Advance(value.size());
-        output->append(value);
+        while (!value.empty()) {
+            const auto count = std::min(value.size(), 4096U - work_);
+            output->append(value.substr(0U, count));
+            value.remove_prefix(count);
+            Advance(count);
+        }
     }
 
    private:
@@ -149,18 +155,11 @@ std::pair<std::string, bool> NormalizeLine(std::string_view line,
     return {std::move(normalized), direction.value_or(false)};
 }
 
-}  // namespace
-
-std::string RenderArticleBody(std::string_view body,
-                              std::string_view target_language,
-                              const std::function<void()>& checkpoint) {
-    RenderControl control(checkpoint);
+std::string PreformatLines(std::string_view body,
+                           std::string_view target_language,
+                           RenderControl& control) {
     const bool base_right_to_left = IsRightToLeftLanguage(target_language);
     std::string output;
-    control.Append(base_right_to_left
-                       ? "<div class=\"dictd_article\" dir=\"rtl\">"
-                       : "<div class=\"dictd_article\">",
-                   &output);
     std::string line;
     const auto append_line = [&]() {
         const auto normalized = NormalizeLine(line, &control);
@@ -215,9 +214,185 @@ std::string RenderArticleBody(std::string_view body,
     if (!line.empty()) {
         append_line();
     }
+    control.Check();
+    return output;
+}
+
+// The frozen replacements are global and nonrecursive. Braces inside a brace
+// candidate restart it; adjacent backslashes cannot form an empty phonetic.
+std::string ConvertInlineMarkup(std::string_view input, bool references,
+                                RenderControl& control) {
+    std::string output;
+    const char opening = references ? '{' : '\\';
+    const char closing = references ? '}' : '\\';
+    std::size_t copied = 0U;
+    std::optional<std::size_t> begin;
+    for (std::size_t position = 0U; position < input.size(); ++position) {
+        control.Advance();
+        const char value = input[position];
+        if (begin && value == closing && position > *begin + 1U) {
+            const auto capture =
+                input.substr(*begin + 1U, position - *begin - 1U);
+            // Check the entire expansion before making either capture copy.
+            const std::string_view prefix =
+                references ? "<a href=\"gdlookup://localhost/"
+                           : "<span class=\"dictd_phonetic\">";
+            const std::string_view suffix = references ? "</a>" : "</span>";
+            const auto overhead =
+                prefix.size() + suffix.size() + (references ? 2U : 0U);
+            const std::size_t copies = references ? 2U : 1U;
+            const auto remaining = kMaximumRenderedBytes - output.size();
+            const auto literal_size = *begin - copied;
+            if (literal_size > remaining ||
+                overhead > remaining - literal_size ||
+                capture.size() >
+                    (remaining - literal_size - overhead) / copies) {
+                throw dictionary::Error(
+                    dictionary::ErrorCode::kInvalidData,
+                    "Dictd inline expansion exceeds the size limit");
+            }
+            control.Append(input.substr(copied, *begin - copied), &output);
+            control.Append(prefix, &output);
+            control.Append(capture, &output);
+            if (references) {
+                control.Append("\">", &output);
+                control.Append(capture, &output);
+            }
+            control.Append(suffix, &output);
+            copied = position + 1U;
+            begin.reset();
+        } else if (value == opening) {
+            begin = position;
+        } else if (references && value == closing) {
+            begin.reset();
+        }
+    }
+    control.Append(input.substr(copied), &output);
+    return output;
+}
+
+// Only generated tags reach this stage: source '<' and '&' were escaped.
+// Block replacement must precede other tag removal, even inside broken hrefs.
+std::string RemoveGeneratedTags(std::string_view input, bool blocks_only,
+                                RenderControl& control) {
+    std::string output;
+    std::size_t copied = 0U;
+    for (std::size_t position = 0U; position < input.size(); ++position) {
+        control.Advance();
+        if (input[position] != '<' ||
+            (blocks_only && input.substr(position, 4U) != "<div" &&
+             input.substr(position, 5U) != "</div")) {
+            continue;
+        }
+        const auto start = position;
+        while (position < input.size() && input[position] != '>') {
+            ++position;
+            control.Advance();
+        }
+        if (position == input.size()) {
+            break;
+        }
+        control.Append(input.substr(copied, start - copied), &output);
+        if (blocks_only) {
+            control.Append(" ", &output);
+        }
+        copied = position + 1U;
+    }
+    control.Append(input.substr(copied), &output);
+    return output;
+}
+
+std::string ExtractGeneratedText(std::string_view input,
+                                 RenderControl& control) {
+    // Match QString::trimmed before entity decoding, not final text trimming.
+    std::size_t first = input.size();
+    std::size_t end = 0U;
+    for (std::size_t position = 0U; position < input.size();) {
+        const auto character = ReadCharacter(input, position);
+        control.Advance(character.bytes);
+        if (!QChar::isSpace(character.value)) {
+            first = std::min(first, position);
+            end = position + character.bytes;
+        }
+        position += character.bytes;
+    }
+    if (end == 0U) {
+        return {};
+    }
+    input = input.substr(first, end - first);
+    std::string output;
+    bool collapsible = true;
+    for (std::size_t position = 0U; position < input.size();) {
+        auto character = ReadCharacter(input, position);
+        auto bytes = input.substr(position, character.bytes);
+        if (character.value == '&') {
+            constexpr std::pair<std::string_view, std::string_view> entities[] =
+                {{"&amp;", "&"},
+                 {"&lt;", "<"},
+                 {"&gt;", ">"},
+                 {"&quot;", "\""},
+                 {"&nbsp;", "\xc2\xa0"}};
+            for (const auto& entity : entities) {
+                if (input.substr(position, entity.first.size()) ==
+                    entity.first) {
+                    bytes = entity.second;
+                    character = ReadCharacter(bytes, 0U);
+                    character.bytes = entity.first.size();
+                    break;
+                }
+            }
+        }
+        control.Advance(character.bytes);
+        position += character.bytes;
+        if (character.value == 0xa0U) {
+            control.Append(" ", &output);
+            collapsible = false;
+        } else if (character.value == 0x2029U) {
+            control.Append("\n", &output);
+            collapsible = true;
+        } else if (QChar::isSpace(character.value)) {
+            if (!collapsible) {
+                control.Append(" ", &output);
+            }
+            collapsible = true;
+        } else {
+            control.Append(bytes, &output);
+            collapsible = false;
+        }
+    }
+    return output;
+}
+
+}  // namespace
+
+std::string RenderArticleBody(std::string_view body,
+                              std::string_view target_language,
+                              const std::function<void()>& checkpoint) {
+    RenderControl control(checkpoint);
+    const auto lines = PreformatLines(body, target_language, control);
+    std::string output;
+    control.Append(IsRightToLeftLanguage(target_language)
+                       ? "<div class=\"dictd_article\" dir=\"rtl\">"
+                       : "<div class=\"dictd_article\">",
+                   &output);
+    control.Append(lines, &output);
     control.Append("</div>", &output);
     control.Check();
     return output;
+}
+
+std::string ExtractArticleText(std::string_view body,
+                               std::string_view target_language,
+                               const std::function<void()>& checkpoint) {
+    RenderControl control(checkpoint);
+    auto text = PreformatLines(body, target_language, control);
+    text = ConvertInlineMarkup(text, false, control);
+    text = ConvertInlineMarkup(text, true, control);
+    text = RemoveGeneratedTags(text, true, control);
+    text = RemoveGeneratedTags(text, false, control);
+    text = ExtractGeneratedText(text, control);
+    control.Check();
+    return text;
 }
 
 }  // namespace goldendict::core::formats::dictd

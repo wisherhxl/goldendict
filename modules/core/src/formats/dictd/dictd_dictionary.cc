@@ -8,7 +8,6 @@
 #include <system_error>
 #include <utility>
 
-#include "../../article/article_assembler.h"
 #include "../../foundation/legacy_language_pair.h"
 #include "dictd_article_renderer.h"
 
@@ -19,25 +18,8 @@ dictionary::SourceSnapshot FullTextSources(dictionary::SourceSnapshot sources) {
     sources.push_back({"goldendict:dictd-content-detection-v1", 0U, 0});
     sources.push_back({"goldendict:dictd-title-metadata-v1", 0U, 0});
     sources.push_back({"goldendict:dictd-body-layout-v1", 0U, 0});
+    sources.push_back({"goldendict:dictd-full-text-extraction-v1", 0U, 0});
     return sources;
-}
-
-std::string NormalizeFullTextSpaces(std::string text) {
-    // Qt 5 QTextDocumentFragment::toPlainText turns nonbreaking spaces into
-    // ordinary spaces. Keep that search behavior without changing article
-    // presentation or the shared matcher's word-boundary policy.
-    std::size_t output = 0U;
-    for (std::size_t input = 0U; input < text.size(); ++input) {
-        if (text[input] == '\xc2' && input + 1U < text.size() &&
-            text[input + 1U] == '\xa0') {
-            text[output++] = ' ';
-            ++input;
-        } else {
-            text[output++] = text[input];
-        }
-    }
-    text.resize(output);
-    return text;
 }
 
 dictionary::Error TranslateError(const Error& error) {
@@ -101,12 +83,6 @@ Dictionary Dictionary::Open(
                     dictionary.reader_.ReadFullTextArticles();
                 documents.reserve(source_articles.size());
                 for (const auto& source : source_articles) {
-                    dictionary::Article article{
-                        source.headword, "text/html",
-                        RenderArticleBody(source.data,
-                                          dictionary.target_language_)};
-                    auto assembled = article::Assemble(dictionary.identity_,
-                                                       {std::move(article)});
                     dictionary::FullTextDocument document;
                     document.dictionary.id = dictionary.identity_.id;
                     document.dictionary.name = dictionary.identity_.name;
@@ -124,8 +100,8 @@ Dictionary Dictionary::Open(
                         "dictd-index:" + std::to_string(source.record_ordinal) +
                         ":" + std::to_string(source.article_offset) + ":" +
                         std::to_string(source.article_size);
-                    document.plain_text = NormalizeFullTextSpaces(
-                        std::move(assembled.plain_text));
+                    document.plain_text = ExtractArticleText(
+                        source.data, dictionary.target_language_);
                     documents.push_back(std::move(document));
                 }
                 dictionary.full_text_index_ =

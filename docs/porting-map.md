@@ -169,7 +169,9 @@ The authoritative legacy discovery path is `loaddictionaries.cc`.
 - ABBYY Lingvo DSL: `dsl.*`, `dsl_details.*`, `indexedzip.*`, and `zipfile.*`;
   `.dsl`, `.dsl.dz`, `_abrv.dsl`/`_abrv.dsl.dz` companions, resource
   directories, and adjacent resource ZIP archives.
-- Dictd: `dictdfiles.*`; `.index`, `.dict`, and `.dict.dz` families.
+- Dictd: `dictdfiles.*`; `.index`, `.dict`, and `.dict.dz` families. Private
+  Core [full-text extraction](dictd-full-text-extraction-parity.md) follows
+  `dictdfiles.cc:573-589` and `htmlescape.cc:149-175` independently of display.
 - XDXF: `xdxf.*`, `xdxf2html.*`; `.xdxf` and `.xdxf.dz`.
 - SDict: `sdict.*`; `.dct`.
 - Aard: `aard.*`; `.aar`.

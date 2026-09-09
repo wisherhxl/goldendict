@@ -12,6 +12,10 @@ std::string RenderArticleBody(std::string_view body,
                               std::string_view target_language,
                               const std::function<void()>& checkpoint = {});
 
+std::string ExtractArticleText(std::string_view body,
+                               std::string_view target_language,
+                               const std::function<void()>& checkpoint = {});
+
 }  // namespace goldendict::core::formats::dictd
 
 #endif

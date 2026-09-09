@@ -182,8 +182,10 @@ Successfully rewritten nonempty references remain compatible; EL-01 is separate.
 N3 is **Ready** as a documentation-only decision unit. Separate technical
 readiness is **Ready after N3 canonical decision delivery**, with full-text
 extraction/cache migration (R3.7g.1) preceding coupled display/activation
-(R3.7g.2), as recorded in the focused decision. Their implementation and runtime
-acceptance remain open; neither decision closes R3.7 or platform/cutover gates.
+(R3.7g.2), as recorded in the focused decision. The
+[R3.7g.1 focused record](dictd-full-text-extraction-parity.md) owns extraction
+implementation and verification status. Display/activation acceptance remains
+open; neither decision closes R3.7 or platform/cutover gates.
 
 ## Evidence Reviewed (Original Audit)
 

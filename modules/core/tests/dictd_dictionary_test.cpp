@@ -49,6 +49,10 @@ class DictdDictionaryTest : public QObject {
     void RendersFrozenLayout();
     void UsesOnlyFilenameDirection();
     void BoundsAndCancelsRendering();
+    void ExtractsFrozenFullText_data();
+    void ExtractsFrozenFullText();
+    void BoundsAndCancelsExtraction();
+    void RebuildsFormerInlineFullTextIndex();
     void RebuildsFormerPlainTextLayoutIndex();
     void HonorsCancellationAndHasNoResources();
     void BuildsRangeDeduplicatedFullTextIndex();
@@ -629,14 +633,185 @@ void DictdDictionaryTest::RebuildsFormerPlainTextLayoutIndex() {
         QVERIFY(response.errors.empty());
         QCOMPARE(response.results.size(), 1U);
         QCOMPARE(response.results.front().document_id, former.document_id);
-        QCOMPARE(
-            response.results.front().excerpt,
-            "  visible\n<b>literal</b>&amp;\n literalnbsp\n&nbsp;entityword");
+        QCOMPARE(response.results.front().excerpt,
+                 "  visible <b>literal</b>&amp;  literalnbsp &nbsp;entityword");
         query.text = "literalnbsp";
         QCOMPARE(dictionary.SearchFullText(query).results.size(), 1U);
         QCOMPARE(
             dictionary::CaptureSourceSnapshot({index, root / "fixture.dict"}),
             source_snapshot);
+    }
+}
+
+void DictdDictionaryTest::ExtractsFrozenFullText_data() {
+    QTest::addColumn<QByteArray>("body");
+    QTest::addColumn<QByteArray>("expected");
+    QTest::addColumn<bool>("rtl");
+
+    const struct {
+        const char* name;
+        const char* body_hex;
+        const char* expected_hex;
+        bool rtl;
+    } observations[] = {
+
+#include "support/dictd_fts_oracle.inc"
+    };
+    static_assert(std::size(observations) == 111U);
+    for (const auto& row : observations) {
+        QTest::newRow(row.name)
+            << QByteArray::fromHex(row.body_hex)
+            << QByteArray::fromHex(row.expected_hex) << row.rtl;
+    }
+    // Frozen R3.7f UTF-8 observations also govern the shared preformat phase.
+    QTest::newRow("invalid-utf8")
+        << QByteArray::fromHex("61e08080eda080f4908080e282")
+        << QByteArray::fromHex(
+               "61efbfbdefbfbdefbfbdefbfbdefbfbdefbfbdefbfbdefbfbdefbfbdefbfbde"
+               "fbfbdefbfbd")
+        << false;
+    QTest::newRow("cr-before-utf8")
+        << QByteArray::fromHex("c20da0") << QByteArray() << false;
+    QTest::newRow("nul-terminates")
+        << QByteArray("visible\0hidden", 14) << QByteArray("visible") << false;
+}
+
+void DictdDictionaryTest::ExtractsFrozenFullText() {
+    QFETCH(QByteArray, body);
+    QFETCH(QByteArray, expected);
+    QFETCH(bool, rtl);
+    QCOMPARE(ExtractArticleText(body.toStdString(), rtl ? "ar" : ""),
+             expected.toStdString());
+}
+
+void DictdDictionaryTest::BoundsAndCancelsExtraction() {
+    constexpr std::size_t limit = 16U * 1024U * 1024U;
+    const std::string ignored(limit + 1U, '\r');
+    QCOMPARE(RenderArticleBody(ignored, ""),
+             "<div class=\"dictd_article\"></div>");
+    QVERIFY(ExtractArticleText(ignored, "").empty());
+    const auto nul_tail = std::string("visible\0", 8U) + ignored;
+    QCOMPARE(RenderArticleBody(nul_tail, ""),
+             "<div class=\"dictd_article\"><div>visible</div></div>");
+    QCOMPARE(ExtractArticleText(nul_tail, ""), "visible");
+    for (const auto& body :
+         {std::string(limit + 1U, 'x'), std::string(limit / 6U + 1U, ' '),
+          "{" + std::string(limit / 2U, 'x') + "}",
+          "\\" + std::string(limit - 20U, 'x') + "\\"}) {
+        QVERIFY_EXCEPTION_THROWN(ExtractArticleText(body, ""),
+                                 dictionary::Error);
+    }
+    for (const auto& body :
+         {std::string(65536U, '\r'), "\\" + std::string(65536U, 'x'),
+          "{" + std::string(65536U, 'x'),
+          "{\\" + std::string(65536U, 'x') + "\\}",
+          std::string(65536U, ' ') + "end"}) {
+        std::size_t calls = 0U;
+        ExtractArticleText(body, "", [&]() { ++calls; });
+        QVERIFY(calls > 8U);
+        for (const auto stop : std::array<std::size_t, 5U>{
+                 1U, 2U, calls / 2U, calls * 3U / 4U, calls - 1U}) {
+            std::size_t current = 0U;
+            try {
+                ExtractArticleText(body, "", [&]() {
+                    if (++current == stop) {
+                        throw dictionary::Error(
+                            dictionary::ErrorCode::kCancelled, "cancelled");
+                    }
+                });
+                QFAIL("Extractor ignored cancellation");
+            } catch (const dictionary::Error& error) {
+                QCOMPARE(error.code(), dictionary::ErrorCode::kCancelled);
+                QCOMPARE(current, stop);
+            }
+        }
+    }
+}
+
+void DictdDictionaryTest::RebuildsFormerInlineFullTextIndex() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const std::string body = "  \\phonetic\\ {first\nsecond} {\\odd\\}";
+    const auto index = test::WriteDictdFixture(root, {{"entry", body, {}}});
+    const auto data = root / "fixture.dict";
+    const auto sources = dictionary::CaptureSourceSnapshot({index, data});
+    auto old_sources = sources;
+    old_sources.push_back({"goldendict:dictd-content-detection-v1", 0U, 0});
+    old_sources.push_back({"goldendict:dictd-title-metadata-v1", 0U, 0});
+    old_sources.push_back({"goldendict:dictd-body-layout-v1", 0U, 0});
+    dictionary::FullTextDocument old;
+    old.dictionary.id = "dictd-id";
+    old.dictionary.name = "fixture";
+    old.headword = "entry";
+    old.document_id = "dictd-index:0:0:" + std::to_string(body.size());
+    old.plain_text = "  \\phonetic\\ {first\nsecond} {\\odd\\}";
+    const auto cache = root / "fixture.gdfts";
+    dictionary::FullTextIndex::OpenOrBuild(cache, old_sources, {old});
+    QCOMPARE(dictionary::FullTextIndex::OpenOrBuild(cache, old_sources, {old})
+                 .state(),
+             dictionary::FullTextIndexState::kReused);
+    const auto read = [](const std::filesystem::path& path) {
+        std::ifstream stream(path, std::ios::binary);
+        return std::string(std::istreambuf_iterator<char>(stream), {});
+    };
+    const auto original_index = read(index);
+    const auto original_data = read(data);
+#ifdef Q_OS_WIN
+    // The Windows CRT read handle permits readers but denies deletion while
+    // open. Hold only this generated fixture; no permissions or system changes.
+    const auto prior = read(cache);
+    {
+        std::ifstream held(cache, std::ios::binary);
+        QVERIFY(held.is_open());
+        const auto failed = Dictionary::Open("dictd-id", index, cache);
+        FullTextQuery query;
+        query.text = "phonetic";
+        const auto response = failed.SearchFullText(query);
+        QCOMPARE(response.errors.size(), 1U);
+        QCOMPARE(response.errors.front().code, FullTextErrorCode::kInternal);
+        QCOMPARE(read(cache), prior);
+        QVERIFY(dictionary::FullTextIndex::OpenCurrent(cache, old_sources));
+    }
+#endif
+    for (const auto expected_state :
+         {dictionary::FullTextIndexState::kRebuiltStale,
+          dictionary::FullTextIndexState::kReused,
+          dictionary::FullTextIndexState::kRebuiltCorrupt}) {
+        if (expected_state == dictionary::FullTextIndexState::kRebuiltCorrupt) {
+            std::ofstream(cache, std::ios::binary | std::ios::trunc)
+                << "corrupt";
+        }
+        const auto opened = Dictionary::Open("dictd-id", index, cache);
+        QCOMPARE(opened.full_text_index_state(), std::optional(expected_state));
+        FullTextQuery query;
+        query.text = "phonetic";
+        const auto response = opened.SearchFullText(query);
+        QVERIFY(response.errors.empty());
+        QCOMPARE(response.results.size(), 1U);
+        QCOMPARE(response.results.front().document_id, old.document_id);
+        QCOMPARE(response.results.front().excerpt,
+                 "  phonetic first second odd\">odd");
+        query.mode = FullTextQueryMode::kPlainText;
+        query.text = "{first";
+        QVERIFY(opened.SearchFullText(query).results.empty());
+        QCOMPARE(opened.LookupExact("entry").front().data,
+                 "<div class=\"dictd_article\"><div>&nbsp;&nbsp;\\phonetic\\ "
+                 "{first</div>"
+                 "<div>second} {\\odd\\}</div></div>");
+        QCOMPARE(opened.LookupPrefix("ent").front().data,
+                 opened.LookupExact("entry").front().data);
+        QVERIFY(opened.ResolveFullTextDocument(old.document_id));
+        QCOMPARE(dictionary::CaptureSourceSnapshot({index, data}), sources);
+        QCOMPARE(read(index), original_index);
+        QCOMPARE(read(data), original_data);
+        auto current_sources = old_sources;
+        current_sources.push_back(
+            {"goldendict:dictd-full-text-extraction-v1", 0U, 0});
+        const auto persisted =
+            dictionary::FullTextIndex::OpenCurrent(cache, current_sources);
+        QVERIFY(persisted.has_value());
+        QVERIFY(persisted->ResolveDocument(old.document_id).has_value());
     }
 }
 
