@@ -19,6 +19,7 @@ class ArticleAssemblerTest : public QObject {
     void PreservesOnlyDslParagraphSemantics();
     void PreservesOnlyAllowlistedDslPresentationSemantics();
     void PreservesSafeMdictReferences();
+    void PreservesOnlyDictdBodyLayoutClass();
     void RejectsUnsafeMdictPresentationReferences();
     void PreservesSafeStardictPresentationAndReferences();
     void PreservesSafePangoPresentation();
@@ -33,6 +34,30 @@ class ArticleAssemblerTest : public QObject {
 
 const dictionary::Identity kDictionary{"fixture id", "Fixture", "/fixture", "",
                                        "",           "",        0U,         0U};
+
+void ArticleAssemblerTest::PreservesOnlyDictdBodyLayoutClass() {
+    const auto document =
+        Assemble(kDictionary,
+                 {{"entry", "text/html",
+                   "<div class=\"dictd_article\" dir=\"rtl\" onclick=\"bad()\">"
+                   "<div dir=\"ltr\">&nbsp;&lt;literal&gt;&amp;amp;</div>"
+                   "<span class=\"dictd_article\">span</span>"
+                   "<div class=\"dictd_article other\">other</div>"
+                   "<span class=\"dictd_phonetic\">phonetic</span></div>"}});
+    QVERIFY(document.sanitized_html.find(
+                "<div class=\"dictd_article\" dir=\"rtl\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("<div dir=\"ltr\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("onclick") == std::string::npos);
+    QVERIFY(document.sanitized_html.find("<span class=\"dictd_article\"") ==
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("dictd_article other") ==
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("dictd_phonetic") ==
+            std::string::npos);
+    QVERIFY(document.plain_text.find(u8"\u00a0<literal>&amp;") == 0U);
+}
 
 void ArticleAssemblerTest::EscapesPlainTextAndKeepsItStructured() {
     const Document document =

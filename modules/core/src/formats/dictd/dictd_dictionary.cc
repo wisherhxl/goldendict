@@ -9,6 +9,8 @@
 #include <utility>
 
 #include "../../article/article_assembler.h"
+#include "../../foundation/legacy_language_pair.h"
+#include "dictd_article_renderer.h"
 
 namespace goldendict::core::formats::dictd {
 namespace {
@@ -16,7 +18,26 @@ namespace {
 dictionary::SourceSnapshot FullTextSources(dictionary::SourceSnapshot sources) {
     sources.push_back({"goldendict:dictd-content-detection-v1", 0U, 0});
     sources.push_back({"goldendict:dictd-title-metadata-v1", 0U, 0});
+    sources.push_back({"goldendict:dictd-body-layout-v1", 0U, 0});
     return sources;
+}
+
+std::string NormalizeFullTextSpaces(std::string text) {
+    // Qt 5 QTextDocumentFragment::toPlainText turns nonbreaking spaces into
+    // ordinary spaces. Keep that search behavior without changing article
+    // presentation or the shared matcher's word-boundary policy.
+    std::size_t output = 0U;
+    for (std::size_t input = 0U; input < text.size(); ++input) {
+        if (text[input] == '\xc2' && input + 1U < text.size() &&
+            text[input + 1U] == '\xa0') {
+            text[output++] = ' ';
+            ++input;
+        } else {
+            text[output++] = text[input];
+        }
+    }
+    text.resize(output);
+    return text;
 }
 
 dictionary::Error TranslateError(const Error& error) {
@@ -32,15 +53,20 @@ dictionary::Error TranslateError(const Error& error) {
     return dictionary::Error(dictionary::ErrorCode::kInvalidData, error.what());
 }
 
-std::vector<dictionary::Article> Translate(std::vector<Article> source) {
+std::vector<dictionary::Article> Translate(
+    std::vector<Article> source, std::string_view target_language,
+    const dictionary::RequestOptions& options) {
     std::vector<dictionary::Article> articles;
     articles.reserve(source.size());
-    std::transform(source.begin(), source.end(), std::back_inserter(articles),
-                   [](auto&& item) {
-                       return dictionary::Article{std::move(item.headword),
-                                                  "text/plain",
-                                                  std::move(item.data)};
-                   });
+    std::transform(
+        source.begin(), source.end(), std::back_inserter(articles),
+        [target_language, &options](auto&& item) {
+            return dictionary::Article{
+                std::move(item.headword), "text/html",
+                RenderArticleBody(item.data, target_language, [&options]() {
+                    dictionary::CheckRequest(options);
+                })};
+        });
     return articles;
 }
 
@@ -52,6 +78,9 @@ Dictionary Dictionary::Open(
     try {
         Dictionary dictionary;
         dictionary.reader_ = Reader::Open(index_path);
+        dictionary.target_language_ = foundation::InferLegacyLanguagePair(
+                                          index_path.filename().u8string())
+                                          .second;
         dictionary.identity_.id = std::move(id);
         dictionary.identity_.name = dictionary.reader_.name();
         dictionary.identity_.article_count = dictionary.reader_.article_count();
@@ -72,8 +101,10 @@ Dictionary Dictionary::Open(
                     dictionary.reader_.ReadFullTextArticles();
                 documents.reserve(source_articles.size());
                 for (const auto& source : source_articles) {
-                    dictionary::Article article{source.headword, "text/plain",
-                                                source.data};
+                    dictionary::Article article{
+                        source.headword, "text/html",
+                        RenderArticleBody(source.data,
+                                          dictionary.target_language_)};
                     auto assembled = article::Assemble(dictionary.identity_,
                                                        {std::move(article)});
                     dictionary::FullTextDocument document;
@@ -93,7 +124,8 @@ Dictionary Dictionary::Open(
                         "dictd-index:" + std::to_string(source.record_ordinal) +
                         ":" + std::to_string(source.article_offset) + ":" +
                         std::to_string(source.article_size);
-                    document.plain_text = std::move(assembled.plain_text);
+                    document.plain_text = NormalizeFullTextSpaces(
+                        std::move(assembled.plain_text));
                     documents.push_back(std::move(document));
                 }
                 dictionary.full_text_index_ =
@@ -150,7 +182,7 @@ std::vector<dictionary::Article> Dictionary::LookupExact(
             headword, options.result_limit,
             [&options]() { dictionary::CheckRequest(options); });
         dictionary::CheckRequest(options);
-        return Translate(std::move(articles));
+        return Translate(std::move(articles), target_language_, options);
     } catch (const Error& error) {
         throw TranslateError(error);
     }
@@ -164,7 +196,7 @@ std::vector<dictionary::Article> Dictionary::LookupPrefix(
             prefix, options.result_limit,
             [&options]() { dictionary::CheckRequest(options); });
         dictionary::CheckRequest(options);
-        return Translate(std::move(articles));
+        return Translate(std::move(articles), target_language_, options);
     } catch (const Error& error) {
         throw TranslateError(error);
     }

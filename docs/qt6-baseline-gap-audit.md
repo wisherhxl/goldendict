@@ -147,7 +147,18 @@ and optional-field admission checks. Its focused record owns implementation
 and verification status. Ignored SUBLEN values and the existing non-leading-RA
 gzip route remain unchanged. Full RA chunk semantics, ordinary-gzip
 disposition, description behavior and remaining Dictd variants stay open;
-this unit does not close parent R3.7.
+this unit does not close parent R3.7. It is **Complete and integrated** at
+`8a54fed635aef1896ea665e8ab91275fa2f33270` after independent completion and
+integration audit Pass results; reports reside in the workspace's
+`evidence/r3.7e-20260909/` directory.
+
+The bounded [R3.7f body-layout correction](dictd-body-layout-parity.md)
+restores escaping, indentation, line structure, UTF-8 presentation and
+filename-derived/per-line direction through private Core rendering. Its
+focused record owns implementation and verification status. Coupled phonetic
+and brace-reference transformations remain R3.7g; description, ordering,
+general language-identity metadata, remaining compression variants, Linux
+execution and parent R3.7 closure remain open.
 
 ## Evidence Reviewed (Original Audit)
 

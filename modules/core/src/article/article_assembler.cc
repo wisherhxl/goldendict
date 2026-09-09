@@ -63,6 +63,10 @@ bool IsAllowedMdictClass(std::string_view tag, std::string_view value) {
     return tag == "div" && value == "mdict";
 }
 
+bool IsAllowedDictdClass(std::string_view tag, std::string_view value) {
+    return tag == "div" && value == "dictd_article";
+}
+
 bool IsAllowedStardictClass(std::string_view tag, std::string_view value) {
     static const std::vector<std::string> kDivClasses = {
         "sdct_h", "sdct_m", "sdct_l", "sdct_g", "sdct_t", "sdct_y", "sdct_k",
@@ -582,7 +586,8 @@ bool SanitizeMarkup(const dictionary::Identity& dictionary,
                 html->append("<" + tag.name);
                 const auto class_name = tag.attributes.find("class");
                 if (class_name != tag.attributes.end() &&
-                    (IsAllowedDslClass(tag.name, class_name->second) ||
+                    (IsAllowedDictdClass(tag.name, class_name->second) ||
+                     IsAllowedDslClass(tag.name, class_name->second) ||
                      IsAllowedMdictClass(tag.name, class_name->second) ||
                      IsAllowedStardictClass(tag.name, class_name->second))) {
                     html->append(" class=\"" + class_name->second + "\"");

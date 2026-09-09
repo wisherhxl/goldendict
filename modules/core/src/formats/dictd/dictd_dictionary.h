@@ -66,6 +66,7 @@ class Dictionary final : public dictionary::Backend,
    private:
     dictionary::Identity identity_;
     Reader reader_;
+    std::string target_language_;
     std::optional<dictionary::FullTextIndex> full_text_index_;
     std::optional<FullTextError> full_text_error_;
 };

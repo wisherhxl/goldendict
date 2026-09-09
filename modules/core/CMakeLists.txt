@@ -550,6 +550,7 @@ if(TARGET stardict_reader_test)
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
       src/formats/stardict/stardict_reader.cc
+      src/foundation/legacy_language_pair.cc
   )
   target_link_libraries(stardict_reader_test PRIVATE ICU::uc ZLIB::ZLIB)
 endif()
@@ -571,6 +572,7 @@ if(TARGET stardict_dictionary_test)
       src/formats/stardict/stardict_article_decoder.cc
       src/formats/stardict/stardict_dictionary.cc
       src/formats/stardict/stardict_reader.cc
+      src/foundation/legacy_language_pair.cc
       src/formats/stardict/stardict_resource.cc
       src/formats/stardict/stardict_resource_transform.cc
   )
@@ -617,6 +619,8 @@ if(TARGET dictd_dictionary_test)
       src/foundation/text_folding.cc
       src/foundation/utf8.cc
       src/formats/dictd/dictd_dictionary.cc
+      src/formats/dictd/dictd_article_renderer.cc
+      src/foundation/legacy_language_pair.cc
       src/formats/dictd/dictd_reader.cc
   )
   target_link_libraries(dictd_dictionary_test PRIVATE ICU::uc ZLIB::ZLIB)
