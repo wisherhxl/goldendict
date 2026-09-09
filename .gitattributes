@@ -1,3 +1,6 @@
 # Preserve pinned Qt Linguist catalogs byte-for-byte, including translator
 # whitespace that predates this migration.
 apps/goldendict/lang/*.ts -whitespace
+
+# Dictd article offsets address exact bytes, including the title's LF.
+apps/goldendict/tests/fixtures/dictd/fixture.dict -text

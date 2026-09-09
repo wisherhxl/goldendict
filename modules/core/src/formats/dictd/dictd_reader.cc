@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <fstream>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <system_error>
@@ -167,19 +168,26 @@ std::size_t Utf8CodePointCount(std::string_view text) noexcept {
         }));
 }
 
-std::string TrimTitle(std::string article) {
-    if (article.rfind("00databaseshort", 0) == 0U ||
-        article.rfind("00-database-short", 0) == 0U) {
+bool HasTitlePrefix(std::string_view text) noexcept {
+    return HasPrefix(text, "00databaseshort") ||
+           HasPrefix(text, "00-database-short");
+}
+
+std::optional<std::string> ReadTitle(std::string_view article) {
+    article = article.substr(0U, article.find('\0'));
+    if (HasTitlePrefix(article)) {
         const auto newline = article.find('\n');
-        article = newline == std::string::npos ? std::string{}
-                                               : article.substr(newline + 1U);
+        if (newline == std::string_view::npos) {
+            return std::nullopt;
+        }
+        article.remove_prefix(newline + 1U);
     }
-    const auto first = article.find_first_not_of(" \t\r\n");
-    if (first == std::string::npos) {
-        return {};
+    const auto first = article.find_first_not_of(" \f\n\r\t\v");
+    if (first == std::string_view::npos) {
+        return std::string{};
     }
-    const auto end = article.find_first_of("\r\n", first);
-    return article.substr(first, end == std::string::npos ? end : end - first);
+    article.remove_prefix(first);
+    return std::string(article.substr(0U, article.find('\n')));
 }
 
 }  // namespace
@@ -279,6 +287,13 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
             add_record(fields[3]);
         }
         ++reader.article_count_;
+        if (HasTitlePrefix(fields[0])) {
+            const auto title = ReadTitle(
+                std::string_view(reader.dictionary_data_).substr(offset, size));
+            if (title.has_value()) {
+                reader.name_ = *title;
+            }
+        }
     }
     if (!input.eof()) {
         Throw(ErrorCode::kInvalidIndex, index_path,
@@ -292,16 +307,6 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
         Throw(ErrorCode::kMissingFile, index_path, error.what());
     }
 
-    for (const auto& record : reader.records_) {
-        if (record.headword == "00databaseshort" ||
-            record.headword == "00-database-short") {
-            const auto title = TrimTitle(reader.LoadArticle(record).data);
-            if (!title.empty()) {
-                reader.name_ = title;
-            }
-            break;
-        }
-    }
     for (const auto& record : reader.records_) {
         if (record.headword == "00databaseinfo" ||
             record.headword == "00-database-info") {

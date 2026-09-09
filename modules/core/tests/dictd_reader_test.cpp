@@ -15,6 +15,9 @@ class DictdReaderTest : public QObject {
     Q_OBJECT
 
    private slots:
+    void PreservesTitleBytes_data();
+    void PreservesTitleBytes();
+    void SelectsTitlesFromPhysicalPrimaryRows();
     void ReadsMetadataAliasesAndRankedMatches();
     void ReadsCompressedData();
     void ValidatesRealDictzipFixtureChunks();
@@ -33,6 +36,93 @@ class DictdReaderTest : public QObject {
     void PreservesAcceptedRowValidation_data();
     void PreservesAcceptedRowValidation();
 };
+
+void DictdReaderTest::PreservesTitleBytes_data() {
+    QTest::addColumn<QByteArray>("body");
+    QTest::addColumn<QByteArray>("expected");
+    QTest::newRow("plain") << QByteArray("Title\nignored") << QByteArray("Title");
+    QTest::newRow("no-newline") << QByteArray("Title") << QByteArray("Title");
+    QTest::newRow("all-leading-ascii")
+        << QByteArray(" \f\n\r\t\vTitle") << QByteArray("Title");
+    QTest::newRow("trailing-whitespace")
+        << QByteArray("Title \t\r\nignored") << QByteArray("Title \t\r");
+    QTest::newRow("interior-cr")
+        << QByteArray("Title\rcontinued\nignored") << QByteArray("Title\rcontinued");
+    QTest::newRow("short-header")
+        << QByteArray("00databaseshort\nTitle") << QByteArray("Title");
+    QTest::newRow("hyphen-header")
+        << QByteArray("00-database-short\r\n\nTitle") << QByteArray("Title");
+    QTest::newRow("prefix-header")
+        << QByteArray("00databaseshort-extra\nTitle") << QByteArray("Title");
+    QTest::newRow("header-without-newline")
+        << QByteArray("00databaseshort") << QByteArray("fixture");
+    QTest::newRow("empty-after-header")
+        << QByteArray("00databaseshort\n") << QByteArray("");
+    QTest::newRow("empty") << QByteArray("") << QByteArray("");
+    QTest::newRow("whitespace-only")
+        << QByteArray(" \f\n\r\t\v") << QByteArray("");
+    QTest::newRow("utf8")
+        << QByteArray("\xe8\xaf\x8d\xe5\x85\xb8")
+        << QByteArray("\xe8\xaf\x8d\xe5\x85\xb8");
+    QTest::newRow("unicode-space")
+        << QByteArray("\xc2\xa0Title\n") << QByteArray("\xc2\xa0Title");
+    QTest::newRow("case-sensitive-header")
+        << QByteArray("00DATABASESHORT\nTitle") << QByteArray("00DATABASESHORT");
+    QTest::newRow("leading-space-before-header")
+        << QByteArray(" 00databaseshort\nTitle") << QByteArray("00databaseshort");
+    QTest::newRow("embedded-nul")
+        << QByteArray("Title\0ignored\n", 14) << QByteArray("Title");
+    QTest::newRow("nul-before-header-newline")
+        << QByteArray("00databaseshort\0\nTitle", 22) << QByteArray("fixture");
+    QTest::newRow("initial-nul")
+        << QByteArray("\0Title", 6) << QByteArray("");
+}
+
+void DictdReaderTest::PreservesTitleBytes() {
+    QFETCH(QByteArray, body);
+    QFETCH(QByteArray, expected);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    for (const std::string headword : {"00databaseshort", "00-database-short",
+                                       "00databaseshort-extra",
+                                       "00-database-short-extra"}) {
+        const auto index = test::WriteDictdFixture(
+            root / headword, {{headword, body.toStdString(), {}},
+                              {"entry", "searchable article", {}}});
+        const auto reader = Reader::Open(index);
+        QCOMPARE(reader.name(), expected.toStdString());
+        QCOMPARE(reader.article_count(), 2U);
+        QCOMPARE(reader.headword_count(), 2U);
+        QCOMPARE(reader.LookupExact(headword).front().data, body.toStdString());
+        QCOMPARE(reader.LookupExact("entry").front().data, "searchable article");
+        QCOMPARE(reader.source_snapshot(), dictionary::CaptureSourceSnapshot(
+                     {index, index.parent_path() / "fixture.dict"}));
+    }
+}
+
+void DictdReaderTest::SelectsTitlesFromPhysicalPrimaryRows() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto last = test::WriteDictdFixture(
+        root / "last", {{"00databaseshort", "First", {}},
+                         {"00-database-short", "Last", {}},
+                         {"00databaseshort", "00databaseshort", {}},
+                         {"entry", "Alias title", "00-database-short"}});
+    QCOMPARE(Reader::Open(last).name(), "Last");
+    const auto empty = test::WriteDictdFixture(
+        root / "empty", {{"00databaseshort", "First", {}},
+                          {"00-database-short", " \n", {}}});
+    QVERIFY(Reader::Open(empty).name().empty());
+    const auto alias = test::WriteDictdFixture(
+        root / "alias", {{"entry", "Alias title", "00databaseshort"},
+                          {"00DATABASESHORT", "Uppercase title", {}},
+                          {"x00databaseshort", "Interior prefix", {}}});
+    const auto reader = Reader::Open(alias);
+    QCOMPARE(reader.name(), "fixture");
+    QCOMPARE(reader.LookupExact("00databaseshort").front().data, "Alias title");
+}
 
 void DictdReaderTest::RecoversMalformedRows_data() {
     QTest::addColumn<QString>("row");

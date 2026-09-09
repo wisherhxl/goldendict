@@ -36,6 +36,9 @@ class DictdDictionaryTest : public QObject {
     Q_OBJECT
 
    private slots:
+    void ReusesCorrectedTitles_data();
+    void ReusesCorrectedTitles();
+    void RebuildsFormerTitleFullTextIndex();
     void ExposesPlainArticlesAndSuggestions();
     void HonorsCancellationAndHasNoResources();
     void BuildsRangeDeduplicatedFullTextIndex();
@@ -47,6 +50,117 @@ class DictdDictionaryTest : public QObject {
     void ReusesRecoveredIndexRows();
     void RejectsAcceptedCorruptionAfterSkippedRow();
 };
+
+void DictdDictionaryTest::ReusesCorrectedTitles_data() {
+    QTest::addColumn<QString>("companion");
+    QTest::addColumn<QByteArray>("title");
+    for (const QString companion : {"plain", "ra-dict", "ra-dz"}) {
+        QTest::newRow((companion + "-title").toLatin1().constData())
+            << companion << QByteArray("Last \r");
+        QTest::newRow((companion + "-empty").toLatin1().constData())
+            << companion << QByteArray("");
+    }
+}
+
+void DictdDictionaryTest::ReusesCorrectedTitles() {
+    QFETCH(QString, companion);
+    QFETCH(QByteArray, title);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = test::WriteDictdFixture(
+        root, {{"00databaseshort", "First", {}},
+               {"00-database-short", "00-database-short\n" + title.toStdString(), {}},
+               {"entry", "searchable article", "original"},
+               {"00databaseinfo", "Description", {}}});
+    auto selected = root / "fixture.dict";
+    if (companion != "plain") {
+        std::ifstream input(selected, std::ios::binary);
+        const std::string data{std::istreambuf_iterator<char>(input), {}};
+        input.close();
+        const auto bytes = test::EncodeDictzipFixture(data);
+        if (companion == "ra-dz") {
+            QVERIFY(std::filesystem::remove(selected));
+            selected += ".dz";
+        }
+        std::ofstream(selected, std::ios::binary | std::ios::trunc)
+            .write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    }
+    const auto sources = dictionary::CaptureSourceSnapshot({index, selected});
+    const auto full_text_path = root / "fixture.gdfts";
+    FullTextQuery query;
+    query.text = "searchable";
+    for (const bool warm : {false, true}) {
+        const auto dictionary = Dictionary::Open("dictd-id", index, full_text_path);
+        QCOMPARE(dictionary.identity().name, title.toStdString());
+        QCOMPARE(dictionary.identity().id, "dictd-id");
+        QCOMPARE(dictionary.identity().description, "Description");
+        QCOMPARE(dictionary.identity().article_count, 4U);
+        QCOMPARE(dictionary.identity().headword_count, 5U);
+        QCOMPARE(dictionary.identity().source,
+                 std::filesystem::weakly_canonical(index).string());
+        QCOMPARE(dictionary.LookupExact("original", {}).front().data,
+                 "searchable article");
+        QCOMPARE(dictionary.full_text_index_state(),
+                 std::optional(warm ? dictionary::FullTextIndexState::kReused
+                                    : dictionary::FullTextIndexState::kCreated));
+        const auto response = dictionary.SearchFullText(query);
+        QVERIFY(response.errors.empty());
+        QVERIFY(!response.partial);
+        QCOMPARE(response.results.size(), 1U);
+        QCOMPARE(response.results.front().dictionary.id, "dictd-id");
+        QCOMPARE(response.results.front().dictionary.name, title.toStdString());
+        QCOMPARE(response.results.front().headword, "entry");
+        QCOMPARE(response.results.front().document_id,
+                 "dictd-index:2:" + std::to_string(23U + title.size()) + ":18");
+        QCOMPARE(dictionary::CaptureSourceSnapshot({index, selected}), sources);
+    }
+}
+
+void DictdDictionaryTest::RebuildsFormerTitleFullTextIndex() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = test::WriteDictdFixture(
+        root, {{"00databaseshort", "First", {}},
+               {"00-database-short", "Last", {}},
+               {"entry", "searchable article", {}}});
+    const auto sources = dictionary::CaptureSourceSnapshot(
+        {index, root / "fixture.dict"});
+    auto former_sources = sources;
+    former_sources.push_back({"goldendict:dictd-content-detection-v1", 0U, 0});
+    dictionary::FullTextDocument former;
+    former.dictionary.id = "dictd-id";
+    former.dictionary.name = "First";
+    former.headword = "entry";
+    former.document_id = "dictd-index:2:9:18";
+    former.plain_text = "searchable article";
+    const auto full_text_path = root / "fixture.gdfts";
+    const auto old_index = dictionary::FullTextIndex::OpenOrBuild(
+        full_text_path, former_sources, {former});
+    FullTextQuery query;
+    query.text = "searchable";
+    QCOMPARE(old_index.Search(query).results.front().dictionary.name, "First");
+    // Reopening the former source key really reuses its persisted wrong name.
+    const auto old_reopened = dictionary::FullTextIndex::OpenOrBuild(
+        full_text_path, former_sources, {former});
+    QCOMPARE(old_reopened.state(), dictionary::FullTextIndexState::kReused);
+    QCOMPARE(old_reopened.Search(query).results.front().dictionary.name, "First");
+    for (const bool warm : {false, true}) {
+        const auto dictionary = Dictionary::Open("dictd-id", index, full_text_path);
+        QCOMPARE(dictionary.full_text_index_state(),
+                 std::optional(warm ? dictionary::FullTextIndexState::kReused
+                                    : dictionary::FullTextIndexState::kRebuiltStale));
+        QCOMPARE(dictionary.identity().name, "Last");
+        const auto response = dictionary.SearchFullText(query);
+        QVERIFY(response.errors.empty());
+        QCOMPARE(response.results.size(), 1U);
+        QCOMPARE(response.results.front().dictionary.name, "Last");
+        QCOMPARE(response.results.front().document_id, former.document_id);
+        QCOMPARE(dictionary::CaptureSourceSnapshot({index, root / "fixture.dict"}),
+                 sources);
+    }
+}
 
 void DictdDictionaryTest::ReusesRecoveredIndexRows() {
     QTemporaryDir directory;

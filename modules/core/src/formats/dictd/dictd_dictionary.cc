@@ -15,6 +15,7 @@ namespace {
 
 dictionary::SourceSnapshot FullTextSources(dictionary::SourceSnapshot sources) {
     sources.push_back({"goldendict:dictd-content-detection-v1", 0U, 0});
+    sources.push_back({"goldendict:dictd-title-metadata-v1", 0U, 0});
     return sources;
 }
 

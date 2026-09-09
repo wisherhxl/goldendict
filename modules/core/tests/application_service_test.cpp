@@ -5829,7 +5829,10 @@ void ApplicationServiceTest::DiscoversAndQueriesDictdAlongsideStardict() {
     test::WriteStardictFixture(root / "stardict",
                                {{"example", "StarDict article"}});
     const auto dictd_index =
-        test::WriteDictdFixture(root / "dictd", {{"example", "Dictd article", {}}});
+        test::WriteDictdFixture(root / "dictd",
+                               {{"example", "Dictd article", {}},
+                                {"00databaseshort", "First title", {}},
+                                {"00-database-short", "Last title", {}}});
     std::ofstream(dictd_index, std::ios::binary | std::ios::app)
         << "ignored\t!\t!\talias\textra\n";
     CoreConfiguration configuration;
@@ -5843,12 +5846,17 @@ void ApplicationServiceTest::DiscoversAndQueriesDictdAlongsideStardict() {
     const auto response = service->Lookup(query);
 
     QCOMPARE(catalog.size(), std::size_t{2});
+    QVERIFY(std::any_of(catalog.begin(), catalog.end(), [](const auto& identity) {
+        return identity.id.rfind("dictd-", 0) == 0U &&
+               identity.name == "Last title";
+    }));
     QVERIFY(response.errors.empty());
     QCOMPARE(response.entries.size(), std::size_t{2});
     QVERIFY(std::any_of(response.entries.begin(), response.entries.end(),
                         [](const auto& entry) {
                             return entry.dictionary.id.rfind("dictd-", 0) ==
                                        0U &&
+                                   entry.dictionary.name == "Last title" &&
                                    entry.article.plain_text.find(
                                        "Dictd article") != std::string::npos;
                         }));
