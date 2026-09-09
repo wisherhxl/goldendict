@@ -155,10 +155,21 @@ integration audit Pass results; reports reside in the workspace's
 The bounded [R3.7f body-layout correction](dictd-body-layout-parity.md)
 restores escaping, indentation, line structure, UTF-8 presentation and
 filename-derived/per-line direction through private Core rendering. Its
-focused record owns implementation and verification status. Coupled phonetic
-and brace-reference transformations remain R3.7g; description, ordering,
-general language-identity metadata, remaining compression variants, Linux
-execution and parent R3.7 closure remain open.
+focused record owns implementation and Windows verification status. It is
+**Complete and integrated** at `6bb463881839bbff94f3ed18d2575f5b34e494cb`
+after independent completion and integration audit Pass results; reports and
+target-push evidence reside in the workspace's `evidence/r3.7f-20260909/`.
+Coupled phonetic and brace-reference transformations remain R3.7g;
+description, ordering, general language-identity metadata, remaining
+compression variants, Linux execution and parent R3.7 closure remain open.
+
+R3.7g issue N1 is resolved by approved [EL-01](empty-lookup-target-decision.md):
+normalized-empty Dictd targets are inert, with no query/navigation or changes
+to page, audio, article search, history or tab state. The decision is **Ready**
+as a documentation-only CRD amendment. Existing Qt 6 empty-URL rejection is
+source evidence, not completion of the future inline producer or dispatch
+acceptance tests. Issue N2 (nonempty targets retaining C0/DEL) remains
+unresolved; full R3.7g readiness, implementation and acceptance remain open.
 
 ## Evidence Reviewed (Original Audit)
 

@@ -191,6 +191,15 @@ See [the acceptance boundary](article-inspector-parity.md#ig-02-approved-inspect
   reopen/session restoration, background behavior, and configured tab order.
 - `CRD-LOOKUP-005`: Preserve command-line lookup and supported single-instance
   message behavior.
+- `CRD-LOOKUP-006` (EL-01): A Dictd reference whose target is empty after
+  normal legacy target normalization must be inert. The renderer must omit
+  its actionable href; activation must issue no query or navigation and must
+  preserve the current page, audio, article search, history and tab state.
+  Retain empty-target rejection without adding empty-query interfaces. This
+  approved Qt 5 divergence applies only to normalized-empty targets, including
+  whitespace-only references; it does not decide nonempty-target handling or
+  change resource/security policy. See the
+  [decision and acceptance record](empty-lookup-target-decision.md).
 
 ### 7.3 User-Owned State
 
@@ -659,6 +668,7 @@ baseline decision.
 
 | Date | Decision | Status |
 | --- | --- | --- |
+| 2026-09-09 | EL-01: reject normalized-empty Dictd lookup targets with no navigation or state side effects. Preserve inert reference content and existing query interfaces. This narrow exception to `CRD-LOOKUP-003` and `CRD-DICT-003` avoids disruptive empty navigation; it does not authorize suppression of nonempty targets. The [focused record](empty-lookup-target-decision.md) defines acceptance and remaining implementation evidence. | Approved |
 | 2026-09-08 | IG-03: retain Qt 6 direct F12 activation of the article's existing inspector regardless of intervening pointer events. Show/raise/activate the same lazily owned inspector, including after close, instead of reproducing Qt 5's pointer-dependent activation defect. Preserve popup-menu F12 suppression, context-target inspection, lifetime, geometry and security policy. This is a narrow behavioral correction, separate from IG-02; other capability/platform/cutover gates remain unchanged. | Approved |
 | 2026-09-07 | IG-02: retain native Chromium DevTools appearance only inside the engine-owned inspector frontend. Preserve GoldenDict-controlled window and interaction alignment, and verify inspection capabilities individually. Ordinary lookup/article UI parity is unchanged. No custom frontend fork or protocol adapter is authorized. See the focused inspector acceptance boundary; this decision does not close R8.2, R9.8, platform acceptance or baseline cutover. | Approved |
 | 2026-09-07 | IG-01: repair inspector geometry save timing. Save on inspector close and normal application exit; at exit the latest user-adjusted geometry wins independently of destruction order. Preserve shared geometry and Qt 5 `inspectorGeometry` import. Core owns persistence and private Widgets owns geometry. This explicitly corrects the frozen legacy close/exit save-timing defect; abnormal-termination recovery and frontend redesign are not included. | Approved |
@@ -675,7 +685,9 @@ baseline decision.
 
 ## 15. Open-Decision Policy
 
-There is no current open product decision.
+EL-01 resolves R3.7g issue N1. R3.7g issue N2, concerning nonempty targets
+containing retained C0/DEL characters, remains a separate unresolved decision;
+EL-01 grants no authority to relax validation or suppress those targets.
 
 Future questions are raised only when pinned Qt 5 behavior cannot be reproduced
 within mandatory constraints or when a clear, material optimization may
