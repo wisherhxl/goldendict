@@ -64,7 +64,10 @@ bool IsAllowedMdictClass(std::string_view tag, std::string_view value) {
 }
 
 bool IsAllowedDictdClass(std::string_view tag, std::string_view value) {
-    return tag == "div" && value == "dictd_article";
+    return (tag == "div" && value == "dictd_article") ||
+           (tag == "span" &&
+            (value == "dictd_phonetic" || value == "dictd_control")) ||
+           (tag == "a" && value == "dictd_inert_reference");
 }
 
 bool IsAllowedStardictClass(std::string_view tag, std::string_view value) {

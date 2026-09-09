@@ -1,0 +1,814 @@
+[
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 0,
+    "body": "\\word\\",
+    "html": "<div class=\"dictd_article\"><div><span class=\"dictd_phonetic\">word</span></div></div>",
+    "anchors": []
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 1,
+    "body": "\\first\nsecond\\",
+    "html": "<div class=\"dictd_article\"><div><span class=\"dictd_phonetic\">first</span></div><div>second</div></div>",
+    "anchors": []
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 2,
+    "body": "{first\nsecond}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/first%20second\">first</a></div><div><a href=\"gdlookup://localhost/first%20second\">second</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/first%20second",
+        "raw": "gdlookup://localhost/first%20second",
+        "text": "first",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      },
+      {
+        "href": "gdlookup://localhost/first%20second",
+        "raw": "gdlookup://localhost/first%20second",
+        "text": "second",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 3,
+    "body": "{\\phonetic\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/&lt;span class=\" dictd_phonetic\"=\"\">phonetic\"&gt;<span class=\"dictd_phonetic\">phonetic</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/%3Cspan%20class=",
+        "raw": "gdlookup://localhost/<span class=",
+        "text": "phonetic\">phonetic",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 4,
+    "body": "\\{reference}\\",
+    "html": "<div class=\"dictd_article\"><div><span class=\"dictd_phonetic\"><a href=\"gdlookup://localhost/reference\">reference</a></span></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/reference",
+        "raw": "gdlookup://localhost/reference",
+        "text": "reference",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 5,
+    "body": "\\before {middle\\ after}",
+    "html": "<div class=\"dictd_article\"><div><span class=\"dictd_phonetic\">before <a href=\"gdlookup://localhost/middle%20after\">middle</a></span><a href=\"gdlookup://localhost/middle%20after\"> after</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/middle%20after",
+        "raw": "gdlookup://localhost/middle%20after",
+        "text": "middle",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      },
+      {
+        "href": "gdlookup://localhost/middle%20after",
+        "raw": "gdlookup://localhost/middle%20after",
+        "text": " after",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 6,
+    "body": "{before \\middle} after\\",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/before &lt;span class=\" dictd_phonetic\"=\"\">middle\"&gt;before <span class=\"dictd_phonetic\">middle</span></a> after</div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/before%20%3Cspan%20class=",
+        "raw": "gdlookup://localhost/before <span class=",
+        "text": "middle\">before middle",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 7,
+    "body": "{a&b}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%26amp%3Bb\">a&amp;b</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%26amp%3Bb",
+        "raw": "gdlookup://localhost/a%26amp%3Bb",
+        "text": "a&b",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 8,
+    "body": "{a%20b#c}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%2520b%23c\">a%20b#c</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%2520b%23c",
+        "raw": "gdlookup://localhost/a%2520b%23c",
+        "text": "a%20b#c",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 9,
+    "body": "{} {{inside}}",
+    "html": "<div class=\"dictd_article\"><div>{} {<a href=\"gdlookup://localhost/inside\">inside</a>}</div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/inside",
+        "raw": "gdlookup://localhost/inside",
+        "text": "inside",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 10,
+    "body": "{first\nשלום}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/first&lt;/div&gt;&lt;div dir=\" rtl\"=\"\">שלום\"&gt;first</a></div><div dir=\"rtl\"><a href=\"gdlookup://localhost/first&lt;/div&gt;&lt;div dir=\" rtl\"=\"\">שלום</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/first%3C/div%3E%3Cdiv%20dir=",
+        "raw": "gdlookup://localhost/first</div><div dir=",
+        "text": "שלום\">first",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      },
+      {
+        "href": "gdlookup://localhost/first%3C/div%3E%3Cdiv%20dir=",
+        "raw": "gdlookup://localhost/first</div><div dir=",
+        "text": "שלום",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 11,
+    "body": "\\first\nשלום\\",
+    "html": "<div class=\"dictd_article\"><div><span class=\"dictd_phonetic\">first</span></div><div dir=\"rtl\">שלום</div></div>",
+    "anchors": []
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 12,
+    "body": "{ }",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/\"> </a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/",
+        "raw": "gdlookup://localhost/",
+        "text": " ",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": true
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 13,
+    "body": "\\\\x\\",
+    "html": "<div class=\"dictd_article\"><div>\\<span class=\"dictd_phonetic\">x</span></div></div>",
+    "anchors": []
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 14,
+    "body": "{a\\b\\c\\d\\e}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a&lt;span class=\" dictd_phonetic\"=\"\">bc<span class=\"dictd_phonetic\">d</span>e\"&gt;a<span class=\"dictd_phonetic\">b</span>c<span class=\"dictd_phonetic\">d</span>e</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a<span class=",
+        "text": "bcde\">abcde",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 15,
+    "body": "\\{a}\n{b}\\",
+    "html": "<div class=\"dictd_article\"><div><span class=\"dictd_phonetic\"><a href=\"gdlookup://localhost/a\">a</a></span></div><div><a href=\"gdlookup://localhost/b\">b</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a",
+        "raw": "gdlookup://localhost/a",
+        "text": "a",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      },
+      {
+        "href": "gdlookup://localhost/b",
+        "raw": "gdlookup://localhost/b",
+        "text": "b",
+        "origin": 1,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 16,
+    "body": "{a\"b}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%26quot%3Bb\">a\"b</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%26quot%3Bb",
+        "raw": "gdlookup://localhost/a%26quot%3Bb",
+        "text": "a\"b",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 17,
+    "body": "{a'b}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%27b\">a'b</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%27b",
+        "raw": "gdlookup://localhost/a%27b",
+        "text": "a'b",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 18,
+    "body": "{&nbsp;}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/%26amp%3Bnbsp%3B\">&amp;nbsp;</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/%26amp%3Bnbsp%3B",
+        "raw": "gdlookup://localhost/%26amp%3Bnbsp%3B",
+        "text": "&nbsp;",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 19,
+    "body": "{\\a\nb\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/&lt;span class=\" dictd_phonetic\"=\"\">a</a></div><div><a href=\"gdlookup://localhost/&lt;span class=\" dictd_phonetic\"=\"\">b\"&gt;<span class=\"dictd_phonetic\">a</span></a></div><div><a href=\"gdlookup://localhost/&lt;span class=\" dictd_phonetic\"=\"\">b</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/%3Cspan%20class=",
+        "raw": "gdlookup://localhost/<span class=",
+        "text": "a",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      },
+      {
+        "href": "gdlookup://localhost/%3Cspan%20class=",
+        "raw": "gdlookup://localhost/<span class=",
+        "text": "b\">a",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      },
+      {
+        "href": "gdlookup://localhost/%3Cspan%20class=",
+        "raw": "gdlookup://localhost/<span class=",
+        "text": "b",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 20,
+    "body": "{a\u0001b}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%01b\">a\u0001b</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%01b",
+        "raw": "gdlookup://localhost/a%01b",
+        "text": "a\u0001b",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 21,
+    "body": "{a\tb}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%20b\">a\tb</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%20b",
+        "raw": "gdlookup://localhost/a%20b",
+        "text": "a\tb",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 22,
+    "body": "{ab}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%7Fb\">ab</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%7Fb",
+        "raw": "gdlookup://localhost/a%7Fb",
+        "text": "ab",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe",
+    "sourceIndex": 23,
+    "body": "{\t\u000b\f }",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/\">\t\u000b\f </a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/",
+        "raw": "gdlookup://localhost/",
+        "text": "\t\u000b\f ",
+        "origin": 0,
+        "completeOpeningRewrite": "matched",
+        "normalizedEmpty": true
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 0,
+    "body": "{a#b\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a#b&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a#b<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a#b<span class=",
+        "raw": "gdlookup://localhost/a#b<span class=",
+        "text": "c\">a#bc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 1,
+    "body": "{a?b\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a?b&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a?b<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a?b%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a?b<span class=",
+        "text": "c\">a?bc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 2,
+    "body": "{a?dict=Other\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a?dict=Other&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a?dict=Other<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a?dict=Other%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a?dict=Other<span class=",
+        "text": "c\">a?dict=Otherc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 3,
+    "body": "{a?gdanchor=target\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a?gdanchor=target&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a?gdanchor=target<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a?gdanchor=target%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a?gdanchor=target<span class=",
+        "text": "c\">a?gdanchor=targetc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 4,
+    "body": "{../a\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/../a&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;../a<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%3Cspan%20class=",
+        "raw": "gdlookup://localhost/../a<span class=",
+        "text": "c\">../ac",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 5,
+    "body": "{/../a\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost//../a&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;/../a<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%3Cspan%20class=",
+        "raw": "gdlookup://localhost//../a<span class=",
+        "text": "c\">/../ac",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 6,
+    "body": "{a/../b\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a/../b&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a/../b<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/b%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a/../b<span class=",
+        "text": "c\">a/../bc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 7,
+    "body": "{a%20b\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%20b&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a%20b<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%20b%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a%20b<span class=",
+        "text": "c\">a%20bc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 8,
+    "body": "{a%23b\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%23b&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a%23b<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%23b%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a%23b<span class=",
+        "text": "c\">a%23bc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 9,
+    "body": "{a%3Fb\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%3Fb&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a%3Fb<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%3Fb%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a%3Fb<span class=",
+        "text": "c\">a%3Fbc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 10,
+    "body": "{a b\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a b&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a b<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%20b%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a b<span class=",
+        "text": "c\">a bc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 11,
+    "body": "{a\tb\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a\tb&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a\tb<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/ab%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a\tb<span class=",
+        "text": "c\">a\tbc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 12,
+    "body": "{a\rb\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/ab&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;ab<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/ab%3Cspan%20class=",
+        "raw": "gdlookup://localhost/ab<span class=",
+        "text": "c\">abc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 13,
+    "body": "{a?b\nשלום}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a?b&lt;/div&gt;&lt;div dir=\" rtl\"=\"\">שלום\"&gt;a?b</a></div><div dir=\"rtl\"><a href=\"gdlookup://localhost/a?b&lt;/div&gt;&lt;div dir=\" rtl\"=\"\">שלום</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a?b%3C/div%3E%3Cdiv%20dir=",
+        "raw": "gdlookup://localhost/a?b</div><div dir=",
+        "text": "שלום\">a?b",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      },
+      {
+        "href": "gdlookup://localhost/a?b%3C/div%3E%3Cdiv%20dir=",
+        "raw": "gdlookup://localhost/a?b</div><div dir=",
+        "text": "שלום",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 14,
+    "body": "{a#b\nשלום}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a#b&lt;/div&gt;&lt;div dir=\" rtl\"=\"\">שלום\"&gt;a#b</a></div><div dir=\"rtl\"><a href=\"gdlookup://localhost/a#b&lt;/div&gt;&lt;div dir=\" rtl\"=\"\">שלום</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a#b</div><div dir=",
+        "raw": "gdlookup://localhost/a#b</div><div dir=",
+        "text": "שלום\">a#b",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      },
+      {
+        "href": "gdlookup://localhost/a#b</div><div dir=",
+        "raw": "gdlookup://localhost/a#b</div><div dir=",
+        "text": "שלום",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 15,
+    "body": "{a\nb#c\nשלום}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a&lt;/div&gt;&lt;div&gt;b#c&lt;/div&gt;&lt;div dir=\" rtl\"=\"\">שלום\"&gt;a</a></div><div><a href=\"gdlookup://localhost/a&lt;/div&gt;&lt;div&gt;b#c&lt;/div&gt;&lt;div dir=\" rtl\"=\"\">b#c</a></div><div dir=\"rtl\"><a href=\"gdlookup://localhost/a&lt;/div&gt;&lt;div&gt;b#c&lt;/div&gt;&lt;div dir=\" rtl\"=\"\">שלום</a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%3C/div%3E%3Cdiv%3Eb#c</div><div dir=",
+        "raw": "gdlookup://localhost/a</div><div>b#c</div><div dir=",
+        "text": "שלום\">a",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      },
+      {
+        "href": "gdlookup://localhost/a%3C/div%3E%3Cdiv%3Eb#c</div><div dir=",
+        "raw": "gdlookup://localhost/a</div><div>b#c</div><div dir=",
+        "text": "b#c",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      },
+      {
+        "href": "gdlookup://localhost/a%3C/div%3E%3Cdiv%3Eb#c</div><div dir=",
+        "raw": "gdlookup://localhost/a</div><div>b#c</div><div dir=",
+        "text": "שלום",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 16,
+    "body": "{#\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/#&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;#<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/#<span class=",
+        "raw": "gdlookup://localhost/#<span class=",
+        "text": "c\">#c",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 17,
+    "body": "{?\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/?&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;?<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/?%3Cspan%20class=",
+        "raw": "gdlookup://localhost/?<span class=",
+        "text": "c\">?c",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 18,
+    "body": "{a#\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a#&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a#<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a#<span class=",
+        "raw": "gdlookup://localhost/a#<span class=",
+        "text": "c\">a#c",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 19,
+    "body": "{a?\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a?&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a?<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a?%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a?<span class=",
+        "text": "c\">a?c",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 20,
+    "body": "{a%ZZ\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%ZZ&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a%ZZ<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%ZZ%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a%ZZ<span class=",
+        "text": "c\">a%ZZc",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 21,
+    "body": "{a%00\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%00&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a%00<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%00%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a%00<span class=",
+        "text": "c\">a%00c",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 22,
+    "body": "{a%09\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%09&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a%09<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%09%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a%09<span class=",
+        "text": "c\">a%09c",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  },
+  {
+    "source": "r3.7g-design-probe-extra",
+    "sourceIndex": 23,
+    "body": "{a%01\\c\\}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%01&lt;span class=\" dictd_phonetic\"=\"\">c\"&gt;a%01<span class=\"dictd_phonetic\">c</span></a></div></div>",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%01%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a%01<span class=",
+        "text": "c\">a%01c",
+        "origin": 0,
+        "completeOpeningRewrite": "failed",
+        "normalizedEmpty": false
+      }
+    ]
+  }
+]

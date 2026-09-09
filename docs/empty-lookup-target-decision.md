@@ -68,7 +68,10 @@ At Qt 6 base `6bb463881839bbff94f3ed18d2575f5b34e494cb`,
 queries; and `application/dictionary_service.cc` rejects empty queries (the
 latter three paths are relative to `modules/core/src/`). These are source
 observations, not proof of future Dictd producer or no-side-effect acceptance.
-R3.7f preserves literal inline markers; R3.7g production changes are pending.
+At that base R3.7f preserved literal inline markers. The later
+[R3.7g.1](dictd-full-text-extraction-parity.md) and
+[R3.7g.2](dictd-inline-display-parity.md) records own their separate runtime
+implementation and verification status.
 
 ## Development readiness and acceptance
 
@@ -76,8 +79,9 @@ Readiness: **Ready for EL-01's documentation-only decision unit**. The approved
 outcome, exception boundary and observable acceptance are unambiguous. No
 production change is part of this unit. The [N3 record](malformed-reference-decision.md)
 identifies the separate R3.7g technical readiness and delivery sequence;
-renderer implementation and full state acceptance remain open. N2 has a
-separate bounded implementation and acceptance record linked above.
+renderer implementation and full state acceptance were not part of this
+documentation decision. N2 has a separate bounded implementation and acceptance
+record linked above.
 
 Architecture is unchanged under the
 [Shared-Library And GUI Boundary](project-design-rules.md#shared-library-and-gui-boundary):
@@ -114,3 +118,9 @@ because only documentation changes. External evidence is retained under the
 workspace's `evidence/empty-target-decision-20260909/`. A fresh completion audit
 must bind the staged documentation to its base commit and Tree ID before
 commit; separate integration verification and audit remain required.
+
+The bounded Dictd Windows producer and complete inert-activation state checks
+are now verified by [R3.7g.2](dictd-inline-display-parity.md), including the
+visible actual-NBSP empty reference and each visible reconstructed clone.
+That focused record owns the runtime delivery/audit status. This does not
+close other producers, Linux/macOS, full Dictd parity or baseline cutover.

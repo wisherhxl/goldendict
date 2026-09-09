@@ -54,6 +54,43 @@ proves that failed replacement retains a deletable prior artifact.
 .\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -j 1 -R '^(dictd_reader_test|dictd_dictionary_test|article_assembler_test|application_service_test)$' --output-on-failure
 ```
 
+### Dictd coupled inline display
+
+The [R3.7g.2 correction](dictd-inline-display-parity.md) adds
+`dictd_inline_display_test`, an app-private QTest using the actual MainWindow
+composition. It compares 48 frozen DOM cases, exact valid/inert targets,
+13 supplements, 69 control cases and seven frozen contexts. Real left/middle
+pointer hits prove every visible inert clone leaves all tab/page/session,
+query, history, search and active playback-sink lease state unchanged; positive
+controls prove exact lookup and tab disposition. Four specifically observed
+zero-area anchors require absence of a hit area. Sink lifetime/tick evidence
+does not claim physical audio playback. Actual lookup-page scoped styles and
+their consistency with the resource are checked separately from full-CSS
+format-body captures; the global normal-document R9.8 gap remains open.
+
+```powershell
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -j 1 -R '^(dictd_reader_test|dictd_dictionary_test|article_assembler_test|dictd_inline_display_test|article_page_.*routing_test|article_tabs_test)$' --output-on-failure
+```
+
+Portable CTest checks same-engine semantics without fixed Windows glyph widths.
+Only horizontal letter x/width around zero-control wrappers permits the measured
+1/64 CSS px quantization; wrapper advance and vertical/root geometry are exact.
+Raw native text-advance/antialias differences remain unmasked evidence under the
+CRD, not a broad pixel threshold or a layout waiver.
+Native Windows evidence additionally fixes locale/style/fonts, an 800x600
+format viewport and observes both widget and Chromium DPR. On the recorded
+125% desktop, process-only `QT_SCALE_FACTOR=0.8` plus
+`QTWEBENGINE_CHROMIUM_FLAGS='--no-sandbox --disable-gpu --force-device-scale-factor=1'`
+and `QT_QPA_PLATFORM=windows` give actual DPR 1 in both engines. Do not infer
+Chromium DPR from widget DPR or change desktop scale. Set
+`GOLDENDICT_DICTD_CAPTURE_DIR` to a fresh external output directory and
+`GOLDENDICT_DICTD_MEASUREMENT` to the immutable Qt 5 measurement script, then
+launch `build/Release/bin/dictd_inline_display_test.exe` through the owning
+Conan launcher. Quote an entire QTest `-o 'absolute/path.txt,txt'` argument.
+The focused record identifies reference hashes, comparison commands, raw
+pixel/geometry records and narrow native-rendering differences. Repeat full
+serial CTest under separately created, validated fresh short C/D TEMP/TMP roots.
+
 ### Lookup target routing
 
 The [N2 lookup URL correction](lookup-target-url-parity.md) is covered by
@@ -63,7 +100,8 @@ tab and saved configuration), and `article_page_lookup_routing_test` (actual
 WebEngine pointer clicks through ArticlePage and the production scheme handler).
 The latter checks exact QUrl targets and confirms an attempted empty-link click
 emits no lookup/audio/external signal and preserves the current page URL.
-Full EL-01 producer and application-state acceptance remains separately open.
+The scoped Dictd EL-01 producer/application-state checks are owned by R3.7g.2
+above; this routing test alone does not prove them for other producers.
 
 ```powershell
 .\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -j 1 -R 'article_assembler_test|application_service_test|article_tabs_test|article_page_.*routing_test|dictd_dictionary_test' --output-on-failure

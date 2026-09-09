@@ -1,0 +1,67 @@
+[
+  {
+    "body": "a \u0001 b",
+    "html": "<div class=\"dictd_article\"><div>a \u0001 b</div></div>",
+    "text": "a \u0001 b",
+    "anchors": []
+  },
+  {
+    "body": "a\t\u000b\f b",
+    "html": "<div class=\"dictd_article\"><div>a\t\u000b\f b</div></div>",
+    "text": "a\t\u000b\f b",
+    "anchors": []
+  },
+  {
+    "body": "a\u0001b",
+    "html": "<div class=\"dictd_article\"><div>a\u0001b</div></div>",
+    "text": "a\u0001b",
+    "anchors": []
+  },
+  {
+    "body": "{a\u0001\nb}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a%01%20b\">a\u0001</a></div><div><a href=\"gdlookup://localhost/a%01%20b\">b</a></div></div>",
+    "text": "a\u0001b",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%01%20b",
+        "raw": "gdlookup://localhost/a%01%20b",
+        "text": "a\u0001"
+      },
+      {
+        "href": "gdlookup://localhost/a%01%20b",
+        "raw": "gdlookup://localhost/a%01%20b",
+        "text": "b"
+      }
+    ]
+  },
+  {
+    "body": "{a\\ph\u000b\\b}",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/a&lt;span class=\" dictd_phonetic\"=\"\">ph\u000bb\"&gt;a<span class=\"dictd_phonetic\">ph\u000b</span>b</a></div></div>",
+    "text": "ph\u000bb\">aph\u000bb",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/a%3Cspan%20class=",
+        "raw": "gdlookup://localhost/a<span class=",
+        "text": "ph\u000bb\">aph\u000bb"
+      }
+    ]
+  },
+  {
+    "body": "\\ph\u0001\\",
+    "html": "<div class=\"dictd_article\"><div><span class=\"dictd_phonetic\">ph\u0001</span></div></div>",
+    "text": "ph\u0001",
+    "anchors": []
+  },
+  {
+    "body": "{ \u000b\f }",
+    "html": "<div class=\"dictd_article\"><div><a href=\"gdlookup://localhost/\"> \u000b\f </a></div></div>",
+    "text": " \u000b\f ",
+    "anchors": [
+      {
+        "href": "gdlookup://localhost/",
+        "raw": "gdlookup://localhost/",
+        "text": " \u000b\f "
+      }
+    ]
+  }
+]

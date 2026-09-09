@@ -172,6 +172,11 @@ The authoritative legacy discovery path is `loaddictionaries.cc`.
 - Dictd: `dictdfiles.*`; `.index`, `.dict`, and `.dict.dz` families. Private
   Core [full-text extraction](dictd-full-text-extraction-parity.md) follows
   `dictdfiles.cc:573-589` and `htmlescape.cc:149-175` independently of display.
+  [Coupled inline display](dictd-inline-display-parity.md) follows frozen
+  `dictdfiles.cc:349-394` and observed WebKit reconstruction through the private
+  Core renderer, exact sanitizer classes and existing document-style owner.
+  MainWindow/ArticlePage retain generic presentation and intent forwarding;
+  no Dictd-specific navigation or shared URL-policy branch is added.
 - XDXF: `xdxf.*`, `xdxf2html.*`; `.xdxf` and `.xdxf.dz`.
 - SDict: `sdict.*`; `.dct`.
 - Aard: `aard.*`; `.aar`.

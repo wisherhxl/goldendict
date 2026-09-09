@@ -167,6 +167,7 @@ struct BeginWidgetsMaintenanceResult final {
 
 class MainWindow final : public QMainWindow {
     Q_OBJECT
+    friend class DictdInlineDisplayTest;
     friend class PreparedWidgetsFacadeCandidate;
     friend class WidgetsFacadeActivationRelay;
     friend class MaintainedWidgetsCommit;

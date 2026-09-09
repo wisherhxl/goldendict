@@ -574,6 +574,21 @@ div.xdxf
   margin-top: 1em;
 }
 
+.dictd_article, .dictd_article div
+{
+  unicode-bidi: normal;
+}
+
+.dictd_article[dir], .dictd_article div[dir]
+{
+  unicode-bidi: embed;
+}
+
+.dictd_article span.dictd_control
+{
+  font-size: 0;
+}
+
 .dictd_phonetic:before, .dictd_phonetic:after
 {
   content: "\\";
@@ -591,9 +606,20 @@ div.xdxf
   color: #009900;
 }
 
+.dictd_article a
+{
+  text-decoration-thickness: auto;
+}
+
 .dictd_article a:link
 {
   color: #0000FF;
+}
+
+.dictd_article a.dictd_inert_reference
+{
+  color: #0000FF;
+  text-decoration: underline;
 }
 
 .dictserver_from

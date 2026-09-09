@@ -143,4 +143,12 @@ required. External verification/audit evidence belongs under the workspace's
 `evidence/n3-malformed-reference-20260909/`. Independent completion and separate
 integration audits remain required. Windows probe evidence does not establish
 Linux or macOS acceptance; the requirement applies to both release-gating
-platforms and macOS restoration. R3.7g, full Dictd parity and cutover remain open.
+platforms and macOS restoration. Parent R3.7, full Dictd parity and cutover
+remain open.
+
+The bounded Windows coupled renderer and every visible failed-origin/clone
+activation check are now verified in [R3.7g.2](dictd-inline-display-parity.md),
+which owns the runtime delivery/audit status. Its full-CSS format captures and
+actual MainWindow scoped-style/state checks are separate evidence; the broader
+normal-document typography/template gap remains R9.8. Historical decision
+readiness above is not itself runtime acceptance or Linux/macOS execution.

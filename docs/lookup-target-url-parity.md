@@ -68,6 +68,10 @@ audits returned Pass, and N2 is complete and integrated at
 `f41ba7033b0df06430b1657e490a441419bc1932`). The separate approved
 [N3 decision](malformed-reference-decision.md) disables activation only for
 failed complete generated reference rewrites; it does not broaden N2 decoding.
-The coupled R3.7g Dictd inline renderer/full-text changes, full EL-01 state
-acceptance, remaining Dictd parity, Linux/macOS verification and cutover remain
-open. No Linux or macOS execution is claimed by the Windows evidence.
+Independent [R3.7g.1 full-text extraction](dictd-full-text-extraction-parity.md)
+and the [R3.7g.2 coupled renderer](dictd-inline-display-parity.md) retain this
+completed N2 boundary. The latter now verifies bounded Windows EL-01/N3/N4
+producer and full activation state, with its delivery/audit status recorded
+separately. Remaining Dictd parity, R9.8 normal-document visuals, Linux/macOS
+verification and cutover remain open. No Linux or macOS execution is claimed
+by the Windows evidence.

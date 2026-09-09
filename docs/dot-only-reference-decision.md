@@ -91,8 +91,8 @@ applies. Private Core Dictd rendering owns successful target normalization,
 generated-reference origin and reconstruction. Extend the approved R3.7g.2
 candidate's private `ReferenceHref` normalization decision to omit href for the
 exact N4 predicate, retaining origin through reconstruction and reusing that
-candidate's private inert Dictd class/CSS for appearance. These helpers and CSS
-exist in the paused uncommitted R3.7g.2 candidate, not in the integrated
+candidate's private inert Dictd class/CSS for appearance. At decision readiness,
+these helpers and CSS existed in the paused uncommitted R3.7g.2 candidate, not in the integrated
 `0659a4f12494f693ba28980c18e9ebcba5811386` baseline. Strict article sanitization and shared URL validation
 retain their contracts; private application components own navigation and
 Widgets/WebEngine presents content and forwards valid intent. This uses the
@@ -143,8 +143,11 @@ The later renderer delivery must provide:
   behavior; record Windows execution first and Linux/macOS evidence separately.
 
 The requirements apply to Linux and Windows release gates and macOS restoration.
-Existing Windows probes establish no Linux/macOS execution. R3.7g.2 runtime
-acceptance, parent R3.7, complete Dictd parity and baseline cutover remain open.
+Existing Windows probes establish no Linux/macOS execution. The bounded
+Windows R3.7g.2 producer, styled and complete activation-state checks are now
+verified in the [focused runtime record](dictd-inline-display-parity.md), which
+owns delivery/audit status. Parent R3.7, complete Dictd parity, Linux/macOS,
+R9.8 normal-article visuals and baseline cutover remain open.
 
 For this documentation unit, run Markdown link/path/anchor validation,
 `git diff --check` and consistency review of the CRD, related decisions and gap

@@ -763,3 +763,25 @@ set_tests_properties(goldendict_history_import_smoke PROPERTIES
   ENVIRONMENT
     "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/history-import-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-import-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/history-import-test-home/cache"
   TIMEOUT 20)
+
+# Exercise the actual private MainWindow composition without exporting a test
+# interface or creating another product library. Reuse its existing sources.
+get_target_property(dictd_presentation_sources goldendict SOURCES)
+list(FILTER dictd_presentation_sources EXCLUDE REGEX "(^|/)main\\.cpp$")
+ti_add_executable(dictd_inline_display_test
+  tests/dictd_inline_display_test.cpp ${dictd_presentation_sources})
+set_target_properties(dictd_inline_display_test PROPERTIES AUTOMOC ON AUTORCC ON)
+target_include_directories(dictd_inline_display_test PRIVATE src)
+ti_target_include_modules_recurse(dictd_inline_display_test goldendict_core goldendict_network)
+get_target_property(dictd_presentation_libraries goldendict LINK_LIBRARIES)
+ti_target_link_libraries(dictd_inline_display_test
+  ${dictd_presentation_libraries} ${QT_NAMESPACE}::Test)
+target_compile_definitions(dictd_inline_display_test PRIVATE
+  GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}"
+  GOLDENDICT_DICTD_ORACLE="${CMAKE_CURRENT_SOURCE_DIR}/tests/dictd_inline_oracle.json"
+  GOLDENDICT_DICTD_CONTROL_CONTEXTS="${CMAKE_CURRENT_SOURCE_DIR}/tests/dictd_control_context_oracle.json"
+  GOLDENDICT_DICTD_CSS="${CMAKE_CURRENT_SOURCE_DIR}/resources/article-style.css")
+add_test(NAME dictd_inline_display_test COMMAND dictd_inline_display_test
+  -o "${CMAKE_CURRENT_BINARY_DIR}/dictd-inline-display-test.txt,txt")
+set_tests_properties(dictd_inline_display_test PROPERTIES TIMEOUT 180
+  ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;QT_SCALE_FACTOR=1")

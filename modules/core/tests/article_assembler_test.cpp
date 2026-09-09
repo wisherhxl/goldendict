@@ -45,7 +45,14 @@ void ArticleAssemblerTest::PreservesOnlyDictdBodyLayoutClass() {
                    "<div dir=\"ltr\">&nbsp;&lt;literal&gt;&amp;amp;</div>"
                    "<span class=\"dictd_article\">span</span>"
                    "<div class=\"dictd_article other\">other</div>"
-                   "<span class=\"dictd_phonetic\">phonetic</span></div>"}});
+                   "<span class=\"dictd_phonetic\">phonetic</span>"
+                   "<a class=\"dictd_inert_reference\">inert</a>"
+                   "<span class=\"dictd_control\">control</span>"
+                   "<div class=\"dictd_control\">wrong tag</div>"
+                   "<span class=\"dictd_control other\">wrong class</span>"
+                   "<div class=\"dictd_phonetic\">wrong tag</div>"
+                   "<a class=\"dictd_inert_reference other\">wrong class</a>"
+                   "</div>"}});
     QVERIFY(document.sanitized_html.find(
                 "<div class=\"dictd_article\" dir=\"rtl\">") !=
             std::string::npos);
@@ -56,7 +63,19 @@ void ArticleAssemblerTest::PreservesOnlyDictdBodyLayoutClass() {
             std::string::npos);
     QVERIFY(document.sanitized_html.find("dictd_article other") ==
             std::string::npos);
-    QVERIFY(document.sanitized_html.find("dictd_phonetic") ==
+    QVERIFY(document.sanitized_html.find("<span class=\"dictd_phonetic\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find(
+                "<a class=\"dictd_inert_reference\">") != std::string::npos);
+    QVERIFY(document.sanitized_html.find("<div class=\"dictd_phonetic\">") ==
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("dictd_inert_reference other") ==
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("<span class=\"dictd_control\">") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("<div class=\"dictd_control\">") ==
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("dictd_control other") ==
             std::string::npos);
     QVERIFY(document.plain_text.find(u8"\u00a0<literal>&amp;") == 0U);
 }
@@ -483,21 +502,22 @@ void ArticleAssemblerTest::RejectsMalformedAndUnsafeInternalUrls() {
         QVERIFY2(!ParseInternalUrl(url).has_value(), url.c_str());
         if (url.rfind("goldendict:", 0U) == 0U) {
             const auto document = Assemble(
-                kDictionary, {{"entry", "text/html", "<a href=\"" + url +
-                                                       "\">inert</a>"}});
+                kDictionary,
+                {{"entry", "text/html", "<a href=\"" + url + "\">inert</a>"}});
             QVERIFY(document.sanitized_html.find("<a href=") ==
                     std::string::npos);
         }
     }
-    for (const std::string value : {std::string{}, std::string(1, '\0'),
-                                    std::string("\t"), std::string("\n"),
-                                    std::string("\v"), std::string("\f"),
-                                    std::string("\r"), std::string("\xff")}) {
+    for (const std::string value :
+         {std::string{}, std::string(1, '\0'), std::string("\t"),
+          std::string("\n"), std::string("\v"), std::string("\f"),
+          std::string("\r"), std::string("\xff")}) {
         QVERIFY_EXCEPTION_THROWN(MakeLookupUrl(value), std::invalid_argument);
     }
-    const auto resource = Assemble(
-        kDictionary, {{"entry", "text/html",
-                       "<a href=\"goldendict://resource/id/safe.wav\">inert</a>"}});
+    const auto resource =
+        Assemble(kDictionary,
+                 {{"entry", "text/html",
+                   "<a href=\"goldendict://resource/id/safe.wav\">inert</a>"}});
     QVERIFY(resource.sanitized_html.find("<a href=") == std::string::npos);
 }
 
@@ -512,7 +532,10 @@ void ArticleAssemblerTest::PreservesCanonicalLookupTargets_data() {
     QTest::newRow("printable") << QByteArray("ordinary target");
     QTest::newRow("literal-percent-hash-slash-unicode")
         << QByteArray(u8"%01#part/你好");
-    QTest::newRow("embedded-controls") << QByteArray("a\x01" "b\x7f" "c");
+    QTest::newRow("embedded-controls") << QByteArray(
+        "a\x01"
+        "b\x7f"
+        "c");
 }
 
 void ArticleAssemblerTest::PreservesCanonicalLookupTargets() {
@@ -523,10 +546,10 @@ void ArticleAssemblerTest::PreservesCanonicalLookupTargets() {
     QCOMPARE(parsed->kind, InternalUrlKind::kLookup);
     QCOMPARE(parsed->target, target.toStdString());
     const auto document = Assemble(
-        kDictionary, {{"entry", "text/html", "<a href=\"" + url +
-                                               "\">target</a>"}});
-    QVERIFY(document.sanitized_html.find("<a href=\"" + url + "\">target</a>") !=
-            std::string::npos);
+        kDictionary,
+        {{"entry", "text/html", "<a href=\"" + url + "\">target</a>"}});
+    QVERIFY(document.sanitized_html.find("<a href=\"" + url +
+                                         "\">target</a>") != std::string::npos);
     QCOMPARE(document.plain_text, "target");
     QVERIFY(document.resources.empty());
     if (target.size() == 1) {

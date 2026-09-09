@@ -193,14 +193,16 @@ Issue N4 is resolved by approved `CRD-LOOKUP-008` and the
 rewritten references whose complete legacy-normalized target is exactly `.` or
 `..` retain appearance but omit actionable hrefs and have no activation side
 effects. Ordinary nonempty/slash/punctuation/entity targets remain compatible.
-Readiness is **Ready** on 2026-09-09; the isolated canonical documentation unit
-must pass completion and integration audits before paused R3.7g.2 resumes on
-that integrated base. The frozen styled supplement and valid Qt 6 pointer
+The isolated canonical documentation unit passed completion and integration
+audits and was integrated at `72822d014a7fca2ba109539067dab81d2f98f01b` on
+2026-09-09; [R3.7g.2](dictd-inline-display-parity.md) resumes on that base.
+The frozen styled supplement and valid Qt 6 pointer
 diagnostic motivate this additional divergence; neither proves full N4 runtime
 acceptance. The existing R3.7g.1 delivery at
 `0659a4f12494f693ba28980c18e9ebcba5811386` and its independent pre-href full-text
-contract remain unchanged. R3.7g.2 display/activation acceptance, parent R3.7,
-Linux/macOS verification and cutover remain **Open**.
+contract remain unchanged. The focused R3.7g.2 record owns bounded Windows
+display/activation verification and delivery status. Parent R3.7, whole normal
+article visuals under R9.8, Linux/macOS verification and cutover remain **Open**.
 
 ## Evidence Reviewed (Original Audit)
 
@@ -481,6 +483,17 @@ launcher and Python tooling checks run directly.
 | R10.6 | Windows installer, application manifest, shortcuts, registration, upgrade, and uninstall | R10.5 | clean installer build and metadata inspection plus install, native integration, repair/upgrade, and uninstall evidence |
 | R10.7 | Paired startup/index/lookup/render/full-text/memory/storage measurements: `CRD-TEST-REAL-010` | R5.4, R9.9, R10.3-R10.6 | machine-readable same-host results, thresholds, and disposition of every material regression |
 | R10.8 | Same-candidate Linux/Windows cutover audit and documentation reconciliation | all prior leaves | complete build/test/install/package/visual/corpus records and independent final audit |
+
+R9.8 also retains the normal-lookup document typography/template gap identified
+by [R3.7g.2](dictd-inline-display-parity.md): Core's `article_document.cc`
+supplies generic `system-ui` / `1rem` / `1.55` body typography; the full legacy
+article resource is currently loaded only for welcome/help documents. The
+bounded Dictd correction supplies its scoped phonetic, reference, control and
+bidi rules through the existing document owner. Controlled format-body captures
+with the full product CSS and actual MainWindow scoped-style/state tests are
+distinct evidence, not whole normal-article visual parity. Global article
+typography, template and resource wiring require a separate conforming unit;
+R9.8, parent R3.7/R9 and platform/cutover gates remain open.
 
 #### R2.1 issue record and readiness
 

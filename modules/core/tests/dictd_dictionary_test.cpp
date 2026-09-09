@@ -49,6 +49,8 @@ class DictdDictionaryTest : public QObject {
     void RendersFrozenLayout();
     void UsesOnlyFilenameDirection();
     void BoundsAndCancelsRendering();
+    void RendersCoupledInlineMarkup_data();
+    void RendersCoupledInlineMarkup();
     void ExtractsFrozenFullText_data();
     void ExtractsFrozenFullText();
     void BoundsAndCancelsExtraction();
@@ -469,9 +471,137 @@ void DictdDictionaryTest::RendersFrozenLayout_data() {
         u8"<div>\u2067שלום</div><div "
         u8"dir=\"rtl\">\u2069שלום</div><div>\u202bEnglish\u202cשלום</div></"
         u8"div>");
-    row("inline-markers-remain", "\\phonetic\\ {reference}",
-        "<div class=\"dictd_article\"><div>\\phonetic\\ "
-        "{reference}</div></div>");
+    row("inline-markers", "\\phonetic\\ {reference}",
+        "<div class=\"dictd_article\"><div><span class=\"dictd_phonetic\">"
+        "phonetic</span> <a href=\"goldendict://lookup/reference\">"
+        "reference</a></div></div>");
+}
+
+void DictdDictionaryTest::RendersCoupledInlineMarkup_data() {
+    QTest::addColumn<QByteArray>("body");
+    QTest::addColumn<QByteArray>("html");
+    const QByteArray inert = "<a class=\"dictd_inert_reference\">";
+    const QByteArray phonetic = "<span class=\"dictd_phonetic\">";
+    const QByteArray control_span = "<span class=\"dictd_control\">";
+    QTest::newRow("N3-phonetic-in-reference")
+        << QByteArray("{\\phonetic\\}")
+        << ("<div>" + inert + "phonetic\">" + phonetic +
+            "phonetic</span></a></div>");
+    QTest::newRow("active-cross-line")
+        << QByteArray("{first\nsecond}")
+        << QByteArray(
+               "<div><a href=\"goldendict://lookup/first%20second\">"
+               "first</a></div><div><a href=\"goldendict://lookup/"
+               "first%20second\">second</a></div>");
+    QTest::newRow("active-overlapping-span")
+        << QByteArray("\\before {middle\\ after}")
+        << ("<div>" + phonetic +
+            "before <a href=\"goldendict://lookup/"
+            "middle%20after\">middle</a></span><a href=\"goldendict://lookup/"
+            "middle%20after\"> after</a></div>");
+    QTest::newRow("EL01-and-literal-empty")
+        << QByteArray("{} { } {\t\v\f }")
+        << ("<div>{} " + inert + " </a> " + inert + "\t" + control_span +
+            "\v\f</span> </a></div>");
+    QTest::newRow("EL01-generated-empty-cross-line")
+        << QByteArray("{\n}") << ("<div>" + inert + "</a></div><div></div>");
+    QTest::newRow("EL01-visible-NBSP")
+        << QByteArray(u8"{\u00a0}")
+        << ("<div>" + inert + QByteArray(u8"\u00a0</a></div>"));
+    QTest::newRow("EL01-visible-generated-NBSP")
+        << QByteArray("{\n    }")
+        << ("<div>" + inert + "</a></div><div>" + inert +
+            "&nbsp;&nbsp;&nbsp;&nbsp;</a></div>");
+    QTest::newRow("N4-exact-and-whitespace")
+        << QByteArray("{.} {..} {\t . } { ..\v }")
+        << ("<div>" + inert + ".</a> " + inert + "..</a> " + inert +
+            "\t . </a> " + inert + " .." + control_span +
+            "\v</span> </a></div>");
+    QTest::newRow("N4-reconstructed")
+        << QByteArray("{.\n    }")
+        << ("<div>" + inert + ".</a></div><div>" + inert +
+            "&nbsp;&nbsp;&nbsp;&nbsp;</a></div>");
+    QTest::newRow("N4-nonempty-controls")
+        << QByteArray("{../word} {/word} {...} {%2e} {&#46;}")
+        << QByteArray(
+               "<div><a href=\"goldendict://lookup/..%2Fword\">../word</a> "
+               "<a href=\"goldendict://lookup/%2Fword\">/word</a> "
+               "<a href=\"goldendict://lookup/...\">...</a> "
+               "<a href=\"goldendict://lookup/%252e\">%2e</a> "
+               "<a "
+               "href=\"goldendict://lookup/%26amp%3B%2346%3B\">&amp;#46;</a></"
+               "div>");
+    QTest::newRow("literal-entities")
+        << QByteArray("{a&b} {&nbsp;} {a\"b}")
+        << QByteArray(
+               "<div><a href=\"goldendict://lookup/a%26amp%3Bb\">"
+               "a&amp;b</a> <a href=\"goldendict://lookup/%26amp%3Bnbsp%3B\">"
+               "&amp;nbsp;</a> <a href=\"goldendict://lookup/a%26quot%3Bb\">"
+               "a&quot;b</a></div>");
+    QTest::newRow("unmatched") << QByteArray("\\lonely {open }tail}")
+                               << QByteArray(
+                                      "<div>\\lonely <a href=\"goldendict://"
+                                      "lookup/open\">open </a>tail}</div>");
+    for (int byte = 1; byte <= 127; ++byte) {
+        if (byte >= 9 && byte <= 13)
+            continue;
+        if (byte >= 32 && byte != 127)
+            continue;
+        const QByteArray name = "retained-control-" + QByteArray::number(byte);
+        const QByteArray target =
+            "a" + QByteArray(1, static_cast<char>(byte)) + "b";
+        const auto encoded = target.toPercentEncoding();
+        QTest::newRow(name.constData())
+            << ("{" + target + "}")
+            << ("<div><a href=\"goldendict://lookup/" + encoded + "\">" + "a" +
+                control_span + QByteArray(1, static_cast<char>(byte)) +
+                "</span>b</a></div>");
+    }
+    QTest::newRow("zero-width-whitespace-boundaries")
+        << QByteArray(
+               "a \x01 b a\t\v\f b a\x01\x7f"
+               "b")
+        << ("<div>a " + control_span + "\x01</span> b a\t" + control_span +
+            "\v\f</span> b a" + control_span + "\x01\x7f</span>b</div>");
+    QTest::newRow("VT-FF-normalize-but-remain-in-display")
+        << QByteArray(
+               "{a\v\f"
+               "b}")
+        << ("<div><a href=\"goldendict://lookup/a%20b\">a" + control_span +
+            "\v\f</span>b</a></div>");
+    QTest::newRow("control-phonetic")
+        << QByteArray("\\ph\x01\\")
+        << ("<div>" + phonetic + "ph" + control_span +
+            "\x01</span></span></div>");
+    QTest::newRow("control-cross-line")
+        << QByteArray("{a\x01\nb}")
+        << ("<div><a href=\"goldendict://lookup/a%01%20b\">a" + control_span +
+            "\x01</span></a></div><div><a "
+            "href=\"goldendict://lookup/a%01%20b\">b</a></div>");
+    QTest::newRow("unicode-percent-hash-slash")
+        << QByteArray(u8"{你好%/#}")
+        << QByteArray(
+               u8"<div><a href=\"goldendict://lookup/"
+               "%E4%BD%A0%E5%A5%BD%25%2F%23\">你好%/#</a></div>");
+    for (const int size : {253, 254, 255, 256, 257}) {
+        const QByteArray prefix(size, 'a');
+        const QByteArray source = prefix + QByteArray(u8"你好&%/#") + '\x01';
+        const QByteArray visible =
+            prefix + QByteArray(u8"你好&amp;%/#") + '\x01';
+        const QByteArray name = "url-chunk-" + QByteArray::number(size);
+        QTest::newRow(name.constData())
+            << ("{" + source + "}")
+            << ("<div><a href=\"goldendict://lookup/" +
+                visible.toPercentEncoding() + "\">" + visible.chopped(1) +
+                control_span + "\x01</span></a></div>");
+    }
+}
+
+void DictdDictionaryTest::RendersCoupledInlineMarkup() {
+    QFETCH(QByteArray, body);
+    QFETCH(QByteArray, html);
+    QCOMPARE(RenderArticleBody(body.toStdString(), ""),
+             ("<div class=\"dictd_article\">" + html + "</div>").toStdString());
 }
 
 void DictdDictionaryTest::RendersFrozenLayout() {
@@ -554,15 +684,25 @@ void DictdDictionaryTest::UsesOnlyFilenameDirection() {
 
 void DictdDictionaryTest::BoundsAndCancelsRendering() {
     constexpr std::size_t limit = 16U * 1024U * 1024U;
+    std::string control_pairs;
+    for (std::size_t i = 0; i < limit / 32U; ++i)
+        control_pairs += "x\x01";
+    QVERIFY_EXCEPTION_THROWN(RenderArticleBody(control_pairs, ""),
+                             dictionary::Error);
     for (const auto& body : {std::string(limit / 6U + 1U, ' '),
                              std::string(limit / 3U + 1U, '\xff'),
-                             std::string(limit / 11U + 1U, '\n')}) {
+                             std::string(limit / 11U + 1U, '\n'),
+                             "{" + std::string(limit / 3U, '%') + "}"}) {
         QVERIFY_EXCEPTION_THROWN(RenderArticleBody(body, ""),
                                  dictionary::Error);
     }
     const std::string many_cr(65536U, '\r');
     const std::string long_line(65536U, 'x');
-    for (const auto& body : {many_cr, long_line}) {
+    const auto references = "{" + long_line + "}";
+    const auto malformed = "{\\" + long_line + "\\}";
+    const auto control_text = control_pairs.substr(0U, 65536U);
+    for (const auto& body :
+         {many_cr, long_line, references, malformed, control_text}) {
         std::size_t calls = 0U;
         static_cast<void>(RenderArticleBody(body, "", [&]() { ++calls; }));
         QVERIFY(calls > 8U);
@@ -795,10 +935,14 @@ void DictdDictionaryTest::RebuildsFormerInlineFullTextIndex() {
         query.mode = FullTextQueryMode::kPlainText;
         query.text = "{first";
         QVERIFY(opened.SearchFullText(query).results.empty());
-        QCOMPARE(opened.LookupExact("entry").front().data,
-                 "<div class=\"dictd_article\"><div>&nbsp;&nbsp;\\phonetic\\ "
-                 "{first</div>"
-                 "<div>second} {\\odd\\}</div></div>");
+        QCOMPARE(
+            opened.LookupExact("entry").front().data,
+            "<div class=\"dictd_article\"><div>&nbsp;&nbsp;"
+            "<span class=\"dictd_phonetic\">phonetic</span> "
+            "<a href=\"goldendict://lookup/first%20second\">first</a></div>"
+            "<div><a href=\"goldendict://lookup/first%20second\">second</a> "
+            "<a class=\"dictd_inert_reference\">odd\">"
+            "<span class=\"dictd_phonetic\">odd</span></a></div></div>");
         QCOMPARE(opened.LookupPrefix("ent").front().data,
                  opened.LookupExact("entry").front().data);
         QVERIFY(opened.ResolveFullTextDocument(old.document_id));
