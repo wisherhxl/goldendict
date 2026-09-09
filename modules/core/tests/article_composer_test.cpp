@@ -13,6 +13,7 @@ class ArticleComposerTest : public QObject {
    private slots:
     void CombinesEntriesAndEscapesDictionaryLabels();
     void FallsBackToEscapedPlainTextForUntrustedMarkup();
+    void KeepsCurrentPrefixAndRejectsForeignPrefixes();
     void CollapsesOnlyLargeResultsInMultiDictionaryPages();
     void KeepsSingleDictionaryPagesExpanded();
     void AppliesOptionalPartPolicyWithoutChangingPlainText();
@@ -66,6 +67,49 @@ void ArticleComposerTest::FallsBackToEscapedPlainTextForUntrustedMarkup() {
     QVERIFY(page.sanitized_html->find("<script>") == std::string::npos);
     QVERIFY(page.sanitized_html->find("one &lt; two &amp; three") !=
             std::string::npos);
+}
+
+void ArticleComposerTest::KeepsCurrentPrefixAndRejectsForeignPrefixes() {
+    LookupResponse response;
+    DictionaryEntry entry;
+    entry.dictionary.name = "Prefix compatibility";
+    entry.article.plain_text = "safe <fallback>";
+    const std::string body = "<pre>preserved  spaces\nand lines</pre>";
+    const std::string prefix = NewDocument();
+    std::string current = prefix + body;
+    FinishDocument(&current);
+    QCOMPARE(ExtractDocumentBody(current), std::string_view(body));
+    entry.article.sanitized_html = current;
+    response.entries = {entry};
+    QVERIFY(ComposeLookupPage(response).sanitized_html->find(body) !=
+            std::string::npos);
+
+    // An old or foreign envelope is not proof that its body is trusted.
+    const std::string old_body_style =
+        "body{box-sizing:border-box;margin:0 auto;max-width:72rem;padding:1rem;"
+        "font:1rem/1.55 system-ui,sans-serif;overflow-wrap:anywhere}";
+    std::string old = current;
+    const auto start = old.find("body{");
+    QVERIFY(start != std::string::npos);
+    old.replace(start, old.find('}', start) - start + 1U, old_body_style);
+    old.insert(start, ":root{color-scheme:light dark}");
+    const auto pre = old.find("pre{font-size:12px}");
+    QVERIFY(pre != std::string::npos);
+    old.replace(pre, std::string("pre{font-size:12px}").size(),
+                "pre{overflow:auto;white-space:pre-wrap}");
+    for (const auto& foreign :
+         {old,
+          std::string("<!doctype html><html><body>") + body + "</body></html>",
+          current + "extra", current.substr(1)}) {
+        QVERIFY(ExtractDocumentBody(foreign).empty());
+        response.entries.front().article.sanitized_html = foreign;
+        const auto page = ComposeLookupPage(response);
+        QVERIFY(page.sanitized_html->find(body) == std::string::npos);
+        QVERIFY(page.sanitized_html->find("safe &lt;fallback&gt;") !=
+                std::string::npos);
+        QCOMPARE(page.plain_text,
+                 std::string("Prefix compatibility\nsafe <fallback>"));
+    }
 }
 
 void ArticleComposerTest::CollapsesOnlyLargeResultsInMultiDictionaryPages() {

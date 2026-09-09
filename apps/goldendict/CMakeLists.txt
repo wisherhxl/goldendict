@@ -785,3 +785,21 @@ add_test(NAME dictd_inline_display_test COMMAND dictd_inline_display_test
   -o "${CMAKE_CURRENT_BINARY_DIR}/dictd-inline-display-test.txt,txt")
 set_tests_properties(dictd_inline_display_test PROPERTIES TIMEOUT 180
   ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;QT_SCALE_FACTOR=1")
+
+ti_add_executable(article_base_style_test
+  tests/article_base_style_test.cpp ${dictd_presentation_sources})
+set_target_properties(article_base_style_test PROPERTIES AUTOMOC ON AUTORCC ON)
+target_include_directories(article_base_style_test PRIVATE src)
+ti_target_include_modules_recurse(article_base_style_test goldendict_core goldendict_network)
+ti_target_link_libraries(article_base_style_test
+  ${dictd_presentation_libraries} ${QT_NAMESPACE}::Test)
+target_compile_definitions(article_base_style_test PRIVATE
+  GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}")
+add_test(NAME article_base_style_test COMMAND article_base_style_test
+  -o "${CMAKE_CURRENT_BINARY_DIR}/article-base-style-test.txt,txt")
+set_tests_properties(article_base_style_test PROPERTIES TIMEOUT 90
+  ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu --blink-settings=preferredColorScheme=1;QT_SCALE_FACTOR=1")
+add_test(NAME article_base_style_dark_test COMMAND article_base_style_test
+  -o "${CMAKE_CURRENT_BINARY_DIR}/article-base-style-dark-test.txt,txt")
+set_tests_properties(article_base_style_dark_test PROPERTIES TIMEOUT 90
+  ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu --blink-settings=preferredColorScheme=0;QT_SCALE_FACTOR=1;GOLDENDICT_BASE_STYLE_EXPECT_DARK=1")

@@ -97,7 +97,7 @@ not authorize dropping a legacy format.
 
 | Capability | Status | Target gate | Verification |
 | --- | --- | --- | --- |
-| Backend-independent article assembly | slice | Phase 4 | exact HTML assertions |
+| Backend-independent article assembly | slice | Phase 4 | exact HTML assertions; [normal base canvas and inherited typography](article-base-style-parity.md) is a bounded R9.8 correction through the private document owner, with real MainWindow cold/warm publication checks; complete template/theme/style precedence remains open |
 | Multi-dictionary result composition | slice | Phase 7 | bounded composition and escaping tests |
 | Internal article/resource URL model | slice | Phase 4 | scheme routing tests |
 | Qt WebEngine rendering of local article | slice | Phase 4 | documented rendering smoke |

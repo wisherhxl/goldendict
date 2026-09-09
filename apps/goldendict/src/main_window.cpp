@@ -6990,8 +6990,12 @@ void MainWindow::RunArticleTabsSmokeCheck(
     scroll_observer.setInjectionPoint(QWebEngineScript::DocumentReady);
     scroll_observer.setWorldId(QWebEngineScript::MainWorld);
     scroll_observer.setRunsOnSubFrames(false);
+    // Both synthetic pages need the same scroll range, independent of
+    // typography.
     scroll_observer.setSourceCode(
-        QStringLiteral("globalThis.__goldendictRestoredScroll = null;"
+        QStringLiteral("document.body.insertAdjacentHTML('beforeend',"
+                       "'<div style=\"height:3000px\"></div>');"
+                       "globalThis.__goldendictRestoredScroll = null;"
                        "const originalScrollTo = window.scrollTo.bind(window);"
                        "window.scrollTo = (x, y) => {"
                        "globalThis.__goldendictRestoredScroll = [x, y];"

@@ -91,6 +91,34 @@ The focused record identifies reference hashes, comparison commands, raw
 pixel/geometry records and narrow native-rendering differences. Repeat full
 serial CTest under separately created, validated fresh short C/D TEMP/TMP roots.
 
+### Normal article base canvas and typography
+
+`article_base_style_test` discovers generated StarDict/Dictd fixtures through
+the real Core facade and MainWindow asynchronous publication path. It compares
+the normal-document body/pre rules with the packaged resource, verifies
+320/800/1600-pixel viewport relationships, long-token/pre overflow, inherited
+Dictd styles, a light canvas under dark preference, and unchanged source/cache
+bytes and HTML after a cold/warm facade restart. Composer tests preserve the
+strict current-prefix gate and escaped fallback for old/foreign envelopes.
+Portable assertions do not fix Windows glyph widths or line heights.
+The existing article-tabs smoke supplies matching tall spacers to its initial
+and reopened synthetic pages, keeping exact scroll restoration independent
+from normal document typography; all ownership/scroll assertions remain.
+
+```powershell
+./run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -j 1 -R 'article_base_style.*test|article_assembler_test|article_composer_test|dictd_inline_display_test|article_selection_test|goldendict_article_tabs_smoke' --output-on-failure
+```
+
+Native capture optionally uses `GOLDENDICT_BASE_STYLE_CAPTURE_DIR` with a fresh
+external directory and the matched-DPR Windows settings documented above.
+The separate dark test sets Blink `preferredColorScheme=0` (light uses `1`),
+not `--force-dark-mode`, which enables algorithmic pixel inversion. Both tests
+assert actual media preference after cold and warm publication. Native capture
+also checks the raw blank-canvas pixel and black paragraph pixels, independently
+of computed CSS; it writes complete images without template/heading masks.
+The [focused record](article-base-style-parity.md) identifies exact scope,
+paired evidence and remaining template/theme/generic-style/platform gaps.
+
 ### Lookup target routing
 
 The [N2 lookup URL correction](lookup-target-url-parity.md) is covered by

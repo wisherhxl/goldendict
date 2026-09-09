@@ -185,8 +185,9 @@ readiness is **Ready after N3 canonical decision delivery**, with full-text
 extraction/cache migration (R3.7g.1) preceding coupled display/activation
 (R3.7g.2), as recorded in the focused decision. The
 [R3.7g.1 focused record](dictd-full-text-extraction-parity.md) owns extraction
-implementation and verification status. Display/activation acceptance remains
-open; neither decision closes R3.7 or platform/cutover gates.
+implementation and verification status. Bounded Windows display/activation
+acceptance is complete as recorded below; neither decision closes R3.7 or
+platform/cutover gates.
 
 Issue N4 is resolved by approved `CRD-LOOKUP-008` and the
 [dot-only-reference decision](dot-only-reference-decision.md): successfully
@@ -201,7 +202,11 @@ diagnostic motivate this additional divergence; neither proves full N4 runtime
 acceptance. The existing R3.7g.1 delivery at
 `0659a4f12494f693ba28980c18e9ebcba5811386` and its independent pre-href full-text
 contract remain unchanged. The focused R3.7g.2 record owns bounded Windows
-display/activation verification and delivery status. Parent R3.7, whole normal
+display/activation verification and delivery status. That unit completed its
+independent delivery/integration audits and reached the target at
+`e013a4ddd7376508404be71cef4e8aa7a190b977`; workspace
+`evidence/r3.7g2-20260909/target-delivery.md` records the exact result.
+Parent R3.7, whole normal
 article visuals under R9.8, Linux/macOS verification and cutover remain **Open**.
 
 ## Evidence Reviewed (Original Audit)
@@ -485,15 +490,17 @@ launcher and Python tooling checks run directly.
 | R10.8 | Same-candidate Linux/Windows cutover audit and documentation reconciliation | all prior leaves | complete build/test/install/package/visual/corpus records and independent final audit |
 
 R9.8 also retains the normal-lookup document typography/template gap identified
-by [R3.7g.2](dictd-inline-display-parity.md): Core's `article_document.cc`
-supplies generic `system-ui` / `1rem` / `1.55` body typography; the full legacy
+by [R3.7g.2](dictd-inline-display-parity.md): before the bounded base-style
+correction, Core's `article_document.cc` supplied generic `system-ui` / `1rem` /
+`1.55` body typography; the full legacy
 article resource is currently loaded only for welcome/help documents. The
 bounded Dictd correction supplies its scoped phonetic, reference, control and
 bidi rules through the existing document owner. Controlled format-body captures
 with the full product CSS and actual MainWindow scoped-style/state tests are
-distinct evidence, not whole normal-article visual parity. Global article
-typography, template and resource wiring require a separate conforming unit;
-R9.8, parent R3.7/R9 and platform/cutover gates remain open.
+distinct evidence, not whole normal-article visual parity. The
+[base canvas and inherited typography correction](article-base-style-parity.md)
+is a separately approved bounded unit. Template and complete resource wiring
+remain separate work. R9.8, parent R3.7/R9 and platform/cutover gates remain open.
 
 #### R2.1 issue record and readiness
 

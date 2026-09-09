@@ -1544,12 +1544,16 @@ The [R3.7g.1 correction](dictd-full-text-extraction-parity.md) supersedes this
 historical assembled-text path with independent frozen pre-href extraction.
 It retains physical sources, range/metadata ownership and document identity,
 adding only a private semantic revision to rebuild older generated artifacts.
-[R3.7g.2](dictd-inline-display-parity.md) owns coupled inline display and
+[R3.7g.2](dictd-inline-display-parity.md) completed bounded Windows delivery at
+`e013a4ddd7376508404be71cef4e8aa7a190b977`. It owns coupled inline display and
 activation separately: private generated-markup normalization preserves frozen
 phonetic/reference reconstruction, while EL-01/N3/N4 origins remain inert.
 Scoped control-glyph and Dictd document styles preserve the measured format
 behavior. Neither unit closes Dictd parity; the broader normal-document
-typography/template gap remains R9.8.
+typography/template gap remains R9.8. The separately bounded
+[base-style correction](article-base-style-parity.md) restores base canvas and
+inherited typography through the existing private document owner; headings,
+templates and complete style precedence remain open.
 
 P6-FT-4 is complete. Dictd now contributes one private full-text document per
 distinct validated non-metadata article range, with source-record canonical

@@ -89,7 +89,9 @@ void ArticleAssemblerTest::EscapesPlainTextAndKeepsItStructured() {
             std::string::npos);
     QVERIFY(document.sanitized_html.find("Content-Security-Policy") !=
             std::string::npos);
-    QVERIFY(document.sanitized_html.find("max-width:72rem") !=
+    QVERIFY(document.sanitized_html.find("body{background:#fefdeb;") !=
+            std::string::npos);
+    QVERIFY(document.sanitized_html.find("pre{font-size:12px}") !=
             std::string::npos);
     QVERIFY(document.sanitized_html.find("style-src 'unsafe-inline'") !=
             std::string::npos);

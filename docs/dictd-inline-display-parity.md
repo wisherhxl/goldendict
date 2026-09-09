@@ -125,9 +125,14 @@ C-drive and D-drive TEMP/TMP roots, Python tests, Markdown links/anchors and
 completion audit to HEAD and staged Tree ID before commit/task push. Separate
 integration verification and audit precede authorized target advancement.
 
-Implementation and bounded Windows verification are complete on 2026-09-09;
-the isolated candidate awaits independent completion audit before commit and
-separate integration verification/audit. Completed EL-01/N2/N3/N4 decisions
+R3.7g.2 bounded Windows inline display and inert activation is Complete.
+Independent completion and integration audits passed, and the delivery reached
+`feature/tiger-qt6-migration` at
+`e013a4ddd7376508404be71cef4e8aa7a190b977` (tree
+`b8ea35ac69cc46d407f206ad268b936869383186`). Workspace
+`evidence/r3.7g2-20260909/target-delivery.md`, `completion-audit-pass.md` and
+`integration-audit-pass.md` record the audited delivery.
+Completed EL-01/N2/N3/N4 decisions
 remain distinct from this runtime unit. Windows results do not close
 Linux/macOS, real Dictd corpus coverage, full Dictd parity, R9.8 or cutover.
 

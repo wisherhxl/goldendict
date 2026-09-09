@@ -220,6 +220,12 @@ narrow network and audio extension contracts only when needed. Article
 generation must be testable without Qt WebEngine. Define typed internal URLs
 and resource requests before restoring browser behavior.
 
+The [normal article base-style correction](article-base-style-parity.md) keeps
+the frozen body/pre declarations in Core's existing private document prefix.
+Application resource equivalence and actual MainWindow publication are tested
+without a Core dependency on QRC files or a browser. Whole template/theme and
+resource precedence restoration remain separate R9.8 work.
+
 ### WebKit UI To Qt WebEngine
 
 The [Select Current Article correction](article-selection-parity.md) maps
