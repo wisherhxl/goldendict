@@ -11,8 +11,11 @@ recorded in workspace
 `evidence/article-base-style-20260910/root-impact-review.md`. Implementation
 and completion acceptance are separate from this Ready result.
 
-Implementation and bounded Windows verification are complete; independent
-completion audit and target integration remain separate delivery gates.
+Completed at target commit `8adb1a735da9ee423eacd50e9dae0c8bd6b72158`, including
+independent completion/integration audits. Workspace evidence
+`evidence/article-base-style-20260910/target-delivery.md` records those gates and
+the primary rebuild/smokes. The [heading box correction](article-heading-style-parity.md)
+is separate bounded work; R9.8 remains open.
 
 Development branch: `fix/qt6-article-base-style`; isolated base:
 `e013a4ddd7376508404be71cef4e8aa7a190b977`. Qt 5 evidence remains frozen at

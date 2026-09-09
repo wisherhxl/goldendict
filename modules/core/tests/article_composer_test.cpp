@@ -97,8 +97,24 @@ void ArticleComposerTest::KeepsCurrentPrefixAndRejectsForeignPrefixes() {
     QVERIFY(pre != std::string::npos);
     old.replace(pre, std::string("pre{font-size:12px}").size(),
                 "pre{overflow:auto;white-space:pre-wrap}");
+    std::string previous_heading_style = current;
+    const auto heading_start =
+        previous_heading_style.find("body>section.gd-dictionary-result{");
+    const auto heading_end =
+        previous_heading_style.find(".gd-optional-toggle{");
+    QVERIFY(heading_start != std::string::npos);
+    QVERIFY(heading_end > heading_start);
+    previous_heading_style.replace(
+        heading_start, heading_end - heading_start,
+        ".gd-dictionary-result{border-top:1px solid #aaa;margin-top:1.25rem;"
+        "padding-top:.5rem}"
+        ".gd-dictionary-result:first-child{border-top:0;margin-top:0}"
+        ".gd-dictionary-result h2{font-size:1rem;margin:.25rem 0 .75rem}"
+        ".gd-collapsed-article>summary{cursor:pointer;list-style-position:"
+        "outside}"
+        ".gd-collapsed-article>summary>h2{display:inline}");
     for (const auto& foreign :
-         {old,
+         {old, previous_heading_style,
           std::string("<!doctype html><html><body>") + body + "</body></html>",
           current + "extra", current.substr(1)}) {
         QVERIFY(ExtractDocumentBody(foreign).empty());

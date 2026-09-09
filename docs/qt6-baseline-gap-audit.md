@@ -499,8 +499,12 @@ bidi rules through the existing document owner. Controlled format-body captures
 with the full product CSS and actual MainWindow scoped-style/state tests are
 distinct evidence, not whole normal-article visual parity. The
 [base canvas and inherited typography correction](article-base-style-parity.md)
-is a separately approved bounded unit. Template and complete resource wiring
-remain separate work. R9.8, parent R3.7/R9 and platform/cutover gates remain open.
+completed at `8adb1a735da9ee423eacd50e9dae0c8bd6b72158`; its focused record links
+the completion/integration and primary verification evidence. The separately
+bounded [heading box/type/spacing correction](article-heading-style-parity.md)
+does not close enclosing grouping, From translation, automatic threshold,
+manual arrows, clipped native summary marker, inner body spacing or theme/error
+headers. R9.8, parent R3.7/R9 and platform/cutover gates remain open.
 
 #### R2.1 issue record and readiness
 

@@ -2056,6 +2056,17 @@ single-result exemption, trusted wrapper markup, print expansion rule,
 sanitized content preservation, ordering, and size bound. Existing WebEngine,
 search, context-menu, print/export, session, and configuration suites cover
 the preserved surrounding behavior.
+
+The [default heading style check](article-heading-style-parity.md) extends the
+existing `article_base_style_test` MainWindow cold/warm publication assertions
+with frozen resource declarations, header boxes and outer spacing. Its focused
+public-facade/ArticleView fixture reads two generated StarDict sources, covers
+three original result indices, escaped/long names, collapsed/reopened headings,
+text/padding clicks, selection, nested payload headings and float containment.
+Set `GOLDENDICT_HEADING_CAPTURE_DIR` for native PNG/JSON and exact fixture bytes;
+the same bytes feed the external frozen Qt 5 probe. Existing clipped outside
+markers, grouping, wording and manual-arrow differences remain explicit gaps.
+
 The General/Input phrase length extension pins the backed checkbox, tooltip,
 `1..1000000` spin-box range, 10-symbol step, 1000-symbol default, dependent
 enabled state, and complete-candidate cancel/failure/success behavior. Core

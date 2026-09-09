@@ -226,6 +226,12 @@ Application resource equivalence and actual MainWindow publication are tested
 without a Core dependency on QRC files or a browser. Whole template/theme and
 resource precedence restoration remain separate R9.8 work.
 
+The [default heading box/type/spacing correction](article-heading-style-parity.md)
+maps frozen `.gddictname`/`.gdarticle` declarations to trusted top-level result
+headers in that same private prefix. Composer, identity/index mapping, plain
+text, translation and collapse policy are unchanged; grouping/manual controls
+and the existing clipped outside marker remain separate gaps.
+
 ### WebKit UI To Qt WebEngine
 
 The [Select Current Article correction](article-selection-parity.md) maps
