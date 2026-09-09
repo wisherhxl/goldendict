@@ -93,6 +93,65 @@ std::string ReadCompressedFile(const std::filesystem::path& path) {
     return data;
 }
 
+// The caller has consumed the gzip magic. Zlib validates the gzip stream but
+// ignores RA fields, so retain the frozen Dictd loader's header admission here.
+void ValidateDictzipHeader(std::istream& input,
+                           const std::filesystem::path& path) {
+    const auto read_byte = [&]() -> unsigned {
+        const auto byte = input.get();
+        if (byte == std::char_traits<char>::eof()) {
+            Throw(ErrorCode::kInvalidDictionary, path,
+                  "Truncated compressed dictionary header");
+        }
+        return static_cast<unsigned char>(byte);
+    };
+    const auto read_word = [&]() {
+        const auto low = read_byte();
+        return low | (read_byte() << 8U);
+    };
+    read_byte();  // Compression method remains Zlib's responsibility.
+    const auto flags = read_byte();
+    for (unsigned byte = 0U; byte < 6U; ++byte) {
+        read_byte();  // Timestamp, extra flags and operating system.
+    }
+    if ((flags & 0x04U) == 0U) {
+        return;
+    }
+    const auto extra_length = read_word();
+    const auto first_id = read_byte();
+    const auto second_id = read_byte();
+    if (first_id != 'R' || second_id != 'A') {
+        return;  // Only the first extra subfield selects legacy RA handling.
+    }
+    read_word();  // SUBLEN is deliberately ignored by the frozen loader.
+    const auto version = read_word();
+    read_word();  // Chunk length is outside header admission.
+    const auto chunk_count = read_word();
+    if (version != 1U || chunk_count == 0U ||
+        extra_length != 10U + 2U * chunk_count) {
+        Throw(ErrorCode::kInvalidDictionary, path,
+              "Invalid Dictzip RA header version, count or length");
+    }
+    for (unsigned chunk = 0U; chunk < chunk_count; ++chunk) {
+        read_word();  // Verify presence without interpreting chunk sizes.
+    }
+    for (const auto flag : {0x08U, 0x10U}) {
+        if ((flags & flag) == 0U) {
+            continue;
+        }
+        std::size_t length = 0U;
+        while (read_byte() != 0U) {
+            if (++length >= 10240U) {
+                Throw(ErrorCode::kInvalidDictionary, path,
+                      "Dictzip filename or comment exceeds the header limit");
+            }
+        }
+    }
+    if ((flags & 0x02U) != 0U) {
+        read_word();  // Zlib checks the optional header checksum itself.
+    }
+}
+
 std::string ReadDictionaryData(const std::filesystem::path& path) {
     std::ifstream input(path, std::ios::binary);
     if (!input) {
@@ -106,6 +165,9 @@ std::string ReadDictionaryData(const std::filesystem::path& path) {
     }
     const bool compressed = input.gcount() == 2 && magic[0] == 0x1fU &&
                             magic[1] == 0x8bU;
+    if (compressed) {
+        ValidateDictzipHeader(input, path);
+    }
     input.close();
     return compressed ? ReadCompressedFile(path)
                       : ReadFile(path, kMaximumDictionarySize);

@@ -136,8 +136,18 @@ the workspace's `evidence/r3.7c-20260909/` directory; parent R3.7 remains
 The bounded [R3.7d headword-count correction](dictd-headword-count-parity.md)
 tracks Qt 5's reported count for every accepted fourth column, including empty
 and identical aliases, independently from searchable records. Its focused
-record owns implementation and verification status. Description behavior and
-remaining Dictd variants stay open; this unit does not close parent R3.7.
+record owns implementation and verification status. It is **Complete and
+integrated** at `7d516f5198e3930a9f96f5098b644d5e174a58e0` after independent
+completion and integration audit Pass results. Reports and target-push evidence
+reside in the workspace's `evidence/r3.7d-20260909/` directory.
+
+The bounded [R3.7e RA-header admission correction](dictd-ra-header-parity.md)
+restores the frozen loader's leading-RA version, count, declared-header-length
+and optional-field admission checks. Its focused record owns implementation
+and verification status. Ignored SUBLEN values and the existing non-leading-RA
+gzip route remain unchanged. Full RA chunk semantics, ordinary-gzip
+disposition, description behavior and remaining Dictd variants stay open;
+this unit does not close parent R3.7.
 
 ## Evidence Reviewed (Original Audit)
 

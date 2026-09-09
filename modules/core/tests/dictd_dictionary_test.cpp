@@ -50,7 +50,69 @@ class DictdDictionaryTest : public QObject {
     void RebuildsPreContentDetectionFullTextIndex();
     void ReusesRecoveredIndexRows();
     void RejectsAcceptedCorruptionAfterSkippedRow();
+    void RejectsRaHeaderBeforeReusingFullText_data();
+    void RejectsRaHeaderBeforeReusingFullText();
 };
+
+void DictdDictionaryTest::RejectsRaHeaderBeforeReusingFullText_data() {
+    QTest::addColumn<QString>("suffix");
+    QTest::newRow("dict") << ".dict";
+    QTest::newRow("dz") << ".dict.dz";
+}
+
+void DictdDictionaryTest::RejectsRaHeaderBeforeReusingFullText() {
+    QFETCH(QString, suffix);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = test::WriteDictdFixture(
+        root, {{"entry", "searchable article", {}}});
+    QVERIFY(std::filesystem::remove(root / "fixture.dict"));
+    const auto selected = root / ("fixture" + suffix.toStdString());
+    auto bytes = test::EncodeDictzipFixture("searchable article");
+    bytes[16U] = 2;
+    std::ofstream(selected, std::ios::binary)
+        .write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    const auto original_sources =
+        dictionary::CaptureSourceSnapshot({index, selected});
+    auto sources = original_sources;
+    sources.push_back({"goldendict:dictd-content-detection-v1", 0U, 0});
+    sources.push_back({"goldendict:dictd-title-metadata-v1", 0U, 0});
+    dictionary::FullTextDocument document;
+    document.dictionary.id = "dictd-id";
+    document.dictionary.name = "fixture";
+    document.headword = "entry";
+    document.document_id = "dictd-index:0:0:18";
+    document.plain_text = "searchable article";
+    const auto full_text_path = root / "fixture.gdfts";
+    // This is the actual former decoded document, bound to the now-rejected
+    // source's unchanged stamps and current private semantic keys.
+    const auto seeded = dictionary::FullTextIndex::OpenOrBuild(
+        full_text_path, sources, {document});
+    const auto reused = dictionary::FullTextIndex::OpenOrBuild(
+        full_text_path, sources, {document});
+    QCOMPARE(reused.state(), dictionary::FullTextIndexState::kReused);
+    FullTextQuery query;
+    query.text = "searchable";
+    QCOMPARE(seeded.Search(query).results.size(), 1U);
+    const auto read_artifact = [&]() {
+        std::ifstream input(full_text_path, std::ios::binary);
+        return std::string(std::istreambuf_iterator<char>(input),
+                           std::istreambuf_iterator<char>());
+    };
+    const auto before_bytes = read_artifact();
+    const auto before_time = std::filesystem::last_write_time(full_text_path);
+    try {
+        static_cast<void>(Dictionary::Open("dictd-id", index, full_text_path));
+        QFAIL("Valid former artifact must not bypass RA header admission");
+    } catch (const dictionary::Error& error) {
+        QCOMPARE(error.code(), dictionary::ErrorCode::kInvalidData);
+    }
+    QCOMPARE(read_artifact(), before_bytes);
+    QCOMPARE(std::filesystem::last_write_time(full_text_path), before_time);
+    QCOMPARE(dictionary::CaptureSourceSnapshot({index, selected}),
+             original_sources);
+}
 
 void DictdDictionaryTest::ReusesFullTextWithPhysicalHeadwordCounts() {
     QTemporaryDir directory;
@@ -457,7 +519,9 @@ void DictdDictionaryTest::ReusesRealDictzipCompanions() {
                                        {"00databaseinfo", info, {}},
                                        {"entry", article, "alias"}});
     const auto selected = root / ("fixture" + suffix.toStdString());
-    const auto bytes = test::EncodeDictzipFixture(title + info + article);
+    const auto bytes = test::AddDictzipFixtureHeaderFields(
+        test::EncodeDictzipFixture(title + info + article),
+        "original.dict", "generated multi-chunk content", true);
     QVERIFY(std::filesystem::remove(root / "fixture.dict"));
     std::ofstream(selected, std::ios::binary)
         .write(bytes.data(), static_cast<std::streamsize>(bytes.size()));

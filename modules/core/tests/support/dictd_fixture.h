@@ -188,6 +188,33 @@ inline std::string EncodeDictzipFixture(std::string_view data,
     return result;
 }
 
+inline std::string AddDictzipFixtureHeaderFields(
+    std::string bytes, const std::optional<std::string>& filename,
+    const std::optional<std::string>& comment, bool header_crc) {
+    const auto extra_length = static_cast<unsigned char>(bytes.at(10U)) |
+                              (static_cast<unsigned char>(bytes.at(11U)) << 8U);
+    const auto header_size = 12U + extra_length;
+    auto header = bytes.substr(0U, header_size);
+    if (filename.has_value()) {
+        header[3] |= 0x08;
+        header += *filename;
+        header.push_back('\0');
+    }
+    if (comment.has_value()) {
+        header[3] |= 0x10;
+        header += *comment;
+        header.push_back('\0');
+    }
+    if (header_crc) {
+        header[3] |= 0x02;
+        const auto crc = crc32(0U, reinterpret_cast<const Bytef*>(header.data()),
+                               static_cast<uInt>(header.size()));
+        header.push_back(static_cast<char>(crc & 0xffU));
+        header.push_back(static_cast<char>((crc >> 8U) & 0xffU));
+    }
+    return header + bytes.substr(header_size);
+}
+
 }  // namespace goldendict::core::test
 
 #endif  // GOLDENDICT_CORE_TESTS_SUPPORT_DICTD_FIXTURE_H_

@@ -342,6 +342,7 @@ class ApplicationServiceTest : public QObject {
     void SupportsExplicitEmptyDictionaryParticipation();
     void AppliesResolvedDictionaryGroupsConsistently();
     void DiscoversAndQueriesDictdAlongsideStardict();
+    void RejectsDictdRaHeaderAlongsideStardict();
     void DiscoversSanitizesAndQueriesSdict();
     void DiscoversSanitizesAndQueriesXdxfResources();
     void DiscoversSanitizesAndQueriesGlsResources();
@@ -5863,6 +5864,37 @@ void ApplicationServiceTest::DiscoversAndQueriesDictdAlongsideStardict() {
                                    entry.article.plain_text.find(
                                        "Dictd article") != std::string::npos;
                         }));
+}
+
+void ApplicationServiceTest::RejectsDictdRaHeaderAlongsideStardict() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    QVERIFY(std::filesystem::create_directories(root / "stardict"));
+    test::WriteStardictFixture(root / "stardict",
+                              {{"example", "StarDict article"}});
+    test::WriteDictdFixture(root / "dictd", {{"example", "Dictd article", {}}});
+    auto bytes = test::EncodeDictzipFixture("Dictd article");
+    bytes[16U] = 2;
+    std::ofstream(root / "dictd" / "fixture.dict",
+                  std::ios::binary | std::ios::trunc)
+        .write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {root.string()};
+    const auto service = CreateDictionaryService(configuration);
+    const auto catalog = service->GetCatalog();
+    QCOMPARE(catalog.size(), 1U);
+    QVERIFY(catalog.front().id.rfind("stardict-", 0U) == 0U);
+    LookupQuery query;
+    query.text = "example";
+    const auto response = service->Lookup(query);
+    QCOMPARE(response.entries.size(), 1U);
+    QCOMPARE(response.entries.front().dictionary.id, catalog.front().id);
+    QVERIFY(response.entries.front().article.plain_text.find(
+                "StarDict article") != std::string::npos);
+    QCOMPARE(response.errors.size(), 1U);
+    QCOMPARE(response.errors.front().code, LookupErrorCode::kInternal);
+    QVERIFY(response.errors.front().dictionary_id.rfind("dictd-", 0U) == 0U);
 }
 
 void ApplicationServiceTest::DiscoversSanitizesAndQueriesSdict() {

@@ -10,11 +10,41 @@
 #include "support/dictd_fixture.h"
 
 namespace goldendict::core::formats::dictd {
+namespace {
+
+// Independent gzip decoding demonstrates that header-admission regressions
+// are RA semantic differences, not ordinary compressed-stream corruption.
+std::string InflateFixture(std::string_view bytes) {
+    z_stream stream{};
+    if (inflateInit2(&stream, MAX_WBITS + 16) != Z_OK) {
+        throw std::runtime_error("Cannot initialize fixture inflater");
+    }
+    std::string output(128U * 1024U, '\0');
+    stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(bytes.data()));
+    stream.avail_in = static_cast<uInt>(bytes.size());
+    stream.next_out = reinterpret_cast<Bytef*>(output.data());
+    stream.avail_out = static_cast<uInt>(output.size());
+    const auto status = inflate(&stream, Z_FINISH);
+    output.resize(stream.total_out);
+    inflateEnd(&stream);
+    if (status != Z_STREAM_END) {
+        throw std::runtime_error("Fixture is not complete valid gzip");
+    }
+    return output;
+}
+
+}  // namespace
 
 class DictdReaderTest : public QObject {
     Q_OBJECT
 
    private slots:
+    void RejectsInvalidRaHeaders_data();
+    void RejectsInvalidRaHeaders();
+    void PreservesAcceptedRaHeaders_data();
+    void PreservesAcceptedRaHeaders();
+    void RejectsTruncatedRaHeaders();
+    void DoesNotFallbackFromInvalidRaHeader();
     void CountsPhysicalHeadwordColumns_data();
     void CountsPhysicalHeadwordColumns();
     void PreservesTitleBytes_data();
@@ -38,6 +68,183 @@ class DictdReaderTest : public QObject {
     void PreservesAcceptedRowValidation_data();
     void PreservesAcceptedRowValidation();
 };
+
+void DictdReaderTest::RejectsInvalidRaHeaders_data() {
+    QTest::addColumn<QString>("suffix");
+    QTest::addColumn<QByteArray>("bytes");
+    const std::string source(180U, 'x');
+    const auto original = test::EncodeDictzipFixture(source);
+    for (const QString suffix : {QString(".dict"), QString(".dict.dz")}) {
+        const auto add = [&](const char* label, const std::string& bytes) {
+            // Every case here must still decode correctly as ordinary gzip.
+            QCOMPARE(InflateFixture(bytes), source);
+            QTest::newRow(qPrintable(suffix + label))
+                << suffix
+                << QByteArray(bytes.data(), static_cast<int>(bytes.size()));
+        };
+        for (const unsigned version : {0U, 2U, 65535U}) {
+            auto bytes = original;
+            bytes[16U] = static_cast<char>(version & 0xffU);
+            bytes[17U] = static_cast<char>(version >> 8U);
+            add(qPrintable(QString("-version-%1").arg(version)), bytes);
+        }
+        auto bytes = original;
+        bytes[20U] = 0;
+        bytes[21U] = 0;
+        add("-zero-count", bytes);
+        bytes = original;
+        bytes[20U] = 2;
+        add("-count-too-small", bytes);
+        bytes[20U] = 4;
+        add("-count-too-large", bytes);
+        bytes[20U] = static_cast<char>(0xff);
+        bytes[21U] = static_cast<char>(0xff);
+        add("-maximum-count", bytes);
+        bytes = original;
+        bytes.erase(26U, 2U);
+        bytes[10U] = 14;
+        add("-short-extra-table", bytes);
+        bytes = original;
+        bytes.insert(28U, 2U, '\0');
+        bytes[10U] = 18;
+        add("-long-extra-table", bytes);
+        add("-filename-limit",
+            test::AddDictzipFixtureHeaderFields(
+                original, std::string(10240U, 'n'), {}, false));
+        add("-comment-limit",
+            test::AddDictzipFixtureHeaderFields(
+                original, {}, std::string(10240U, 'c'), false));
+    }
+}
+
+void DictdReaderTest::RejectsInvalidRaHeaders() {
+    QFETCH(QString, suffix);
+    QFETCH(QByteArray, bytes);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = test::WriteDictdFixture(
+        root, {{"entry", std::string(180U, 'x'), {}}});
+    QVERIFY(std::filesystem::remove(root / "fixture.dict"));
+    const auto selected = root / ("fixture" + suffix.toStdString());
+    std::ofstream(selected, std::ios::binary).write(bytes.data(), bytes.size());
+    try {
+        static_cast<void>(Reader::Open(index));
+        QFAIL("Invalid leading RA header must not be admitted as gzip");
+    } catch (const Error& error) {
+        QCOMPARE(error.code(), ErrorCode::kInvalidDictionary);
+        QCOMPARE(error.path(), selected);
+    }
+}
+
+void DictdReaderTest::PreservesAcceptedRaHeaders_data() {
+    QTest::addColumn<QString>("suffix");
+    QTest::addColumn<QByteArray>("bytes");
+    const std::string source(180U, 'x');
+    const auto original = test::EncodeDictzipFixture(source);
+    for (const QString suffix : {QString(".dict"), QString(".dict.dz")}) {
+        const auto add = [&](const QString& label, const std::string& bytes) {
+            QCOMPARE(InflateFixture(bytes), source);
+            QTest::newRow(qPrintable(suffix + label))
+                << suffix
+                << QByteArray(bytes.data(), static_cast<int>(bytes.size()));
+        };
+        for (unsigned flags = 0U; flags < 8U; ++flags) {
+            add(QString("-flags-%1").arg(flags),
+                test::AddDictzipFixtureHeaderFields(
+                    original,
+                    flags & 1U ? std::optional<std::string>("fixture.dict")
+                               : std::nullopt,
+                    flags & 2U ? std::optional<std::string>("generated content")
+                               : std::nullopt,
+                    (flags & 4U) != 0U));
+        }
+        add("-empty-strings", test::AddDictzipFixtureHeaderFields(
+                                  original, "", "", true));
+        add("-maximum-strings", test::AddDictzipFixtureHeaderFields(
+                                     original, std::string(10239U, 'n'),
+                                     std::string(10239U, 'c'), true));
+        for (const unsigned length : {0U, 65535U}) {
+            auto bytes = original;
+            bytes[14U] = static_cast<char>(length & 0xffU);
+            bytes[15U] = static_cast<char>(length >> 8U);
+            add(QString("-ignored-sublen-%1").arg(length), bytes);
+        }
+        auto bytes = original;
+        bytes.insert(12U, std::string("ZZ\0\0", 4U));
+        bytes[10U] = 20;
+        // The later RA has an unsupported version. It must remain unexamined.
+        bytes[20U] = 2;
+        add("-non-leading-ra", bytes);
+    }
+}
+
+void DictdReaderTest::PreservesAcceptedRaHeaders() {
+    QFETCH(QString, suffix);
+    QFETCH(QByteArray, bytes);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = test::WriteDictdFixture(
+        root, {{"entry", std::string(180U, 'x'), "alias"}});
+    QVERIFY(std::filesystem::remove(root / "fixture.dict"));
+    const auto selected = root / ("fixture" + suffix.toStdString());
+    std::ofstream(selected, std::ios::binary).write(bytes.data(), bytes.size());
+    const auto sources = dictionary::CaptureSourceSnapshot({index, selected});
+    const auto reader = Reader::Open(index);
+    QCOMPARE(reader.LookupExact("entry").front().data, std::string(180U, 'x'));
+    QCOMPARE(reader.LookupExact("alias").front().data, std::string(180U, 'x'));
+    QCOMPARE(reader.article_count(), 1U);
+    QCOMPARE(reader.headword_count(), 2U);
+    QCOMPARE(reader.source_snapshot(), sources);
+}
+
+void DictdReaderTest::RejectsTruncatedRaHeaders() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto bytes = test::AddDictzipFixtureHeaderFields(
+        test::EncodeDictzipFixture(std::string(180U, 'x')),
+        "name", "comment", true);
+    // Header is 28 fixed/table bytes, 5 filename, 8 comment, 2 header CRC.
+    for (const std::string suffix : {".dict", ".dict.dz"}) {
+        const auto index = test::WriteDictdFixture(
+            root, {{"entry", std::string(180U, 'x'), {}}});
+        QVERIFY(std::filesystem::remove(root / "fixture.dict"));
+        const auto selected = root / ("fixture" + suffix);
+        for (std::size_t length = 2U; length < 43U; ++length) {
+            std::ofstream(selected, std::ios::binary | std::ios::trunc)
+                .write(bytes.data(), static_cast<std::streamsize>(length));
+            try {
+                static_cast<void>(Reader::Open(index));
+                QFAIL("Truncated header, strings or CRC must be rejected");
+            } catch (const Error& error) {
+                QCOMPARE(error.code(), ErrorCode::kInvalidDictionary);
+            }
+        }
+    }
+}
+
+void DictdReaderTest::DoesNotFallbackFromInvalidRaHeader() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index =
+        test::WriteDictdFixture(root, {{"entry", "selected", {}}});
+    auto bytes = test::EncodeDictzipFixture("selected");
+    std::ofstream(root / "fixture.dict.dz", std::ios::binary)
+        .write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    bytes[16U] = 2;
+    std::ofstream(root / "fixture.dict", std::ios::binary | std::ios::trunc)
+        .write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    try {
+        static_cast<void>(Reader::Open(index));
+        QFAIL("Invalid selected RA header must not fall back to another file");
+    } catch (const Error& error) {
+        QCOMPARE(error.code(), ErrorCode::kInvalidDictionary);
+        QCOMPARE(error.path(), root / "fixture.dict");
+    }
+}
 
 void DictdReaderTest::CountsPhysicalHeadwordColumns_data() {
     QTest::addColumn<QByteArray>("suffix");
