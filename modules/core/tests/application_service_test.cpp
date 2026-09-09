@@ -5830,11 +5830,11 @@ void ApplicationServiceTest::DiscoversAndQueriesDictdAlongsideStardict() {
                                {{"example", "StarDict article"}});
     const auto dictd_index =
         test::WriteDictdFixture(root / "dictd",
-                               {{"example", "Dictd article", {}},
+                               {{"example", "Dictd article", "example"},
                                 {"00databaseshort", "First title", {}},
                                 {"00-database-short", "Last title", {}}});
     std::ofstream(dictd_index, std::ios::binary | std::ios::app)
-        << "ignored\t!\t!\talias\textra\n";
+        << "ignored\t!\t!\talias\textra\nexample\tA\tN\t";
     CoreConfiguration configuration;
     configuration.dictionary_paths = {root.string()};
     auto service = CreateDictionaryService(configuration);
@@ -5848,7 +5848,8 @@ void ApplicationServiceTest::DiscoversAndQueriesDictdAlongsideStardict() {
     QCOMPARE(catalog.size(), std::size_t{2});
     QVERIFY(std::any_of(catalog.begin(), catalog.end(), [](const auto& identity) {
         return identity.id.rfind("dictd-", 0) == 0U &&
-               identity.name == "Last title";
+               identity.name == "Last title" &&
+               identity.article_count == 4U && identity.headword_count == 6U;
     }));
     QVERIFY(response.errors.empty());
     QCOMPARE(response.entries.size(), std::size_t{2});
@@ -5857,6 +5858,8 @@ void ApplicationServiceTest::DiscoversAndQueriesDictdAlongsideStardict() {
                             return entry.dictionary.id.rfind("dictd-", 0) ==
                                        0U &&
                                    entry.dictionary.name == "Last title" &&
+                                   entry.dictionary.article_count == 4U &&
+                                   entry.dictionary.headword_count == 6U &&
                                    entry.article.plain_text.find(
                                        "Dictd article") != std::string::npos;
                         }));

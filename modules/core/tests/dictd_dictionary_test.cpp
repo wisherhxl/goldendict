@@ -36,6 +36,7 @@ class DictdDictionaryTest : public QObject {
     Q_OBJECT
 
    private slots:
+    void ReusesFullTextWithPhysicalHeadwordCounts();
     void ReusesCorrectedTitles_data();
     void ReusesCorrectedTitles();
     void RebuildsFormerTitleFullTextIndex();
@@ -50,6 +51,60 @@ class DictdDictionaryTest : public QObject {
     void ReusesRecoveredIndexRows();
     void RejectsAcceptedCorruptionAfterSkippedRow();
 };
+
+void DictdDictionaryTest::ReusesFullTextWithPhysicalHeadwordCounts() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    const auto index = test::WriteDictdFixture(
+        root, {{"entry", "searchable article", {}}});
+    std::ofstream(index, std::ios::binary | std::ios::app)
+        << "entry\tA\tS\t\r\nentry\tA\tS\tentry";
+    const auto sources = dictionary::CaptureSourceSnapshot(
+        {index, root / "fixture.dict"});
+    const auto full_text_path = root / "fixture.gdfts";
+    std::string cold_bytes;
+    std::filesystem::file_time_type cold_time;
+    FullTextQuery query;
+    query.text = "searchable";
+    for (const bool warm : {false, true}) {
+        const auto dictionary = Dictionary::Open("dictd-id", index, full_text_path);
+        QCOMPARE(dictionary.identity().headword_count, 5U);
+        QCOMPARE(dictionary.identity().article_count, 3U);
+        QCOMPARE(dictionary.identity().id, "dictd-id");
+        QCOMPARE(dictionary.identity().name, "fixture");
+        QCOMPARE(dictionary.identity().source,
+                 std::filesystem::weakly_canonical(index).string());
+        QCOMPARE(dictionary.EnumerateHeadwords(0U).headwords,
+                 (std::vector<std::string>{"entry"}));
+        const auto articles = dictionary.LookupExact("entry", {});
+        QCOMPARE(articles.size(), 1U);
+        QCOMPARE(articles.front().data, "searchable article");
+        QCOMPARE(dictionary.full_text_index_state(),
+                 std::optional(warm ? dictionary::FullTextIndexState::kReused
+                                    : dictionary::FullTextIndexState::kCreated));
+        const auto response = dictionary.SearchFullText(query);
+        QVERIFY(response.errors.empty());
+        QVERIFY(!response.partial);
+        QCOMPARE(response.results.size(), 1U);
+        QCOMPARE(response.results.front().dictionary.id, "dictd-id");
+        QCOMPARE(response.results.front().dictionary.name, "fixture");
+        QCOMPARE(response.results.front().headword, "entry");
+        QCOMPARE(response.results.front().document_id, "dictd-index:0:0:18");
+        QCOMPARE(dictionary::CaptureSourceSnapshot({index, root / "fixture.dict"}),
+                 sources);
+        std::ifstream input(full_text_path, std::ios::binary);
+        const std::string bytes{std::istreambuf_iterator<char>(input), {}};
+        const auto timestamp = std::filesystem::last_write_time(full_text_path);
+        if (warm) {
+            QCOMPARE(bytes, cold_bytes);
+            QCOMPARE(timestamp, cold_time);
+        } else {
+            cold_bytes = bytes;
+            cold_time = timestamp;
+        }
+    }
+}
 
 void DictdDictionaryTest::ReusesCorrectedTitles_data() {
     QTest::addColumn<QString>("companion");

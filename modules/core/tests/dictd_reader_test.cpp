@@ -15,6 +15,8 @@ class DictdReaderTest : public QObject {
     Q_OBJECT
 
    private slots:
+    void CountsPhysicalHeadwordColumns_data();
+    void CountsPhysicalHeadwordColumns();
     void PreservesTitleBytes_data();
     void PreservesTitleBytes();
     void SelectsTitlesFromPhysicalPrimaryRows();
@@ -36,6 +38,71 @@ class DictdReaderTest : public QObject {
     void PreservesAcceptedRowValidation_data();
     void PreservesAcceptedRowValidation();
 };
+
+void DictdReaderTest::CountsPhysicalHeadwordColumns_data() {
+    QTest::addColumn<QByteArray>("suffix");
+    QTest::addColumn<unsigned>("count_per_row");
+    QTest::addColumn<QStringList>("headwords");
+    QTest::newRow("absent") << QByteArray("") << 1U << QStringList{"entry"};
+    QTest::newRow("empty") << QByteArray("\t") << 2U << QStringList{"entry"};
+    QTest::newRow("identical")
+        << QByteArray("\tentry") << 2U << QStringList{"entry"};
+    QTest::newRow("distinct")
+        << QByteArray("\tentryalias") << 2U << QStringList{"entry", "entryalias"};
+    QTest::newRow("case-equivalent")
+        << QByteArray("\tENTRY") << 2U << QStringList{"ENTRY", "entry"};
+}
+
+void DictdReaderTest::CountsPhysicalHeadwordColumns() {
+    QFETCH(QByteArray, suffix);
+    QFETCH(unsigned, count_per_row);
+    QFETCH(QStringList, headwords);
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = std::filesystem::path(directory.path().toStdString());
+    std::vector<std::string> expected;
+    for (const auto& headword : headwords) {
+        expected.push_back(headword.toStdString());
+    }
+    for (const std::string ending : {"\n", "\r\n", ""}) {
+        const auto index = test::WriteDictdFixture(root, {{"entry", "data", {}}});
+        const std::string row = "entry\tA\tE" + suffix.toStdString();
+        // Identical physical rows still count, while their article range and
+        // headword enumeration remain deduplicated. Invalid row shapes do not.
+        std::ofstream(index, std::ios::binary | std::ios::trunc)
+            << "ignored\n" << row << "\nignored\t!\t!\ta\textra\n"
+            << row << ending;
+        const auto reader = Reader::Open(index);
+        QCOMPARE(reader.headword_count(), 2U * count_per_row);
+        QCOMPARE(reader.article_count(), 2U);
+        const auto page = reader.EnumerateHeadwords(0U, 10U, 1024U);
+        QCOMPARE(page.first, expected);
+        QVERIFY(page.second);
+        auto suggestions = reader.SuggestPrefix("e");
+        std::sort(suggestions.begin(), suggestions.end());
+        QCOMPARE(suggestions, expected);
+        const auto prefix = reader.LookupPrefix("e");
+        QCOMPARE(prefix.size(), 1U);
+        QCOMPARE(prefix.front().headword, expected.front());
+        QCOMPARE(prefix.front().data, "data");
+        for (const auto& headword : expected) {
+            const auto articles = reader.LookupExact(headword);
+            QCOMPARE(articles.size(), 1U);
+            QCOMPARE(articles.front().data, "data");
+        }
+        QVERIFY(reader.LookupExact("").empty());
+        QVERIFY(reader.LookupExact("ignored").empty());
+        const auto full_text = reader.ReadFullTextArticles();
+        QCOMPARE(full_text.size(), 1U);
+        QCOMPARE(full_text.front().record_ordinal, 1U);
+        QCOMPARE(full_text.front().headword, "entry");
+        QCOMPARE(full_text.front().article_offset, 0U);
+        QCOMPARE(full_text.front().article_size, 4U);
+        QCOMPARE(full_text.front().data, "data");
+        QCOMPARE(reader.source_snapshot(), dictionary::CaptureSourceSnapshot(
+                     {index, root / "fixture.dict"}));
+    }
+}
 
 void DictdReaderTest::PreservesTitleBytes_data() {
     QTest::addColumn<QByteArray>("body");
@@ -205,6 +272,7 @@ void DictdReaderTest::PreservesAcceptedRowValidation_data() {
     QTest::newRow("range") << QByteArray("entry\tA\t/") << true;
     QTest::newRow("utf8") << QByteArray("\xff\tA\tB") << false;
     QTest::newRow("alias-utf8") << QByteArray("entry\tA\tB\t\xff") << false;
+    QTest::newRow("empty-primary-with-alias") << QByteArray("\tA\tB\tentry") << false;
     QTest::newRow("oversized-malformed-row")
         << QByteArray(16U * 1024U + 1U, 'x') << false;
 }

@@ -279,13 +279,15 @@ Reader Reader::Open(const std::filesystem::path& index_path) {
             record.article_offset = offset;
             record.article_size = size;
             reader.records_.push_back(std::move(record));
-            ++reader.headword_count_;
         };
         add_record(fields[0]);
         if (fields.size() == 4U && !fields[3].empty() &&
             fields[3] != fields[0]) {
             add_record(fields[3]);
         }
+        // Qt 5 reports every physical headword column, even when an empty or
+        // identical fourth column adds no searchable record.
+        reader.headword_count_ += fields.size() == 4U ? 2U : 1U;
         ++reader.article_count_;
         if (HasTitlePrefix(fields[0])) {
             const auto title = ReadTitle(
