@@ -19,6 +19,7 @@
 #include <winerror.h>
 #endif
 
+#include "../src/application/configuration_file.h"
 #include "../src/application/configuration_transaction_persistence.h"
 #include "../src/application/configuration_transaction_preparation.h"
 #include "../src/application/core_facade_activation_test_access.h"
@@ -29,6 +30,7 @@
 #include "goldendict/core/headword_export.h"
 #include "support/aard_fixture.h"
 #include "support/bgl_fixture.h"
+#include "support/configuration_file_process.h"
 #include "support/dictd_fixture.h"
 #include "support/dsl_fixture.h"
 #include "support/epwing_fixture.h"
@@ -260,6 +262,11 @@ class ApplicationServiceTest : public QObject {
    private slots:
     void MissingConfigurationIsACleanProfile();
     void ConfigurationRoundTripsEscapedPaths();
+    void ConfigurationPublicationPreservesBytesAndPrimaryFailure();
+#ifdef Q_OS_WIN
+    void ConfigurationTemporaryDoesNotEscapeToChild();
+    void ConfigurationPublicationPreservesTargetUnderSharingDenial();
+#endif
     void ConfigurationValidatesLocalSourcePolicyAtomically();
     void ConfigurationRoundTripsOnlineSourcesDeterministically();
     void ConfigurationRejectsMalformedOnlineSourcesAtomically();
@@ -474,6 +481,182 @@ void ApplicationServiceTest::ConfigurationRoundTripsEscapedPaths() {
     QCOMPARE(actual.sound_directories.front().name,
              expected.sound_directories.front().name);
 }
+
+void ApplicationServiceTest::
+    ConfigurationPublicationPreservesBytesAndPrimaryFailure() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "nested" / "core.conf";
+    const std::filesystem::path temporary(path.string() + ".tmp");
+    CoreConfiguration configuration;
+    configuration.index_directory = "/old/index";
+    configuration.opaque_fields = {"future_setting=value%0Awith%7Cescapes"};
+    SaveConfiguration(path.string(), configuration);
+    const auto original = ReadFile(path);
+    QVERIFY(original.find("goldendict-core-config-v1\n") == 0);
+    QVERIFY(!std::filesystem::exists(temporary));
+    SaveConfiguration(path.string(), configuration);
+    QCOMPARE(ReadFile(path), original);
+
+    const auto injected = std::make_error_code(std::errc::no_space_on_device);
+    bool rejected = false;
+    try {
+        PublishConfigurationFile(
+            path, "replacement", [&](const auto& open_path) {
+                throw std::filesystem::filesystem_error("while-open checkpoint",
+                                                        open_path, injected);
+            });
+    } catch (const std::filesystem::filesystem_error& error) {
+        rejected = true;
+        QCOMPARE(error.code(), injected);
+        QCOMPARE(error.path1(), temporary);
+        QVERIFY(std::string(error.what()).find("while-open checkpoint") !=
+                std::string::npos);
+    }
+    QVERIFY(rejected);
+    QCOMPARE(ReadFile(path), original);
+    QVERIFY(!std::filesystem::exists(temporary));
+
+    const auto blocked = TemporaryPath(directory) / "blocked.conf";
+    std::filesystem::create_directory(blocked);
+    {
+        std::ofstream sentinel(blocked / "sentinel");
+        sentinel << "preserved";
+    }
+    rejected = false;
+    try {
+        PublishConfigurationFile(blocked, "replacement");
+    } catch (const std::filesystem::filesystem_error& error) {
+        rejected = true;
+        QVERIFY(error.code());
+        QCOMPARE(error.path1(),
+                 std::filesystem::path(blocked.string() + ".tmp"));
+        QCOMPARE(error.path2(), blocked);
+        QVERIFY(std::string(error.what())
+                    .find("Cannot replace configuration file") !=
+                std::string::npos);
+    }
+    QVERIFY(rejected);
+    QCOMPARE(ReadFile(blocked / "sentinel"), std::string("preserved"));
+    QVERIFY(!std::filesystem::exists(blocked.string() + ".tmp"));
+
+    configuration.index_directory = "/new/index";
+    SaveConfiguration(path.string(), configuration);
+    const auto replacement = ReadFile(path);
+    QVERIFY(replacement != original);
+    const auto loaded = LoadConfiguration(path.string());
+    QCOMPARE(loaded.index_directory, configuration.index_directory);
+    QCOMPARE(loaded.opaque_fields, configuration.opaque_fields);
+    SaveConfiguration(path.string(), loaded);
+    QCOMPARE(ReadFile(path), replacement);
+    QVERIFY(!std::filesystem::exists(temporary));
+}
+
+#ifdef _WIN32
+void ApplicationServiceTest::ConfigurationTemporaryDoesNotEscapeToChild() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    const std::filesystem::path temporary(path.string() + ".tmp");
+    PublishConfigurationFile(path, "old-data");
+
+    // Negative control: the actual prior std::ofstream writer escapes when a
+    // child is created while it is open, even after the parent closes it.
+    {
+        std::ofstream inherited(temporary, std::ios::binary | std::ios::trunc);
+        inherited << "inherited-data";
+        QVERIFY(inherited.good());
+        test::ConfigurationFileChild child;
+        QVERIFY(child.IsAlive());
+        inherited.close();
+        std::error_code rename_error, cleanup_error;
+        std::filesystem::rename(temporary, path, rename_error);
+        std::filesystem::remove(temporary, cleanup_error);
+        QCOMPARE(rename_error.value(), ERROR_SHARING_VIOLATION);
+        QCOMPARE(cleanup_error.value(), ERROR_SHARING_VIOLATION);
+        QCOMPARE(ReadFile(path), std::string("old-data"));
+        QVERIFY(child.IsAlive());
+    }
+    QVERIFY(std::filesystem::remove(temporary));
+
+    std::unique_ptr<test::ConfigurationFileChild> child;
+    PublishConfigurationFile(path, "new-data", [&](const auto&) {
+        child = std::make_unique<test::ConfigurationFileChild>();
+        if (!child->IsAlive())
+            throw std::runtime_error(
+                "Configuration child exited before publication");
+    });
+    QVERIFY(child && child->IsAlive());
+    QCOMPARE(ReadFile(path), std::string("new-data"));
+    QVERIFY(!std::filesystem::exists(temporary));
+    PublishConfigurationFile(path, "repeated-data");
+    QVERIFY(child->IsAlive());
+    QCOMPARE(ReadFile(path), std::string("repeated-data"));
+}
+
+void ApplicationServiceTest::
+    ConfigurationPublicationPreservesTargetUnderSharingDenial() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = TemporaryPath(directory) / "core.conf";
+    const std::filesystem::path temporary(path.string() + ".tmp");
+    const auto sharing_error =
+        std::error_code(ERROR_SHARING_VIOLATION, std::system_category());
+    for (const bool deny_cleanup : {false, true}) {
+        SaveConfiguration(path.string(), CoreConfiguration{});
+        const auto original = ReadFile(path);
+        {
+            test::WindowsHandle target_reader(CreateFileW(
+                path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+            QVERIFY(target_reader.get() != INVALID_HANDLE_VALUE);
+            test::WindowsHandle temporary_reader;
+            bool rejected = false;
+            try {
+                PublishConfigurationFile(
+                    path, "replacement", [&](const auto& open_path) {
+                        if (deny_cleanup) {
+                            temporary_reader.reset(CreateFileW(
+                                open_path.c_str(), GENERIC_READ,
+                                FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+                            if (temporary_reader.get() == INVALID_HANDLE_VALUE)
+                                throw std::runtime_error(
+                                    "Cannot hold configuration temporary");
+                        }
+                    });
+            } catch (const std::filesystem::filesystem_error& error) {
+                rejected = true;
+                const auto primary_error =
+                    std::error_code(deny_cleanup ? ERROR_SHARING_VIOLATION
+                                                 : ERROR_ACCESS_DENIED,
+                                    std::system_category());
+                QCOMPARE(error.code(), primary_error);
+                QCOMPARE(error.path1(), temporary);
+                QCOMPARE(error.path2(), path);
+                QVERIFY(std::string(error.what())
+                            .find("Cannot replace configuration file") !=
+                        std::string::npos);
+            }
+            QVERIFY(rejected);
+            QCOMPARE(ReadFile(path), original);
+            QCOMPARE(std::filesystem::exists(temporary), deny_cleanup);
+            if (deny_cleanup) {
+                std::error_code cleanup_error;
+                std::filesystem::remove(temporary, cleanup_error);
+                QCOMPARE(cleanup_error, sharing_error);
+                QCOMPARE(ReadFile(temporary), std::string("replacement"));
+            }
+        }
+        CoreConfiguration recovered;
+        recovered.index_directory = "/recovered";
+        SaveConfiguration(path.string(), recovered);
+        QCOMPARE(LoadConfiguration(path.string()).index_directory,
+                 recovered.index_directory);
+        QVERIFY(!std::filesystem::exists(temporary));
+    }
+}
+#endif
 
 void ApplicationServiceTest::
     ConfigurationValidatesLocalSourcePolicyAtomically() {
@@ -7140,6 +7323,15 @@ void ApplicationServiceTest::RejectsInvalidRenderedTextMatchPlanRequests() {
 
 using goldendict::core::ApplicationServiceTest;
 
-QTEST_APPLESS_MAIN(ApplicationServiceTest)
+int main(int argc, char* argv[]) {
+#ifdef _WIN32
+    if (argc == 4 && std::string_view(argv[1]) == "--configuration-file-child")
+        return goldendict::core::test::RunConfigurationFileChild(argv[2],
+                                                                 argv[3]);
+#endif
+    ApplicationServiceTest test;
+    QTEST_SET_MAIN_SOURCE_PATH
+    return QTest::qExec(&test, argc, argv);
+}
 
 #include "application_service_test.moc"

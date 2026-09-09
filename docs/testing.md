@@ -24,6 +24,19 @@ Conan dependencies:
 python scripts/tests/run_with_conan_test.py
 ```
 
+### Configuration file publication
+
+The [configuration publication correction](configuration-file-publication.md)
+is covered by `application_service_test`, including byte-preserving repeated
+saves, primary filesystem errors, a real Windows child-inheritance negative
+control, simultaneous replacement/cleanup denial, and exact old-target survival.
+The Windows child uses named readiness/release events and stays alive through
+publication. Run it with `user_state_upgrade_test` and
+`goldendict_dictionary_bar_smoke`, then the full serial suite, through the
+owning Conan launcher. Repeat the dictionary-bar smoke with both `TEMP` and
+`TMP` set to fresh C-drive and D-drive roots. These are configuration ownership
+checks, not Linux/macOS or complete dictionary parity acceptance.
+
 ### Lookup target routing
 
 The [N2 lookup URL correction](lookup-target-url-parity.md) is covered by

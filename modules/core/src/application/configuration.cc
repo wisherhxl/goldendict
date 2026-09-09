@@ -4,6 +4,7 @@
 
 #include "../foundation/utf8.h"
 #include "article_tab_session.h"
+#include "configuration_file.h"
 #include "input_phrase.h"
 
 #include <algorithm>
@@ -1722,27 +1723,7 @@ void SaveConfiguration(const std::string& configuration_path,
         throw std::runtime_error("Configuration exceeds the size limit");
     }
 
-    const std::filesystem::path destination(configuration_path);
-    if (!destination.parent_path().empty()) {
-        std::filesystem::create_directories(destination.parent_path());
-    }
-    const auto temporary = destination.string() + ".tmp";
-    {
-        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
-        output.write(contents.data(),
-                     static_cast<std::streamsize>(contents.size()));
-        output.close();
-        if (!output) {
-            throw std::runtime_error("Cannot write configuration file");
-        }
-    }
-    std::error_code error;
-    std::filesystem::rename(temporary, destination, error);
-    if (error) {
-        std::filesystem::remove(temporary);
-        throw std::runtime_error("Cannot replace configuration file: " +
-                                 error.message());
-    }
+    PublishConfigurationFile(configuration_path, contents);
 }
 
 void ValidateConfiguration(const CoreConfiguration& configuration) {
