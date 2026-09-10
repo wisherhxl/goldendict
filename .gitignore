@@ -103,3 +103,6 @@ test_package/test_package.c
 # Tiger auto generated files
 *.tp.h
 *.tp.cc
+
+# Local C/C++ semantic-analysis metadata
+compile_commands.json

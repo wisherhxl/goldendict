@@ -1,0 +1,56 @@
+schema: spec-driven
+
+context: |
+  GoldenDict is migrating its supported Qt 5 observable behavior to the Qt 6
+  canonical development line, feature/tiger-qt6-migration. Task worktrees derive
+  from that line; the frozen Qt 5 checkout remains reference evidence.
+  Migration first, modernization later. Do not mix optional refactors,
+  unnecessary modernization, unrelated historical bug fixes, or unapproved
+  behavioral divergence into parity delivery. Compilation alone is not parity.
+  Read AGENTS.md and docs/agent-workflow.md for delivery and tool responsibilities.
+  docs/qt6-product-baseline-crd.md and its approved decisions govern product
+  scope and acceptance. docs/migration.md governs engineering sequence;
+  docs/feature-parity.md, docs/porting-map.md, and docs/qt6-baseline-gap-audit.md
+  provide parity, ownership, and current gap traceability. Reference existing
+  approved requirement IDs; do not duplicate/reword them as a competing source.
+  Use the product CRD for current platform and cutover gates, not historical
+  delivery snapshots. Preserve Linux, Windows, and macOS scope as it defines.
+  Qt 6 uses C++17, Qt, Conan 2, and CMake. Follow docs/project-design-rules.md
+  for ownership and docs/build.md / docs/testing.md for the actual workflow.
+  Keep engineering documents in English and use Phase migration terminology.
+  OpenSpec owns WHAT/WHY and is the canonical change record. Superpowers owns
+  HOW; sufficient approved OpenSpec discovery is not repeated. Serena provides
+  semantic navigation in the exact active task worktree. None replaces the
+  existing requirements, readiness, verification, or independent audit gates.
+
+rules:
+  proposal:
+    - Identify the governing approved requirements by document and identifier, scope, non-goals, and acceptance evidence; do not duplicate existing product requirements.
+    - Classify the change under the delivery policy and explicitly identify actual requirement changes or proposed divergence.
+    - Keep migration work focused on parity; exclude optional refactoring, modernization, and unrelated historical fixes.
+  specs:
+    - Write delta requirements only for genuine spec-level behavior changes; reference existing approved requirements for conformance work.
+    - Use stable English requirement identifiers and observable normal, edge, error, compatibility, and platform scenarios where relevant.
+    - Do not silently override the product baseline or approved CRDs; pure tooling/docs changes without spec-level changes may explicitly use skip_specs in change metadata.
+  design:
+    - Resolve ownership and interfaces under docs/project-design-rules.md, preserve required Qt 6 boundaries, and justify only necessary migration adaptations.
+    - Reference existing approved design decisions rather than creating a competing Superpowers design record; record unresolved decisions before implementation.
+    - Explain verification, parity evidence, applicable migration/rollback behavior, and risks proportionately to scope.
+  tasks:
+    - Use dependency-ordered checkboxes with requirement references and concrete verification commands or observable evidence.
+    - Refine execution without redefining approved scope; include applicable readiness, tests/runtime/parity, documentation, and independent audit gates.
+    - Mark tasks complete only after verification; distinguish configuration parsing, Serena activation, semantic readiness, and product completion.
+
+operations:
+  apply:
+    guidance:
+      - Load the selected approved change and current apply instructions in the exact task worktree; satisfy existing readiness gates before production edits.
+      - Use appropriate Superpowers execution and verification practices; do not repeat sufficient approved requirements/design discovery.
+      - Stop expanding scope on requirement/design conflicts, resolve the OpenSpec change through existing approval rules, then continue.
+      - Use Serena for code relationships and rg for textual/configuration or incomplete LSP information; never use another worktree's compilation database.
+      - Verify applicable build, tests, runtime behavior, Qt 5 parity, compatibility, platforms, and acceptance before updating tasks; retain independent audit and Git authority rules.
+  archive:
+    guidance:
+      - Run Verify, resolve required findings, and confirm task status matches evidence before archiving completed work.
+      - Reconcile actual delta specs through sync/archive while preserving canonical requirement references and approved decisions; do not manufacture product specs for tooling-only work.
+      - Preserve acceptance and independent audit evidence; Verify is not the staged-tree audit, and archive grants no commit, integration, or whole-migration completion authority.

@@ -82,6 +82,52 @@ design rationale.
 See [docs/agent-workflow.md](docs/agent-workflow.md) for branch, commit, pull
 request, review, and documentation workflow details.
 
+## OpenSpec, Superpowers, And Serena
+
+OpenSpec owns WHAT / WHY: change intent, requirements references, scope,
+non-goals, design decisions, tasks, acceptance criteria, traceability, and
+archive history. It is the canonical change record, not a replacement for
+the approved [product baseline CRD](docs/qt6-product-baseline-crd.md), migration
+plan, parity requirements, or subsequent approved decisions. Reference existing
+approved requirements; do not copy and reword them into competing requirements.
+Record genuine requirement changes explicitly through the existing gates.
+
+Superpowers owns HOW: implementation planning, worktree discipline, TDD where
+appropriate, systematic debugging, execution, code review, and
+verification-before-completion. It remains a user/plugin-level installation;
+do not vendor it into the repository. Scale its process to task size.
+
+The approved OpenSpec proposal, specs, and design satisfy the
+requirements/design-discovery phase when they are sufficient for the task.
+Do not repeat brainstorming to rediscover or redefine that approved work.
+Use brainstorming only for a genuine unresolved design question, a newly
+discovered architectural decision, or explicit user-requested exploration.
+Implementation plans may refine OpenSpec tasks into file/test steps; they must
+not create a competing requirements/design record or silently change scope.
+On a requirement/design conflict, stop expanding implementation, return to
+OpenSpec, resolve/update the change through the existing approval gates, and
+then continue.
+
+Migration first, modernization later. Preserve Qt 5 observable behavior through
+the required Qt 6 architecture. Do not mix in optional architectural refactors,
+unnecessary modernization, or unrelated historical bug fixes. Document and
+obtain the applicable approval for unavoidable behavior divergence.
+
+Serena provides semantic code intelligence. For non-trivial C/C++ API/class
+changes, inspect the symbol and relevant references, determine ownership and
+impact, then modify. Activate the exact task worktree by path or
+`--project-from-cwd`, not the shared `goldendict` name alone. Prefer semantic
+tools for definitions, references, inheritance/interfaces, and symbol edits;
+use `rg`/file search for configuration, comments, strings, generated files,
+build scripts, or incomplete LSP information. Memories are navigation aids,
+not requirements, design, or audit authority.
+
+Serena does not replace build/test/runtime verification. Compilation alone
+does not establish functional parity. Follow the existing acceptance and
+independent audit gates, including verification-before-completion for
+substantial work. See [the tooling workflow](docs/agent-workflow.md#ai-tooling-workflow)
+for portable configuration, local overrides, and per-worktree C++ setup.
+
 ## Project Design Rules
 
 Agents must preserve explicit project design rules before optimizing for local

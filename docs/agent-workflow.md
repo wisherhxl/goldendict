@@ -101,6 +101,105 @@ with documented project policy. If the requested direction or final diff
 conflicts with `AGENTS.md`, `docs/project-design-rules.md`, or another focused
 doc, stop and ask for direction instead of guessing.
 
+## AI Tooling Workflow
+
+### Canonical records and execution
+
+Apply the tool responsibilities in [AGENTS.md](../AGENTS.md#openspec-superpowers-and-serena)
+within the Collaborative Task Lifecycle above. OpenSpec workflows do not grant
+approval, waive readiness/completion audits, or advance the Integration Contract.
+An already approved, sufficiently specified change proceeds under its existing
+authorization; do not invent another discovery or design approval loop.
+
+Read [migration](migration.md), the [product baseline CRD](qt6-product-baseline-crd.md)
+and applicable decisions, [parity](feature-parity.md), the
+[porting map](porting-map.md), and [design rules](project-design-rules.md).
+Reference their existing requirement IDs and acceptance evidence. Historical
+delivery entries and test counts do not supersede current approved requirements.
+Use the product CRD for platform acceptance and cutover authority, and the
+[baseline gap audit](qt6-baseline-gap-audit.md) for the current gap inventory.
+
+Keep `openspec/` and `.agents/skills/openspec-*` versioned in the Qt 6 line.
+New task worktrees inherit the committed baseline; existing task branches need
+an explicit update to receive later tooling changes. Do not put ongoing
+migration records in the frozen Qt 5 checkout. Do not copy Superpowers into Git.
+
+OpenSpec is initialized for Codex with skills delivery only. Retain propose,
+explore, apply, update, sync, archive, and verify workflows. Run commands from
+the active worktree and check `openspec context --json` resolves its local root.
+Use `openspec status` and the selected workflow's current instructions to decide
+which artifacts are needed. Pure tooling/docs changes without spec-level behavior
+changes may use the supported `skip_specs: true` change marker; do not invent
+product requirements to satisfy a schema.
+
+For a deliberate generator refresh, inspect `openspec config list --json` first:
+the CLI profile and delivery preferences are machine-global. Select skills-only
+delivery and the workflows above before initializing/updating Codex instructions;
+review the generated diff before committing. A normal clone/worktree already
+contains the skills and does not need initialization. Codex discovers repository
+skills under `.agents/skills`; use its skill list to verify paths belong to the
+current checkout. See [Codex skill discovery](https://learn.chatgpt.com/docs/build-skills).
+
+During apply, follow the approved change and refine its tasks without redefining
+scope. Record verification commands/results and only check off verified tasks.
+Use systematic-debugging for unexplained failures instead of speculative edits.
+Before substantial migration completion, check applicable CMake configuration,
+compilation, focused tests, affected runtime behavior, Qt 5 parity,
+settings/resources/formats, and platform behavior, plus OpenSpec acceptance and
+task accuracy. Use the existing [build](build.md) and [test](testing.md) workflows.
+
+Before archive, run the verify workflow, resolve required findings, and reconcile
+delta specs through the sync/archive workflow. Preserve canonical requirement
+references and evidence. Verify is not the independent staged-tree completion
+audit; archive is not commit/integration approval or whole-migration completion.
+
+### Portable Serena configuration
+
+Commit `.serena/project.yml` with project name `goldendict`, the LSP backend,
+`cpp` support, gitignore-aware indexing, and project-wide settings only. Do not
+pin a project-level clangd version/path without an explicit provisioning decision.
+Keep executable, compiler, Qt, home-directory, and build paths out of that file.
+
+Optional machine-specific settings belong in `.serena/project.local.yml`.
+For an independently installed clangd, use `ls_specific_settings.cpp.ls_path`
+there. Other machines may omit the override and use Serena's normal management.
+Do not copy local overrides automatically into other worktrees or commit them.
+Verify `git check-ignore -v .serena/project.local.yml` before relying on exclusion,
+and confirm `git ls-files .serena/project.local.yml` is empty before commit.
+Project/local LS settings are applied only to trusted projects in Serena; trust
+is a separate machine-level choice, never a tracked project bypass. See
+[Serena configuration](https://oraios.github.io/serena/02-usage/050_configuration.html).
+
+Start Serena from the exact task worktree with `--project-from-cwd`, or activate
+its explicit path and verify the reported root before semantic queries/edits.
+Multiple worktrees share the project name, not source/index/build state. Do not
+resolve symbols or edit against the baseline or another task's checkout.
+
+### Compilation database ownership
+
+For complete C++/Qt analysis, inspect the active worktree's real Conan/CMake
+configuration first. Generate `compile_commands.json` from that same worktree
+using a supported generator and `CMAKE_EXPORT_COMPILE_COMMANDS=ON`. Confirm
+source paths resolve to that worktree, with toolchain/dependency/generated-header
+paths matching its configuration. Never reuse another checkout's database or
+configure one global database path across worktrees.
+
+Make the verified database discoverable using
+[Serena's C/C++ setup](https://oraios.github.io/serena/03-special-guides/cpp_setup.html).
+The installed clangd adapter reads a database at the project root; an ignored
+local copy/link from that worktree's actual build output is one supported route.
+Do not guess a build directory. `compile_commands_dir` is Serena's transformed
+database output setting, not a replacement for finding the original database.
+
+Refresh/reconfigure when target membership, CMake files, compiler/toolchain,
+flags/defines, Qt/dependencies, generated-header setup, or target source lists
+change. Ordinary edits within existing `.cpp`/`.h` files do not require a refresh.
+Keep databases and generated metadata out of Git. If the normal generator is
+unsuitable, a justified separate per-worktree CMake/Ninja analysis build may be
+used without disturbing a known-good production build. Any future committed
+`.clangd` must be portable. Do not claim full C++ semantic readiness until a
+valid worktree-specific database is available and tested.
+
 ## Branch Rules
 
 Name task branches as `<type>/<short-kebab-case-description>`.

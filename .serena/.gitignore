@@ -1,0 +1,7 @@
+# Machine-local settings and generated analysis/navigation state
+/project.local.yml
+/cache/
+/memories/
+/logs/
+/compile_commands.json
+/serena_compile_commands.json
