@@ -2,9 +2,10 @@
 
 ## Authority and status
 
-Ready on 2026-09-10; implementation and focused Windows verification complete.
-Independent completion and integration audits remain separate gates.
-Workspace evidence: `evidence/optional-collapse-counting-20260910/root-impact-review.md`.
+Complete for this bounded unit on 2026-09-10 at
+`739866e34ed5efd085bdc3e70b0fb02edb08d681`, after independent completion and
+integration Passes, target push and primary rebuild/smokes. Workspace evidence:
+`evidence/optional-collapse-counting-20260910/target-delivery.md`.
 Minor correction under `CRD-LOOKUP-003`, `CRD-DICT-003`, `CRD-PREF-002/004`
 and the product CRD's Section 3 precedence rule. The user confirmed frozen Qt 5
 counting, including hidden ordinary DSL optional text, on 2026-09-10. This
@@ -209,5 +210,5 @@ Completion audit v1 failed because a single index root supplied only
 cold(false), warm(true), warm(false), warm(true); it did not prove the claimed
 cold(true) state. The approved rework retains the full acceptance matrix and
 adds a separate cold root for each flag, plus same-flag and switched-flag warm
-reuse. The old audit and evidence remain preserved; the new staged tree
-requires a fresh no-history completion audit before commit.
+reuse. The old audit and evidence remain preserved. The reworked tree subsequently
+passed fresh completion and integration audits, as recorded above.

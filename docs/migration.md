@@ -13,6 +13,11 @@ queue are recorded in the
 
 ## Provenance
 
+The approved [rich-text measurement process direction](article-richtext-measurement-worker.md)
+preserves the Core host boundary while isolating Qt 6 rich-text infrastructure.
+Unit 1 design is Ready; broader readiness is pending. This does not close the remaining
+automatic-collapse metric, aggregation, resource or platform acceptance gaps.
+
 This migration combines two read-only source baselines:
 
 - GoldenDict product source: commit

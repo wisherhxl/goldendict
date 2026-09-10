@@ -93,6 +93,11 @@ serial CTest under separately created, validated fresh short C/D TEMP/TMP roots.
 
 ### Ordinary optional-text collapse counting
 
+The subsequent [rich-text worker design](article-richtext-measurement-worker.md)
+defines proposed exact UTF-16, protocol, resource-denial and runtime acceptance.
+Those tests are not implemented or executed yet; existing optional-counting
+tests do not establish full conversion equivalence.
+
 The [ordinary optional-counting correction](article-optional-collapse-counting.md)
 uses `article_composer_test` for strict size boundaries, both expansion flags,
 disabled collapse, sole-entry behavior and unchanged text/control IDs.

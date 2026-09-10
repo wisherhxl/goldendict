@@ -514,6 +514,11 @@ measurement, exact optional DIV rules, dictionary aggregation and initial/final
 exemptions. Those remain open automatic-collapse obligations, alongside the
 manual and visual gaps above.
 
+The [rich-text measurement design](article-richtext-measurement-worker.md)
+records the approved independent Qt 6 process direction and Unit 1 readiness
+for its bounded executable/protocol foundation. R9.8 remains open;
+later raw transport, exact aggregation/exemptions and product hookup are gated.
+
 #### R2.1 issue record and readiness
 
 R2.1 is a minor correction governed by the approved Windows test-gate

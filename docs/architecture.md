@@ -99,6 +99,12 @@ returns bounded BMP bytes, and needs no GUI application, window, display
 server, or GUI thread. It does not create another public module or installed
 ABI. The API does not choose HTTP, gRPC, JSON, or another future transport.
 
+The approved [rich-text measurement worker](article-richtext-measurement-worker.md)
+adds a separate Qt 6 process owning QGuiApplication/offscreen and importer
+infrastructure. Core retains collapse policy and a GUI-free host contract.
+Unit 1 design is Ready; raw-response transport and product
+composition remain separately gated, with no installed API change selected.
+
 Consumers inject a `CoreConfiguration` containing dictionary roots and the
 generated-index directory. `LoadConfiguration` treats a missing file as a
 clean profile, while `SaveConfiguration` persists the same bounded,

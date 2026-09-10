@@ -240,6 +240,11 @@ complete HTML/UTF-16 conversion, exact DIV quirks, grouping and exemptions
 remain separate obligations. No parser, public interface or GUI dependency
 is added by this correction.
 
+The [rich-text worker design](article-richtext-measurement-worker.md) maps the
+frozen fragment conversion to a separate Qt 6 process; Core retains response
+selection and collapse policy. Existing installed DTOs lose raw response
+context, so later transport/composition work requires its own contract review.
+
 ### WebKit UI To Qt WebEngine
 
 The [Select Current Article correction](article-selection-parity.md) maps

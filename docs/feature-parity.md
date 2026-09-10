@@ -18,6 +18,10 @@ addresses hidden SPAN text's contribution to automatic collapse. Whole-HTML
 conversion, UTF-16 length, exact legacy optional DIV rules, dictionary grouping
 and exemptions remain open; this unit does not close article or corpus parity.
 
+The approved [Qt 6 measurement-worker direction](article-richtext-measurement-worker.md)
+has Unit 1 design readiness. Converter, client/deployment and
+product hookup have separate gates; no additional parity status is closed.
+
 ## Status Vocabulary
 
 - `done`: implemented and verified in the Qt 6 migration.

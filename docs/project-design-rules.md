@@ -136,6 +136,13 @@ module built as a shared library when `BUILD_SHARED_LIBS=ON`.
   Core components must not include QtGui headers or require a GUI application,
   window, display server, or GUI thread. This adapter has no installed ABI;
   its QtGui linkage remains private to the Core implementation.
+- Rich-text measurement uses an independent Qt 6 helper process with its own
+  QGuiApplication/offscreen runtime, as approved on 2026-09-10. Core hosts must
+  remain free of GUI application/thread/display requirements. Core owns
+  collapse policy; the worker owns only bounded rich-text measurement with
+  denied payload-driven resource loading. This is a process deployment boundary,
+  not an expansion of the image-codec exception or a new public module. See
+  [the design and pending readiness gates](article-richtext-measurement-worker.md).
 - GoldenDict-managed HTTP/HTTPS response caching belongs exclusively to the
   Qt Network adapter. Core may persist transport-neutral cache policy, but the
   network module owns the application-lifetime manager, disk-cache instance,
