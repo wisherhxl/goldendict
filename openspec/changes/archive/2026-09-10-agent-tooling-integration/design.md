@@ -1,7 +1,7 @@
 ## Context
 
 See [proposal.md](proposal.md) for scope and acceptance. This is one tooling
-delivery under the existing [agent workflow](../../../docs/agent-workflow.md).
+delivery under the existing [agent workflow](../../../../docs/agent-workflow.md).
 It changes contributor tooling policy, not product requirements or architecture.
 
 ## Goals / Non-Goals

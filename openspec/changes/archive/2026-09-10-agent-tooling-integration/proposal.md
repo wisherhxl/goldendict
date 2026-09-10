@@ -25,9 +25,9 @@ avoids introducing a parallel product requirements source.
 ### Modified Capabilities
 
 None. The approved product requirements in
-[the product CRD](../../../docs/qt6-product-baseline-crd.md),
-[migration](../../../docs/migration.md), [parity](../../../docs/feature-parity.md),
-and the [porting map](../../../docs/porting-map.md) remain authoritative.
+[the product CRD](../../../../docs/qt6-product-baseline-crd.md),
+[migration](../../../../docs/migration.md), [parity](../../../../docs/feature-parity.md),
+and the [porting map](../../../../docs/porting-map.md) remain authoritative.
 
 ## Impact
 
