@@ -722,9 +722,12 @@ desktop recomposition path without changing installed request or result types.
 Private DSL rendering marks `[*]` zones for the common sanitizer, which emits
 only fixed inert semantic markup. Desktop composition keeps those zones hidden
 behind one script-free article control by default or exposes them when the
-default-off preference is enabled. Hidden optional text does not count toward
-the existing large-article collapse threshold; structured plain text and
-headless visible rendering retain the complete article.
+default-off preference is enabled. The approved
+[optional-counting correction](article-optional-collapse-counting.md) requires
+hidden ordinary DSL optional text to count toward the large-article threshold
+in both expansion states, following frozen Qt 5. Structured plain text and
+headless visible rendering retain the complete article; full legacy metric
+conversion, grouping and exemption parity remain separate obligations.
 
 The Phase 8 Preferences completeness audit preserves this ownership rule for
 all remaining leaves. Widgets may expose only a backed control and submit a

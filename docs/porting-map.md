@@ -232,6 +232,14 @@ headers in that same private prefix. Composer, identity/index mapping, plain
 text, translation and collapse policy are unchanged; grouping/manual controls
 and the existing clipped outside marker remain separate gaps.
 
+The [ordinary optional-counting correction](article-optional-collapse-counting.md)
+maps frozen `dsl.cc:857-863` SPAN emission and the DIV-only removal loop in
+`article_maker.cc:649-665` to the existing private Core composer. Hidden
+ordinary optional text contributes independently of its presentation flag;
+complete HTML/UTF-16 conversion, exact DIV quirks, grouping and exemptions
+remain separate obligations. No parser, public interface or GUI dependency
+is added by this correction.
+
 ### WebKit UI To Qt WebEngine
 
 The [Select Current Article correction](article-selection-parity.md) maps

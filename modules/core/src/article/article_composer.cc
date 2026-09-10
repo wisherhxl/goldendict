@@ -6,7 +6,6 @@
 #include <stdexcept>
 #include <string_view>
 #include <utility>
-#include <vector>
 
 #include "article_document.h"
 
@@ -57,50 +56,6 @@ std::size_t Utf8CodePointCount(std::string_view text) noexcept {
 
 constexpr std::string_view kOptionalPartStart =
     "<span class=\"gd-optional-part\">";
-
-std::size_t OptionalTextCodePointCount(std::string_view html) noexcept {
-    std::size_t count = 0U;
-    std::size_t position = 0U;
-    std::size_t optional_depth = 0U;
-    std::vector<bool> span_stack;
-    while (position < html.size()) {
-        if (html.compare(position, kOptionalPartStart.size(),
-                         kOptionalPartStart) == 0) {
-            span_stack.push_back(true);
-            ++optional_depth;
-            position += kOptionalPartStart.size();
-            continue;
-        }
-        if (html.compare(position, 5U, "<span") == 0) {
-            span_stack.push_back(false);
-        } else if (html.compare(position, 7U, "</span>") == 0) {
-            if (!span_stack.empty()) {
-                if (span_stack.back())
-                    --optional_depth;
-                span_stack.pop_back();
-            }
-        }
-        if (html[position] == '<') {
-            const auto end = html.find('>', position + 1U);
-            position = end == std::string_view::npos ? html.size() : end + 1U;
-            continue;
-        }
-        if (optional_depth != 0U) {
-            if (html[position] == '&') {
-                const auto end = html.find(';', position + 1U);
-                if (end != std::string_view::npos) {
-                    ++count;
-                    position = end + 1U;
-                    continue;
-                }
-            }
-            if ((static_cast<unsigned char>(html[position]) & 0xC0U) != 0x80U)
-                ++count;
-        }
-        ++position;
-    }
-    return count;
-}
 
 std::string RenderOptionalControls(std::string_view body,
                                    std::size_t entry_index) {
@@ -165,15 +120,10 @@ ArticleContent ComposeLookupPage(const LookupResponse& response,
                 : std::string_view{};
         const bool has_optional_parts =
             body.find(kOptionalPartStart) != std::string_view::npos;
-        std::size_t visible_size = Utf8CodePointCount(entry.article.plain_text);
-        if (!options.always_expand_optional_parts && has_optional_parts) {
-            const std::size_t optional_size = OptionalTextCodePointCount(body);
-            visible_size = optional_size > visible_size
-                               ? 0U
-                               : visible_size - optional_size;
-        }
+        const std::size_t article_size =
+            Utf8CodePointCount(entry.article.plain_text);
         const bool collapse =
-            may_collapse && visible_size > options.article_size_limit;
+            may_collapse && article_size > options.article_size_limit;
         AppendBounded(
             "<section class=\"gd-dictionary-result\" "
             "data-gd-dictionary-id=\"",

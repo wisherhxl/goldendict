@@ -375,6 +375,7 @@ class ApplicationServiceTest : public QObject {
     void QueriesExplicitlyConfiguredSoundDirectory();
     void CompletesAnOwnedAsynchronousLookup();
     void AppliesArticlePreferencesBehindTheDesktopFacade();
+    void CountsHiddenOptionalTextThroughDslLookup();
     void ResolvesTypedArticleUrlsBehindTheDesktopFacade();
     void PreservesLookupControlTargetsThroughSessionAndBackend_data();
     void PreservesLookupControlTargetsThroughSessionAndBackend();
@@ -7048,6 +7049,164 @@ void ApplicationServiceTest::AppliesArticlePreferencesBehindTheDesktopFacade() {
     QVERIFY(page.sanitized_html->find(
                 "<details class=\"gd-collapsed-article\"><summary><h2>Small") ==
             std::string::npos);
+}
+
+void ApplicationServiceTest::CountsHiddenOptionalTextThroughDslLookup() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto external =
+        qEnvironmentVariable("GOLDENDICT_OPTIONAL_COLLAPSE_DSL");
+    const bool real = !external.isEmpty();
+    const std::string query_text = real ? "'em" : "word";
+    const std::string kind = real ? "oald8" : "optional";
+    std::vector<std::filesystem::path> sources;
+    for (int index = 0; index < 2; ++index) {
+        if (real && index == 0) {
+            sources.push_back(std::filesystem::u8path(external.toStdString()));
+            continue;
+        }
+        const std::string source =
+            "#NAME \"Optional collapse " + kind + std::to_string(index) +
+            "\"\r\n#INDEX_LANGUAGE \"English\"\r\n"
+            "#CONTENTS_LANGUAGE \"English\"\r\n\r\n" +
+            query_text + "\r\n " +
+            (index == 0 ? "A[*]" + std::string(256, 'H') + "[/*]B" : "AB") +
+            "\r\n";
+        std::string encoded = "\xff\xfe";
+        for (const char character : source) {
+            encoded.push_back(character);
+            encoded.push_back('\0');
+        }
+        sources.push_back(test::WriteDslTextFixture(
+            root / "sources", encoded,
+            "fixture-" + std::to_string(index) + ".dsl"));
+    }
+    const auto snapshot = [](const std::filesystem::path& folder) {
+        std::vector<std::string> result;
+        for (const auto& entry :
+             std::filesystem::recursive_directory_iterator(folder)) {
+            if (!entry.is_regular_file())
+                continue;
+            QFile file(QString::fromStdString(entry.path().u8string()));
+            if (!file.open(QIODevice::ReadOnly))
+                return std::vector<std::string>{};
+            QCryptographicHash hash(QCryptographicHash::Sha256);
+            if (!hash.addData(&file))
+                return std::vector<std::string>{};
+            result.push_back(
+                entry.path().u8string() + ":" + std::to_string(file.size()) +
+                ":" + hash.result().toHex().toStdString() + ":" +
+                std::to_string(
+                    entry.last_write_time().time_since_epoch().count()));
+        }
+        std::sort(result.begin(), result.end());
+        return result;
+    };
+    const auto source_before = snapshot(sources.front().parent_path());
+    const auto second_before = snapshot(sources.back().parent_path());
+    QVERIFY(!source_before.empty() && !second_before.empty());
+    for (const auto& files : {source_before, second_before})
+        for (const auto& file : files)
+            qInfo("source path:size:sha256:time %s", file.c_str());
+    CoreConfiguration configuration;
+    configuration.dictionary_paths = {sources[0].u8string(),
+                                      sources[1].u8string()};
+    configuration.preferences.collapse_large_articles = true;
+    configuration.preferences.article_size_limit = real ? 75U : 20U;
+    LookupResponse first_response;
+    std::array<ArticleContent, 2> first_pages;
+    std::array<std::vector<std::string>, 2> cold_indexes;
+    const std::array<std::pair<std::size_t, bool>, 6> states = {{{0U, false},
+                                                                 {1U, true},
+                                                                 {0U, false},
+                                                                 {1U, true},
+                                                                 {0U, true},
+                                                                 {1U, false}}};
+    for (std::size_t run = 0; run < states.size(); ++run) {
+        const auto [index_root, expand] = states[run];
+        const auto index_path =
+            root / ("indexes-" + std::to_string(index_root));
+        if (run < 2U)
+            QVERIFY(!std::filesystem::exists(index_path));
+        configuration.index_directory = index_path.u8string();
+        configuration.preferences.always_expand_optional_parts = expand;
+        auto facade = CreateDesktopFacade(configuration);
+        LookupQuery query;
+        query.text = query_text;
+        const auto response = facade->GetDictionaryService().Lookup(query);
+        QVERIFY(response.errors.empty());
+        QCOMPARE(response.entries.size(), std::size_t{2});
+        if (run == 0)
+            first_response = response;
+        for (std::size_t index = 0; index < response.entries.size(); ++index) {
+            const auto& actual = response.entries[index];
+            const auto& expected = first_response.entries[index];
+            QVERIFY(actual.dictionary.id == expected.dictionary.id);
+            QVERIFY(actual.dictionary.name == expected.dictionary.name);
+            QVERIFY(actual.dictionary.source == expected.dictionary.source);
+            QVERIFY(actual.headword == expected.headword);
+            QVERIFY(actual.article.plain_text == expected.article.plain_text);
+            QVERIFY(actual.article.sanitized_html ==
+                    expected.article.sanitized_html);
+            QCOMPARE(actual.resources.size(), expected.resources.size());
+            for (std::size_t resource = 0; resource < actual.resources.size();
+                 ++resource) {
+                QVERIFY(actual.resources[resource].dictionary_id ==
+                        expected.resources[resource].dictionary_id);
+                QVERIFY(actual.resources[resource].resource_id ==
+                        expected.resources[resource].resource_id);
+                QVERIFY(actual.resources[resource].media_type ==
+                        expected.resources[resource].media_type);
+            }
+        }
+        const auto page = facade->ComposeLookupPage(response);
+        const auto& html = *page.sanitized_html;
+        const std::string collapsed =
+            "<details class=\"gd-collapsed-article\">";
+        const auto start = html.find(collapsed);
+        QVERIFY(start != std::string::npos);
+        QVERIFY(html.find(collapsed, start + collapsed.size()) ==
+                std::string::npos);
+        const auto optional = std::find_if(
+            response.entries.begin(), response.entries.end(),
+            [](const auto& entry) {
+                return entry.article.sanitized_html->find(
+                           "gd-optional-part\">") != std::string::npos;
+            });
+        QVERIFY(optional != response.entries.end());
+        const auto owner = html.find("data-gd-dictionary-id=\"" +
+                                     optional->dictionary.id + "\"");
+        QVERIFY(owner < start && start < html.find("</section>", owner));
+        const auto optional_index =
+            std::distance(response.entries.begin(), optional);
+        const std::string control = "id=\"gd-optional-toggle-" +
+                                    std::to_string(optional_index) + "-0\"";
+        QCOMPARE(html.find(control) != std::string::npos, !expand);
+        QVERIFY(html.find("<script") == std::string::npos);
+        if (run < 2)
+            first_pages[expand] = page;
+        QVERIFY(page.plain_text == first_pages[0].plain_text);
+        QVERIFY(page.sanitized_html == first_pages[expand].sanitized_html);
+        const auto indexes = snapshot(index_path);
+        QVERIFY(!indexes.empty());
+        if (run < 2U)
+            cold_indexes[index_root] = indexes;
+        QVERIFY(indexes == cold_indexes[index_root]);
+        qInfo(
+            "%s run %zu root=%zu phase=%s expand=%d: "
+            "complete optional bytes=%llu, limit=%u, collapsed=1",
+            real ? "external" : "generated", run, index_root,
+            run < 2U   ? "cold"
+            : run < 4U ? "warm"
+                       : "switched",
+            expand,
+            static_cast<unsigned long long>(
+                optional->article.plain_text.size()),
+            configuration.preferences.article_size_limit);
+    }
+    QVERIFY(snapshot(sources.front().parent_path()) == source_before);
+    QVERIFY(snapshot(sources.back().parent_path()) == second_before);
 }
 
 void ApplicationServiceTest::ResolvesTypedArticleUrlsBehindTheDesktopFacade() {

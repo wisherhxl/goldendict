@@ -201,7 +201,7 @@ void ArticleComposerTest::AppliesOptionalPartPolicyWithoutChangingPlainText() {
             std::string::npos);
     QVERIFY(
         hidden.sanitized_html->find(
-            "<details class=\"gd-collapsed-article\"><summary><h2>Optional") ==
+            "<details class=\"gd-collapsed-article\"><summary><h2>Optional") !=
         std::string::npos);
     QCOMPARE(hidden.plain_text,
              std::string("Optional\naboptionalcdmore\n\nOther\nx"));
@@ -215,6 +215,29 @@ void ArticleComposerTest::AppliesOptionalPartPolicyWithoutChangingPlainText() {
             "<details class=\"gd-collapsed-article\"><summary><h2>Optional") !=
         std::string::npos);
     QCOMPARE(expanded.plain_text, hidden.plain_text);
+
+    for (const bool expand : {false, true}) {
+        for (const std::uint32_t limit : {15U, 16U}) {
+            const auto page =
+                ComposeLookupPage(response, {expand, true, limit});
+            QCOMPARE(page.sanitized_html->find(
+                         "<details class=\"gd-collapsed-article\">") !=
+                         std::string::npos,
+                     limit == 15U);
+            QCOMPARE(page.plain_text, hidden.plain_text);
+        }
+        const auto disabled = ComposeLookupPage(response, {expand, false, 1U});
+        QVERIFY(disabled.sanitized_html->find(
+                    "<details class=\"gd-collapsed-article\">") ==
+                std::string::npos);
+    }
+    response.entries.resize(1U);
+    for (const bool expand : {false, true}) {
+        const auto sole = ComposeLookupPage(response, {expand, true, 1U});
+        QVERIFY(sole.sanitized_html->find(
+                    "<details class=\"gd-collapsed-article\">") ==
+                std::string::npos);
+    }
 }
 
 void ArticleComposerTest::RejectsOversizedComposedPages() {

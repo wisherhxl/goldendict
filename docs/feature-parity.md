@@ -13,6 +13,11 @@ Ctrl+Shift+A and current-dictionary selection in the private Qt 6 article view.
 Windows synthetic and real-dictionary verification does not imply Linux
 execution or completion of the remaining ordinary article/menu visual matrix.
 
+The [ordinary DSL optional-counting correction](article-optional-collapse-counting.md)
+addresses hidden SPAN text's contribution to automatic collapse. Whole-HTML
+conversion, UTF-16 length, exact legacy optional DIV rules, dictionary grouping
+and exemptions remain open; this unit does not close article or corpus parity.
+
 ## Status Vocabulary
 
 - `done`: implemented and verified in the Qt 6 migration.

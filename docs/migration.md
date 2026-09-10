@@ -1215,9 +1215,15 @@ General/Expand optional parts.
 
 The General/Expand optional parts leaf adds the pinned default-off checkbox and
 restores DSL `[*]` zones end to end. Disabled pages initially hide every
-optional zone behind one script-free article control and exclude hidden text
-from large-article threshold measurement; enabled pages expose the zones and
-omit the control. Core owns bounded DSL semantics, sanitization, and desktop
+optional zone behind one script-free article control; enabled pages expose
+the zones and omit the control. The initial hidden-text subtraction from
+large-article measurement conflicts with ordinary frozen DSL SPAN behavior.
+The approved [optional-counting correction](article-optional-collapse-counting.md)
+requires that hidden ordinary optional text count in both expansion states;
+the private composer and generated/real Windows checks now implement that
+bounded contribution correction. Whole-HTML conversion, UTF-16 length, exact legacy
+optional DIV handling, grouping and dictionary exemptions remain separate
+parity gaps. Core owns bounded DSL semantics, sanitization, and desktop
 composition, while Widgets edits the complete candidate through the existing
 atomic recomposition/session-restoration transaction. Plain-text results,
 headless visible rendering, queries, filters, ordering, bounds, cancellation,

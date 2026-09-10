@@ -91,6 +91,26 @@ The focused record identifies reference hashes, comparison commands, raw
 pixel/geometry records and narrow native-rendering differences. Repeat full
 serial CTest under separately created, validated fresh short C/D TEMP/TMP roots.
 
+### Ordinary optional-text collapse counting
+
+The [ordinary optional-counting correction](article-optional-collapse-counting.md)
+uses `article_composer_test` for strict size boundaries, both expansion flags,
+disabled collapse, sole-entry behavior and unchanged text/control IDs.
+`application_service_test`'s `CountsHiddenOptionalTextThroughDslLookup` uses
+actual generated UTF-16LE DSL files through the public service/facade, hashes
+sources, verifies six explicit states across two isolated index roots
+(cold and warm with each root's initial flag, then switched-flag reuse), and preserves
+exact response content/resources and index hashes/timestamps. Set the optional
+`GOLDENDICT_OPTIONAL_COLLAPSE_DSL` path to the external OALD8 source for the
+matched `'em` supplement at threshold 75; ordinary CTest needs no corpus.
+Outputs contain only paths, sizes, hashes and outcome metadata. Source and
+companions stay read-only; generated indexes use the test's temporary profile.
+This bounded test does not claim whole-metric or whole-corpus equality.
+
+```powershell
+./run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -j 1 -R '^(article_composer_test|article_assembler_test|application_service_test|dsl_reader_test|dsl_dictionary_test|goldendict_articles_preferences_smoke|goldendict_optional_parts_preferences_smoke)$' --output-on-failure
+```
+
 ### Normal article base canvas and typography
 
 `article_base_style_test` discovers generated StarDict/Dictd fixtures through

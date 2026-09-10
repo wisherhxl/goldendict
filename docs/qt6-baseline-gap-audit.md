@@ -502,9 +502,17 @@ distinct evidence, not whole normal-article visual parity. The
 completed at `8adb1a735da9ee423eacd50e9dae0c8bd6b72158`; its focused record links
 the completion/integration and primary verification evidence. The separately
 bounded [heading box/type/spacing correction](article-heading-style-parity.md)
-does not close enclosing grouping, From translation, automatic threshold,
+completed at `5260b76de575680e79426235d89adee0a195ba2c` and does not close
+enclosing grouping, From translation, automatic threshold,
 manual arrows, clipped native summary marker, inner body spacing or theme/error
 headers. R9.8, parent R3.7/R9 and platform/cutover gates remain open.
+
+The [ordinary optional-counting unit](article-optional-collapse-counting.md)
+removes hidden ordinary DSL SPAN subtraction from the existing private
+composer. Its bounded acceptance is separate from complete rich-text/UTF-16
+measurement, exact optional DIV rules, dictionary aggregation and initial/final
+exemptions. Those remain open automatic-collapse obligations, alongside the
+manual and visual gaps above.
 
 #### R2.1 issue record and readiness
 
