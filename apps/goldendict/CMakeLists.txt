@@ -414,6 +414,13 @@ add_test(NAME goldendict_product_shell_smoke
 set_tests_properties(goldendict_product_shell_smoke PROPERTIES
   TIMEOUT 20)
 
+add_test(NAME goldendict_view_preferences_restart_smoke
+  COMMAND ${CMAKE_COMMAND}
+    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
+    -DTEST_HOME=${CMAKE_BINARY_DIR}/view-prefs-test-home
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/view_preferences_restart_smoke.cmake)
+set_tests_properties(goldendict_view_preferences_restart_smoke PROPERTIES TIMEOUT 90)
+
 add_test(NAME goldendict_article_scheme_registration_smoke
   COMMAND $<TARGET_FILE:goldendict> --article-scheme-registration-smoke)
 

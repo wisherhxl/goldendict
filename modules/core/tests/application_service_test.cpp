@@ -277,6 +277,7 @@ class ApplicationServiceTest : public QObject {
     void ConfigurationRejectsMalformedArticleTabSessionsAtomically();
     void ApplicationPreferencesCompareByValue();
     void ConfigurationRoundTripsPreferencesDeterministically();
+    void ViewPresentationPreferencesMigrateAndRejectInvalidValues();
     void ConfigurationRoundTripsAllFullTextSearchModes();
     void ConfigurationRejectsUnknownFullTextSearchModeAtomically();
     void ConfigurationRoundTripsBoundedFullTextDialogGeometry();
@@ -1329,6 +1330,16 @@ void ApplicationServiceTest::ApplicationPreferencesCompareByValue() {
     QVERIFY(first == second);
     QVERIFY(!(first != second));
 
+    QVERIFY(!first.show_dictionary_bar_names);
+    QVERIFY(!first.use_small_toolbar_icons);
+    second.show_dictionary_bar_names = true;
+    QVERIFY(first != second);
+    second.show_dictionary_bar_names = false;
+    second.use_small_toolbar_icons = true;
+    QVERIFY(first != second);
+    second.use_small_toolbar_icons = false;
+    QVERIFY(first == second);
+
     second.interface_language = "fr_FR";
     QVERIFY(first != second);
     QVERIFY(!(first == second));
@@ -1357,6 +1368,85 @@ void ApplicationServiceTest::ApplicationPreferencesCompareByValue() {
     second.confirm_favorites_deletion = true;
     second.full_text_search_mode = FullTextSearchMode::kWildcard;
     QVERIFY(first != second);
+}
+
+void ApplicationServiceTest::
+    ViewPresentationPreferencesMigrateAndRejectInvalidValues() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto root = TemporaryPath(directory);
+    const auto legacy_path = root / "config";
+    for (const std::string value : {"0", "1"}) {
+        const auto current_path = root / ("current-" + value);
+        const auto restart_path = root / ("restart-" + value);
+        const std::string legacy =
+            "<config><showingDictBarNames>" + value +
+            "</showingDictBarNames><usingSmallIconsInToolbars>" + value +
+            "</usingSmallIconsInToolbars><preferences><hideMenubar>" + value +
+            "</hideMenubar></preferences></config>";
+        test::WriteBinaryFile(legacy_path, legacy);
+        LoadOrMigrateConfiguration(current_path.string(), legacy_path.string(),
+                                   "/indexes");
+        SaveConfiguration(restart_path.string(),
+                          LoadConfiguration(current_path.string()));
+        const auto contents = ReadFile(restart_path);
+        QVERIFY(contents.find("preference=show_dictionary_bar_names|" + value +
+                              "\n") != std::string::npos);
+        QVERIFY(contents.find("preference=use_small_toolbar_icons|" + value +
+                              "\n") != std::string::npos);
+        QVERIFY(contents.find("preference=hide_menubar|" + value + "\n") !=
+                std::string::npos);
+        QCOMPARE(ReadFile(legacy_path), legacy);
+    }
+    const auto unknown_path = root / "unknown.conf";
+    const auto unknown_resaved = root / "unknown-resaved.conf";
+    SaveConfiguration(unknown_path.string(), CoreConfiguration{});
+    const auto default_contents = ReadFile(unknown_path);
+    const std::string unknown = "preference=future_view_setting|retained\n";
+    test::WriteBinaryFile(unknown_path, default_contents + unknown);
+    auto retained = LoadConfiguration(unknown_path.string());
+    retained.preferences.show_dictionary_bar_names = true;
+    retained.preferences.use_small_toolbar_icons = true;
+    SaveConfiguration(unknown_resaved.string(), retained);
+    const auto reloaded = LoadConfiguration(unknown_resaved.string());
+    QVERIFY(reloaded.preferences.show_dictionary_bar_names);
+    QVERIFY(reloaded.preferences.use_small_toolbar_icons);
+    QVERIFY(ReadFile(unknown_resaved).find(unknown) != std::string::npos);
+    for (const std::string key :
+         {"show_dictionary_bar_names", "use_small_toolbar_icons"}) {
+        const std::string record = "preference=" + key + "|0\n";
+        const auto position = default_contents.find(record);
+        QVERIFY(position != std::string::npos);
+        for (const std::string invalid :
+             {"preference=" + key + "|2\n", record + record}) {
+            auto contents = default_contents;
+            contents.replace(position, record.size(), invalid);
+            test::WriteBinaryFile(unknown_path, contents);
+            QVERIFY_EXCEPTION_THROWN(LoadConfiguration(unknown_path.string()),
+                                     std::runtime_error);
+            QCOMPARE(ReadFile(unknown_path), contents);
+        }
+    }
+    int index = 0;
+    for (const std::string body :
+         {"<showingDictBarNames>true</showingDictBarNames>",
+          "<usingSmallIconsInToolbars>2</usingSmallIconsInToolbars>",
+          "<showingDictBarNames>1<nested/></showingDictBarNames>",
+          "<showingDictBarNames>1</showingDictBarNames><showingDictBarNames>0</"
+          "showingDictBarNames>",
+          "<usingSmallIconsInToolbars>1</"
+          "usingSmallIconsInToolbars><usingSmallIconsInToolbars>1</"
+          "usingSmallIconsInToolbars>"}) {
+        const auto current_path = root / ("invalid-" + std::to_string(index++));
+        const std::string legacy = "<config>" + body + "</config>";
+        test::WriteBinaryFile(legacy_path, legacy);
+        QVERIFY_EXCEPTION_THROWN(
+            LoadOrMigrateConfiguration(current_path.string(),
+                                       legacy_path.string(), "/indexes"),
+            std::runtime_error);
+        QVERIFY(!std::filesystem::exists(current_path));
+        QCOMPARE(ReadFile(legacy_path), legacy);
+    }
 }
 
 void ApplicationServiceTest::

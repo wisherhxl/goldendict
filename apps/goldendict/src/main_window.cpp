@@ -1837,33 +1837,37 @@ MainWindow::MainWindow(const QString& configuration_directory, QWidget* parent)
     });
     connect(print_pdf_action, &QAction::triggered, this,
             &MainWindow::SaveArticleAsPdf);
-    connect(toggle_menubar_action_, &QAction::toggled, this,
-            [this](bool visible) {
-                menuBar()->setVisible(visible);
-                if (auto* action = findChild<QAction*>(
-                        QStringLiteral("menuButtonAction"))) {
-                    action->setVisible(!visible);
-                }
-                if (auto* action = findChild<QAction*>(
-                        QStringLiteral("beforeOptionsSeparator"))) {
-                    action->setVisible(!visible);
-                }
-            });
-    connect(show_dictionary_bar_names_action_, &QAction::toggled, this,
-            [this](bool visible) {
-                dictionary_bar_->setToolButtonStyle(
-                    visible ? Qt::ToolButtonTextBesideIcon
-                            : Qt::ToolButtonIconOnly);
-            });
-    connect(use_small_toolbar_icons_action_, &QAction::toggled, this,
-            [this, nav_toolbar](bool small) {
-                const QStyle::PixelMetric metric =
-                    small ? QStyle::PM_SmallIconSize
-                          : QStyle::PM_ToolBarIconSize;
-                const int extent = style()->pixelMetric(metric);
-                nav_toolbar->setIconSize(QSize(extent, extent));
-                dictionary_bar_->setIconSize(QSize(extent, extent));
-            });
+    connect(
+        toggle_menubar_action_, &QAction::toggled, this, [this](bool visible) {
+            auto preferences = preferences_;
+            preferences.hide_menubar = !visible;
+            if (!ApplyDisplayPreferences(preferences)) {
+                const QSignalBlocker blocker(toggle_menubar_action_);
+                toggle_menubar_action_->setChecked(!preferences_.hide_menubar);
+            }
+        });
+    connect(
+        show_dictionary_bar_names_action_, &QAction::toggled, this,
+        [this](bool visible) {
+            auto preferences = preferences_;
+            preferences.show_dictionary_bar_names = visible;
+            if (!ApplyDisplayPreferences(preferences)) {
+                const QSignalBlocker blocker(show_dictionary_bar_names_action_);
+                show_dictionary_bar_names_action_->setChecked(
+                    preferences_.show_dictionary_bar_names);
+            }
+        });
+    connect(
+        use_small_toolbar_icons_action_, &QAction::toggled, this,
+        [this](bool small) {
+            auto preferences = preferences_;
+            preferences.use_small_toolbar_icons = small;
+            if (!ApplyDisplayPreferences(preferences)) {
+                const QSignalBlocker blocker(use_small_toolbar_icons_action_);
+                use_small_toolbar_icons_action_->setChecked(
+                    preferences_.use_small_toolbar_icons);
+            }
+        });
     connect(always_on_top_action_, &QAction::toggled, this,
             &MainWindow::SetAlwaysOnTop);
     connect(export_favorites_list_action_, &QAction::triggered, this,
@@ -3005,6 +3009,51 @@ void MainWindow::RunViewMenuSmokeCheck(std::function<void(bool)> completion) {
     passed = passed && nav_toolbar->iconSize().width() ==
                            style()->pixelMetric(QStyle::PM_ToolBarIconSize);
     const bool icon_size_passed = passed;
+
+    // A successful View change must survive presentation reconstruction;
+    // rejected persistence must leave both the action and the widget unchanged.
+    const auto view_preferences = preferences_;
+    auto saved_view_preferences = preferences_;
+    int view_preference_updates = 0;
+    preferences_apply_callback_ = [&](const auto& updated) {
+        saved_view_preferences = updated;
+        ++view_preference_updates;
+        return QString{};
+    };
+    toggle_menubar_action_->setChecked(false);
+    show_dictionary_bar_names_action_->setChecked(true);
+    use_small_toolbar_icons_action_->setChecked(true);
+    SetPreferences(view_preferences);
+    SetPreferences(saved_view_preferences);
+    passed =
+        passed && view_preference_updates == 3 &&
+        !toggle_menubar_action_->isChecked() && !app_menu_bar->isVisible() &&
+        menu_button->isVisible() &&
+        show_dictionary_bar_names_action_->isChecked() &&
+        dictionary_bar->toolButtonStyle() == Qt::ToolButtonTextBesideIcon &&
+        use_small_toolbar_icons_action_->isChecked() &&
+        nav_toolbar->iconSize().width() ==
+            style()->pixelMetric(QStyle::PM_SmallIconSize);
+    preferences_apply_callback_ = [](const auto&) {
+        return QStringLiteral("injected View preference save failure");
+    };
+    toggle_menubar_action_->trigger();
+    show_dictionary_bar_names_action_->trigger();
+    use_small_toolbar_icons_action_->trigger();
+    passed =
+        passed && preferences_ == saved_view_preferences &&
+        !toggle_menubar_action_->isChecked() && !app_menu_bar->isVisible() &&
+        menu_button->isVisible() &&
+        show_dictionary_bar_names_action_->isChecked() &&
+        dictionary_bar->toolButtonStyle() == Qt::ToolButtonTextBesideIcon &&
+        use_small_toolbar_icons_action_->isChecked() &&
+        nav_toolbar->iconSize().width() ==
+            style()->pixelMetric(QStyle::PM_SmallIconSize);
+    preferences_apply_callback_ = original_preferences_callback;
+    SetPreferences(view_preferences);
+    if (!passed)
+        qCritical() << "View preference persistence/rollback mismatch"
+                    << view_preference_updates;
 
     always_on_top_action_->setChecked(true);
     passed = passed && windowFlags().testFlag(Qt::WindowStaysOnTopHint);
@@ -13165,6 +13214,26 @@ void MainWindow::SetPreferences(
         toggle_menubar_action_->setChecked(!preferences_.hide_menubar);
     }
     menuBar()->setVisible(!preferences_.hide_menubar);
+    {
+        const QSignalBlocker blocker(show_dictionary_bar_names_action_);
+        show_dictionary_bar_names_action_->setChecked(
+            preferences_.show_dictionary_bar_names);
+    }
+    dictionary_bar_->setToolButtonStyle(preferences_.show_dictionary_bar_names
+                                            ? Qt::ToolButtonTextBesideIcon
+                                            : Qt::ToolButtonIconOnly);
+    {
+        const QSignalBlocker blocker(use_small_toolbar_icons_action_);
+        use_small_toolbar_icons_action_->setChecked(
+            preferences_.use_small_toolbar_icons);
+    }
+    const int toolbar_icon_extent = style()->pixelMetric(
+        preferences_.use_small_toolbar_icons ? QStyle::PM_SmallIconSize
+                                             : QStyle::PM_ToolBarIconSize);
+    navigation_toolbar_->setIconSize(
+        QSize(toolbar_icon_extent, toolbar_icon_extent));
+    dictionary_bar_->setIconSize(
+        QSize(toolbar_icon_extent, toolbar_icon_extent));
     if (auto* action =
             findChild<QAction*>(QStringLiteral("menuButtonAction"))) {
         action->setVisible(preferences_.hide_menubar);

@@ -21,6 +21,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "../tests/view_preferences_smoke.h"
 #include "command_line_lookup.h"
 #include "configuration_reload_transaction_coordinator.h"
 #include "goldendict/core/application.h"
@@ -96,6 +97,7 @@ bool IsSmokeInvocation(const QStringList& arguments) {
         QStringLiteral("--synonym-preferences-smoke"),
         QStringLiteral("--system-print-smoke"),
         QStringLiteral("--view-menu-smoke"),
+        QStringLiteral("--view-preferences-restart-smoke"),
         QStringLiteral("--webengine-interaction-smoke"),
         QStringLiteral("--webengine-smoke"),
         QStringLiteral("--widgets-facade-preparation-smoke"),
@@ -2167,6 +2169,19 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(0, &window, [&app, &window]() {
             window.RunProductShellSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
+        });
+    } else if (HasArgument(
+                   argc, argv,
+                   QStringLiteral("--view-preferences-restart-smoke"))) {
+        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
+        QTimer::singleShot(500, &window, [&app, &window]() {
+            const bool passed =
+                goldendict::app::test::ViewPreferencesRestartSmoke(
+                    window,
+                    qEnvironmentVariable("GOLDENDICT_VIEW_RESTART_PHASE"),
+                    qEnvironmentVariable("GOLDENDICT_VIEW_RESTART_ENABLED") ==
+                        QStringLiteral("1"));
+            app.exit(passed ? 0 : 1);
         });
     } else if (HasArgument(argc, argv, QStringLiteral("--view-menu-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });

@@ -2751,6 +2751,18 @@ single checked/visibility transitions from both action and widget changes. It
 also verifies that a complete toggle round trip preserves private Qt state
 version 7 and the usable central article shell.
 
+`goldendict_view_preferences_restart_smoke` runs five real application processes
+against one isolated profile: defaults, enable all three View choices, reload,
+restore defaults, and reload again. It covers menubar visibility, dictionary-bar
+names, and small toolbar icons through the production persistence callback.
+Windows uses a native surface; other hosts default to offscreen. Keep its profile
+under the build root (`view-prefs-test-home`) rather than the deeper app test
+directory: the Windows runtime has shown path-sensitive failures during preference
+recomposition. Run it through the checkout's Conan launcher with
+`ctest --preset conan-release -R '^goldendict_view_preferences_restart_smoke$' --output-on-failure`.
+The View menu smoke additionally checks rejected-save rollback without recursive
+writes. Core configuration tests cover legacy migration and malformed values.
+
 `goldendict_article_context_menu_smoke` verifies the application-private menu
 model without opening a real popup. It covers resolved internal links,
 allowlisted external links, rejected schemes, bounded exact selections, image

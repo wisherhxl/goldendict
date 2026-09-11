@@ -142,6 +142,8 @@ bool SetPreference(ApplicationPreferences& preferences, std::string_view name,
     STRING_PREFERENCE("proxy_host", proxy_host)
     STRING_PREFERENCE("full_text_disabled_types", full_text_disabled_types)
     BOOL_PREFERENCE("hide_menubar", hide_menubar)
+    BOOL_PREFERENCE("show_dictionary_bar_names", show_dictionary_bar_names)
+    BOOL_PREFERENCE("use_small_toolbar_icons", use_small_toolbar_icons)
     BOOL_PREFERENCE("open_new_tabs_after_current", open_new_tabs_after_current)
     BOOL_PREFERENCE("open_new_tabs_in_background", open_new_tabs_in_background)
     BOOL_PREFERENCE("hide_single_tab", hide_single_tab)
@@ -1626,6 +1628,8 @@ void SaveConfiguration(const std::string& configuration_path,
     APPEND_BOOL("hide_single_tab", hide_single_tab);
     APPEND_BOOL("mru_tab_order", mru_tab_order);
     APPEND_BOOL("hide_menubar", hide_menubar);
+    APPEND_BOOL("show_dictionary_bar_names", show_dictionary_bar_names);
+    APPEND_BOOL("use_small_toolbar_icons", use_small_toolbar_icons);
     APPEND_BOOL("enable_tray_icon", enable_tray_icon);
     APPEND_BOOL("start_to_tray", start_to_tray);
     APPEND_BOOL("close_to_tray", close_to_tray);

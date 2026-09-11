@@ -211,6 +211,8 @@ struct ApplicationPreferences {
     bool hide_single_tab = false;
     bool mru_tab_order = false;
     bool hide_menubar = false;
+    bool show_dictionary_bar_names = false;
+    bool use_small_toolbar_icons = false;
     bool enable_tray_icon = true;
     bool start_to_tray = false;
     bool close_to_tray = true;
@@ -286,8 +288,9 @@ struct ApplicationPreferences {
                    interface_language, help_language, display_style,
                    addon_style, open_new_tabs_after_current,
                    open_new_tabs_in_background, hide_single_tab, mru_tab_order,
-                   hide_menubar, enable_tray_icon, start_to_tray, close_to_tray,
-                   auto_start, double_click_translates,
+                   hide_menubar, show_dictionary_bar_names,
+                   use_small_toolbar_icons, enable_tray_icon, start_to_tray,
+                   close_to_tray, auto_start, double_click_translates,
                    select_word_by_single_click, escape_hides_main_window,
                    always_on_top, search_in_dock, enable_main_window_hotkey,
                    main_window_hotkey, enable_clipboard_hotkey,
@@ -326,8 +329,9 @@ struct ApplicationPreferences {
                    other.open_new_tabs_after_current,
                    other.open_new_tabs_in_background, other.hide_single_tab,
                    other.mru_tab_order, other.hide_menubar,
-                   other.enable_tray_icon, other.start_to_tray,
-                   other.close_to_tray, other.auto_start,
+                   other.show_dictionary_bar_names,
+                   other.use_small_toolbar_icons, other.enable_tray_icon,
+                   other.start_to_tray, other.close_to_tray, other.auto_start,
                    other.double_click_translates,
                    other.select_word_by_single_click,
                    other.escape_hides_main_window, other.always_on_top,

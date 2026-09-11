@@ -284,6 +284,12 @@ bool IsPreferenceContainer(const LegacyParserState& state,
 }
 
 std::string PreferenceKey(const LegacyParserState& state) {
+    // Qt5 stores these View choices at the config root, outside preferences.
+    if (state.elements.size() == 2U && state.elements[0] == "config" &&
+        (state.elements[1] == "showingDictBarNames" ||
+         state.elements[1] == "usingSmallIconsInToolbars")) {
+        return "config." + state.elements[1];
+    }
     if (state.elements.size() == 3U && state.elements[0] == "config" &&
         state.elements[1] == "preferences") {
         return state.elements[2];
@@ -308,6 +314,8 @@ bool IsRecognizedPreference(std::string_view key) {
         "hideSingleTab",
         "mruTabOrder",
         "hideMenubar",
+        "config.showingDictBarNames",
+        "config.usingSmallIconsInToolbars",
         "enableTrayIcon",
         "startToTray",
         "closeToTray",
@@ -406,6 +414,8 @@ void ApplyPreference(ApplicationPreferences& p, std::string_view key,
     STRING("proxyserver.host", proxy_host)
     STRING("fullTextSearch.disabledTypes", full_text_disabled_types)
     BOOL("hideMenubar", hide_menubar)
+    BOOL("config.showingDictBarNames", show_dictionary_bar_names)
+    BOOL("config.usingSmallIconsInToolbars", use_small_toolbar_icons)
     BOOL("newTabsOpenAfterCurrentOne", open_new_tabs_after_current)
     BOOL("newTabsOpenInBackground", open_new_tabs_in_background)
     BOOL("hideSingleTab", hide_single_tab)
