@@ -49,3 +49,11 @@ context errors and exit 0xc0000409 precede the test assertion. Path sensitivity 
 established; the underlying runtime cause remains open and is not declared fixed.
 Offscreen Windows probes also failed. These failures are retained, not substituted
 for passing evidence. Native Windows is the verified restart environment.
+# Tab Close Hover Correction
+
+The product shell smoke renders the real article-tab close button in normal,
+hovered, and restored states. Hover must change its pixels and leaving must
+restore the original appearance. The existing article-tabs smoke covers close
+behavior. This check addresses CRD-SHELL-001 and CRD-SHELL-005 without changing
+tab geometry, close commands, or persisted settings. Windows manual acceptance
+remains required before baseline publication.

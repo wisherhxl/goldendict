@@ -26,6 +26,7 @@
 #include <QDir>
 #include <QDockWidget>
 #include <QElapsedTimer>
+#include <QEnterEvent>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileDialog>
@@ -125,7 +126,9 @@ constexpr int kDefaultRightPaneWidth = 160;
 
 const QString& LegacyArticleTabBarStylesheet() {
     static const QString stylesheet = QStringLiteral(
-        "QTabBar::close-button { image: url(:/icons/closetab.png); }");
+        "QTabBar::close-button { image: url(:/icons/closetab.png); }"
+        "QTabBar::close-button:hover { background: palette(highlight); "
+        "border-radius: 2px; }");
     return stylesheet;
 }
 
@@ -2499,8 +2502,34 @@ void MainWindow::RunProductShellSmokeCheck(
         right_panes_have_width(kDefaultRightPaneWidth) &&
         *maximum_right_pane_height - *minimum_right_pane_height <= 2;
     const auto* status_size_grip = statusBar()->findChild<QSizeGrip*>();
+    auto* tab_bar = article_tabs_->tabBar();
+    auto* close_button = tab_bar->tabButton(tab_bar->currentIndex(),
+                                           QTabBar::RightSide);
+    if (close_button == nullptr) {
+        close_button = tab_bar->tabButton(tab_bar->currentIndex(),
+                                         QTabBar::LeftSide);
+    }
+    bool close_hover_matches = false;
+    if (close_button != nullptr) {
+        QEvent leave(QEvent::Leave);
+        QApplication::sendEvent(close_button, &leave);
+        const auto normal = close_button->grab().toImage();
+        const QPointF center(close_button->rect().center());
+        QEnterEvent enter(center, center,
+                          close_button->mapToGlobal(center.toPoint()));
+        QApplication::sendEvent(close_button, &enter);
+        const auto hovered = close_button->grab().toImage();
+        QApplication::sendEvent(close_button, &leave);
+        const auto restored = close_button->grab().toImage();
+        close_hover_matches = !normal.isNull() && normal != hovered &&
+                              normal == restored;
+    }
+    if (!close_hover_matches) {
+        qCritical() << "Tab close button hover feedback missing or not restored";
+    }
     const bool shell_matches =
-        translation_contexts_match && windowIcon().isNull() == false &&
+        close_hover_matches && translation_contexts_match &&
+        windowIcon().isNull() == false &&
         width() >= 653 && height() >= 538 &&
         !compatibility_controls->isVisible() &&
         !dictionary_sources_button_->isVisible() &&
