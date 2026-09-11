@@ -1,7 +1,7 @@
 # Agent Workflow
 
 Version: `goldendict-candidate-v1` (2026-09-11), with the user-approved
-implementation/publication authorization refinement of 2026-09-11.
+implementation/publication authorization and human acceptance refinements of 2026-09-11.
 
 ## Activation and authority
 
@@ -23,6 +23,10 @@ imply code writes. Unless the user explicitly restricts it, implementation permi
 includes in-scope repairs, local checkpoints, normal publication of the independently
 accepted candidate to its task branch, and same-result fast-forward publication to
 origin `refs/heads/feature/tiger-qt6-migration` under the Integration Contract.
+Baseline publication additionally requires the user's explicit manual acceptance
+of the exact candidate after automated verification and independent review.
+Implementation authorization is not acceptance. Task-branch publication may occur
+before manual acceptance; the development baseline must wait.
 Record `push-task` and `publish-baseline` operations with the implementation approval
 as their source before review; do not ask for redundant publication confirmation.
 Archive and cleanup authority remain separate. Existing explicit restrictions and
@@ -43,7 +47,8 @@ policy text cannot authorize its own installation.
 | --- | --- | --- |
 | DEFINE | User chooses scope; coordinator records requirements, risk, authority and necessary design | Approved sufficient scope proceeds; discussion-only ends without writes |
 | BUILD | One writer implements, verifies, maintains tasks and recoverable checkpoints | Complete verified unit becomes candidate; in-scope failures are repaired |
-| REVIEW | Fresh no-history independent reviewer judges exact candidate and evidence | Pass permits authorized delivery; Fail returns to BUILD without changing scope |
+| REVIEW | Fresh no-history independent reviewer judges exact candidate and evidence | Pass permits authorized task push and HUMAN_CHECK; Fail returns to BUILD |
+| HUMAN_CHECK | User inspects the exact candidate's runnable build or reviewable artifact | Explicit user Pass permits baseline publication; rejection returns to BUILD; silence remains pending |
 | DELIVER | Coordinator checks publication prerequisites and remote results | Eligible exact candidate publishes; identity/environment changes block |
 | CLOSE | Coordinator records outcome and verifies evidence/resource disposition | Safe authorized cleanup; uncertain resources retained |
 
@@ -156,7 +161,8 @@ Only origin `refs/heads/feature/tiger-qt6-migration` is authorized for baseline
 publication; master/main/releases/tags/other shared targets remain protected.
 Task push and canonical push require recorded operation authority inherited from
 implementation approval as described above, or explicit publication approval.
-Independent review, applicable verification and successful publication preflight
+Independent review, applicable verification, explicit human acceptance for baseline
+publication, and successful publication preflight
 remain mandatory; implementation permission alone never permits publishing an
 unreviewed checkpoint. PR creation, releases/tags, other targets, force pushes,
 archive and cleanup are not included. One publication writer at a
@@ -165,6 +171,26 @@ time; always normal non-force updates with explicit refspecs and
 publication settings and pre-push hooks requiring separate side-effect review. Do not modify remote
 protection. Recheck remote state immediately before push; local inspection is not a
 server-side transaction lock. A rejected push stops; never retry by forcing it.
+
+Before baseline publication, present the verified candidate for manual inspection.
+Record the user's actual confirmation source and wording, timestamp, candidate/tree,
+checked scope, inspected artifact identity and environment in an external immutable
+human acceptance receipt. Only an explicit user Pass qualifies. Automated tests,
+independent review, permission to implement/publish, opening the program, and silence
+cannot substitute for acceptance. Do not infer acceptance of the whole feature from
+a bounded functional-unit check. Candidate/tree/scope changes invalidate the receipt;
+repairs require applicable verification, independent review and renewed manual
+acceptance. Evidence reuse must explicitly identify the identical inspected artifact
+and cannot expand the accepted scope. Documentation/policy candidates also require
+confirmation of their reviewable result; do not invent an automatic exemption.
+
+Human acceptance is separate from operation authority and the independent review
+receipt. Preserve each origin; do not modify an earlier review to manufacture later
+human approval. `publish-baseline` preflight requires the human receipt and its
+SHA-256. The checker validates binding and integrity, not human authorship, which
+the coordinator must establish from the actual user message. This restriction takes
+effect from the user's instruction, including this policy rollout; previously
+published history is retained without claiming retroactive acceptance.
 
 Run `python -B tools/delivery/preflight.py --help` for required inputs before EACH
 task or canonical push. See [publication inputs](../tools/delivery/README.md).

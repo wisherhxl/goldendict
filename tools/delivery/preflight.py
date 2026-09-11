@@ -38,7 +38,8 @@ def git(repo, *args):
 
 
 def check(repo, authority_path, receipt_path, receipt_hash, operation,
-          context_path, *, fixture=False):
+          context_path, *, fixture=False, human_acceptance_path=None,
+          human_acceptance_hash=None):
     repo = Path(repo).resolve()
     a, r, ctx = map(read_json, (authority_path, receipt_path, context_path))
     require(digest(receipt_path) == receipt_hash, "review receipt digest changed")
@@ -89,6 +90,22 @@ def check(repo, authority_path, receipt_path, receipt_hash, operation,
             path = Path(context_path).resolve().parent / path
         require(path.is_file() and digest(path) == item["sha256"], "missing/stale evidence: " + str(path))
     b, c, t = r["base"], r["candidate"], r["tree"]
+    if operation == "publish-baseline":
+        require(human_acceptance_path and human_acceptance_hash,
+                "human acceptance is required before baseline publication")
+        require(digest(human_acceptance_path) == human_acceptance_hash,
+                "human acceptance receipt digest changed")
+        human = read_json(human_acceptance_path)
+        require(human.get("result") == "Pass" and human.get("confirmed_by") == "user",
+                "human acceptance did not pass")
+        require(human.get("fixture", False) is False or fixture,
+                "synthetic human acceptance cannot authorize publication")
+        require(human.get("candidate") == c and human.get("tree") == t and
+                human.get("scope") == ctx["scope"],
+                "human acceptance does not cover this candidate/tree/scope")
+        for key in ("confirmation_source", "confirmed_at", "artifact_identity", "environment"):
+            require(isinstance(human.get(key), str) and human[key].strip(),
+                    "human acceptance missing " + key)
     for oid in (b, c, t):
         require(len(oid) == 40 and all(ch in "0123456789abcdef" for ch in oid), "not an exact object ID")
     require(a["base"] == b and a["candidate"] == c and a["tree"] == t, "candidate authority mismatch")
@@ -131,6 +148,7 @@ def check(repo, authority_path, receipt_path, receipt_hash, operation,
         require(remote_task == [c, branch], "existing remote task identity differs; reconcile explicitly")
     return {"result": "Eligible", "operation": operation, "base": b, "candidate": c,
             "tree": t, "target": TARGET, "review_sha256": receipt_hash,
+            "human_acceptance_sha256": human_acceptance_hash if operation == "publish-baseline" else None,
             "limitations": "Mechanical eligibility only; not receipt authentication or a remote transaction lock."}
 
 
@@ -138,10 +156,14 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     for name in ("repo", "authority", "receipt", "review-sha256", "context", "operation"):
         p.add_argument("--" + name, required=True)
+    p.add_argument("--human-acceptance", help="User acceptance receipt; required for publish-baseline")
+    p.add_argument("--human-acceptance-sha256", help="SHA-256 of the preserved user acceptance receipt")
     args = p.parse_args()
     try:
         result = check(args.repo, args.authority, args.receipt, args.review_sha256,
-                       args.operation, args.context)
+                       args.operation, args.context,
+                       human_acceptance_path=args.human_acceptance,
+                       human_acceptance_hash=args.human_acceptance_sha256)
     except (Rejected, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
         print(json.dumps({"result": "Rejected", "reason": str(exc)}))
         return 1

@@ -13,6 +13,10 @@ python -B tools/delivery/preflight.py --repo /exact/task/worktree \
 ```
 
 After verified task push, repeat with `--operation publish-baseline`. Only after
+the user explicitly accepts the candidate's functionality, include
+`--human-acceptance /evidence/task/human.json --human-acceptance-sha256 HUMAN_SHA256`.
+Without that acceptance record, baseline publication is rejected; task pushes do
+not require it. Only after
 Eligible and fresh remote/state inspection may the coordinator run a normal push
 with `--no-follow-tags --recurse-submodules=no` and explicit refspec
 `C:refs/heads/feature/tiger-qt6-migration`. Use those flags for task pushes too. Check remote and
@@ -41,6 +45,22 @@ constraints, and does not authorize incomplete checkpoints, PRs, releases, archi
 or cleanup. If authority changes after review, preserve the original receipt and
 obtain renewed independent judgement bound to the revised authority; never rewrite
 an earlier review's hashes or verdict.
+
+Publication permission does not mean manual acceptance. After automated verification
+and independent review, show the exact runnable candidate (or reviewable policy/docs
+artifact) to the user and wait for explicit confirmation that the checked scope
+passes. Preserve actual message provenance; neither an assistant verdict nor silence
+qualifies. Keep the later human receipt separate from the earlier review/context.
+
+- Human receipt fields: `result: Pass`, `confirmed_by: user`, exact `candidate` and
+  `tree` matching the independent review, `scope` exactly matching the context,
+  nonempty `confirmation_source` containing the actual user confirmation and origin,
+  `confirmed_at`, `artifact_identity` identifying the inspected build/artifact, and
+  `environment`. `fixture` must be absent or false in real use. Hash the preserved
+  receipt and supply its SHA-256 to preflight. Missing, non-Pass, incomplete, stale
+  or synthetic receipts block baseline publication. Hash equality does not prove
+  human authorship; the coordinator must verify the source. New candidate content
+  requires renewed manual acceptance. Do not use a unit's acceptance for wider scope.
 
 - Authority fields: `profile` = `goldendict-candidate-v1`; `target` =
   `refs/heads/feature/tiger-qt6-migration`; `operations` contains individually

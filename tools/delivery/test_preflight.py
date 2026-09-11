@@ -80,11 +80,23 @@ class PreflightTests(unittest.TestCase):
     def check(self, operation="push-task", fixture=True):
         return gate.check(self.repo, self.ap, self.rp, gate.digest(self.rp), operation, self.cp, fixture=fixture)
 
+    def human_check(self, changes=None, receipt_hash=None):
+        human = dict(result="Pass", confirmed_by="user", fixture=True,
+                     candidate=self.candidate, tree=self.tree, scope="fixture",
+                     confirmation_source="TEST FIXTURE user message", confirmed_at="2026-09-11T00:00:00Z",
+                     artifact_identity="TEST FIXTURE inspected build", environment="fixture desktop")
+        human.update(changes or {})
+        path = self.root / "human.json"
+        path.write_text(json.dumps(human))
+        return gate.check(self.repo, self.ap, self.rp, gate.digest(self.rp), "publish-baseline",
+                          self.cp, fixture=True, human_acceptance_path=path,
+                          human_acceptance_hash=receipt_hash or gate.digest(path))
+
     def test_valid_task_and_baseline_publication_read_only(self):
         before = self.run_git(self.repo, "show-ref")
         self.assertEqual(self.check()["result"], "Eligible")
         self.run_git(self.repo, "push", "origin", "HEAD")
-        self.assertEqual(self.check("publish-baseline")["result"], "Eligible")
+        self.assertEqual(self.human_check()["result"], "Eligible")
         self.assertEqual(before.splitlines()[0], self.run_git(self.repo, "show-ref").splitlines()[0])
         self.assertEqual(self.run_git(self.repo, "status", "--porcelain"), "")
 
@@ -92,6 +104,42 @@ class PreflightTests(unittest.TestCase):
         (self.repo / "task.txt").write_text("changed\n")
         self.commit("changed")
         with self.assertRaises(gate.Rejected): self.check()
+
+    def test_baseline_requires_human_acceptance(self):
+        self.run_git(self.repo, "push", "origin", "HEAD")
+        with self.assertRaisesRegex(gate.Rejected, "human acceptance"):
+            self.check("publish-baseline")
+
+    def test_task_push_does_not_require_human_acceptance(self):
+        self.assertEqual(self.check()["result"], "Eligible")
+
+    def test_rejected_or_incomplete_human_acceptance(self):
+        for changes in ({"result": "Fail"}, {"result": "Pending"},
+                        {"confirmed_by": "assistant"}, {"confirmation_source": ""},
+                        {"confirmed_at": ""}, {"artifact_identity": ""}, {"environment": ""}):
+            with self.subTest(changes=changes), self.assertRaisesRegex(gate.Rejected, "human acceptance"):
+                self.human_check(changes)
+
+    def test_human_acceptance_identity_and_digest(self):
+        for key in ("candidate", "tree", "scope"):
+            with self.subTest(key=key), self.assertRaisesRegex(gate.Rejected, "human acceptance"):
+                self.human_check({key: "different"})
+        with self.assertRaisesRegex(gate.Rejected, "human acceptance receipt digest"):
+            self.human_check(receipt_hash="0" * 64)
+
+    def test_synthetic_human_receipt_rejected_in_production(self):
+        # Supply a structurally real review, then independently reject a synthetic
+        # human receipt. Real publication also authenticates both origins externally.
+        self.r["fixture"] = False
+        self.save()
+        path = self.root / "human.json"
+        path.write_text(json.dumps(dict(result="Pass", confirmed_by="user", fixture=True)))
+        import unittest.mock
+        with unittest.mock.patch.object(gate.Path, "home", return_value=self.root / "fixture-codex"):
+            with unittest.mock.patch.dict(gate.os.environ, {"CODEX_HOME": str(self.root / "fixture-codex")}):
+                with self.assertRaisesRegex(gate.Rejected, "synthetic human acceptance"):
+                    gate.check(self.repo, self.ap, self.rp, gate.digest(self.rp), "publish-baseline", self.cp,
+                               human_acceptance_path=path, human_acceptance_hash=gate.digest(path))
 
     def test_baseline_advanced(self):
         self.run_git(self.repo, "push", "origin", "HEAD:" + gate.TARGET)
