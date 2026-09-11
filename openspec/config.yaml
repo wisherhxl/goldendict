@@ -18,8 +18,7 @@ context: |
   Qt 6 uses C++17, Qt, Conan 2, and CMake. Follow docs/project-design-rules.md
   for ownership and docs/build.md / docs/testing.md for the actual workflow.
   Keep engineering documents in English and use Phase migration terminology.
-  OpenSpec owns WHAT/WHY and is the canonical change record. Superpowers owns
-  HOW; sufficient approved OpenSpec discovery is not repeated. Serena provides
+  OpenSpec holds the single change requirements/design/tasks record. Superpowers supplies execution methods; sufficient approved OpenSpec discovery is not repeated. Serena provides
   semantic navigation in the exact active task worktree. None replaces the
   existing requirements, readiness, verification, or independent audit gates.
 
@@ -31,14 +30,14 @@ rules:
   specs:
     - Write delta requirements only for genuine spec-level behavior changes; reference existing approved requirements for conformance work.
     - Use stable English requirement identifiers and observable normal, edge, error, compatibility, and platform scenarios where relevant.
-    - Do not silently override the product baseline or approved CRDs; pure tooling/docs changes without spec-level changes may explicitly use skip_specs in change metadata.
+    - Do not silently override the product baseline or approved CRDs; tooling/docs and existing-requirement conformance without spec-level changes may explicitly use skip_specs in change metadata; never skip genuine deltas.
   design:
     - Resolve ownership and interfaces under docs/project-design-rules.md, preserve required Qt 6 boundaries, and justify only necessary migration adaptations.
     - Reference existing approved design decisions rather than creating a competing Superpowers design record; record unresolved decisions before implementation.
     - Explain verification, parity evidence, applicable migration/rollback behavior, and risks proportionately to scope.
   tasks:
     - Use dependency-ordered checkboxes with requirement references and concrete verification commands or observable evidence.
-    - Refine execution without redefining approved scope; include applicable readiness, tests/runtime/parity, documentation, and independent audit gates.
+    - Refine execution without redefining approved scope; include applicable readiness and tests/runtime/parity evidence; keep audit/publication receipts outside tasks and the frozen candidate.
     - Mark tasks complete only after verification; distinguish configuration parsing, Serena activation, semantic readiness, and product completion.
 
 operations:
@@ -51,6 +50,6 @@ operations:
       - Verify applicable build, tests, runtime behavior, Qt 5 parity, compatibility, platforms, and acceptance before updating tasks; retain independent audit and Git authority rules.
   archive:
     guidance:
-      - Run Verify, resolve required findings, and confirm task status matches evidence before archiving completed work.
+      - Use the tested lightweight post-review archive closeout; run Verify and reconcile actual specs, with no recursive OpenSpec change for archive maintenance.
       - Reconcile actual delta specs through sync/archive while preserving canonical requirement references and approved decisions; do not manufacture product specs for tooling-only work.
       - Preserve acceptance and independent audit evidence; Verify is not the staged-tree audit, and archive grants no commit, integration, or whole-migration completion authority.

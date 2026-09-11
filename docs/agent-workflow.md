@@ -1,296 +1,226 @@
 # Agent Workflow
 
-This document contains Tiger's detailed agent workflow, branch, commit, pull
-request, review, and documentation rules.
+Version: `goldendict-candidate-v1` (2026-09-11).
 
-## Working Rules
+## Activation and authority
 
-- Keep changes scoped to the requested task.
-- Preserve existing user changes. Do not revert unrelated files.
-- Prefer existing project patterns over introducing new structure.
-- Update documentation when changing project behavior, build steps, layout, or
-  contributor workflow.
-- Avoid guessing project policy. If a decision is not documented in
-  `AGENTS.md`, this repository, or these docs, ask before encoding it as a rule.
-- Do not commit generated build output.
-- Launch build-tree executables and CTest through `run_with_conan.ps1` from
-  Windows PowerShell, `run_with_conan.bat` from `cmd.exe`, or
-  `run_with_conan.sh` on POSIX. The launcher binds every child to the current
-  checkout's generated Conan runtime environment; bypass it only for a
-  verified self-contained runtime install or package.
-- Before starting a new task, fetch the remote and make sure the local base
-  branch is up to date.
-- If the local branch has unpushed commits, uncommitted changes, or diverges
-  from the remote, inspect the state and resolve it before creating a feature
-  branch.
-- Follow the applicable workspace or user-approved commit and push policy. If
-  neither grants authority, do not commit, push, or create pull requests
-  automatically.
-- If the user explicitly asks to commit, push, or create a pull request, do it
-  without asking for another confirmation.
-- For delegated implementation work, such as when the user asks an agent to
-  make a plan and implement it, use the full isolated-delivery, audit, commit,
-  push, and applicable integration or pull-request flow when the work is
-  ready.
-- Create a local feature branch for delegated implementation work before
-  committing.
-- Do not push directly to `main` or `master` unless explicitly requested.
+This replaces the former Collaborative Task Lifecycle and AI tooling/Integration
+Contract for NEW tasks only. Selection requires an enabled workspace-local
+`.ai-work-model-activation.json` whose installed file hashes all match. Until then,
+use the old contract at Git base `923bf0a28b9ec8292561c8ba63ccc53de67efee7` and
+preserved external policy copies. A partially installed profile blocks new work.
+The governance rollout itself is delivered under that old contract, including
+staged-tree completion audit and a separate integration audit/worktree.
 
-## Collaborative Task Lifecycle
+Existing tasks retain their recorded contract; do not automatically convert staged
+work, repair a different task, or treat an old Fail as a Pass. Explicit conversion
+requires a preserved base/index/working-state snapshot and ownership handoff.
+User-level candidate delivery is opt-in; other projects keep the strict default.
 
-Use this lifecycle for non-trivial implementation, architecture, build,
-dependency, workflow, and design-rule changes. Tiny documentation edits, typo
-fixes, and direct command requests may use proportionately lighter discussion,
-requirements, planning, and verification when the requested action is clear.
-The lighter path never waives delivery isolation, a fixed staged snapshot bound
-to its Base Commit ID and Tree ID, an independent completion audit, or
-commit-after-Pass order for tracked changes.
+User approval defines scope and important decisions. Planning permission does not
+imply code writes; implementation permission includes in-scope repairs and local
+checkpoints, not remote publication. Record task publication and baseline/cleanup
+permissions separately. Existing explicit end-to-end authority survives tool and
+session changes. Pause for material scope, architecture, acceptance or permission
+changes, not for routine approved repairs. For unresolved decisions present the
+recommended resolution and real alternatives, without inventing choices.
 
-Use explicit stage changes so discussion, planning, implementation, and review
-do not blur together.
+## Lifecycle and risk
 
-1. `DISCUSSING`: clarify the target, constraints, risks, alternatives, success
-   criteria, and relevant best practice. Read the high-level governing docs
-   early, including `AGENTS.md`, `docs/project-design-rules.md`, and any focused
-   doc relevant to the target. Ask when intent or project policy is unclear.
-   Do not guess, write a plan, edit files, commit, push, or create a pull
-   request in this stage.
-2. `AWAITING PLAN APPROVAL`: when the direction seems clear enough to plan,
-   propose the stage change to `PROPOSING PLAN` and stop. Keep this gate light:
-   ask for approval to write the plan, or ask what still needs discussion.
-3. `PROPOSING PLAN`: read the nearby code and focused docs needed to make the
-   plan concrete. Write a plan that covers scope, likely files, test strategy,
-   verification commands, expected pull request shape, and the repository rules
-   governing the change. Do not edit files in this stage.
-4. `PLAN REVIEW`: revise the plan through discussion until implementation is
-   explicitly approved. Treat plan feedback as part of this stage. Do not edit
-   files, commit, push, or create a pull request while the plan is still being
-   adjusted.
-5. `IMPLEMENTING`: after explicit approval, execute the approved plan without
-   requiring another confirmation. Implement the change, add or update tests
-   when behavior risk exists, run the relevant verification, fix verification
-   failures within the approved scope, and report out-of-scope findings with
-   impact and options before expanding the change. Review the final diff
-   against `AGENTS.md`, applicable focused docs, and
-   `docs/project-design-rules.md`. Stage only the complete functional unit,
-   record its Base Commit ID and staged Tree ID, and stop changing it before
-   the completion audit.
-6. `COMPLETION AUDIT`: request a fresh, no-history, read-only audit of the
-   staged delivery against its governing requirements and verification plan.
-   The auditor must not change tracked files, the index, commits, branches, or
-   remotes. A `Fail` returns the delivery to `IMPLEMENTING`; after rework,
-   verification and a new independent audit are required. The `Pass` binds to
-   both the recorded Base Commit ID and staged Tree ID. Any tracked change,
-   index change, or `HEAD` movement after `Pass` invalidates the result.
-7. `DELIVERING`: after `Pass`, confirm that `HEAD` still equals the audited Base
-   Commit ID and `git write-tree` still equals the audited Tree ID. Commit
-   exactly that staged snapshot, and push the task branch when the applicable
-   project policy authorizes it. Then use the authorized Integration Contract
-   or open a pull request when the approved workflow calls for one.
-8. `INTEGRATION OR PR REVIEW`: treat integration and pull request review as
-   part of the task. If changes are
-   requested, update the branch, rerun relevant checks, and update the pull
-   request or integration candidate, including a new completion audit whenever
-   tracked delivery content changes.
-9. `DONE`: the task is complete only when its audited delivery reaches the
-   project-authorized target, its pull request is merged, or the target is
-   explicitly canceled.
+| State | Owner and output | Automatic transition / failure |
+| --- | --- | --- |
+| DEFINE | User chooses scope; coordinator records requirements, risk, authority and necessary design | Approved sufficient scope proceeds; discussion-only ends without writes |
+| BUILD | One writer implements, verifies, maintains tasks and recoverable checkpoints | Complete verified unit becomes candidate; in-scope failures are repaired |
+| REVIEW | Fresh no-history independent reviewer judges exact candidate and evidence | Pass permits authorized delivery; Fail returns to BUILD without changing scope |
+| DELIVER | Coordinator checks publication prerequisites and remote results | Eligible exact candidate publishes; identity/environment changes block |
+| CLOSE | Coordinator records outcome and verifies evidence/resource disposition | Safe authorized cleanup; uncertain resources retained |
 
-Before proposing a stage change or opening a pull request, identify conflicts
-with documented project policy. If the requested direction or final diff
-conflicts with `AGENTS.md`, `docs/project-design-rules.md`, or another focused
-doc, stop and ask for direction instead of guessing.
+Exploration is read-only unless artifact writing was requested. Clear maintenance
+has a short issue/requirement reference, proportionate checks and concise independent
+review; no mandatory new OpenSpec change. Regular parity work uses one OpenSpec
+change, focused tests and applicable Qt5/runtime/platform evidence. Major behavior,
+interface, architecture, compatibility or approval/audit-policy changes require
+explicit design approval and independent readiness review even when the diff is tiny.
+Stop after three nonconverging repair/review rounds, or two attempts on the same
+blocker without new evidence; report findings and a concrete next step. This never
+turns an unmet requirement into Pass. An independent reviewer never repairs work.
 
-## AI Tooling Workflow
+## One record per concern
 
-### Canonical records and execution
+The product baseline CRD and its approved decisions retain their IDs, meaning and
+approval history. Migration, parity, porting and project design documents retain
+existing authority. Reference them instead of copying requirements. A genuine new
+requirement change is recorded in OpenSpec proposal/delta specs/design and explicit
+approval; those artifacts satisfy CRD content without another normative CRD copy.
+Do not silently relocate existing requirements or rewrite approved intent.
 
-Apply the tool responsibilities in [AGENTS.md](../AGENTS.md#openspec-superpowers-and-serena)
-within the Collaborative Task Lifecycle above. OpenSpec workflows do not grant
-approval, waive readiness/completion audits, or advance the Integration Contract.
-An already approved, sufficiently specified change proceeds under its existing
-authorization; do not invent another discovery or design approval loop.
+OpenSpec design owns change-level technical decisions. Tasks own implementation
+and verification steps, not audit/push/integration checkboxes. Elaborate execution
+steps directly in tasks; a detailed attachment is optional only when it adds value,
+references design/version and cannot redefine requirements. Design/interface changes
+invalidate affected execution details. No parallel docs/superpowers specification.
 
-Read [migration](migration.md), the [product baseline CRD](qt6-product-baseline-crd.md)
-and applicable decisions, [parity](feature-parity.md), the
-[porting map](porting-map.md), and [design rules](project-design-rules.md).
-Reference their existing requirement IDs and acceptance evidence. Historical
-delivery entries and test counts do not supersede current approved requirements.
-Use the product CRD for platform acceptance and cutover authority, and the
-[baseline gap audit](qt6-baseline-gap-audit.md) for the current gap inventory.
+A short external `evidence/<task-id>/run.json` (or Markdown equivalent) references
+scope, risk, approval source, profile version, current state, writer/worktree/branch,
+base/candidate, findings and next action. Independent review and publication receipts
+are separate immutable files under that task; never overwrite a failed receipt.
+Raw evidence includes source identity, capture environment, purpose and SHA-256.
+A hash is content integrity, not proof of truth or independent authorship.
+Review receipts come from the actual independent agent/session, not coordinator-
+authored verdict text. Capture its origin and exact output/hash outside the tree.
 
-Keep `openspec/` and `.agents/skills/openspec-*` versioned in the Qt 6 line.
-New task worktrees inherit the committed baseline; existing task branches need
-an explicit update to receive later tooling changes. Do not put ongoing
-migration records in the frozen Qt 5 checkout. Do not copy Superpowers into Git.
+## Tool invocation
 
-OpenSpec is initialized for Codex with skills delivery only. Retain propose,
-explore, apply, update, sync, archive, and verify workflows. Run commands from
-the active worktree and check `openspec context --json` resolves its local root.
-Use `openspec status` and the selected workflow's current instructions to decide
-which artifacts are needed. Pure tooling/docs changes without spec-level behavior
-changes may use the supported `skip_specs: true` change marker; do not invent
-product requirements to satisfy a schema.
+OpenSpec 1.13.0 is the tested local version. Confirm `openspec context --json` resolves
+this task's root. Use native status/instructions/validate for artifacts. Artifact
+`done` or `ready` is not approval/readiness/quality evidence. Existing-requirement
+conformance may declare `skip_specs: true` in change metadata without creating spec
+files; tested native status/apply/validate accepts this. Never manufacture product
+requirements merely to satisfy the schema. New requirement deltas must not skip specs.
 
-For a deliberate generator refresh, inspect `openspec config list --json` first:
-the CLI profile and delivery preferences are machine-global. Select skills-only
-delivery and the workflows above before initializing/updating Codex instructions;
-review the generated diff before committing. A normal clone/worktree already
-contains the skills and does not need initialization. Codex discovers repository
-skills under `.agents/skills`; use its skill list to verify paths belong to the
-current checkout. See [Codex skill discovery](https://learn.chatgpt.com/docs/build-skills).
+The generated propose skill is planning-only and explicitly stops before apply.
+Use it for a planning-only request. For an already authorized end-to-end task,
+coordinate native artifact instructions and apply without calling propose as a
+universal entry. Do not claim advisory config overrides mandatory skill behavior.
+Explore is read-only; its write confirmation is respected when that workflow is
+chosen. Read current artifact instructions, not hardcoded generated templates.
 
-During apply, follow the approved change and refine its tasks without redefining
-scope. Record verification commands/results and only check off verified tasks.
-Use systematic-debugging for unexplained failures instead of speculative edits.
-Before substantial migration completion, check applicable CMake configuration,
-compilation, focused tests, affected runtime behavior, Qt 5 parity,
-settings/resources/formats, and platform behavior, plus OpenSpec acceptance and
-task accuracy. Use the existing [build](build.md) and [test](testing.md) workflows.
+Use Superpowers debugging, focused TDD, task decomposition, early review and
+verification-before-completion where useful. Its configurable spec/plan locations
+point to the same OpenSpec record. Local development commits are checkpoints only.
+Do not invoke its generic worktree fallback or finishing Git actions: linked-worktree
+status does not establish task role, and direct merges/PRs are not this contract.
+The coordinator owns those operations. Do not edit generated OpenSpec skills,
+Superpowers cache, or Serena upstream. Config guidance is advisory, not enforcement.
+Pure config/docs use parsing, consistency and behavioral checks rather than artificial
+TDD. Product changes require risk-appropriate tests/runtime/parity; compiling is not
+completion. Run CTest/build-tree programs through this checkout's Conan launcher.
 
-Before archive, run the verify workflow, resolve required findings, and reconcile
-delta specs through the sync/archive workflow. Preserve canonical requirement
-references and evidence. Verify is not the independent staged-tree completion
-audit; archive is not commit/integration approval or whole-migration completion.
+## Serena and degraded operation
 
-### Portable Serena configuration
+Portable project configuration remains versioned; machine paths belong only in the
+ignored local override. Activate the exact task path, never a shared name alone.
+Definitions, references and interfaces use semantic tools when reliable. Text/config
+search uses rg. No reliable database is needed to discuss or edit documentation.
+A local implementation-only correction may use explicit textual impact analysis
+plus relevant compile/tests. Cross-module interface/ownership changes require
+reliable analysis or documented equivalent coverage; lacking both blocks that work.
+Never describe textual search as complete reference analysis.
 
-Commit `.serena/project.yml` with project name `goldendict`, the LSP backend,
-`cpp` support, gitignore-aware indexing, and project-wide settings only. Do not
-pin a project-level clangd version/path without an explicit provisioning decision.
-Keep executable, compiler, Qt, home-directory, and build paths out of that file.
+Compilation databases belong to the actual source worktree/toolchain/dependencies
+and generated headers. Refresh when configuration or membership changes; never
+reparent another checkout's database or commit machine paths/databases. No full C++
+semantic readiness claim without a verified database. Memories are navigation aids.
+Read-only review permits isolated ignored cache/index/build writes, but not candidate,
+index, ref or policy edits. Inspect actual tool side effects and verify candidate
+identity before/after; never assume a query is literally filesystem-read-only.
 
-Optional machine-specific settings belong in `.serena/project.local.yml`.
-For an independently installed clangd, use `ls_specific_settings.cpp.ls_path`
-there. Other machines may omit the override and use Serena's normal management.
-Do not copy local overrides automatically into other worktrees or commit them.
-Verify `git check-ignore -v .serena/project.local.yml` before relying on exclusion,
-and confirm `git ls-files .serena/project.local.yml` is empty before commit.
-Project/local LS settings are applied only to trusted projects in Serena; trust
-is a separate machine-level choice, never a tracked project bypass. See
-[Serena configuration](https://oraios.github.io/serena/02-usage/050_configuration.html).
+## Candidate construction and independent review
 
-Start Serena from the exact task worktree with `--project-from-cwd`, or activate
-its explicit path and verify the reported root before semantic queries/edits.
-Multiple worktrees share the project name, not source/index/build state. Do not
-resolve symbols or edit against the baseline or another task's checkout.
+Develop on an isolated task branch from a recorded Qt6 baseline. Local checkpoints
+may precede final review and remain unpublished. Reuse an already coherent qualifying
+commit. If a separate delivery snapshot is needed, preserve the development ref and
+record base, development commit/tree, candidate commit/tree and the complete diff.
 
-### Compilation database ownership
+Candidate MUST contain the confirmed target base plus correctly integrated task work.
+If the base advances, incorporate it in the development worktree and resolve conflicts
+there. Compare the full resulting diff against the new base: no lost baseline changes,
+unrelated task changes, or unauthorized reversions. Assigning the old tree a new
+parent is forbidden. A graph/tree check cannot prove semantic preservation: the
+reviewer checks the full result and verification. Form a coherent single-parent
+candidate directly after the confirmed target; do not rebuild commits mechanically.
+No force-push, published-history rewriting or content repairs during publication.
 
-For complete C++/Qt analysis, inspect the active worktree's real Conan/CMake
-configuration first. Generate `compile_commands.json` from that same worktree
-using a supported generator and `CMAKE_EXPORT_COMPILE_COMMANDS=ON`. Confirm
-source paths resolve to that worktree, with toolchain/dependency/generated-header
-paths matching its configuration. Never reuse another checkout's database or
-configure one global database path across worktrees.
-
-Make the verified database discoverable using
-[Serena's C/C++ setup](https://oraios.github.io/serena/03-special-guides/cpp_setup.html).
-The installed clangd adapter reads a database at the project root; an ignored
-local copy/link from that worktree's actual build output is one supported route.
-Do not guess a build directory. `compile_commands_dir` is Serena's transformed
-database output setting, not a replacement for finding the original database.
-
-Refresh/reconfigure when target membership, CMake files, compiler/toolchain,
-flags/defines, Qt/dependencies, generated-header setup, or target source lists
-change. Ordinary edits within existing `.cpp`/`.h` files do not require a refresh.
-Keep databases and generated metadata out of Git. If the normal generator is
-unsuitable, a justified separate per-worktree CMake/Ninja analysis build may be
-used without disturbing a known-good production build. Any future committed
-`.clangd` must be portable. Do not claim full C++ semantic readiness until a
-valid worktree-specific database is available and tested.
-
-## Branch Rules
-
-Name task branches as `<type>/<short-kebab-case-description>`.
-
-Use these branch types:
-
-- `feature/` for new user-visible or template functionality;
-- `fix/` for bug fixes;
-- `docs/` for documentation-only changes;
-- `test/` for test-only changes;
-- `opt/` for optimization work;
-- `chore/` for maintenance, tooling, dependency, or cleanup work.
-
-Push audited task branches when the applicable workspace or user-approved
-policy authorizes it. Otherwise, do not upload a feature branch unless opening
-a pull request or explicitly requested.
-
-A task branch may be deleted after its audited delivery reaches the authorized
-target or its pull request is merged.
+Review the actual candidate identity (including Git-derived version behavior when
+relevant), complete diff/result, approved requirements/design and applicable evidence.
+Bind base, candidate commit/tree, authority, policy and environment evidence. Fresh
+no-history reviewers receive canonical inputs, not developer reasoning. Pass requires
+all applicable acceptance evidence; no Pass with required fixes. Development feedback
+is not final review. On Fail repair in scope and obtain renewed independent judgement.
 
 ## Integration Contract
 
-This contract governs autonomous integration during the Qt 6 migration. It
-does not authorize releases or changes to the frozen Qt 5 baseline.
+Only origin `refs/heads/feature/tiger-qt6-migration` is authorized for baseline
+publication; master/main/releases/tags/other shared targets remain protected.
+Task push and canonical push require recorded operation authority. Checkpoint push,
+PR creation and other external actions are not implied. One publication writer at a
+time; always normal non-force updates with explicit refspecs and
+`--no-follow-tags --recurse-submodules=no`. Preflight rejects automatic extra-ref
+publication settings and pre-push hooks requiring separate side-effect review. Do not modify remote
+protection. Recheck remote state immediately before push; local inspection is not a
+server-side transaction lock. A rejected push stops; never retry by forcing it.
 
-### Branch authority
+Run `python -B tools/delivery/preflight.py --help` for required inputs before EACH
+task or canonical push. See [publication inputs](../tools/delivery/README.md).
+Rejected/error/nonzero means do not execute publication. Eligible is mechanical
+permission to proceed under existing authority, never a new quality Pass. Verify
+live environment observations remain true; invalidate and refresh them when relevant
+tools/configuration change. Inputs are trusted records, not a replacement for actual
+review origin or environment measurement.
 
-- The sole autonomous integration target is
-  `refs/heads/feature/tiger-qt6-migration` on the configured `origin` remote.
-- `main`, `master`, release branches, tags, and every other shared branch are
-  protected. Advancing any of them requires explicit user direction or a
-  separately approved contract.
-- A pull request is not required for the authorized Qt 6 target. Pull requests,
-  releases, force pushes, and history rewriting remain manual operations.
+If base/candidate/result and relevant requirements/policy/environment match, reuse
+independent content review and run publication preflight instead of a second full
+content audit. If target or candidate changes, stop, integrate correctly in development,
+form a new candidate and independently assess affected composition/verification.
+Document reusable evidence and why it remains applicable; don't rerun unrelated checks
+mechanically, and don't reuse acceptance just because Tree IDs match.
 
-### Eligible deliveries
+Task branch must exist on origin at the exact candidate before canonical publication.
+For an identical fast-forward no separate integration worktree is required. A clean
+frozen task checkout can serve verification. Use a temporary separate verification
+environment when build isolation requires it. No autonomous non-fast-forward composition.
+After canonical push, verify its remote tip, advance the clean canonical checkout only
+by fast-forward, and verify local/remote/tree/clean state. If local state is unexpected,
+preserve it and report delivered-remote/local-sync-blocked. Never reset user changes.
 
-- Integrate only a cohesive task branch created from the Qt 6 baseline and
-  pushed to `origin` after an independent completion audit returned `Pass`.
-- Record the delivery commit, its audited Tree ID, its base commit, the audit
-  result, and verification evidence. The pushed commit tree must equal the
-  audited Tree ID.
-- Integrate delivery branches one at a time in documented dependency order.
+## Archive and closure
 
-### Integration method
+The installed native status/apply cannot resolve an archived change by its active
+name (see rollout probe). Therefore v1 uses SIMPLE POST-REVIEW ARCHIVE CLOSEOUT;
+early archive is not the default. Keep the change active through implementation
+review/failure/repair so tasks/materials remain directly addressable.
 
-- Use a dedicated integration branch and worktree created from the current
-  remote target. Allow exactly one writer and keep the worktree clean between
-  candidates.
-- The only autonomous integration method is fast-forward. The delivery must be
-  a direct descendant of the current remote target, and advancing the target
-  must not create a merge commit.
-- Do not merge, cherry-pick, squash, rebase, resolve conflicts, or modify
-  delivery content in the integration worktree. If the target has advanced or
-  the candidate is not fast-forwardable, return the delivery to its original
-  development worktree. Update it from the current target, rerun verification,
-  obtain a new no-history completion audit, and push the replacement delivery.
+After implementation delivery, run Verify, reconcile delta specs, archive once and
+review that small tracked maintenance candidate. It needs no new OpenSpec change.
+Use native `archive <name> --json --yes` only under existing archive authorization;
+for tooling/conformance without deltas use metadata skip_specs and `--skip-specs`.
+Never use `--no-validate`. Inspect actual synced main specs and archive paths. If sync
+changes requirements or has ambiguous effects, pause for the existing approval gate.
+The closeout has exact independent review and preflight but no recursive archive.
+Failed implementation candidates remain undelivered and their receipts remain intact.
 
-### Verification and integration audit
+Completed means accepted delivery reached the authorized target. Cancelled and
+closed-incomplete are explicit decisions, never Pass; preserve unmet tasks and do not
+sync unimplemented proposed requirements into accepted specs. Record disposition in
+external run/receipt history, not by falsifying implementation checkboxes.
 
-- Fetch `origin` immediately before preparing the candidate. Record the remote
-  target as the integration Base Commit ID and the candidate commit and Tree
-  ID. Recheck the remote target before pushing; any movement invalidates the
-  integration audit.
-- Run the delivery's targeted checks and the cumulative checks relevant to the
-  combined Qt 6 baseline. Documentation-only workflow changes require at least
-  Markdown link/path validation, `git diff --check`, and consistency review of
-  the affected policy files; they do not require a product rebuild.
-- Request a separate fresh, no-history, read-only integration audit. Give it
-  only the repository/worktree location, target and candidate identities,
-  governing documents, and verification commands. The auditor must not change
-  tracked files, the index, commits, branches, or remotes.
-- A `Pass` must bind to the Integration Base Commit ID and candidate Tree ID
-  and confirm branch authority, delivery-audit evidence, fast-forwardability,
-  verification results, protected-branch safety, and absence of unrelated
-  changes. Any tracked change or target movement after `Pass` invalidates it.
+## Worktrees, builds and evidence
 
-### Finalization, failure, and cleanup
+Never write development work in frozen Qt5 or canonical. One writer per task/index;
+one worktree per concurrent delivery, not per tool invocation. Reuse a sequential
+checkout only after registry, role, refs, tracked/untracked/ignored contents and Git
+operation checks establish safety. Submodule initialization is per worktree. Build
+ownership follows source path/toolchain; no product build is required for policy-only
+changes. Temporary audit environments have explicit cleanup owners.
 
-- After `Pass`, verify the candidate commit still has the audited Tree ID and
-  push it normally with an explicit refspec to
-  `refs/heads/feature/tiger-qt6-migration`. Never force-push.
-- On conflict, divergence, failed verification, or failed audit, do not repair
-  feature content in the integration worktree and do not advance the target.
-  Preserve the report and return the delivery to its development worktree.
-- Do not rewrite or reset a published target to roll back a regression. Create
-  a separate audited revert delivery and integrate it through this contract.
-- After a successful push, record the target commit and evidence, restore a
-  clean integration worktree, and remove temporary integration worktrees and
-  branches when they are no longer needed. Remove a remote task branch only
-  when project policy or explicit user direction authorizes that cleanup.
+Write durable evidence outside build directories from the start. Copy selected unique
+screenshots/corpus/diagnostics with provenance and hashes, not entire generated builds.
+Verify a second durable copy before destroying the only source or claiming cross-machine
+recoverability. Local evidence alone is not backup. Unknown runtime provenance is a
+retention reason. Paused/failed tasks retain staged work, checkpoints, findings and
+handoff; generated builds may be released only when proven reconstructible and unused.
+
+After verified remote delivery, automatically remove authorized temporary worktrees
+using git worktree remove only if no unique work remains. Inspect ignored data too.
+Checkpoint commits not reachable from canonical need a retained ref or verified bundle;
+tree equivalence alone does not authorize deleting their history. Branch cleanup is
+separate. No age-only deletion; preserve unknown items and report their reason.
+
+## Branch Rules
+
+Use `<type>/<short-kebab-case-description>` with feature, fix, docs, test, opt or
+chore. Existing task names are preserved. Temporary verification branches have explicit
+ownership; cleanup never expands into unrelated branches.
 
 ## Commit Rules
 
