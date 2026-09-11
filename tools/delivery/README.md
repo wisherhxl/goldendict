@@ -32,6 +32,16 @@ derive `--review-sha256` from that recorded reviewer output, not an untrusted ca
 Review may return the following JSON directly as its immutable receipt, with raw
 session output retained alongside it. Never synthesize Pass from a developer summary.
 
+Under the project's implementation/publication authorization rule, approved
+implementation supplies both `push-task` and `publish-baseline` authority unless
+the user explicitly restricts it. Record that implementation approval in
+`approval_source` before independent review; separate publication confirmation is
+not required. This does not bypass review, preflight or the fixed target/update
+constraints, and does not authorize incomplete checkpoints, PRs, releases, archive
+or cleanup. If authority changes after review, preserve the original receipt and
+obtain renewed independent judgement bound to the revised authority; never rewrite
+an earlier review's hashes or verdict.
+
 - Authority fields: `profile` = `goldendict-candidate-v1`; `target` =
   `refs/heads/feature/tiger-qt6-migration`; `operations` contains individually
   authorized `push-task` and/or `publish-baseline`; nonempty `approval_source`

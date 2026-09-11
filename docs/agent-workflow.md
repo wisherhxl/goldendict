@@ -1,6 +1,7 @@
 # Agent Workflow
 
-Version: `goldendict-candidate-v1` (2026-09-11).
+Version: `goldendict-candidate-v1` (2026-09-11), with the user-approved
+implementation/publication authorization refinement of 2026-09-11.
 
 ## Activation and authority
 
@@ -18,12 +19,23 @@ requires a preserved base/index/working-state snapshot and ownership handoff.
 User-level candidate delivery is opt-in; other projects keep the strict default.
 
 User approval defines scope and important decisions. Planning permission does not
-imply code writes; implementation permission includes in-scope repairs and local
-checkpoints, not remote publication. Record task publication and baseline/cleanup
-permissions separately. Existing explicit end-to-end authority survives tool and
+imply code writes. Unless the user explicitly restricts it, implementation permission
+includes in-scope repairs, local checkpoints, normal publication of the independently
+accepted candidate to its task branch, and same-result fast-forward publication to
+origin `refs/heads/feature/tiger-qt6-migration` under the Integration Contract.
+Record `push-task` and `publish-baseline` operations with the implementation approval
+as their source before review; do not ask for redundant publication confirmation.
+Archive and cleanup authority remain separate. Existing explicit restrictions and
+end-to-end authority survive tool and
 session changes. Pause for material scope, architecture, acceptance or permission
 changes, not for routine approved repairs. For unresolved decisions present the
 recommended resolution and real alternatives, without inventing choices.
+
+This authorization refinement applies to the current main-window parity task and
+subsequent approved implementation under this activated profile. It does not convert
+legacy tasks to a different delivery lifecycle. Policy rollout itself uses the
+previously active rules and the user's explicit publication authorization; proposed
+policy text cannot authorize its own installation.
 
 ## Lifecycle and risk
 
@@ -142,8 +154,12 @@ is not final review. On Fail repair in scope and obtain renewed independent judg
 
 Only origin `refs/heads/feature/tiger-qt6-migration` is authorized for baseline
 publication; master/main/releases/tags/other shared targets remain protected.
-Task push and canonical push require recorded operation authority. Checkpoint push,
-PR creation and other external actions are not implied. One publication writer at a
+Task push and canonical push require recorded operation authority inherited from
+implementation approval as described above, or explicit publication approval.
+Independent review, applicable verification and successful publication preflight
+remain mandatory; implementation permission alone never permits publishing an
+unreviewed checkpoint. PR creation, releases/tags, other targets, force pushes,
+archive and cleanup are not included. One publication writer at a
 time; always normal non-force updates with explicit refspecs and
 `--no-follow-tags --recurse-submodules=no`. Preflight rejects automatic extra-ref
 publication settings and pre-push hooks requiring separate side-effect review. Do not modify remote
