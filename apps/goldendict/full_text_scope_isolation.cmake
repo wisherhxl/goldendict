@@ -1,4 +1,4 @@
-# W3.1 covers one family; other legacy tests receive no new exemption.
+# Cumulative W3 migrated families; legacy tests receive no new exemption.
 function(gd_check_full_text_scope_isolation root_target)
   set(pending "${root_target}")
   set(visited "")
@@ -9,8 +9,8 @@ function(gd_check_full_text_scope_isolation root_target)
       continue()
     endif()
     list(APPEND visited "${current}")
-    if(current STREQUAL "full_text_dictionary_scope_test")
-      message(FATAL_ERROR "W3.1 isolation violation: ${root_target} depends on the full-text scope test runner")
+    if(current MATCHES "^(full_text_dictionary_scope_test|dictionary_bar_test)$")
+      message(FATAL_ERROR "W3 isolation violation: ${root_target} depends on a migrated test runner")
     endif()
     foreach(property SOURCES INTERFACE_SOURCES LINK_LIBRARIES INTERFACE_LINK_LIBRARIES MANUALLY_ADDED_DEPENDENCIES)
       get_target_property(values "${current}" "${property}")
@@ -20,8 +20,8 @@ function(gd_check_full_text_scope_isolation root_target)
       string(APPEND report "${current} ${property}: ${values}\n")
       foreach(value IN LISTS values)
         if(value MATCHES "full_text_dictionary_scope_(test|test_access)\\.(cpp|cc|h)" OR
-           value MATCHES "full_text_dictionary_scope_test")
-          message(FATAL_ERROR "W3.1 isolation violation: ${current} ${property} contains ${value}")
+           value MATCHES "(full_text_dictionary_scope_test|dictionary_bar_test|dictionary_scope_test_access)")
+          message(FATAL_ERROR "W3 isolation violation: ${current} ${property} contains ${value}")
         endif()
         # Check both alternatives of conditional link/object expressions.
         string(REGEX MATCHALL "[A-Za-z_][A-Za-z0-9_.+-]*(::[A-Za-z_][A-Za-z0-9_.+-]*)*" tokens "${value}")

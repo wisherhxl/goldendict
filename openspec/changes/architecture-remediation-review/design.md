@@ -92,3 +92,9 @@ The W1 design above and its independent evidence are preserved.
 
 See w3-1-design.md for the approved first-family responsibility migration.
 Historical W1/W2 design sections retain their original scope and conclusions.
+
+## W3.2 bounded follow-on
+
+The user approved DictionaryBarSmoke within the established migration pattern.
+See w3-2-status.md for the locked scope and revised startup isolation acceptance.
+W3/A4 remains in progress; no other family or product path change is selected.

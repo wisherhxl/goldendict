@@ -629,14 +629,6 @@ set_tests_properties(goldendict_suggestion_pane_smoke PROPERTIES
     "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/suggestion-pane-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/suggestion-pane-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/suggestion-pane-test-home/cache"
   TIMEOUT 20)
 
-add_test(NAME goldendict_dictionary_bar_smoke
-  COMMAND $<TARGET_FILE:goldendict> --dictionary-bar-smoke
-    --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
-set_tests_properties(goldendict_dictionary_bar_smoke PROPERTIES
-  ENVIRONMENT
-    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-bar-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-bar-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-bar-test-home/cache"
-  TIMEOUT 20)
-
 add_test(NAME goldendict_widgets_facade_preparation_smoke
   COMMAND ${CMAKE_COMMAND}
     -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
@@ -844,6 +836,26 @@ if(BUILD_TESTS)
     COMMAND full_text_dictionary_scope_test
       -o "${CMAKE_CURRENT_BINARY_DIR}/full-text-dictionary-scope-test.txt,txt")
   set_tests_properties(goldendict_full_text_dictionary_projection_smoke PROPERTIES
+    TIMEOUT 20 ENVIRONMENT
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu")
+
+  ti_add_executable(dictionary_bar_test
+    tests/dictionary_bar_test.cpp ${dictd_presentation_sources})
+  set_target_properties(dictionary_bar_test PROPERTIES AUTOMOC ON AUTORCC ON)
+  target_include_directories(dictionary_bar_test PRIVATE src)
+  ti_target_include_modules_recurse(dictionary_bar_test goldendict_core goldendict_network)
+  ti_target_link_libraries(dictionary_bar_test
+    ${dictd_presentation_libraries} ${QT_NAMESPACE}::Test)
+  target_compile_definitions(dictionary_bar_test PRIVATE
+    GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}"
+    DICTIONARY_BAR_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd")
+  target_compile_definitions(dictionary_bar_test PRIVATE
+    DICTIONARY_BAR_EXTERNAL_FIXTURE="$<TARGET_FILE:goldendict>")
+  add_dependencies(dictionary_bar_test goldendict)
+  add_test(NAME goldendict_dictionary_bar_smoke
+    COMMAND dictionary_bar_test
+      -o "${CMAKE_CURRENT_BINARY_DIR}/dictionary-bar-test.txt,txt")
+  set_tests_properties(goldendict_dictionary_bar_smoke PROPERTIES
     TIMEOUT 20 ENVIRONMENT
     "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu")
 endif()

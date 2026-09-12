@@ -42,3 +42,9 @@ A2/A3/A4/A6 are not selected. No merge, push or automatic W3 execution.
 The user accepted W2 and approved a complete current inventory plus one bounded
 test-family migration. See w3-1-design.md. Only the full-text dictionary projection
 family is selected; W3/A4 remains in progress and W4/W5/W6 remain unselected.
+
+## W3.2 bounded follow-on
+
+The user approved DictionaryBarSmoke within the established migration pattern.
+See w3-2-status.md for the locked scope and revised startup isolation acceptance.
+W3/A4 remains in progress; no other family or product path change is selected.

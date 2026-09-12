@@ -27,3 +27,11 @@
 - [x] 5.3 Move full-text dictionary projection scenarios and assertions into a test-owned runner; remove all corresponding production entry points.
 - [x] 5.4 Verify separate BUILD_TESTS ON/OFF builds, ordinary isolated startup and effective negative target-closure checks.
 - [x] 5.5 Run mapped behavior and W1/W2 regressions, record final candidate/evidence and unverified limits. W3 remains in progress.
+
+## 6. W3.2 bounded batch
+
+- [x] 6.1 Verify W3.1 identity/rules/build configuration, classify the existing inventory and lock DictionaryBarSmoke only.
+- [x] 6.2 Build and run the old dictionary-bar family plus W3.1/W1/W2 baseline with isolated data.
+- [ ] 6.3 Validate normal production startup using supported isolated paths when available; record the exact path gap and defer unsafe/default-path startup per the user clarification in w3-2-status.md.
+- [x] 6.4 Migrate the locked complete family, preserve assertion/timing mapping, clean old entry and verify equivalence before checkpoint.
+- [x] 6.5 Run cumulative ON/OFF builds, retained isolated startup-entry regression, W1/W2/W3.1, affected tests and extended negative guard; record exact candidate and the separately deferred normal-startup validation.

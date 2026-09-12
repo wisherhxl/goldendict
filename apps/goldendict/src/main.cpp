@@ -53,7 +53,6 @@ bool IsSmokeInvocation(const QStringList& arguments) {
         QStringLiteral("--article-tabs-smoke"),
         QStringLiteral("--articles-preferences-smoke"),
         QStringLiteral("--configuration-reload-coordinator-smoke"),
-        QStringLiteral("--dictionary-bar-smoke"),
         QStringLiteral("--dictionary-status-presentation-smoke"),
         QStringLiteral("--dictionary-browser-export-smoke"),
         QStringLiteral("--dictionary-browser-smoke"),
@@ -746,7 +745,6 @@ int main(int argc, char* argv[]) {
     if (!startup_recovery.request &&
         (HasArgument(argc, argv,
                      QStringLiteral("--source-directories-smoke")) ||
-         HasArgument(argc, argv, QStringLiteral("--dictionary-bar-smoke")) ||
          HasArgument(
              argc, argv,
              QStringLiteral("--dictionary-status-presentation-smoke")) ||
@@ -2309,12 +2307,6 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(15000, &app, [&app]() { app.exit(2); });
         QTimer::singleShot(0, &window, [&app, &window]() {
             window.RunSuggestionPaneSmokeCheck(
-                [&app](bool passed) { app.exit(passed ? 0 : 1); });
-        });
-    } else if (HasArgument(argc, argv,
-                           QStringLiteral("--dictionary-bar-smoke"))) {
-        QTimer::singleShot(0, &window, [&window, &app]() {
-            window.RunDictionaryBarSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
     } else if (HasArgument(

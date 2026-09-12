@@ -59,7 +59,7 @@ isolated profile script. Multi-process entries retain their CMake runner.
 | FavoritesSmoke, FavoritesCrossFolderMoveSmoke, FavoritesTransferSmoke | goldendict_favorites_smoke, goldendict_favorites_cross_folder_move_smoke, goldendict_favorites_transfer_smoke | Tree add/edit/delete/move/activation and XML transfer, rejection/cancel/preservation | Actual tree gestures, callback/store wiring and paths | favorites_presentation_test; pending |
 | DictionaryBrowserSmoke, DictionaryBrowserExportSmoke | goldendict_dictionary_browser_smoke; goldendict_dictionary_browser_export_smoke | Browser visibility/content and real headword export completion | Real browser/service/export controller | dictionary_browser_presentation_test; pending |
 | DictionaryGroupsSmoke | goldendict_dictionary_groups_smoke | Selection/create/rename/order/remove, muted/unresolved identities and invalid-save preservation | Real group editor/apply callback, article session and dictionary projections | dictionary_groups_presentation_test; pending |
-| DictionaryBarSmoke | goldendict_dictionary_bar_smoke | Supported/all/solo/participation actions, hidden bar and group projections | Real toolbar host, QAction state, group membership and filtering | dictionary_bar_test; pending |
+| DictionaryBarSmoke | goldendict_dictionary_bar_smoke | Catalog identity/accessibility and toolbar hierarchy; reordered/muted group, independent all/group state, all-off empty results/suggestions, hidden unfiltered lookup | Real toolbar host, QAction triggers, group membership, StartLookup/FinishLookup and asynchronous completion | dictionary_bar_test; W3.2 migrated and behavior verified |
 | WidgetsFacadePreparationSmoke | goldendict_widgets_facade_preparation_smoke / widgets_facade_preparation_smoke.cmake | Hidden completeness, unchanged active state, failure-step unwind, relay suppression, abandonment/thread/late callback and publication restrictions | Four test-only fault fields; real Prepare/Begin/Publish/Finish and leases; timers and cross-thread abandonment | widgets_facade_preparation_test; pending |
 | DictionaryStatusPresentationSmoke | goldendict_dictionary_status_presentation_smoke | Current/candidate status text, tab style/closability, stale-text replacement and reclaimer completion | Real catalog formatter and Widgets candidate maintenance/publication | dictionary_status_presentation_test; pending |
 | FullTextDictionaryProjectionSmoke | goldendict_full_text_dictionary_projection_smoke | All supported IDs; unchecked exclusion; hidden fallback; muted/unresolved empty group; no lookup request; composer stays hidden | Actual MainWindow ComposeFullTextQuery/SelectGroup/RefreshDictionaryBar, toolbar actions and event loop; no fault injection or persistent scenario fields | **full_text_dictionary_scope_test; W3.1 selected** |
@@ -185,3 +185,46 @@ probe is an additional build-boundary test, not a replacement behavior assertion
 W3/A4 remains in progress. The remaining 52 definitions, main-only families,
 view_preferences_smoke.h dependency, four fault fields and unconditional historical
 app test targets remain explicit pending work. No second family is authorized here.
+
+## W3.2 migration-mode classification (base e77627a9)
+
+This classifies the remaining ledger entries; it is not a new audit or approval of
+future designs. W3.1 source identities remain applicable because this base is its
+reviewed candidate. A means reuse the current real-window composition/target and
+bounded dictionary-scope access; B needs finite additional test access or operation
+substitution; C needs a separately designed startup/persistence/transaction test
+boundary. C does not assert that product ownership must change, nor authorize W4.
+All entries below remain pending unless a subsequent verified status says otherwise.
+
+| Mode | Remaining families | Actual boundary consideration |
+| --- | --- | --- |
+| A: current migration mode | DictionaryBarSmoke | Same real catalog, toolbar host, group selection and request-count observation as W3.1. Real StartLookup/FinishLookup slots and event scheduling must remain; no lookup ownership migration. **W3.2 locked family**. |
+| B: finite test access | HelpMenuSmoke, ProductShellSmoke, ViewMenuSmoke | Need scoped dialog/URL/preferences callback substitution, layout/geometry observations or translation fixture ownership; do not force them into dictionary-scope access. |
+| B: finite test access | SearchMenuSmoke; WebEngineInteraction/ArticleSearchReload/WebEngineSmoke; ArticleContextMenu; DictionaryContextNavigation; SuggestionPaneSmoke | Real asynchronous page/lookup bindings, per-tab identity and scheduling must remain. More observations than W3.1; no new thread lifetime or query owner may be introduced. |
+| B: finite test access | DictionaryBrowserSmoke/DictionaryBrowserExportSmoke | Need bounded real browser/export completion and path-provider access; entire paired family must preserve asynchronous export and errors. |
+| C: startup/persistence boundary | HistoryMenuSmoke, FavoritesMenuSmoke, EditMenuSmoke, FileMenuSmoke, SystemPrint | Existing callback/provider substitutions and main-composition persistence/output/quit halves cannot be removed by merely moving a method. Preserve production defaults and design complete runner composition first. |
+| C: preferences/restart boundary | HistoryPreferencesSmoke, PreferencesCoordinatorPredecisionSmoke, FavoritesPreferencesSmoke, ArticlesPreferencesSmoke, DictionaryContextPreferencesSmoke, SynonymPreferencesSmoke, OptionalPartsPreferencesSmoke, ProxyPreferencesSmoke/ProxyPreferencesRestartSmoke, NetworkCachePreferencesSmoke/NetworkCachePreferencesRestartSmoke, HideSingleTabPreferencesSmoke/HideSingleTabRestartSmoke, EscapeHidesMainWindowPreferencesSmoke/EscapeHidesMainWindowRestartSmoke, ArticleClickPreferencesSmoke/ArticleClickRestartSmoke, MruTabOrderPreferencesSmoke/MruTabOrderRestartSmoke | Actual main.cpp apply/persistence callbacks and, where present, restart scripts/failure scheduling need a complete startup test boundary. No public contract or transaction change is authorized. |
+| C: persistence/restart boundary | ArticleTabsSmoke/ArticleTabSessionRestartSmoke; HistorySmoke/HistoryManagementSmoke/HistoryExportSmoke/HistoryImportSmoke; FavoritesSmoke/FavoritesCrossFolderMoveSmoke/FavoritesTransferSmoke; DictionaryGroupsSmoke; SourceDirectoriesSmoke; InspectorGeometrySmoke | Main-owned stored-state assertions, multi-process phases or real configuration coordinator wiring remain part of each family. |
+| C: prepared-resource observation | WidgetsFacadePreparationSmoke, DictionaryStatusPresentationSmoke | Private prepared-resource records, reclaimer and publication-stage/fault observations require a separately bounded test surface. W1/W2 behavior must not be redesigned. |
+| C: replacement facade and asynchronous orchestration | FullTextDialogSmoke | CapturingDesktopFacade and request/match-plan schedules plus main-owned persisted geometry checks exceed the dictionary-scope seam. No W4 ownership change is selected. |
+| C: main-only startup boundary | Scheme registration; installed help presentation; interface language; configuration reload coordinator; view restart; inspector restart half; article-session restart half | Preserve actual pre-QApplication/startup/installed-runtime/restart phases. They are not helper-only tests. |
+
+The locked W3.2 batch contains only DictionaryBarSmoke. Three is a ceiling, not a
+quota. No substitute family may be added silently. The initial implementation
+hold for no-argument startup was superseded by the clarification below. W3.1
+remains migrated and W3/A4 remains in progress.
+
+W3.2 isolation clarification: the earlier startup gate no longer blocks the locked
+family migration. Unsafe ordinary startup remains explicitly unverified; see
+w3-2-status.md. No substitute family is selected.
+
+## W3.2 current inventory delta
+
+DictionaryBarSmoke is the only additional migrated family. Together with W3.1
+FullTextDictionaryProjectionSmoke, two complete families now belong to test targets.
+There are 51 remaining MainWindow Run*Check definitions (the preceding 52-count
+paragraphs describe the preserved W3.1 snapshot). No other family was moved.
+A/B/C classification above remains the pending/limited-access/dependency register.
+Main-only startup/recovery families and legacy OFF test dependencies remain pending.
+The shared disabled-online/enabled-external source fixture in main.cpp remains for
+source directories, status, facade preparation, coordinator and full-text dialog.

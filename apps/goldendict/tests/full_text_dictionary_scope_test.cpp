@@ -19,27 +19,7 @@
 
 namespace core = goldendict::core;
 
-// Only the real scope operation, group selection and request-count observation
-// cross this source-private boundary. Scenario state belongs to the test below.
-class FullTextDictionaryScopeTestAccess {
-   public:
-    static core::FullTextQuery Compose(
-        const MainWindow& window,
-        const goldendict::app::FullTextQueryComposer& composer) {
-        return window.ComposeFullTextQuery(composer);
-    }
-
-    static void SelectGroup(MainWindow& window, std::uint32_t id,
-                            bool refresh = false) {
-        window.SelectGroup(id);
-        if (refresh)
-            window.RefreshDictionaryBar();
-    }
-
-    static std::size_t RequestCount(const MainWindow& window) {
-        return window.requests_.size();
-    }
-};
+#include "dictionary_scope_test_access.h"
 
 class FullTextDictionaryScopeTest : public QObject {
     Q_OBJECT
@@ -110,12 +90,12 @@ class FullTextDictionaryScopeTest : public QObject {
         goldendict::app::FullTextQueryComposer composer(
             configuration.preferences, &window);
         const auto request_count =
-            FullTextDictionaryScopeTestAccess::RequestCount(window);
-        FullTextDictionaryScopeTestAccess::SelectGroup(window, 0U, true);
+            DictionaryScopeTestAccess::RequestCount(window);
+        DictionaryScopeTestAccess::SelectGroup(window, 0U, true);
         bar->show();
         QApplication::processEvents();
         const auto all =
-            FullTextDictionaryScopeTestAccess::Compose(window, composer);
+            DictionaryScopeTestAccess::Compose(window, composer);
         QVERIFY(all.dictionary_filter_active);
         QVERIFY(all.dictionary_ids == supported);
 
@@ -129,7 +109,7 @@ class FullTextDictionaryScopeTest : public QObject {
         QVERIFY(supported_action);
         supported_action->trigger();
         const auto unchecked =
-            FullTextDictionaryScopeTestAccess::Compose(window, composer);
+            DictionaryScopeTestAccess::Compose(window, composer);
         QVERIFY(unchecked.dictionary_filter_active);
         QVERIFY(std::find(unchecked.dictionary_ids.begin(),
                           unchecked.dictionary_ids.end(),
@@ -137,7 +117,7 @@ class FullTextDictionaryScopeTest : public QObject {
         bar->hide();
         QApplication::processEvents();
         const auto hidden =
-            FullTextDictionaryScopeTestAccess::Compose(window, composer);
+            DictionaryScopeTestAccess::Compose(window, composer);
         QVERIFY(hidden.dictionary_ids == supported);
         window.SetDictionaryGroups(
             {{7U,
@@ -145,13 +125,13 @@ class FullTextDictionaryScopeTest : public QObject {
               "",
               {supported.front(), "unresolved.dictionary"},
               {supported.front()}}});
-        FullTextDictionaryScopeTestAccess::SelectGroup(window, 7U);
+        DictionaryScopeTestAccess::SelectGroup(window, 7U);
         const auto muted =
-            FullTextDictionaryScopeTestAccess::Compose(window, composer);
+            DictionaryScopeTestAccess::Compose(window, composer);
         QApplication::processEvents();
         QVERIFY(muted.dictionary_filter_active);
         QVERIFY(muted.dictionary_ids.empty());
-        QCOMPARE(FullTextDictionaryScopeTestAccess::RequestCount(window),
+        QCOMPARE(DictionaryScopeTestAccess::RequestCount(window),
                  request_count);
         QVERIFY(!composer.isVisible());
     }

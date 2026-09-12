@@ -47,6 +47,25 @@ targets not honoring that switch remain inventoried in
 [the W3 record](../openspec/changes/architecture-remediation-review/w3-inventory.md).
 Use separate build directories when comparing ON/OFF configurations.
 
+### Dictionary bar integration
+
+With `BUILD_TESTS=ON`, `goldendict_dictionary_bar_smoke` runs `dictionary_bar_test`
+with the real presentation/Core/Network implementation. The internal product
+`--dictionary-bar-smoke` entry is removed. The runner owns fresh configuration,
+index, cache and temporary paths and preserves the original enabled external
+program fixture (`goldendict --smoke`, a pre-initialization empty-success probe).
+Only the test target depends on the product executable for that fixture.
+
+The same cumulative `full_text_scope_isolation_test` guards both migrated runners
+and their narrow `dictionary_scope_test_access.h`. It exercises negative real
+source/interface-source/target-dependency/conditional-link membership for each.
+No new mutable-state access or historical exemption is added.
+
+```powershell
+.\run_with_conan.ps1 --build-type Release --with-build-environment -- cmake --build --preset conan-release --target goldendict dictionary_bar_test
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -R '^(goldendict_dictionary_bar_smoke|full_text_scope_isolation_test)$' --output-on-failure
+```
+
 ### Configuration file publication
 
 The [configuration publication correction](configuration-file-publication.md)
