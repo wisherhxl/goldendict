@@ -88,3 +88,7 @@ W1 code/test unit and does not migrate or remove user data.
 
 The separately approved W2 correction is recorded in [w2-design.md](w2-design.md).
 The W1 design above and its independent evidence are preserved.
+# W3.1 follow-on
+
+See w3-1-design.md for the approved first-family responsibility migration.
+Historical W1/W2 design sections retain their original scope and conclusions.

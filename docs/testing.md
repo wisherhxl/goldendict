@@ -24,6 +24,29 @@ Conan dependencies:
 python scripts/tests/run_with_conan_test.py
 ```
 
+### Full-text dictionary scope integration
+
+With `BUILD_TESTS=ON`, `full_text_dictionary_scope_test` owns the real MainWindow
+scope-composition scenarios. The retained CTest name
+`goldendict_full_text_dictionary_projection_smoke` runs this target; the internal
+product option `--full-text-dictionary-projection-smoke` has been removed.
+The runner owns temporary configuration, index, cache and environment paths.
+
+```powershell
+.\run_with_conan.ps1 --build-type Release --with-build-environment -- cmake --build --preset conan-release --target goldendict full_text_dictionary_scope_test
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -R '^(goldendict_full_text_dictionary_projection_smoke|full_text_scope_isolation_test)$' --output-on-failure
+```
+
+The application-specific CMake target-closure guard runs at configure time in both
+test configurations. `full_text_scope_isolation_test` checks a clean target plus
+rejected transitive source, interface-source, dependency and conditional-link
+membership. It does not infer semantic test ownership from arbitrary renamed code;
+that remains a review responsibility. No exceptions are added for legacy families.
+The runner and guard probe are absent with `BUILD_TESTS=OFF`; historical app-test
+targets not honoring that switch remain inventoried in
+[the W3 record](../openspec/changes/architecture-remediation-review/w3-inventory.md).
+Use separate build directories when comparing ON/OFF configurations.
+
 ### Configuration file publication
 
 The [configuration publication correction](configuration-file-publication.md)

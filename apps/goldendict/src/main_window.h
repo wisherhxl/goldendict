@@ -169,6 +169,7 @@ class MainWindow final : public QMainWindow {
     Q_OBJECT
     friend class DictdInlineDisplayTest;
     friend class ArticlePageLifecycleTest;
+    friend class FullTextDictionaryScopeTestAccess;
     friend class PreparedWidgetsFacadeCandidate;
     friend class WidgetsFacadeActivationRelay;
     friend class MaintainedWidgetsCommit;
@@ -313,8 +314,6 @@ class MainWindow final : public QMainWindow {
     void RunDictionaryStatusPresentationSmokeCheck(
         std::function<void(bool)> completion);
     void RunWidgetsFacadePreparationSmokeCheck(
-        std::function<void(bool)> completion);
-    void RunFullTextDictionaryProjectionSmokeCheck(
         std::function<void(bool)> completion);
     void RunFullTextDialogSmokeCheck(std::function<void(bool)> completion);
     void RunProductShellSmokeCheck(std::function<void(bool)> completion);

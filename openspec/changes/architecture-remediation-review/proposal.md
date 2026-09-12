@@ -36,3 +36,9 @@ Fully construct Core/Network publication objects before the durable decision,
 preserving private ownership, publication order, failure/recovery semantics and
 W1 implementation. See w2-design.md. Prior W1 text and evidence remain historical;
 A2/A3/A4/A6 are not selected. No merge, push or automatic W3 execution.
+
+## W3.1 follow-on selection
+
+The user accepted W2 and approved a complete current inventory plus one bounded
+test-family migration. See w3-1-design.md. Only the full-text dictionary projection
+family is selected; W3/A4 remains in progress and W4/W5/W6 remain unselected.

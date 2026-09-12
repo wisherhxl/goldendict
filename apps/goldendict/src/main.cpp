@@ -70,7 +70,6 @@ bool IsSmokeInvocation(const QStringList& arguments) {
         QStringLiteral("--favorites-transfer-smoke"),
         QStringLiteral("--file-menu-smoke"),
         QStringLiteral("--full-text-dialog-smoke"),
-        QStringLiteral("--full-text-dictionary-projection-smoke"),
         QStringLiteral("--help-menu-smoke"),
         QStringLiteral("--help-presentation-smoke"),
         QStringLiteral("--hide-single-tab-preferences-smoke"),
@@ -756,9 +755,6 @@ int main(int argc, char* argv[]) {
          HasArgument(
              argc, argv,
              QStringLiteral("--configuration-reload-coordinator-smoke")) ||
-         HasArgument(
-             argc, argv,
-             QStringLiteral("--full-text-dictionary-projection-smoke")) ||
          HasArgument(argc, argv, QStringLiteral("--full-text-dialog-smoke")))) {
         configuration.mediawiki_sources = {
             {"smoke.wiki", "Smoke Wiki", false, "https://wiki.example.test/w"}};
@@ -2426,13 +2422,6 @@ int main(int argc, char* argv[]) {
                 }
                 app.exit(passed ? 0 : 1);
             });
-    } else if (HasArgument(
-                   argc, argv,
-                   QStringLiteral("--full-text-dictionary-projection-smoke"))) {
-        QTimer::singleShot(0, &window, [&window, &app]() {
-            window.RunFullTextDictionaryProjectionSmokeCheck(
-                [&app](bool passed) { app.exit(passed ? 0 : 1); });
-        });
     } else if (HasArgument(argc, argv,
                            QStringLiteral("--full-text-dialog-smoke"))) {
         QTimer::singleShot(0, &window, [&window, &app, &configuration_path]() {

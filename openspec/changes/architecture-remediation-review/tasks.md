@@ -20,3 +20,10 @@
 - [x] 4.3 Preconstruct published objects and eliminate other necessary allocation paths in the constrained Network/Core publication call chain.
 - [x] 4.4 Verify success, Core/Network allocation failures, partial unwind/abandon, bounded publication, sequential ownership/leases and recovery; rerun W1.
 - [x] 4.5 Record final W2 commands, identities, coverage limits and native OpenSpec validation separately from W1.
+## 5. W3.1 / A4 first family
+
+- [x] 5.1 Verify W2 thread/completion/non-reentry evidence and build/run the old selected family.
+- [x] 5.2 Inventory all current MainWindow/main/CMake/CTest/script test responsibilities; select and map one complete family.
+- [x] 5.3 Move full-text dictionary projection scenarios and assertions into a test-owned runner; remove all corresponding production entry points.
+- [x] 5.4 Verify separate BUILD_TESTS ON/OFF builds, ordinary isolated startup and effective negative target-closure checks.
+- [x] 5.5 Run mapped behavior and W1/W2 regressions, record final candidate/evidence and unverified limits. W3 remains in progress.

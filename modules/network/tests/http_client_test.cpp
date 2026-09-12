@@ -7,6 +7,8 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTemporaryDir>
+#include <QThread>
+#include <QTimer>
 
 #include <chrono>
 #include <future>
@@ -242,6 +244,7 @@ class HttpClientTest : public QObject {
     void PreparesMoveOnlyCandidatesOnOwnerThreadWithoutActiveMutation();
     void PublishesPreparedCandidatesAndOrdersPostWork();
     void ReservesPreparedPublicationBeforeDecision();
+    void SplitPublicationPreservesThreadCompletionAndNonReentry();
     void KeepsOwnerEventLoopResponsiveAtReadyBarrier();
     void RunsDispatcherTimerOnlyForPreparedCandidates();
     void RejectsUnreadyAndSupportsOwnerThreadCommit();
@@ -551,6 +554,59 @@ void HttpClientTest::ReservesPreparedPublicationBeforeDecision() {
              NetworkRuntime::CommitResult::kPublished);
     QVERIFY(!published);
     QVERIFY(!QDir(split_owned).exists());
+}
+
+void HttpClientTest::SplitPublicationPreservesThreadCompletionAndNonReentry() {
+    QTemporaryDir root;
+    QVERIFY(root.isValid());
+    auto runtime = NetworkRuntime::Create(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+    QThread* owner_thread = nullptr;
+    auto probe = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({8U, false}, root.path().toStdString()));
+    NetworkRuntimeTestAccess::ObservePublication(
+        probe, [&]() { owner_thread = QThread::currentThread(); });
+    QCOMPARE(NetworkRuntimeTestAccess::CommitOnOwnerThread(*runtime, probe),
+             NetworkRuntime::CommitResult::kPublished);
+    QVERIFY(owner_thread != nullptr &&
+            owner_thread != QThread::currentThread());
+
+    QFile sentinel(QString::fromStdString(runtime->cache_directory()) +
+                   "/split-sentinel");
+    QVERIFY(sentinel.open(QIODevice::WriteOnly));
+    QCOMPARE(sentinel.write("cache"), qint64(5));
+    sentinel.close();
+    auto candidate = runtime->PrepareCandidate(
+        NetworkRuntime::Prepare({0U, false}, root.path().toStdString()));
+    QVERIFY(candidate);
+    QThread* publication_thread = nullptr;
+    int notifications = 0;
+    bool observer_finished = false;
+    NetworkRuntimeTestAccess::ObservePublication(candidate, [&]() {
+        publication_thread = QThread::currentThread();
+        ++notifications;
+        observer_finished = true;
+    });
+    auto reserved = runtime->Reserve(candidate);
+    QVERIFY(reserved);
+    bool reentered = false;
+    QObject event_scope;
+    QTimer::singleShot(0, &event_scope, [&]() { reentered = true; });
+    auto published = NetworkRuntimeTransaction::Publish(*runtime, reserved);
+    QVERIFY(published);
+    QCOMPARE(publication_thread, owner_thread);
+    QCOMPARE(notifications, 1);
+    QVERIFY(observer_finished);
+    QVERIFY(!reentered);
+    QVERIFY(sentinel.exists());
+    QCOMPARE(runtime->maximum_cache_bytes(), 0);
+    QCOMPARE(NetworkRuntimeTransaction::Finish(*runtime, published),
+             NetworkRuntime::CommitResult::kPublished);
+    QVERIFY(!sentinel.exists());
+    QCOMPARE(notifications, 1);
+    QVERIFY(!reentered);
+    QCoreApplication::processEvents();
+    QVERIFY(reentered);
 }
 
 void HttpClientTest::KeepsOwnerEventLoopResponsiveAtReadyBarrier() {

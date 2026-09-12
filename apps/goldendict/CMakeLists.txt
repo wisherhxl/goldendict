@@ -388,14 +388,6 @@ add_test(NAME full_text_search_dialog_test
 set_tests_properties(full_text_search_dialog_test PROPERTIES
   ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen")
 
-add_test(NAME goldendict_full_text_dictionary_projection_smoke
-  COMMAND $<TARGET_FILE:goldendict> --full-text-dictionary-projection-smoke
-    --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
-set_tests_properties(goldendict_full_text_dictionary_projection_smoke PROPERTIES
-  ENVIRONMENT
-    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dictionary-projection-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dictionary-projection-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/full-text-dictionary-projection-test-home/cache"
-  TIMEOUT 20)
-
 add_test(NAME goldendict_full_text_dialog_smoke
   COMMAND $<TARGET_FILE:goldendict> --full-text-dialog-smoke
     --dictionary-root ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd)
@@ -836,3 +828,34 @@ add_test(NAME article_base_style_dark_test COMMAND article_base_style_test
   -o "${CMAKE_CURRENT_BINARY_DIR}/article-base-style-dark-test.txt,txt")
 set_tests_properties(article_base_style_dark_test PROPERTIES TIMEOUT 90
   ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu --blink-settings=preferredColorScheme=0;QT_SCALE_FACTOR=1;GOLDENDICT_BASE_STYLE_EXPECT_DARK=1")
+
+if(BUILD_TESTS)
+  ti_add_executable(full_text_dictionary_scope_test
+    tests/full_text_dictionary_scope_test.cpp ${dictd_presentation_sources})
+  set_target_properties(full_text_dictionary_scope_test PROPERTIES AUTOMOC ON AUTORCC ON)
+  target_include_directories(full_text_dictionary_scope_test PRIVATE src)
+  ti_target_include_modules_recurse(full_text_dictionary_scope_test goldendict_core goldendict_network)
+  ti_target_link_libraries(full_text_dictionary_scope_test
+    ${dictd_presentation_libraries} ${QT_NAMESPACE}::Test)
+  target_compile_definitions(full_text_dictionary_scope_test PRIVATE
+    GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}"
+    FULL_TEXT_SCOPE_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dictd")
+  add_test(NAME goldendict_full_text_dictionary_projection_smoke
+    COMMAND full_text_dictionary_scope_test
+      -o "${CMAKE_CURRENT_BINARY_DIR}/full-text-dictionary-scope-test.txt,txt")
+  set_tests_properties(goldendict_full_text_dictionary_projection_smoke PROPERTIES
+    TIMEOUT 20 ENVIRONMENT
+    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu")
+endif()
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/full_text_scope_isolation.cmake)
+cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}"
+  CALL gd_check_full_text_scope_isolation goldendict)
+if(BUILD_TESTS)
+  add_test(NAME full_text_scope_isolation_test COMMAND ${CMAKE_COMMAND}
+    -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/tests/full_text_scope_isolation
+    -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/full-text-scope-isolation-ninja
+    "-DGENERATOR=${CMAKE_GENERATOR}" "-DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}"
+    -DGUARD=${CMAKE_CURRENT_SOURCE_DIR}/full_text_scope_isolation.cmake
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/full_text_scope_isolation_test.cmake)
+endif()
