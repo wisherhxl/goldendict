@@ -781,6 +781,19 @@ set_target_properties(dictd_inline_display_test PROPERTIES AUTOMOC ON AUTORCC ON
 target_include_directories(dictd_inline_display_test PRIVATE src)
 ti_target_include_modules_recurse(dictd_inline_display_test goldendict_core goldendict_network)
 get_target_property(dictd_presentation_libraries goldendict LINK_LIBRARIES)
+ti_add_executable(article_page_lifecycle_test
+  tests/article_page_lifecycle_test.cpp ${dictd_presentation_sources})
+set_target_properties(article_page_lifecycle_test PROPERTIES AUTOMOC ON AUTORCC ON)
+target_include_directories(article_page_lifecycle_test PRIVATE src)
+ti_target_include_modules_recurse(article_page_lifecycle_test goldendict_core goldendict_network)
+ti_target_link_libraries(article_page_lifecycle_test
+  ${dictd_presentation_libraries} ${QT_NAMESPACE}::Test)
+target_compile_definitions(article_page_lifecycle_test PRIVATE
+  GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}")
+add_test(NAME article_page_lifecycle_test COMMAND article_page_lifecycle_test
+  -o "${CMAKE_CURRENT_BINARY_DIR}/article-page-lifecycle-test.txt,txt")
+set_tests_properties(article_page_lifecycle_test PROPERTIES TIMEOUT 120
+  ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu")
 ti_target_link_libraries(dictd_inline_display_test
   ${dictd_presentation_libraries} ${QT_NAMESPACE}::Test)
 target_compile_definitions(dictd_inline_display_test PRIVATE

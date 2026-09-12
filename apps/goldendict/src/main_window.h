@@ -168,6 +168,7 @@ struct BeginWidgetsMaintenanceResult final {
 class MainWindow final : public QMainWindow {
     Q_OBJECT
     friend class DictdInlineDisplayTest;
+    friend class ArticlePageLifecycleTest;
     friend class PreparedWidgetsFacadeCandidate;
     friend class WidgetsFacadeActivationRelay;
     friend class MaintainedWidgetsCommit;
@@ -442,6 +443,11 @@ class MainWindow final : public QMainWindow {
     void UpdateFileActions();
     void ShowTabContextMenu(const QPoint& position);
     ArticleView* CreateArticleView(goldendict::core::ArticleTabId tab_id);
+    ArticleView* CreateArticleView(
+        goldendict::core::ArticleTabId tab_id, QWidget* parent,
+        goldendict::core::DesktopFacade* facade,
+        const goldendict::core::ApplicationPreferences& preferences,
+        WidgetsFacadeActivationRelay* relay);
     void ReloadCurrentArticle();
     void StartPendingArticleReload(goldendict::core::ArticleTabId tab_id,
                                    ArticleView* view);

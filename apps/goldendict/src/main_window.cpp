@@ -381,151 +381,23 @@ class WidgetsFacadeActivationRelay final : public QObject {
         });
     }
 
-    void ArticleLoadStarted(goldendict::core::ArticleTabId tab_id,
-                            ArticleView* view) {
-        Deliver([&](MainWindow& owner) {
-            if (owner.ArticleViewForTab(tab_id) != view)
-                return;
-            owner.InvalidateArticleOutputOwnership(tab_id, view);
-            owner.InvalidateRenderedTextMatchPlan(tab_id);
-            ++owner.article_navigation_generations_[tab_id];
-            owner.rendered_page_text_transports_.erase(tab_id);
-        });
-    }
-
-    void PageLookup(goldendict::core::ArticleTabId tab_id,
-                    const QString& internal_url,
-                    ArticleLinkDisposition disposition) {
-        Deliver([&](MainWindow& owner) {
-            owner.OpenArticleLink(tab_id, QUrl(internal_url), disposition);
-        });
-    }
-
-    void InternalHelp(goldendict::core::ArticleTabId tab_id, const QUrl& url,
-                      ArticleLinkDisposition disposition) {
-        Deliver([&](MainWindow& owner) {
-            owner.OpenInternalHelpLink(tab_id, url, disposition);
-        });
-    }
-
-    void ArticleLink(goldendict::core::ArticleTabId tab_id, const QUrl& url,
-                     ArticleLinkDisposition disposition) {
-        Deliver([&](MainWindow& owner) {
-            if (disposition == ArticleLinkDisposition::kNewForegroundTab &&
-                owner.preferences_.open_new_tabs_in_background) {
-                disposition = ArticleLinkDisposition::kNewBackgroundTab;
-            }
-            owner.OpenArticleLink(tab_id, url, disposition);
-        });
-    }
-
-    void SelectionLookup(goldendict::core::ArticleTabId tab_id,
-                         const QString& text,
-                         ArticleLinkDisposition disposition) {
-        Deliver([&](MainWindow& owner) {
-            if (disposition == ArticleLinkDisposition::kNewForegroundTab &&
-                owner.preferences_.open_new_tabs_in_background) {
-                disposition = ArticleLinkDisposition::kNewBackgroundTab;
-            }
-            owner.LookupArticleSelection(tab_id, text, disposition);
-        });
-    }
-
-    void SelectionToInput(const QString& text) {
-        Deliver([&](MainWindow& owner) { owner.query_->setText(text); });
-    }
-
-    void ExternalUrl(const QUrl& url) {
-        Deliver([&](MainWindow&) { QDesktopServices::openUrl(url); });
-    }
-
-    void AudioResource(const QUrl& url) {
-        Deliver([&](MainWindow& owner) {
-            if (owner.facade_ == nullptr)
-                return;
-            if (owner.audio_playback_service_->Play(*owner.facade_, url) !=
-                AudioPlaybackService::Result::kStarted) {
-                owner.status_->setText(
-                    QStringLiteral("Unable to play article audio"));
-            }
-        });
-    }
-
-    void DictionaryResult(goldendict::core::ArticleTabId tab_id,
-                          ArticleView* view, const QString& dictionary_id,
-                          int first_result_index, quint64 generation) {
-        Deliver([&](MainWindow& owner) {
-            const auto found = owner.lookup_results_.find(tab_id);
-            if (found == owner.lookup_results_.end() ||
-                found->second.generation != generation ||
-                owner.ArticleViewForTab(tab_id) != view) {
-                return;
-            }
-            const auto row = std::find_if(
-                found->second.rows.begin(), found->second.rows.end(),
-                [&](const auto& item) {
-                    return item.dictionary_id == dictionary_id.toStdString() &&
-                           item.first_result_index == first_result_index;
-                });
-            if (row != found->second.rows.end())
-                owner.NavigateToArticleResult(view, first_result_index);
-        });
-    }
-
-    void DictionaryResultsPane(goldendict::core::ArticleTabId tab_id,
-                               ArticleView* view, quint64 generation) {
-        Deliver([&](MainWindow& owner) {
-            owner.ShowDictionaryResultsPane(tab_id, view, generation);
-        });
-    }
-
-    void NavigationChanged() {
-        Deliver([](MainWindow& owner) { owner.UpdateNavigationActions(); });
-    }
-
-    void ArticleLoadFinished(goldendict::core::ArticleTabId tab_id,
-                             ArticleView* view, bool success) {
-        Deliver([&](MainWindow& owner) {
-            owner.HandleArticleLoadFinished(tab_id, view, success);
-        });
-    }
-
-    void ArticleHtmlNavigationFinished(goldendict::core::ArticleTabId tab_id,
-                                       ArticleView* view,
-                                       quint64 navigation_token, bool success) {
-        Deliver([&](MainWindow& owner) {
-            owner.HandleArticleHtmlNavigationFinished(
-                tab_id, view, navigation_token, success);
-        });
-    }
-
-    void ArticlePageReplaced(goldendict::core::ArticleTabId tab_id,
-                             ArticleView* view) {
-        Deliver([&](MainWindow& owner) {
-            if (owner.ArticleViewForTab(tab_id) == view) {
-                owner.pending_article_scroll_restorations_.erase(tab_id);
-                owner.InvalidateArticleOutputOwnership(tab_id, view);
-            }
-        });
-    }
-
-    void PrintFinished(ArticleView* view, bool success) {
-        Deliver([&](MainWindow& owner) {
-            owner.FinishPrinterRender(view, success);
-        });
-    }
-
-    void FullTextNavigation(goldendict::core::ArticleTabId tab_id,
-                            ArticleHighlightNavigationDirection direction) {
-        Deliver([&](MainWindow& owner) {
-            owner.NavigateFullTextHighlight(tab_id, direction);
-        });
-    }
-
-    void ScrollChanged() {
-        Deliver([](MainWindow& owner) {
-            owner.AdvancePresentationMutationEpoch();
-        });
+    bool AllowsArticleEvent(MainWindow* owner) noexcept {
+        // A later preparation attempt does not retire this published page tree.
+        // Validate this relay's published version here; the shared binding also
+        // checks the authoritative tab/view identity, including background
+        // tabs.
+        const bool allowed =
+            IsEnabled() && owner == prepared_owner_ &&
+            published_owner_.load(std::memory_order_acquire) == owner &&
+            published_generation_.load(std::memory_order_acquire) ==
+                prepared_generation_ &&
+            published_epoch_.load(std::memory_order_acquire) ==
+                prepared_epoch_ &&
+            !owner->WidgetsInteractionBlocked() &&
+            !owner->facade_preparation_shutdown_;
+        if (!allowed)
+            Suppress();
+        return allowed;
     }
 
     void SuggestionFinished(goldendict::core::ArticleTabId tab_id,
@@ -8580,27 +8452,51 @@ ArticleView* MainWindow::ArticleViewForTab(
 
 ArticleView* MainWindow::CreateArticleView(
     goldendict::core::ArticleTabId tab_id) {
-    auto* view = new ArticleView(article_tabs_);
+    article_navigation_generations_.try_emplace(tab_id, 0U);
+    return CreateArticleView(tab_id, article_tabs_, facade_, preferences_,
+                             nullptr);
+}
+
+ArticleView* MainWindow::CreateArticleView(
+    goldendict::core::ArticleTabId tab_id, QWidget* parent,
+    goldendict::core::DesktopFacade* facade,
+    const goldendict::core::ApplicationPreferences& preferences,
+    WidgetsFacadeActivationRelay* relay) {
+    auto* view = new ArticleView(parent);
+    // Connections are prepared once. Hidden candidates cannot update published
+    // state; retired views cannot touch a successor with the same tab id.
+    auto bind = [this, tab_id, view, relay](auto* sender, auto signal,
+                                            auto handler) {
+        QObject* context =
+            relay != nullptr ? static_cast<QObject*>(relay) : this;
+        connect(
+            sender, signal, context,
+            [this, tab_id, view, relay, handler](auto&&... arguments) {
+                if ((relay != nullptr && !relay->AllowsArticleEvent(this)) ||
+                    ArticleViewForTab(tab_id) != view)
+                    return;
+                handler(std::forward<decltype(arguments)>(arguments)...);
+            });
+    };
     view->SetInspectorState(inspector_state_);
-    connect(view, &ArticleView::PageReplaced, this, [this, tab_id, view]() {
+    bind(view, &ArticleView::PageReplaced, [this, tab_id, view]() {
         if (ArticleViewForTab(tab_id) == view) {
             pending_article_scroll_restorations_.erase(tab_id);
             InvalidateArticleOutputOwnership(tab_id, view);
         }
     });
-    view->SetFacade(facade_);
-    view->SetClickPreferences(preferences_.double_click_translates,
-                              preferences_.select_word_by_single_click);
-    view->setZoomFactor(preferences_.zoom_factor);
+    view->SetFacade(facade);
+    view->SetClickPreferences(preferences.double_click_translates,
+                              preferences.select_word_by_single_click);
     view->setProperty("articleTabId", QVariant::fromValue<qulonglong>(tab_id));
     auto* page = new ArticlePage(view);
-    page->SetFacade(facade_);
-    page->SetOpenNewTabsInBackground(preferences_.open_new_tabs_in_background);
+    page->SetFacade(facade);
+    page->SetOpenNewTabsInBackground(preferences.open_new_tabs_in_background);
     view->setPage(page);
-    connect(page, &QWebEnginePage::scrollPositionChanged, this,
-            [this](const QPointF&) { AdvancePresentationMutationEpoch(); });
-    article_navigation_generations_.try_emplace(tab_id, 0U);
-    connect(view, &ArticleView::loadStarted, this, [this, tab_id, view]() {
+    view->setZoomFactor(preferences.zoom_factor);
+    bind(page, &QWebEnginePage::scrollPositionChanged,
+         [this](const QPointF&) { AdvancePresentationMutationEpoch(); });
+    bind(view, &ArticleView::loadStarted, [this, tab_id, view]() {
         if (ArticleViewForTab(tab_id) != view)
             return;
         InvalidateArticleOutputOwnership(tab_id, view);
@@ -8609,92 +8505,86 @@ ArticleView* MainWindow::CreateArticleView(
         ++article_navigation_generations_[tab_id];
         rendered_page_text_transports_.erase(tab_id);
     });
-    connect(page, &ArticlePage::LookupRequested, this,
-            [this, tab_id](const QString& text, const QString& internal_url,
-                           ArticleLinkDisposition disposition) {
-                static_cast<void>(text);
-                OpenArticleLink(tab_id, QUrl(internal_url), disposition);
-            });
-    connect(page, &ArticlePage::InternalHelpRequested, this,
-            [this, tab_id](const QUrl& url,
-                           ArticleLinkDisposition disposition) {
-                OpenInternalHelpLink(tab_id, url, disposition);
-            });
-    connect(page, &ArticlePage::AudioResourceRequested, this,
-            [this](const QUrl& url) {
-                if (facade_ != nullptr &&
-                    audio_playback_service_->Play(*facade_, url) !=
-                        AudioPlaybackService::Result::kStarted) {
-                    status_->setText(
-                        QStringLiteral("Unable to play article audio"));
-                }
-            });
-    connect(page, &ArticlePage::ExternalUrlRequested, this,
-            [](const QUrl& url) { QDesktopServices::openUrl(url); });
-    connect(
-        view, &ArticleView::LinkRequested, this,
-        [this, tab_id](const QUrl& url, ArticleLinkDisposition disposition) {
-            if (disposition == ArticleLinkDisposition::kNewForegroundTab &&
-                preferences_.open_new_tabs_in_background) {
-                disposition = ArticleLinkDisposition::kNewBackgroundTab;
-            }
-            OpenArticleLink(tab_id, url, disposition);
-        });
-    connect(view, &ArticleView::SelectionLookupRequested, this,
-            [this, tab_id](const QString& text,
-                           ArticleLinkDisposition disposition) {
-                if (disposition == ArticleLinkDisposition::kNewForegroundTab &&
-                    preferences_.open_new_tabs_in_background) {
-                    disposition = ArticleLinkDisposition::kNewBackgroundTab;
-                }
-                LookupArticleSelection(tab_id, text, disposition);
-            });
-    connect(view, &ArticleView::SelectionToInputRequested, this,
-            [this](const QString& text) { query_->setText(text); });
-    connect(view, &ArticleView::ExternalUrlRequested, this,
-            [](const QUrl& url) { QDesktopServices::openUrl(url); });
-    connect(view, &ArticleView::DictionaryResultRequested, this,
-            [this, tab_id, view](const QString& dictionary_id,
-                                 int first_result_index, quint64 generation) {
-                const auto found = lookup_results_.find(tab_id);
-                if (found == lookup_results_.end() ||
-                    found->second.generation != generation ||
-                    ArticleViewForTab(tab_id) != view) {
-                    return;
-                }
-                const auto row = std::find_if(
-                    found->second.rows.begin(), found->second.rows.end(),
-                    [&](const auto& item) {
-                        return item.dictionary_id ==
-                                   dictionary_id.toStdString() &&
-                               item.first_result_index == first_result_index;
-                    });
-                if (row != found->second.rows.end())
-                    NavigateToArticleResult(view, first_result_index);
-            });
-    connect(view, &ArticleView::DictionaryResultsPaneRequested, this,
-            [this, tab_id, view](quint64 generation) {
-                ShowDictionaryResultsPane(tab_id, view, generation);
-            });
-    connect(view, &ArticleView::urlChanged, this,
-            &MainWindow::UpdateNavigationActions);
-    connect(view, &ArticleView::loadFinished, this,
-            [this, tab_id, view](bool success) {
-                HandleArticleLoadFinished(tab_id, view, success);
-                if (view == article_view_)
-                    RefreshPronounceAvailability();
-            });
-    connect(view, &ArticleView::HtmlNavigationFinished, this,
-            [this, tab_id, view](quint64 navigation_token, bool success) {
-                HandleArticleHtmlNavigationFinished(tab_id, view,
-                                                    navigation_token, success);
-            });
-    connect(view, &ArticleView::printFinished, this,
-            [this, view](bool success) { FinishPrinterRender(view, success); });
-    connect(view, &ArticleView::FullTextNavigationRequested, this,
-            [this, tab_id](ArticleHighlightNavigationDirection direction) {
-                NavigateFullTextHighlight(tab_id, direction);
-            });
+    bind(page, &ArticlePage::LookupRequested,
+         [this, tab_id](const QString& text, const QString& internal_url,
+                        ArticleLinkDisposition disposition) {
+             static_cast<void>(text);
+             OpenArticleLink(tab_id, QUrl(internal_url), disposition);
+         });
+    bind(page, &ArticlePage::InternalHelpRequested,
+         [this, tab_id](const QUrl& url, ArticleLinkDisposition disposition) {
+             OpenInternalHelpLink(tab_id, url, disposition);
+         });
+    bind(page, &ArticlePage::AudioResourceRequested, [this](const QUrl& url) {
+        if (facade_ != nullptr &&
+            audio_playback_service_->Play(*facade_, url) !=
+                AudioPlaybackService::Result::kStarted) {
+            status_->setText(QStringLiteral("Unable to play article audio"));
+        }
+    });
+    bind(page, &ArticlePage::ExternalUrlRequested,
+         [](const QUrl& url) { QDesktopServices::openUrl(url); });
+    bind(view, &ArticleView::LinkRequested,
+         [this, tab_id](const QUrl& url, ArticleLinkDisposition disposition) {
+             if (disposition == ArticleLinkDisposition::kNewForegroundTab &&
+                 preferences_.open_new_tabs_in_background) {
+                 disposition = ArticleLinkDisposition::kNewBackgroundTab;
+             }
+             OpenArticleLink(tab_id, url, disposition);
+         });
+    bind(view, &ArticleView::SelectionLookupRequested,
+         [this, tab_id](const QString& text,
+                        ArticleLinkDisposition disposition) {
+             if (disposition == ArticleLinkDisposition::kNewForegroundTab &&
+                 preferences_.open_new_tabs_in_background) {
+                 disposition = ArticleLinkDisposition::kNewBackgroundTab;
+             }
+             LookupArticleSelection(tab_id, text, disposition);
+         });
+    bind(view, &ArticleView::SelectionToInputRequested,
+         [this](const QString& text) { query_->setText(text); });
+    bind(view, &ArticleView::ExternalUrlRequested,
+         [](const QUrl& url) { QDesktopServices::openUrl(url); });
+    bind(view, &ArticleView::DictionaryResultRequested,
+         [this, tab_id, view](const QString& dictionary_id,
+                              int first_result_index, quint64 generation) {
+             const auto found = lookup_results_.find(tab_id);
+             if (found == lookup_results_.end() ||
+                 found->second.generation != generation ||
+                 ArticleViewForTab(tab_id) != view) {
+                 return;
+             }
+             const auto row = std::find_if(
+                 found->second.rows.begin(), found->second.rows.end(),
+                 [&](const auto& item) {
+                     return item.dictionary_id == dictionary_id.toStdString() &&
+                            item.first_result_index == first_result_index;
+                 });
+             if (row != found->second.rows.end())
+                 NavigateToArticleResult(view, first_result_index);
+         });
+    bind(view, &ArticleView::DictionaryResultsPaneRequested,
+         [this, tab_id, view](quint64 generation) {
+             ShowDictionaryResultsPane(tab_id, view, generation);
+         });
+    bind(view, &ArticleView::urlChanged,
+         [this](const QUrl&) { UpdateNavigationActions(); });
+    bind(view, &ArticleView::loadFinished, [this, tab_id, view](bool success) {
+        HandleArticleLoadFinished(tab_id, view, success);
+        if (view == article_view_)
+            RefreshPronounceAvailability();
+    });
+    bind(view, &ArticleView::HtmlNavigationFinished,
+         [this, tab_id, view](quint64 navigation_token, bool success) {
+             HandleArticleHtmlNavigationFinished(tab_id, view, navigation_token,
+                                                 success);
+         });
+    bind(view, &ArticleView::printFinished,
+         [this, view](bool success) { FinishPrinterRender(view, success); });
+    bind(view, &ArticleView::FullTextNavigationRequested,
+         [this, tab_id](ArticleHighlightNavigationDirection direction) {
+             NavigateFullTextHighlight(tab_id, direction);
+         });
     return view;
 }
 
@@ -8744,7 +8634,7 @@ void MainWindow::HandleArticleLoadFinished(
             reload->second.in_flight_generation.has_value() &&
             reload->second.load_started && !view->page()->isLoading();
         if (reload->second.view != view || ArticleViewForTab(tab_id) != view) {
-            article_reload_states_.erase(reload);
+            return;
         } else if (current_load_finished) {
             const std::uint64_t completed_generation =
                 *reload->second.in_flight_generation;
@@ -9049,6 +8939,14 @@ void MainWindow::SyncArticleTabs() {
                 static_cast<int>(desired), view,
                 QString::fromStdString(tab.navigation.title));
             created = true;
+        }
+        // A replacement tree keeps tab ids, but never inherits a retired
+        // page's in-flight reload. This runs in normal synchronization or
+        // post-publication maintenance, not while a candidate is hidden.
+        const auto reload = article_reload_states_.find(tab.id);
+        if (reload != article_reload_states_.end() &&
+            reload->second.view != view) {
+            article_reload_states_.erase(reload);
         }
         const int current = article_tabs_->indexOf(view);
         if (current != static_cast<int>(desired)) {
@@ -12455,96 +12353,9 @@ PreparedWidgetsFacadeCandidate MainWindow::PrepareFacadeCandidate(
         relay->MarkConnected(WidgetsFacadeActivationRelay::kArticleTabs);
         int active_index = -1;
         for (const auto& tab : resources->tabs.tabs) {
-            auto* view = new ArticleView(staged_tabs);
-            view->SetInspectorState(inspector_state_);
-            connect(view, &ArticleView::PageReplaced, relay,
-                    [relay, tab_id = tab.id, view]() {
-                        relay->ArticlePageReplaced(tab_id, view);
-                    });
-            view->SetFacade(resources->facade.get());
-            view->SetClickPreferences(preferences.double_click_translates,
-                                      preferences.select_word_by_single_click);
-            view->setProperty("articleTabId",
-                              QVariant::fromValue<qulonglong>(tab.id));
-            auto* page = new ArticlePage(view);
-            page->SetFacade(resources->facade.get());
-            page->SetOpenNewTabsInBackground(
-                preferences.open_new_tabs_in_background);
-            view->setPage(page);
-            connect(page, &QWebEnginePage::scrollPositionChanged, relay,
-                    [relay](const QPointF&) { relay->ScrollChanged(); });
-            connect(view, &ArticleView::loadStarted, relay,
-                    [relay, tab_id = tab.id, view]() {
-                        relay->ArticleLoadStarted(tab_id, view);
-                    });
-            connect(page, &ArticlePage::LookupRequested, relay,
-                    [relay, tab_id = tab.id](
-                        const QString&, const QString& internal_url,
-                        ArticleLinkDisposition disposition) {
-                        relay->PageLookup(tab_id, internal_url, disposition);
-                    });
-            connect(page, &ArticlePage::InternalHelpRequested, relay,
-                    [relay, tab_id = tab.id](
-                        const QUrl& url,
-                        ArticleLinkDisposition disposition) {
-                        relay->InternalHelp(tab_id, url, disposition);
-                    });
-            connect(page, &ArticlePage::AudioResourceRequested, relay,
-                    [relay](const QUrl& url) { relay->AudioResource(url); });
-            connect(page, &ArticlePage::ExternalUrlRequested, relay,
-                    [relay](const QUrl& url) { relay->ExternalUrl(url); });
-            connect(view, &ArticleView::LinkRequested, relay,
-                    [relay, tab_id = tab.id](
-                        const QUrl& url, ArticleLinkDisposition disposition) {
-                        relay->ArticleLink(tab_id, url, disposition);
-                    });
-            connect(
-                view, &ArticleView::SelectionLookupRequested, relay,
-                [relay, tab_id = tab.id](const QString& text,
-                                         ArticleLinkDisposition disposition) {
-                    relay->SelectionLookup(tab_id, text, disposition);
-                });
-            connect(view, &ArticleView::SelectionToInputRequested, relay,
-                    [relay](const QString& text) {
-                        relay->SelectionToInput(text);
-                    });
-            connect(view, &ArticleView::ExternalUrlRequested, relay,
-                    [relay](const QUrl& url) { relay->ExternalUrl(url); });
-            connect(view, &ArticleView::DictionaryResultRequested, relay,
-                    [relay, tab_id = tab.id, view](
-                        const QString& dictionary_id, int first_result_index,
-                        quint64 presentation_generation) {
-                        relay->DictionaryResult(tab_id, view, dictionary_id,
-                                                first_result_index,
-                                                presentation_generation);
-                    });
-            connect(view, &ArticleView::DictionaryResultsPaneRequested, relay,
-                    [relay, tab_id = tab.id,
-                     view](quint64 presentation_generation) {
-                        relay->DictionaryResultsPane(tab_id, view,
-                                                     presentation_generation);
-                    });
-            connect(view, &ArticleView::urlChanged, relay,
-                    [relay](const QUrl&) { relay->NavigationChanged(); });
-            connect(view, &ArticleView::loadFinished, relay,
-                    [relay, tab_id = tab.id, view](bool success) {
-                        relay->ArticleLoadFinished(tab_id, view, success);
-                    });
-            connect(view, &ArticleView::HtmlNavigationFinished, relay,
-                    [relay, tab_id = tab.id, view](quint64 navigation_token,
-                                                   bool success) {
-                        relay->ArticleHtmlNavigationFinished(
-                            tab_id, view, navigation_token, success);
-                    });
-            connect(view, &ArticleView::printFinished, relay,
-                    [relay, view](bool success) {
-                        relay->PrintFinished(view, success);
-                    });
-            connect(view, &ArticleView::FullTextNavigationRequested, relay,
-                    [relay, tab_id = tab.id](
-                        ArticleHighlightNavigationDirection direction) {
-                        relay->FullTextNavigation(tab_id, direction);
-                    });
+            auto* view = CreateArticleView(tab.id, staged_tabs,
+                                           resources->facade.get(), preferences,
+                                           relay);
             const QString title = QString::fromStdString(
                 tab.navigation.title.empty() ? tab.navigation.query
                                              : tab.navigation.title);
