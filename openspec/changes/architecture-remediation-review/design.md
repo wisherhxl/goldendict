@@ -83,3 +83,8 @@ Baseline → test-only instrumentation and red → common wiring correction → 
 green assertions and regression matrix → final self-check and independent exact
 candidate review. Do not advance W2. No merge/push. Rollback is limited to the
 W1 code/test unit and does not migrate or remove user data.
+
+## W2 selected follow-on
+
+The separately approved W2 correction is recorded in [w2-design.md](w2-design.md).
+The W1 design above and its independent evidence are preserved.

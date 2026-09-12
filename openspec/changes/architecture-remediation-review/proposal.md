@@ -28,3 +28,11 @@ None. No baseline or accepted design is replaced.
 MainWindow article initialization/binding code, one test-only target and W1
 OpenSpec records. The user selects the existing Qt6 worktree at 3f3f2bf4 and
 prohibits automatic merge/push. Preserve the original draft-plan.md unchanged.
+
+## W2 follow-on selection (2026-09-12)
+
+The user accepted W1 and approved W2/A5 only from candidate 693c3e8ccb65a99fea8754476341690178f93fa2.
+Fully construct Core/Network publication objects before the durable decision,
+preserving private ownership, publication order, failure/recovery semantics and
+W1 implementation. See w2-design.md. Prior W1 text and evidence remain historical;
+A2/A3/A4/A6 are not selected. No merge, push or automatic W3 execution.

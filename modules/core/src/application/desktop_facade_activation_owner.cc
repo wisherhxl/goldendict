@@ -7,10 +7,24 @@
 #include <cstdint>
 #include <exception>
 #include <mutex>
+#include <new>
 #include <optional>
+#include <type_traits>
 #include <utility>
 
 namespace goldendict::core::application {
+
+namespace {
+thread_local CoreFacadeActivationTestAccess::StorageObserver storage_observer =
+    nullptr;
+thread_local void* storage_observer_context = nullptr;
+
+bool ObserveStorage(
+    CoreFacadeActivationTestAccess::StorageEvent event) noexcept {
+    return storage_observer &&
+           storage_observer(storage_observer_context, event);
+}
+}  // namespace
 
 class DesktopFacadeActivationOwner::Impl final {
    public:
@@ -33,6 +47,7 @@ class PreparedCoreFacadeCandidate::Impl final {
     std::uint64_t generation = 0U;
     std::shared_ptr<DesktopFacade> facade;
     ServiceStateActivationHandle activation;
+    std::unique_ptr<PublishedCoreFacadeCandidate::Impl> publication;
     bool ready = false;
     bool consumed = false;
     CoreFacadeActivationTestAccess::Observer observer = nullptr;
@@ -41,6 +56,27 @@ class PreparedCoreFacadeCandidate::Impl final {
 
 class PublishedCoreFacadeCandidate::Impl final {
    public:
+    static void* operator new(std::size_t size) {
+        if (ObserveStorage(
+                CoreFacadeActivationTestAccess::StorageEvent::kAllocate))
+            throw std::bad_alloc();
+        return ::operator new(size);
+    }
+
+    static void operator delete(void* storage) noexcept {
+        ObserveStorage(
+            CoreFacadeActivationTestAccess::StorageEvent::kDeallocate);
+        ::operator delete(storage);
+    }
+
+    Impl() noexcept {
+        ObserveStorage(
+            CoreFacadeActivationTestAccess::StorageEvent::kConstruct);
+    }
+
+    ~Impl() {
+        ObserveStorage(CoreFacadeActivationTestAccess::StorageEvent::kDestroy);
+    }
     std::shared_ptr<DesktopFacadeActivationOwner::Impl> owner;
     std::optional<DesktopFacadeActivationOwner::Impl::PublishedComposition> old;
     CoreFacadeActivationTestAccess::Observer observer = nullptr;
@@ -162,6 +198,8 @@ PreparedCoreFacadeCandidate DesktopFacadeActivationOwner::PrepareCandidate(
     auto composition = CreateDesktopFacadeActivationCandidate(
         configuration, std::move(runtime_sources));
     auto candidate = std::make_unique<PreparedCoreFacadeCandidate::Impl>();
+    candidate->publication =
+        std::make_unique<PublishedCoreFacadeCandidate::Impl>();
     candidate->owner = impl_;
     candidate->generation = generation;
     candidate->facade = std::move(composition.facade);
@@ -232,8 +270,11 @@ PublishedCoreFacadeCandidate DesktopFacadeActivationOwner::PublishReservedOnly(
     if (candidate_owner != impl_)
         std::terminate();
 
-    auto published = std::make_unique<PublishedCoreFacadeCandidate::Impl>();
+    auto published = std::move(reserved.impl_->publication);
+    if (!published)
+        std::terminate();
     published->owner = impl_;
+    static_assert(std::is_nothrow_move_constructible_v<Impl::PublishedComposition>);
     {
         std::lock_guard lock(impl_->mutex);
         if (impl_->state != Impl::State::kHandoffReserved ||
@@ -331,6 +372,12 @@ void CoreFacadeActivationTestAccess::Observe(
         return;
     candidate.impl_->observer = observer;
     candidate.impl_->observer_context = context;
+}
+
+void CoreFacadeActivationTestAccess::ObservePublicationStorage(
+    StorageObserver observer, void* context) noexcept {
+    storage_observer = observer;
+    storage_observer_context = context;
 }
 
 std::shared_ptr<DesktopFacade> CoreFacadeActivationTestAccess::Facade(

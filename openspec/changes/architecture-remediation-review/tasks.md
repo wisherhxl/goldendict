@@ -12,3 +12,11 @@
 
 - [x] 3.1 Map Preferences/source/group production callers to the exercised preparation path and run applicable real-caller, search/F3, scroll/zoom/click checks.
 - [x] 3.2 Record final source/binary identities, commands/results and unverified matters; validate OpenSpec and diff consistency. A2–A6 remain unselected.
+
+## 4. W2 / A5 (approved follow-on; W1 history above is unchanged)
+
+- [x] 4.1 Verify W1 identity and rules, build real module/test baseline and document actual decision/ownership/call chain.
+- [x] 4.2 Add test-owned allocation observation/failure scenarios through the real coordinator; retain per-module valid red evidence.
+- [x] 4.3 Preconstruct published objects and eliminate other necessary allocation paths in the constrained Network/Core publication call chain.
+- [x] 4.4 Verify success, Core/Network allocation failures, partial unwind/abandon, bounded publication, sequential ownership/leases and recovery; rerun W1.
+- [x] 4.5 Record final W2 commands, identities, coverage limits and native OpenSpec validation separately from W1.

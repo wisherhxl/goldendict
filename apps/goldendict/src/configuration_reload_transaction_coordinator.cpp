@@ -88,6 +88,8 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
         return result;
     }
     const auto transaction_id = persistence.prepared->record().transaction_id;
+    const core::ConfigurationRecoveryRequest recovery{
+        request.persistence.configuration_path, transaction_id};
 
     if (Inject(dependencies, ConfigurationReloadBoundary::kNetworkPrepare))
         return result;
@@ -180,14 +182,12 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
             std::move(widgets_begin.maintained));
         core_reservation.Abort();
         network_runtime_->Abort(network_reservation);
-        result.error = persisted.error;
+        result.error = std::move(persisted.error);
         return result;
     }
 
-    const core::ConfigurationRecoveryRequest recovery{
-        request.persistence.configuration_path, transaction_id};
     result.outcome = ConfigurationReloadOutcome::kPublishedWithForwardFailure;
-    result.error = persisted.error;
+    result.error = std::move(persisted.error);
     result.durable_phase = persisted.confirmed_durable_phase;
 
     const bool applying_injected = Inject(
@@ -198,7 +198,7 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
     if (applying.outcome != core::RuntimeTransitionOutcome::kApplied ||
         applying.confirmed_durable_phase !=
             core::PendingTransactionPhase::kDesiredRuntimeApplying) {
-        result.error = applying.error;
+        result.error = std::move(applying.error);
         FailStop(dependencies);
         return result;
     }
@@ -213,7 +213,7 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
             recovery, destination, core::PendingFailureCategory::kInvariant,
             identifier, dependencies.persistence);
         if (failure.error)
-            result.error = failure.error;
+            result.error = std::move(failure.error);
         else
             result.error = BoundaryError(boundary, identifier);
         result.durable_phase = failure.confirmed_durable_phase;
@@ -295,7 +295,7 @@ ConfigurationReloadResult ConfigurationReloadTransactionCoordinator::Execute(
         return result;
     auto finalized = core::FinishDesiredConfigurationTransaction(
         recovery, request.persistence.history_path, dependencies.persistence);
-    result.error = finalized.error;
+    result.error = std::move(finalized.error);
     result.durable_phase = finalized.confirmed_durable_phase;
     if (finalized.outcome != core::RuntimeTransitionOutcome::kApplied)
         return result;

@@ -138,6 +138,7 @@ class GOLDENDICT_EXPORTS PublishedCoreFacadeCandidate final {
     explicit PublishedCoreFacadeCandidate(std::unique_ptr<Impl> impl) noexcept;
     std::unique_ptr<Impl> impl_;
     friend class DesktopFacadeActivationOwner;
+    friend class PreparedCoreFacadeCandidate;
 };
 
 class GOLDENDICT_EXPORTS DesktopFacadeActivationOwner final {

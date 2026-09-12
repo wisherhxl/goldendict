@@ -13,6 +13,10 @@ namespace goldendict::network {
 
 class NetworkRuntimeTestAccess final {
    public:
+    enum class StorageEvent { kAllocate, kConstruct, kDestroy, kDeallocate };
+    using StorageObserver = bool (*)(void*, StorageEvent) noexcept;
+    static void ObservePublicationStorage(StorageObserver observer,
+                                          void* context) noexcept;
     static bool IsCurrent(const NetworkRuntime& runtime,
                           const NetworkRuntime::PreparedCandidate& candidate);
     static bool Consume(NetworkRuntime& runtime,

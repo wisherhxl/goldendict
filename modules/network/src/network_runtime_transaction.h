@@ -25,6 +25,7 @@ class NetworkRuntimeTransaction final {
         explicit Published(std::unique_ptr<Impl> impl) noexcept;
         std::unique_ptr<Impl> impl_;
         friend class NetworkRuntimeTransaction;
+        friend class NetworkRuntime;
     };
 
     static Published Publish(

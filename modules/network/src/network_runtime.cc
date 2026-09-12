@@ -19,7 +19,9 @@
 #include <condition_variable>
 #include <limits>
 #include <mutex>
+#include <new>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -27,6 +29,15 @@ namespace goldendict::network {
 namespace {
 
 constexpr std::int64_t kBytesPerMebibyte = 1024LL * 1024LL;
+
+thread_local NetworkRuntimeTestAccess::StorageObserver storage_observer =
+    nullptr;
+thread_local void* storage_observer_context = nullptr;
+
+bool ObserveStorage(NetworkRuntimeTestAccess::StorageEvent event) noexcept {
+    return storage_observer &&
+           storage_observer(storage_observer_context, event);
+}
 
 std::uint64_t NextRuntimeIdentity() noexcept {
     static std::atomic<std::uint64_t> next{1U};
@@ -134,6 +145,8 @@ struct CandidateResource final {
         kPreparing,
         kReady,
         kCommitRequested,
+        kPublishRequested,
+        kFinishRequested,
         kAbortRequested,
         kPublished,
         kPostWorkComplete,
@@ -157,6 +170,7 @@ struct CandidateResource final {
     std::function<void(bool)> destruction_observer;
     bool force_post_work_failure = false;
     bool expiry_deferred = false;
+    bool publication_complete = false;
 };
 
 class CandidateDispatcher final {
@@ -233,9 +247,15 @@ class CandidateDispatcher final {
             std::lock_guard<std::mutex> lock(resource->mutex);
             if (resource->state != CandidateResource::State::kReady)
                 std::terminate();
-            resource->state = CandidateResource::State::kCommitRequested;
+            resource->state = CandidateResource::State::kPublishRequested;
         }
-        InvokeOnOwner(resource, false);
+        if (QThread::currentThread() == thread_) {
+            ProcessOne(resource);
+        } else {
+            std::unique_lock<std::mutex> lock(resource->mutex);
+            resource->changed.wait(
+                lock, [&resource]() { return resource->publication_complete; });
+        }
         std::lock_guard<std::mutex> lock(resource->mutex);
         if (resource->state != CandidateResource::State::kPublished)
             std::terminate();
@@ -243,7 +263,21 @@ class CandidateDispatcher final {
 
     NetworkRuntime::CommitResult FinishPublished(
         const std::shared_ptr<CandidateResource>& resource) noexcept {
-        InvokeOnOwner(resource, true);
+        {
+            std::lock_guard<std::mutex> lock(resource->mutex);
+            if (resource->state != CandidateResource::State::kPublished ||
+                !resource->publication_complete)
+                std::terminate();
+            resource->state = CandidateResource::State::kFinishRequested;
+        }
+        if (QThread::currentThread() == thread_) {
+            ProcessOne(resource);
+        } else {
+            std::unique_lock<std::mutex> lock(resource->mutex);
+            resource->changed.wait(lock, [&resource]() {
+                return resource->state == CandidateResource::State::kTerminal;
+            });
+        }
         std::lock_guard<std::mutex> lock(resource->mutex);
         return resource->result;
     }
@@ -284,26 +318,6 @@ class CandidateDispatcher final {
     }
 
    private:
-    void InvokeOnOwner(const std::shared_ptr<CandidateResource>& resource,
-                       bool finish) noexcept {
-        if (QThread::currentThread() == thread_) {
-            if (finish)
-                FinishOne(resource);
-            else
-                PublishOne(resource);
-            return;
-        }
-        QMetaObject::invokeMethod(
-            worker_,
-            [this, resource, finish]() {
-                if (finish)
-                    FinishOne(resource);
-                else
-                    PublishOne(resource);
-            },
-            Qt::BlockingQueuedConnection);
-    }
-
     void PublishOne(const std::shared_ptr<CandidateResource>& resource) {
         try {
             resource->publish(*resource);
@@ -347,25 +361,34 @@ class CandidateDispatcher final {
     }
 
     void ProcessOne(const std::shared_ptr<CandidateResource>& resource) {
+        CandidateResource::State state;
         {
             std::lock_guard<std::mutex> lock(resource->mutex);
-            if (resource->state == CandidateResource::State::kAbortRequested) {
-                // Finalized below without executing prepared publication.
-            } else if (resource->state !=
-                       CandidateResource::State::kCommitRequested) {
-                return;
+            state = resource->state;
+        }
+        if (state == CandidateResource::State::kPublishRequested) {
+            PublishOne(resource);
+            {
+                std::lock_guard<std::mutex> lock(resource->mutex);
+                if (resource->state != CandidateResource::State::kPublished)
+                    std::terminate();
+                // Acknowledge the complete owner-thread call, including its
+                // observer, before allowing the next participant to publish.
+                resource->publication_complete = true;
             }
+            resource->changed.notify_all();
+            return;
         }
-        bool abort = false;
-        {
-            std::lock_guard<std::mutex> lock(resource->mutex);
-            abort =
-                resource->state == CandidateResource::State::kAbortRequested;
+        if (state == CandidateResource::State::kFinishRequested) {
+            FinishOne(resource);
+            return;
         }
-        if (abort) {
+        if (state == CandidateResource::State::kAbortRequested) {
             AbortOnOwnerThread(resource);
             return;
         }
+        if (state != CandidateResource::State::kCommitRequested)
+            return;
         try {
             resource->publish(*resource);
             resource->post_work(*resource);
@@ -388,9 +411,14 @@ class CandidateDispatcher final {
 
     void ProcessReadyCommands() {
         timer_wakeup_count_.fetch_add(1U);
-        const auto resources = resources_;
-        for (const auto& resource : resources) {
+        std::size_t index = 0;
+        while (index < resources_.size()) {
+            // Keep the current resource alive while ProcessOne may erase it.
+            // No copied registry or queued-call allocation at publication.
+            const auto resource = resources_[index];
             ProcessOne(resource);
+            if (index < resources_.size() && resources_[index] == resource)
+                ++index;
         }
     }
 
@@ -434,6 +462,7 @@ class NetworkRuntime::PreparedCandidate::Impl final {
     }
 
     Preparation preparation;
+    std::unique_ptr<NetworkRuntimeTransaction::Published::Impl> publication;
     std::uint64_t runtime_identity = 0U;
     std::uint64_t runtime_generation = 0U;
     NetworkCacheStorageSlot::Identity storage_identity;
@@ -451,6 +480,24 @@ class NetworkRuntime::CommitReservation::Impl final {
 
 class NetworkRuntimeTransaction::Published::Impl final {
    public:
+    static void* operator new(std::size_t size) {
+        if (ObserveStorage(NetworkRuntimeTestAccess::StorageEvent::kAllocate))
+            throw std::bad_alloc();
+        return ::operator new(size);
+    }
+
+    static void operator delete(void* storage) noexcept {
+        ObserveStorage(NetworkRuntimeTestAccess::StorageEvent::kDeallocate);
+        ::operator delete(storage);
+    }
+
+    Impl() noexcept {
+        ObserveStorage(NetworkRuntimeTestAccess::StorageEvent::kConstruct);
+    }
+
+    ~Impl() {
+        ObserveStorage(NetworkRuntimeTestAccess::StorageEvent::kDestroy);
+    }
     NetworkRuntime::Impl* owner = nullptr;
     std::uint64_t identity = 0U;
     std::unique_ptr<NetworkRuntime::PreparedCandidate::Impl> candidate;
@@ -558,6 +605,8 @@ class NetworkRuntime::Impl final {
         }
 
         auto candidate = std::make_unique<PreparedCandidate::Impl>();
+        candidate->publication =
+            std::make_unique<NetworkRuntimeTransaction::Published::Impl>();
         candidate->preparation = std::move(preparation);
         candidate->runtime_identity = runtime_identity_;
         candidate->runtime_generation = generation_;
@@ -586,6 +635,7 @@ class NetworkRuntime::Impl final {
                 cache_gate_->Disable();
             }
 
+            static_assert(std::is_nothrow_move_assignable_v<Preparation>);
             preparation_ = std::move(candidate_impl->preparation);
             ++generation_;
             if (generation_ == 0U) {
@@ -982,7 +1032,9 @@ NetworkRuntimeTransaction::Published NetworkRuntimeTransaction::Publish(
     }
     owner.candidate_dispatcher_->PublishOnly(
         reservation.impl_->candidate->resource);
-    auto published = std::make_unique<Published::Impl>();
+    auto published = std::move(reservation.impl_->candidate->publication);
+    if (!published)
+        std::terminate();
     published->owner = &owner;
     published->identity = reservation.impl_->identity;
     published->candidate = std::move(reservation.impl_->candidate);
@@ -1012,6 +1064,12 @@ bool NetworkRuntimeTestAccess::IsCurrent(
     const NetworkRuntime& runtime,
     const NetworkRuntime::PreparedCandidate& candidate) {
     return runtime.impl_->CandidateIsCurrent(candidate);
+}
+
+void NetworkRuntimeTestAccess::ObservePublicationStorage(
+    StorageObserver observer, void* context) noexcept {
+    storage_observer = observer;
+    storage_observer_context = context;
 }
 
 bool NetworkRuntimeTestAccess::Consume(

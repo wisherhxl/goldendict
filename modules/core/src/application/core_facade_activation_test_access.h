@@ -15,6 +15,13 @@ enum class CoreFacadeActivationEvent {
 
 class GOLDENDICT_EXPORTS CoreFacadeActivationTestAccess final {
    public:
+    enum class StorageEvent { kAllocate, kConstruct, kDestroy, kDeallocate };
+    using StorageObserver = bool (*)(void*, StorageEvent) noexcept;
+    // Thread-local observation at the actual private published-object boundary.
+    // Returning true for kAllocate injects std::bad_alloc; other returns are
+    // ignored.
+    static void ObservePublicationStorage(StorageObserver observer,
+                                          void* context) noexcept;
     using Observer = void (*)(void*, CoreFacadeActivationEvent) noexcept;
 
     static void Observe(PreparedCoreFacadeCandidate& candidate,
