@@ -11,6 +11,8 @@ target_sources(goldendict PRIVATE
   src/dictionary_status_presentation.h
   src/lookup_popup_controller.cpp
   src/lookup_popup_controller.h
+  src/preferences_application.cpp
+  src/preferences_application.h
   ../../modules/core/src/application/configuration_transaction_persistence.cc
   ../../modules/core/src/application/configuration_transaction_preparation.cc
   ../../modules/core/src/application/pending_configuration_transaction.cc)
@@ -835,6 +837,10 @@ set_tests_properties(article_base_style_dark_test PROPERTIES TIMEOUT 90
   ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu --blink-settings=preferredColorScheme=0;QT_SCALE_FACTOR=1;GOLDENDICT_BASE_STYLE_EXPECT_DARK=1")
 
 if(BUILD_TESTS)
+  ti_add_executable(view_menu_test tests/view_menu_test.cpp)
+  ti_target_include_modules_recurse(view_menu_test goldendict_core)
+  ti_target_link_libraries(view_menu_test goldendict_core)
+
   ti_add_executable(full_text_dictionary_scope_test
     tests/full_text_dictionary_scope_test.cpp ${dictd_presentation_sources})
   set_target_properties(full_text_dictionary_scope_test PROPERTIES AUTOMOC ON AUTORCC ON)

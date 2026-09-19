@@ -228,3 +228,62 @@ A/B/C classification above remains the pending/limited-access/dependency registe
 Main-only startup/recovery families and legacy OFF test dependencies remain pending.
 The shared disabled-online/enabled-external source fixture in main.cpp remains for
 source directories, status, facade preparation, coordinator and full-text dialog.
+
+## W3.3 locked batch (base 75de4fa4)
+
+Exactly one complete family was selected: **ViewMenuSmoke** (initially assessed as
+mode B; the verification below corrects that assessment). The limit of three is
+not a quota. Original method
+`MainWindow::RunViewMenuSmokeCheck`, main flag/dispatch `--view-menu-smoke`, and
+CTest `goldendict_view_menu_smoke` map to `view_menu_test`. Selection is based on
+one real-window UI path, existing public Preferences callback substitution and
+synchronous GUI-thread action/event execution. The initial assessment missed the
+real main-owned callback restored between substituted stages. No replacement
+family is authorized here.
+
+Keep all menu/action/shortcut identity checks, article and word zoom assertions,
+menu/toolbutton visibility, dictionary styles/icon sizes, successful Preferences
+reapplication, rejected-save preservation, always-on-top, search placement,
+exact signal/callback counts and layout restoration. The test uses real
+MainWindow/ArticleView/Qt actions and existing Core/Network composition, P1 path
+initialization, and W3 presentation target closure. No production algorithm copy.
+
+One new test-target-only access operation may return an ApplicationPreferences
+value snapshot: failed-save preservation and zoom/placement state are not fully
+observable from widgets alone. It returns no mutable reference and provides no
+setter, lifecycle bypass or general window access. Other objects are discovered by
+existing QObject names; callback replacement uses SetPreferencesApplyCallback.
+The state-version assertion is checked against actual saveState(7) output rather
+than copying the private implementation constant into the test.
+
+HelpMenu and ProductShell remain mode B pending: help adds modal/resource/URL
+substitution, shell adds translated geometry/layout fixtures and capture output.
+They are not folded into this batch merely because they are menus/presentation.
+Other B/C families retain their recorded dependencies; W4/W5/W6 remain unselected.
+P1 paths/profile lifetime and W1/W2 business behavior are unchanged. No new writable
+path is required: owned config/index/Network/WebEngine/temp roots cover this family.
+Some assigned Preferences callbacks are test substitutes, but the original smoke
+restores the real main-owned callback before menu/toolbar actions. Those stages
+depend on real configuration transactions. Ordinary startup remains a separate
+real OFF-product regression using the accepted P1 portable layout.
+
+### W3.3 verified disposition: blocked before extraction
+
+ViewMenuSmoke is now **mode C: production Preferences application composition**.
+`main_window.cpp:2887` restores the callback installed in `main.cpp:1582`; the
+subsequent menubar/name/icon operations execute that callback through
+`ApplyDisplayPreferences`. Its Network preparation, persistence request, facade
+preparation, coordinator execution and main-owned state updates are not exposed
+by the existing W3 presentation target, which excludes main.cpp. A Preferences
+snapshot does not provide this behavior. Reimplementing the callback in a test or
+replacing it with success would not preserve the original production path.
+
+The unchanged original scenario passes with an isolated persisted configuration;
+fresh-profile failures and the seeded success are retained in w3-3-status.md and
+external evidence. No product defect repair is inferred from those fixture results.
+The locked batch is stopped without a replacement family. No methods, fields,
+dispatches or targets were migrated. The two previously migrated families remain
+migrated; 51 MainWindow Run*Check definitions remain. All other pending families
+retain their existing classifications. A separate bounded decision about reuse of
+the production Preferences application boundary is needed before this family can
+proceed. W3.3 is not closed; W3/A4 remains in progress.

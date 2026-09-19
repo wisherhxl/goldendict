@@ -33,6 +33,7 @@
 #include "goldendict/network/runtime_composition.h"
 #include "legacy_configuration_location.h"
 #include "main_window.h"
+#include "preferences_application.h"
 #if defined(Q_OS_LINUX)
 #include "help_window.h"
 #include "interface_translations.h"
@@ -41,6 +42,10 @@
 #endif
 
 namespace {
+
+using goldendict::app::PreparedProductionFacade;
+using goldendict::app::PrepareProductionFacade;
+using goldendict::app::ReportRuntimeCompositionDiagnostics;
 
 bool IsSmokeInvocation(const QStringList& arguments) {
     static const QStringList kSmokeArguments = {
@@ -106,29 +111,6 @@ bool IsSmokeInvocation(const QStringList& arguments) {
                            return kSmokeArguments.contains(argument);
                        });
 }
-
-void ReportRuntimeCompositionDiagnostics(
-    const std::vector<goldendict::network::RuntimeCompositionDiagnostic>&
-        diagnostics) {
-    for (const auto& diagnostic : diagnostics) {
-        if (diagnostic.code ==
-            goldendict::network::RuntimeCompositionDiagnosticCode::
-                kMissingForvoCredential) {
-            qWarning().noquote()
-                << QStringLiteral(
-                       "Forvo source '%1' is enabled but has no in-memory "
-                       "credential; the source was not activated")
-                       .arg(QString::fromStdString(diagnostic.source_id));
-        }
-    }
-}
-
-struct PreparedProductionFacade {
-    goldendict::core::application::PreparedCoreFacadeCandidate candidate;
-    std::shared_ptr<goldendict::core::DesktopFacade> facade;
-    std::vector<goldendict::network::RuntimeCompositionDiagnostic> diagnostics;
-    bool session_restored = true;
-};
 
 struct StartupRecoverySelection {
     std::optional<goldendict::core::ConfigurationRecoveryRequest> request;
@@ -279,31 +261,6 @@ StartupRecoverySelection ConvergeStartupPersistence(
         fail({}, "Pending transaction phase is not recoverable at startup");
     }
     return selection;
-}
-
-PreparedProductionFacade PrepareProductionFacade(
-    const goldendict::core::CoreConfiguration& configuration,
-    const goldendict::network::ForvoCredentialMap& forvo_credentials,
-    const std::shared_ptr<goldendict::network::NetworkRuntime>& network_runtime,
-    goldendict::core::application::DesktopFacadeActivationOwner& owner,
-    bool require_session_restoration = true) {
-    auto composition = goldendict::network::ComposeConfiguredRuntimeSources(
-        configuration, forvo_credentials, network_runtime);
-    auto candidate =
-        owner.PrepareCandidate(configuration, std::move(composition.sources));
-    if (!candidate)
-        throw std::runtime_error("Unable to prepare the application runtime");
-    auto facade = owner.PreparedFacadeSnapshot(candidate);
-    if (!facade)
-        throw std::runtime_error("Unable to inspect the application runtime");
-    const bool session_restored =
-        !configuration.article_tab_session.has_value() ||
-        facade->RestoreArticleTabSession(*configuration.article_tab_session);
-    if (require_session_restoration && !session_restored) {
-        throw std::runtime_error("Unable to restore the article tab session");
-    }
-    return {std::move(candidate), std::move(facade),
-            std::move(composition.diagnostics), session_restored};
 }
 
 bool HasSmokeArgument(int argc, char* argv[]) {
@@ -1579,129 +1536,28 @@ int main(int argc, char* argv[]) {
                                      QString::fromLocal8Bit(error.what()));
             }
         });
-    window.SetPreferencesApplyCallback(
-        [&](const goldendict::core::ApplicationPreferences& preferences) {
-            if (preferences == configuration.preferences)
-                return QString{};
-            auto updated = configuration;
-            updated.preferences = preferences;
-            updated.article_tab_session = facade->ExportArticleTabSession();
-            auto bounded_history = history;
-            if (bounded_history.size() > preferences.maximum_history_entries) {
-                bounded_history.resize(preferences.maximum_history_entries);
+    std::function<bool(ReloadBoundary)> preferences_inject_failure;
+    if (HasArgument(argc, argv, QStringLiteral(
+                                  "--preferences-coordinator-predecision-smoke"))) {
+        preferences_inject_failure = [&](auto boundary) {
+            if (preferences_predecision_injection >=
+                preferences_predecision_boundaries.size()) {
+                return false;
             }
-            const bool history_changed = bounded_history != history;
-            try {
-                goldendict::core::ValidateConfiguration(updated);
-                auto prepared_network =
-                    goldendict::network::NetworkRuntime::Prepare(
-                        {preferences.maximum_network_cache_megabytes,
-                         preferences.clear_network_cache_on_exit},
-                        network_cache_root);
-                if (preferences.maximum_network_cache_megabytes != 0U &&
-                    !prepared_network.cache_available) {
-                    throw std::runtime_error(prepared_network.diagnostic);
-                }
-
-                std::vector<goldendict::network::RuntimeCompositionDiagnostic>
-                    desired_diagnostics;
-                goldendict::app::ConfigurationReloadRequest request{
-                    {configuration_path.toStdString(),
-                     history_path.toStdString(), updated,
-                     history_changed
-                         ? goldendict::core::PendingHistoryIntent::kReplace
-                         : goldendict::core::PendingHistoryIntent::kUnchanged,
-                     history_changed
-                         ? bounded_history
-                         : std::vector<goldendict::core::HistoryEntry>{}},
-                    std::move(prepared_network),
-                    {},
-                    [&]()
-                        -> std::optional<
-                            goldendict::app::PreparedConfigurationReloadCore> {
-                        auto replacement = PrepareProductionFacade(
-                            updated, forvo_credentials, network_runtime,
-                            facade_owner);
-                        desired_diagnostics =
-                            std::move(replacement.diagnostics);
-                        return goldendict::app::PreparedConfigurationReloadCore{
-                            std::move(replacement.candidate),
-                            std::move(replacement.facade)};
-                    }};
-                goldendict::app::ConfigurationReloadDependencies dependencies;
-                std::optional<ReloadBoundary> last_boundary;
-                dependencies.observe_boundary = [&](auto boundary) {
-                    last_boundary = boundary;
-                };
-                if (HasArgument(
-                        argc, argv,
-                        QStringLiteral(
-                            "--preferences-coordinator-predecision-smoke"))) {
-                    dependencies.inject_failure = [&](auto boundary) {
-                        if (preferences_predecision_injection >=
-                            preferences_predecision_boundaries.size()) {
-                            return false;
-                        }
-                        if (boundary !=
-                            preferences_predecision_boundaries
-                                [preferences_predecision_injection]) {
-                            return false;
-                        }
-                        ++preferences_predecision_injection;
-                        return true;
-                    };
-                }
-                const auto result =
-                    coordinator.Execute(std::move(request), dependencies);
-                if (result.outcome ==
-                    goldendict::app::ConfigurationReloadOutcome::
-                        kRejectedBeforeDecision) {
-                    qWarning().noquote()
-                        << "Preferences transaction rejected before decision at"
-                        << (last_boundary ? static_cast<int>(*last_boundary)
-                                          : -1)
-                        << (result.error
-                                ? QString::fromStdString(result.error->message)
-                                : QString{});
-                    if (result.error)
-                        return QString::fromLocal8Bit(
-                            result.error->message.c_str());
-                    return QCoreApplication::translate(
-                        "MainWindow",
-                        "Preferences cannot be applied in this context");
-                }
-
-                configuration = std::move(updated);
-                facade = facade_owner.CurrentSnapshot();
-                composition_diagnostics = std::move(desired_diagnostics);
-                ReportRuntimeCompositionDiagnostics(composition_diagnostics);
-                if (history_changed) {
-                    history = std::move(bounded_history);
-                    refresh_history();
-                }
-                if (result.outcome ==
-                    goldendict::app::ConfigurationReloadOutcome::
-                        kPublishedWithForwardFailure) {
-                    qCritical().noquote()
-                        << QStringLiteral(
-                               "Preferences transaction published with "
-                               "forward failure; durable phase %1: %2")
-                               .arg(
-                                   result.durable_phase
-                                       ? static_cast<int>(*result.durable_phase)
-                                       : -1)
-                               .arg(result.error ? QString::fromStdString(
-                                                       result.error->message)
-                                                 : QString{});
-                }
-                return QString{};
-            } catch (const std::exception& error) {
-                qWarning().noquote()
-                    << "Unable to prepare Preferences transaction:"
-                    << error.what();
-                return QString::fromLocal8Bit(error.what());
+            if (boundary != preferences_predecision_boundaries[
+                                preferences_predecision_injection]) {
+                return false;
             }
-        });
+            ++preferences_predecision_injection;
+            return true;
+        };
+    }
+    goldendict::app::InstallPreferencesApplication(
+        window,
+        {configuration, history, facade, facade_owner, network_runtime,
+         coordinator, forvo_credentials, composition_diagnostics,
+         configuration_path, history_path, network_cache_root, refresh_history},
+        std::move(preferences_inject_failure));
     window.show();
 
     if (initial_lookup.has_value()) {
