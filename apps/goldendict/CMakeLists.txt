@@ -479,13 +479,6 @@ set_tests_properties(goldendict_favorites_preferences_smoke PROPERTIES
     "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-preferences-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/favorites-preferences-test-home/cache"
   TIMEOUT 20)
 
-add_test(NAME goldendict_synonym_preferences_smoke
-  COMMAND $<TARGET_FILE:goldendict> --synonym-preferences-smoke)
-set_tests_properties(goldendict_synonym_preferences_smoke PROPERTIES
-  ENVIRONMENT
-    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/synonym-preferences-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/synonym-preferences-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/synonym-preferences-test-home/cache"
-  TIMEOUT 20)
-
 add_test(NAME goldendict_optional_parts_preferences_smoke
   COMMAND $<TARGET_FILE:goldendict> --optional-parts-preferences-smoke)
 set_tests_properties(goldendict_optional_parts_preferences_smoke PROPERTIES
@@ -839,6 +832,18 @@ if(BUILD_TESTS)
   add_test(NAME goldendict_articles_preferences_smoke COMMAND articles_preferences_test
     -o "${CMAKE_CURRENT_BINARY_DIR}/articles-preferences-test.txt,txt")
   set_tests_properties(goldendict_articles_preferences_smoke PROPERTIES TIMEOUT 20
+    ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu")
+
+  ti_add_executable(synonym_preferences_test tests/synonym_preferences_test.cpp ${dictd_presentation_sources})
+  set_target_properties(synonym_preferences_test PROPERTIES AUTOMOC ON AUTORCC ON)
+  target_include_directories(synonym_preferences_test PRIVATE src)
+  ti_target_include_modules_recurse(synonym_preferences_test goldendict_core goldendict_network)
+  ti_target_link_libraries(synonym_preferences_test ${dictd_presentation_libraries} ${QT_NAMESPACE}::Test)
+  target_compile_definitions(synonym_preferences_test PRIVATE
+    GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}")
+  add_test(NAME goldendict_synonym_preferences_smoke COMMAND synonym_preferences_test
+    -o "${CMAKE_CURRENT_BINARY_DIR}/synonym-preferences-test.txt,txt")
+  set_tests_properties(goldendict_synonym_preferences_smoke PROPERTIES TIMEOUT 20
     ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu")
 
   ti_add_executable(dictionary_context_preferences_test tests/dictionary_context_preferences_test.cpp ${dictd_presentation_sources})

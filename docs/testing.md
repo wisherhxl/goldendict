@@ -81,6 +81,21 @@ and narrow dialog-executor access header. See the [W3.4 mapping and evidence](
 .\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -R '^(goldendict_articles_preferences_smoke|goldendict_view_menu_smoke|full_text_scope_isolation_test)$' --output-on-failure
 ```
 
+### Dictionary context and synonym Preferences integration
+
+With `BUILD_TESTS=ON`, `goldendict_dictionary_context_preferences_smoke` and
+`goldendict_synonym_preferences_smoke` run `dictionary_context_preferences_test`
+and `synonym_preferences_test` in separate processes. Their internal product smoke
+options are removed. Both reuse the real Preferences installer and the existing
+dialog-interaction access; cancel, rejected save and actual persistent publication
+remain distinct stages. The cumulative isolation guard covers both targets. See
+the [W3.5 contract mapping](../openspec/changes/architecture-remediation-review/w3-5-status.md).
+
+```powershell
+.\run_with_conan.ps1 --build-type Release --with-build-environment -- cmake --build --preset conan-release --target goldendict dictionary_context_preferences_test synonym_preferences_test
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -R '^(goldendict_dictionary_context_preferences_smoke|goldendict_synonym_preferences_smoke|full_text_scope_isolation_test)$' --output-on-failure
+```
+
 ### Configuration file publication
 
 The [configuration publication correction](configuration-file-publication.md)

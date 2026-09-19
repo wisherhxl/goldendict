@@ -417,3 +417,14 @@ and RunMruTabOrderPreferencesSmokeCheck; EditPreferences invokes it. Migrated
 Articles, DictionaryContext and Synonym runners reuse the test-only setter.
 ViewMenu/Articles and these new runners share the copy-only Preferences observer.
 No last-consumer cleanup or widened friend is part of this batch.
+
+### W3.5 implementation queue delta
+
+Both locked families are now migrated and pass their individual equivalence gates.
+Total migrated families: FullTextDictionaryProjectionSmoke, DictionaryBarSmoke,
+ViewMenuSmoke, ArticlesPreferencesSmoke, DictionaryContextPreferencesSmoke and
+SynonymPreferencesSmoke. Remaining MainWindow Run*Check definitions: 47 (navigation
+only). Other pending families retain their prior classifications and consumers;
+HistoryPreferences and FavoritesPreferences remain separately blocked as detailed
+above. No additional family was selected. Final W3.5 acceptance requires its
+external exact-candidate review; broader W3/A4 remains in progress.

@@ -89,3 +89,66 @@ this actual scene, Articles, ViewMenu and the cumulative guard. New scene has 3
 QtTest passes including init/cleanup, zero failure/skip. This completes the first
 family's equivalence gate before any Synonym migration edits. The local checkpoint
 identity is recorded externally; it is not an independent completion verdict.
+
+## Checkpoint B: SynonymPreferences
+
+The second family was edited only after checkpoint A passed and was committed
+(2adfb85f; full identity in external checkpoint-a.txt). It reuses exactly the same
+existing interaction/observation operations and shared production installer.
+The old method/declaration/internal flag/dispatch are removed. synonym-build.log
+exits 0; synonym-migrated/ctest.log executes five cases, all pass, including both
+new families, Articles, ViewMenu and the cumulative guard. No assertion was removed
+or replaced by a successful save stub. No failed product red phase was manufactured.
+
+| Original stage at base b6f9429d | New test and preserved assertion |
+| --- | --- |
+| DictionaryContextPreferences control inspection | DictionaryContextPreferencesTest::scenarioThroughRealApplication, exact label/tooltip, 0..9999, step 1, initial preference |
+| Context cancel and error substitute | Same inspect lambda, set 0 then reject; same forced error and visible validation; Preferences unchanged; extra same-facade checks |
+| Context restored real save | Real installer callable restored, limit 0, session/layout equality and main's persisted zero assertion; extra publication/disk/config/window identity checks |
+| SynonymPreferences control inspection | SynonymPreferencesTest::scenarioThroughRealApplication, exact label/tooltip and initial checkbox value |
+| Synonym cancel and error substitute | Toggle then reject; false plus forced error, unaccepted dialog/visible validation; Preferences unchanged; extra same-facade checks |
+| Synonym restored real save | Same production callable restored, false accepted, session/layout equality and main's persisted false assertion; extra publication/disk/config/window checks |
+
+The new runners compile the same production presentation/resource/MOC closure.
+Duplicated test fixture setup follows the existing W3.4 runner and invokes actual
+Core APIs; it contains no transaction algorithm. No generic harness or production
+implementation variant is introduced. Capture cleanup and coordinator/facade/owner/
+runtime shutdown follow the accepted W3.4 ordering. The preserved dialog executor
+consumers are listed individually in w3-inventory.md; none is moved opportunistically.
+
+Ordinary OFF startup was run after both production removals: normal executable-only
+portable initialization, observed real MainWindow and WebEngine Welcome document,
+fixture dictionary status, Ctrl+Q exit 0 and intact sentinel. The unchanged P1
+launcher/watcher record actual selected paths and 78 owned-root events; the count
+is not an acceptance threshold. Loaded Qt 6.11.1 module hashes are unchanged.
+This is neither a smoke branch nor evidence of nonportable/all-platform/all-Chromium
+filesystem isolation. Full cumulative and independent-review results follow externally.
+
+## Final developer validation and candidate boundary
+
+verify-cumulative.ps1 -RunName candidate1 executes 30/30 actual cases with exit 0,
+individually owned fresh fixtures. It preserves all W3.4's 28 checks and adds the
+two migrated entries. Includes W1/W2/P1, all six migrated scenes, Preferences,
+configuration/recovery, source/group and historical coordinator checks. Both new
+QtTest scenes report 3 passes (init/scene/cleanup), no failures or skips. Inspector
+retains the previously accepted 14 passes/one Qt5 geometry skip; no new skip.
+
+Final ON binary refresh and independent OFF product build exit 0. Actual Ninja
+command closure and compiled MainWindow symbol checks exclude all six migrated
+scenes in both configurations; OFF has no migrated targets. The new targets reuse
+production resources/MOC/compiler definitions and shared implementation, not a
+product variant. Guard results are separately recorded: nine clean fixtures and
+36 intended rejections, 45/45 expected outcomes. No new legacy exemption.
+
+Checkpoint A is 2adfb85f1c4c8aecf867598d5afcfffec879415a. Checkpoint B contains
+Synonym migration and cumulative evidence, without another family. Its identity,
+complete base-to-final diff and independent verdict are external to avoid changing
+the frozen candidate to record review. All runtime paths/limits are unchanged;
+ordinary OFF evidence is separate from real Preferences transaction tests.
+
+Implementation and developer behavior verification are complete. Final acceptance
+requires a fresh independent read-only completion receipt against the exact final
+candidate. No Accepted design, public interface, production assembly, ownership,
+transaction, W1/W2/P1 path/lifecycle or business implementation changed. This does
+not close A4 or authorize the proposed History/Favorites boundaries. Stop here
+without another batch, W4, merge or push after this batch's review.
