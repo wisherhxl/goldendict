@@ -139,3 +139,47 @@ preferences_application declaration header (history-migration-build-2.log).
 Restoring that required include, without adding a callback or production behavior,
 produced history-migration-build-3.log exit 0. These are implementation/build errors,
 not acceptance, baseline failure or product RED.
+
+## Final candidate verification
+
+Checkpoint A: fe40283d (execution-result protection). Checkpoint B: 59a9856b
+(HistorySmoke migration). Both are recoverable local commits, not prior review
+Passes. Final documentation checkpoint will bind the cumulative evidence.
+
+Commands below run from the dedicated worktree; scripts are retained under the
+W3.8 evidence root and invoke the existing Conan launcher:
+
+- verify-builds.ps1 -Prefix candidate: Release ON and W3-off OFF builds exit 0.
+- verify-cumulative.ps1 -RunName candidate: 38/38 exact registered entries exit 0,
+  comprising 36 product regressions, one architecture fixture checker and one
+  execution-chain checker. Raw reports verify actual execution. This includes the
+  ten migrated families, W1/W2/P1, configuration recovery, DictionaryContext's
+  two-process shared configuration/40-second contract and affected History tests.
+- verify-isolation.ps1 -Prefix candidate plus inspect-artifacts.py: both production
+  command closures, actual Ninja link inputs and MainWindow object symbols exclude
+  migrated implementations; OFF has no migrated test target requirement.
+- Architecture fixtures: 13 legal configurations accepted, 52 deliberate source,
+  interface-source, dependency and generator-expression violations rejected.
+  These expected rejections are distinct from passing product tests.
+- Execution checker: four real runners each execute success and controlled failure
+  on fresh data. Successful child CTest exit 0; expected assertion-failure child
+  CTest exit 8 after normal cleanup, qExec/process exit 1; checker exit 0.
+- run_with_conan.ps1 --build-type Release -- python <evidence>/ordinary_startup.py
+  build/W3-off ordinary-off: native ordinary portable production startup, executable
+  only (no smoke argument), real Welcome WebEngine page and one dictionary observed,
+  Ctrl+Q normal exit 0. Loaded Qt DLL versions/hashes match Qt 6.11.1/P1. Owned-root
+  watcher recorded 78 notifications, no watcher errors, adjacent sentinel intact.
+  Notifications include evidence writes; their count is not an isolation criterion.
+
+Ordinary startup evidence is new W3.8 evidence, not backdated P1/W3.2 evidence.
+Config/history/favorites/recovery and Network/WebEngine paths retain the P1 portable
+layout; indexes/tmp/cwd and fixture are owned by this run. No daily directory probe,
+cleanup or fallback was introduced. The bounded watcher is not whole-process or
+whole-filesystem tracing; no claim covers all Chromium features, non-portable
+user-default startup, Linux/macOS, or the preserved Qt5 Inspector
+NativeLegacyGeometryImport skip. No new key skip is accepted.
+
+Implementation and local behavior verification are complete. Final independent
+read-only review is pending at this tracked snapshot; its immutable external
+receipt must bind the final commit/tree and complete base-to-candidate diff.
+W3/A4 remains in progress; HistoryManagement/Export/Menu and Favorites are unchanged.
