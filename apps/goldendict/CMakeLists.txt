@@ -236,6 +236,7 @@ set_tests_properties(article_scheme_handler_test PROPERTIES
 
 ti_add_executable(article_inspector_test
   tests/article_inspector_test.cpp
+  src/webengine_storage_paths.cpp
   src/article_inspector.cpp
   src/article_inspector.h
   src/article_view.cpp
@@ -245,6 +246,7 @@ ti_add_executable(article_inspector_test
 
 ti_add_executable(article_selection_test
   tests/article_selection_test.cpp
+  src/webengine_storage_paths.cpp
   src/article_view.cpp src/article_view.h
   src/article_inspector.cpp src/article_inspector.h
   src/article_page.cpp src/article_page.h)
@@ -881,4 +883,18 @@ if(BUILD_TESTS)
     "-DGENERATOR=${CMAKE_GENERATOR}" "-DMAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}"
     -DGUARD=${CMAKE_CURRENT_SOURCE_DIR}/full_text_scope_isolation.cmake
     -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/full_text_scope_isolation_test.cmake)
+endif()
+
+if(BUILD_TESTS)
+  ti_add_executable(webengine_storage_paths_test
+    tests/webengine_storage_paths_test.cpp
+    src/webengine_storage_paths.cpp src/article_inspector.cpp src/article_inspector.h)
+  target_include_directories(webengine_storage_paths_test PRIVATE src)
+  ti_target_link_libraries(webengine_storage_paths_test
+    ${QT_NAMESPACE}::Test ${QT_NAMESPACE}::Widgets ${QT_NAMESPACE}::WebEngineWidgets)
+  add_test(NAME webengine_storage_paths_test COMMAND webengine_storage_paths_test
+    -o "${CMAKE_CURRENT_BINARY_DIR}/webengine-storage-paths-test.txt,txt")
+  set_tests_properties(webengine_storage_paths_test PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu"
+    TIMEOUT 90)
 endif()

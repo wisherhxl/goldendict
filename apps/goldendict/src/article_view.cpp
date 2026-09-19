@@ -589,10 +589,14 @@ void ArticleView::SetInspectorState(
 
 void ArticleView::ShowInspector(bool context_target) {
     auto* inspected = page();
-    if (!inspector_ || inspector_->inspectedPage() != inspected)
-        inspector_ =
-            std::make_unique<ArticleInspector>(inspected, inspector_state_);
-    inspector_->Inspect(context_target);
+    try {
+        if (!inspector_ || inspector_->inspectedPage() != inspected)
+            inspector_ =
+                std::make_unique<ArticleInspector>(inspected, inspector_state_);
+        inspector_->Inspect(context_target);
+    } catch (const std::exception& error) {
+        qWarning("Cannot open Web Inspector: %s", error.what());
+    }
 }
 
 QWebEnginePage* ArticleView::page() const {

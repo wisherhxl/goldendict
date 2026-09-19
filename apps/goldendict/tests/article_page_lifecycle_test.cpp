@@ -12,6 +12,8 @@
 #include <QWebEngineProfile>
 #include <QWebEngineUrlScheme>
 #include <QtTest>
+#include "legacy_configuration_location.h"
+#include "webengine_storage_paths.h"
 
 #include "article_page.h"
 #include "article_view.h"
@@ -308,6 +310,12 @@ class ArticlePageLifecycleTest : public QObject {
         QVERIFY(staged_tabs);
         auto* hidden = qobject_cast<ArticleView*>(staged_tabs->widget(0));
         QVERIFY(hidden);
+        auto* shared_profile = QWebEngineProfile::defaultProfile();
+        const auto storage_path = shared_profile->persistentStoragePath();
+        QVERIFY(storage_path.endsWith("/webengine/article"));
+        QCOMPARE(View()->page()->profile(), shared_profile);
+        QCOMPARE(hidden->page()->profile(), shared_profile);
+        QVERIFY(shared_profile->isOffTheRecord());
         const auto id = TabId();
         const auto generation = window_->article_navigation_generations_.at(id);
         emit hidden->loadStarted();
@@ -320,6 +328,8 @@ class ArticlePageLifecycleTest : public QObject {
                  WidgetsCommitOutcome::kPublished);
         facade_ = std::move(replacement);
         QCOMPARE(View(), hidden);
+        QCOMPARE(View()->page()->profile(), shared_profile);
+        QCOMPARE(shared_profile->persistentStoragePath(), storage_path);
         emit hidden->loadFinished(true);
         QVERIFY(!InFlight(id));
         QVERIFY(LoadDocument(hidden));
@@ -439,7 +449,12 @@ int main(int argc, char** argv) {
                     QWebEngineUrlScheme::LocalScheme |
                     QWebEngineUrlScheme::LocalAccessAllowed);
     QWebEngineUrlScheme::registerScheme(scheme);
+    QTemporaryDir webengine_storage;
+    if (!webengine_storage.isValid())
+        return 2;
     QApplication application(argc, argv);
+    goldendict::app::InitializeWebEngineStorage(
+        {}, webengine_storage.filePath("webengine"));
     ArticlePageLifecycleTest test;
     return QTest::qExec(&test, argc, argv);
 }

@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "article_inspector.h"
+#include "webengine_storage_paths.h"
 
 #include <QScopedValueRollback>
 #include <QShowEvent>
+#include <QTemporaryDir>
 #include <QVBoxLayout>
 #include <QWebEngineProfile>
 #include <QWebEngineView>
@@ -64,22 +66,32 @@ ArticleInspector::ArticleInspector(QWebEnginePage* inspected_page,
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     profile_ = new QWebEngineProfile(this);
-    view_ = new QWebEngineView(this);
-    view_->setObjectName(QStringLiteral("articleInspectorContent"));
-    view_->setPage(new QWebEnginePage(profile_, view_));
-    layout->addWidget(view_);
-    // Frozen QWebInspector's initial logical size, independent of the
-    // WebEngine view's not-yet-loaded size hint.
-    resize(450, 300);
-    connect(view_->page(), &QWebEnginePage::titleChanged, this,
-            &QWidget::setWindowTitle);
-    connect(view_->page(), &QWebEnginePage::windowCloseRequested, this,
-            &QWidget::close);
-    connect(inspected_page, &QObject::destroyed, this, [this]() {
-        inspected_page_.clear();
-        hide();
-    });
-    inspected_page->setDevToolsPage(view_->page());
+    try {
+        storage_directory_ =
+            goldendict::app::InitializeInspectorWebEngineStorage(
+                *profile_, *inspected_page->profile());
+        view_ = new QWebEngineView(this);
+        view_->setObjectName(QStringLiteral("articleInspectorContent"));
+        view_->setPage(new QWebEnginePage(profile_, view_));
+        layout->addWidget(view_);
+        // Frozen QWebInspector's initial logical size, independent of the
+        // WebEngine view's not-yet-loaded size hint.
+        resize(450, 300);
+        connect(view_->page(), &QWebEnginePage::titleChanged, this,
+                &QWidget::setWindowTitle);
+        connect(view_->page(), &QWebEnginePage::windowCloseRequested, this,
+                &QWidget::close);
+        connect(inspected_page, &QObject::destroyed, this, [this]() {
+            inspected_page_.clear();
+            hide();
+        });
+        inspected_page->setDevToolsPage(view_->page());
+    } catch (...) {
+        // Member storage must also outlive Qt children on partial construction.
+        delete view_;
+        delete profile_;
+        throw;
+    }
 }
 
 ArticleInspector::~ArticleInspector() {

@@ -6,6 +6,8 @@
 #include <QTemporaryDir>
 #include <QWebEngineUrlScheme>
 #include <QtTest>
+#include "legacy_configuration_location.h"
+#include "webengine_storage_paths.h"
 
 #include <array>
 #include <atomic>
@@ -479,7 +481,12 @@ int main(int argc, char** argv) {
                     QWebEngineUrlScheme::LocalScheme |
                     QWebEngineUrlScheme::LocalAccessAllowed);
     QWebEngineUrlScheme::registerScheme(scheme);
+    QTemporaryDir webengine_storage;
+    if (!webengine_storage.isValid())
+        return 2;
     QApplication application(argc, argv);
+    goldendict::app::InitializeWebEngineStorage(
+        {}, webengine_storage.filePath("webengine"));
     PublicationPreparationTest test;
     return QTest::qExec(&test, argc, argv);
 }

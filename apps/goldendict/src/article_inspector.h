@@ -12,6 +12,7 @@
 #include <vector>
 
 class QWebEngineProfile;
+class QTemporaryDir;
 class QWebEngineView;
 class ArticleInspector;
 
@@ -61,6 +62,7 @@ class ArticleInspector final : public QWidget {
     QWebEngineProfile* profile_ = nullptr;
     QWebEngineView* view_ = nullptr;
     std::shared_ptr<ArticleInspectorState> state_;
+    std::unique_ptr<QTemporaryDir> storage_directory_;
     bool restoring_ = false;
 };
 

@@ -41,3 +41,20 @@ Existing prepare/abandon/publish/retire/lease contracts SHALL remain unchanged.
 #### Scenario: Abandoned and consecutive candidates
 - **WHEN** a prepared policy is abandoned or aborted and later policies are applied
 - **THEN** active ownership remains valid, consumed candidates are not reused, and all operations retain the selected root
+
+### Requirement: P1 initialized off-record WebEngine paths
+The application SHALL retain Qt's default profile identity and privacy policies.
+In portable mode or with an explicit test root, it SHALL validate the selected
+owned WebEngine root and immediately set the default profile data path after
+obtaining it, before related page/view/window creation. Non-portable behavior
+without an override SHALL remain unchanged. Empty/unusable explicit roots MUST
+NOT restore or fall back to daily default storage. Initialization SHALL NOT reset
+paths during configuration publication or page reconstruction.
+
+#### Scenario: Existing shared profile and Inspector
+- **WHEN** normal or candidate article pages and an Inspector are created
+- **THEN** article pages retain the configured Qt default profile and the Inspector retains its own profile with a distinct owned directory and page-before-profile cleanup
+
+#### Scenario: Accepted constructor observation boundary
+- **WHEN** the actual pinned Qt package calculates a default path during off-record construction
+- **THEN** calculation alone is not a failure; validation retains its stated observation limits and any newly discovered dangerous reachable side effect blocks the affected run

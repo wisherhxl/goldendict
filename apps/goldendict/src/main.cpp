@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+#include "webengine_storage_paths.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -625,6 +626,18 @@ int main(int argc, char* argv[]) {
     } catch (const std::exception& error) {
         QMessageBox::warning(nullptr, QStringLiteral("GoldenDict"),
                              QString::fromLocal8Bit(error.what()));
+        return 1;
+    }
+    try {
+        goldendict::app::InitializeWebEngineStorage(
+            configuration_locations,
+            smoke_configuration_root.isEmpty()
+                ? std::nullopt
+                : std::optional<QString>(
+                      QDir(smoke_configuration_root)
+                          .filePath(QStringLiteral("webengine"))));
+    } catch (const std::exception& error) {
+        qCritical("Cannot initialize WebEngine storage: %s", error.what());
         return 1;
     }
     const QString configuration_path = QString::fromStdString(

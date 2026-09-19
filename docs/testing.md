@@ -7222,3 +7222,33 @@ evidence. These tests do not waive R9.8 frontend visual or Linux acceptance.
 
 See [agent-workflow.md](agent-workflow.md) for the full pre-PR checklist and
 pull request notes policy.
+
+## Portable WebEngine path and Qt package upgrade check
+
+The app initializes the existing default profile once, after configuration-path
+selection and before any WebEngine view. Portable data uses
+`portable/webengine/article`; each independent Inspector owns a temporary child
+under `portable/webengine/inspectors` until its page and profile are destroyed.
+Non-portable initialization without an explicit root remains unchanged. Selected
+path errors stop initialization/opening instead of falling back to user storage.
+Off-record, cookie, HTTP cache and permission policies remain Qt's memory policies;
+an empty off-record `cachePath()` is valid.
+
+For Qt package upgrades, run `webengine_storage_paths_test` together with
+`article_page_lifecycle_test`, `article_inspector_test` and the portable Network
+regression through the normal Conan/CTest entry. The new target is BUILD_TESTS-only
+and calls the same product initializer; its fresh-process selection cases and real
+page/Inspector cases characterize the chosen public setter on the actual Qt package.
+Also inspect the new package's off-record constructor/first dataPath call chain and
+repeat the bounded directory-notification capability probe and ordinary portable
+startup described in the P1 WebEngine supplement. Bind the actual DLL/package and
+source provenance, observation stages and blind spots. Getter equality or an empty
+final directory alone is not constructor-write evidence. The retained 6.11.1 probe
+is historical evidence, not automatic approval of a different Qt package.
+
+See [P1's approved supplement](../openspec/changes/portable-network-cache-path/webengine-supplement.md)
+for the accepted constructor-path-calculation boundary and existing evidence.
+No Builder fallback, default-profile replacement, sandbox disabling or global
+user-folder remapping is part of this upgrade check. Older test entries may retain
+their prior offscreen Chromium flags; record these separately from the new focused
+test and native portable startup, which do not disable the sandbox.

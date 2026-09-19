@@ -13,3 +13,15 @@
 - [ ] 3.1 Run W1/W2/W3.1/W3.2 and affected configuration/Network regressions, separate ON/OFF production builds, and inspect actual target/link isolation.
 - [x] 3.2 Complete the ordinary-startup path/instance safety matrix before launch; then record real portable initialization, main window and normal exit, or a specific unresolved unsafe path without launching.
 - [x] 3.3 Update focused contract documentation and P1 verification record, validate OpenSpec and full diff, and retain exact candidate/evidence identity separately from W3.2.
+
+Section 3 records the original P1 candidate. Its outstanding runtime coverage
+is addressed by the separate supplement below; original verification/Fail receipts
+remain unchanged.
+
+## 4. Approved WebEngine setter supplement (2026-09-19)
+
+- [x] 4.1 Bind the accepted setter design and observation limits; independent readiness before production edits.
+- [x] 4.2 Establish safe red integration assertions, implement earliest default-profile and existing Inspector path setup, and obtain green evidence.
+- [x] 4.3 Verify identity, real normal/candidate pages, Inspector, privacy policies, failure, cleanup and stable paths; register the focused Qt upgrade check.
+- [x] 4.4 Run cumulative P1 and affected W1/W2/W3/configuration regressions with isolated data, and ON/OFF production builds/link checks.
+- [x] 4.5 Perform gated ordinary portable production startup and normal exit with path observations; preserve limits and prior Fail history.

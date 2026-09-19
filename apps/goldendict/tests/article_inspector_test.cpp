@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+#include <QTemporaryDir>
+#include "legacy_configuration_location.h"
+#include "webengine_storage_paths.h"
 
 #include <memory>
 
@@ -14,7 +17,6 @@
 #include <QScreen>
 #include <QStyle>
 #include <QTabWidget>
-#include <QTemporaryDir>
 #include <QTimer>
 #include <QWebEngineProfile>
 #include <QWebEngineSettings>
@@ -717,7 +719,12 @@ class ArticleInspectorTest final : public QObject {
 
 int main(int argc, char** argv) {
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+    QTemporaryDir webengine_storage;
+    if (!webengine_storage.isValid())
+        return 2;
     QApplication app(argc, argv);
+    goldendict::app::InitializeWebEngineStorage(
+        {}, webengine_storage.filePath("webengine"));
     if (!qEnvironmentVariableIsEmpty("GOLDENDICT_INSPECTOR_CAPTURE_DIR"))
         app.setFont(QFont("Segoe UI", 9));
     ArticleInspectorTest test;
