@@ -304,3 +304,32 @@ MainWindow Run*Check definitions: 50. Other B/C entries remain pending with thei
 recorded access/startup/persistence/asynchronous dependencies. The new Preferences
 boundary does not automatically approve or migrate them. W3/A4 remains in progress;
 W3.3 closure depends on its external final independent receipt. No W4/W5/W6 work.
+
+## W3.4 dependency preflight and locked batch
+
+Base 828d1f3a9c07a9207a1796a42cdfb0ac26ab7713 includes the accepted W3.3
+ViewMenu delivery and shared private preferences_application. Its independent
+receipt remains external; W3.3 is closed within the approved Windows/Qt boundary.
+
+ArticlesPreferencesSmoke moves from C (unavailable Preferences composition) to B
+(limited existing dialog-interaction seam). The whole original scene and main's
+persisted-configuration assertions can reuse the real shared installer unchanged.
+Old entry passed on a fresh serialized owned fixture before scope lock. Exactly
+this one family is selected for W3.4; see w3-4-status.md for lifecycle, mapping and
+evidence. Migration status is pending until equivalent verification completes.
+
+HistoryPreferencesSmoke remains C: history import and lookup-recording callbacks
+are still assembled in main. FavoritesPreferencesSmoke remains C: favorite
+mutation/persistence callbacks are still main-owned. Shared Preferences resolves
+only part of those dependencies. Neither is selected; no new assembly is approved.
+Other families retain their recorded status; this is not a new full audit.
+
+### W3.4 implementation outcome
+
+ArticlesPreferencesSmoke is migrated to articles_preferences_test; original method,
+declaration and product dispatch are removed. Four families are now migrated:
+FullTextDictionaryProjectionSmoke, DictionaryBarSmoke, ViewMenuSmoke and
+ArticlesPreferencesSmoke. Remaining MainWindow Run*Check count is 49, not an
+acceptance metric. All other families remain pending, including the concrete
+History/Favorites assembly blockers above. W3/A4 stays in progress. W3.4's final
+acceptance is bound to its external independent candidate receipt.

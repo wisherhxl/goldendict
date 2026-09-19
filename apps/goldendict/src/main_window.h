@@ -171,6 +171,7 @@ class MainWindow final : public QMainWindow {
     friend class ArticlePageLifecycleTest;
     friend class DictionaryScopeTestAccess;
     friend class ViewMenuTestAccess;
+    friend class ArticlesPreferencesTestAccess;
     friend class PreparedWidgetsFacadeCandidate;
     friend class WidgetsFacadeActivationRelay;
     friend class MaintainedWidgetsCommit;
@@ -272,7 +273,6 @@ class MainWindow final : public QMainWindow {
         std::function<void(bool)> completion);
     void RunFavoritesPreferencesSmokeCheck(
         std::function<void(bool)> completion);
-    void RunArticlesPreferencesSmokeCheck(std::function<void(bool)> completion);
     void RunSynonymPreferencesSmokeCheck(std::function<void(bool)> completion);
     void RunOptionalPartsPreferencesSmokeCheck(
         std::function<void(bool)> completion);

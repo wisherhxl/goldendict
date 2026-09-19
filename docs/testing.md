@@ -66,6 +66,21 @@ No new mutable-state access or historical exemption is added.
 .\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -R '^(goldendict_dictionary_bar_smoke|full_text_scope_isolation_test)$' --output-on-failure
 ```
 
+### Articles Preferences integration
+
+With `BUILD_TESTS=ON`, `goldendict_articles_preferences_smoke` runs
+`articles_preferences_test`; the internal `--articles-preferences-smoke` product
+entry is removed. The isolated runner uses the shared production Preferences
+installer for actual saving, retaining the original cancel and forced-error
+interaction stages. The existing cumulative isolation guard covers its runner
+and narrow dialog-executor access header. See the [W3.4 mapping and evidence](
+../openspec/changes/architecture-remediation-review/w3-4-status.md).
+
+```powershell
+.\run_with_conan.ps1 --build-type Release --with-build-environment -- cmake --build --preset conan-release --target goldendict articles_preferences_test view_menu_test
+.\run_with_conan.ps1 --build-type Release -- ctest --preset conan-release -R '^(goldendict_articles_preferences_smoke|goldendict_view_menu_smoke|full_text_scope_isolation_test)$' --output-on-failure
+```
+
 ### Configuration file publication
 
 The [configuration publication correction](configuration-file-publication.md)
