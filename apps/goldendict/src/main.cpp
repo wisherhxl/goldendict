@@ -81,7 +81,6 @@ bool IsSmokeInvocation(const QStringList& arguments) {
         QStringLiteral("--history-import-smoke"),
         QStringLiteral("--history-management-smoke"),
         QStringLiteral("--history-menu-smoke"),
-        QStringLiteral("--history-preferences-smoke"),
         QStringLiteral("--history-smoke"),
         QStringLiteral("--interface-language-russian-smoke"),
         QStringLiteral("--interface-language-startup-smoke"),
@@ -1620,54 +1619,6 @@ int main(int argc, char* argv[]) {
             window.RunEditMenuSmokeCheck(
                 [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
-    } else if (HasArgument(argc, argv,
-                           QStringLiteral("--history-preferences-smoke"))) {
-        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
-        QTimer::singleShot(
-            0, &window,
-            [&app, &configuration_directory, &configuration_path, &history,
-             &history_path, &window]() {
-                QDir().mkpath(configuration_directory);
-                history = {{3U, "Newest"}, {2U, "Middle"}, {1U, "Oldest"}};
-                goldendict::core::SaveHistory(history_path.toStdString(),
-                                              history);
-                window.SetHistoryItems({{QStringLiteral("Newest"), 3U},
-                                        {QStringLiteral("Middle"), 2U},
-                                        {QStringLiteral("Oldest"), 1U}});
-                const QString import_path =
-                    QDir(configuration_directory)
-                        .filePath(QStringLiteral("history-preferences.txt"));
-                QFile import_file(import_path);
-                const QByteArray contents(
-                    "Imported one\nImported two\nIgnored\n");
-                const bool prepared =
-                    import_file.open(QIODevice::WriteOnly) &&
-                    import_file.write(contents) == contents.size();
-                import_file.close();
-                window.RunHistoryPreferencesSmokeCheck(
-                    import_path, [&app, &configuration_path, &history_path,
-                                  prepared](bool passed) {
-                        try {
-                            const auto persisted_history =
-                                goldendict::core::LoadHistory(
-                                    history_path.toStdString(), 1U);
-                            const auto persisted_configuration =
-                                goldendict::core::LoadConfiguration(
-                                    configuration_path.toStdString());
-                            passed =
-                                passed && prepared &&
-                                persisted_history.size() == 1U &&
-                                persisted_history.front().word == "Recorded" &&
-                                persisted_configuration.preferences
-                                    .store_history &&
-                                persisted_configuration.preferences
-                                        .maximum_history_entries == 1U;
-                        } catch (...) {
-                            passed = false;
-                        }
-                        app.exit(passed ? 0 : 1);
-                    });
-            });
     } else if (HasArgument(argc, argv,
                            QStringLiteral("--favorites-preferences-smoke"))) {
         QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });

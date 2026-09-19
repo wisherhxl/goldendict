@@ -7299,3 +7299,21 @@ No Builder fallback, default-profile replacement, sandbox disabling or global
 user-folder remapping is part of this upgrade check. Older test entries may retain
 their prior offscreen Chromium flags; record these separately from the new focused
 test and native portable startup, which do not disable the sandbox.
+
+### History Preferences integration
+
+With BUILD_TESTS=ON, goldendict_history_preferences_smoke runs
+history_preferences_test. The private history_application functions install the
+same real recording/import callbacks in main and this runner; preferences_application
+continues owning its original composition responsibilities. The runner owns fresh
+serialized configuration/history/import data and retains accepted Preferences,
+bounded import, recording policy, UI projection and disk reload assertions. It is
+one process, entered on a zero timer with a 10-second watchdog and the original
+20-second CTest timeout. The internal --history-preferences-smoke product option
+is removed. Existing cumulative target isolation guards this runner too.
+See [W3.6](../openspec/changes/architecture-remediation-review/w3-6-status.md).
+
+```powershell
+.\run_with_conan.ps1 --build-type Release --with-build-environment -- cmake --build build/Release --target goldendict history_preferences_test
+.\run_with_conan.ps1 --build-type Release -- ctest --test-dir build/Release -R '^(goldendict_history_preferences_smoke|goldendict_dictionary_context_preferences_smoke|full_text_scope_isolation_test)$' --output-on-failure
+```

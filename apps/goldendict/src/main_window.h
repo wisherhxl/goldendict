@@ -265,8 +265,6 @@ class MainWindow final : public QMainWindow {
                                     std::function<void(bool)> completion);
     void RunHistoryImportSmokeCheck(const QString& path,
                                     std::function<void(bool)> completion);
-    void RunHistoryPreferencesSmokeCheck(const QString& import_path,
-                                         std::function<void(bool)> completion);
     void RunPreferencesCoordinatorPredecisionSmokeCheck(
         std::function<void(bool)> completion);
     void RunFavoritesPreferencesSmokeCheck(

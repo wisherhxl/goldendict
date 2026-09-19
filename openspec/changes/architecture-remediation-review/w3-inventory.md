@@ -436,3 +436,40 @@ shared fresh profile, two actual processes and original 40-second timeout. The
 second loads the first's persisted setting/session and preserves real no-op behavior.
 No ownership or production assembly change is needed; both locked families remain
 selected. Initial single-pass claims are superseded, not treated as acceptance.
+
+## W3.6 History Preferences (base 041f8625)
+
+Locked only HistoryPreferencesSmoke after a fresh original-entry baseline. The
+user separately approved minimal private history_application recording/import/
+projection assembly. Main retains configuration/history/window ownership. Shared
+Preferences remains unchanged. Checkpoint A retains the old test and passes its
+full outer entry plus affected consumers; see w3-6-status.md and external evidence.
+
+The original generic row's cancel/failure/export wording is superseded for this
+family: actual coverage is real Preferences false/2, trim/preserve, disabled
+recording, bounded replacement import, real Preferences true/1, record and
+persistent history/configuration assertions. It is one process (20 seconds), not a
+restart family. The two-process DictionaryContext wrapper remains unchanged.
+
+HistoryPreferences moves to history_preferences_test with existing executor and
+copy-only Preferences access, named widget observation and the original signals.
+No new TestAccess or mutable-history backdoor. Its original MainWindow method,
+declaration, main fixture/assertion scheduling and smoke option are removed.
+
+The shared executor remains consumed by HelpMenu, EditMenu,
+PreferencesCoordinatorPredecision, FavoritesPreferences, OptionalPartsPreferences,
+ProxyPreferences, NetworkCachePreferences and its restart, HideSingleTabPreferences,
+EscapeHidesMainWindowPreferences, ArticleClickPreferences and MruTabOrderPreferences,
+as well as actual EditPreferences. Previously migrated families still use the
+finite setter; the production field is not a last-consumer cleanup opportunity.
+Main's refresh_history callback remains needed by ClearHistoryRequested and shared
+Preferences, now delegates to the same production projection. Export/clear and
+all other History scenarios stay at their previous entries.
+
+Favorites remains independently blocked by the add-folder/add-headword/remove
+installation and tree projection/traversal boundary recorded under W3.5; none of
+that logic is extracted here. HistoryMenu and broader history presentation rows
+remain pending; partial availability of recording/import does not prove their
+remaining export/clear/menu/quit assembly coverage. No next family is selected.
+
+W3.6 implementation delta: HistoryPreferences joins the six previously migrated families (seven total). Other History families remain pending; Favorites remains separate and blocked by its own assembly. W3/A4 remains in progress. Full acceptance is bound by the external final W3.6 review receipt.

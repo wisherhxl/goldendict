@@ -53,3 +53,67 @@ Independent read-only readiness: Ready (external readiness-review.md). Productio
 Production extraction completed without moving the old scene. checkpoint-a-build.log: exit 0, actual production/fixture/prior Preferences runner builds. extraction-results.json: 13 exact CTest entries, all actual 1/1, exit 0: original HistoryPreferences, five other legacy History consumers, ViewMenu, Articles, DictionaryContext (two processes), Synonym, configuration reload coordinator, Preferences predecision and history_store. Each has fresh serialized owned input. Separate installers preserve relative connection ordering; reference identities and same window context are unchanged. Only capture destination by value and call shared projection differ from the original handlers. No production behavior fix or test red stage.
 
 Source analysis used explicit definitions/callsites plus real compilation/runtime checks. Serena activated the exact task path; no onboarding/reconfiguration or claim of complete semantic indexing. Checkpoint A is a local recoverable checkpoint, pending final cumulative independent review.
+
+## Checkpoint B implementation and final developer verification
+
+Checkpoint A identity: `4b90d60f399635a52e4915b921c3d33802c11772`.
+Only after its 13-case equivalence gate passed, the full old scene was moved to
+history_preferences_test. main/runner share history_application and unchanged
+preferences_application. Original fixture generation and final disk assertions
+moved out of main too; old method/declaration/option/dispatch are absent. Existing
+named-widget and finite executor/copy observation suffice, with no new access.
+The runner retains one process, after-initialization 10-second watchdog,
+zero-timer Qt event-loop entry, app-build working directory and 20-second CTest
+limit. Platform/Chromium flags match; fixed environment paths are replaced by
+fresh owned runtime paths. QtTest output arguments add reporting only. The import
+file and seed are prepared inside this scenario once. There is no restart file
+regeneration because this family has no restart phase.
+
+Both accepted dialogs use the original real Preferences callback throughout;
+no successful apply substitute or test transaction algorithm exists. Original
+count/order/tooltip/store/max/session assertions remain. Additional checks prove
+both facade publications, owner snapshot identity, disk/config/window equality,
+and History save/load/live-vector agreement including imported/recorded group IDs.
+Initial fixture assignments are retained test setup, not replacements for those
+operations. The executor is cleared by scope guard. Same caller-owned objects
+outlive signal handling; coordinator/facade/owner/Network shutdown follows the
+existing test lifecycle.
+
+- checkpoint-b-build.log: exit 0. migrated-results.json: 6/6 exact entries,
+  including the new scene, four prior Preferences scenes and cumulative guard.
+- Self-review placed the watchdog after initialization, matching original timing;
+  subsequent candidate verification below covers that adjustment.
+- verify-builds.ps1 -Prefix candidate: ON and OFF production builds exit 0,
+  independently cached source-matched builds. Generated Ninja commands and object
+  symbols in candidate-*-commands/symbols/closure plus OFF targets confirm all
+  seven migrated runners and Qt6Test are absent from production closure; no new
+  legacy exception. The test target reuses actual product sources, resources and
+  Qt MOC with the existing compile/link conditions, excluding only main.cpp.
+- verify-cumulative.ps1 -RunName candidate1: 36/36 exact isolated CTest entries,
+  each actual 1/1, exit 0. This includes one architecture guard entry, not 36
+  distinct product assertions. New History QtTest: init/scene/cleanup all pass,
+  zero skip. DictionaryContext runs both real children against one saved profile,
+  preserving timeout 40. Existing Inspector Qt5 geometry skip remains unchanged.
+- Guard probes: 10 clean fixtures accepted and 40 source/interface/dependency/genex
+  violations rejected. These 50 expected architecture outcomes are distinct from
+  product tests; no negative was inserted into the real production target.
+- verify-isolation.ps1 -Prefix candidate: exit 0 for ON/OFF actual commands,
+  MainWindow object symbols and OFF target inventory.
+- Ordinary OFF portable startup: ordinary_startup.py plus existing Computer Use
+  observation shows real Welcome WebEngine document and fixture status 1/1/1,
+  then Control+Q normal exit 0. No smoke flag or initialization bypass. Owned
+  portable/config/history/favorites/recovery, indexes, Network/WebEngine paths,
+  temp and working directory follow P1. Sentinel intact; 80 owned-root events
+  are an observation, not an expected-count assertion. Actual loaded Qt DLL
+  paths/hashes are retained. Initial occluded capture was not render evidence;
+  foreground visual and accessibility captures confirmed actual content.
+
+This verification covers only approved Windows/Qt 6.11.1 runtime and bounded
+owned-root observation. No nonportable default-user startup, Linux/macOS, full
+Chromium/process filesystem tracing or Qt5 Inspector geometry claim. Original
+W3.5 Fail/Pass are unchanged. There are no product/test failures in this batch's
+recorded execution; source lookup misses are not product failure evidence.
+
+Final independent review is pending at candidate construction. Its immutable
+external receipt and closeout will bind the exact committed candidate and test
+artifacts; no tracked mutation will be made merely to record that receipt.
