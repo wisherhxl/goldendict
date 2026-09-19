@@ -101,3 +101,41 @@ binding performs replay. Expected word/row/UserRole/group assertions and main's
 Core disk reload move intact. No Preferences callback is needed by this scene,
 no new TestAccess or production assembly is required. Readiness: Ready under the
 existing approved boundaries. Other History/Favorites entries remain untouched.
+
+## History implementation and checkpoint B
+
+history_smoke_test owns the complete original fixture/stage/observer/assertion
+sequence. No new private access is added: SetDictionaryGroups, named combo/list,
+SubmitInitialLookup and actual list activation invoke existing production behavior.
+PrepareProductionFacade is reused from preferences_application for initialization;
+the scene does not install or substitute a Preferences callback. Recording uses
+InstallHistoryRecording with the same caller-owned configuration/history and GUI
+receiver. The original MainWindow method/declaration and product smoke flag/branch
+are removed; history_items_ and history UI remain ordinary production state.
+
+| Original outer/inner stage | New evidence/operation |
+| --- | --- |
+| Fresh valid config and main-owned history path | Core Save/Load fixture roundtrip; fresh empty owned history and explicit index/Network/WebEngine paths |
+| Set group 7 and query, StartLookup | Same group DTO, combo selection (existing selected/dock synchronization), public SubmitInitialLookup -> StartLookup |
+| Recording callback before single-shot observer | Same production installer before observer, GUI direct delivery |
+| Word/group and first visible row/UserRole 7 | Identical live row and signal assertions |
+| Select group 0 then activate stored history row | Existing combo operation and list itemActivated; real StartLookupInTab with stored group 7 |
+| Second single-shot observer restores word/group | Identical replay assertion and completion requirement |
+| Main reload verifies nonempty first word/group 7 | Core LoadHistory, same required values, no final-state fixture rewrite |
+| One process, 20 seconds, 10-second watchdog/zero timer | Same limits and entry semantics, guarded QTest result and normal resource cleanup |
+
+No original import, clear/export/menu, restart, or extra dictionary-result contract
+is claimed. The runtime's lookup request creation/retirement remains unchanged.
+The new runner joins the same execution-chain checker (four success and four
+expected-failure real runner invocations). history-migrated-results.json: 7/7
+actual entries including HistorySmoke, the chain checker, HistoryPreferences,
+HistoryImport, OptionalParts, ViewMenu and cumulative architectural fixtures.
+No product RED was manufactured for this pure migration.
+
+Preserved preparation failures: the first external edit script expected an
+unformatted line and stopped before any source edit; the following build reported
+an absent target (history-migration-build.log). The next build lacked the existing
+preferences_application declaration header (history-migration-build-2.log).
+Restoring that required include, without adding a callback or production behavior,
+produced history-migration-build-3.log exit 0. These are implementation/build errors,
+not acceptance, baseline failure or product RED.

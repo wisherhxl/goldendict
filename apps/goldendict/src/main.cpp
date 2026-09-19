@@ -80,7 +80,6 @@ bool IsSmokeInvocation(const QStringList& arguments) {
         QStringLiteral("--history-export-smoke"),
         QStringLiteral("--history-management-smoke"),
         QStringLiteral("--history-menu-smoke"),
-        QStringLiteral("--history-smoke"),
         QStringLiteral("--interface-language-russian-smoke"),
         QStringLiteral("--interface-language-startup-smoke"),
         QStringLiteral("--interface-language-unsupported-smoke"),
@@ -2125,22 +2124,6 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(0, &window, [&app, &window]() {
             window.RunArticleTabSessionRestartSmokeCheck(
                 false, [&app](bool passed) { app.exit(passed ? 0 : 1); });
-        });
-    } else if (HasArgument(argc, argv, QStringLiteral("--history-smoke"))) {
-        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
-        QTimer::singleShot(0, &window, [&app, &history_path, &window]() {
-            window.RunHistorySmokeCheck([&app, &history_path](bool passed) {
-                try {
-                    const auto persisted = goldendict::core::LoadHistory(
-                        history_path.toStdString());
-                    passed = passed && !persisted.empty() &&
-                             persisted.front().word == "history-smoke-entry" &&
-                             persisted.front().group_id == 7U;
-                } catch (const std::exception&) {
-                    passed = false;
-                }
-                app.exit(passed ? 0 : 1);
-            });
         });
     } else if (HasArgument(argc, argv,
                            QStringLiteral("--dictionary-groups-smoke"))) {

@@ -7139,38 +7139,6 @@ void MainWindow::RunArticleTabSessionRestartSmokeCheck(
     QTimer::singleShot(250, this, *poll);
 }
 
-void MainWindow::RunHistorySmokeCheck(std::function<void(bool)> completion) {
-    const QString expected = QStringLiteral("history-smoke-entry");
-    SetDictionaryGroups({{7U, "History Smoke Group", "", {}}});
-    connect(
-        this, &MainWindow::LookupSubmitted, this,
-        [this, expected, completion = std::move(completion)](
-            const QString& submitted, std::uint32_t group_id) mutable {
-            const bool recorded =
-                submitted == expected && group_id == 7U &&
-                history_list_->count() > 0 &&
-                history_list_->item(0)->text() == expected &&
-                history_list_->item(0)->data(Qt::UserRole).value<quint32>() ==
-                    7U;
-            SelectGroup(0U);
-            connect(
-                this, &MainWindow::LookupSubmitted, this,
-                [recorded, completion = std::move(completion)](
-                    const QString& restored, std::uint32_t restored_group) {
-                    completion(recorded &&
-                               restored ==
-                                   QStringLiteral("history-smoke-entry") &&
-                               restored_group == 7U);
-                },
-                Qt::SingleShotConnection);
-            emit history_list_->itemActivated(history_list_->item(0));
-        },
-        Qt::SingleShotConnection);
-    SelectGroup(7U);
-    query_->setText(expected);
-    StartLookup();
-}
-
 void MainWindow::RunHistoryManagementSmokeCheck(
     std::function<void(bool)> completion) {
     SetHistoryWords({QStringLiteral("Alpha"), QStringLiteral("Beta"),

@@ -510,3 +510,27 @@ and serves remaining History scenes; main's real recording/import callbacks rema
 normal product functionality. HistoryManagement/Export/Menu and Favorites keep
 the specific assembly blockers above; HistorySmoke remains unselected pending its
 complete preflight. No third family or subsequent batch is authorized here.
+
+## W3.8 HistorySmoke queue delta (base 0638ee81)
+
+HistorySmoke preflight and old full entry passed; it uses existing recording
+assembly and normal lookup/replay bindings, so only this complete family was
+locked and migrated to history_smoke_test. The main method/declaration/option and
+outer smoke dispatch are removed. No new TestAccess, ownership or production
+assembly. Ten complete families are now migrated; acceptance remains tied to the
+external final W3.8 review receipt.
+
+The current matching event-loop QTest mains are HistoryPreferences, HistoryImport,
+OptionalParts and HistorySmoke. They explicitly retain qExec failure, with a
+normal CTest checker covering success and expected failure through actual entries.
+The HistoryPreferences omission was reproduced and repaired within this mechanism;
+no unrelated direct-qExec runner was changed.
+
+HistoryManagement still needs main's ClearHistoryRequested save/clear/refresh
+installer; HistoryExport needs SetHistoryExportCallback/QSaveFile; HistoryMenu
+needs those real paths plus its menu/provider stages. Favorites retains its
+separate W3.5 add-folder/add-headword/remove plus projection/traversal boundary.
+None is migrated or newly authorized here. history_items_ is ordinary production
+presentation state still used by Management and other history UI; the Preferences
+executor consumers listed under W3.7 remain unchanged. No shared field has lost
+its final consumer. W3/A4 remains in progress; no next batch or W4 is selected.

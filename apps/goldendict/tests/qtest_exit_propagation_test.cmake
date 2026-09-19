@@ -15,17 +15,21 @@ if(EXISTS "${root}")
 endif()
 file(MAKE_DIRECTORY "${root}")
 set(invalid FALSE)
-foreach(family optional_parts_preferences history_import history_preferences)
+foreach(family optional_parts_preferences history_import history_preferences history_smoke)
   string(REPLACE "_" "-" report_name "${family}")
   foreach(fail RANGE 0 1)
     set(owned "${root}/${family}-${fail}")
     file(MAKE_DIRECTORY "${owned}/tmp")
+    set(case_name "goldendict_${family}_smoke")
+    if(family STREQUAL "history_smoke")
+      set(case_name "goldendict_history_smoke")
+    endif()
     execute_process(
       COMMAND "${CMAKE_COMMAND}" -E env
         "TEMP=${owned}/tmp" "TMP=${owned}/tmp"
         "GOLDENDICT_TEST_EXPECT_FAILURE=${fail}"
         "${CTEST_COMMAND}" --test-dir "${TEST_BUILD_DIRECTORY}"
-        -R "^goldendict_${family}_smoke$" -V
+        -R "^${case_name}$" -V
       RESULT_VARIABLE child_result OUTPUT_VARIABLE out ERROR_VARIABLE err
       TIMEOUT 30)
     file(WRITE "${owned}/ctest.txt" "${out}\n${err}\nCTest exit: ${child_result}\n")

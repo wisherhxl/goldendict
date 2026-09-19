@@ -259,7 +259,6 @@ class MainWindow final : public QMainWindow {
     void RunDictionaryContextNavigationCheck(
         std::function<void(bool)> completion);
     void RunSystemPrintCheck(std::function<void(bool)> completion);
-    void RunHistorySmokeCheck(std::function<void(bool)> completion);
     void RunHistoryManagementSmokeCheck(std::function<void(bool)> completion);
     void RunHistoryExportSmokeCheck(const QString& path,
                                     std::function<void(bool)> completion);

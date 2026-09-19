@@ -7346,3 +7346,11 @@ resource cleanup/logging. Raw qExec, event-loop, process and CTest results are
 retained; an expected failing child is different from the checking test's success.
 Run this serial checker after building all three targets. No production fault
 entry is added. See [W3.8](../openspec/changes/architecture-remediation-review/w3-8-status.md).
+
+`goldendict_history_smoke` now runs `history_smoke_test`, preserving its original
+single-process group-aware recording/replay and persistent-history assertions,
+20-second CTest limit and 10-second watchdog. It reuses the production History
+installer and ordinary lookup/list activation. It adds no restart claim or new
+private access. The execution-chain checker above also covers this runner (four
+success and four expected-failure controls in total). Build `history_smoke_test`
+and the three listed runners before selecting `qtest_exit_propagation_test`.
