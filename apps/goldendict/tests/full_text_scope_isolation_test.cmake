@@ -1,4 +1,4 @@
-foreach(family full_text_dictionary_scope_test dictionary_bar_test dictionary_scope_test_access)
+foreach(family full_text_dictionary_scope_test dictionary_bar_test dictionary_scope_test_access view_menu_test view_menu_test_access)
 foreach(mode clean source interface-source dependency genex)
   execute_process(COMMAND "${CMAKE_COMMAND}" -S "${FIXTURE}" -B "${OUTPUT}/${family}-${mode}" -G "${GENERATOR}"
     "-DCMAKE_MAKE_PROGRAM=${MAKE_PROGRAM}"

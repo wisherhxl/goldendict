@@ -545,12 +545,7 @@ add_test(NAME goldendict_network_cache_preferences_smoke
 set_tests_properties(goldendict_network_cache_preferences_smoke
   PROPERTIES TIMEOUT 40)
 
-add_test(NAME goldendict_view_menu_smoke
-  COMMAND $<TARGET_FILE:goldendict> --view-menu-smoke)
-set_tests_properties(goldendict_view_menu_smoke PROPERTIES
-  ENVIRONMENT
-    "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/view-menu-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/view-menu-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/view-menu-test-home/cache"
-  TIMEOUT 20)
+
 
 add_test(NAME goldendict_history_menu_smoke
   COMMAND $<TARGET_FILE:goldendict> --history-menu-smoke)
@@ -837,9 +832,17 @@ set_tests_properties(article_base_style_dark_test PROPERTIES TIMEOUT 90
   ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu --blink-settings=preferredColorScheme=0;QT_SCALE_FACTOR=1;GOLDENDICT_BASE_STYLE_EXPECT_DARK=1")
 
 if(BUILD_TESTS)
-  ti_add_executable(view_menu_test tests/view_menu_test.cpp)
-  ti_target_include_modules_recurse(view_menu_test goldendict_core)
-  ti_target_link_libraries(view_menu_test goldendict_core)
+  ti_add_executable(view_menu_test tests/view_menu_test.cpp ${dictd_presentation_sources})
+  set_target_properties(view_menu_test PROPERTIES AUTOMOC ON AUTORCC ON)
+  target_include_directories(view_menu_test PRIVATE src)
+  ti_target_include_modules_recurse(view_menu_test goldendict_core goldendict_network)
+  ti_target_link_libraries(view_menu_test ${dictd_presentation_libraries} ${QT_NAMESPACE}::Test)
+  target_compile_definitions(view_menu_test PRIVATE
+    GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}")
+  add_test(NAME goldendict_view_menu_smoke COMMAND view_menu_test
+    -o "${CMAKE_CURRENT_BINARY_DIR}/view-menu-test.txt,txt")
+  set_tests_properties(goldendict_view_menu_smoke PROPERTIES TIMEOUT 20
+    ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu")
 
   ti_add_executable(full_text_dictionary_scope_test
     tests/full_text_dictionary_scope_test.cpp ${dictd_presentation_sources})

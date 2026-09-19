@@ -287,3 +287,20 @@ migrated; 51 MainWindow Run*Check definitions remain. All other pending families
 retain their existing classifications. A separate bounded decision about reuse of
 the production Preferences application boundary is needed before this family can
 proceed. W3.3 is not closed; W3/A4 remains in progress.
+
+### W3.3 authorized continuation outcome
+
+The subsequent approval explicitly allowed a source-private shared production
+Preferences application boundary. Checkpoint A extracted that implementation with
+unchanged ownership and passed the original scene plus affected regressions before
+checkpoint B. ViewMenuSmoke now runs in view_menu_test using that same production
+installer and transaction code, with original callback-substitution phases retained.
+The earlier blocked assessment above remains historical, not the current outcome.
+
+Migrated families: FullTextDictionaryProjectionSmoke (W3.1), DictionaryBarSmoke
+(W3.2), ViewMenuSmoke (W3.3 implementation). Original ViewMenu method, declaration
+and smoke dispatch are removed; no replacement family was selected. Remaining
+MainWindow Run*Check definitions: 50. Other B/C entries remain pending with their
+recorded access/startup/persistence/asynchronous dependencies. The new Preferences
+boundary does not automatically approve or migrate them. W3/A4 remains in progress;
+W3.3 closure depends on its external final independent receipt. No W4/W5/W6 work.

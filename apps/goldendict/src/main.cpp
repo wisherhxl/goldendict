@@ -100,7 +100,6 @@ bool IsSmokeInvocation(const QStringList& arguments) {
         QStringLiteral("--suggestion-pane-smoke"),
         QStringLiteral("--synonym-preferences-smoke"),
         QStringLiteral("--system-print-smoke"),
-        QStringLiteral("--view-menu-smoke"),
         QStringLiteral("--view-preferences-restart-smoke"),
         QStringLiteral("--webengine-interaction-smoke"),
         QStringLiteral("--webengine-smoke"),
@@ -2050,12 +2049,6 @@ int main(int argc, char* argv[]) {
                     qEnvironmentVariable("GOLDENDICT_VIEW_RESTART_ENABLED") ==
                         QStringLiteral("1"));
             app.exit(passed ? 0 : 1);
-        });
-    } else if (HasArgument(argc, argv, QStringLiteral("--view-menu-smoke"))) {
-        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
-        QTimer::singleShot(0, &window, [&app, &window]() {
-            window.RunViewMenuSmokeCheck(
-                [&app](bool passed) { app.exit(passed ? 0 : 1); });
         });
     } else if (HasArgument(
                    argc, argv,

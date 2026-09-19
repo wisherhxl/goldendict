@@ -170,6 +170,7 @@ class MainWindow final : public QMainWindow {
     friend class DictdInlineDisplayTest;
     friend class ArticlePageLifecycleTest;
     friend class DictionaryScopeTestAccess;
+    friend class ViewMenuTestAccess;
     friend class PreparedWidgetsFacadeCandidate;
     friend class WidgetsFacadeActivationRelay;
     friend class MaintainedWidgetsCommit;
@@ -319,7 +320,6 @@ class MainWindow final : public QMainWindow {
     void RunInspectorGeometrySmokeCheck(
         bool restart,
         std::function<void(bool, std::string, std::string)> completion);
-    void RunViewMenuSmokeCheck(std::function<void(bool)> completion);
     void RunHistoryMenuSmokeCheck(const QString& path,
                                   std::function<void(bool)> completion);
     void RunFavoritesMenuSmokeCheck(const QString& path,

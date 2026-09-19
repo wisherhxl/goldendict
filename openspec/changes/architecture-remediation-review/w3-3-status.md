@@ -1,4 +1,4 @@
-# W3.3 View menu test responsibility migration — blocked
+# W3.3 View menu test responsibility migration
 
 Base: 75de4fa427a05b9a666c5b4c05b4fbeb6fe4117f. Approved 2026-09-19.
 The existing inventory's W3.3 section locks exactly ViewMenuSmoke; no additional
@@ -11,14 +11,14 @@ independent exact-candidate review, no merge/push or W4.
 
 - [x] Build/run original product View menu scene with fresh owned paths; record
       the required persisted configuration fixture and retain initial failures.
-- [ ] Move full scenario, substitutions and assertions into view_menu_test;
+- [x] Move full scenario, substitutions and assertions into view_menu_test;
       retain real composition/resources/MOC and all action/event paths.
-- [ ] Remove the corresponding product declaration, method and main dispatch.
-- [ ] Verify equivalent behavior and preserve failed attempts if any.
-- [ ] Extend the existing cumulative target-closure guard and its negative fixtures.
-- [ ] Run migrated, W1/W2/W3/P1 and affected regressions; independent ON/OFF builds
+- [x] Remove the corresponding product declaration, method and main dispatch.
+- [x] Verify equivalent behavior and preserve failed attempts if any.
+- [x] Extend the existing cumulative target-closure guard and its negative fixtures.
+- [x] Run migrated, W1/W2/W3/P1 and affected regressions; independent ON/OFF builds
       and actual source/link closure checks.
-- [ ] Run actual OFF ordinary portable startup/render/normal exit via P1 layout.
+- [x] Run actual OFF ordinary portable startup/render/normal exit via P1 layout.
 - [ ] Record mapping, candidate identity and independent review externally.
 
 The initial proposed private boundary was a copy-only Preferences snapshot; all actions and
@@ -34,7 +34,7 @@ platform/Qt5 geometry/whole-filesystem limits are unchanged.
 External evidence root:
 D:/workspace/goldendict/evidence/a4-test-extraction-w3-3-20260919.
 
-## Baseline and scope correction
+## Baseline and scope correction (preserved initial state)
 
 The initial snapshot-only proposal is insufficient and has not been implemented.
 The original method saves and restores the main-installed Preferences callback
@@ -62,7 +62,7 @@ state or production source was altered. Earlier failures are not erased and are
 not an artificial red phase. The seeded success resolves the fixture prerequisite,
 not the missing reusable production callback boundary.
 
-## Current disposition and next boundary
+## Initial disposition and next boundary (before extraction authorization)
 
 The selected family is retained but classified as mode C. No substitute family
 was added. No extraction, production/test/build modification, new TestAccess,
@@ -186,3 +186,115 @@ ViewMenuSmoke and ten affected regressions pass 11/11, CTest exit 0, 21.40 secon
 coordinator/predecision, groups/sources, W1 and W2. Original method/entry remain.
 No B migration edits preceded that result. Local checkpoint identity is recorded
 externally after commit; it is not final independent acceptance.
+
+## Checkpoint B coverage map and implementation
+
+The following mapping preserves the original sequence inside one scene. This does
+not combine separate previously isolated scenarios. Original references are at
+base 75de4fa4, MainWindow::RunViewMenuSmokeCheck lines 2708-3052. New target is
+view_menu_test, slot ViewMenuTest::viewMenuThroughRealApplication.
+
+| Original stage / assertion | New test observation and real boundary |
+| --- | --- |
+| Required menu/pane/toolbar objects | Existing QObject-name lookups, failure is a real QtTest failure |
+| 15 View actions, 7 top menus, separators, roles, labels, accessibility | Same expected action identities and order; structure stage |
+| Ctrl M/O/S/R/I/H uniqueness, empty toolbar shortcuts | Same action/shortcut enumeration |
+| Seven zoom menu entries | Same zoom/word-zoom actions and separator |
+| Two article views zoom/reset, callback counts 1/2 | Same real ArticleView creation and actions, same success substitute |
+| Word/query/group fonts, unaffected result/history/favorite fonts, counts 3/4 | Same widget fonts/actions and value-only Preferences snapshot |
+| Menubar hide/show | Restore shared real callable; same visibility/button assertions |
+| Dictionary names on/off and toolbar icon sizes | Same real callable/actions/style assertions |
+| Six real Preferences transactions | Additional checks: current facade changes and equals owner snapshot; disk-loaded preferences equal same configuration identity and window snapshot; persisted article session exists |
+| Saved View settings survive SetPreferences reconstruction, three callbacks | Same success substitute and original two SetPreferences calls |
+| Rejected save preserves actions/widgets/preferences | Same failure substitute/message and original three triggers; no direct final-state repair |
+| Always-on-top true/false | Restore real callable at original point; same window flags |
+| Search placement dock/toolbar, two signals and two callbacks | Same placement substitute, real toggle actions, parent checks and counts |
+| Five dock/toolbar visibility cycles | Same four transitions and exact signal counts per widget |
+| Layout restored, active tabs visible with positive geometry, state version 7 | Same state comparison; use existing presentation host ActivePage after real replacement instead of a stale initial tabs pointer; compare actual saveState(7) with public capture |
+
+Private test access remains one copy-only Preferences observer. Callback install/
+substitute/restore uses existing setter and shared production installer. No generic
+mutable access, new production test scheduler or test-owned transaction algorithm.
+
+Runtime setup uses the same production facade preparation and Preferences installer,
+existing window setters/restorers, and P1 WebEngine path initialization. Scope cleanup
+matches main: coordinator shutdown, detach facade, release snapshots, owner shutdown,
+Network shutdown, then normal stack destruction. The test owns all configuration,
+index/cache/profile/temp paths. A single short temporary root avoids redundant path
+nesting; no production path policy changed.
+
+CTest name remains goldendict_view_menu_smoke; executable changes from goldendict
+--view-menu-smoke to view_menu_test. App-build working directory, offscreen platform,
+x11 session marker, Chromium flags and 20-second timeout remain. The runner owns
+its environment directories, replacing the old fixed test-home values. Original
+main watchdog/exit dispatch is replaced by QtTest failure accounting and the CTest
+process timeout; no successful empty run counts as validation.
+
+Removed: RunViewMenuSmokeCheck declaration/definition, internal smoke flag and
+main dispatch. The callback local substitutes, assertions and scene state now occur
+only in the BUILD_TESTS target. Existing predecision-smoke fault schedule and other
+unmigrated families remain at their previous owners; no added historical exemption.
+
+Development failures are retained: first missing header compile failure; first
+runtime exception (exact terminating instruction not captured); long nested fixture
+path causing a persistence-decision file error, with same-binary short-path control
+passing; then stale initial tabs observer revealed by invalid dimensions, and an
+initial-name lookup that correctly failed after replacement. The final observation
+uses the existing active host, preserving the original member's current-page meaning.
+No assertion or production failure semantics were weakened to resolve these issues.
+The initial runtime exception cannot be assigned a definitive stack cause; the stale
+observer was removed and subsequent full-scene runs verify the corrected observer.
+
+Targeted corrected run: b-host/ctest.log, 2/2 exit 0; ViewMenu QtTest 3 passed,
+0 failed/0 skipped; guard 5 clean fixture configurations and 20 deliberate violations
+(4 modes for each of 5 cumulative migrated-runner/access names). Build failures and
+intermediate failed runs remain beside the success logs; directory names containing
+"passed" describe intended attempts, not their actual verdict (see exit/log).
+
+## Final implementation verification (before independent completion review)
+
+Checkpoint A: 3e897b17df1083ce3f2e15c8eece23887568cb24, extraction with old scene
+intact, 11/11 regression pass. Checkpoint B contains only the full ViewMenu family
+migration, guard extension and associated records. Its exact committed identity,
+full cumulative diff and independent receipt are recorded externally to avoid
+mutating the frozen candidate to record review results.
+
+- ON Release and independent OFF Release production builds: exit 0. Both source
+  roots are this worktree and both use the unchanged Qt 6.11.1 package.
+- verify-cumulative.ps1 -RunName candidate1: 27/27 actual CTest cases passed,
+  individually isolated roots with fresh serialized fixtures; no zero matches.
+  candidate1-results.json maps every case to its command output and owned root.
+- ViewMenu scene: 3 QtTest passes (init, actual scene, cleanup), zero skips.
+- ArticleInspector retains the already approved NativeLegacyGeometryImport skip:
+  14 passed / 1 skipped. No new skips or platform claims were added.
+- Cumulative guard: 5 clean and 20 rejected source/interface-source/dependency/genex
+  fixtures, including all W3.1/W3.2 families and the new runner/access.
+- Production closure reports and ninja command graphs contain no migrated runner;
+  actual ON/OFF main_window object symbols contain none of the three removed Run
+  methods. OFF target inventory has no view_menu_test. Shared Preferences source is
+  compiled/linked into actual goldendict and the test closure, not a different copy.
+- Ordinary OFF startup: ordinary-off/result.json, exit 0, no application arguments,
+  portable recognized beside the copied executable, real main window and WebEngine
+  welcome document observed, one fixture dictionary reported, Ctrl+Q normal exit.
+  ui-main-window.txt and loaded-qt.json bind the observed window and actual Qt DLLs.
+  Watcher reported 78 events inside the owned run root and adjacent sentinel intact;
+  event count is evidence, not an acceptance threshold.
+
+Startup paths: configuration/history/favorites/recovery under ordinary-off/bin/portable;
+indexes under ordinary-off/indexes; Network at portable/cache/qt-network-http;
+WebEngine at portable/webengine/article; temp and cwd under ordinary-off/tmp and
+ordinary-off/working. The exact unchanged P1 launcher/watch scripts are reused.
+No smoke branch, Network/WebEngine bypass, daily profile writes or daily sentinels.
+Bounded observation remains Windows/current Qt package and this portable scenario,
+not all Chromium file access, nonportable default startup, Linux/macOS or Qt5 parity.
+
+Source scope: no W1/W2/P1 behavior or path implementation modifications, no Core or
+Network source changes, no public installed interface or Accepted ADR changes.
+Remaining main test header/fault fields/shared fixtures are existing legacy scope.
+This batch removes one complete family, leaving 50 MainWindow Run*Check definitions;
+the number is navigation only, not architecture acceptance.
+
+Implementation and developer behavior verification are complete. Independent
+completion acceptance and closure require the fresh exact-candidate external
+receipt. Earlier scope review and readiness are not completion Pass. Historical
+failures, including P1's original Fail and limits, are not overwritten.
