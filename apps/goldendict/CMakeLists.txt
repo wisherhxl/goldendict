@@ -600,14 +600,6 @@ set_tests_properties(goldendict_dictionary_context_navigation_smoke PROPERTIES
     "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu;HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-navigation-test-home/home;XDG_CONFIG_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-navigation-test-home/config;XDG_CACHE_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-navigation-test-home/cache"
   TIMEOUT 20)
 
-add_test(NAME goldendict_dictionary_context_preferences_smoke
-  COMMAND ${CMAKE_COMMAND}
-    -DGOLDENDICT_EXECUTABLE=$<TARGET_FILE:goldendict>
-    -DTEST_HOME=${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-preferences-test-home
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/dictionary_context_preferences_restart.cmake)
-set_tests_properties(goldendict_dictionary_context_preferences_smoke
-  PROPERTIES TIMEOUT 40)
-
 add_test(NAME goldendict_system_print_smoke
   COMMAND $<TARGET_FILE:goldendict> --system-print-smoke)
 set_tests_properties(goldendict_system_print_smoke PROPERTIES
@@ -847,6 +839,18 @@ if(BUILD_TESTS)
   add_test(NAME goldendict_articles_preferences_smoke COMMAND articles_preferences_test
     -o "${CMAKE_CURRENT_BINARY_DIR}/articles-preferences-test.txt,txt")
   set_tests_properties(goldendict_articles_preferences_smoke PROPERTIES TIMEOUT 20
+    ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu")
+
+  ti_add_executable(dictionary_context_preferences_test tests/dictionary_context_preferences_test.cpp ${dictd_presentation_sources})
+  set_target_properties(dictionary_context_preferences_test PROPERTIES AUTOMOC ON AUTORCC ON)
+  target_include_directories(dictionary_context_preferences_test PRIVATE src)
+  ti_target_include_modules_recurse(dictionary_context_preferences_test goldendict_core goldendict_network)
+  ti_target_link_libraries(dictionary_context_preferences_test ${dictd_presentation_libraries} ${QT_NAMESPACE}::Test)
+  target_compile_definitions(dictionary_context_preferences_test PRIVATE
+    GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}")
+  add_test(NAME goldendict_dictionary_context_preferences_smoke COMMAND dictionary_context_preferences_test
+    -o "${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-preferences-test.txt,txt")
+  set_tests_properties(goldendict_dictionary_context_preferences_smoke PROPERTIES TIMEOUT 20
     ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu")
 
   ti_add_executable(full_text_dictionary_scope_test

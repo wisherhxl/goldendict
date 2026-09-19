@@ -333,3 +333,87 @@ ArticlesPreferencesSmoke. Remaining MainWindow Run*Check count is 49, not an
 acceptance metric. All other families remain pending, including the concrete
 History/Favorites assembly blockers above. W3/A4 stays in progress. W3.4's final
 acceptance is bound to its external independent candidate receipt.
+
+## W3.5 preflight queue and concrete blocked boundaries
+
+W3.4 is accepted at b6f9429d (external independent Pass retained). W3.5 locks
+DictionaryContextPreferencesSmoke followed by SynonymPreferencesSmoke after two
+separate fresh-fixture old-entry passes. Both now qualify as mode A: directly reuse
+W3.4 dialog executor and copy-only observer plus W3.3 production Preferences
+installer. No additional access is needed. Their common cancel/error/real-save
+contract, persisted checks and independent processes are mapped in w3-5-status.md.
+No third or replacement family is selected. Other uninspected entries retain their
+previous classification; availability is not inferred from a similar name.
+
+### HistoryPreferencesSmoke: remaining dependency, separately decidable
+
+At base b6f9429d, main.cpp:656 owns the loaded history vector, alongside the
+configuration/path locals. MainWindow::RunHistoryPreferencesSmokeCheck edits
+store_history/maximum_history_entries through the real Preferences callback,
+emits LookupSubmitted for "Not recorded" and "Recorded", and emits
+ImportHistoryRequested. The missing production paths are main.cpp:987-1018
+(LookupSubmitted -> store/max guard -> case-insensitive dedup/newest-first trim ->
+Core SaveHistory -> assign same history -> refresh_history) and 1053-1069
+(ImportHistoryRequested -> Core ImportHistoryText with current max/group ->
+SaveHistory -> assign -> refresh_history). refresh_history at 943 maps entries to
+SetHistoryItems. The old dispatch at 1678+ seeds three entries/import file and
+checks persisted history and configuration; these are test-owned steps to migrate,
+not production logic to place in a shared module.
+
+These QObject connections use window as receiver context, execute synchronously
+on its GUI thread and capture main-owned references. Destruction disconnects via
+window context; setters/public signals do not expose the main lambda bodies.
+InstallPreferencesApplication already handles bounded-history updates when applying
+preferences, but does not install lookup recording or import handlers. Copying
+those handlers into a runner would duplicate the missing business implementation.
+
+A possible separately approved minimal boundary is a private desktop history
+binding installer sharing exactly recording/import implementations and presentation
+refresh, with references to configuration/history, selected history path and
+MainWindow receiver. Main retains ownership; installer returns connection handles
+if explicit teardown is required. It need not include Favorites, history exports,
+clear, menus or lookup execution ownership. The accepted architecture.md
+General/History contract explicitly leaves recording/import/trim/persistence in
+the composition root, so a source-private extraction can preserve that contract;
+moving policy to MainWindow/Core or changing persistence semantics would require
+an explicit design change. Neither version is implemented or approved by W3.5.
+
+### FavoritesPreferencesSmoke: distinct remaining dependency
+
+At base, main.cpp:657 owns Favorites. RunFavoritesPreferencesSmokeCheck uses
+AddFavoriteFolderRequested, add_favorite_action_ -> AddFavoriteRequested, and
+remove_favorite_action_ -> Widgets confirmation -> RemoveFavoriteRequested.
+main.cpp:1106-1129 adds folders through FavoriteContainerAtPath; 1071-1104 adds
+headwords with case-insensitive duplicate suppression; 1020-1038 removes through
+RemoveFavoriteAtPath. Each copies the existing tree, uses Core SaveFavorites,
+assigns the same owned vector only on success and calls refresh_favorites
+(975 -> MakeFavoriteViewItem at 304 -> SetFavoriteItems). Invalid paths refresh;
+exceptions show the existing warning. Container traversal also preserves expanded
+ancestors. The scene's rejection/acceptance confirmation substitute belongs in the
+test; it is distinct from persistence and must not become a save-success substitute.
+
+The handlers borrow main-owned favorites/path/window and run synchronously on the
+window's GUI context. Missing entry is an installer for those exact add-folder,
+add-headword/remove handlers and tree projection/helpers, not Preferences itself.
+A separate source-private favorites binding extraction could retain main ownership
+and current atomic-save semantics with explicit references to favorites/path/window.
+It does not require History, rename/move/transfer, a generic application context,
+or a new facade owner. Shared helpers also serve unmigrated rename/move/transfer
+handlers; any future proposal must preserve those consumers. Accepted
+architecture.md General/Favorites requires Widgets confirmation and immediate
+atomic mutation persistence; no delayed-save or ownership redesign is authorized.
+This boundary remains unimplemented and needs separate production-extraction approval.
+
+### Retained interaction storage and exact consumers
+
+After the two locked methods are removed, preferences_dialog_executor_ remains in
+production for RunHelpMenuSmokeCheck, RunEditMenuSmokeCheck,
+RunHistoryPreferencesSmokeCheck, RunPreferencesCoordinatorPredecisionSmokeCheck,
+RunFavoritesPreferencesSmokeCheck, RunOptionalPartsPreferencesSmokeCheck,
+RunProxyPreferencesSmokeCheck, RunNetworkCachePreferencesSmokeCheck,
+RunNetworkCachePreferencesRestartSmokeCheck, RunHideSingleTabPreferencesSmokeCheck,
+RunEscapeHidesMainWindowPreferencesSmokeCheck, RunArticleClickPreferencesSmokeCheck
+and RunMruTabOrderPreferencesSmokeCheck; EditPreferences invokes it. Migrated
+Articles, DictionaryContext and Synonym runners reuse the test-only setter.
+ViewMenu/Articles and these new runners share the copy-only Preferences observer.
+No last-consumer cleanup or widened friend is part of this batch.
