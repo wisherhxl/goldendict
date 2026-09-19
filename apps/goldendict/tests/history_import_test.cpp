@@ -120,6 +120,7 @@ class HistoryImportTest : public QObject {
             initial.facade.reset();
             owner.Shutdown();
             runtime->Shutdown();
+            qInfo() << "Execution-chain resource cleanup complete";
         });
         QTimer::singleShot(10000, &window, []() { QCoreApplication::exit(2); });
         auto* list = window.findChild<QListWidget*>("historyList");
@@ -156,6 +157,9 @@ class HistoryImportTest : public QObject {
         QCOMPARE(persisted[0].word, std::string("Alpha"));
         QCOMPARE(persisted[1].word, std::string("第二个"));
         QCOMPARE(persisted, history);
+        QVERIFY2(
+            qEnvironmentVariableIntValue("GOLDENDICT_TEST_EXPECT_FAILURE") != 1,
+            "controlled execution-chain assertion failure");
     }
 };
 
@@ -191,7 +195,12 @@ int main(int argc, char** argv) {
         application.exit(test_result);
     });
     const int event_loop_result = application.exec();
-    return test_result != 0 ? test_result : event_loop_result;
+    const int process_result =
+        test_result != 0 ? test_result : event_loop_result;
+    std::cerr << "Execution-chain results: qtest=" << test_result
+              << " event_loop=" << event_loop_result
+              << " process=" << process_result << '\n';
+    return process_result;
 }
 
 #include "history_import_test.moc"

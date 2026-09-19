@@ -851,6 +851,13 @@ if(BUILD_TESTS)
   set_tests_properties(goldendict_history_preferences_smoke PROPERTIES TIMEOUT 20
     ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu")
 
+  add_test(NAME qtest_exit_propagation_test COMMAND ${CMAKE_COMMAND}
+    -DTEST_BUILD_DIRECTORY=${CMAKE_BINARY_DIR}
+    -DREPORT_DIRECTORY=${CMAKE_CURRENT_BINARY_DIR}
+    -DCTEST_COMMAND=${CMAKE_CTEST_COMMAND}
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/qtest_exit_propagation_test.cmake)
+  set_tests_properties(qtest_exit_propagation_test PROPERTIES TIMEOUT 180 RUN_SERIAL TRUE)
+
   ti_add_executable(history_import_test tests/history_import_test.cpp ${dictd_presentation_sources})
   set_target_properties(history_import_test PROPERTIES AUTOMOC ON AUTORCC ON)
   target_include_directories(history_import_test PRIVATE src)

@@ -119,6 +119,7 @@ class OptionalPartsPreferencesTest : public QObject {
             initial.facade.reset();
             owner.Shutdown();
             runtime->Shutdown();
+            qInfo() << "Execution-chain resource cleanup complete";
         });
         const auto published = [&]() {
             const auto saved =
@@ -236,6 +237,9 @@ class OptionalPartsPreferencesTest : public QObject {
         const auto persisted =
             core::LoadConfiguration(configuration_path.toStdString());
         QCOMPARE(persisted.preferences.always_expand_optional_parts, true);
+        QVERIFY2(
+            qEnvironmentVariableIntValue("GOLDENDICT_TEST_EXPECT_FAILURE") != 1,
+            "controlled execution-chain assertion failure");
     }
 };
 
@@ -271,7 +275,12 @@ int main(int argc, char** argv) {
         application.exit(test_result);
     });
     const int event_loop_result = application.exec();
-    return test_result != 0 ? test_result : event_loop_result;
+    const int process_result =
+        test_result != 0 ? test_result : event_loop_result;
+    std::cerr << "Execution-chain results: qtest=" << test_result
+              << " event_loop=" << event_loop_result
+              << " process=" << process_result << '\n';
+    return process_result;
 }
 
 #include "optional_parts_preferences_test.moc"

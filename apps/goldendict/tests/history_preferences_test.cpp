@@ -122,6 +122,7 @@ class HistoryPreferencesTest : public QObject {
             initial.facade.reset();
             owner.Shutdown();
             runtime->Shutdown();
+            qInfo() << "Execution-chain resource cleanup complete";
         });
         const auto published = [&]() {
             const auto saved =
@@ -244,6 +245,9 @@ class HistoryPreferencesTest : public QObject {
                  1U);
         QCOMPARE(core::LoadHistory(history_path.toStdString()), history);
         QCOMPARE(history.front().group_id, 11U);
+        QVERIFY2(
+            qEnvironmentVariableIntValue("GOLDENDICT_TEST_EXPECT_FAILURE") != 1,
+            "controlled execution-chain assertion failure");
     }
 };
 
@@ -273,10 +277,18 @@ int main(int argc, char** argv) {
     goldendict::app::InitializeWebEngineStorage(
         {}, webengine_storage.filePath("webengine"));
     HistoryPreferencesTest test(profile.path());
+    int test_result = 2;
     QTimer::singleShot(0, &application, [&]() {
-        application.exit(QTest::qExec(&test, argc, argv));
+        test_result = QTest::qExec(&test, argc, argv);
+        application.exit(test_result);
     });
-    return application.exec();
+    const int event_loop_result = application.exec();
+    const int process_result =
+        test_result != 0 ? test_result : event_loop_result;
+    std::cerr << "Execution-chain results: qtest=" << test_result
+              << " event_loop=" << event_loop_result
+              << " process=" << process_result << '\n';
+    return process_result;
 }
 
 #include "history_preferences_test.moc"

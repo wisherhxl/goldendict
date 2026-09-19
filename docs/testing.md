@@ -7336,3 +7336,13 @@ existing finite test access exposes only current visibility after widget
 replacement. Both W3.7 runners propagate the QtTest result independently of event
 loop shutdown. No new restart coverage is claimed. Build both runners alongside
 `goldendict` through the Conan launcher before selecting their exact CTest entries.
+
+### Custom event-loop runner exit protection
+
+`qtest_exit_propagation_test` runs the actual registered HistoryPreferences,
+HistoryImport and OptionalParts scenarios in success/controlled-failure child
+processes. The test-only failure is after all ordinary assertions and uses normal
+resource cleanup/logging. Raw qExec, event-loop, process and CTest results are
+retained; an expected failing child is different from the checking test's success.
+Run this serial checker after building all three targets. No production fault
+entry is added. See [W3.8](../openspec/changes/architecture-remediation-review/w3-8-status.md).
