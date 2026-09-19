@@ -1395,8 +1395,14 @@ the network module provides one application-lifetime owner in place of the
 former ephemeral per-request manager. Widgets
 and `QWebEngineProfile` remain outside the contract.
 
-The composition root injects a dedicated `qt-network-http` path below
-`QStandardPaths::CacheLocation`; tests inject an isolated root. A zero limit
+The composition root selects a parent cache root before Network preparation:
+existing explicit injection wins, otherwise portable profiles use their current
+configuration directory's `cache` child, otherwise the unchanged
+`QStandardPaths::CacheLocation` applies. Network alone appends `qt-network-http`.
+The root is selected once and reused by startup, recovery construction and
+configuration reloads. Network has no portable-mode or global configuration
+dependency, and an unavailable portable root never falls back to user storage.
+This does not change index defaults or WebEngine data paths. A zero limit
 means no Qt Network disk cache and evicts the previously owned directory;
 a positive limit is converted from MiB to bytes and applied exactly. Startup
 validates the bound and prepares the owned path before publishing the network

@@ -9,6 +9,15 @@ Qt 6 application window using Qt WebEngine. Legacy dictionary functionality is
 not yet present. The exact source baselines and ownership boundary are recorded
 in [docs/migration.md](docs/migration.md).
 
+## Portable Network cache
+
+An application-local `portable` directory selects the portable profile. Its
+Qt Network HTTP cache uses `portable/cache/qt-network-http`; cache setup failure
+does not fall back to the normal user cache. Non-portable cache selection is
+unchanged. Existing explicit cache-root injection takes precedence. Disabling
+the cache or clearing it on exit affects only Network's owned child directory.
+This does not redirect index defaults or Qt WebEngine's separate data paths.
+
 ## Prerequisites
 
 - Conan 2

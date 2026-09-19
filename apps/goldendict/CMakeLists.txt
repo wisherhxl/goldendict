@@ -156,6 +156,17 @@ ti_target_link_libraries(legacy_configuration_location_test
 add_test(NAME legacy_configuration_location_test
   COMMAND legacy_configuration_location_test)
 
+if(BUILD_TESTS)
+  ti_add_executable(portable_network_cache_test
+    tests/portable_network_cache_test.cpp src/legacy_configuration_location.cpp)
+  ti_target_include_modules_recurse(portable_network_cache_test goldendict_core goldendict_network)
+  ti_target_link_libraries(portable_network_cache_test
+    goldendict_core goldendict_network ${QT_NAMESPACE}::Test)
+  add_test(NAME portable_network_cache_test COMMAND portable_network_cache_test
+    -o "${CMAKE_CURRENT_BINARY_DIR}/portable-network-cache-test.txt,txt")
+  set_tests_properties(portable_network_cache_test PROPERTIES TIMEOUT 30)
+endif()
+
 ti_add_executable(command_line_lookup_test
   tests/command_line_lookup_test.cpp
   src/command_line_lookup.cpp)

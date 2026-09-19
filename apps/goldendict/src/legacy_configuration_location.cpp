@@ -204,4 +204,18 @@ PathKind ProbePath(const std::filesystem::path& path) {
     return PathKind::kOther;
 }
 
+std::string ResolveNetworkCacheRoot(
+    const ConfigurationLocations& locations,
+    const std::string& default_cache_root,
+    const std::string& explicit_cache_root) {
+    if (!explicit_cache_root.empty()) {
+        return explicit_cache_root;
+    }
+    if (locations.portable) {
+        return (locations.current_configuration_path.parent_path() / "cache")
+            .generic_string();
+    }
+    return default_cache_root;
+}
+
 }  // namespace goldendict::app

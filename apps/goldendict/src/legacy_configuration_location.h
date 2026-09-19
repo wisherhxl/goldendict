@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <string>
 
 namespace goldendict::app {
 
@@ -37,6 +38,12 @@ using PathProbe = std::function<PathKind(const std::filesystem::path&)>;
 // The injected probe makes every platform branch deterministic in tests.
 ConfigurationLocations ResolveConfigurationLocations(
     const LegacyConfigurationEnvironment& environment, const PathProbe& probe);
+
+// Select the injected Network parent root without filesystem side effects.
+std::string ResolveNetworkCacheRoot(
+    const ConfigurationLocations& locations,
+    const std::string& default_cache_root,
+    const std::string& explicit_cache_root = {});
 
 // Each current file has independent precedence. Otherwise, validates its one
 // selected legacy candidate without falling through to another profile.

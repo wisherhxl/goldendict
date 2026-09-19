@@ -778,10 +778,15 @@ int main(int argc, char* argv[]) {
     }
 
     const std::string network_cache_root =
-        (smoke_configuration_root.isEmpty()
-             ? QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
-             : QDir(smoke_configuration_root).filePath(QStringLiteral("cache")))
-            .toStdString();
+        goldendict::app::ResolveNetworkCacheRoot(
+            configuration_locations,
+            QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+                .toStdString(),
+            smoke_configuration_root.isEmpty()
+                ? std::string{}
+                : QDir(smoke_configuration_root)
+                      .filePath(QStringLiteral("cache"))
+                      .toStdString());
     const auto block_runtime_recovery =
         [&](goldendict::core::PendingFailureDestination destination,
             const char* identifier, const QString& detail) {
