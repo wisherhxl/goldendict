@@ -478,7 +478,7 @@ W3.6 implementation delta: HistoryPreferences joins the six previously migrated 
 
 After two fresh old-entry baselines passed, select HistoryImportSmoke then
 OptionalPartsPreferencesSmoke. Both reuse existing runner structure and production
-assembly; no new access or ownership boundary. HistoryImport is independently
+assembly; no new ownership boundary. Initial preflight expected existing access to suffice; the current-visibility observation refinement is recorded below. HistoryImport is independently
 registered/separately seeded and verified; its earlier grouped presentation row
 is not a cross-process family contract. Complete its own scene/main/CTest chain.
 See w3-7-status.md for outer execution and assertion mapping.

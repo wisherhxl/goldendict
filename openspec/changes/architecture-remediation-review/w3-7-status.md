@@ -135,3 +135,67 @@ families, History/Articles/DictionaryContext/Synonym/ViewMenu and architecture
 fixtures. The two-process DictionaryContext entry and its 40-second timeout are
 unchanged. optional-corrected-build.log exits 0. Final cumulative review remains
 pending; these results supersede neither the retained failure evidence nor history.
+
+## Cumulative verification before final review
+
+Checkpoints: HistoryImport 4fab5810; OptionalParts 64d84c47 (including the bounded
+visibility observer and new-runner exit-code correction). Final documentation-only
+checkpoint and exact final commit/tree are identified in external candidate-identity.json.
+No source changes followed the successful corrected run.
+
+Commands below ran from the authorized worktree. Every build-tree CTest/executable
+inside the scripts uses run_with_conan.ps1; scripts and raw outputs are under the
+external evidence root above. Existing independent caches were reused, with new
+runner source/MOC/resource objects built, affected production objects rebuilt and
+actual Ninja link closure inspected; no different-behavior production copy exists.
+
+- verify-targeted.ps1 -RunName baseline -Cases the two locked original entries:
+  2/2 actual entries, fresh serialized/loaded fixtures, exit 0.
+- History build and history-migrated/history-regression: build exit 0; 1/1 and
+  3/3 entries respectively. Full checkpoint identity is in Git history.
+- Optional build and optional-corrected: build exit 0; 8/8 actual entries with
+  fresh QtTest-report validation, exit 0. Failed earlier runs remain preserved.
+- verify-builds.ps1 -Prefix candidate: ON product/all affected test targets and
+  OFF product build, both exit 0; source directory/Release/Ninja bindings retained.
+- verify-cumulative.ps1 -RunName candidate: 37/37 actual CTest registrations exit
+  0 (36 product entries and one architecture-fixture entry). Includes the prior
+  seven migrated families, both new entries, W1/W2/P1, History, Preferences and
+  configuration/recovery. W3.5 DictionaryContext still runs two processes over
+  one fresh owned profile with its original 40-second timeout.
+- full_text_scope_isolation_test: 12 legal fixtures accepted, 48 source/interface/
+  dependency/generator-expression violations rejected, covering both new runner
+  names and all earlier patterns. These expected rejections are architecture
+  checker evidence, not product failures or product test passes.
+- verify-isolation.ps1 -Prefix candidate plus inspect-artifacts.py: production
+  ON/OFF command/target/source closure and main_window object symbols exclude
+  migrated scenes; OFF has no migrated runner targets. Actual generated Ninja
+  link blocks also exclude the runners and Qt6Test, beyond response-file commands.
+- openspec validate architecture-remediation-review --strict and git diff --check:
+  exit 0. No test count is a substitute for the stage/contract mapping above.
+
+### Actual ordinary OFF portable startup
+
+Conan launcher -> python ordinary_startup.py build/W3-off ordinary-off. The copied
+OFF product uses argv containing only its executable, existing bin/portable
+recognition, owned LF-format core.conf, XDXF/index paths, TEMP/TMP and working dir.
+No smoke branch, Qt test identity or Network/WebEngine bypass. Existing P1 helper,
+profile identities and path behavior are unchanged. Unique portable configuration
+keeps instance rendezvous separate from daily use.
+
+Computer Use observed the real MainWindow, articleWebContent Welcome to GoldenDict
+rendering and status 1 dictionary / 1 article / 1 word; Control+Q exited normally,
+exit 0, owned window disappeared. This is a new actual run, not reused W3.6 GUI
+execution. ordinary-off/{running,result,window-observation,loaded-qt}.json bind
+paths, product hash, loaded Qt package, observation and exit. 78 recursive owned-
+root notifications were recorded (also including the observer's own evidence
+writes), no watcher error, adjacent sentinel intact; count is not an acceptance
+criterion. Network cache, WebEngine article data, index and exit configuration
+stay in their selected owned layout. No daily-root sentinel/write/cleanup occurred.
+
+The accepted Windows/Qt 6.11.1 P1 boundary is reused: owned-subtree directory
+notifications are not complete filesystem/PID/Chromium tracing. No nonportable
+default-user startup or Linux/macOS runtime claim. Existing Inspector paired-Qt5
+NativeLegacyGeometryImport skip remains (14 passed, one historical skip); no new
+key skip. The independent reviewer must distinguish reruns from any identity-
+checked GUI evidence reuse. Final acceptance is solely the external fresh review
+receipt for the frozen cumulative candidate; this document does not self-approve.
