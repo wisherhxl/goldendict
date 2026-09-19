@@ -11,6 +11,8 @@ target_sources(goldendict PRIVATE
   src/dictionary_status_presentation.h
   src/lookup_popup_controller.cpp
   src/lookup_popup_controller.h
+  src/history_application.cpp
+  src/history_application.h
   src/preferences_application.cpp
   src/preferences_application.h
   ../../modules/core/src/application/configuration_transaction_persistence.cc

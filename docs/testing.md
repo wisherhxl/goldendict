@@ -24,6 +24,19 @@ Conan dependencies:
 python scripts/tests/run_with_conan_test.py
 ```
 
+### Test migration coverage review
+
+Map the original outer execution contract as well as C++ assertions. Start from
+CTest and its scripts/runners: record process count and order, shared persistent
+data, preparation and cleanup, arguments, working directory, environment, exit
+results and timeouts. A restart scenario may share its own persistent directory
+across sequential processes; independent scenarios must use fresh owned data.
+Do not regenerate expected files between restart phases or count a missing binary,
+zero match, skipped required phase or swallowed failure as success. Reviewers must
+inspect original registrations and wrappers independently of the migration map.
+Preserve scenario-specific timeouts: dictionary-context Preferences uses two
+processes and 40 seconds; that value is not a default for other scenes.
+
 ### Full-text dictionary scope integration
 
 With `BUILD_TESTS=ON`, `full_text_dictionary_scope_test` owns the real MainWindow

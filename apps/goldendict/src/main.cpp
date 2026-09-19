@@ -34,6 +34,7 @@
 #include "legacy_configuration_location.h"
 #include "main_window.h"
 #include "preferences_application.h"
+#include "history_application.h"
 #if defined(Q_OS_LINUX)
 #include "help_window.h"
 #include "interface_translations.h"
@@ -939,13 +940,7 @@ int main(int argc, char* argv[]) {
         persist_article_tab_session();
     });
     const auto refresh_history = [&window, &history]() {
-        std::vector<HistoryViewItem> items;
-        items.reserve(history.size());
-        for (const auto& entry : history) {
-            items.push_back(
-                {QString::fromStdString(entry.word), entry.group_id});
-        }
-        window.SetHistoryItems(items);
+        goldendict::app::RefreshHistoryPresentation(window, history);
     };
     window.SetHistoryExportCallback([&history](const QString& path) {
         QSaveFile file(path);
@@ -981,40 +976,8 @@ int main(int argc, char* argv[]) {
             window.SetFavoriteItems(items, current_path);
         };
     refresh_favorites();
-    QObject::connect(
-        &window, &MainWindow::LookupSubmitted, &window,
-        [&](const QString& word, std::uint32_t group_id) {
-            if (!configuration.preferences.store_history ||
-                configuration.preferences.maximum_history_entries == 0U) {
-                return;
-            }
-            auto updated = history;
-            const std::string encoded = word.toStdString();
-            updated.erase(std::remove_if(
-                              updated.begin(), updated.end(),
-                              [&word](const auto& entry) {
-                                  return QString::fromStdString(entry.word)
-                                             .compare(word,
-                                                      Qt::CaseInsensitive) == 0;
-                              }),
-                          updated.end());
-            updated.insert(updated.begin(), {group_id, encoded});
-            if (updated.size() >
-                configuration.preferences.maximum_history_entries) {
-                updated.resize(
-                    configuration.preferences.maximum_history_entries);
-            }
-            try {
-                goldendict::core::SaveHistory(history_path.toStdString(),
-                                              updated);
-                history = std::move(updated);
-                refresh_history();
-            } catch (const std::exception& error) {
-                QMessageBox::warning(&window,
-                                     QStringLiteral("GoldenDict history"),
-                                     QString::fromLocal8Bit(error.what()));
-            }
-        });
+    goldendict::app::InstallHistoryRecording(window, configuration, history,
+                                             history_path);
     QObject::connect(&window, &MainWindow::RemoveFavoriteRequested, &window,
                      [&](const QList<int>& path) {
                          auto updated = favorites;
@@ -1048,24 +1011,8 @@ int main(int argc, char* argv[]) {
                                      QString::fromLocal8Bit(error.what()));
             }
         });
-    QObject::connect(
-        &window, &MainWindow::ImportHistoryRequested, &window,
-        [&](const QString& path, std::uint32_t group_id) {
-            try {
-                auto imported = goldendict::core::ImportHistoryText(
-                    path.toStdString(),
-                    configuration.preferences.maximum_history_entries,
-                    group_id);
-                goldendict::core::SaveHistory(history_path.toStdString(),
-                                              imported);
-                history = std::move(imported);
-                refresh_history();
-            } catch (const std::exception& error) {
-                QMessageBox::warning(&window,
-                                     QStringLiteral("GoldenDict history"),
-                                     QString::fromLocal8Bit(error.what()));
-            }
-        });
+    goldendict::app::InstallHistoryImport(window, configuration, history,
+                                          history_path);
     QObject::connect(
         &window, &MainWindow::AddFavoriteRequested, &window,
         [&](const QString& word, const QList<int>& parent_path) {
