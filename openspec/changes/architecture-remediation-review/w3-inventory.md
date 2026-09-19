@@ -489,3 +489,24 @@ paths plus its menu/provider stages. Do not reproduce them in tests. HistorySmok
 is unselected and requires separate lookup/replay preflight. Favorites remains
 independently blocked on its previously recorded production installers. No third
 family is selected merely to fill the batch.
+
+
+### W3.7 implementation queue delta
+
+HistoryImportSmoke and OptionalPartsPreferencesSmoke are migrated after their
+individual gates; nine complete families are now migrated (the prior seven plus
+these two). The optional-parts finite access adds only a const current-tabs-visible
+boolean because real publication replaces the original named widget. No new
+production assembly or business behavior is introduced. See W3.7 failure/correction
+history and final external review for acceptance.
+
+preferences_dialog_executor_ remains for HelpMenu, EditMenu,
+PreferencesCoordinatorPredecision, FavoritesPreferences, ProxyPreferences,
+NetworkCachePreferences and its restart, HideSingleTabPreferences,
+EscapeHidesMainWindowPreferences, ArticleClickPreferences and MruTabOrderPreferences;
+EditPreferences invokes it. Migrated runners use the existing finite setter.
+No last-consumer field is removed. history_items_ remains actual presentation state
+and serves remaining History scenes; main's real recording/import callbacks remain
+normal product functionality. HistoryManagement/Export/Menu and Favorites keep
+the specific assembly blockers above; HistorySmoke remains unselected pending its
+complete preflight. No third family or subsequent batch is authorized here.

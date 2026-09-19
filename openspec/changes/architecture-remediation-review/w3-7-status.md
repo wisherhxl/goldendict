@@ -55,7 +55,7 @@ two-process/shared-profile/40-second regression, unchanged.
 | Optional cancel: exact label/tooltip/initial checkbox, toggle then reject, prefs unchanged | Original inspect/executor sequence using existing finite access |
 | Optional error: forced callback error, dialog not accepted, visible validation, prefs unchanged | Same test-only substitute; then restore actual callback returned by InstallPreferencesApplication |
 | Optional accepted true, reopen/cancel true | Real QAction/dialog/coordinator/persistence/publication; same stage order |
-| Optional final: true, unchanged session/layout, nonnull central widget, visible article tabs; main reload true | Same observations via existing copy-only Preferences access and named tab widget, real disk reload; publication additionally observed |
+| Optional final: true, unchanged session/layout, nonnull central widget, visible article tabs; main reload true | Same copy-only Preferences access and narrow current-tab visibility observer, real disk reload; publication additionally observed |
 
 No original import error/dedup/restart or optional-render content assertion is
 invented. ImportHistoryText normalization is exercised by BOM/whitespace/Unicode
@@ -68,7 +68,7 @@ Configuration/history/facade/owner/runtime/coordinator remain in their original
 production roles and runner-local equivalents. Existing installers borrow caller
 state and window context, with state constructed before window; no threading or
 connection lifecycle changes. Test callback captures live synchronous locals and
-is cleared before destruction. No new TestAccess capability or friend is needed.
+is cleared before destruction. HistoryImport needs no new access. OptionalParts adds only ArticleTabsVisible to the existing ArticlesPreferencesTestAccess (no new friend): a const boolean observation of the current published widget, no pointer or mutable state escapes.
 History widget observations replace reads of its projected private vector; the
 unfiltered visible list plus real owner vector/disk proves the original values.
 
@@ -106,3 +106,32 @@ forwarding ran only the first requested entry; the explicit subsequent array
 invocation supplied the remaining three. No absent case is counted as executed.
 No production History/Preferences implementation or finite access was changed.
 This is a local recoverable checkpoint; final cumulative independent review is pending.
+
+
+### Optional Parts correction and equivalence checkpoint
+
+The first migrated run returned CTest 0 but its QtTest report contained one failed
+assertion; optional-first-fail.txt and optional-migrated-results.json are retained
+as NOT accepted. Investigation found that Preferences publication replaces the
+article_tabs_ alias (PublishMaintainedFacadeCommit), while the migrated test had
+captured the old named widget. Prepared tabs have no such object name. Diagnostic
+observations showed preference/session/layout/central state correct; dereferencing
+a fresh named lookup then crashed because it was null (optional-diagnostic-fail.txt,
+owned CTest log). These are migration-test errors, not product RED evidence.
+
+The corrected test uses ArticleTabsVisible(const MainWindow&) in the existing
+private test access header. It observes only current visibility, preserving the
+original member assertion across real replacement without changing product names,
+lifecycles or exposing state. Dialog executor still only controls interaction;
+real Preferences persistence/publication remains installed after the error stage.
+Both new runners retain qExec's return independently of QApplication::exec so a
+shutdown exit cannot mask a QtTest failure. Existing W3.6 runner uses the inherited
+exit pattern; its passing report is explicitly checked, and no unrelated runner is
+changed. External verification now preserves and checks fresh QtTest reports,
+in addition to exact CTest execution and exit status.
+
+optional-corrected-results.json records 8/8 actual cases, including both new
+families, History/Articles/DictionaryContext/Synonym/ViewMenu and architecture
+fixtures. The two-process DictionaryContext entry and its 40-second timeout are
+unchanged. optional-corrected-build.log exits 0. Final cumulative review remains
+pending; these results supersede neither the retained failure evidence nor history.

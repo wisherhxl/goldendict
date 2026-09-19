@@ -185,10 +185,13 @@ int main(int argc, char** argv) {
     goldendict::app::InitializeWebEngineStorage(
         {}, webengine_storage.filePath("webengine"));
     HistoryImportTest test(profile.path());
+    int test_result = 2;
     QTimer::singleShot(0, &application, [&]() {
-        application.exit(QTest::qExec(&test, argc, argv));
+        test_result = QTest::qExec(&test, argc, argv);
+        application.exit(test_result);
     });
-    return application.exec();
+    const int event_loop_result = application.exec();
+    return test_result != 0 ? test_result : event_loop_result;
 }
 
 #include "history_import_test.moc"

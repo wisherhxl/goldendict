@@ -7326,3 +7326,13 @@ contract and BOM/whitespace/Unicode import, live presentation and Core disk-relo
 assertions. It uses the existing production History installer, fresh owned data
 and P1 WebEngine paths. It adds no restart stage or new production access seam.
 See [W3.7](../openspec/changes/architecture-remediation-review/w3-7-status.md).
+
+
+`goldendict_optional_parts_preferences_smoke` similarly runs
+`optional_parts_preferences_test` (BUILD_TESTS): one process, 20-second CTest and
+10-second watchdog, original cancel/error/real-apply/reopen stages, persisted
+configuration, session/layout and current article visibility assertions. The
+existing finite test access exposes only current visibility after widget
+replacement. Both W3.7 runners propagate the QtTest result independently of event
+loop shutdown. No new restart coverage is claimed. Build both runners alongside
+`goldendict` through the Conan launcher before selecting their exact CTest entries.
