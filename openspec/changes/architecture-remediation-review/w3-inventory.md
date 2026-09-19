@@ -473,3 +473,19 @@ remain pending; partial availability of recording/import does not prove their
 remaining export/clear/menu/quit assembly coverage. No next family is selected.
 
 W3.6 implementation delta: HistoryPreferences joins the six previously migrated families (seven total). Other History families remain pending; Favorites remains separate and blocked by its own assembly. W3/A4 remains in progress. Full acceptance is bound by the external final W3.6 review receipt.
+
+## W3.7 locked queue (base 8784eeaa)
+
+After two fresh old-entry baselines passed, select HistoryImportSmoke then
+OptionalPartsPreferencesSmoke. Both reuse existing runner structure and production
+assembly; no new access or ownership boundary. HistoryImport is independently
+registered/separately seeded and verified; its earlier grouped presentation row
+is not a cross-process family contract. Complete its own scene/main/CTest chain.
+See w3-7-status.md for outer execution and assertion mapping.
+
+HistoryManagement remains blocked on main ClearHistoryRequested; HistoryExport
+on SetHistoryExportCallback/QSaveFile; HistoryMenu on these same unshared real
+paths plus its menu/provider stages. Do not reproduce them in tests. HistorySmoke
+is unselected and requires separate lookup/replay preflight. Favorites remains
+independently blocked on its previously recorded production installers. No third
+family is selected merely to fill the batch.

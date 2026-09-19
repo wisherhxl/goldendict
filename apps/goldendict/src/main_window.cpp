@@ -7286,21 +7286,6 @@ void MainWindow::RunHistoryExportSmokeCheck(
     completion(error.isEmpty() && opened && file.readAll() == expected);
 }
 
-void MainWindow::RunHistoryImportSmokeCheck(
-    const QString& path, std::function<void(bool)> completion) {
-    connect(
-        this, &MainWindow::ImportHistoryRequested, this,
-        [this, path, completion = std::move(completion)](
-            const QString& requested_path, std::uint32_t group_id) mutable {
-            completion(requested_path == path && group_id == 0U &&
-                       history_items_.size() == 2 &&
-                       history_items_[0].word == QStringLiteral("Alpha") &&
-                       history_items_[1].word == QStringLiteral("第二个"));
-        },
-        Qt::SingleShotConnection);
-    emit ImportHistoryRequested(path, selected_group_id_);
-}
-
 void MainWindow::RunFavoritesSmokeCheck(std::function<void(bool)> completion) {
     const QString expected = QStringLiteral("favorites-smoke-entry");
     const int initial_count = favorites_tree_->topLevelItemCount();

@@ -78,7 +78,6 @@ bool IsSmokeInvocation(const QStringList& arguments) {
         QStringLiteral("--help-presentation-smoke"),
         QStringLiteral("--hide-single-tab-preferences-smoke"),
         QStringLiteral("--history-export-smoke"),
-        QStringLiteral("--history-import-smoke"),
         QStringLiteral("--history-management-smoke"),
         QStringLiteral("--history-menu-smoke"),
         QStringLiteral("--history-smoke"),
@@ -2683,38 +2682,7 @@ int main(int argc, char* argv[]) {
                         .filePath(QStringLiteral("history-export-smoke.txt")),
                     [&app](bool passed) { app.exit(passed ? 0 : 1); });
             });
-    } else if (HasArgument(argc, argv,
-                           QStringLiteral("--history-import-smoke"))) {
-        QTimer::singleShot(10000, &app, [&app]() { app.exit(2); });
-        QTimer::singleShot(
-            0, &window,
-            [&app, &configuration_directory, &history_path, &window]() {
-                QDir().mkpath(configuration_directory);
-                const QString import_path =
-                    QDir(configuration_directory)
-                        .filePath(QStringLiteral("history-import-smoke.txt"));
-                QFile fixture(import_path);
-                const bool prepared =
-                    fixture.open(QIODevice::WriteOnly) &&
-                    fixture.write(QByteArray::fromHex("efbbbf") +
-                                  " Alpha \r\n第二个\n") > 0;
-                fixture.close();
-                window.RunHistoryImportSmokeCheck(
-                    import_path, [&app, &history_path, prepared](bool passed) {
-                        try {
-                            const auto persisted =
-                                goldendict::core::LoadHistory(
-                                    history_path.toStdString());
-                            passed = prepared && passed &&
-                                     persisted.size() == 2U &&
-                                     persisted[0].word == "Alpha" &&
-                                     persisted[1].word == "第二个";
-                        } catch (const std::exception&) {
-                            passed = false;
-                        }
-                        app.exit(passed ? 0 : 1);
-                    });
-            });
+
     }
 
     int result = app.exec();

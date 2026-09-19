@@ -7317,3 +7317,12 @@ See [W3.6](../openspec/changes/architecture-remediation-review/w3-6-status.md).
 .\run_with_conan.ps1 --build-type Release --with-build-environment -- cmake --build build/Release --target goldendict history_preferences_test
 .\run_with_conan.ps1 --build-type Release -- ctest --test-dir build/Release -R '^(goldendict_history_preferences_smoke|goldendict_dictionary_context_preferences_smoke|full_text_scope_isolation_test)$' --output-on-failure
 ```
+
+### W3.7 History import runner
+
+`goldendict_history_import_smoke` runs `history_import_test` under BUILD_TESTS.
+It preserves the one-process, 20-second CTest / 10-second internal watchdog
+contract and BOM/whitespace/Unicode import, live presentation and Core disk-reload
+assertions. It uses the existing production History installer, fresh owned data
+and P1 WebEngine paths. It adds no restart stage or new production access seam.
+See [W3.7](../openspec/changes/architecture-remediation-review/w3-7-status.md).
