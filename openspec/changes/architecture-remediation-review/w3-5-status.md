@@ -31,8 +31,9 @@ view_menu_test --prepare-fixture mode, not copied from a prior run or daily data
 Both have the same complete synchronous GUI-thread interaction sequence: inspect
 and cancel; install an error-returning apply substitute and assert validation;
 restore the actual production apply callable and save. The main completion lambda
-loads the persisted configuration and asserts the changed setting. No additional
-restart, lookup scheduling, source fixture or main-owned business callback is used.
+loads the persisted configuration and asserts the changed setting. The initial preflight incorrectly missed the dictionary-context restart wrapper;
+see the preserved independent F1 correction below. Neither scene needs lookup
+scheduling, a source fixture or an additional main-owned business callback.
 Shared InstallPreferencesApplication returns the real callable for restoration.
 Configuration/history/facade/runtime/coordinator/credentials/diagnostics ownership
 and lifetime remain caller-owned as in W3.3/W3.4; no closure borrows installer locals.
@@ -64,8 +65,9 @@ Synonym: exact label and tooltip and initial checked value; toggle then cancel;
 forced failure leaves Preferences unchanged and shows validation; restore real
 callback and save false; session/layout unchanged; LoadConfiguration confirms false.
 
-Preserve separate CTest processes/names, app build working directory, 20-second
-timeout and existing offscreen/x11/Chromium flags. QtTest supplies actual scene
+Preserve separate CTest names and app build working directory: Synonym has a
+20-second timeout; DictionaryContext retains its two-process wrapper and 40-second
+timeout. Existing offscreen/x11/Chromium flags remain. QtTest supplies actual scene
 failure accounting instead of the old smoke timer/exit dispatch. Each runner owns
 fresh runtime paths. Delete each old method/declaration/recognition/dispatch.
 Extend the existing guard, not a new checker; retain historical exemptions unchanged.
@@ -152,3 +154,58 @@ candidate. No Accepted design, public interface, production assembly, ownership,
 transaction, W1/W2/P1 path/lifecycle or business implementation changed. This does
 not close A4 or authorize the proposed History/Favorites boundaries. Stop here
 without another batch, W4, merge or push after this batch's review.
+
+## Independent F1 and bounded correction (history retained)
+
+Candidate 07fee8d4 received independent **Fail**, receipt
+independent-completion-review.md (SHA256
+269c5600215a5e94b27636a571c6e9adcdddf517f1136b89e2336f2ef78462a1).
+The reviewer found that the baseline dictionary_context_preferences_restart.cmake
+runs two product processes against one profile, TIMEOUT 40. Initial preflight and
+candidate mapping incorrectly treated that entry as single-pass/TIMEOUT 20. The
+30/30 passing tests on that candidate did not satisfy the omitted restart contract.
+No production defect was identified. The candidate and Fail remain immutable.
+
+Repair reuses that existing CMake wrapper with the test runner (no product smoke
+entry). It creates one unique owned root and invokes two independent processes,
+retaining phase logs/configuration for evidence. The first creates/serializes the
+fixture and performs the original scene; the second must load the first process's
+persisted zero limit and article session before actual facade preparation, session
+restoration, real window initialization and original dialog stages. Shared production
+Preferences is restored in both. On the second process, unchanged preferences must
+retain the facade: this is the existing production no-op contract, not a success
+substitute. Both phases assert persistent/window/config equality and session/layout
+preservation. No new MainWindow access or production orchestration was introduced.
+
+The wrapper refuses existing run roots and missing binaries/nonabsolute roots;
+TEMP/TMPDIR supplies the existing owned test location, with a short unique child.
+It no longer recursively removes the old fixed test-home directory. Test-only
+restart-root/pass variables never affect the product executable. CTest TIMEOUT 40
+and offscreen/x11/Chromium settings now preserve the actual original entry semantics.
+
+restart-contract-red.log: the pre-correction test binary completed its own scene,
+then the new wrapper failed specifically because it did not persist the shared
+profile (exit 1). This demonstrates the test coverage gap, not a product red phase.
+Two earlier unquoted PowerShell -D probes truncated arguments and failed to launch;
+those are setup failures only (restart-red.log, restart-script-diagnostic.log).
+restart-corrected/ctest.log records a long nested path run terminating in pass 1;
+its exact terminating instruction was not captured. Same-binary short-path control
+passed both phases (restart-short-control.log). Removing redundant directory nesting
+then passed restart-final/ctest.log, 5/5, including both phases and affected scenes.
+No daily data was used or restored. Failed attempts are not overwritten.
+
+This correction is test/build/documentation-only, within the locked family. Earlier
+checkpoint A was a migration checkpoint with incomplete restart acceptance; it must
+not be presented as full family completion. Final acceptance requires the corrected
+cumulative candidate and a new fresh independent receipt.
+
+Corrected final verification: corrected-on-build.log and corrected-off-build.log
+exit 0; verify-cumulative.ps1 -RunName corrected1 executes 30/30 actual entries
+with exit 0, now including both independent dictionary-context processes. Both
+phase logs report init/scene/cleanup 3/3 with zero skip; retained pass-1.txt/pass-2.txt
+show the same profile. verify-isolation.ps1 -Prefix corrected exits 0. Nine clean
+and 36 negative guard fixtures retain their expected results. Product ON/OFF
+binary hashes are unchanged by this test-only repair; the captured ordinary OFF
+startup remains applicable, explicitly reused rather than called a new launch.
+Original Fail, failed attempts and pre-correction test results remain separate.
+A new exact-candidate independent review is still required after this checkpoint.

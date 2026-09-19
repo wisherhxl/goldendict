@@ -53,22 +53,31 @@ namespace app = goldendict::app;
 class DictionaryContextPreferencesTest : public QObject {
     Q_OBJECT
    public:
-    explicit DictionaryContextPreferencesTest(QString owned_root)
-        : owned_root_(std::move(owned_root)) {}
+    explicit DictionaryContextPreferencesTest(QString owned_root,
+                                              bool restarted)
+        : owned_root_(std::move(owned_root)), restarted_(restarted) {}
 
    private:
     const QString owned_root_;
+    const bool restarted_;
    private slots:
 
     void scenarioThroughRealApplication() {
         const auto profile = owned_root_ + "/profile";
         qInfo() << "Preparing owned fixture" << profile;
-        PrepareFixture(profile.toStdString());
-        qInfo() << "Fixture round-trip complete";
+        if (!restarted_)
+            PrepareFixture(profile.toStdString());
         const auto configuration_path = profile + "/current-config/core.conf";
         const auto history_path = profile + "/history";
         auto configuration =
             core::LoadConfiguration(configuration_path.toStdString());
+        if (restarted_) {
+            QCOMPARE(configuration.preferences.maximum_dictionary_references,
+                     0U);
+            QVERIFY(configuration.article_tab_session.has_value());
+        }
+        qInfo() << "Restart pass" << (restarted_ ? 2 : 1) << "loaded profile"
+                << configuration_path;
         std::vector<core::HistoryEntry> history;
         const auto network_root = (profile + "/network-cache").toStdString();
         auto runtime = goldendict::network::NetworkRuntime::Create(
@@ -220,10 +229,21 @@ class DictionaryContextPreferencesTest : public QObject {
                  facade->ExportArticleTabSession() == initial_session &&
                  window.CaptureMainWindowState() == initial_state;
         QVERIFY(passed);
-        QVERIFY(published());
+        if (restarted_) {
+            // The restored production callback must preserve its
+            // unchanged-value no-op contract on the second independent process.
+            QVERIFY(facade == previous_facade);
+            QVERIFY(facade == owner.CurrentSnapshot());
+            QVERIFY(configuration.preferences ==
+                    ViewMenuTestAccess::Preferences(window));
+        } else {
+            QVERIFY(published());
+        }
         const auto persisted =
             core::LoadConfiguration(configuration_path.toStdString());
         QCOMPARE(persisted.preferences.maximum_dictionary_references, 0U);
+        QVERIFY(persisted.preferences == configuration.preferences);
+        QVERIFY(persisted.article_tab_session.has_value());
     }
 };
 
@@ -231,10 +251,21 @@ int main(int argc, char** argv) {
     QTemporaryDir profile(QDir::tempPath() + "/dc-XXXXXX");
     if (!profile.isValid())
         return 2;
+    const auto restart_root =
+        qEnvironmentVariable("GOLDENDICT_CONTEXT_RESTART_ROOT");
+    const int restart_pass =
+        qEnvironmentVariableIntValue("GOLDENDICT_CONTEXT_RESTART_PASS");
+    if ((!restart_root.isEmpty() &&
+         (!QDir::isAbsolutePath(restart_root) || !QDir(restart_root).exists() ||
+          (restart_pass != 1 && restart_pass != 2))) ||
+        (restart_root.isEmpty() && restart_pass != 0))
+        return 2;
+    const auto owned_root =
+        restart_root.isEmpty() ? profile.path() : restart_root;
     for (const auto* name :
          {"HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "APPDATA",
           "LOCALAPPDATA", "GOLDENDICT_TEST_CONFIG_ROOT", "TEMP", "TMP"}) {
-        const auto path = profile.filePath(QString::fromLatin1(name));
+        const auto path = QDir(owned_root).filePath(QString::fromLatin1(name));
         if (!QDir().mkpath(path))
             return 2;
         qputenv(name, path.toUtf8());
@@ -252,7 +283,7 @@ int main(int argc, char** argv) {
     QApplication application(argc, argv);
     goldendict::app::InitializeWebEngineStorage(
         {}, webengine_storage.filePath("webengine"));
-    DictionaryContextPreferencesTest test(profile.path());
+    DictionaryContextPreferencesTest test(owned_root, restart_pass == 2);
     return QTest::qExec(&test, argc, argv);
 }
 

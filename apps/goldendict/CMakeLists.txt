@@ -853,10 +853,10 @@ if(BUILD_TESTS)
   ti_target_link_libraries(dictionary_context_preferences_test ${dictd_presentation_libraries} ${QT_NAMESPACE}::Test)
   target_compile_definitions(dictionary_context_preferences_test PRIVATE
     GOLDENDICT_APPLICATION_VERSION="${TI_VERSION_MAJOR}.${TI_VERSION_MINOR}.${TI_VERSION_REVISION}")
-  add_test(NAME goldendict_dictionary_context_preferences_smoke COMMAND dictionary_context_preferences_test
-    -o "${CMAKE_CURRENT_BINARY_DIR}/dictionary-context-preferences-test.txt,txt")
-  set_tests_properties(goldendict_dictionary_context_preferences_smoke PROPERTIES TIMEOUT 20
-    ENVIRONMENT "XDG_SESSION_TYPE=x11;QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu")
+  add_test(NAME goldendict_dictionary_context_preferences_smoke COMMAND ${CMAKE_COMMAND}
+    -DTEST_EXECUTABLE=$<TARGET_FILE:dictionary_context_preferences_test>
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/dictionary_context_preferences_restart.cmake)
+  set_tests_properties(goldendict_dictionary_context_preferences_smoke PROPERTIES TIMEOUT 40)
 
   ti_add_executable(full_text_dictionary_scope_test
     tests/full_text_dictionary_scope_test.cpp ${dictd_presentation_sources})

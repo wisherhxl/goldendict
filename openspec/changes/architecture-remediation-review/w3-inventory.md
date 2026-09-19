@@ -428,3 +428,11 @@ only). Other pending families retain their prior classifications and consumers;
 HistoryPreferences and FavoritesPreferences remain separately blocked as detailed
 above. No additional family was selected. Final W3.5 acceptance requires its
 external exact-candidate review; broader W3/A4 remains in progress.
+
+W3.5 review correction: the first candidate's DictionaryContext migration omitted
+its existing two-process restart wrapper. Independent Fail is preserved. The corrected
+entry reuses dictionary_context_preferences_restart.cmake with the test runner,
+shared fresh profile, two actual processes and original 40-second timeout. The
+second loads the first's persisted setting/session and preserves real no-op behavior.
+No ownership or production assembly change is needed; both locked families remain
+selected. Initial single-pass claims are superseded, not treated as acceptance.

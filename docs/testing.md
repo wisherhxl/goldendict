@@ -85,7 +85,11 @@ and narrow dialog-executor access header. See the [W3.4 mapping and evidence](
 
 With `BUILD_TESTS=ON`, `goldendict_dictionary_context_preferences_smoke` and
 `goldendict_synonym_preferences_smoke` run `dictionary_context_preferences_test`
-and `synonym_preferences_test` in separate processes. Their internal product smoke
+and `synonym_preferences_test` in separate processes. Dictionary context retains
+its restart wrapper: two runner processes share one fresh serialized profile, with
+a 40-second CTest timeout; the second reloads the persisted zero limit and exercises
+the unchanged-value no-op. Synonym retains its single process and 20-second timeout.
+Their internal product smoke
 options are removed. Both reuse the real Preferences installer and the existing
 dialog-interaction access; cancel, rejected save and actual persistent publication
 remain distinct stages. The cumulative isolation guard covers both targets. See
